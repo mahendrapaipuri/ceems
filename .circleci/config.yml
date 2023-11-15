@@ -20,7 +20,7 @@ jobs:
       - run: go mod download
       - run: make
       - prometheus/store_artifact:
-          file: node_exporter
+          file: batchjob_exporter
   test-arm:
     executor: arm
     steps:
@@ -48,7 +48,7 @@ jobs:
       image: ubuntu-2204:current
     environment:
       DOCKER_TEST_IMAGE_NAME: quay.io/prometheus/golang-builder:1.18-base
-      REPO_PATH: github.com/prometheus/node_exporter
+      REPO_PATH: github.com/prometheus/batchjob_exporter
     steps:
       - prometheus/setup_environment
       - attach_workspace:
@@ -71,7 +71,7 @@ jobs:
             fi
 workflows:
   version: 2
-  node_exporter:
+  batchjob_exporter:
     jobs:
       - test:
           filters:
