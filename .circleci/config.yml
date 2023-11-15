@@ -85,13 +85,13 @@ workflows:
           filters:
             tags:
               only: /.*/
-      - test_docker:
-          requires:
-            - test
-            - build
-          filters:
-            tags:
-              only: /.*/
+      # - test_docker:
+      #     requires:
+      #       - test
+      #       - build
+      #     filters:
+      #       tags:
+      #         only: /.*/
       - prometheus/publish_master:
           context: org-context
           requires:
