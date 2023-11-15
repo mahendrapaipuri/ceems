@@ -1,0 +1,4367 @@
+# Archive created by ttar -C collector/fixtures -c -f collector/fixtures/sys.ttar sys
+Directory: sys
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/class
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/class/powercap
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/enabled
+Lines: 1
+1
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/class/powercap/intel-rapl:0
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0/constraint_0_max_power_uw
+Lines: 1
+150000000
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0/constraint_0_name
+Lines: 1
+long_term
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0/constraint_0_power_limit_uw
+Lines: 1
+150000000
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0/constraint_0_time_window_us
+Lines: 1
+55967744
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0/constraint_1_max_power_uw
+Lines: 1
+376000000
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0/constraint_1_name
+Lines: 1
+short_term
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0/constraint_1_power_limit_uw
+Lines: 1
+180000000
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0/constraint_1_time_window_us
+Lines: 1
+20468203520
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0/device
+SymlinkTo: ../../intel-rapl
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0/enabled
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0/energy_uj
+Lines: 1
+258218293244
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/class/powercap/intel-rapl:0/intel-rapl:0:0
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0/intel-rapl:0:0/constraint_0_max_power_uw
+Lines: 1
+64500000
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0/intel-rapl:0:0/constraint_0_name
+Lines: 1
+long_term
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0/intel-rapl:0:0/constraint_0_power_limit_uw
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0/intel-rapl:0:0/constraint_0_time_window_us
+Lines: 1
+976
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0/intel-rapl:0:0/device
+SymlinkTo: ../../intel-rapl:0
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0/intel-rapl:0:0/enabled
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0/intel-rapl:0:0/energy_uj
+Lines: 1
+24468409791
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0/intel-rapl:0:0/max_energy_range_uj
+Lines: 1
+65712999613
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0/intel-rapl:0:0/name
+Lines: 1
+dram
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/class/powercap/intel-rapl:0/intel-rapl:0:0/power
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0/intel-rapl:0:0/power/autosuspend_delay_ms
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0/intel-rapl:0:0/power/control
+Lines: 1
+auto
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0/intel-rapl:0:0/power/runtime_active_time
+Lines: 1
+0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0/intel-rapl:0:0/power/runtime_status
+Lines: 1
+unsupported
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0/intel-rapl:0:0/power/runtime_suspended_time
+Lines: 1
+0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0/intel-rapl:0:0/subsystem
+SymlinkTo: ../../../../../../class/powercap
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0/intel-rapl:0:0/uevent
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0/max_energy_range_uj
+Lines: 1
+262143328850
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0/name
+Lines: 1
+package-0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/class/powercap/intel-rapl:0/power
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0/power/autosuspend_delay_ms
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0/power/control
+Lines: 1
+auto
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0/power/runtime_active_time
+Lines: 1
+0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0/power/runtime_status
+Lines: 1
+unsupported
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0/power/runtime_suspended_time
+Lines: 1
+0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0/subsystem
+SymlinkTo: ../../../../../class/powercap
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0/uevent
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/class/powercap/intel-rapl:1
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1/constraint_0_max_power_uw
+Lines: 1
+150000000
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1/constraint_0_name
+Lines: 1
+long_term
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1/constraint_0_power_limit_uw
+Lines: 1
+150000000
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1/constraint_0_time_window_us
+Lines: 1
+55967744
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1/constraint_1_max_power_uw
+Lines: 1
+376000000
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1/constraint_1_name
+Lines: 1
+short_term
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1/constraint_1_power_limit_uw
+Lines: 1
+180000000
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1/constraint_1_time_window_us
+Lines: 1
+20468203520
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1/device
+SymlinkTo: ../../intel-rapl
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1/enabled
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1/energy_uj
+Lines: 1
+130570505826
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/class/powercap/intel-rapl:1/intel-rapl:1:0
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1/intel-rapl:1:0/constraint_0_max_power_uw
+Lines: 1
+64500000
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1/intel-rapl:1:0/constraint_0_name
+Lines: 1
+long_term
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1/intel-rapl:1:0/constraint_0_power_limit_uw
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1/intel-rapl:1:0/constraint_0_time_window_us
+Lines: 1
+976
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1/intel-rapl:1:0/device
+SymlinkTo: ../../intel-rapl:1
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1/intel-rapl:1:0/enabled
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1/intel-rapl:1:0/energy_uj
+Lines: 1
+64930394974
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1/intel-rapl:1:0/max_energy_range_uj
+Lines: 1
+65712999613
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1/intel-rapl:1:0/name
+Lines: 1
+dram
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/class/powercap/intel-rapl:1/intel-rapl:1:0/power
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1/intel-rapl:1:0/power/autosuspend_delay_ms
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1/intel-rapl:1:0/power/control
+Lines: 1
+auto
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1/intel-rapl:1:0/power/runtime_active_time
+Lines: 1
+0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1/intel-rapl:1:0/power/runtime_status
+Lines: 1
+unsupported
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1/intel-rapl:1:0/power/runtime_suspended_time
+Lines: 1
+0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1/intel-rapl:1:0/subsystem
+SymlinkTo: ../../../../../../class/powercap
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1/intel-rapl:1:0/uevent
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1/max_energy_range_uj
+Lines: 1
+262143328850
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1/name
+Lines: 1
+package-1
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/class/powercap/intel-rapl:1/power
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1/power/autosuspend_delay_ms
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1/power/control
+Lines: 1
+auto
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1/power/runtime_active_time
+Lines: 1
+0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1/power/runtime_status
+Lines: 1
+unsupported
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1/power/runtime_suspended_time
+Lines: 1
+0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1/subsystem
+SymlinkTo: ../../../../../class/powercap
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1/uevent
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/class/powercap/power
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/power/autosuspend_delay_ms
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/power/control
+Lines: 1
+auto
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/power/runtime_active_time
+Lines: 1
+0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/power/runtime_status
+Lines: 1
+unsupported
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/power/runtime_suspended_time
+Lines: 1
+0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/subsystem
+SymlinkTo: ../../../../class/powercap
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/uevent
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/system.slice
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/system.slice/slurmstepd.scope
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/cgroup.controllers
+Lines: 1
+cpuset cpu io memory pids
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/cgroup.events
+Lines: 2
+populated 1
+frozen 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/cgroup.freeze
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/cgroup.max.depth
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/cgroup.max.descendants
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/cgroup.procs
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/cgroup.stat
+Lines: 2
+nr_descendants 281
+nr_dying_descendants 6458
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/cgroup.subtree_control
+Lines: 1
+cpuset cpu memory
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/cgroup.threads
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/cgroup.type
+Lines: 1
+domain
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/cpu.max
+Lines: 1
+max 100000
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/cpu.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/cpu.stat
+Lines: 6
+usage_usec 63822839552729
+user_usec 63308516624494
+system_usec 514322928234
+nr_periods 0
+nr_throttled 0
+throttled_usec 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/cpu.weight
+Lines: 1
+100
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/cpu.weight.nice
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/cpuset.cpus
+Lines: 1
+
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/cpuset.cpus.effective
+Lines: 1
+0-79
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/cpuset.cpus.partition
+Lines: 1
+member
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/cpuset.mems
+Lines: 1
+
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/cpuset.mems.effective
+Lines: 1
+0-1
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/io.bfq.weight
+Lines: 1
+default 100
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/io.latency
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/io.max
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/io.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/io.stat
+Lines: 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/cgroup.controllers
+Lines: 1
+cpuset cpu memory
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/cgroup.events
+Lines: 2
+populated 1
+frozen 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/cgroup.freeze
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/cgroup.max.depth
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/cgroup.max.descendants
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/cgroup.procs
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/cgroup.stat
+Lines: 2
+nr_descendants 12
+nr_dying_descendants 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/cgroup.subtree_control
+Lines: 1
+cpuset cpu memory
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/cgroup.threads
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/cgroup.type
+Lines: 1
+domain
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/cpu.max
+Lines: 1
+max 100000
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/cpu.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/cpu.stat
+Lines: 6
+usage_usec 60491070351
+user_usec 60375292848
+system_usec 115777502
+nr_periods 0
+nr_throttled 0
+throttled_usec 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/cpu.weight
+Lines: 1
+100
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/cpu.weight.nice
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/cpuset.cpus
+Lines: 1
+1,41
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/cpuset.cpus.effective
+Lines: 1
+1,41
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/cpuset.cpus.partition
+Lines: 1
+member
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/cpuset.mems
+Lines: 1
+0-1
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/cpuset.mems.effective
+Lines: 1
+0-1
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/io.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/memory.current
+Lines: 1
+4111491072
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/memory.events
+Lines: 5
+low 0
+high 0
+max 0
+oom 0
+oom_kill 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/memory.events.local
+Lines: 5
+low 0
+high 0
+max 0
+oom 0
+oom_kill 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/memory.high
+Lines: 1
+4294967296
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/memory.low
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/memory.max
+Lines: 1
+4294967296
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/memory.min
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/memory.numa_stat
+Lines: 26
+anon N0=4098330624 N1=262144
+file N0=0 N1=0
+kernel_stack N0=180224 N1=0
+pagetables N0=8601600 N1=0
+shmem N0=0 N1=0
+file_mapped N0=0 N1=0
+file_dirty N0=0 N1=0
+file_writeback N0=0 N1=0
+swapcached N0=0 N1=0
+anon_thp N0=4078960640 N1=0
+file_thp N0=0 N1=0
+shmem_thp N0=0 N1=0
+inactive_anon N0=4098273280 N1=262144
+active_anon N0=57344 N1=0
+inactive_file N0=0 N1=0
+active_file N0=0 N1=0
+unevictable N0=0 N1=0
+slab_reclaimable N0=89456 N1=43552
+slab_unreclaimable N0=348552 N1=64104
+workingset_refault_anon N0=0 N1=0
+workingset_refault_file N0=0 N1=0
+workingset_activate_anon N0=0 N1=0
+workingset_activate_file N0=0 N1=0
+workingset_restore_anon N0=0 N1=0
+workingset_restore_file N0=0 N1=0
+workingset_nodereclaim N0=0 N1=0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/memory.oom.group
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/memory.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/memory.stat
+Lines: 40
+anon 4098592768
+file 0
+kernel_stack 180224
+pagetables 8601600
+percpu 3333120
+sock 0
+shmem 0
+file_mapped 0
+file_dirty 0
+file_writeback 0
+swapcached 0
+anon_thp 4078960640
+file_thp 0
+shmem_thp 0
+inactive_anon 4098535424
+active_anon 57344
+inactive_file 0
+active_file 0
+unevictable 0
+slab_reclaimable 133008
+slab_unreclaimable 412656
+slab 545664
+workingset_refault_anon 0
+workingset_refault_file 0
+workingset_activate_anon 0
+workingset_activate_file 0
+workingset_restore_anon 0
+workingset_restore_file 0
+workingset_nodereclaim 0
+pgfault 3087490
+pgmajfault 0
+pgrefill 0
+pgscan 0
+pgsteal 0
+pgactivate 150
+pgdeactivate 0
+pglazyfree 0
+pglazyfreed 0
+thp_fault_alloc 295220
+thp_collapse_alloc 8
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/memory.swap.current
+Lines: 1
+0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/memory.swap.events
+Lines: 3
+high 0
+max 0
+fail 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/memory.swap.high
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/memory.swap.max
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/cgroup.controllers
+Lines: 1
+cpuset cpu memory
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/cgroup.events
+Lines: 2
+populated 1
+frozen 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/cgroup.freeze
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/cgroup.max.depth
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/cgroup.max.descendants
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/cgroup.procs
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/cgroup.stat
+Lines: 2
+nr_descendants 3
+nr_dying_descendants 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/cgroup.subtree_control
+Lines: 1
+cpuset cpu memory
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/cgroup.threads
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/cgroup.type
+Lines: 1
+domain
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/cpu.max
+Lines: 1
+max 100000
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/cpu.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/cpu.stat
+Lines: 6
+usage_usec 2023506360
+user_usec 2019162141
+system_usec 4344219
+nr_periods 0
+nr_throttled 0
+throttled_usec 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/cpu.weight
+Lines: 1
+100
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/cpu.weight.nice
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/cpuset.cpus
+Lines: 1
+
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/cpuset.cpus.effective
+Lines: 1
+1,41
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/cpuset.cpus.partition
+Lines: 1
+member
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/cpuset.mems
+Lines: 1
+
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/cpuset.mems.effective
+Lines: 1
+0-1
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/io.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/memory.current
+Lines: 1
+4101341184
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/memory.events
+Lines: 5
+low 0
+high 0
+max 0
+oom 0
+oom_kill 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/memory.events.local
+Lines: 5
+low 0
+high 0
+max 0
+oom 0
+oom_kill 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/memory.high
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/memory.low
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/memory.max
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/memory.min
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/memory.numa_stat
+Lines: 26
+anon N0=4091998208 N1=65536
+file N0=0 N1=0
+kernel_stack N0=49152 N1=0
+pagetables N0=8134656 N1=0
+shmem N0=0 N1=0
+file_mapped N0=0 N1=0
+file_dirty N0=0 N1=0
+file_writeback N0=0 N1=0
+swapcached N0=0 N1=0
+anon_thp N0=4078960640 N1=0
+file_thp N0=0 N1=0
+shmem_thp N0=0 N1=0
+inactive_anon N0=4091977728 N1=65536
+active_anon N0=20480 N1=0
+inactive_file N0=0 N1=0
+active_file N0=0 N1=0
+unevictable N0=0 N1=0
+slab_reclaimable N0=8456 N1=10784
+slab_unreclaimable N0=131184 N1=7920
+workingset_refault_anon N0=0 N1=0
+workingset_refault_file N0=0 N1=0
+workingset_activate_anon N0=0 N1=0
+workingset_activate_file N0=0 N1=0
+workingset_restore_anon N0=0 N1=0
+workingset_restore_file N0=0 N1=0
+workingset_nodereclaim N0=0 N1=0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/memory.oom.group
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/memory.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/memory.stat
+Lines: 40
+anon 4092063744
+file 0
+kernel_stack 49152
+pagetables 8134656
+percpu 833280
+sock 0
+shmem 0
+file_mapped 0
+file_dirty 0
+file_writeback 0
+swapcached 0
+anon_thp 4078960640
+file_thp 0
+shmem_thp 0
+inactive_anon 4092043264
+active_anon 20480
+inactive_file 0
+active_file 0
+unevictable 0
+slab_reclaimable 19240
+slab_unreclaimable 139104
+slab 158344
+workingset_refault_anon 0
+workingset_refault_file 0
+workingset_activate_anon 0
+workingset_activate_file 0
+workingset_restore_anon 0
+workingset_restore_file 0
+workingset_nodereclaim 0
+pgfault 22109
+pgmajfault 0
+pgrefill 0
+pgscan 0
+pgsteal 0
+pgactivate 1
+pgdeactivate 0
+pglazyfree 0
+pglazyfreed 0
+thp_fault_alloc 11561
+thp_collapse_alloc 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/memory.swap.current
+Lines: 1
+0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/memory.swap.events
+Lines: 3
+high 0
+max 0
+fail 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/memory.swap.high
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/memory.swap.max
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/cgroup.controllers
+Lines: 1
+cpuset cpu memory
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/cgroup.events
+Lines: 2
+populated 1
+frozen 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/cgroup.freeze
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/cgroup.max.depth
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/cgroup.max.descendants
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/cgroup.procs
+Lines: 1
+3401149
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/cgroup.stat
+Lines: 2
+nr_descendants 0
+nr_dying_descendants 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/cgroup.subtree_control
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/cgroup.threads
+Lines: 5
+3401149
+3401150
+3401151
+3401152
+3401153
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/cgroup.type
+Lines: 1
+domain
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/cpu.max
+Lines: 1
+max 100000
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/cpu.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/cpu.stat
+Lines: 6
+usage_usec 36117
+user_usec 0
+system_usec 36117
+nr_periods 0
+nr_throttled 0
+throttled_usec 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/cpu.weight
+Lines: 1
+100
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/cpu.weight.nice
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/cpuset.cpus
+Lines: 1
+
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/cpuset.cpus.effective
+Lines: 1
+1,41
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/cpuset.cpus.partition
+Lines: 1
+member
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/cpuset.mems
+Lines: 1
+
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/cpuset.mems.effective
+Lines: 1
+0-1
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/io.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/memory.current
+Lines: 1
+331776
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/memory.events
+Lines: 5
+low 0
+high 0
+max 0
+oom 0
+oom_kill 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/memory.events.local
+Lines: 5
+low 0
+high 0
+max 0
+oom 0
+oom_kill 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/memory.high
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/memory.low
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/memory.max
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/memory.min
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/memory.numa_stat
+Lines: 26
+anon N0=217088 N1=4096
+file N0=0 N1=0
+kernel_stack N0=32768 N1=0
+pagetables N0=12288 N1=0
+shmem N0=0 N1=0
+file_mapped N0=0 N1=0
+file_dirty N0=0 N1=0
+file_writeback N0=0 N1=0
+swapcached N0=0 N1=0
+anon_thp N0=0 N1=0
+file_thp N0=0 N1=0
+shmem_thp N0=0 N1=0
+inactive_anon N0=212992 N1=4096
+active_anon N0=4096 N1=0
+inactive_file N0=0 N1=0
+active_file N0=0 N1=0
+unevictable N0=0 N1=0
+slab_reclaimable N0=4656 N1=10784
+slab_unreclaimable N0=34616 N1=5712
+workingset_refault_anon N0=0 N1=0
+workingset_refault_file N0=0 N1=0
+workingset_activate_anon N0=0 N1=0
+workingset_activate_file N0=0 N1=0
+workingset_restore_anon N0=0 N1=0
+workingset_restore_file N0=0 N1=0
+workingset_nodereclaim N0=0 N1=0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/memory.oom.group
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/memory.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/memory.stat
+Lines: 40
+anon 221184
+file 0
+kernel_stack 32768
+pagetables 12288
+percpu 0
+sock 0
+shmem 0
+file_mapped 0
+file_dirty 0
+file_writeback 0
+swapcached 0
+anon_thp 0
+file_thp 0
+shmem_thp 0
+inactive_anon 217088
+active_anon 4096
+inactive_file 0
+active_file 0
+unevictable 0
+slab_reclaimable 15440
+slab_unreclaimable 40328
+slab 55768
+workingset_refault_anon 0
+workingset_refault_file 0
+workingset_activate_anon 0
+workingset_activate_file 0
+workingset_restore_anon 0
+workingset_restore_file 0
+workingset_nodereclaim 0
+pgfault 178
+pgmajfault 0
+pgrefill 0
+pgscan 0
+pgsteal 0
+pgactivate 1
+pgdeactivate 0
+pglazyfree 0
+pglazyfreed 0
+thp_fault_alloc 0
+thp_collapse_alloc 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/memory.swap.current
+Lines: 1
+0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/memory.swap.events
+Lines: 3
+high 0
+max 0
+fail 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/memory.swap.high
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/memory.swap.max
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/cgroup.controllers
+Lines: 1
+cpuset cpu memory
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/cgroup.events
+Lines: 2
+populated 1
+frozen 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/cgroup.freeze
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/cgroup.max.depth
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/cgroup.max.descendants
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/cgroup.procs
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/cgroup.stat
+Lines: 2
+nr_descendants 1
+nr_dying_descendants 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/cgroup.subtree_control
+Lines: 1
+cpuset cpu memory
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/cgroup.threads
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/cgroup.type
+Lines: 1
+domain
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/cpu.max
+Lines: 1
+max 100000
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/cpu.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/cpu.stat
+Lines: 6
+usage_usec 2023493168
+user_usec 2019156803
+system_usec 4336365
+nr_periods 0
+nr_throttled 0
+throttled_usec 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/cpu.weight
+Lines: 1
+100
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/cpu.weight.nice
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/cpuset.cpus
+Lines: 1
+1,41
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/cpuset.cpus.effective
+Lines: 1
+1,41
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/cpuset.cpus.partition
+Lines: 1
+member
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/cpuset.mems
+Lines: 1
+0-1
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/cpuset.mems.effective
+Lines: 1
+0-1
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/io.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/memory.current
+Lines: 1
+4100452352
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/memory.events
+Lines: 5
+low 0
+high 0
+max 0
+oom 0
+oom_kill 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/memory.events.local
+Lines: 5
+low 0
+high 0
+max 0
+oom 0
+oom_kill 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/memory.high
+Lines: 1
+4294967296
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/memory.low
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/memory.max
+Lines: 1
+4294967296
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/memory.min
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/memory.numa_stat
+Lines: 26
+anon N0=4091781120 N1=61440
+file N0=0 N1=0
+kernel_stack N0=16384 N1=0
+pagetables N0=8122368 N1=0
+shmem N0=0 N1=0
+file_mapped N0=0 N1=0
+file_dirty N0=0 N1=0
+file_writeback N0=0 N1=0
+swapcached N0=0 N1=0
+anon_thp N0=4078960640 N1=0
+file_thp N0=0 N1=0
+shmem_thp N0=0 N1=0
+inactive_anon N0=4091764736 N1=61440
+active_anon N0=16384 N1=0
+inactive_file N0=0 N1=0
+active_file N0=0 N1=0
+unevictable N0=0 N1=0
+slab_reclaimable N0=3800 N1=0
+slab_unreclaimable N0=96568 N1=2208
+workingset_refault_anon N0=0 N1=0
+workingset_refault_file N0=0 N1=0
+workingset_activate_anon N0=0 N1=0
+workingset_activate_file N0=0 N1=0
+workingset_restore_anon N0=0 N1=0
+workingset_restore_file N0=0 N1=0
+workingset_nodereclaim N0=0 N1=0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/memory.oom.group
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/memory.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/memory.stat
+Lines: 40
+anon 4091842560
+file 0
+kernel_stack 16384
+pagetables 8122368
+percpu 277760
+sock 0
+shmem 0
+file_mapped 0
+file_dirty 0
+file_writeback 0
+swapcached 0
+anon_thp 4078960640
+file_thp 0
+shmem_thp 0
+inactive_anon 4091826176
+active_anon 16384
+inactive_file 0
+active_file 0
+unevictable 0
+slab_reclaimable 3800
+slab_unreclaimable 98776
+slab 102576
+workingset_refault_anon 0
+workingset_refault_file 0
+workingset_activate_anon 0
+workingset_activate_file 0
+workingset_restore_anon 0
+workingset_restore_file 0
+workingset_nodereclaim 0
+pgfault 21931
+pgmajfault 0
+pgrefill 0
+pgscan 0
+pgsteal 0
+pgactivate 0
+pgdeactivate 0
+pglazyfree 0
+pglazyfreed 0
+thp_fault_alloc 11561
+thp_collapse_alloc 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/memory.swap.current
+Lines: 1
+0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/memory.swap.events
+Lines: 3
+high 0
+max 0
+fail 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/memory.swap.high
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/memory.swap.max
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/cgroup.controllers
+Lines: 1
+cpuset cpu memory
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/cgroup.events
+Lines: 2
+populated 1
+frozen 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/cgroup.freeze
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/cgroup.max.depth
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/cgroup.max.descendants
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/cgroup.procs
+Lines: 2
+3401154
+3401163
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/cgroup.stat
+Lines: 2
+nr_descendants 0
+nr_dying_descendants 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/cgroup.subtree_control
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/cgroup.threads
+Lines: 2
+3401154
+3401163
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/cgroup.type
+Lines: 1
+domain
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/cpu.max
+Lines: 1
+max 100000
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/cpu.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/cpu.stat
+Lines: 6
+usage_usec 2023523056
+user_usec 2019186691
+system_usec 4336365
+nr_periods 0
+nr_throttled 0
+throttled_usec 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/cpu.weight
+Lines: 1
+100
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/cpu.weight.nice
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/cpuset.cpus
+Lines: 1
+
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/cpuset.cpus.effective
+Lines: 1
+1,41
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/cpuset.cpus.partition
+Lines: 1
+member
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/cpuset.mems
+Lines: 1
+
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/cpuset.mems.effective
+Lines: 1
+0-1
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/io.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/memory.current
+Lines: 1
+4100173824
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/memory.events
+Lines: 5
+low 0
+high 0
+max 0
+oom 0
+oom_kill 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/memory.events.local
+Lines: 5
+low 0
+high 0
+max 0
+oom 0
+oom_kill 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/memory.high
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/memory.low
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/memory.max
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/memory.min
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/memory.numa_stat
+Lines: 26
+anon N0=4091781120 N1=61440
+file N0=0 N1=0
+kernel_stack N0=16384 N1=0
+pagetables N0=8122368 N1=0
+shmem N0=0 N1=0
+file_mapped N0=0 N1=0
+file_dirty N0=0 N1=0
+file_writeback N0=0 N1=0
+swapcached N0=0 N1=0
+anon_thp N0=4078960640 N1=0
+file_thp N0=0 N1=0
+shmem_thp N0=0 N1=0
+inactive_anon N0=4091764736 N1=61440
+active_anon N0=16384 N1=0
+inactive_file N0=0 N1=0
+active_file N0=0 N1=0
+unevictable N0=0 N1=0
+slab_reclaimable N0=3800 N1=0
+slab_unreclaimable N0=96568 N1=2208
+workingset_refault_anon N0=0 N1=0
+workingset_refault_file N0=0 N1=0
+workingset_activate_anon N0=0 N1=0
+workingset_activate_file N0=0 N1=0
+workingset_restore_anon N0=0 N1=0
+workingset_restore_file N0=0 N1=0
+workingset_nodereclaim N0=0 N1=0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/memory.oom.group
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/memory.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/memory.stat
+Lines: 40
+anon 4091842560
+file 0
+kernel_stack 16384
+pagetables 8122368
+percpu 0
+sock 0
+shmem 0
+file_mapped 0
+file_dirty 0
+file_writeback 0
+swapcached 0
+anon_thp 4078960640
+file_thp 0
+shmem_thp 0
+inactive_anon 4091826176
+active_anon 16384
+inactive_file 0
+active_file 0
+unevictable 0
+slab_reclaimable 3800
+slab_unreclaimable 98776
+slab 102576
+workingset_refault_anon 0
+workingset_refault_file 0
+workingset_activate_anon 0
+workingset_activate_file 0
+workingset_restore_anon 0
+workingset_restore_file 0
+workingset_nodereclaim 0
+pgfault 21931
+pgmajfault 0
+pgrefill 0
+pgscan 0
+pgsteal 0
+pgactivate 0
+pgdeactivate 0
+pglazyfree 0
+pglazyfreed 0
+thp_fault_alloc 11561
+thp_collapse_alloc 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/memory.swap.current
+Lines: 1
+0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/memory.swap.events
+Lines: 3
+high 0
+max 0
+fail 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/memory.swap.high
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/memory.swap.max
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/cgroup.controllers
+Lines: 1
+cpuset cpu memory
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/cgroup.events
+Lines: 2
+populated 1
+frozen 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/cgroup.freeze
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/cgroup.max.depth
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/cgroup.max.descendants
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/cgroup.procs
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/cgroup.stat
+Lines: 2
+nr_descendants 3
+nr_dying_descendants 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/cgroup.subtree_control
+Lines: 1
+cpuset cpu memory
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/cgroup.threads
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/cgroup.type
+Lines: 1
+domain
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/cpu.max
+Lines: 1
+max 100000
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/cpu.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/cpu.stat
+Lines: 6
+usage_usec 52535205
+user_usec 50469999
+system_usec 2065206
+nr_periods 0
+nr_throttled 0
+throttled_usec 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/cpu.weight
+Lines: 1
+100
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/cpu.weight.nice
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/cpuset.cpus
+Lines: 1
+
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/cpuset.cpus.effective
+Lines: 1
+1,41
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/cpuset.cpus.partition
+Lines: 1
+member
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/cpuset.mems
+Lines: 1
+
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/cpuset.mems.effective
+Lines: 1
+0-1
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/io.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/memory.current
+Lines: 1
+8110080
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/memory.events
+Lines: 5
+low 0
+high 0
+max 0
+oom 0
+oom_kill 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/memory.events.local
+Lines: 5
+low 0
+high 0
+max 0
+oom 0
+oom_kill 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/memory.high
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/memory.low
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/memory.max
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/memory.min
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/memory.numa_stat
+Lines: 26
+anon N0=6184960 N1=163840
+file N0=0 N1=0
+kernel_stack N0=114688 N1=0
+pagetables N0=413696 N1=0
+shmem N0=0 N1=0
+file_mapped N0=0 N1=0
+file_dirty N0=0 N1=0
+file_writeback N0=0 N1=0
+swapcached N0=0 N1=0
+anon_thp N0=0 N1=0
+file_thp N0=0 N1=0
+shmem_thp N0=0 N1=0
+inactive_anon N0=6152192 N1=163840
+active_anon N0=32768 N1=0
+inactive_file N0=0 N1=0
+active_file N0=0 N1=0
+unevictable N0=0 N1=0
+slab_reclaimable N0=38128 N1=19592
+slab_unreclaimable N0=197576 N1=48936
+workingset_refault_anon N0=0 N1=0
+workingset_refault_file N0=0 N1=0
+workingset_activate_anon N0=0 N1=0
+workingset_activate_file N0=0 N1=0
+workingset_restore_anon N0=0 N1=0
+workingset_restore_file N0=0 N1=0
+workingset_nodereclaim N0=0 N1=0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/memory.oom.group
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/memory.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/memory.stat
+Lines: 40
+anon 6348800
+file 0
+kernel_stack 114688
+pagetables 413696
+percpu 833280
+sock 0
+shmem 0
+file_mapped 0
+file_dirty 0
+file_writeback 0
+swapcached 0
+anon_thp 0
+file_thp 0
+shmem_thp 0
+inactive_anon 6316032
+active_anon 32768
+inactive_file 0
+active_file 0
+unevictable 0
+slab_reclaimable 57720
+slab_unreclaimable 246512
+slab 304232
+workingset_refault_anon 0
+workingset_refault_file 0
+workingset_activate_anon 0
+workingset_activate_file 0
+workingset_restore_anon 0
+workingset_restore_file 0
+workingset_nodereclaim 0
+pgfault 110726
+pgmajfault 0
+pgrefill 0
+pgscan 0
+pgsteal 0
+pgactivate 145
+pgdeactivate 0
+pglazyfree 0
+pglazyfreed 0
+thp_fault_alloc 182
+thp_collapse_alloc 1
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/memory.swap.current
+Lines: 1
+0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/memory.swap.events
+Lines: 3
+high 0
+max 0
+fail 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/memory.swap.high
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/memory.swap.max
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm/cgroup.controllers
+Lines: 1
+cpuset cpu memory
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm/cgroup.events
+Lines: 2
+populated 1
+frozen 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm/cgroup.freeze
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm/cgroup.max.depth
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm/cgroup.max.descendants
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm/cgroup.procs
+Lines: 1
+3346567
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm/cgroup.stat
+Lines: 2
+nr_descendants 0
+nr_dying_descendants 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm/cgroup.subtree_control
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm/cgroup.threads
+Lines: 4
+3346567
+3346573
+3346574
+3346577
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm/cgroup.type
+Lines: 1
+domain
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm/cpu.max
+Lines: 1
+max 100000
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm/cpu.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm/cpu.stat
+Lines: 6
+usage_usec 502878
+user_usec 0
+system_usec 502878
+nr_periods 0
+nr_throttled 0
+throttled_usec 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm/cpu.weight
+Lines: 1
+100
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm/cpu.weight.nice
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm/cpuset.cpus
+Lines: 1
+
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm/cpuset.cpus.effective
+Lines: 1
+1,41
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm/cpuset.cpus.partition
+Lines: 1
+member
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm/cpuset.mems
+Lines: 1
+
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm/cpuset.mems.effective
+Lines: 1
+0-1
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm/io.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm/memory.current
+Lines: 1
+266240
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm/memory.events
+Lines: 5
+low 0
+high 0
+max 0
+oom 0
+oom_kill 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm/memory.events.local
+Lines: 5
+low 0
+high 0
+max 0
+oom 0
+oom_kill 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm/memory.high
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm/memory.low
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm/memory.max
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm/memory.min
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm/memory.numa_stat
+Lines: 26
+anon N0=196608 N1=4096
+file N0=0 N1=0
+kernel_stack N0=16384 N1=0
+pagetables N0=8192 N1=0
+shmem N0=0 N1=0
+file_mapped N0=0 N1=0
+file_dirty N0=0 N1=0
+file_writeback N0=0 N1=0
+swapcached N0=0 N1=0
+anon_thp N0=0 N1=0
+file_thp N0=0 N1=0
+shmem_thp N0=0 N1=0
+inactive_anon N0=192512 N1=4096
+active_anon N0=4096 N1=0
+inactive_file N0=0 N1=0
+active_file N0=0 N1=0
+unevictable N0=0 N1=0
+slab_reclaimable N0=7080 N1=9000
+slab_unreclaimable N0=18840 N1=3752
+workingset_refault_anon N0=0 N1=0
+workingset_refault_file N0=0 N1=0
+workingset_activate_anon N0=0 N1=0
+workingset_activate_file N0=0 N1=0
+workingset_restore_anon N0=0 N1=0
+workingset_restore_file N0=0 N1=0
+workingset_nodereclaim N0=0 N1=0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm/memory.oom.group
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm/memory.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm/memory.stat
+Lines: 40
+anon 200704
+file 0
+kernel_stack 16384
+pagetables 8192
+percpu 0
+sock 0
+shmem 0
+file_mapped 0
+file_dirty 0
+file_writeback 0
+swapcached 0
+anon_thp 0
+file_thp 0
+shmem_thp 0
+inactive_anon 196608
+active_anon 4096
+inactive_file 0
+active_file 0
+unevictable 0
+slab_reclaimable 16080
+slab_unreclaimable 22592
+slab 38672
+workingset_refault_anon 0
+workingset_refault_file 0
+workingset_activate_anon 0
+workingset_activate_file 0
+workingset_restore_anon 0
+workingset_restore_file 0
+workingset_nodereclaim 0
+pgfault 150
+pgmajfault 0
+pgrefill 0
+pgscan 0
+pgsteal 0
+pgactivate 1
+pgdeactivate 0
+pglazyfree 0
+pglazyfreed 0
+thp_fault_alloc 0
+thp_collapse_alloc 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm/memory.swap.current
+Lines: 1
+0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm/memory.swap.events
+Lines: 3
+high 0
+max 0
+fail 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm/memory.swap.high
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/slurm/memory.swap.max
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/cgroup.controllers
+Lines: 1
+cpuset cpu memory
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/cgroup.events
+Lines: 2
+populated 1
+frozen 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/cgroup.freeze
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/cgroup.max.depth
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/cgroup.max.descendants
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/cgroup.procs
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/cgroup.stat
+Lines: 2
+nr_descendants 1
+nr_dying_descendants 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/cgroup.subtree_control
+Lines: 1
+cpuset cpu memory
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/cgroup.threads
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/cgroup.type
+Lines: 1
+domain
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/cpu.max
+Lines: 1
+max 100000
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/cpu.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/cpu.stat
+Lines: 6
+usage_usec 52032326
+user_usec 49992531
+system_usec 2039795
+nr_periods 0
+nr_throttled 0
+throttled_usec 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/cpu.weight
+Lines: 1
+100
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/cpu.weight.nice
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/cpuset.cpus
+Lines: 1
+1,41
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/cpuset.cpus.effective
+Lines: 1
+1,41
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/cpuset.cpus.partition
+Lines: 1
+member
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/cpuset.mems
+Lines: 1
+0-1
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/cpuset.mems.effective
+Lines: 1
+0-1
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/io.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/memory.current
+Lines: 1
+7286784
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/memory.events
+Lines: 5
+low 0
+high 0
+max 0
+oom 0
+oom_kill 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/memory.events.local
+Lines: 5
+low 0
+high 0
+max 0
+oom 0
+oom_kill 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/memory.high
+Lines: 1
+4294967296
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/memory.low
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/memory.max
+Lines: 1
+4294967296
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/memory.min
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/memory.numa_stat
+Lines: 26
+anon N0=5988352 N1=159744
+file N0=0 N1=0
+kernel_stack N0=98304 N1=0
+pagetables N0=405504 N1=0
+shmem N0=0 N1=0
+file_mapped N0=0 N1=0
+file_dirty N0=0 N1=0
+file_writeback N0=0 N1=0
+swapcached N0=0 N1=0
+anon_thp N0=0 N1=0
+file_thp N0=0 N1=0
+shmem_thp N0=0 N1=0
+inactive_anon N0=5959680 N1=159744
+active_anon N0=28672 N1=0
+inactive_file N0=0 N1=0
+active_file N0=0 N1=0
+unevictable N0=0 N1=0
+slab_reclaimable N0=31048 N1=10592
+slab_unreclaimable N0=178736 N1=45184
+workingset_refault_anon N0=0 N1=0
+workingset_refault_file N0=0 N1=0
+workingset_activate_anon N0=0 N1=0
+workingset_activate_file N0=0 N1=0
+workingset_restore_anon N0=0 N1=0
+workingset_restore_file N0=0 N1=0
+workingset_nodereclaim N0=0 N1=0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/memory.oom.group
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/memory.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/memory.stat
+Lines: 40
+anon 6148096
+file 0
+kernel_stack 98304
+pagetables 405504
+percpu 277760
+sock 0
+shmem 0
+file_mapped 0
+file_dirty 0
+file_writeback 0
+swapcached 0
+anon_thp 0
+file_thp 0
+shmem_thp 0
+inactive_anon 6119424
+active_anon 28672
+inactive_file 0
+active_file 0
+unevictable 0
+slab_reclaimable 41640
+slab_unreclaimable 223920
+slab 265560
+workingset_refault_anon 0
+workingset_refault_file 0
+workingset_activate_anon 0
+workingset_activate_file 0
+workingset_restore_anon 0
+workingset_restore_file 0
+workingset_nodereclaim 0
+pgfault 110576
+pgmajfault 0
+pgrefill 0
+pgscan 0
+pgsteal 0
+pgactivate 144
+pgdeactivate 0
+pglazyfree 0
+pglazyfreed 0
+thp_fault_alloc 182
+thp_collapse_alloc 1
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/memory.swap.current
+Lines: 1
+0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/memory.swap.events
+Lines: 3
+high 0
+max 0
+fail 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/memory.swap.high
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/memory.swap.max
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0/cgroup.controllers
+Lines: 1
+cpuset cpu memory
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0/cgroup.events
+Lines: 2
+populated 1
+frozen 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0/cgroup.freeze
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0/cgroup.max.depth
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0/cgroup.max.descendants
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0/cgroup.procs
+Lines: 4
+3346596
+3346674
+3401141
+3401142
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0/cgroup.stat
+Lines: 2
+nr_descendants 0
+nr_dying_descendants 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0/cgroup.subtree_control
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0/cgroup.threads
+Lines: 7
+3346596
+3346674
+3401141
+3401142
+3401143
+3401144
+3401145
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0/cgroup.type
+Lines: 1
+domain
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0/cpu.max
+Lines: 1
+max 100000
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0/cpu.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0/cpu.stat
+Lines: 6
+usage_usec 52032326
+user_usec 49992531
+system_usec 2039795
+nr_periods 0
+nr_throttled 0
+throttled_usec 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0/cpu.weight
+Lines: 1
+100
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0/cpu.weight.nice
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0/cpuset.cpus
+Lines: 1
+
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0/cpuset.cpus.effective
+Lines: 1
+1,41
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0/cpuset.cpus.partition
+Lines: 1
+member
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0/cpuset.mems
+Lines: 1
+
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0/cpuset.mems.effective
+Lines: 1
+0-1
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0/io.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0/memory.current
+Lines: 1
+7008256
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0/memory.events
+Lines: 5
+low 0
+high 0
+max 0
+oom 0
+oom_kill 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0/memory.events.local
+Lines: 5
+low 0
+high 0
+max 0
+oom 0
+oom_kill 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0/memory.high
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0/memory.low
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0/memory.max
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0/memory.min
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0/memory.numa_stat
+Lines: 26
+anon N0=5988352 N1=159744
+file N0=0 N1=0
+kernel_stack N0=98304 N1=0
+pagetables N0=405504 N1=0
+shmem N0=0 N1=0
+file_mapped N0=0 N1=0
+file_dirty N0=0 N1=0
+file_writeback N0=0 N1=0
+swapcached N0=0 N1=0
+anon_thp N0=0 N1=0
+file_thp N0=0 N1=0
+shmem_thp N0=0 N1=0
+inactive_anon N0=5959680 N1=159744
+active_anon N0=28672 N1=0
+inactive_file N0=0 N1=0
+active_file N0=0 N1=0
+unevictable N0=0 N1=0
+slab_reclaimable N0=31048 N1=10592
+slab_unreclaimable N0=178736 N1=45184
+workingset_refault_anon N0=0 N1=0
+workingset_refault_file N0=0 N1=0
+workingset_activate_anon N0=0 N1=0
+workingset_activate_file N0=0 N1=0
+workingset_restore_anon N0=0 N1=0
+workingset_restore_file N0=0 N1=0
+workingset_nodereclaim N0=0 N1=0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0/memory.oom.group
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0/memory.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0/memory.stat
+Lines: 40
+anon 6148096
+file 0
+kernel_stack 98304
+pagetables 405504
+percpu 0
+sock 0
+shmem 0
+file_mapped 0
+file_dirty 0
+file_writeback 0
+swapcached 0
+anon_thp 0
+file_thp 0
+shmem_thp 0
+inactive_anon 6119424
+active_anon 28672
+inactive_file 0
+active_file 0
+unevictable 0
+slab_reclaimable 41640
+slab_unreclaimable 223920
+slab 265560
+workingset_refault_anon 0
+workingset_refault_file 0
+workingset_activate_anon 0
+workingset_activate_file 0
+workingset_restore_anon 0
+workingset_restore_file 0
+workingset_nodereclaim 0
+pgfault 110576
+pgmajfault 0
+pgrefill 0
+pgscan 0
+pgsteal 0
+pgactivate 144
+pgdeactivate 0
+pglazyfree 0
+pglazyfreed 0
+thp_fault_alloc 182
+thp_collapse_alloc 1
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0/memory.swap.current
+Lines: 1
+0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0/memory.swap.events
+Lines: 3
+high 0
+max 0
+fail 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0/memory.swap.high
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_batch/user/task_0/memory.swap.max
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/cgroup.controllers
+Lines: 1
+cpuset cpu memory
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/cgroup.events
+Lines: 2
+populated 1
+frozen 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/cgroup.freeze
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/cgroup.max.depth
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/cgroup.max.descendants
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/cgroup.procs
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/cgroup.stat
+Lines: 2
+nr_descendants 3
+nr_dying_descendants 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/cgroup.subtree_control
+Lines: 1
+cpuset cpu memory
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/cgroup.threads
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/cgroup.type
+Lines: 1
+domain
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/cpu.max
+Lines: 1
+max 100000
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/cpu.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/cpu.stat
+Lines: 6
+usage_usec 486698
+user_usec 121640
+system_usec 365057
+nr_periods 0
+nr_throttled 0
+throttled_usec 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/cpu.weight
+Lines: 1
+100
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/cpu.weight.nice
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/cpuset.cpus
+Lines: 1
+
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/cpuset.cpus.effective
+Lines: 1
+1,41
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/cpuset.cpus.partition
+Lines: 1
+member
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/cpuset.mems
+Lines: 1
+
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/cpuset.mems.effective
+Lines: 1
+0-1
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/io.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/memory.current
+Lines: 1
+1155072
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/memory.events
+Lines: 5
+low 0
+high 0
+max 0
+oom 0
+oom_kill 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/memory.events.local
+Lines: 5
+low 0
+high 0
+max 0
+oom 0
+oom_kill 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/memory.high
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/memory.low
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/memory.max
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/memory.min
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/memory.numa_stat
+Lines: 26
+anon N0=147456 N1=32768
+file N0=0 N1=0
+kernel_stack N0=16384 N1=0
+pagetables N0=53248 N1=0
+shmem N0=0 N1=0
+file_mapped N0=0 N1=0
+file_dirty N0=0 N1=0
+file_writeback N0=0 N1=0
+swapcached N0=0 N1=0
+anon_thp N0=0 N1=0
+file_thp N0=0 N1=0
+shmem_thp N0=0 N1=0
+inactive_anon N0=143360 N1=32768
+active_anon N0=4096 N1=0
+inactive_file N0=0 N1=0
+active_file N0=0 N1=0
+unevictable N0=0 N1=0
+slab_reclaimable N0=4272 N1=9048
+slab_unreclaimable N0=19792 N1=7248
+workingset_refault_anon N0=0 N1=0
+workingset_refault_file N0=0 N1=0
+workingset_activate_anon N0=0 N1=0
+workingset_activate_file N0=0 N1=0
+workingset_restore_anon N0=0 N1=0
+workingset_restore_file N0=0 N1=0
+workingset_nodereclaim N0=0 N1=0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/memory.oom.group
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/memory.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/memory.stat
+Lines: 40
+anon 180224
+file 0
+kernel_stack 16384
+pagetables 53248
+percpu 833280
+sock 0
+shmem 0
+file_mapped 0
+file_dirty 0
+file_writeback 0
+swapcached 0
+anon_thp 0
+file_thp 0
+shmem_thp 0
+inactive_anon 176128
+active_anon 4096
+inactive_file 0
+active_file 0
+unevictable 0
+slab_reclaimable 13320
+slab_unreclaimable 27040
+slab 40360
+workingset_refault_anon 0
+workingset_refault_file 0
+workingset_activate_anon 0
+workingset_activate_file 0
+workingset_restore_anon 0
+workingset_restore_file 0
+workingset_nodereclaim 0
+pgfault 174
+pgmajfault 0
+pgrefill 0
+pgscan 0
+pgsteal 0
+pgactivate 0
+pgdeactivate 0
+pglazyfree 0
+pglazyfreed 0
+thp_fault_alloc 0
+thp_collapse_alloc 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/memory.swap.current
+Lines: 1
+0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/memory.swap.events
+Lines: 3
+high 0
+max 0
+fail 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/memory.swap.high
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/memory.swap.max
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm/cgroup.controllers
+Lines: 1
+cpuset cpu memory
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm/cgroup.events
+Lines: 2
+populated 1
+frozen 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm/cgroup.freeze
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm/cgroup.max.depth
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm/cgroup.max.descendants
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm/cgroup.procs
+Lines: 1
+3346540
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm/cgroup.stat
+Lines: 2
+nr_descendants 0
+nr_dying_descendants 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm/cgroup.subtree_control
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm/cgroup.threads
+Lines: 4
+3346540
+3346549
+3346551
+3346553
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm/cgroup.type
+Lines: 1
+domain
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm/cpu.max
+Lines: 1
+max 100000
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm/cpu.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm/cpu.stat
+Lines: 6
+usage_usec 486698
+user_usec 121640
+system_usec 365057
+nr_periods 0
+nr_throttled 0
+throttled_usec 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm/cpu.weight
+Lines: 1
+100
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm/cpu.weight.nice
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm/cpuset.cpus
+Lines: 1
+
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm/cpuset.cpus.effective
+Lines: 1
+1,41
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm/cpuset.cpus.partition
+Lines: 1
+member
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm/cpuset.mems
+Lines: 1
+
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm/cpuset.mems.effective
+Lines: 1
+0-1
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm/io.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm/memory.current
+Lines: 1
+319488
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm/memory.events
+Lines: 5
+low 0
+high 0
+max 0
+oom 0
+oom_kill 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm/memory.events.local
+Lines: 5
+low 0
+high 0
+max 0
+oom 0
+oom_kill 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm/memory.high
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm/memory.low
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm/memory.max
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm/memory.min
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm/memory.numa_stat
+Lines: 26
+anon N0=147456 N1=32768
+file N0=0 N1=0
+kernel_stack N0=16384 N1=0
+pagetables N0=53248 N1=0
+shmem N0=0 N1=0
+file_mapped N0=0 N1=0
+file_dirty N0=0 N1=0
+file_writeback N0=0 N1=0
+swapcached N0=0 N1=0
+anon_thp N0=0 N1=0
+file_thp N0=0 N1=0
+shmem_thp N0=0 N1=0
+inactive_anon N0=143360 N1=32768
+active_anon N0=4096 N1=0
+inactive_file N0=0 N1=0
+active_file N0=0 N1=0
+unevictable N0=0 N1=0
+slab_reclaimable N0=4272 N1=9048
+slab_unreclaimable N0=19792 N1=7248
+workingset_refault_anon N0=0 N1=0
+workingset_refault_file N0=0 N1=0
+workingset_activate_anon N0=0 N1=0
+workingset_activate_file N0=0 N1=0
+workingset_restore_anon N0=0 N1=0
+workingset_restore_file N0=0 N1=0
+workingset_nodereclaim N0=0 N1=0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm/memory.oom.group
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm/memory.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm/memory.stat
+Lines: 40
+anon 180224
+file 0
+kernel_stack 16384
+pagetables 53248
+percpu 0
+sock 0
+shmem 0
+file_mapped 0
+file_dirty 0
+file_writeback 0
+swapcached 0
+anon_thp 0
+file_thp 0
+shmem_thp 0
+inactive_anon 176128
+active_anon 4096
+inactive_file 0
+active_file 0
+unevictable 0
+slab_reclaimable 13320
+slab_unreclaimable 27040
+slab 40360
+workingset_refault_anon 0
+workingset_refault_file 0
+workingset_activate_anon 0
+workingset_activate_file 0
+workingset_restore_anon 0
+workingset_restore_file 0
+workingset_nodereclaim 0
+pgfault 174
+pgmajfault 0
+pgrefill 0
+pgscan 0
+pgsteal 0
+pgactivate 0
+pgdeactivate 0
+pglazyfree 0
+pglazyfreed 0
+thp_fault_alloc 0
+thp_collapse_alloc 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm/memory.swap.current
+Lines: 1
+0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm/memory.swap.events
+Lines: 3
+high 0
+max 0
+fail 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm/memory.swap.high
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/slurm/memory.swap.max
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/cgroup.controllers
+Lines: 1
+cpuset cpu memory
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/cgroup.events
+Lines: 2
+populated 1
+frozen 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/cgroup.freeze
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/cgroup.max.depth
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/cgroup.max.descendants
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/cgroup.procs
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/cgroup.stat
+Lines: 2
+nr_descendants 1
+nr_dying_descendants 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/cgroup.subtree_control
+Lines: 1
+cpuset cpu memory
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/cgroup.threads
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/cgroup.type
+Lines: 1
+domain
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/cpu.max
+Lines: 1
+max 100000
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/cpu.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/cpu.stat
+Lines: 6
+usage_usec 0
+user_usec 0
+system_usec 0
+nr_periods 0
+nr_throttled 0
+throttled_usec 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/cpu.weight
+Lines: 1
+100
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/cpu.weight.nice
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/cpuset.cpus
+Lines: 1
+1,41
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/cpuset.cpus.effective
+Lines: 1
+1,41
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/cpuset.cpus.partition
+Lines: 1
+member
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/cpuset.mems
+Lines: 1
+0-1
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/cpuset.mems.effective
+Lines: 1
+0-1
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/io.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/memory.current
+Lines: 1
+278528
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/memory.events
+Lines: 5
+low 0
+high 0
+max 0
+oom 0
+oom_kill 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/memory.events.local
+Lines: 5
+low 0
+high 0
+max 0
+oom 0
+oom_kill 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/memory.high
+Lines: 1
+4294967296
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/memory.low
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/memory.max
+Lines: 1
+4294967296
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/memory.min
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/memory.numa_stat
+Lines: 26
+anon N0=0 N1=0
+file N0=0 N1=0
+kernel_stack N0=0 N1=0
+pagetables N0=0 N1=0
+shmem N0=0 N1=0
+file_mapped N0=0 N1=0
+file_dirty N0=0 N1=0
+file_writeback N0=0 N1=0
+swapcached N0=0 N1=0
+anon_thp N0=0 N1=0
+file_thp N0=0 N1=0
+shmem_thp N0=0 N1=0
+inactive_anon N0=0 N1=0
+active_anon N0=0 N1=0
+inactive_file N0=0 N1=0
+active_file N0=0 N1=0
+unevictable N0=0 N1=0
+slab_reclaimable N0=0 N1=0
+slab_unreclaimable N0=0 N1=0
+workingset_refault_anon N0=0 N1=0
+workingset_refault_file N0=0 N1=0
+workingset_activate_anon N0=0 N1=0
+workingset_activate_file N0=0 N1=0
+workingset_restore_anon N0=0 N1=0
+workingset_restore_file N0=0 N1=0
+workingset_nodereclaim N0=0 N1=0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/memory.oom.group
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/memory.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/memory.stat
+Lines: 40
+anon 0
+file 0
+kernel_stack 0
+pagetables 0
+percpu 277760
+sock 0
+shmem 0
+file_mapped 0
+file_dirty 0
+file_writeback 0
+swapcached 0
+anon_thp 0
+file_thp 0
+shmem_thp 0
+inactive_anon 0
+active_anon 0
+inactive_file 0
+active_file 0
+unevictable 0
+slab_reclaimable 0
+slab_unreclaimable 0
+slab 0
+workingset_refault_anon 0
+workingset_refault_file 0
+workingset_activate_anon 0
+workingset_activate_file 0
+workingset_restore_anon 0
+workingset_restore_file 0
+workingset_nodereclaim 0
+pgfault 0
+pgmajfault 0
+pgrefill 0
+pgscan 0
+pgsteal 0
+pgactivate 0
+pgdeactivate 0
+pglazyfree 0
+pglazyfreed 0
+thp_fault_alloc 0
+thp_collapse_alloc 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/memory.swap.current
+Lines: 1
+0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/memory.swap.events
+Lines: 3
+high 0
+max 0
+fail 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/memory.swap.high
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/memory.swap.max
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special/cgroup.controllers
+Lines: 1
+cpuset cpu memory
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special/cgroup.events
+Lines: 2
+populated 1
+frozen 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special/cgroup.freeze
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special/cgroup.max.depth
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special/cgroup.max.descendants
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special/cgroup.procs
+Lines: 1
+3346557
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special/cgroup.stat
+Lines: 2
+nr_descendants 0
+nr_dying_descendants 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special/cgroup.subtree_control
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special/cgroup.threads
+Lines: 1
+3346557
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special/cgroup.type
+Lines: 1
+domain
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special/cpu.max
+Lines: 1
+max 100000
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special/cpu.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special/cpu.stat
+Lines: 6
+usage_usec 0
+user_usec 0
+system_usec 0
+nr_periods 0
+nr_throttled 0
+throttled_usec 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special/cpu.weight
+Lines: 1
+100
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special/cpu.weight.nice
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special/cpuset.cpus
+Lines: 1
+
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special/cpuset.cpus.effective
+Lines: 1
+1,41
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special/cpuset.cpus.partition
+Lines: 1
+member
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special/cpuset.mems
+Lines: 1
+
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special/cpuset.mems.effective
+Lines: 1
+0-1
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special/io.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special/memory.current
+Lines: 1
+0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special/memory.events
+Lines: 5
+low 0
+high 0
+max 0
+oom 0
+oom_kill 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special/memory.events.local
+Lines: 5
+low 0
+high 0
+max 0
+oom 0
+oom_kill 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special/memory.high
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special/memory.low
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special/memory.max
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special/memory.min
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special/memory.numa_stat
+Lines: 26
+anon N0=0 N1=0
+file N0=0 N1=0
+kernel_stack N0=0 N1=0
+pagetables N0=0 N1=0
+shmem N0=0 N1=0
+file_mapped N0=0 N1=0
+file_dirty N0=0 N1=0
+file_writeback N0=0 N1=0
+swapcached N0=0 N1=0
+anon_thp N0=0 N1=0
+file_thp N0=0 N1=0
+shmem_thp N0=0 N1=0
+inactive_anon N0=0 N1=0
+active_anon N0=0 N1=0
+inactive_file N0=0 N1=0
+active_file N0=0 N1=0
+unevictable N0=0 N1=0
+slab_reclaimable N0=0 N1=0
+slab_unreclaimable N0=0 N1=0
+workingset_refault_anon N0=0 N1=0
+workingset_refault_file N0=0 N1=0
+workingset_activate_anon N0=0 N1=0
+workingset_activate_file N0=0 N1=0
+workingset_restore_anon N0=0 N1=0
+workingset_restore_file N0=0 N1=0
+workingset_nodereclaim N0=0 N1=0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special/memory.oom.group
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special/memory.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special/memory.stat
+Lines: 40
+anon 0
+file 0
+kernel_stack 0
+pagetables 0
+percpu 0
+sock 0
+shmem 0
+file_mapped 0
+file_dirty 0
+file_writeback 0
+swapcached 0
+anon_thp 0
+file_thp 0
+shmem_thp 0
+inactive_anon 0
+active_anon 0
+inactive_file 0
+active_file 0
+unevictable 0
+slab_reclaimable 0
+slab_unreclaimable 0
+slab 0
+workingset_refault_anon 0
+workingset_refault_file 0
+workingset_activate_anon 0
+workingset_activate_file 0
+workingset_restore_anon 0
+workingset_restore_file 0
+workingset_nodereclaim 0
+pgfault 0
+pgmajfault 0
+pgrefill 0
+pgscan 0
+pgsteal 0
+pgactivate 0
+pgdeactivate 0
+pglazyfree 0
+pglazyfreed 0
+thp_fault_alloc 0
+thp_collapse_alloc 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special/memory.swap.current
+Lines: 1
+0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special/memory.swap.events
+Lines: 3
+high 0
+max 0
+fail 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special/memory.swap.high
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_extern/user/task_special/memory.swap.max
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/memory.current
+Lines: 1
+53705207808
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/memory.events
+Lines: 5
+low 0
+high 0
+max 0
+oom 0
+oom_kill 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/memory.events.local
+Lines: 5
+low 0
+high 0
+max 0
+oom 0
+oom_kill 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/memory.high
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/memory.low
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/memory.max
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/memory.min
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/memory.numa_stat
+Lines: 26
+anon N0=41179824128 N1=11067662336
+file N0=545075200 N1=547745792
+kernel_stack N0=3309568 N1=3473408
+pagetables N0=91783168 N1=39247872
+shmem N0=24477696 N1=14815232
+file_mapped N0=41238528 N1=28626944
+file_dirty N0=0 N1=0
+file_writeback N0=0 N1=0
+swapcached N0=0 N1=0
+anon_thp N0=40263221248 N1=9638510592
+file_thp N0=0 N1=0
+shmem_thp N0=0 N1=0
+inactive_anon N0=41203634176 N1=11086266368
+active_anon N0=593920 N1=557056
+inactive_file N0=4145152 N1=876544
+active_file N0=516452352 N1=532054016
+unevictable N0=0 N1=0
+slab_reclaimable N0=14635792 N1=6414000
+slab_unreclaimable N0=44437304 N1=48181344
+workingset_refault_anon N0=0 N1=0
+workingset_refault_file N0=6809 N1=2507
+workingset_activate_anon N0=0 N1=0
+workingset_activate_file N0=4640 N1=0
+workingset_restore_anon N0=0 N1=0
+workingset_restore_file N0=4640 N1=0
+workingset_nodereclaim N0=512 N1=0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/memory.oom.group
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/memory.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/memory.stat
+Lines: 40
+anon 52247486464
+file 1092820992
+kernel_stack 6782976
+pagetables 131031040
+percpu 78050560
+sock 40960
+shmem 39292928
+file_mapped 69865472
+file_dirty 0
+file_writeback 0
+swapcached 0
+anon_thp 49901731840
+file_thp 0
+shmem_thp 0
+inactive_anon 52289900544
+active_anon 1150976
+inactive_file 5021696
+active_file 1048506368
+unevictable 0
+slab_reclaimable 21049792
+slab_unreclaimable 92618648
+slab 113668440
+workingset_refault_anon 0
+workingset_refault_file 9316
+workingset_activate_anon 0
+workingset_activate_file 4640
+workingset_restore_anon 0
+workingset_restore_file 4640
+workingset_nodereclaim 512
+pgfault 3901807818
+pgmajfault 0
+pgrefill 67497
+pgscan 66671
+pgsteal 66670
+pgactivate 24671146
+pgdeactivate 67364
+pglazyfree 0
+pglazyfreed 0
+thp_fault_alloc 47230020
+thp_collapse_alloc 60281
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/memory.swap.current
+Lines: 1
+0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/memory.swap.events
+Lines: 3
+high 0
+max 0
+fail 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/memory.swap.high
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/memory.swap.max
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/pids.current
+Lines: 1
+476
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/pids.events
+Lines: 1
+max 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/pids.max
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/system.slice/slurmstepd.scope/system
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/cgroup.controllers
+Lines: 1
+cpuset cpu memory
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/cgroup.events
+Lines: 2
+populated 1
+frozen 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/cgroup.freeze
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/cgroup.max.depth
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/cgroup.max.descendants
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/cgroup.procs
+Lines: 1
+1435038
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/cgroup.stat
+Lines: 2
+nr_descendants 0
+nr_dying_descendants 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/cgroup.subtree_control
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/cgroup.threads
+Lines: 1
+1435038
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/cgroup.type
+Lines: 1
+domain
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/cpu.max
+Lines: 1
+max 100000
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/cpu.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/cpu.stat
+Lines: 6
+usage_usec 9945939
+user_usec 1937135
+system_usec 8008804
+nr_periods 0
+nr_throttled 0
+throttled_usec 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/cpu.weight
+Lines: 1
+100
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/cpu.weight.nice
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/cpuset.cpus
+Lines: 1
+
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/cpuset.cpus.effective
+Lines: 1
+0-79
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/cpuset.cpus.partition
+Lines: 1
+member
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/cpuset.mems
+Lines: 1
+
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/cpuset.mems.effective
+Lines: 1
+0-1
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/io.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/memory.current
+Lines: 1
+38465536
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/memory.events
+Lines: 5
+low 0
+high 0
+max 0
+oom 0
+oom_kill 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/memory.events.local
+Lines: 5
+low 0
+high 0
+max 0
+oom 0
+oom_kill 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/memory.high
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/memory.low
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/memory.max
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/memory.min
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/memory.numa_stat
+Lines: 26
+anon N0=10612736 N1=14233600
+file N0=294912 N1=110592
+kernel_stack N0=1097728 N1=1949696
+pagetables N0=1667072 N1=3182592
+shmem N0=57344 N1=53248
+file_mapped N0=151552 N1=49152
+file_dirty N0=0 N1=0
+file_writeback N0=0 N1=0
+swapcached N0=0 N1=0
+anon_thp N0=0 N1=0
+file_thp N0=0 N1=0
+shmem_thp N0=0 N1=0
+inactive_anon N0=10612736 N1=14233600
+active_anon N0=57344 N1=53248
+inactive_file N0=0 N1=0
+active_file N0=237568 N1=57344
+unevictable N0=0 N1=0
+slab_reclaimable N0=367424 N1=425784
+slab_unreclaimable N0=1607840 N1=2824776
+workingset_refault_anon N0=0 N1=0
+workingset_refault_file N0=4 N1=0
+workingset_activate_anon N0=0 N1=0
+workingset_activate_file N0=4 N1=0
+workingset_restore_anon N0=0 N1=0
+workingset_restore_file N0=4 N1=0
+workingset_nodereclaim N0=0 N1=0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/memory.oom.group
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/memory.pressure
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/memory.stat
+Lines: 40
+anon 24846336
+file 405504
+kernel_stack 3047424
+pagetables 4849664
+percpu 0
+sock 0
+shmem 110592
+file_mapped 200704
+file_dirty 0
+file_writeback 0
+swapcached 0
+anon_thp 0
+file_thp 0
+shmem_thp 0
+inactive_anon 24846336
+active_anon 110592
+inactive_file 0
+active_file 294912
+unevictable 0
+slab_reclaimable 793208
+slab_unreclaimable 4432616
+slab 5225824
+workingset_refault_anon 0
+workingset_refault_file 4
+workingset_activate_anon 0
+workingset_activate_file 4
+workingset_restore_anon 0
+workingset_restore_file 4
+workingset_nodereclaim 0
+pgfault 188273
+pgmajfault 0
+pgrefill 0
+pgscan 0
+pgsteal 0
+pgactivate 310
+pgdeactivate 0
+pglazyfree 0
+pglazyfreed 0
+thp_fault_alloc 0
+thp_collapse_alloc 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/memory.swap.current
+Lines: 1
+0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/memory.swap.events
+Lines: 3
+high 0
+max 0
+fail 0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/memory.swap.high
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/memory.swap.max
+Lines: 1
+max
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/.unpacked
+Lines: 0
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

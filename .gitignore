@@ -19,3 +19,12 @@
 
 # Go workspace file
 go.work
+
+# Ignore fixtures
+collector/fixtures/sys
+
+# Ignore binary
+**/*batchjob_exporter
+
+# Ignore scripts
+run.sh

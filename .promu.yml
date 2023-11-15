@@ -1,0 +1,24 @@
+go:
+    # Whenever the Go version is updated here, .circle/config.yml and
+    # .promu-cgo.yml should also be updated.
+    version: 1.21
+repository:
+    path: github.com/mahendrapaipuri/batchjob_exporter
+build:
+    binaries:
+        - name: batchjob_exporter
+    flags: -a -tags 'netgo osusergo static_build'
+    ldflags: |
+        -X github.com/prometheus/common/version.Version={{.Version}}
+        -X github.com/prometheus/common/version.Revision={{.Revision}}
+        -X github.com/prometheus/common/version.Branch={{.Branch}}
+        -X github.com/prometheus/common/version.BuildUser={{user}}@{{host}}
+        -X github.com/prometheus/common/version.BuildDate={{date "20060102-15:04:05"}}
+tarball:
+    files:
+        - LICENSE
+        - NOTICE
+crossbuild:
+    platforms:
+        - linux
+        - openbsd/amd64
