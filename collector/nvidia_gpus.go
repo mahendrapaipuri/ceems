@@ -21,15 +21,15 @@ var (
 )
 
 type Device struct {
-	name                  string
-	uuid                  string
-	isMig                 bool
+	name  string
+	uuid  string
+	isMig bool
 }
 
 type nvidiaGpuJobMapCollector struct {
-	devices        []Device
-	logger         log.Logger
-	gpuJobMapDesc  *prometheus.Desc
+	devices       []Device
+	logger        log.Logger
+	gpuJobMapDesc *prometheus.Desc
 }
 
 func init() {
@@ -87,9 +87,9 @@ func NewNvidiaGpuJobMapCollector(logger log.Logger) (Collector, error) {
 	)
 
 	collector := nvidiaGpuJobMapCollector{
-		devices:          allDevices,
-		logger:           logger,
-		gpuJobMapDesc:    gpuJobMapDesc,
+		devices:       allDevices,
+		logger:        logger,
+		gpuJobMapDesc: gpuJobMapDesc,
 	}
 	return &collector, nil
 }

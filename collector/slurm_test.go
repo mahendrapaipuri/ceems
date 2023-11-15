@@ -20,24 +20,24 @@ func TestSlurmJobMetrics(t *testing.T) {
 	c := slurmCollector{cgroupV2: true, logger: log.NewNopLogger()}
 	metrics, err := c.getJobsMetrics()
 	expectedSlurmMetrics["/system.slice/slurmstepd.scope/job_1009248"] = CgroupMetric{
-		name: "/system.slice/slurmstepd.scope/job_1009248",
-		cpuUser: 60375.292848,
-		cpuSystem: 115.777502,
-		cpuTotal: 60491.070351,
-		cpus: 2,
-		memoryRSS: 4.098592768e+09,
-		memoryCache: 0,
-		memoryUsed: 4.111491072e+09,
-		memoryTotal: 4.294967296e+09,
+		name:            "/system.slice/slurmstepd.scope/job_1009248",
+		cpuUser:         60375.292848,
+		cpuSystem:       115.777502,
+		cpuTotal:        60491.070351,
+		cpus:            2,
+		memoryRSS:       4.098592768e+09,
+		memoryCache:     0,
+		memoryUsed:      4.111491072e+09,
+		memoryTotal:     4.294967296e+09,
 		memoryFailCount: 0,
-		memswUsed: 0,
-		memswTotal: 0,
-		memswFailCount: 0,
-		userslice: false,
-		uid: -1,
-		jobid: "1009248",
-		batch: "slurm",
-		err: false}
+		memswUsed:       0,
+		memswTotal:      0,
+		memswFailCount:  0,
+		userslice:       false,
+		uid:             -1,
+		jobid:           "1009248",
+		batch:           "slurm",
+		err:             false}
 	if err != nil {
 		t.Fatalf("Cannot retrieve data from getJobsMetrics function: %v ", err)
 	}

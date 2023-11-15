@@ -23,9 +23,9 @@ import (
 const slurmCollectorSubsystem = "slurm_job"
 
 var (
-	cgroupV2               = false
-	metricLock             = sync.RWMutex{}
-	collectJobSteps        = kingpin.Flag("collector.slurm.jobsteps.metrics", "Whether to collect metrics of all slurm job steps and tasks [WARNING: This option can result in very high cardinality of metrics].").Default("false").Bool()
+	cgroupV2        = false
+	metricLock      = sync.RWMutex{}
+	collectJobSteps = kingpin.Flag("collector.slurm.jobsteps.metrics", "Whether to collect metrics of all slurm job steps and tasks [WARNING: This option can result in very high cardinality of metrics].").Default("false").Bool()
 )
 
 type CgroupMetric struct {
