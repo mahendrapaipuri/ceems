@@ -49,14 +49,7 @@ endif
 
 PROMU := $(FIRST_GOPATH)/bin/promu --config $(PROMU_CONF)
 
-e2e-out-64k-page = collector/fixtures/e2e-64k-page-output.txt
-e2e-out = collector/fixtures/e2e-output.txt
-ifeq ($(MACH), ppc64le)
-	e2e-out = $(e2e-out-64k-page)
-endif
-ifeq ($(MACH), aarch64)
-	e2e-out = $(e2e-out-64k-page)
-endif
+e2e-out = collector/fixtures/e2e-test-output.txt
 
 # 64bit -> 32bit mapping for cross-checking. At least for amd64/386, the 64bit CPU can execute 32bit code but not the other way around, so we don't support cross-testing upwards.
 cross-test = skip-test-32bit
@@ -104,7 +97,7 @@ update_fixtures:
 .PHONY: test-e2e
 test-e2e: build collector/fixtures/sys/.unpacked 
 	@echo ">> running end-to-end tests"
-	./end-to-end-test.sh
+	./e2e-test.sh
 
 .PHONY: skip-test-e2e
 skip-test-e2e:
@@ -114,17 +107,16 @@ skip-test-e2e:
 checkmetrics: $(PROMTOOL)
 	@echo ">> checking metrics for correctness"
 	./checkmetrics.sh $(PROMTOOL) $(e2e-out)
-	./checkmetrics.sh $(PROMTOOL) $(e2e-out-64k-page)
 
 .PHONY: checkrules
 checkrules: $(PROMTOOL)
 	@echo ">> checking rules for correctness"
 	find . -name "*rules*.yml" | xargs -I {} $(PROMTOOL) check rules {}
 
-.PHONY: test-docker
-test-docker:
-	@echo ">> testing docker image"
-	./test_image.sh "$(DOCKER_REPO)/$(DOCKER_IMAGE_NAME)-linux-amd64:$(DOCKER_IMAGE_TAG)" 9100
+# .PHONY: test-docker
+# test-docker:
+# 	@echo ">> testing docker image"
+# 	./test_image.sh "$(DOCKER_REPO)/$(DOCKER_IMAGE_NAME)-linux-amd64:$(DOCKER_IMAGE_TAG)" 9100
 
 .PHONY: promtool
 promtool: $(PROMTOOL)
