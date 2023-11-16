@@ -12,8 +12,10 @@ PROMTOOL_VERSION ?= 2.30.0
 PROMTOOL_URL     ?= https://github.com/prometheus/prometheus/releases/download/v$(PROMTOOL_VERSION)/prometheus-$(PROMTOOL_VERSION).$(GO_BUILD_PLATFORM).tar.gz
 PROMTOOL         ?= $(FIRST_GOPATH)/bin/promtool
 
+TEST_DOCKER             ?= false
 DOCKER_IMAGE_NAME       ?= batchjob-exporter
 MACH                    ?= $(shell uname -m)
+CGROUPS_MODE            ?= $([ $(stat -fc %T /sys/fs/cgroup/) = "cgroup2fs" ] && echo "unified" || ( [ -e /sys/fs/cgroup/unified/ ] && echo "hybrid" || echo "legacy"))
 
 STATICCHECK_IGNORE =
 
@@ -21,6 +23,12 @@ ifeq ($(GOHOSTOS), linux)
 	test-e2e := test-e2e
 else
 	test-e2e := skip-test-e2e
+endif
+
+ifeq ($(TEST_DOCKER), false)
+	test-docker := skip-test-docker
+else
+	test-docker := test-docker
 endif
 
 # Use CGO for non-Linux builds.
@@ -49,7 +57,14 @@ endif
 
 PROMU := $(FIRST_GOPATH)/bin/promu --config $(PROMU_CONF)
 
-e2e-out = collector/fixtures/e2e-test-output.txt
+e2e-cgroupsv2-out = collector/fixtures/e2e-test-cgroupsv2-output.txt
+e2e-cgroupsv1-out = collector/fixtures/e2e-test-cgroupsv1-output.txt
+
+ifeq ($(CGROUPS_MODE), unified)
+	e2e-out = $(e2e-cgroupsv2-out)
+else
+	e2e-out = $(e2e-cgroupsv1-out)
+endif
 
 # 64bit -> 32bit mapping for cross-checking. At least for amd64/386, the 64bit CPU can execute 32bit code but not the other way around, so we don't support cross-testing upwards.
 cross-test = skip-test-32bit
@@ -67,7 +82,7 @@ $(eval $(call goarch_pair,amd64,386))
 $(eval $(call goarch_pair,mips64,mips))
 $(eval $(call goarch_pair,mips64el,mipsel))
 
-all:: vet checkmetrics checkrules common-all $(cross-test) $(test-e2e)
+all:: vet checkmetrics checkrules common-all $(cross-test) $(test-docker) $(test-e2e)
 
 .PHONY: test
 test: collector/fixtures/sys/.unpacked 
@@ -93,7 +108,6 @@ update_fixtures:
 	rm -vf collector/fixtures/sys/.unpacked
 	./ttar -C collector/fixtures -c -f collector/fixtures/sys.ttar sys
 
-
 .PHONY: test-e2e
 test-e2e: build collector/fixtures/sys/.unpacked 
 	@echo ">> running end-to-end tests"
@@ -113,10 +127,14 @@ checkrules: $(PROMTOOL)
 	@echo ">> checking rules for correctness"
 	find . -name "*rules*.yml" | xargs -I {} $(PROMTOOL) check rules {}
 
-# .PHONY: test-docker
-# test-docker:
-# 	@echo ">> testing docker image"
-# 	./test_image.sh "$(DOCKER_REPO)/$(DOCKER_IMAGE_NAME)-linux-amd64:$(DOCKER_IMAGE_TAG)" 9100
+.PHONY: test-docker
+test-docker:
+	@echo ">> testing docker image"
+	./test_image.sh "$(DOCKER_REPO)/$(DOCKER_IMAGE_NAME)-linux-amd64:$(DOCKER_IMAGE_TAG)" 9010
+
+.PHONY: skip-test-docker
+skip-test-docker:
+	@echo ">> SKIP running docker tests"
 
 .PHONY: promtool
 promtool: $(PROMTOOL)
