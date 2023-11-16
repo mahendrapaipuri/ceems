@@ -109,4 +109,4 @@ func runCommandAndTests(cmd *exec.Cmd, address string, fn func(pid int) error) e
 		cmd.Process.Kill()
 	}
 	return err
-} 
+}

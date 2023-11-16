@@ -11,7 +11,7 @@ import (
 	"github.com/prometheus/procfs/sysfs"
 )
 
-var expectedEnergyMetrics = []int{258218293244, 130570505826}
+var expectedEnergyMetrics = []float64{258218293244, 130570505826}
 
 func TestRaplMetrics(t *testing.T) {
 	if _, err := kingpin.CommandLine.Parse([]string{"--path.sysfs", "fixtures/sys"}); err != nil {
@@ -31,8 +31,8 @@ func TestRaplMetrics(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Cannot retrieve energy data from GetEnergyMicrojoules function: %v ", err)
 		}
-		if expectedEnergyMetrics[iz] != int(microJoules) {
-			t.Fatalf("Expected energy value %d: Got: %d ", expectedEnergyMetrics[iz], microJoules)
+		if expectedEnergyMetrics[iz] != float64(microJoules) {
+			t.Fatalf("Expected energy value %f: Got: %f ", expectedEnergyMetrics[iz], float64(microJoules))
 		}
 	}
 }

@@ -69,7 +69,7 @@ BIN_DIR                 ?= $(shell pwd)
 DOCKER_IMAGE_TAG        ?= $(subst /,-,$(shell git rev-parse --abbrev-ref HEAD))
 DOCKERFILE_PATH         ?= ./Dockerfile
 DOCKERBUILD_CONTEXT     ?= ./
-DOCKER_REPO             ?= prom
+DOCKER_REPO             ?= mahendrapaipuri
 
 DOCKER_ARCHS            ?= amd64
 
@@ -92,7 +92,7 @@ endif
 %: common-% ;
 
 .PHONY: common-all
-common-all: precheck style check_license lint yamllint unused build test
+common-all: precheck style lint yamllint unused build test
 
 .PHONY: common-style
 common-style:

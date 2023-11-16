@@ -11,7 +11,14 @@ skip_re="^(go_|batchjob_exporter_build_info|batchjob_scrape_collector_duration_s
 
 arch="$(uname -m)"
 
-fixture='collector/fixtures/e2e-test-output.txt'
+cgroups_mode=$([ $(stat -fc %T /sys/fs/cgroup/) = "cgroup2fs" ] && echo "unified" || ( [ -e /sys/fs/cgroup/unified/ ] && echo "hybrid" || echo "legacy"))
+
+echo "cgroups mode detected is ${cgroups_mode}"
+
+case "${cgroups_mode}" in
+  legacy|hybrid) fixture='collector/fixtures/e2e-test-cgroupsv1-output.txt' ;;
+  *) fixture='collector/fixtures/e2e-test-cgroupsv2-output.txt' ;;
+esac
 
 keep=0; update=0; verbose=0
 while getopts 'hkuv' opt

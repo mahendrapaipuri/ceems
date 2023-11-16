@@ -27,9 +27,9 @@ type impiCollector struct {
 }
 
 var (
-	ipmiDcmiWrapperExec            = kingpin.Flag("collector.ipmi.dcmi.wrapper.path", "Path to IPMI DCMI executable wrapper.").Default("ipmi-dcmi-wrapper").String()
-	ipmiDCMIPowerMeasurementRegex  = regexp.MustCompile(`^Power Measurement\s*:\s*(?P<value>Active|Not\sAvailable).*`)
-	ipmiDCMICurrentPowerRegex      = regexp.MustCompile(`^Current Power\s*:\s*(?P<value>[0-9.]*)\s*Watts.*`)
+	ipmiDcmiWrapperExec           = kingpin.Flag("collector.ipmi.dcmi.wrapper.path", "Path to IPMI DCMI executable wrapper.").Default("ipmi-dcmi-wrapper").String()
+	ipmiDCMIPowerMeasurementRegex = regexp.MustCompile(`^Power Measurement\s*:\s*(?P<value>Active|Not\sAvailable).*`)
+	ipmiDCMICurrentPowerRegex     = regexp.MustCompile(`^Current Power\s*:\s*(?P<value>[0-9.]*)\s*Watts.*`)
 )
 
 func init() {
@@ -45,7 +45,7 @@ func NewIpmiCollector(logger log.Logger) (Collector, error) {
 	)
 
 	collector := impiCollector{
-		logger:           logger,
+		logger:          logger,
 		wattsMetricDesc: wattsMetricDesc,
 	}
 	return &collector, nil

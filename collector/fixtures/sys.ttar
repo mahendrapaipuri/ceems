@@ -413,6 +413,728 @@ Mode: 775
 Directory: sys/fs/cgroup
 Mode: 775
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/cpuacct
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/cpuacct/slurm
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/cpuacct/slurm/uid_1000
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009248
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009248/cgroup.clone_children
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009248/cgroup.procs
+Lines: 5
+9544
+9562
+9563
+9616
+9870
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009248/cpu.cfs_period_us
+Lines: 1
+100000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009248/cpu.cfs_quota_us
+Lines: 1
+-1
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009248/cpu.shares
+Lines: 1
+1024
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009248/cpu.stat
+Lines: 3
+nr_periods 0
+nr_throttled 0
+throttled_time 0
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009248/cpuacct.stat
+Lines: 2
+user 39
+system 45
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009248/cpuacct.usage
+Lines: 1
+1012410966
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009248/cpuacct.usage_all
+Lines: 65
+cpu user system
+0 1196678 71229
+1 15514404 54098
+2 4542209 0
+3 34311942 18654226
+4 1694579 0
+5 25310180 69879
+6 9831958 10304749
+7 15456610 51624
+8 9536685 0
+9 36102975 135135
+10 7936161 508681
+11 9247682 14142
+12 4834097 802504
+13 27902500 1695238
+14 0 0
+15 12947096 537550
+16 6216078 72385
+17 5460476 337738
+18 0 0
+19 1773846 206981
+20 4300098 0
+21 996060 0
+22 6086470 28544
+23 1450661 0
+24 9226052 8540577
+25 626699 0
+26 3095099 0
+27 20635910 1528216
+28 16708670 11599918
+29 2364270 0
+30 1218227 0
+31 15519923 858952
+32 1351546 0
+33 45599413 596696
+34 8443048 330679
+35 13830826 0
+36 3206203 330195
+37 3473800 69381
+38 41808354 1361643
+39 3060034 0
+40 14823758 9284885
+41 123661669 5981166
+42 0 0
+43 0 0
+44 3572054 780589
+45 255415820 2411920
+46 0 0
+47 8187034 50930
+48 0 0
+49 1360213 0
+50 0 0
+51 23418158 63506
+52 0 0
+53 14814933 39230
+54 0 0
+55 8628984 0
+56 0 0
+57 16282353 18125
+58 0 0
+59 2816371 72505
+60 980429 0
+61 28250255 38016
+62 0 0
+63 564950 0
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009248/cpuacct.usage_percpu
+Lines: 1
+1267907 15568502 4542209 52966168 1694579 25380059 20136707 15508234 9536685 36238110 8444842 9261824 5636601 29597738 0 13484646 6288463 5798214 0 1980827 4300098 996060 6115014 1450661 17766629 626699 3095099 22164126 28308588 2364270 1218227 16378875 1351546 46196109 8773727 13830826 3536398 3543181 43169997 3060034 24108643 129642835 0 0 4352643 257827740 0 8237964 0 1360213 0 23481664 0 14854163 0 8628984 0 16300478 0 2888876 980429 27761417 0 564950 
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009248/cpuacct.usage_percpu_sys
+Lines: 1
+71229 54098 0 18654226 0 69879 10304749 51624 0 135135 508681 14142 802504 1695238 0 537550 72385 337738 0 206981 0 0 28544 0 8540577 0 0 1528216 11599918 0 0 858952 0 596696 330679 0 330195 69381 1361643 0 9284885 5981166 0 0 780589 2411920 0 50930 0 0 0 63506 0 39230 0 0 0 18125 0 72505 0 38016 0 0 
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009248/cpuacct.usage_percpu_user
+Lines: 1
+1196678 15514404 4542209 34311942 1694579 25310180 9831958 15456610 9536685 36102975 7936161 9247682 4834097 27902500 0 12947096 6216078 5460476 0 1773846 4300098 996060 6086470 1450661 9226052 626699 3095099 20635910 16708670 2364270 1218227 15519923 1351546 45599413 8443048 13830826 3206203 3473800 41808354 3060034 14823758 123661669 0 0 3572054 255415820 0 8187034 0 1360213 0 23418158 0 14814933 0 8628984 0 16282353 0 2816371 980429 27908262 0 564950 
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009248/cpuacct.usage_sys
+Lines: 1
+77501832
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009248/cpuacct.usage_user
+Lines: 1
+934961699
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009248/notify_on_release
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009248/step_0
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009248/step_0/cgroup.clone_children
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009248/step_0/cgroup.procs
+Lines: 5
+9544
+9562
+9563
+9616
+9870
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009248/step_0/cpu.cfs_period_us
+Lines: 1
+100000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009248/step_0/cpu.cfs_quota_us
+Lines: 1
+-1
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009248/step_0/cpu.shares
+Lines: 1
+1024
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009248/step_0/cpu.stat
+Lines: 3
+nr_periods 0
+nr_throttled 0
+throttled_time 0
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009248/step_0/cpuacct.stat
+Lines: 2
+user 39
+system 45
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009248/step_0/cpuacct.usage
+Lines: 1
+1012410966
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009248/step_0/cpuacct.usage_all
+Lines: 65
+cpu user system
+0 1196678 71229
+1 15514404 54098
+2 4542209 0
+3 34311942 18654226
+4 1694579 0
+5 25310180 69879
+6 9831958 10304749
+7 15456610 51624
+8 9536685 0
+9 36102975 135135
+10 7936161 508681
+11 9247682 14142
+12 4834097 802504
+13 27902500 1695238
+14 0 0
+15 12947096 537550
+16 6216078 72385
+17 5460476 337738
+18 0 0
+19 1773846 206981
+20 4300098 0
+21 996060 0
+22 6086470 28544
+23 1450661 0
+24 9226052 8540577
+25 626699 0
+26 3095099 0
+27 20635910 1528216
+28 16708670 11599918
+29 2364270 0
+30 1218227 0
+31 15519923 858952
+32 1351546 0
+33 45599413 596696
+34 8443048 330679
+35 13830826 0
+36 3206203 330195
+37 3473800 69381
+38 41808354 1361643
+39 3060034 0
+40 14823758 9284885
+41 123661669 5981166
+42 0 0
+43 0 0
+44 3572054 780589
+45 255415820 2411920
+46 0 0
+47 8187034 50930
+48 0 0
+49 1360213 0
+50 0 0
+51 23418158 63506
+52 0 0
+53 14814933 39230
+54 0 0
+55 8628984 0
+56 0 0
+57 16282353 18125
+58 0 0
+59 2816371 72505
+60 980429 0
+61 28250255 38016
+62 0 0
+63 564950 0
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009248/step_0/cpuacct.usage_percpu
+Lines: 1
+1267907 15568502 4542209 52966168 1694579 25380059 20136707 15508234 9536685 36238110 8444842 9261824 5636601 29597738 0 13484646 6288463 5798214 0 1980827 4300098 996060 6115014 1450661 17766629 626699 3095099 22164126 28308588 2364270 1218227 16378875 1351546 46196109 8773727 13830826 3536398 3543181 43169997 3060034 24108643 129642835 0 0 4352643 257827740 0 8237964 0 1360213 0 23481664 0 14854163 0 8628984 0 16300478 0 2888876 980429 27761417 0 564950 
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009248/step_0/cpuacct.usage_percpu_sys
+Lines: 1
+71229 54098 0 18654226 0 69879 10304749 51624 0 135135 508681 14142 802504 1695238 0 537550 72385 337738 0 206981 0 0 28544 0 8540577 0 0 1528216 11599918 0 0 858952 0 596696 330679 0 330195 69381 1361643 0 9284885 5981166 0 0 780589 2411920 0 50930 0 0 0 63506 0 39230 0 0 0 18125 0 72505 0 38016 0 0 
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009248/step_0/cpuacct.usage_percpu_user
+Lines: 1
+1196678 15514404 4542209 34311942 1694579 25310180 9831958 15456610 9536685 36102975 7936161 9247682 4834097 27902500 0 12947096 6216078 5460476 0 1773846 4300098 996060 6086470 1450661 9226052 626699 3095099 20635910 16708670 2364270 1218227 15519923 1351546 45599413 8443048 13830826 3206203 3473800 41808354 3060034 14823758 123661669 0 0 3572054 255415820 0 8187034 0 1360213 0 23418158 0 14814933 0 8628984 0 16282353 0 2816371 980429 27908262 0 564950 
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009248/step_0/cpuacct.usage_sys
+Lines: 1
+77501832
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009248/step_0/cpuacct.usage_user
+Lines: 1
+934961699
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009248/step_0/notify_on_release
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009248/step_0/tasks
+Lines: 5
+9544
+9562
+9563
+9616
+9870
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009248/tasks
+Lines: 5
+9544
+9562
+9563
+9616
+9870
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/memory
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/memory/slurm
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/memory/slurm/uid_1000
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/cgroup.clone_children
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/cgroup.procs
+Lines: 5
+9544
+9562
+9563
+9616
+9870
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/memory.failcnt
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/memory.kmem.failcnt
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/memory.kmem.limit_in_bytes
+Lines: 1
+9223372036854771712
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/memory.kmem.max_usage_in_bytes
+Lines: 1
+7733248
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/memory.kmem.slabinfo
+Lines: 0
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/memory.kmem.tcp.failcnt
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/memory.kmem.tcp.limit_in_bytes
+Lines: 1
+9223372036854771712
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/memory.kmem.tcp.max_usage_in_bytes
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/memory.kmem.tcp.usage_in_bytes
+Lines: 1
+0
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/memory.kmem.usage_in_bytes
+Lines: 1
+7725056
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/memory.limit_in_bytes
+Lines: 1
+201362030592
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/memory.max_usage_in_bytes
+Lines: 1
+55246848
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/memory.memsw.failcnt
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/memory.memsw.limit_in_bytes
+Lines: 1
+9223372036854771712
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/memory.memsw.max_usage_in_bytes
+Lines: 1
+55246848
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/memory.memsw.usage_in_bytes
+Lines: 1
+40325120
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/memory.move_charge_at_immigrate
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/memory.numa_stat
+Lines: 8
+total=7854 N0=1647 N1=6050
+file=5214 N0=74 N1=5405
+anon=2640 N0=1573 N1=645
+unevictable=0 N0=0 N1=0
+hierarchical_total=7854 N0=1848 N1=6105
+hierarchical_file=5214 N0=33 N1=5181
+hierarchical_anon=2640 N0=1815 N1=924
+hierarchical_unevictable=0 N0=0 N1=0
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/memory.oom_control
+Lines: 3
+oom_kill_disable 0
+under_oom 0
+oom_kill 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/memory.soft_limit_in_bytes
+Lines: 1
+9223372036854771712
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/memory.stat
+Lines: 36
+cache 21086208
+rss 10407936
+rss_huge 0
+shmem 0
+mapped_file 0
+dirty 0
+writeback 0
+swap 0
+pgpgin 24981
+pgpgout 17590
+pgfault 43296
+pgmajfault 33
+inactive_anon 10813440
+active_anon 0
+inactive_file 20275200
+active_file 946176
+unevictable 0
+hierarchical_memory_limit 201362030592
+hierarchical_memsw_limit 9223372036854771712
+total_cache 21086208
+total_rss 10407936
+total_rss_huge 0
+total_shmem 0
+total_mapped_file 0
+total_dirty 0
+total_writeback 0
+total_swap 0
+total_pgpgin 24981
+total_pgpgout 17590
+total_pgfault 43296
+total_pgmajfault 33
+total_inactive_anon 10813440
+total_active_anon 0
+total_inactive_file 20275200
+total_active_file 946176
+total_unevictable 0
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/memory.swappiness
+Lines: 1
+60
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/memory.usage_in_bytes
+Lines: 1
+40194048
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/memory.use_hierarchy
+Lines: 1
+1
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/notify_on_release
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/step_0
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/step_0/cgroup.clone_children
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/step_0/cgroup.procs
+Lines: 5
+9544
+9562
+9563
+9616
+9870
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/step_0/memory.failcnt
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/step_0/memory.kmem.failcnt
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/step_0/memory.kmem.limit_in_bytes
+Lines: 1
+9223372036854771712
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/step_0/memory.kmem.max_usage_in_bytes
+Lines: 1
+7733248
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/step_0/memory.kmem.slabinfo
+Lines: 0
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/step_0/memory.kmem.tcp.failcnt
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/step_0/memory.kmem.tcp.limit_in_bytes
+Lines: 1
+9223372036854771712
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/step_0/memory.kmem.tcp.max_usage_in_bytes
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/step_0/memory.kmem.tcp.usage_in_bytes
+Lines: 1
+0
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/step_0/memory.kmem.usage_in_bytes
+Lines: 1
+7725056
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/step_0/memory.limit_in_bytes
+Lines: 1
+201362030592
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/step_0/memory.max_usage_in_bytes
+Lines: 1
+55246848
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/step_0/memory.memsw.failcnt
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/step_0/memory.memsw.limit_in_bytes
+Lines: 1
+9223372036854771712
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/step_0/memory.memsw.max_usage_in_bytes
+Lines: 1
+55246848
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/step_0/memory.memsw.usage_in_bytes
+Lines: 1
+40325120
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/step_0/memory.move_charge_at_immigrate
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/step_0/memory.numa_stat
+Lines: 8
+total=7854 N0=1647 N1=6050
+file=5214 N0=74 N1=5405
+anon=2640 N0=1573 N1=645
+unevictable=0 N0=0 N1=0
+hierarchical_total=7854 N0=1848 N1=6105
+hierarchical_file=5214 N0=33 N1=5181
+hierarchical_anon=2640 N0=1815 N1=924
+hierarchical_unevictable=0 N0=0 N1=0
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/step_0/memory.oom_control
+Lines: 3
+oom_kill_disable 0
+under_oom 0
+oom_kill 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/step_0/memory.soft_limit_in_bytes
+Lines: 1
+9223372036854771712
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/step_0/memory.stat
+Lines: 36
+cache 21086208
+rss 10407936
+rss_huge 0
+shmem 0
+mapped_file 0
+dirty 0
+writeback 0
+swap 0
+pgpgin 24981
+pgpgout 17590
+pgfault 43296
+pgmajfault 33
+inactive_anon 10813440
+active_anon 0
+inactive_file 20275200
+active_file 946176
+unevictable 0
+hierarchical_memory_limit 201362030592
+hierarchical_memsw_limit 9223372036854771712
+total_cache 21086208
+total_rss 10407936
+total_rss_huge 0
+total_shmem 0
+total_mapped_file 0
+total_dirty 0
+total_writeback 0
+total_swap 0
+total_pgpgin 24981
+total_pgpgout 17590
+total_pgfault 43296
+total_pgmajfault 33
+total_inactive_anon 10813440
+total_active_anon 0
+total_inactive_file 20275200
+total_active_file 946176
+total_unevictable 0
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/step_0/memory.swappiness
+Lines: 1
+60
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/step_0/memory.usage_in_bytes
+Lines: 1
+40194048
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/step_0/memory.use_hierarchy
+Lines: 1
+1
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/step_0/notify_on_release
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/step_0/tasks
+Lines: 5
+9544
+9562
+9563
+9616
+9870
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/tasks
+Lines: 5
+9544
+9562
+9563
+9616
+9870
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Directory: sys/fs/cgroup/system.slice
 Mode: 775
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -4360,8 +5082,4 @@ Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/memory.swap.max
 Lines: 1
 max
 Mode: 640
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/.unpacked
-Lines: 0
-Mode: 664
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

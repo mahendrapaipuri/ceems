@@ -21,7 +21,7 @@ tarball:
         - NOTICE
 crossbuild:
     platforms:
-        - darwin/amd64
-        - darwin/arm64
+        # We are not sure if our exporter will work on netbsd. So dont bother on
+        # cross compiling for now
         - netbsd/amd64
         - netbsd/386
