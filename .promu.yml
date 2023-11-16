@@ -20,5 +20,11 @@ tarball:
         - NOTICE
 crossbuild:
     platforms:
-        - linux
-        - openbsd/amd64
+        - linux/amd64
+        - linux/386
+        - linux/arm64
+        - linux/mips
+        - linux/mipsle
+        - linux/mips64
+        - linux/mips64le
+        - linux/ppc64le
