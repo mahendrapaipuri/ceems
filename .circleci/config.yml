@@ -43,32 +43,6 @@ jobs:
       - store_artifacts:
           path: .build
           destination: /build
-  test_docker:
-    machine:
-      image: ubuntu-2204:current
-    environment:
-      DOCKER_TEST_IMAGE_NAME: quay.io/prometheus/golang-builder:1.18-base
-      REPO_PATH: github.com/prometheus/batchjob_exporter
-    steps:
-      - prometheus/setup_environment
-      - attach_workspace:
-          at: .
-      - run:
-          command: |
-            if [ -n "$CIRCLE_TAG" ]; then
-              make docker DOCKER_IMAGE_TAG=$CIRCLE_TAG
-            else
-              make docker
-            fi
-      - run: docker images
-      - run: docker run --rm -t -v "$(pwd):/app" "${DOCKER_TEST_IMAGE_NAME}" -i "${REPO_PATH}" -T
-      - run:
-          command: |
-            if [ -n "$CIRCLE_TAG" ]; then
-              make test-docker DOCKER_IMAGE_TAG=$CIRCLE_TAG
-            else
-              make test-docker
-            fi
 workflows:
   version: 2
   batchjob_exporter:
@@ -85,23 +59,10 @@ workflows:
           filters:
             tags:
               only: /.*/
-      # - test_docker:
-      #     requires:
-      #       - test
-      #       - build
-      #     filters:
-      #       tags:
-      #         only: /.*/
-      - prometheus/publish_master:
-          context: org-context
-          requires:
-            - test
-            - build
-          filters:
-            branches:
-              only: master
       - prometheus/publish_release:
           context: org-context
+          docker_hub_organization: ''
+          quay_io_organization: ''
           requires:
             - test
             - build
