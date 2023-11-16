@@ -72,6 +72,7 @@ func getAllDevices(logger log.Logger) ([]Device, error) {
 		if strings.HasPrefix(devUuid, "MIG") {
 			isMig = true
 		}
+		level.Debug(logger).Log("msg", "Found nVIDIA GPU", devName, "with UUID", devUuid, "and isMig:", isMig)
 		allDevices = append(allDevices, Device{name: devName, uuid: devUuid, isMig: isMig})
 	}
 	return allDevices, nil
