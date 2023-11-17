@@ -20,7 +20,7 @@ jobs:
       - run: go mod download
       - run: make
       - prometheus/store_artifact:
-          file: batchjob_exporter
+          file: ./bin/batchjob_exporter
   test-arm:
     executor: arm
     steps:
