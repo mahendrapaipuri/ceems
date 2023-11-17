@@ -41,7 +41,7 @@ func TestCgroupsV2SlurmJobMetrics(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Cannot retrieve data from getJobsMetrics function: %v ", err)
 	}
-	if !reflect.DeepEqual(metrics["/system.slice/slurmstepd.scope/job_1009248"], expectedSlurmMetrics) {
+	if !reflect.DeepEqual(metrics["1009248"], expectedSlurmMetrics) {
 		t.Fatalf("Expected metrics data is %+v: \nGot %+v", expectedSlurmMetrics, metrics)
 	}
 }
@@ -76,7 +76,7 @@ func TestCgroupsV1SlurmJobMetrics(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Cannot retrieve data from getJobsMetrics function: %v ", err)
 	}
-	if !reflect.DeepEqual(metrics["/slurm/uid_1000/job_1009248"], expectedSlurmMetrics) {
+	if !reflect.DeepEqual(metrics["1009248"], expectedSlurmMetrics) {
 		t.Fatalf("Expected metrics data is %+v: \nGot %+v", expectedSlurmMetrics, metrics)
 	}
 }

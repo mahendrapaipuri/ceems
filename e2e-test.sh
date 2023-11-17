@@ -12,7 +12,7 @@ skip_re="^(go_|batchjob_exporter_build_info|batchjob_scrape_collector_duration_s
 arch="$(uname -m)"
 
 cgroups_mode=$([ $(stat -fc %T /sys/fs/cgroup/) = "cgroup2fs" ] && echo "unified" || ( [ -e /sys/fs/cgroup/unified/ ] && echo "hybrid" || echo "legacy"))
-
+# cgroups_mode="legacy"
 echo "cgroups mode detected is ${cgroups_mode}"
 
 case "${cgroups_mode}" in
@@ -53,6 +53,8 @@ fi
 PATH=$PWD/collector/fixtures:$PATH ./batchjob_exporter \
   --path.sysfs="collector/fixtures/sys" \
   --path.cgroupfs="collector/fixtures/sys/fs/cgroup" \
+  --collector.slurm.unique.jobid \
+  --collector.slurm.job.stat.path="collector/fixtures/slurmjobstat" \
   --collector.ipmi.dcmi.wrapper.path="collector/fixtures/ipmi-dcmi-wrapper.sh" \
   --collector.nvidia_gpu \
   --collector.nvidia.gpu.stat.path="collector/fixtures/gpustat" \
