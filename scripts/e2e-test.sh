@@ -2,7 +2,7 @@
 
 set -euf -o pipefail
 
-cd "$(dirname $0)"
+cd "$(dirname $0)/.."
 
 port="$((10000 + (RANDOM % 10000)))"
 tmpdir=$(mktemp -d /tmp/batchjob_exporter_e2e_test.XXXXXX)
@@ -44,13 +44,13 @@ do
   esac
 done
 
-if [ ! -x ./batchjob_exporter ]
+if [ ! -x ./bin/batchjob_exporter ]
 then
-    echo './batchjob_exporter not found. Consider running `go build` first.' >&2
+    echo './bin/batchjob_exporter not found. Consider running `go build` first.' >&2
     exit 1
 fi
 
-PATH=$PWD/collector/fixtures:$PATH ./batchjob_exporter \
+PATH=$PWD/collector/fixtures:$PATH ./bin/batchjob_exporter \
   --path.sysfs="collector/fixtures/sys" \
   --path.cgroupfs="collector/fixtures/sys/fs/cgroup" \
   --collector.slurm.unique.jobid \
