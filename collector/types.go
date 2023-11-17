@@ -36,7 +36,7 @@ type nationalRealTimeFields struct {
 	HydrauliqueStepTurbinage int64  `json:"hydraulique_step_turbinage"`  // Hydraulic - STEP turbine (MW)
 	Nature                   string `json:"nature"`                      // Nature of data - Realtime.
 	Nucleaire                int64  `json:"nucleaire"`                   // Nuclear (MW)
-	Perimeter                string `json:"perimetre"` // nolint:misspell// Perimeter - France.
+	Perimeter                string `json:"perimetre"`                   // nolint:misspell// Perimeter - France.
 	Pompage                  int64  `json:"pompage"`                     // Pumping (MW) - Consumption by pumps at trasfer stations.
 	PrevisionJ               int64  `json:"prevision_j"`                 // Forcaset J (MW) - For the same day.
 	PrevisionJ1              int64  `json:"prevision_j1"`                // Forcaset J-1 (MW) - Forecast, made the day before for the following day, of consumption.
