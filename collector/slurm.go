@@ -77,7 +77,7 @@ func init() {
 func NewSlurmCollector(logger log.Logger) (Collector, error) {
 	if cgroups.Mode() == cgroups.Unified {
 		cgroupV2 = true
-		level.Info(logger).Log("msg", "Cgroup version v2 detected on ", "mount", *cgroupfsPath)
+		level.Info(logger).Log("msg", "Cgroup version v2 detected", "mount", *cgroupfsPath)
 	} else {
 		level.Info(logger).Log("msg", "Cgroup version v2 not detected, will proceed with v1.")
 	}
@@ -179,7 +179,7 @@ func (c *slurmCollector) getJobsMetrics() (map[string]CgroupMetric, error) {
 				return nil
 			}
 			rel, _ := filepath.Rel(topPath, p)
-			level.Debug(c.logger).Log("msg", "Get Name", "name", p, "rel", rel)
+			level.Debug(c.logger).Log("msg", "Get cgroup Name", "name", p, "rel", rel)
 			names = append(names, "/"+rel)
 		}
 		return nil
@@ -302,7 +302,7 @@ func (c *slurmCollector) getInfoV1(name string, metric *CgroupMetric) {
 		metric.userslice = true
 		metric.uid, err = strconv.Atoi(userSliceMatch[1])
 		if err != nil {
-			level.Error(c.logger).Log("msg", "Error getting slurm uid number", "uid", pathBase, "err", err)
+			level.Error(c.logger).Log("msg", "Error getting slurm job's uid number", "uid", pathBase, "err", err)
 		}
 		return
 	}
@@ -312,7 +312,7 @@ func (c *slurmCollector) getInfoV1(name string, metric *CgroupMetric) {
 	if len(slurmMatch) >= 3 {
 		metric.uid, err = strconv.Atoi(slurmMatch[1])
 		if err != nil {
-			level.Error(c.logger).Log("msg", "Error getting slurm uid number", "uid", name, "err", err)
+			level.Error(c.logger).Log("msg", "Error getting slurm job's uid number", "uid", name, "err", err)
 		}
 		metric.jobid = slurmMatch[2]
 		metric.step = slurmMatch[4]
