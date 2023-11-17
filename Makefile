@@ -12,6 +12,8 @@ PROMTOOL_VERSION ?= 2.30.0
 PROMTOOL_URL     ?= https://github.com/prometheus/prometheus/releases/download/v$(PROMTOOL_VERSION)/prometheus-$(PROMTOOL_VERSION).$(GO_BUILD_PLATFORM).tar.gz
 PROMTOOL         ?= $(FIRST_GOPATH)/bin/promtool
 
+PREFIX           := $(shell pwd)/bin
+
 TEST_DOCKER             ?= false
 DOCKER_IMAGE_NAME       ?= batchjob-exporter
 MACH                    ?= $(shell uname -m)
@@ -101,17 +103,17 @@ skip-test-32bit:
 %/.unpacked: %.ttar
 	@echo ">> extracting fixtures"
 	if [ -d $(dir $@) ] ; then rm -rf $(dir $@) ; fi
-	./ttar -C $(dir $*) -x -f $*.ttar
+	./scripts/ttar -C $(dir $*) -x -f $*.ttar
 	touch $@
 
 update_fixtures:
 	rm -vf collector/fixtures/sys/.unpacked
-	./ttar -C collector/fixtures -c -f collector/fixtures/sys.ttar sys
+	./scripts/ttar -C collector/fixtures -c -f collector/fixtures/sys.ttar sys
 
 .PHONY: test-e2e
 test-e2e: build collector/fixtures/sys/.unpacked 
 	@echo ">> running end-to-end tests"
-	./e2e-test.sh
+	./scripts/e2e-test.sh
 
 .PHONY: skip-test-e2e
 skip-test-e2e:
@@ -120,7 +122,7 @@ skip-test-e2e:
 .PHONY: checkmetrics
 checkmetrics: $(PROMTOOL)
 	@echo ">> checking metrics for correctness"
-	./checkmetrics.sh $(PROMTOOL) $(e2e-out)
+	./scripts/checkmetrics.sh $(PROMTOOL) $(e2e-out)
 
 .PHONY: checkrules
 checkrules: $(PROMTOOL)
@@ -130,7 +132,7 @@ checkrules: $(PROMTOOL)
 .PHONY: test-docker
 test-docker:
 	@echo ">> testing docker image"
-	./test_image.sh "$(DOCKER_REPO)/$(DOCKER_IMAGE_NAME)-linux-amd64:$(DOCKER_IMAGE_TAG)" 9010
+	./scripts/test_image.sh "$(DOCKER_REPO)/$(DOCKER_IMAGE_NAME)-linux-amd64:$(DOCKER_IMAGE_TAG)" 9010
 
 .PHONY: skip-test-docker
 skip-test-docker:

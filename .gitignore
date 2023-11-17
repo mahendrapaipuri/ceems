@@ -23,9 +23,6 @@ go.work
 # Ignore fixtures
 collector/fixtures/sys
 
-# Ignore binary
-**/*batchjob_exporter
-
 # Ignore scripts
 run.sh
 
@@ -34,3 +31,6 @@ run.sh
 /.deps
 /.release
 /.tarballs
+
+# Ignore binaries
+/bin
