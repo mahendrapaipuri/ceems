@@ -1,6 +1,8 @@
 package collector
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -86,4 +88,11 @@ func GetRteEnergyMixData() (float64, error) {
 		fields = append(fields, r.Fields)
 	}
 	return float64(fields[0].TauxCo2), nil
+}
+
+// Get md5 checksum for given slice of strings
+func GetMD5CheckSum(stringSlice []string) string {
+	s := strings.Join(stringSlice[:], ",")
+	hash := md5.Sum([]byte(s))
+	return hex.EncodeToString(hash[:])
 }
