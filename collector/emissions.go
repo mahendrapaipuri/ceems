@@ -47,7 +47,11 @@ func readJSONFromUrl(url string, logger log.Logger) (map[string]float64, error) 
 
 	defer resp.Body.Close()
 	buf := new(bytes.Buffer)
-	buf.ReadFrom(resp.Body)
+	_, err = buf.ReadFrom(resp.Body)
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to read responde body", "err", err)
+		return nil, err
+	}
 	respByte := buf.Bytes()
 	// JSON might contain NaN, replace it with null that is allowed in JSON
 	respByte = bytes.Replace(respByte, []byte("NaN"), []byte("null"), -1)
