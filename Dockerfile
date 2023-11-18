@@ -7,6 +7,6 @@ ARG ARCH="amd64"
 ARG OS="linux"
 COPY .build/${OS}-${ARCH}/batchjob_exporter /bin/batchjob_exporter
 
-EXPOSE      9100
+EXPOSE      9010
 USER        nobody
 ENTRYPOINT  [ "/bin/batchjob_exporter" ]
