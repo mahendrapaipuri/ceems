@@ -45,9 +45,10 @@ type CgroupMetric struct {
 	memswTotal      float64
 	memswFailCount  float64
 	userslice       bool
-	uid             int
+	jobuid          string
+	jobgid          string
 	jobid           string
-	ujobid          string
+	jobuuid         string
 	step            string
 	task            string
 	batch           string
@@ -87,31 +88,31 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 	return &slurmCollector{
 		cgroupV2: cgroupV2,
 		cpuUser: prometheus.NewDesc(prometheus.BuildFQName(namespace, "cpu", "user_seconds"),
-			"Cumulative CPU user seconds", []string{"batch", "jobid", "ujobid", "step", "task"}, nil),
+			"Cumulative CPU user seconds", []string{"batch", "jobuid", "jobgid", "jobid", "jobuuid", "step", "task"}, nil),
 		cpuSystem: prometheus.NewDesc(prometheus.BuildFQName(namespace, "cpu", "system_seconds"),
-			"Cumulative CPU system seconds", []string{"batch", "jobid", "ujobid", "step", "task"}, nil),
+			"Cumulative CPU system seconds", []string{"batch", "jobuid", "jobgid", "jobid", "jobuuid", "step", "task"}, nil),
 		cpuTotal: prometheus.NewDesc(prometheus.BuildFQName(namespace, "cpu", "total_seconds"),
-			"Cumulative CPU total seconds", []string{"batch", "jobid", "ujobid", "step", "task"}, nil),
+			"Cumulative CPU total seconds", []string{"batch", "jobuid", "jobgid", "jobid", "jobuuid", "step", "task"}, nil),
 		cpus: prometheus.NewDesc(prometheus.BuildFQName(namespace, "", "cpus"),
-			"Number of CPUs", []string{"batch", "jobid", "ujobid", "step", "task"}, nil),
+			"Number of CPUs", []string{"batch", "jobuid", "jobgid", "jobid", "jobuuid", "step", "task"}, nil),
 		memoryRSS: prometheus.NewDesc(prometheus.BuildFQName(namespace, "memory", "rss_bytes"),
-			"Memory RSS used in bytes", []string{"batch", "jobid", "ujobid", "step", "task"}, nil),
+			"Memory RSS used in bytes", []string{"batch", "jobuid", "jobgid", "jobid", "jobuuid", "step", "task"}, nil),
 		memoryCache: prometheus.NewDesc(prometheus.BuildFQName(namespace, "memory", "cache_bytes"),
-			"Memory cache used in bytes", []string{"batch", "jobid", "ujobid", "step", "task"}, nil),
+			"Memory cache used in bytes", []string{"batch", "jobuid", "jobgid", "jobid", "jobuuid", "step", "task"}, nil),
 		memoryUsed: prometheus.NewDesc(prometheus.BuildFQName(namespace, "memory", "used_bytes"),
-			"Memory used in bytes", []string{"batch", "jobid", "ujobid", "step", "task"}, nil),
+			"Memory used in bytes", []string{"batch", "jobuid", "jobgid", "jobid", "jobuuid", "step", "task"}, nil),
 		memoryTotal: prometheus.NewDesc(prometheus.BuildFQName(namespace, "memory", "total_bytes"),
-			"Memory total in bytes", []string{"batch", "jobid", "ujobid", "step", "task"}, nil),
+			"Memory total in bytes", []string{"batch", "jobuid", "jobgid", "jobid", "jobuuid", "step", "task"}, nil),
 		memoryFailCount: prometheus.NewDesc(prometheus.BuildFQName(namespace, "memory", "fail_count"),
-			"Memory fail count", []string{"batch", "jobid", "ujobid", "step", "task"}, nil),
+			"Memory fail count", []string{"batch", "jobuid", "jobgid", "jobid", "jobuuid", "step", "task"}, nil),
 		memswUsed: prometheus.NewDesc(prometheus.BuildFQName(namespace, "memsw", "used_bytes"),
-			"Swap used in bytes", []string{"batch", "jobid", "ujobid", "step", "task"}, nil),
+			"Swap used in bytes", []string{"batch", "jobuid", "jobgid", "jobid", "jobuuid", "step", "task"}, nil),
 		memswTotal: prometheus.NewDesc(prometheus.BuildFQName(namespace, "memsw", "total_bytes"),
-			"Swap total in bytes", []string{"batch", "jobid", "ujobid", "step", "task"}, nil),
+			"Swap total in bytes", []string{"batch", "jobuid", "jobgid", "jobid", "jobuuid", "step", "task"}, nil),
 		memswFailCount: prometheus.NewDesc(prometheus.BuildFQName(namespace, "memsw", "fail_count"),
-			"Swap fail count", []string{"batch", "jobid", "ujobid", "step", "task"}, nil),
+			"Swap fail count", []string{"batch", "jobuid", "jobgid", "jobid", "jobuuid", "step", "task"}, nil),
 		collectError: prometheus.NewDesc(prometheus.BuildFQName(namespace, "exporter", "collect_error"),
-			"Indicates collection error, 0=no error, 1=error", []string{"batch", "jobid", "ujobid", "step", "task"}, nil),
+			"Indicates collection error, 0=no error, 1=error", []string{"batch", "jobuid", "jobgid", "jobid", "jobuuid", "step", "task"}, nil),
 		logger: logger,
 	}, nil
 }
@@ -135,9 +136,9 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 		if m.err {
 			ch <- prometheus.MustNewConstMetric(c.collectError, prometheus.GaugeValue, 1, m.name)
 		}
-		ch <- prometheus.MustNewConstMetric(c.cpuUser, prometheus.GaugeValue, m.cpuUser, m.batch, m.jobid, m.ujobid, m.step, m.task)
-		ch <- prometheus.MustNewConstMetric(c.cpuSystem, prometheus.GaugeValue, m.cpuSystem, m.batch, m.jobid, m.ujobid, m.step, m.task)
-		ch <- prometheus.MustNewConstMetric(c.cpuTotal, prometheus.GaugeValue, m.cpuTotal, m.batch, m.jobid, m.ujobid, m.step, m.task)
+		ch <- prometheus.MustNewConstMetric(c.cpuUser, prometheus.GaugeValue, m.cpuUser, m.batch, m.jobuid, m.jobgid, m.jobid, m.jobuuid, m.step, m.task)
+		ch <- prometheus.MustNewConstMetric(c.cpuSystem, prometheus.GaugeValue, m.cpuSystem, m.batch, m.jobuid, m.jobgid, m.jobid, m.jobuuid, m.step, m.task)
+		ch <- prometheus.MustNewConstMetric(c.cpuTotal, prometheus.GaugeValue, m.cpuTotal, m.batch, m.jobuid, m.jobgid, m.jobid, m.jobuuid, m.step, m.task)
 		cpus := m.cpus
 		if cpus == 0 {
 			dir := filepath.Dir(n)
@@ -146,15 +147,15 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 				cpus = metrics[filepath.Dir(dir)].cpus
 			}
 		}
-		ch <- prometheus.MustNewConstMetric(c.cpus, prometheus.GaugeValue, float64(cpus), m.batch, m.jobid, m.ujobid, m.step, m.task)
-		ch <- prometheus.MustNewConstMetric(c.memoryRSS, prometheus.GaugeValue, m.memoryRSS, m.batch, m.jobid, m.ujobid, m.step, m.task)
-		ch <- prometheus.MustNewConstMetric(c.memoryCache, prometheus.GaugeValue, m.memoryCache, m.batch, m.jobid, m.ujobid, m.step, m.task)
-		ch <- prometheus.MustNewConstMetric(c.memoryUsed, prometheus.GaugeValue, m.memoryUsed, m.batch, m.jobid, m.ujobid, m.step, m.task)
-		ch <- prometheus.MustNewConstMetric(c.memoryTotal, prometheus.GaugeValue, m.memoryTotal, m.batch, m.jobid, m.ujobid, m.step, m.task)
-		ch <- prometheus.MustNewConstMetric(c.memoryFailCount, prometheus.GaugeValue, m.memoryFailCount, m.batch, m.jobid, m.ujobid, m.step, m.task)
-		ch <- prometheus.MustNewConstMetric(c.memswUsed, prometheus.GaugeValue, m.memswUsed, m.batch, m.jobid, m.ujobid, m.step, m.task)
-		ch <- prometheus.MustNewConstMetric(c.memswTotal, prometheus.GaugeValue, m.memswTotal, m.batch, m.jobid, m.ujobid, m.step, m.task)
-		ch <- prometheus.MustNewConstMetric(c.memswFailCount, prometheus.GaugeValue, m.memswFailCount, m.batch, m.jobid, m.ujobid, m.step, m.task)
+		ch <- prometheus.MustNewConstMetric(c.cpus, prometheus.GaugeValue, float64(cpus), m.batch, m.jobuid, m.jobgid, m.jobid, m.jobuuid, m.step, m.task)
+		ch <- prometheus.MustNewConstMetric(c.memoryRSS, prometheus.GaugeValue, m.memoryRSS, m.batch, m.jobuid, m.jobgid, m.jobid, m.jobuuid, m.step, m.task)
+		ch <- prometheus.MustNewConstMetric(c.memoryCache, prometheus.GaugeValue, m.memoryCache, m.batch, m.jobuid, m.jobgid, m.jobid, m.jobuuid, m.step, m.task)
+		ch <- prometheus.MustNewConstMetric(c.memoryUsed, prometheus.GaugeValue, m.memoryUsed, m.batch, m.jobuid, m.jobgid, m.jobid, m.jobuuid, m.step, m.task)
+		ch <- prometheus.MustNewConstMetric(c.memoryTotal, prometheus.GaugeValue, m.memoryTotal, m.batch, m.jobuid, m.jobgid, m.jobid, m.jobuuid, m.step, m.task)
+		ch <- prometheus.MustNewConstMetric(c.memoryFailCount, prometheus.GaugeValue, m.memoryFailCount, m.batch, m.jobuid, m.jobgid, m.jobid, m.jobuuid, m.step, m.task)
+		ch <- prometheus.MustNewConstMetric(c.memswUsed, prometheus.GaugeValue, m.memswUsed, m.batch, m.jobuid, m.jobgid, m.jobid, m.jobuuid, m.step, m.task)
+		ch <- prometheus.MustNewConstMetric(c.memswTotal, prometheus.GaugeValue, m.memswTotal, m.batch, m.jobuid, m.jobgid, m.jobid, m.jobuuid, m.step, m.task)
+		ch <- prometheus.MustNewConstMetric(c.memswFailCount, prometheus.GaugeValue, m.memswFailCount, m.batch, m.jobuid, m.jobgid, m.jobid, m.jobuuid, m.step, m.task)
 	}
 	return nil
 }
@@ -295,11 +296,11 @@ func (c *slurmCollector) getCPUs(name string) ([]string, error) {
 	return cpus, nil
 }
 
-// Get job unique identifier from job metadata
-func (c *slurmCollector) getJobUniqueId(jobid string) string {
-	var uniqueJobId string
-	var jobUid = ""
-	var jobGid = ""
+// Get different labels of Job
+func (c *slurmCollector) getJobLabels(jobid string) (string, string, string) {
+	var jobUuid string
+	var jobUid string = ""
+	var jobGid string = ""
 	var jobNodes = ""
 	var jobWorkDir = ""
 	var slurmJobInfo = fmt.Sprintf("%s/%s", *jobStatPath, jobid)
@@ -310,33 +311,37 @@ func (c *slurmCollector) getJobUniqueId(jobid string) string {
 		} else {
 			fmt.Sscanf(string(content), "%s %s %s %s", &jobUid, &jobGid, &jobNodes, &jobWorkDir)
 		}
-		uniqueJobId = GetMD5CheckSum([]string{jobid, jobUid, jobGid, jobNodes, jobWorkDir})
+		jobUuid, err = GetUuidFromString([]string{jobid, jobUid, jobGid, jobNodes, jobWorkDir})
+		if err != nil {
+			level.Error(c.logger).Log("msg", "Failed to generate UUID for job", "jobid", jobid, "err", err)
+			jobUuid = jobid
+		}
 	}
-	return uniqueJobId
+	return jobUuid, jobUid, jobGid
 }
 
 // Get job details from cgroups v1
 func (c *slurmCollector) getInfoV1(name string, metric *CgroupMetric) {
-	var err error
+	// var err error
 	pathBase := filepath.Base(name)
 	userSlicePattern := regexp.MustCompile("^user-([0-9]+).slice$")
 	userSliceMatch := userSlicePattern.FindStringSubmatch(pathBase)
 	if len(userSliceMatch) == 2 {
 		metric.userslice = true
-		metric.uid, err = strconv.Atoi(userSliceMatch[1])
-		if err != nil {
-			level.Error(c.logger).Log("msg", "Error getting slurm job's uid number", "uid", pathBase, "err", err)
-		}
-		return
+		// metric.jobuid, err = userSliceMatch[1]
+		// if err != nil {
+		// 	level.Error(c.logger).Log("msg", "Error getting slurm job's uid number", "uid", pathBase, "err", err)
+		// }
+		// return
 	}
 	slurmPattern := regexp.MustCompile("^/slurm/uid_([0-9]+)/job_([0-9]+)(/step_([^/]+)(/task_([[0-9]+))?)?$")
 	slurmMatch := slurmPattern.FindStringSubmatch(name)
 	level.Debug(c.logger).Log("msg", "Got for match", "name", name, "len(slurmMatch)", len(slurmMatch), "slurmMatch", fmt.Sprintf("%v", slurmMatch))
 	if len(slurmMatch) >= 3 {
-		metric.uid, err = strconv.Atoi(slurmMatch[1])
-		if err != nil {
-			level.Error(c.logger).Log("msg", "Error getting slurm job's uid number", "uid", name, "err", err)
-		}
+		// metric.jobuid, err = slurmMatch[1]
+		// if err != nil {
+		// 	level.Error(c.logger).Log("msg", "Error getting slurm job's uid number", "uid", name, "err", err)
+		// }
 		metric.jobid = slurmMatch[2]
 		metric.step = slurmMatch[4]
 		metric.task = slurmMatch[6]
@@ -389,7 +394,7 @@ func (c *slurmCollector) getCgroupsV1Metrics(name string) (CgroupMetric, error) 
 		metric.cpus = len(cpus)
 	}
 	c.getInfoV1(name, &metric)
-	metric.ujobid = c.getJobUniqueId(metric.jobid)
+	metric.jobuuid, metric.jobuid, metric.jobgid = c.getJobLabels(metric.jobid)
 	return metric, nil
 }
 
@@ -409,9 +414,7 @@ func (c *slurmCollector) getInfoV2(name string, metric *CgroupMetric) {
 	// possibilities are /system.slice/slurmstepd.scope/job_211
 	//                   /system.slice/slurmstepd.scope/job_211/step_interactive
 	//                   /system.slice/slurmstepd.scope/job_211/step_extern/user/task_0
-	// we never ever get the uid
-	metric.uid = -1
-	// nor is there a userslice
+	// we dont get userslice
 	metric.userslice = false
 	slurmPattern := regexp.MustCompile("^/system.slice/slurmstepd.scope/job_([0-9]+)(/step_([^/]+)(/user/task_([[0-9]+))?)?$")
 	slurmMatch := slurmPattern.FindStringSubmatch(name)
@@ -455,6 +458,6 @@ func (c *slurmCollector) getCgroupsV2Metrics(name string) (CgroupMetric, error) 
 		metric.cpus = len(cpus)
 	}
 	c.getInfoV2(name, &metric)
-	metric.ujobid = c.getJobUniqueId(metric.jobid)
+	metric.jobuuid, metric.jobuid, metric.jobgid = c.getJobLabels(metric.jobid)
 	return metric, nil
 }
