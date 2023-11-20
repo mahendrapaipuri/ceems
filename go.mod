@@ -6,10 +6,12 @@ require (
 	github.com/alecthomas/kingpin/v2 v2.3.2
 	github.com/containerd/cgroups/v3 v3.0.2
 	github.com/go-kit/log v0.2.1
+	github.com/google/uuid v1.4.0
 	github.com/prometheus/client_golang v1.17.0
 	github.com/prometheus/common v0.45.0
 	github.com/prometheus/exporter-toolkit v0.10.0
 	github.com/prometheus/procfs v0.12.0
+	github.com/zeebo/xxh3 v1.0.2
 )
 
 require (
@@ -22,6 +24,7 @@ require (
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/jpillora/backoff v1.0.0 // indirect
+	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/matttproud/golang_protobuf_extensions/v2 v2.0.0 // indirect
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f // indirect

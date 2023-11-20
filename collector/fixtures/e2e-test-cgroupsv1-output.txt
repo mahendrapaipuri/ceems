@@ -1,15 +1,15 @@
 # HELP batchjob_cpu_system_seconds Cumulative CPU system seconds
 # TYPE batchjob_cpu_system_seconds gauge
-batchjob_cpu_system_seconds{batch="slurm",jobid="1009248",step="",task="",ujobid="557d568b88bfc87489dbea91de6da689"} 0.45
+batchjob_cpu_system_seconds{batch="slurm",jobgid="1000",jobid="1009248",jobuid="1000",jobuuid="8d4fad6d-c5e3-775b-8a8c-707e319114ec",step="",task=""} 0.45
 # HELP batchjob_cpu_total_seconds Cumulative CPU total seconds
 # TYPE batchjob_cpu_total_seconds gauge
-batchjob_cpu_total_seconds{batch="slurm",jobid="1009248",step="",task="",ujobid="557d568b88bfc87489dbea91de6da689"} 1.012410966
+batchjob_cpu_total_seconds{batch="slurm",jobgid="1000",jobid="1009248",jobuid="1000",jobuuid="8d4fad6d-c5e3-775b-8a8c-707e319114ec",step="",task=""} 1.012410966
 # HELP batchjob_cpu_user_seconds Cumulative CPU user seconds
 # TYPE batchjob_cpu_user_seconds gauge
-batchjob_cpu_user_seconds{batch="slurm",jobid="1009248",step="",task="",ujobid="557d568b88bfc87489dbea91de6da689"} 0.39
+batchjob_cpu_user_seconds{batch="slurm",jobgid="1000",jobid="1009248",jobuid="1000",jobuuid="8d4fad6d-c5e3-775b-8a8c-707e319114ec",step="",task=""} 0.39
 # HELP batchjob_cpus Number of CPUs
 # TYPE batchjob_cpus gauge
-batchjob_cpus{batch="slurm",jobid="1009248",step="",task="",ujobid="557d568b88bfc87489dbea91de6da689"} 0
+batchjob_cpus{batch="slurm",jobgid="1000",jobid="1009248",jobuid="1000",jobuuid="8d4fad6d-c5e3-775b-8a8c-707e319114ec",step="",task=""} 0
 # HELP batchjob_exporter_build_info A metric with a constant '1' value labeled by version, revision, branch, goversion from which batchjob_exporter was built, and the goos and goarch for the build.
 # TYPE batchjob_exporter_build_info gauge
 # HELP batchjob_ipmi_dcmi_watts_total Current Power consumption in watts
@@ -17,28 +17,28 @@ batchjob_cpus{batch="slurm",jobid="1009248",step="",task="",ujobid="557d568b88bf
 batchjob_ipmi_dcmi_watts_total 332
 # HELP batchjob_memory_cache_bytes Memory cache used in bytes
 # TYPE batchjob_memory_cache_bytes gauge
-batchjob_memory_cache_bytes{batch="slurm",jobid="1009248",step="",task="",ujobid="557d568b88bfc87489dbea91de6da689"} 2.1086208e+07
+batchjob_memory_cache_bytes{batch="slurm",jobgid="1000",jobid="1009248",jobuid="1000",jobuuid="8d4fad6d-c5e3-775b-8a8c-707e319114ec",step="",task=""} 2.1086208e+07
 # HELP batchjob_memory_fail_count Memory fail count
 # TYPE batchjob_memory_fail_count gauge
-batchjob_memory_fail_count{batch="slurm",jobid="1009248",step="",task="",ujobid="557d568b88bfc87489dbea91de6da689"} 0
+batchjob_memory_fail_count{batch="slurm",jobgid="1000",jobid="1009248",jobuid="1000",jobuuid="8d4fad6d-c5e3-775b-8a8c-707e319114ec",step="",task=""} 0
 # HELP batchjob_memory_rss_bytes Memory RSS used in bytes
 # TYPE batchjob_memory_rss_bytes gauge
-batchjob_memory_rss_bytes{batch="slurm",jobid="1009248",step="",task="",ujobid="557d568b88bfc87489dbea91de6da689"} 1.0407936e+07
+batchjob_memory_rss_bytes{batch="slurm",jobgid="1000",jobid="1009248",jobuid="1000",jobuuid="8d4fad6d-c5e3-775b-8a8c-707e319114ec",step="",task=""} 1.0407936e+07
 # HELP batchjob_memory_total_bytes Memory total in bytes
 # TYPE batchjob_memory_total_bytes gauge
-batchjob_memory_total_bytes{batch="slurm",jobid="1009248",step="",task="",ujobid="557d568b88bfc87489dbea91de6da689"} 2.01362030592e+11
+batchjob_memory_total_bytes{batch="slurm",jobgid="1000",jobid="1009248",jobuid="1000",jobuuid="8d4fad6d-c5e3-775b-8a8c-707e319114ec",step="",task=""} 2.01362030592e+11
 # HELP batchjob_memory_used_bytes Memory used in bytes
 # TYPE batchjob_memory_used_bytes gauge
-batchjob_memory_used_bytes{batch="slurm",jobid="1009248",step="",task="",ujobid="557d568b88bfc87489dbea91de6da689"} 4.0194048e+07
+batchjob_memory_used_bytes{batch="slurm",jobgid="1000",jobid="1009248",jobuid="1000",jobuuid="8d4fad6d-c5e3-775b-8a8c-707e319114ec",step="",task=""} 4.0194048e+07
 # HELP batchjob_memsw_fail_count Swap fail count
 # TYPE batchjob_memsw_fail_count gauge
-batchjob_memsw_fail_count{batch="slurm",jobid="1009248",step="",task="",ujobid="557d568b88bfc87489dbea91de6da689"} 0
+batchjob_memsw_fail_count{batch="slurm",jobgid="1000",jobid="1009248",jobuid="1000",jobuuid="8d4fad6d-c5e3-775b-8a8c-707e319114ec",step="",task=""} 0
 # HELP batchjob_memsw_total_bytes Swap total in bytes
 # TYPE batchjob_memsw_total_bytes gauge
-batchjob_memsw_total_bytes{batch="slurm",jobid="1009248",step="",task="",ujobid="557d568b88bfc87489dbea91de6da689"} 9.223372036854772e+18
+batchjob_memsw_total_bytes{batch="slurm",jobgid="1000",jobid="1009248",jobuid="1000",jobuuid="8d4fad6d-c5e3-775b-8a8c-707e319114ec",step="",task=""} 9.223372036854772e+18
 # HELP batchjob_memsw_used_bytes Swap used in bytes
 # TYPE batchjob_memsw_used_bytes gauge
-batchjob_memsw_used_bytes{batch="slurm",jobid="1009248",step="",task="",ujobid="557d568b88bfc87489dbea91de6da689"} 4.032512e+07
+batchjob_memsw_used_bytes{batch="slurm",jobgid="1000",jobid="1009248",jobuid="1000",jobuuid="8d4fad6d-c5e3-775b-8a8c-707e319114ec",step="",task=""} 4.032512e+07
 # HELP batchjob_nvidia_gpu_jobid Batch Job ID of current nVIDIA GPU
 # TYPE batchjob_nvidia_gpu_jobid gauge
 batchjob_nvidia_gpu_jobid{uuid="GPU-61a65011-6571-a6d2-5ab8-66cbb6f7f9c3"} 11000

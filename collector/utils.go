@@ -1,8 +1,6 @@
 package collector
 
 import (
-	"crypto/md5"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,6 +11,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/zeebo/xxh3"
 )
 
 const (
@@ -90,9 +91,15 @@ func GetRteEnergyMixData() (float64, error) {
 	return float64(fields[0].TauxCo2), nil
 }
 
-// Get md5 checksum for given slice of strings
-func GetMD5CheckSum(stringSlice []string) string {
+// Get a UUID5 for given slice of strings
+func GetUuidFromString(stringSlice []string) (string, error) {
 	s := strings.Join(stringSlice[:], ",")
-	hash := md5.Sum([]byte(s))
-	return hex.EncodeToString(hash[:])
+	h := xxh3.HashString128(s).Bytes()
+	uuid, err := uuid.FromBytes(h[:])
+	// hash := md5.Sum([]byte(s))
+	// md5string := hex.EncodeToString(hash[:])
+	// // generate the UUID from the
+	// // first 16 bytes of the MD5 hash
+	// uuid, err := uuid.FromBytes([]byte(md5string[0:16]))
+	return uuid.String(), err
 }

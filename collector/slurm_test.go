@@ -14,7 +14,7 @@ import (
 var expectedSlurmMetrics CgroupMetric
 
 func TestCgroupsV2SlurmJobMetrics(t *testing.T) {
-	if _, err := kingpin.CommandLine.Parse([]string{"--path.cgroupfs", "fixtures/sys/fs/cgroup"}); err != nil {
+	if _, err := kingpin.CommandLine.Parse([]string{"--path.cgroupfs", "fixtures/sys/fs/cgroup", "--collector.slurm.unique.jobid", "--collector.slurm.job.stat.path", "fixtures/slurmjobstat"}); err != nil {
 		t.Fatal(err)
 	}
 	c := slurmCollector{cgroupV2: true, logger: log.NewNopLogger()}
@@ -34,8 +34,12 @@ func TestCgroupsV2SlurmJobMetrics(t *testing.T) {
 		memswTotal:      0,
 		memswFailCount:  0,
 		userslice:       false,
-		uid:             -1,
+		jobuid:          "1000",
+		jobgid:          "1000",
 		jobid:           "1009248",
+		jobuuid:         "8d4fad6d-c5e3-775b-8a8c-707e319114ec",
+		step:            "",
+		task:            "",
 		batch:           "slurm",
 		err:             false}
 	if err != nil {
@@ -47,7 +51,7 @@ func TestCgroupsV2SlurmJobMetrics(t *testing.T) {
 }
 
 func TestCgroupsV1SlurmJobMetrics(t *testing.T) {
-	if _, err := kingpin.CommandLine.Parse([]string{"--path.cgroupfs", "fixtures/sys/fs/cgroup"}); err != nil {
+	if _, err := kingpin.CommandLine.Parse([]string{"--path.cgroupfs", "fixtures/sys/fs/cgroup", "--collector.slurm.unique.jobid", "--collector.slurm.job.stat.path", "fixtures/slurmjobstat"}); err != nil {
 		t.Fatal(err)
 	}
 	c := slurmCollector{cgroupV2: false, logger: log.NewNopLogger()}
@@ -67,8 +71,10 @@ func TestCgroupsV1SlurmJobMetrics(t *testing.T) {
 		memswTotal:      9.223372036854772e+18,
 		memswFailCount:  0,
 		userslice:       false,
-		uid:             1000,
+		jobuid:          "1000",
+		jobgid:          "1000",
 		jobid:           "1009248",
+		jobuuid:         "8d4fad6d-c5e3-775b-8a8c-707e319114ec",
 		step:            "",
 		task:            "",
 		batch:           "slurm",
