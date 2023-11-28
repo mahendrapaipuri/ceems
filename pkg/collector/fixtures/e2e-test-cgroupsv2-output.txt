@@ -45,8 +45,8 @@ batchjob_nvidia_gpu_jobid{uuid="GPU-61a65011-6571-a6d2-5ab8-66cbb6f7f9c3"} 11000
 batchjob_nvidia_gpu_jobid{uuid="GPU-f124aa59-d406-d45b-9481-8fcd694e6c9e"} 10000
 # HELP batchjob_rapl_package_joules_total Current RAPL package value in joules
 # TYPE batchjob_rapl_package_joules_total counter
-batchjob_rapl_package_joules_total{index="0",path="collector/fixtures/sys/class/powercap/intel-rapl:0"} 258218.293244
-batchjob_rapl_package_joules_total{index="1",path="collector/fixtures/sys/class/powercap/intel-rapl:1"} 130570.505826
+batchjob_rapl_package_joules_total{index="0",path="pkg/collector/fixtures/sys/class/powercap/intel-rapl:0"} 258218.293244
+batchjob_rapl_package_joules_total{index="1",path="pkg/collector/fixtures/sys/class/powercap/intel-rapl:1"} 130570.505826
 # HELP batchjob_scrape_collector_duration_seconds batchjob_exporter: Duration of a collector scrape.
 # TYPE batchjob_scrape_collector_duration_seconds gauge
 # HELP batchjob_scrape_collector_success batchjob_exporter: Whether a collector succeeded.

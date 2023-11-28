@@ -21,7 +21,7 @@ vendor/
 go.work
 
 # Ignore fixtures
-collector/fixtures/sys
+pkg/collector/fixtures/sys
 
 # Ignore scripts
 run.sh
@@ -34,3 +34,8 @@ run.sh
 
 # Ignore binaries
 /bin
+
+# Ignore test files
+*.db
+*.prof
+lasttimestamp

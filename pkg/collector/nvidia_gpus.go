@@ -12,6 +12,8 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
+
+	utils "github.com/mahendrapaipuri/batchjob_monitoring/pkg/utils"
 )
 
 const nvidiaGpuJobMapCollectorSubsystem = "nvidia_gpu"
@@ -50,7 +52,7 @@ func init() {
 // NOTE: Hoping this command returns MIG devices too
 func getAllDevices(logger log.Logger) ([]Device, error) {
 	args := []string{"--query-gpu=name,uuid", "--format=csv"}
-	nvidiaSmiOutput, err := Execute("nvidia-smi", args, logger)
+	nvidiaSmiOutput, err := utils.Execute("nvidia-smi", args, logger)
 	if err != nil {
 		level.Error(logger).Log("msg", "nvidia-smi command to get list of devices failed", "err", err)
 		return nil, err

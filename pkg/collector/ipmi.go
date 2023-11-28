@@ -16,6 +16,8 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
+
+	utils "github.com/mahendrapaipuri/batchjob_monitoring/pkg/utils"
 )
 
 const ipmiCollectorSubsystem = "ipmi_dcmi"
@@ -71,7 +73,7 @@ func getValue(ipmiOutput []byte, regex *regexp.Regexp) (string, error) {
 // Update implements Collector and exposes IPMI DCMI power related metrics.
 func (c *impiCollector) Update(ch chan<- prometheus.Metric) error {
 	args := []string{""}
-	stdOut, err := Execute(*ipmiDcmiWrapperExec, args, c.logger)
+	stdOut, err := utils.Execute(*ipmiDcmiWrapperExec, args, c.logger)
 	if err != nil {
 		return err
 	}

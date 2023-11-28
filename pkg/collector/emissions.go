@@ -13,6 +13,8 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
+
+	utils "github.com/mahendrapaipuri/batchjob_monitoring/pkg/utils"
 )
 
 const emissionsCollectorSubsystem = "emissions"
@@ -30,7 +32,7 @@ var (
 	countryCode            = kingpin.Flag("collector.emissions.country.code", "ISO 3166-1 alpha-3 Country code. OWID energy data [https://github.com/owid/energy-data] estimated constant emission factor is used for all countries except for France. A real time emission factor will be used for France from RTE eCO2 mix [https://www.rte-france.com/en/eco2mix/co2-emissions] data.").Default("FRA").String()
 	globalEnergyMixDataUrl = "https://raw.githubusercontent.com/mlco2/codecarbon/master/codecarbon/data/private_infra/global_energy_mix.json"
 	globalEmissionFactor   = 475
-	getRteEnergyMixData    = GetRteEnergyMixData
+	getRteEnergyMixData    = utils.GetRteEnergyMixData
 )
 
 func init() {
