@@ -1,0 +1,6 @@
+#!/bin/bash
+
+echo """JobID|Cluster|Partition|Account|Group|GID|User|UID|Submit|Eligible|Start|End|Elapsed|ElapsedRaw|ExitCode|State|NNodes|NCPUS|ReqCPUS|ReqMem|ReqTRES|Timelimit|NodeList|JobName|WorkDir
+1479763|test|part1|acc1|grp|1000|usr|1000|2023-02-21T14:37:02|2023-02-21T14:37:02|2023-02-21T14:37:07|2023-02-21T15:26:29|00:49:22|2962|0:0|CANCELLED by 302137|1|2|1|4G|cpu=1,mem=4G,node=1|01:00:00|compute-0|test_script2|/home/usr
+1481508|test|part1|acc1|grp|1000|usr|1000|2023-02-21T15:48:20|2023-02-21T15:48:20|2023-02-21T15:49:06|2023-02-21T15:57:23|00:08:17|497|0:0|CANCELLED by 302137|2|40|40|80G|cpu=40,mem=80G,node=2|01:00:00|compute-[0-2]|test_script2|/home/usr
+"""

@@ -16,9 +16,11 @@ cgroups_mode=$([ $(stat -fc %T /sys/fs/cgroup/) = "cgroup2fs" ] && echo "unified
 echo "cgroups mode detected is ${cgroups_mode}"
 
 case "${cgroups_mode}" in
-  legacy|hybrid) fixture='pkg/collector/fixtures/e2e-test-cgroupsv1-output.txt' ;;
-  *) fixture='pkg/collector/fixtures/e2e-test-cgroupsv2-output.txt' ;;
+  legacy|hybrid) exporter_fixture='pkg/collector/fixtures/e2e-test-cgroupsv1-output.txt' ;;
+  *) exporter_fixture='pkg/collector/fixtures/e2e-test-cgroupsv2-output.txt' ;;
 esac
+
+jobstats_fixture='pkg/jobstats/fixtures/jobstats.dump'
 
 keep=0; update=0; verbose=0
 while getopts 'hkuv' opt
@@ -37,7 +39,7 @@ do
     *)
       echo "Usage: $0 [-k] [-u] [-v]"
       echo "  -k: keep temporary files and leave batchjob_exporter running"
-      echo "  -u: update fixture"
+      echo "  -u: update fixtures"
       echo "  -v: verbose output"
       exit 1
       ;;
@@ -69,13 +71,15 @@ finish() {
     cat << EOF >&2
 LOG =====================
 $(cat "${tmpdir}/batchjob_exporter.log")
+$(cat "${tmpdir}/batchjob_stats.log")
 =========================
 EOF
   fi
 
   if [ ${update} -ne 0 ]
   then
-    cp "${tmpdir}/e2e-test-output.txt" "${fixture}"
+    cp "${tmpdir}/e2e-test-output.txt" "${exporter_fixture}"
+    cp "${tmpdir}/output.dump" "${jobstats_fixture}"
   fi
 
   if [ ${keep} -eq 0 ]
@@ -108,5 +112,28 @@ sleep 1
 get "127.0.0.1:${port}/metrics" | grep -E -v "${skip_re}" > "${tmpdir}/e2e-test-output.txt"
 
 diff -u \
-  "${fixture}" \
-  "${tmpdir}/e2e-test-output.txt" 
+  "${exporter_fixture}" \
+  "${tmpdir}/e2e-test-output.txt"
+
+if [ ! -x ./bin/batchjob_stats ]
+then
+    echo './bin/batchjob_stats not found. Consider running `go build` first.' >&2
+    exit 1
+fi
+
+./bin/batchjob_stats \
+  --slurm.sacct.path="pkg/jobstats/fixtures/sacct" \
+  --path.data="${tmpdir}" \
+  --log.level="debug" > "${tmpdir}/batchjob_stats.log" 2>&1
+
+if ! command -v sqlite3 &> /dev/null
+then
+    echo "sqlite3 could not be found. Skipping batchjob_stats test..."
+    exit 0
+fi
+
+sqlite3 "${tmpdir}/jobstats.db" .dump >"${tmpdir}/output.dump"
+
+diff -u \
+  "${jobstats_fixture}" \
+  "${tmpdir}/output.dump"
