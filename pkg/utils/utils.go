@@ -30,7 +30,7 @@ const (
 )
 
 var (
-	NODENAME_REGEXP = regexp.MustCompile(`(\[\d+\-\d+\])`)
+	nodelistRegExp = regexp.MustCompile(`(\[\d+\-\d+\])`)
 )
 
 // Execute command and return stdout/stderr
@@ -75,7 +75,7 @@ func NodelistParser(nodelistExp string) []string {
 	for _, nodeexp := range strings.Split(nodelistExp, ",") {
 		// If it contains "[", it means they are range of nodes
 		if strings.Contains(nodeexp, "[") {
-			matches := NODENAME_REGEXP.FindAllString(nodeexp, -1)
+			matches := nodelistRegExp.FindAllString(nodeexp, -1)
 			if len(matches) == 0 {
 				continue
 			}
