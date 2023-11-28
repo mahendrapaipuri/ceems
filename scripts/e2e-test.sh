@@ -16,8 +16,8 @@ cgroups_mode=$([ $(stat -fc %T /sys/fs/cgroup/) = "cgroup2fs" ] && echo "unified
 echo "cgroups mode detected is ${cgroups_mode}"
 
 case "${cgroups_mode}" in
-  legacy|hybrid) fixture='collector/fixtures/e2e-test-cgroupsv1-output.txt' ;;
-  *) fixture='collector/fixtures/e2e-test-cgroupsv2-output.txt' ;;
+  legacy|hybrid) fixture='pkg/collector/fixtures/e2e-test-cgroupsv1-output.txt' ;;
+  *) fixture='pkg/collector/fixtures/e2e-test-cgroupsv2-output.txt' ;;
 esac
 
 keep=0; update=0; verbose=0
@@ -50,14 +50,14 @@ then
     exit 1
 fi
 
-PATH=$PWD/collector/fixtures:$PATH ./bin/batchjob_exporter \
-  --path.sysfs="collector/fixtures/sys" \
-  --path.cgroupfs="collector/fixtures/sys/fs/cgroup" \
+PATH=$PWD/pkg/collector/fixtures:$PATH ./bin/batchjob_exporter \
+  --path.sysfs="pkg/collector/fixtures/sys" \
+  --path.cgroupfs="pkg/collector/fixtures/sys/fs/cgroup" \
   --collector.slurm.unique.jobid \
-  --collector.slurm.job.stat.path="collector/fixtures/slurmjobstat" \
-  --collector.ipmi.dcmi.wrapper.path="collector/fixtures/ipmi-dcmi-wrapper.sh" \
+  --collector.slurm.job.stat.path="pkg/collector/fixtures/slurmjobstat" \
+  --collector.ipmi.dcmi.wrapper.path="pkg/collector/fixtures/ipmi-dcmi-wrapper.sh" \
   --collector.nvidia_gpu \
-  --collector.nvidia.gpu.stat.path="collector/fixtures/gpustat" \
+  --collector.nvidia.gpu.stat.path="pkg/collector/fixtures/gpustat" \
   --web.listen-address "127.0.0.1:${port}" \
   --log.level="debug" > "${tmpdir}/batchjob_exporter.log" 2>&1 &
 

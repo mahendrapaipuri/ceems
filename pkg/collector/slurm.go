@@ -18,6 +18,8 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
+
+	utils "github.com/mahendrapaipuri/batchjob_monitoring/pkg/utils"
 )
 
 const slurmCollectorSubsystem = "slurm_job"
@@ -311,7 +313,7 @@ func (c *slurmCollector) getJobLabels(jobid string) (string, string, string) {
 		} else {
 			fmt.Sscanf(string(content), "%s %s %s %s", &jobUid, &jobGid, &jobNodes, &jobWorkDir)
 		}
-		jobUuid, err = GetUuidFromString([]string{jobid, jobUid, jobGid, jobNodes, jobWorkDir})
+		jobUuid, err = utils.GetUuidFromString([]string{jobid, jobUid, jobGid, jobNodes, jobWorkDir})
 		if err != nil {
 			level.Error(c.logger).Log("msg", "Failed to generate UUID for job", "jobid", jobid, "err", err)
 			jobUuid = jobid
@@ -433,7 +435,7 @@ func (c *slurmCollector) getCgroupsV2Metrics(name string) (CgroupMetric, error) 
 	level.Debug(c.logger).Log("msg", "Loading cgroup v2", "path", name)
 	// Files to parse out of the cgroup
 	controllers := []string{"cpu.stat", "memory.current", "memory.events", "memory.max", "memory.stat"}
-	data, err := LoadCgroupsV2Metrics(name, controllers)
+	data, err := utils.LoadCgroupsV2Metrics(name, *cgroupfsPath, controllers)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "Failed to load cgroups", "path", name, "err", err)
 		metric.err = true

@@ -59,8 +59,8 @@ endif
 
 PROMU := $(FIRST_GOPATH)/bin/promu --config $(PROMU_CONF)
 
-e2e-cgroupsv2-out = collector/fixtures/e2e-test-cgroupsv2-output.txt
-e2e-cgroupsv1-out = collector/fixtures/e2e-test-cgroupsv1-output.txt
+e2e-cgroupsv2-out = pkg/collector/fixtures/e2e-test-cgroupsv2-output.txt
+e2e-cgroupsv1-out = pkg/collector/fixtures/e2e-test-cgroupsv1-output.txt
 
 ifeq ($(CGROUPS_MODE), unified)
 	e2e-out = $(e2e-cgroupsv2-out)
@@ -87,12 +87,12 @@ $(eval $(call goarch_pair,mips64el,mipsel))
 all:: vet checkmetrics checkrules common-all $(cross-test) $(test-docker) $(test-e2e)
 
 .PHONY: test
-test: collector/fixtures/sys/.unpacked 
+test: pkg/collector/fixtures/sys/.unpacked 
 	@echo ">> running tests"
 	$(GO) test -short $(test-flags) $(pkgs)
 
 .PHONY: test-32bit
-test-32bit: collector/fixtures/sys/.unpacked 
+test-32bit: pkg/collector/fixtures/sys/.unpacked 
 	@echo ">> running tests in 32-bit mode"
 	@env GOARCH=$(GOARCH_CROSS) $(GO) test $(pkgs)
 
@@ -107,11 +107,11 @@ skip-test-32bit:
 	touch $@
 
 update_fixtures:
-	rm -vf collector/fixtures/sys/.unpacked
-	./scripts/ttar -C collector/fixtures -c -f collector/fixtures/sys.ttar sys
+	rm -vf pkg/collector/fixtures/sys/.unpacked
+	./scripts/ttar -C pkg/collector/fixtures -c -f pkg/collector/fixtures/sys.ttar sys
 
 .PHONY: test-e2e
-test-e2e: build collector/fixtures/sys/.unpacked 
+test-e2e: build pkg/collector/fixtures/sys/.unpacked 
 	@echo ">> running end-to-end tests"
 	./scripts/e2e-test.sh
 

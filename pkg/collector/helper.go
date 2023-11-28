@@ -1,13 +1,9 @@
 package collector
 
 import (
-	"fmt"
 	"os"
-	"os/exec"
-	"regexp"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
+	"regexp"
 )
 
 var (
@@ -36,14 +32,4 @@ func fileExists(filename string) bool {
 // metricName does not begin with a digit.
 func SanitizeMetricName(metricName string) string {
 	return metricNameRegex.ReplaceAllString(metricName, "_")
-}
-
-// Execute command and return stdout/stderr
-func Execute(cmd string, args []string, logger log.Logger) ([]byte, error) {
-	level.Debug(logger).Log("msg", "Executing", "command", cmd, "args", fmt.Sprintf("%+v", args))
-	out, err := exec.Command(cmd, args...).CombinedOutput()
-	if err != nil {
-		err = fmt.Errorf("error running %s: %s", cmd, err)
-	}
-	return out, err
 }
