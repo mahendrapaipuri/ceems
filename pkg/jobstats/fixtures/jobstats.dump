@@ -4,7 +4,6 @@ CREATE TABLE jobs (
 		"id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,		
 				"Jobid" TEXT,
 		"Jobuuid" TEXT,
-		"Cluster" TEXT,
 		"Partition" TEXT,
 		"Account" TEXT,
 		"Grp" TEXT,
@@ -12,26 +11,18 @@ CREATE TABLE jobs (
 		"Usr" TEXT,
 		"Uid" TEXT,
 		"Submit" TEXT,
-		"Eligible" TEXT,
 		"Start" TEXT,
 		"End" TEXT,
 		"Elapsed" TEXT,
-		"Elapsedraw" TEXT,
 		"Exitcode" TEXT,
 		"State" TEXT,
 		"Nnodes" TEXT,
-		"Ncpus" TEXT,
-		"Reqcpus" TEXT,
-		"Reqmem" TEXT,
-		"Reqtres" TEXT,
-		"Timelimit" TEXT,
 		"Nodelist" TEXT,
-		"NodelistExp" TEXT,
-		"Jobname" TEXT,
-		"Workdir" TEXT
+		"NodelistExp" TEXT
 	  );
-INSERT INTO jobs VALUES(1,'1479763','d4b98df4-e636-ea14-59ff-37db752e6c30','test','part1','acc1','grp','1000','usr','1000','2023-02-21T14:37:02','2023-02-21T14:37:02','2023-02-21T14:37:07','2023-02-21T15:26:29','00:49:22','2962','0:0','CANCELLED by 302137','1','2','1','4G','cpu=1,mem=4G,node=1','01:00:00','compute-0','compute-0','test_script2','/home/usr');
-INSERT INTO jobs VALUES(2,'1481508','44cbb62d-db8f-c0c5-e123-76766afbd190','test','part1','acc1','grp','1000','usr','1000','2023-02-21T15:48:20','2023-02-21T15:48:20','2023-02-21T15:49:06','2023-02-21T15:57:23','00:08:17','497','0:0','CANCELLED by 302137','2','40','40','80G','cpu=40,mem=80G,node=2','01:00:00','compute-[0-2]','compute-0|compute-1|compute-2','test_script2','/home/usr');
+INSERT INTO jobs VALUES(1,'1479763','aaaf154c-e784-9e49-2155-4aa52462782a','part1','acc1','grp','1000','usr','1000','2023-02-21T14:37:02','2023-02-21T14:37:07','2023-02-21T15:26:29','00:49:22','0:0','CANCELLED by 1000','1','compute-0','compute-0');
+INSERT INTO jobs VALUES(2,'1481508','69683fe8-5d89-9ec5-4b4f-8404c7cc37f2','part1','acc1','grp','1000','usr','1000','2023-02-21T15:48:20','2023-02-21T15:49:06','2023-02-21T15:57:23','00:08:17','0:0','CANCELLED by 1000','2','compute-[0-2]','compute-0|compute-1|compute-2');
 DELETE FROM sqlite_sequence;
 INSERT INTO sqlite_sequence VALUES('jobs',2);
+CREATE INDEX i1 ON jobs (Usr,Account,Start);
 COMMIT;
