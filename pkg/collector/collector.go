@@ -44,7 +44,11 @@ var (
 	forcedCollectors       = map[string]bool{} // collectors which have been explicitly enabled or disabled
 )
 
-func registerCollector(collector string, isDefaultEnabled bool, factory func(logger log.Logger) (Collector, error)) {
+func registerCollector(
+	collector string,
+	isDefaultEnabled bool,
+	factory func(logger log.Logger) (Collector, error),
+) {
 	var helpDefaultState string
 	if isDefaultEnabled {
 		helpDefaultState = "enabled"
@@ -56,7 +60,10 @@ func registerCollector(collector string, isDefaultEnabled bool, factory func(log
 	flagHelp := fmt.Sprintf("Enable the %s collector (default: %s).", collector, helpDefaultState)
 	defaultValue := fmt.Sprintf("%v", isDefaultEnabled)
 
-	flag := kingpin.Flag(flagName, flagHelp).Default(defaultValue).Action(collectorFlagAction(collector)).Bool()
+	flag := kingpin.Flag(flagName, flagHelp).
+		Default(defaultValue).
+		Action(collectorFlagAction(collector)).
+		Bool()
 	collectorState[collector] = flag
 
 	factories[collector] = factory
@@ -151,7 +158,8 @@ func execute(name string, c Collector, ch chan<- prometheus.Metric, logger log.L
 
 	if err != nil {
 		if IsNoDataError(err) {
-			level.Debug(logger).Log("msg", "collector returned no data", "name", name, "duration_seconds", duration.Seconds(), "err", err)
+			level.Debug(logger).
+				Log("msg", "collector returned no data", "name", name, "duration_seconds", duration.Seconds(), "err", err)
 		} else {
 			level.Error(logger).Log("msg", "collector failed", "name", name, "duration_seconds", duration.Seconds(), "err", err)
 		}

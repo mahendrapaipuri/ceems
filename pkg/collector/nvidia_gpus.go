@@ -19,7 +19,9 @@ import (
 const nvidiaGpuJobMapCollectorSubsystem = "nvidia_gpu"
 
 var (
-	gpuStatPath = kingpin.Flag("collector.nvidia.gpu.stat.path", "Path to gpustat file that maps GPU ordinals to job IDs.").Default("/run/gpustat").String()
+	gpuStatPath = kingpin.Flag("collector.nvidia.gpu.stat.path", "Path to gpustat file that maps GPU ordinals to job IDs.").
+		Default("/run/gpustat").
+		String()
 )
 
 type Device struct {
@@ -35,7 +37,11 @@ type nvidiaGpuJobMapCollector struct {
 }
 
 func init() {
-	registerCollector(nvidiaGpuJobMapCollectorSubsystem, defaultDisabled, NewNvidiaGpuJobMapCollector)
+	registerCollector(
+		nvidiaGpuJobMapCollectorSubsystem,
+		defaultDisabled,
+		NewNvidiaGpuJobMapCollector,
+	)
 }
 
 // Get all physical or MIG devices using nvidia-smi command
@@ -54,7 +60,8 @@ func getAllDevices(logger log.Logger) ([]Device, error) {
 	args := []string{"--query-gpu=name,uuid", "--format=csv"}
 	nvidiaSmiOutput, err := utils.Execute("nvidia-smi", args, logger)
 	if err != nil {
-		level.Error(logger).Log("msg", "nvidia-smi command to get list of devices failed", "err", err)
+		level.Error(logger).
+			Log("msg", "nvidia-smi command to get list of devices failed", "err", err)
 		return nil, err
 	}
 	allDevices := []Device{}
@@ -65,7 +72,8 @@ func getAllDevices(logger log.Logger) ([]Device, error) {
 		}
 		devDetails := strings.Split(line, ",")
 		if len(devDetails) < 2 {
-			level.Error(logger).Log("msg", "Cannot parse output from nvidia-smi command", "output", line)
+			level.Error(logger).
+				Log("msg", "Cannot parse output from nvidia-smi command", "output", line)
 			continue
 		}
 		devName := strings.TrimSpace(devDetails[0])
@@ -74,7 +82,8 @@ func getAllDevices(logger log.Logger) ([]Device, error) {
 		if strings.HasPrefix(devUuid, "MIG") {
 			isMig = true
 		}
-		level.Debug(logger).Log("msg", "Found nVIDIA GPU", "name", devName, "UUID", devUuid, "isMig:", isMig)
+		level.Debug(logger).
+			Log("msg", "Found nVIDIA GPU", "name", devName, "UUID", devUuid, "isMig:", isMig)
 		allDevices = append(allDevices, Device{name: devName, uuid: devUuid, isMig: isMig})
 	}
 	return allDevices, nil
@@ -116,7 +125,8 @@ func (c *nvidiaGpuJobMapCollector) getJobId() (map[string]float64, error) {
 		if _, err := os.Stat(slurmInfo); err == nil {
 			content, err := os.ReadFile(slurmInfo)
 			if err != nil {
-				level.Error(c.logger).Log("msg", "Failed to get job ID for GPU", "name", dev.uuid, "err", err)
+				level.Error(c.logger).
+					Log("msg", "Failed to get job ID for GPU", "name", dev.uuid, "err", err)
 				gpuJobMapper[dev.uuid] = float64(0)
 			}
 			fmt.Sscanf(string(content), "%d", &jobId)

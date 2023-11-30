@@ -32,7 +32,9 @@ func init() {
 }
 
 var (
-	raplZoneLabel = kingpin.Flag("collector.rapl.enable-zone-label", "Enables RAPL zone labels").Default("false").Bool()
+	raplZoneLabel = kingpin.Flag("collector.rapl.enable-zone-label", "Enables RAPL zone labels").
+		Default("false").
+		Bool()
 )
 
 // NewRaplCollector returns a new Collector exposing RAPL metrics.
@@ -63,7 +65,8 @@ func (c *raplCollector) Update(ch chan<- prometheus.Metric) error {
 	zones, err := sysfs.GetRaplZones(c.fs)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			level.Debug(c.logger).Log("msg", "Platform doesn't have powercap files present", "err", err)
+			level.Debug(c.logger).
+				Log("msg", "Platform doesn't have powercap files present", "err", err)
 			return ErrNoData
 		}
 		if errors.Is(err, os.ErrPermission) {
@@ -77,7 +80,8 @@ func (c *raplCollector) Update(ch chan<- prometheus.Metric) error {
 		microJoules, err := rz.GetEnergyMicrojoules()
 		if err != nil {
 			if errors.Is(err, os.ErrPermission) {
-				level.Debug(c.logger).Log("msg", "Can't access energy_uj file", "zone", rz, "err", err)
+				level.Debug(c.logger).
+					Log("msg", "Can't access energy_uj file", "zone", rz, "err", err)
 				return ErrNoData
 			}
 			return err
