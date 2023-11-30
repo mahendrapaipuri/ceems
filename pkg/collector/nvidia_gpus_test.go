@@ -25,9 +25,17 @@ func TestNvidiaJobGpuMap(t *testing.T) {
 	c := nvidiaGpuJobMapCollector{devices: devices, logger: log.NewNopLogger()}
 	gpuJobMapper, _ := c.getJobId()
 	if gpuJobMapper["GPU-f124aa59-d406-d45b-9481-8fcd694e6c9e"] != 10000 {
-		t.Fatalf("Expected Job ID is %d: \nGot %f", 10000, gpuJobMapper["GPU-f124aa59-d406-d45b-9481-8fcd694e6c9e"])
+		t.Fatalf(
+			"Expected Job ID is %d: \nGot %f",
+			10000,
+			gpuJobMapper["GPU-f124aa59-d406-d45b-9481-8fcd694e6c9e"],
+		)
 	}
 	if gpuJobMapper["GPU-61a65011-6571-a6d2-5ab8-66cbb6f7f9c3"] != 11000 {
-		t.Fatalf("Expected Job ID is %d: \nGot %f", 11000, gpuJobMapper["GPU-61a65011-6571-a6d2-5ab8-66cbb6f7f9c3"])
+		t.Fatalf(
+			"Expected Job ID is %d: \nGot %f",
+			11000,
+			gpuJobMapper["GPU-61a65011-6571-a6d2-5ab8-66cbb6f7f9c3"],
+		)
 	}
 }

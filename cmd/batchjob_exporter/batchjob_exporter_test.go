@@ -27,7 +27,10 @@ func TestFileDescriptorLeak(t *testing.T) {
 	}
 	fs, err := procfs.NewDefaultFS()
 	if err != nil {
-		t.Skipf("proc filesystem is not available, but currently required to read number of open file descriptors: %s", err)
+		t.Skipf(
+			"proc filesystem is not available, but currently required to read number of open file descriptors: %s",
+			err,
+		)
 	}
 	if _, err := fs.Stat(); err != nil {
 		t.Errorf("unable to read process stats: %s", err)
@@ -56,7 +59,11 @@ func TestFileDescriptorLeak(t *testing.T) {
 			return err
 		}
 		if want, have := len(fdsBefore), len(fdsAfter); want != have {
-			return fmt.Errorf("want %d open file descriptors after metrics scrape, have %d", want, have)
+			return fmt.Errorf(
+				"want %d open file descriptors after metrics scrape, have %d",
+				want,
+				have,
+			)
 		}
 		return nil
 	}

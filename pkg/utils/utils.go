@@ -105,7 +105,11 @@ func NodelistParser(nodelistExp string) []string {
 }
 
 // Load cgroups v2 metrics from a given path
-func LoadCgroupsV2Metrics(name string, cgroupfsPath string, controllers []string) (map[string]float64, error) {
+func LoadCgroupsV2Metrics(
+	name string,
+	cgroupfsPath string,
+	controllers []string,
+) (map[string]float64, error) {
 	data := make(map[string]float64)
 
 	for _, fName := range controllers {
@@ -148,10 +152,18 @@ func GetRteEnergyMixData() (float64, error) {
 	params.Add("start", "0")
 	params.Add("rows", "1")
 	params.Add("sort", "date_heure")
-	params.Add("q", fmt.Sprintf("date_heure:[%s TO #now()] AND NOT #null(taux_co2)", time.Now().Format("2006-01-02")))
+	params.Add(
+		"q",
+		fmt.Sprintf(
+			"date_heure:[%s TO #now()] AND NOT #null(taux_co2)",
+			time.Now().Format("2006-01-02"),
+		),
+	)
 	queryString := params.Encode()
 
-	resp, err := http.DefaultClient.Get(fmt.Sprintf(OPENDATASOFT_API_PATH, OPENDATASOFT_API_BASEURL, queryString))
+	resp, err := http.DefaultClient.Get(
+		fmt.Sprintf(OPENDATASOFT_API_PATH, OPENDATASOFT_API_BASEURL, queryString),
+	)
 	if err != nil {
 		return -1, err
 	}

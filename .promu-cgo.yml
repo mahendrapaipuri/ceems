@@ -9,6 +9,8 @@ build:
     binaries:
         - name: batchjob_exporter
           path: ./cmd/batchjob_exporter
+        - name: batchjob_stats
+          path: ./cmd/batchjob_stats
     flags: -a -tags 'netgo osusergo static_build'
     ldflags: |
         -X github.com/prometheus/common/version.Version={{.Version}}
@@ -22,7 +24,10 @@ tarball:
         - NOTICE
 crossbuild:
     platforms:
-        # We are not sure if our exporter will work on netbsd. So dont bother on
-        # cross compiling for now
         - netbsd/amd64
         - netbsd/386
+        - linux/mips
+        - linux/mipsle
+        - linux/mips64
+        - linux/mips64le
+        - linux/ppc64le

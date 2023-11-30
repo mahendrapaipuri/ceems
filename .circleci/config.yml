@@ -19,8 +19,6 @@ jobs:
       - prometheus/setup_environment
       - run: go mod download
       - run: make
-      - prometheus/store_artifact:
-          file: ./bin/batchjob_exporter
   test-arm:
     executor: arm
     steps:

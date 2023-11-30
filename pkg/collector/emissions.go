@@ -29,7 +29,9 @@ type emissionsCollector struct {
 }
 
 var (
-	countryCode            = kingpin.Flag("collector.emissions.country.code", "ISO 3166-1 alpha-3 Country code. OWID energy data [https://github.com/owid/energy-data] estimated constant emission factor is used for all countries except for France. A real time emission factor will be used for France from RTE eCO2 mix [https://www.rte-france.com/en/eco2mix/co2-emissions] data.").Default("FRA").String()
+	countryCode = kingpin.Flag("collector.emissions.country.code", "ISO 3166-1 alpha-3 Country code. OWID energy data [https://github.com/owid/energy-data] estimated constant emission factor is used for all countries except for France. A real time emission factor will be used for France from RTE eCO2 mix [https://www.rte-france.com/en/eco2mix/co2-emissions] data.").
+			Default("FRA").
+			String()
 	globalEnergyMixDataUrl = "https://raw.githubusercontent.com/mlco2/codecarbon/master/codecarbon/data/private_infra/global_energy_mix.json"
 	globalEmissionFactor   = 475
 	getRteEnergyMixData    = utils.GetRteEnergyMixData
@@ -114,7 +116,8 @@ func (c *emissionsCollector) getCurrentEmissionFactor() float64 {
 	// If country is other than france get factor from dataset
 	if c.countryCode != "FRA" {
 		if emissionFactor, ok := c.energyData[c.countryCode]; ok {
-			level.Debug(c.logger).Log("msg", "Using emission factor from global energy data mix", "factor", emissionFactor)
+			level.Debug(c.logger).
+				Log("msg", "Using emission factor from global energy data mix", "factor", emissionFactor)
 			return emissionFactor
 		} else {
 			level.Debug(c.logger).Log("msg", "Using global average emission factor", "factor", globalEmissionFactor)
@@ -132,7 +135,8 @@ func (c *emissionsCollector) getCachedEmissionFactorFrance() float64 {
 		currentEmissionFactor := c.getCurrentEmissionFactorFrance()
 		c.prevReadTime = time.Now().Unix()
 		c.prevEmissionFactor = currentEmissionFactor
-		level.Debug(c.logger).Log("msg", "Using real time emission factor from RTE", "factor", currentEmissionFactor)
+		level.Debug(c.logger).
+			Log("msg", "Using real time emission factor from RTE", "factor", currentEmissionFactor)
 		return currentEmissionFactor
 	} else {
 		level.Debug(c.logger).Log("msg", "Using cached emission factor from previous request", "factor", c.prevEmissionFactor)
@@ -146,13 +150,15 @@ func (c *emissionsCollector) getCurrentEmissionFactorFrance() float64 {
 	if err != nil {
 		level.Error(c.logger).Log("msg", "Failed to get emissions from RTE", "err", err)
 		if emissionFactor, ok := c.energyData["FRA"]; ok {
-			level.Debug(c.logger).Log("msg", "Using emissions from global energy data mix", "factor", emissionFactor)
+			level.Debug(c.logger).
+				Log("msg", "Using emissions from global energy data mix", "factor", emissionFactor)
 			return emissionFactor
 		} else {
 			level.Debug(c.logger).Log("msg", "Using global average emissions factor", "factor", globalEmissionFactor)
 			return float64(globalEmissionFactor)
 		}
 	}
-	level.Debug(c.logger).Log("msg", "Current emission factor returned by RTE eCO2mix", "factor", emissionFactor)
+	level.Debug(c.logger).
+		Log("msg", "Current emission factor returned by RTE eCO2mix", "factor", emissionFactor)
 	return emissionFactor
 }

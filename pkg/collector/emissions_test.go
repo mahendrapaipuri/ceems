@@ -15,7 +15,11 @@ func TestEmissionsMetrics(t *testing.T) {
 	getRteEnergyMixData = func() (float64, error) {
 		return expectedFactor, nil
 	}
-	c := emissionsCollector{logger: log.NewNopLogger(), countryCode: "FRA", energyData: map[string]float64{"FRA": 50, "DEU": 51, "CHL": 52}}
+	c := emissionsCollector{
+		logger:      log.NewNopLogger(),
+		countryCode: "FRA",
+		energyData:  map[string]float64{"FRA": 50, "DEU": 51, "CHL": 52},
+	}
 	value := c.getCurrentEmissionFactor()
 	if value != expectedFactor {
 		t.Fatalf("new collection: expected factor %f. Got %f", expectedFactor, value)
@@ -33,7 +37,11 @@ func TestEmissionsMetrics(t *testing.T) {
 
 	// Test for different country
 	expectedFactor = float64(55)
-	c = emissionsCollector{logger: log.NewNopLogger(), countryCode: "DEU", energyData: map[string]float64{"FRA": 50, "DEU": expectedFactor, "CHL": 52}}
+	c = emissionsCollector{
+		logger:      log.NewNopLogger(),
+		countryCode: "DEU",
+		energyData:  map[string]float64{"FRA": 50, "DEU": expectedFactor, "CHL": 52},
+	}
 	value = c.getCurrentEmissionFactor()
 	if value != expectedFactor {
 		t.Fatalf("energydata collection: expected factor %f. Got %f", expectedFactor, value)

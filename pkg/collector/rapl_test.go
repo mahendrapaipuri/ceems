@@ -32,7 +32,11 @@ func TestRaplMetrics(t *testing.T) {
 			t.Fatalf("Cannot retrieve energy data from GetEnergyMicrojoules function: %v ", err)
 		}
 		if expectedEnergyMetrics[iz] != float64(microJoules) {
-			t.Fatalf("Expected energy value %f: Got: %f ", expectedEnergyMetrics[iz], float64(microJoules))
+			t.Fatalf(
+				"Expected energy value %f: Got: %f ",
+				expectedEnergyMetrics[iz],
+				float64(microJoules),
+			)
 		}
 	}
 }
