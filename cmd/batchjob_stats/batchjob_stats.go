@@ -19,8 +19,8 @@ import (
 )
 
 var (
-	jobstatDBFile = "jobstats.db"
-	timestampFile = "lasttimestamp"
+	jobsTimestampFile   = "jobslasttimestamp"
+	vacuumTimeStampFile = "vacuumlasttimestamp"
 )
 
 func main() {
@@ -31,8 +31,20 @@ func main() {
 		).Default("slurm").String()
 		dataPath = kingpin.Flag(
 			"path.data",
-			"Absolute path to a directory where job data is placed. SQLite DB that contains jobs info will be saved to this directory.",
+			"Absolute path to a directory where job data is placed. SQLite DB that contains jobs stats will be saved to this directory.",
 		).Default("/var/lib/jobstats").String()
+		jobstatDBFile = kingpin.Flag(
+			"path.db.name",
+			"Name of the SQLite DB file that contains jobs stats.",
+		).Default("jobstats.db").String()
+		jobstatDBTable = kingpin.Flag(
+			"path.db.table.name",
+			"Name of the table in SQLite DB file that contains jobs stats.",
+		).Default("jobs").String()
+		retentionPeriod = kingpin.Flag(
+			"data.retention.period",
+			"Period in days for which job stats data will be retained.",
+		).Default("365").Int()
 		maxProcs = kingpin.Flag(
 			"runtime.gomaxprocs", "The target number of CPUs Go will run on (GOMAXPROCS)",
 		).Envar("GOMAXPROCS").Default("1").Int()
@@ -52,8 +64,9 @@ func main() {
 	runtime.GOMAXPROCS(*maxProcs)
 	level.Debug(logger).Log("msg", "Go MAXPROCS", "procs", runtime.GOMAXPROCS(0))
 
-	jobstatDBPath := filepath.Join(*dataPath, jobstatDBFile)
-	lastTimeStampFile := filepath.Join(*dataPath, timestampFile)
+	jobstatDBPath := filepath.Join(*dataPath, *jobstatDBFile)
+	jobsLastTimeStampFile := filepath.Join(*dataPath, jobsTimestampFile)
+	vacuumLastTimeStampFile := filepath.Join(*dataPath, vacuumTimeStampFile)
 
 	// f, err := os.Create("myprogram.prof")
 	// if err != nil {
@@ -61,7 +74,15 @@ func main() {
 	// 	return
 	// }
 	// pprof.StartCPUProfile(f)
-	jobCollector := jobstats.NewJobStats(logger, *batchScheduler, jobstatDBPath, lastTimeStampFile)
+	jobCollector := jobstats.NewJobStats(
+		logger,
+		*batchScheduler,
+		jobstatDBPath,
+		*jobstatDBTable,
+		*retentionPeriod,
+		jobsLastTimeStampFile,
+		vacuumLastTimeStampFile,
+	)
 	err := jobCollector.GetJobStats()
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to get job stats", "err", err)

@@ -23,44 +23,60 @@ var (
 
 // Run sacct command and return output
 func runSacctCmd(startTime string, endTime string, logger log.Logger) ([]byte, error) {
-	args := []string{"-X", "--allusers", "--parsable2",
-		"--format", "jobid,cluster,partition,account,group,gid,user,uid,submit,eligible,start,end,elapsed,elapsedraw,exitcode,state,nnodes,ncpus,reqcpus,reqmem,reqtres,timelimit,nodelist,jobname,workdir",
+	args := []string{"-D", "--allusers", "--parsable2",
+		"--format", "jobid,partition,account,group,gid,user,uid,submit,start,end,elapsed,exitcode,state,nnodes,nodelist,jobname,workdir",
 		"--state", "CANCELLED,COMPLETED,FAILED,NODE_FAIL,PREEMPTED,TIMEOUT",
 		"--starttime", startTime, "--endtime", endTime}
 	return utils.Execute(*sacctPath, args, logger)
 }
 
 // Parse sacct command output and return batchjob slice
-func parseSacctCmdOutput(sacctOutput string, logger log.Logger) ([]batchJob, int) {
+func parseSacctCmdOutput(sacctOutput string, logger log.Logger) ([]BatchJob, int) {
 	// Strip first line
 	sacctOutputLines := strings.Split(string(sacctOutput), "\n")[1:]
 	var numJobs int = 0
-	var jobs = make([]batchJob, len(sacctOutputLines))
+	var jobs = make([]BatchJob, len(sacctOutputLines))
 	wg := &sync.WaitGroup{}
 	// Exclude first line
 	wg.Add(len(sacctOutputLines))
 	for iline, line := range sacctOutputLines {
 		go func(i int, l string) {
-			var jobStat batchJob
+			var jobStat BatchJob
 			components := strings.Split(l, "|")
 			jobid := components[0]
+			// Ignore if we cannot get all components
+			if len(components) < 17 {
+				wg.Done()
+				return
+			}
 			// Ignore job steps
 			if strings.Contains(jobid, ".") {
 				wg.Done()
 				return
 			}
-			if len(components) < 25 {
+			// Ignore jobs that never ran
+			if components[14] == "None assigned" {
 				wg.Done()
 				return
 			}
-			jobUuid, err := utils.GetUuidFromString([]string{components[0], components[6], components[8], components[24]})
+			// Generate UUID from jobID, uid, gid, nodelist(lowercase), workdir(lowercase)
+			jobUuid, err := utils.GetUuidFromString(
+				[]string{
+					components[0],
+					components[6],
+					components[4],
+					strings.ToLower(components[14]),
+					strings.ToLower(components[16]),
+				},
+			)
 			if err != nil {
-				level.Error(logger).Log("msg", "Failed to generate UUID for job", "jobid", jobid, "err", err)
+				level.Error(logger).
+					Log("msg", "Failed to generate UUID for job", "jobid", jobid, "err", err)
 				jobUuid = jobid
 			}
-			allNodes := utils.NodelistParser(components[22])
+			allNodes := utils.NodelistParser(components[14])
 			nodelistExp := strings.Join(allNodes, "|")
-			jobStat = batchJob{
+			jobStat = BatchJob{
 				components[0],
 				jobUuid,
 				components[1],
@@ -77,17 +93,7 @@ func parseSacctCmdOutput(sacctOutput string, logger log.Logger) ([]batchJob, int
 				components[12],
 				components[13],
 				components[14],
-				components[15],
-				components[16],
-				components[17],
-				components[18],
-				components[19],
-				components[20],
-				components[21],
-				components[22],
 				nodelistExp,
-				components[23],
-				components[24],
 			}
 			jobLock.Lock()
 			jobs[i] = jobStat
@@ -100,15 +106,15 @@ func parseSacctCmdOutput(sacctOutput string, logger log.Logger) ([]batchJob, int
 	return jobs, numJobs
 }
 
-// Execute SLURM sacct command and return batchJob object
-func getSlurmJobs(start time.Time, end time.Time, logger log.Logger) ([]batchJob, error) {
+// Execute SLURM sacct command and return BatchJob object
+func getSlurmJobs(start time.Time, end time.Time, logger log.Logger) ([]BatchJob, error) {
 	startTime := start.Format(slurmDateFormat)
 	endTime := end.Format(slurmDateFormat)
 	level.Info(logger).Log("msg", "Retrieving Slurm jobs", "start", startTime, "end", endTime)
 	sacctOutput, err := runSacctCmd(startTime, endTime, logger)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to execute SLURM sacct command", "err", err)
-		return []batchJob{}, err
+		return []BatchJob{}, err
 	}
 	jobs, numJobs := parseSacctCmdOutput(string(sacctOutput), logger)
 	level.Info(logger).Log("msg", "Number of Slurm jobs.", "njobs", numJobs)
