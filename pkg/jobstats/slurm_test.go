@@ -15,7 +15,7 @@ var (
 	expectedBatchJobs = []BatchJob{
 		{
 			Jobid:       "1479763",
-			Jobuuid:     "aaaf154c-e784-9e49-2155-4aa52462782a",
+			Jobuuid:     "667127ae-68d0-47aa-78e3-76ae76e4aba7",
 			Partition:   "part1",
 			Account:     "acc1",
 			Grp:         "grp",
@@ -34,7 +34,7 @@ var (
 		},
 		{
 			Jobid:       "1481508",
-			Jobuuid:     "69683fe8-5d89-9ec5-4b4f-8404c7cc37f2",
+			Jobuuid:     "6bfbe049-b5ee-ea02-6cd8-3dd95acdd0e4",
 			Partition:   "part1",
 			Account:     "acc1",
 			Grp:         "grp",
