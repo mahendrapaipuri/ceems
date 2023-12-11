@@ -31,7 +31,7 @@ crossbuild:
         - linux/mips64
         - linux/mips64le
         - linux/mipsle
-        - linux/ppc64
+        # - linux/ppc64
         - linux/ppc64le
         - linux/riscv64
-        - linux/s390x
+        # - linux/s390x
