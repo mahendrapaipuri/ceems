@@ -9,13 +9,13 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	_ "modernc.org/sqlite"
+	_ "github.com/mattn/go-sqlite3"
 )
 
-func populateDBWithMockData(db *sql.DB, j *jobStats) {
+func populateDBWithMockData(db *sql.DB, j *jobStatsDB) {
 	jobs := []BatchJob{{Jobid: "10000"}, {Jobid: "10001"}}
 	tx, _ := db.Begin()
-	stmt, _ := j.getSQLPrepareStatement(tx)
+	stmt, _ := j.prepareInsertStatement(tx, len(jobs))
 	j.insertJobsInDB(stmt, jobs)
 	tx.Commit()
 }
@@ -24,13 +24,13 @@ func TestJobStatsDBPreparation(t *testing.T) {
 	tmpDir := t.TempDir()
 	jobstatDBTable := "jobstats"
 	jobstatDBPath := filepath.Join(tmpDir, "jobstats.db")
-	j := jobStats{
+	j := jobStatsDB{
 		logger:         log.NewNopLogger(),
 		batchScheduler: "slurm",
 		jobstatDBPath:  jobstatDBPath,
 		jobstatDBTable: jobstatDBTable,
 	}
-	db, err := j.prepareDB()
+	db, err := j.setupDB()
 	if err != nil {
 		t.Errorf("Failed to prepare DB due to %s", err)
 	}
@@ -52,13 +52,13 @@ func TestJobStatsDBLock(t *testing.T) {
 	tmpDir := t.TempDir()
 	jobstatDBTable := "jobstats"
 	jobstatDBPath := filepath.Join(tmpDir, "jobstats.db")
-	j := jobStats{
+	j := jobStatsDB{
 		logger:         log.NewNopLogger(),
 		batchScheduler: "slurm",
 		jobstatDBPath:  jobstatDBPath,
 		jobstatDBTable: jobstatDBTable,
 	}
-	db, err := j.prepareDB()
+	db, err := j.setupDB()
 	if err != nil {
 		t.Errorf("Failed to prepare DB")
 	}
@@ -77,13 +77,13 @@ func TestJobStatsDBVacuum(t *testing.T) {
 	tmpDir := t.TempDir()
 	jobstatDBTable := "jobstats"
 	jobstatDBPath := filepath.Join(tmpDir, "jobstats.db")
-	j := jobStats{
+	j := jobStatsDB{
 		logger:         log.NewNopLogger(),
 		batchScheduler: "slurm",
 		jobstatDBPath:  jobstatDBPath,
 		jobstatDBTable: jobstatDBTable,
 	}
-	db, err := j.prepareDB()
+	db, err := j.setupDB()
 	if err != nil {
 		t.Errorf("Failed to prepare DB")
 	}
@@ -103,14 +103,14 @@ func TestJobStatsDeleteOldJobs(t *testing.T) {
 	jobstatDBTable := "jobstats"
 	jobId := "1111"
 	jobstatDBPath := filepath.Join(tmpDir, "jobstats.db")
-	j := jobStats{
+	j := jobStatsDB{
 		logger:          log.NewNopLogger(),
 		batchScheduler:  "slurm",
 		jobstatDBPath:   jobstatDBPath,
 		jobstatDBTable:  jobstatDBTable,
 		retentionPeriod: 1,
 	}
-	db, err := j.prepareDB()
+	db, err := j.setupDB()
 	if err != nil {
 		t.Errorf("Failed to prepare DB")
 	}
@@ -125,7 +125,7 @@ func TestJobStatsDeleteOldJobs(t *testing.T) {
 		},
 	}
 	tx, _ := db.Begin()
-	stmt, err := j.getSQLPrepareStatement(tx)
+	stmt, err := j.prepareInsertStatement(tx, len(jobs))
 	if err != nil {
 		t.Errorf("Failed to prepare SQL statements")
 	}

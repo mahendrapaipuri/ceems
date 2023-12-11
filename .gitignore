@@ -10,6 +10,7 @@
 
 # Test binary, built with `go test -c`
 *.test
+coverage.txt
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
@@ -39,3 +40,6 @@ run.sh
 *.db
 *.prof
 lasttimestamp
+
+# Ignore promu related files
+promu*

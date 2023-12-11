@@ -9,12 +9,12 @@ import (
 )
 
 var (
-	binary, _ = filepath.Abs("batchjob_stats")
+	binary, _ = filepath.Abs("bin/batchjob_stats_db")
 )
 
 func TestBatchjobStatExecutable(t *testing.T) {
 	if _, err := os.Stat(binary); err != nil {
-		t.Skipf("batchjob_stats binary not available, try to run `make build` first: %s", err)
+		t.Skipf("batchjob_stats_db binary not available, try to run `make build` first: %s", err)
 	}
 	tmpDir := t.TempDir()
 

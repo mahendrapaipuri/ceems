@@ -6,16 +6,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/utils"
+	"github.com/mahendrapaipuri/batchjob_monitoring/internal/helpers"
 )
 
 var (
 	jobLock         = sync.RWMutex{}
 	slurmDateFormat = "2006-01-02T15:04:05"
-	sacctPath       = kingpin.Flag(
+	sacctPath       = JobstatDBApp.Flag(
 		"slurm.sacct.path",
 		"Absolute path to sacct executable.",
 	).Default("/usr/bin/sacct").String()
@@ -27,7 +26,7 @@ func runSacctCmd(startTime string, endTime string, logger log.Logger) ([]byte, e
 		"--format", "jobid,partition,account,group,gid,user,uid,submit,start,end,elapsed,exitcode,state,nnodes,nodelist,jobname,workdir",
 		"--state", "CANCELLED,COMPLETED,FAILED,NODE_FAIL,PREEMPTED,TIMEOUT",
 		"--starttime", startTime, "--endtime", endTime}
-	return utils.Execute(*sacctPath, args, logger)
+	return helpers.Execute(*sacctPath, args, logger)
 }
 
 // Parse sacct command output and return batchjob slice
@@ -59,12 +58,12 @@ func parseSacctCmdOutput(sacctOutput string, logger log.Logger) ([]BatchJob, int
 				wg.Done()
 				return
 			}
-			// Generate UUID from jobID, uid, gid, nodelist(lowercase), workdir(lowercase)
-			jobUuid, err := utils.GetUuidFromString(
+			// Generate UUID from jobID, uid, account, nodelist(lowercase), workdir(lowercase)
+			jobUuid, err := helpers.GetUuidFromString(
 				[]string{
 					components[0],
 					components[6],
-					components[4],
+					strings.ToLower(components[2]),
 					strings.ToLower(components[14]),
 					strings.ToLower(components[16]),
 				},
@@ -74,7 +73,7 @@ func parseSacctCmdOutput(sacctOutput string, logger log.Logger) ([]BatchJob, int
 					Log("msg", "Failed to generate UUID for job", "jobid", jobid, "err", err)
 				jobUuid = jobid
 			}
-			allNodes := utils.NodelistParser(components[14])
+			allNodes := NodelistParser(components[14])
 			nodelistExp := strings.Join(allNodes, "|")
 			jobStat = BatchJob{
 				components[0],

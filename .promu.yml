@@ -8,8 +8,6 @@ build:
     binaries:
         - name: batchjob_exporter
           path: ./cmd/batchjob_exporter
-        - name: batchjob_stats
-          path: ./cmd/batchjob_stats
     flags: -a -tags 'netgo osusergo static_build'
     ldflags: |
         -X github.com/prometheus/common/version.Version={{.Version}}
@@ -20,9 +18,17 @@ build:
 tarball:
     files:
         - LICENSE
-        - NOTICE
+        - README.md
 crossbuild:
     platforms:
-        - linux/amd64
         - linux/386
+        - linux/amd64
         - linux/arm64
+        - linux/mips
+        - linux/mips64
+        - linux/mips64le
+        - linux/mipsle
+        # - linux/ppc64
+        - linux/ppc64le
+        - linux/riscv64
+        # - linux/s390x

@@ -1,7 +1,4 @@
-//go:build !utils
-// +build !utils
-
-package utils
+package jobstats
 
 import (
 	"reflect"

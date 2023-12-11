@@ -21,6 +21,8 @@ CGROUPS_MODE            ?= $([ $(stat -fc %T /sys/fs/cgroup/) = "cgroup2fs" ] &&
 
 STATICCHECK_IGNORE =
 
+CGO_BUILD               ?= 0
+
 ifeq ($(GOHOSTOS), linux)
 	test-e2e := test-e2e
 else
@@ -33,29 +35,45 @@ else
 	test-docker := test-docker
 endif
 
-# Use CGO for non-Linux builds.
-ifeq ($(GOOS), linux)
-	PROMU_CONF ?= .promu.yml
+# Use CGO for batchjob_stats_* and GO for batchjob_exporter.
+ifeq ($(CGO_BUILD), 1)
+	PROMU_CONF ?= .promu-cgo.yml
+	pkgs := ./pkg/jobstats ./cmd/batchjob_stats_db ./cmd/batchjob_stats_server
 else
-	ifndef GOOS
-		ifeq ($(GOHOSTOS), linux)
-			PROMU_CONF ?= .promu.yml
-		else
-			PROMU_CONF ?= .promu-cgo.yml
-		endif
-	else
-		# Do not use CGO for openbsd/amd64 builds
-		ifeq ($(GOOS), openbsd)
-			ifeq ($(GOARCH), amd64)
-				PROMU_CONF ?= .promu.yml
-			else
-				PROMU_CONF ?= .promu-cgo.yml
-			endif
-		else
-			PROMU_CONF ?= .promu-cgo.yml
-		endif
-	endif
+	PROMU_CONF ?= .promu.yml
+	pkgs := ./pkg/collector ./pkg/emissions ./cmd/batchjob_exporter
 endif
+
+ifeq ($(GOHOSTOS), linux)
+	test-e2e := test-e2e
+else
+	test-e2e := skip-test-e2e
+endif
+
+# We are using SQLite3 which needs CGO and thus, this logic
+# is not relevant for us anymore
+# ifeq ($(GOOS), linux)
+# 	PROMU_CONF ?= .promu.yml
+# else
+# 	ifndef GOOS
+# 		ifeq ($(GOHOSTOS), linux)
+# 			PROMU_CONF ?= .promu.yml
+# 		else
+# 			PROMU_CONF ?= .promu-cgo.yml
+# 		endif
+# 	else
+# 		# Do not use CGO for openbsd/amd64 builds
+# 		ifeq ($(GOOS), openbsd)
+# 			ifeq ($(GOARCH), amd64)
+# 				PROMU_CONF ?= .promu.yml
+# 			else
+# 				PROMU_CONF ?= .promu-cgo.yml
+# 			endif
+# 		else
+# 			PROMU_CONF ?= .promu-cgo.yml
+# 		endif
+# 	endif
+# endif
 
 PROMU := $(FIRST_GOPATH)/bin/promu --config $(PROMU_CONF)
 
@@ -71,10 +89,12 @@ endif
 # 64bit -> 32bit mapping for cross-checking. At least for amd64/386, the 64bit CPU can execute 32bit code but not the other way around, so we don't support cross-testing upwards.
 cross-test = skip-test-32bit
 define goarch_pair
-	ifeq ($$(GOHOSTOS),linux)
-		ifeq ($$(GOHOSTARCH),$1)
-			GOARCH_CROSS = $2
-			cross-test = test-32bit
+	ifeq ($$(GOHOSTOS), linux)
+		ifndef CGO_BUILD
+			ifeq ($$(GOHOSTARCH), $1)
+				GOARCH_CROSS = $2
+				cross-test = test-32bit
+			endif
 		endif
 	endif
 endef
@@ -110,10 +130,18 @@ update_fixtures:
 	rm -vf pkg/collector/fixtures/sys/.unpacked
 	./scripts/ttar -C pkg/collector/fixtures -c -f pkg/collector/fixtures/sys.ttar sys
 
+ifeq ($(CGO_BUILD), 0)
 .PHONY: test-e2e
 test-e2e: build pkg/collector/fixtures/sys/.unpacked 
 	@echo ">> running end-to-end tests"
-	./scripts/e2e-test.sh
+	./scripts/e2e-test.sh -p exporter
+else
+.PHONY: test-e2e
+test-e2e: build pkg/collector/fixtures/sys/.unpacked
+	@echo ">> running end-to-end tests"
+	./scripts/e2e-test.sh -p stats_db
+	./scripts/e2e-test.sh -p stats_server
+endif
 
 .PHONY: skip-test-e2e
 skip-test-e2e:

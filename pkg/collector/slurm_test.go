@@ -14,7 +14,12 @@ import (
 var expectedSlurmMetrics CgroupMetric
 
 func TestCgroupsV2SlurmJobMetrics(t *testing.T) {
-	if _, err := kingpin.CommandLine.Parse([]string{"--path.cgroupfs", "fixtures/sys/fs/cgroup", "--collector.slurm.unique.jobid", "--collector.slurm.job.stat.path", "fixtures/slurmjobstat"}); err != nil {
+	if _, err := kingpin.CommandLine.Parse(
+		[]string{
+			"--path.cgroupfs", "fixtures/sys/fs/cgroup",
+			"--collector.slurm.job.stat.path", "fixtures/slurmjobstat",
+		},
+	); err != nil {
 		t.Fatal(err)
 	}
 	c := slurmCollector{cgroupV2: true, logger: log.NewNopLogger()}
@@ -35,9 +40,9 @@ func TestCgroupsV2SlurmJobMetrics(t *testing.T) {
 		memswFailCount:  0,
 		userslice:       false,
 		jobuid:          "1000",
-		jobgid:          "1000",
+		jobaccount:      "testacc",
 		jobid:           "1009248",
-		jobuuid:         "8d4fad6d-c5e3-775b-8a8c-707e319114ec",
+		jobuuid:         "7f6c39b7-2740-fc1f-32c2-8fc28880829c",
 		step:            "",
 		task:            "",
 		batch:           "slurm",
@@ -51,7 +56,12 @@ func TestCgroupsV2SlurmJobMetrics(t *testing.T) {
 }
 
 func TestCgroupsV1SlurmJobMetrics(t *testing.T) {
-	if _, err := kingpin.CommandLine.Parse([]string{"--path.cgroupfs", "fixtures/sys/fs/cgroup", "--collector.slurm.unique.jobid", "--collector.slurm.job.stat.path", "fixtures/slurmjobstat"}); err != nil {
+	if _, err := kingpin.CommandLine.Parse(
+		[]string{
+			"--path.cgroupfs", "fixtures/sys/fs/cgroup",
+			"--collector.slurm.job.stat.path", "fixtures/slurmjobstat",
+		},
+	); err != nil {
 		t.Fatal(err)
 	}
 	c := slurmCollector{cgroupV2: false, logger: log.NewNopLogger()}
@@ -72,9 +82,9 @@ func TestCgroupsV1SlurmJobMetrics(t *testing.T) {
 		memswFailCount:  0,
 		userslice:       false,
 		jobuid:          "1000",
-		jobgid:          "1000",
+		jobaccount:      "testacc",
 		jobid:           "1009248",
-		jobuuid:         "8d4fad6d-c5e3-775b-8a8c-707e319114ec",
+		jobuuid:         "7f6c39b7-2740-fc1f-32c2-8fc28880829c",
 		step:            "",
 		task:            "",
 		batch:           "slurm",

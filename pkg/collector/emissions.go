@@ -4,8 +4,6 @@
 package collector
 
 import (
-	"bytes"
-	"encoding/json"
 	"net/http"
 	"time"
 
@@ -14,7 +12,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 
-	utils "github.com/mahendrapaipuri/batchjob_monitoring/pkg/utils"
+	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/emissions"
 )
 
 const emissionsCollectorSubsystem = "emissions"
@@ -29,57 +27,24 @@ type emissionsCollector struct {
 }
 
 var (
-	countryCode = kingpin.Flag("collector.emissions.country.code", "ISO 3166-1 alpha-3 Country code. OWID energy data [https://github.com/owid/energy-data] estimated constant emission factor is used for all countries except for France. A real time emission factor will be used for France from RTE eCO2 mix [https://www.rte-france.com/en/eco2mix/co2-emissions] data.").
-			Default("FRA").
-			String()
-	globalEnergyMixDataUrl = "https://raw.githubusercontent.com/mlco2/codecarbon/master/codecarbon/data/private_infra/global_energy_mix.json"
-	globalEmissionFactor   = 475
-	getRteEnergyMixData    = utils.GetRteEnergyMixData
+	countryCode = kingpin.Flag(
+		"collector.emissions.country.code",
+		`ISO 3166-1 alpha-3 Country code. OWID energy data [https://github.com/owid/energy-data] 
+estimated constant emission factor is used for all countries except for France. 
+A real time emission factor will be used for France from RTE eCO2 mix 
+[https://www.rte-france.com/en/eco2mix/co2-emissions] data.`,
+	).Default("FRA").String()
+	globalEmissionFactor = emissions.GlobalEmissionFactor
+	getRteEnergyMixData  = emissions.GetRteEnergyMixEmissionData
 )
 
 func init() {
 	registerCollector(emissionsCollectorSubsystem, defaultDisabled, NewEmissionsCollector)
 }
 
-// Read JSON file from GitHub to get global energy mix data
-func readJSONFromUrl(url string, logger log.Logger) (map[string]float64, error) {
-	resp, err := http.Get(url)
-	if err != nil {
-		level.Error(logger).Log("msg", "Failed to get global energy mix data", "err", err)
-		return nil, err
-	}
-
-	defer resp.Body.Close()
-	buf := new(bytes.Buffer)
-	_, err = buf.ReadFrom(resp.Body)
-	if err != nil {
-		level.Error(logger).Log("msg", "Failed to read responde body", "err", err)
-		return nil, err
-	}
-	respByte := buf.Bytes()
-	// JSON might contain NaN, replace it with null that is allowed in JSON
-	respByte = bytes.Replace(respByte, []byte("NaN"), []byte("null"), -1)
-	var globalEmissionData map[string]energyMixDataFields
-	if err := json.Unmarshal(respByte, &globalEmissionData); err != nil {
-		level.Error(logger).Log("msg", "Failed to unmarshal JSON data", "err", err)
-		return nil, err
-	}
-
-	var countryEmissionData = make(map[string]float64)
-	for country, data := range globalEmissionData {
-		// Set unavaible values to -1 to indicate they are indeed unavailable
-		if data.CarbonIntensity == 0 {
-			countryEmissionData[country] = -1
-		} else {
-			countryEmissionData[country] = data.CarbonIntensity
-		}
-	}
-	return countryEmissionData, nil
-}
-
 // NewEmissionsCollector returns a new Collector exposing emission factor metrics.
 func NewEmissionsCollector(logger log.Logger) (Collector, error) {
-	energyData, err := readJSONFromUrl(globalEnergyMixDataUrl, logger)
+	energyData, err := emissions.GetEnergyMixData(http.DefaultClient, logger)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to read Global energy mix data", "err", err)
 	}
@@ -146,7 +111,7 @@ func (c *emissionsCollector) getCachedEmissionFactorFrance() float64 {
 
 // Get current emission factor for France from RTE energy data mix
 func (c *emissionsCollector) getCurrentEmissionFactorFrance() float64 {
-	emissionFactor, err := getRteEnergyMixData()
+	emissionFactor, err := getRteEnergyMixData(http.DefaultClient, c.logger)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "Failed to get emissions from RTE", "err", err)
 		if emissionFactor, ok := c.energyData["FRA"]; ok {

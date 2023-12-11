@@ -19,21 +19,31 @@ jobs:
       - prometheus/setup_environment
       - run: go mod download
       - run: make
+      - run: sudo apt-get update && sudo apt-get install sqlite3 -y && sqlite3 --version
+      - run: CGO_BUILD=1 make
   test-arm:
     executor: arm
     steps:
       - checkout
       - run: uname -a
       - run: make test-e2e
+      - run: sudo apt-get update && sudo apt-get install sqlite3 -y && sqlite3 --version
+      - run: CGO_BUILD=1 make test-e2e
   build:
     machine:
       image: ubuntu-2204:current
     parallelism: 3
     steps:
       - prometheus/setup_environment
-      - run: docker run --privileged linuxkit/binfmt:af88a591f9cc896a52ce596b9cf7ca26a061ef97
+      # - run: docker run --privileged linuxkit/binfmt:af88a591f9cc896a52ce596b9cf7ca26a061ef97
       - run: promu crossbuild -v --parallelism $CIRCLE_NODE_TOTAL --parallelism-thread $CIRCLE_NODE_INDEX
-      # - run: promu --config .promu-cgo.yml crossbuild -v --parallelism $CIRCLE_NODE_TOTAL --parallelism-thread $CIRCLE_NODE_INDEX
+      # Replace default CGO_BUILD before we run CGO. There is no way to inject this env 
+      # variable into golang-builder container. So we artificially replace the default
+      # CGO_BUILD variable in Makefile and run CGO promu
+      # Do not use CGO_ENABLED env var as golang-builder image will set this var by default to zer
+      # and our override will not have any effect
+      - run: sed -i -e 's/CGO_BUILD               ?= 0/CGO_BUILD               ?= 1/g' Makefile
+      - run: promu --config .promu-cgo.yml crossbuild -v --parallelism $CIRCLE_NODE_TOTAL --parallelism-thread $CIRCLE_NODE_INDEX
       - persist_to_workspace:
           root: .
           paths:
@@ -43,7 +53,7 @@ jobs:
           destination: /build
 workflows:
   version: 2
-  batchjob_exporter:
+  batchjob_monitoring:
     jobs:
       - test:
           filters:

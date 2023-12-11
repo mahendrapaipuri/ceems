@@ -7,22 +7,30 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/utils"
 )
 
 var (
-	dateFormat = "2006-01-02T15:04:05"
-	checksMap  = map[string]interface{}{
-		"slurm": slurmChecks,
+	JobstatDBAppName = "batchjob_stat_db"
+	JobstatDBApp     = kingpin.New(
+		JobstatDBAppName,
+		"Application that conslidates the batch job stats into a local DB.",
+	)
+	dateFormat       = "2006-01-02T15:04:05"
+	pragmaStatements = []string{
+		"PRAGMA synchronous = OFF",
+		"PRAGMA journal_mode = MEMORY",
 	}
-	statsMap = map[string]interface{}{
-		"slurm": getSlurmJobs,
+	indexStatements = []string{
+		`CREATE INDEX i1 ON %s (Usr,Account,Start);`,
+		`CREATE INDEX i2 ON %s (Usr,Jobuuid);`,
 	}
+	allFields = GetStructFieldName(BatchJob{})
 )
 
-func NewJobStats(
+func NewJobStatsDB(
 	logger log.Logger,
 	batchScheduler string,
 	jobstatDBPath string,
@@ -30,8 +38,8 @@ func NewJobStats(
 	retentionPeriod int,
 	jobsLastTimeStampFile string,
 	vacuumLastTimeStampFile string,
-) *jobStats {
-	return &jobStats{
+) *jobStatsDB {
+	return &jobStatsDB{
 		logger:                  logger,
 		batchScheduler:          batchScheduler,
 		jobstatDBPath:           jobstatDBPath,
@@ -43,15 +51,15 @@ func NewJobStats(
 }
 
 // Do preliminary checks
-func (j *jobStats) checks() {
+func (j *jobStatsDB) checks() {
 	if checksFunc, ok := checksMap[j.batchScheduler]; ok {
 		checksFunc.(func(log.Logger))(j.logger)
 	}
 }
 
 // Open DB connection and return connection poiner
-func (j *jobStats) openDBConnection() (*sql.DB, error) {
-	dbConn, err := sql.Open("sqlite", j.jobstatDBPath)
+func (j *jobStatsDB) openDBConnection() (*sql.DB, error) {
+	dbConn, err := sql.Open("sqlite3", j.jobstatDBPath)
 	if err != nil {
 		return nil, err
 	}
@@ -59,22 +67,20 @@ func (j *jobStats) openDBConnection() (*sql.DB, error) {
 }
 
 // Set all necessary PRAGMA statement on DB
-func (j *jobStats) setPragmaDirectives(db *sql.DB) {
+func (j *jobStatsDB) setPragmaDirectives(db *sql.DB) {
 	// Ref: https://stackoverflow.com/questions/1711631/improve-insert-per-second-performance-of-sqlite
 	// Ref: https://gitlab.com/gnufred/logslate/-/blob/8eda5cedc9a28da3793dcf73480d618c95cc322c/playground/sqlite3.go
 	// Ref: https://github.com/mattn/go-sqlite3/issues/1145#issuecomment-1519012055
-	_, err := db.Exec("PRAGMA synchronous = OFF")
-	if err != nil {
-		level.Error(j.logger).Log("msg", "Failed to set synchronous to OFF", "err", err)
-	}
-	_, err = db.Exec("PRAGMA journal_mode = MEMORY")
-	if err != nil {
-		level.Error(j.logger).Log("msg", "Failed to set journal_mode to MEMORY", "err", err)
+	for _, stmt := range pragmaStatements {
+		_, err := db.Exec(stmt)
+		if err != nil {
+			level.Error(j.logger).Log("msg", "Failed to execute pragma statement", "statement", stmt, "err", err)
+		}
 	}
 }
 
 // Check if DB is locked
-func (j *jobStats) checkDBLock(db *sql.DB) error {
+func (j *jobStatsDB) checkDBLock(db *sql.DB) error {
 	_, err := db.Exec("BEGIN EXCLUSIVE TRANSACTION;")
 	if err != nil {
 		return err
@@ -87,8 +93,8 @@ func (j *jobStats) checkDBLock(db *sql.DB) error {
 	return nil
 }
 
-// Prepare DB and create table
-func (j *jobStats) prepareDB() (*sql.DB, error) {
+// Setup DB and create table
+func (j *jobStatsDB) setupDB() (*sql.DB, error) {
 	if _, err := os.Stat(j.jobstatDBPath); err == nil {
 		// Open the created SQLite File
 		db, err := j.openDBConnection()
@@ -124,8 +130,8 @@ func (j *jobStats) prepareDB() (*sql.DB, error) {
 }
 
 // Create a table for storing job stats
-func (j *jobStats) createTable(db *sql.DB) error {
-	allFields := utils.GetStructFieldName(BatchJob{})
+func (j *jobStatsDB) createTable(db *sql.DB) error {
+	// allFields := GetStructFieldName(BatchJob{})
 	fieldLines := []string{}
 	for _, field := range allFields {
 		fieldLines = append(fieldLines, fmt.Sprintf("		\"%s\" TEXT,", field))
@@ -153,41 +159,41 @@ func (j *jobStats) createTable(db *sql.DB) error {
 	}
 
 	// Prepare SQL DB index creation Statement
-	level.Info(j.logger).Log("msg", "Creating DB index with Usr,Account,Start columns")
-	createIndexSQL := fmt.Sprintf(`CREATE INDEX i1 ON %s (Usr,Account,Start);`, j.jobstatDBTable)
-	statement, err = db.Prepare(createIndexSQL)
-	if err != nil {
-		level.Error(j.logger).
-			Log("msg", "Failed to prepare SQL statement for index creation", "err", err)
-		return err
-	}
+	for _, stmt := range indexStatements {
+		level.Info(j.logger).Log("msg", "Creating DB index with Usr,Account,Start columns")
+		createIndexSQL := fmt.Sprintf(stmt, j.jobstatDBTable)
+		statement, err = db.Prepare(createIndexSQL)
+		if err != nil {
+			level.Error(j.logger).
+				Log("msg", "Failed to prepare SQL statement for index creation", "err", err)
+			return err
+		}
 
-	// Execute SQL DB index creation Statements
-	_, err = statement.Exec()
-	if err != nil {
-		level.Error(j.logger).Log("msg", "Failed to execute SQL command for index creation statement", "err", err)
-		return err
+		// Execute SQL DB index creation Statements
+		_, err = statement.Exec()
+		if err != nil {
+			level.Error(j.logger).Log("msg", "Failed to execute SQL command for index creation statement", "err", err)
+			return err
+		}
 	}
 	level.Info(j.logger).Log("msg", "SQLite DB table for jobstats successfully created")
 	return nil
 }
 
 // Make and return prepare statement for inserting entries
-func (j *jobStats) getSQLPrepareStatement(tx *sql.Tx) (*sql.Stmt, error) {
-	allFields := utils.GetStructFieldName(BatchJob{})
-	fieldNamesString := strings.Join(allFields[:], ", ")
-	placeholderSlice := make([]string, len(allFields))
-	for i := range placeholderSlice {
-		placeholderSlice[i] = "?"
-	}
-	placeholderString := strings.Join(placeholderSlice, ", ")
-	insertSQLPlaceholder := fmt.Sprintf(
-		"INSERT INTO %s(%s) VALUES (%s)",
+func (j *jobStatsDB) prepareInsertStatement(tx *sql.Tx, numJobs int) (*sql.Stmt, error) {
+	placeHolderString := fmt.Sprintf(
+		"(%s)",
+		strings.Join(strings.Split(strings.Repeat("?", len(allFields)), ""), ","),
+	)
+	fieldNamesString := strings.Join(allFields, ",")
+	insertStatement := fmt.Sprintf(
+		"INSERT INTO %s(%s) VALUES %s",
 		j.jobstatDBTable,
 		fieldNamesString,
-		placeholderString,
+		placeHolderString,
 	)
-	stmt, err := tx.Prepare(insertSQLPlaceholder)
+	stmt, err := tx.Prepare(insertStatement)
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +201,7 @@ func (j *jobStats) getSQLPrepareStatement(tx *sql.Tx) (*sql.Stmt, error) {
 }
 
 // Get start and end time to query for jobs
-func (j *jobStats) getStartEndTimes() (time.Time, time.Time) {
+func (j *jobStatsDB) getStartEndTimes() (time.Time, time.Time) {
 	var startTime time.Time
 	var foundStartTime bool = false
 	if _, err := os.Stat(j.jobsLastTimeStampFile); err == nil {
@@ -220,7 +226,7 @@ func (j *jobStats) getStartEndTimes() (time.Time, time.Time) {
 }
 
 // Write endTime to a file
-func (j *jobStats) writeLastTimeStampFile(lastTimeStampFile string, endTime time.Time) {
+func (j *jobStatsDB) writeLastTimeStampFile(lastTimeStampFile string, endTime time.Time) {
 	lastTimeStamp := []byte(endTime.Format(dateFormat))
 	err := os.WriteFile(lastTimeStampFile, lastTimeStamp, 0644)
 	if err != nil {
@@ -229,7 +235,7 @@ func (j *jobStats) writeLastTimeStampFile(lastTimeStampFile string, endTime time
 }
 
 // Get job stats and insert them into DB
-func (j *jobStats) GetJobStats() error {
+func (j *jobStatsDB) GetJobStats() error {
 	// First do basic checks
 	j.checks()
 	// Get start and end times for retrieving jobs
@@ -247,8 +253,8 @@ func (j *jobStats) GetJobStats() error {
 		}
 	}
 
-	// Prepare DB and return db object
-	db, err := j.prepareDB()
+	// Setup DB and return db object
+	db, err := j.setupDB()
 	if err != nil {
 		level.Error(j.logger).Log("msg", "Preparation of DB failed", "err", err)
 		return err
@@ -277,7 +283,7 @@ func (j *jobStats) GetJobStats() error {
 
 	// Set pragma statements
 	j.setPragmaDirectives(db)
-	stmt, err := j.getSQLPrepareStatement(tx)
+	stmt, err := j.prepareInsertStatement(tx, len(jobs))
 	if err != nil {
 		level.Error(j.logger).Log("msg", "Failed to prepare insert job statement in DB", "err", err)
 		return err
@@ -314,10 +320,11 @@ func (j *jobStats) GetJobStats() error {
 }
 
 // Vacuum DB to reduce fragementation and size
-func (j *jobStats) vacuumDB(db *sql.DB) error {
+func (j *jobStatsDB) vacuumDB(db *sql.DB) error {
 	weekday := time.Now().Weekday().String()
 	hours, _, _ := time.Now().Clock()
 	var nextVacuumTime time.Time
+
 	// Check if lasttimestamp for vacuum exists
 	if _, err := os.Stat(j.vacuumLastTimeStampFile); err == nil {
 		timestamp, err := os.ReadFile(j.vacuumLastTimeStampFile)
@@ -354,7 +361,7 @@ func (j *jobStats) vacuumDB(db *sql.DB) error {
 }
 
 // Delete old entries in DB
-func (j *jobStats) deleteOldJobs(tx *sql.Tx) error {
+func (j *jobStatsDB) deleteOldJobs(tx *sql.Tx) error {
 	deleteSQLCmd := fmt.Sprintf(
 		"DELETE FROM %s WHERE Start <= date('now', '-%d day')",
 		j.jobstatDBTable,
@@ -369,7 +376,7 @@ func (j *jobStats) deleteOldJobs(tx *sql.Tx) error {
 }
 
 // Insert job stat into DB
-func (j *jobStats) insertJobsInDB(statement *sql.Stmt, jobStats []BatchJob) {
+func (j *jobStatsDB) insertJobsInDB(statement *sql.Stmt, jobStats []BatchJob) {
 	for _, jobStat := range jobStats {
 		// Empty job
 		if jobStat == (BatchJob{}) {
@@ -377,11 +384,22 @@ func (j *jobStats) insertJobsInDB(statement *sql.Stmt, jobStats []BatchJob) {
 		}
 		level.Debug(j.logger).Log("msg", "Inserting job", "jobid", jobStat.Jobid)
 		_, err := statement.Exec(
-			jobStat.Jobid, jobStat.Jobuuid,
-			jobStat.Partition, jobStat.Account, jobStat.Grp, jobStat.Gid,
-			jobStat.Usr, jobStat.Uid, jobStat.Submit, jobStat.Start,
-			jobStat.End, jobStat.Elapsed, jobStat.Exitcode,
-			jobStat.State, jobStat.Nnodes, jobStat.Nodelist,
+			jobStat.Jobid,
+			jobStat.Jobuuid,
+			jobStat.Partition,
+			jobStat.Account,
+			jobStat.Grp,
+			jobStat.Gid,
+			jobStat.Usr,
+			jobStat.Uid,
+			jobStat.Submit,
+			jobStat.Start,
+			jobStat.End,
+			jobStat.Elapsed,
+			jobStat.Exitcode,
+			jobStat.State,
+			jobStat.Nnodes,
+			jobStat.Nodelist,
 			jobStat.NodelistExp,
 		)
 		if err != nil {

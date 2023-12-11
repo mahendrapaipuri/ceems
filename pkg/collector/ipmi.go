@@ -15,9 +15,8 @@ import (
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/mahendrapaipuri/batchjob_monitoring/internal/helpers"
 	"github.com/prometheus/client_golang/prometheus"
-
-	utils "github.com/mahendrapaipuri/batchjob_monitoring/pkg/utils"
 )
 
 const ipmiCollectorSubsystem = "ipmi_dcmi"
@@ -29,9 +28,10 @@ type impiCollector struct {
 }
 
 var (
-	ipmiDcmiWrapperExec = kingpin.Flag("collector.ipmi.dcmi.wrapper.path", "Path to IPMI DCMI executable wrapper.").
-				Default("ipmi-dcmi-wrapper").
-				String()
+	ipmiDcmiWrapperExec = kingpin.Flag(
+		"collector.ipmi.dcmi.wrapper.path",
+		"Path to IPMI DCMI executable wrapper.",
+	).Default("ipmi-dcmi-wrapper").String()
 	ipmiDCMIPowerMeasurementRegex = regexp.MustCompile(
 		`^Power Measurement\s*:\s*(?P<value>Active|Not\sAvailable).*`,
 	)
@@ -79,7 +79,7 @@ func getValue(ipmiOutput []byte, regex *regexp.Regexp) (string, error) {
 // Update implements Collector and exposes IPMI DCMI power related metrics.
 func (c *impiCollector) Update(ch chan<- prometheus.Metric) error {
 	args := []string{""}
-	stdOut, err := utils.Execute(*ipmiDcmiWrapperExec, args, c.logger)
+	stdOut, err := helpers.Execute(*ipmiDcmiWrapperExec, args, c.logger)
 	if err != nil {
 		return err
 	}

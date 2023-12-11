@@ -11,17 +11,17 @@ import (
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/mahendrapaipuri/batchjob_monitoring/internal/helpers"
 	"github.com/prometheus/client_golang/prometheus"
-
-	utils "github.com/mahendrapaipuri/batchjob_monitoring/pkg/utils"
 )
 
 const nvidiaGpuJobMapCollectorSubsystem = "nvidia_gpu"
 
 var (
-	gpuStatPath = kingpin.Flag("collector.nvidia.gpu.stat.path", "Path to gpustat file that maps GPU ordinals to job IDs.").
-		Default("/run/gpustat").
-		String()
+	gpuStatPath = kingpin.Flag(
+		"collector.nvidia.gpu.stat.path",
+		"Path to gpustat file that maps GPU ordinals to job IDs.",
+	).Default("/run/gpustat").String()
 )
 
 type Device struct {
@@ -58,7 +58,7 @@ func init() {
 // NOTE: Hoping this command returns MIG devices too
 func getAllDevices(logger log.Logger) ([]Device, error) {
 	args := []string{"--query-gpu=name,uuid", "--format=csv"}
-	nvidiaSmiOutput, err := utils.Execute("nvidia-smi", args, logger)
+	nvidiaSmiOutput, err := helpers.Execute("nvidia-smi", args, logger)
 	if err != nil {
 		level.Error(logger).
 			Log("msg", "nvidia-smi command to get list of devices failed", "err", err)
