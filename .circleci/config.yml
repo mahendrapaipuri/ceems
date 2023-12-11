@@ -19,12 +19,14 @@ jobs:
       - prometheus/setup_environment
       - run: go mod download
       - run: make
+      - run: CGO_ENABLED=1 make
   test-arm:
     executor: arm
     steps:
       - checkout
       - run: uname -a
       - run: make test-e2e
+      - run: CGO_ENBLED=1 make test-e2e
   build:
     machine:
       image: ubuntu-2204:current
@@ -33,7 +35,7 @@ jobs:
       - prometheus/setup_environment
       - run: docker run --privileged linuxkit/binfmt:af88a591f9cc896a52ce596b9cf7ca26a061ef97
       - run: promu crossbuild -v --parallelism $CIRCLE_NODE_TOTAL --parallelism-thread $CIRCLE_NODE_INDEX
-      # - run: promu --config .promu-cgo.yml crossbuild -v --parallelism $CIRCLE_NODE_TOTAL --parallelism-thread $CIRCLE_NODE_INDEX
+      - run: promu --config .promu-cgo.yml crossbuild -v --parallelism $CIRCLE_NODE_TOTAL --parallelism-thread $CIRCLE_NODE_INDEX
       - persist_to_workspace:
           root: .
           paths:
