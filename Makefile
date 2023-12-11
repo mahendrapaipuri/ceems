@@ -21,7 +21,7 @@ CGROUPS_MODE            ?= $([ $(stat -fc %T /sys/fs/cgroup/) = "cgroup2fs" ] &&
 
 STATICCHECK_IGNORE =
 
-CGO_ENABLED             ?= 0
+CGO_BUILD               ?= 0
 
 ifeq ($(GOHOSTOS), linux)
 	test-e2e := test-e2e
@@ -36,7 +36,7 @@ else
 endif
 
 # Use CGO for batchjob_stats_* and GO for batchjob_exporter.
-ifeq ($(CGO_ENABLED), 1)
+ifeq ($(CGO_BUILD), 1)
 	PROMU_CONF ?= .promu-cgo.yml
 	pkgs := ./pkg/jobstats ./cmd/batchjob_stats_db ./cmd/batchjob_stats_server
 else
@@ -90,7 +90,7 @@ endif
 cross-test = skip-test-32bit
 define goarch_pair
 	ifeq ($$(GOHOSTOS), linux)
-		ifndef CGO_ENABLED
+		ifndef CGO_BUILD
 			ifeq ($$(GOHOSTARCH), $1)
 				GOARCH_CROSS = $2
 				cross-test = test-32bit
@@ -130,7 +130,7 @@ update_fixtures:
 	rm -vf pkg/collector/fixtures/sys/.unpacked
 	./scripts/ttar -C pkg/collector/fixtures -c -f pkg/collector/fixtures/sys.ttar sys
 
-ifeq ($(CGO_ENABLED), 0)
+ifeq ($(CGO_BUILD), 0)
 .PHONY: test-e2e
 test-e2e: build pkg/collector/fixtures/sys/.unpacked 
 	@echo ">> running end-to-end tests"

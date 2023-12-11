@@ -19,14 +19,14 @@ jobs:
       - prometheus/setup_environment
       - run: go mod download
       - run: make
-      - run: CGO_ENABLED=1 make
+      - run: CGO_BUILD=1 make
   test-arm:
     executor: arm
     steps:
       - checkout
       - run: uname -a
       - run: make test-e2e
-      - run: CGO_ENBLED=1 make test-e2e
+      - run: CGO_BUILD=1 make test-e2e
   build:
     machine:
       image: ubuntu-2204:current
@@ -35,10 +35,12 @@ jobs:
       - prometheus/setup_environment
       - run: docker run --privileged linuxkit/binfmt:af88a591f9cc896a52ce596b9cf7ca26a061ef97
       - run: promu crossbuild -v --parallelism $CIRCLE_NODE_TOTAL --parallelism-thread $CIRCLE_NODE_INDEX
-      # Replace default CGO_ENABLED before we run CGO. There is no way to inject this env 
+      # Replace default CGO_BUILD before we run CGO. There is no way to inject this env 
       # variable into golang-builder container. So we artificially replace the default
-      # CGO_ENABLED variable in Makefile and run CGO promu
-      - run: sed -i -e 's/CGO_ENABLED             ?= 0/CGO_ENABLED             ?= 1/g' Makefile
+      # CGO_BUILD variable in Makefile and run CGO promu
+      # Do not use CGO_ENABLED env var as golang-builder image will set this var by default to zer
+      # and our override will not have any effect
+      - run: sed -i -e 's/CGO_BUILD               ?= 0/CGO_BUILD               ?= 1/g' Makefile
       - run: cat Makefile
       - run: promu --config .promu-cgo.yml crossbuild -v --parallelism $CIRCLE_NODE_TOTAL --parallelism-thread $CIRCLE_NODE_INDEX
       - persist_to_workspace:
