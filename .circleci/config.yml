@@ -39,6 +39,7 @@ jobs:
       # variable into golang-builder container. So we artificially replace the default
       # CGO_ENABLED variable in Makefile and run CGO promu
       - run: sed -i -e 's/CGO_ENABLED             ?= 0/CGO_ENABLED             ?= 1/g' Makefile
+      - run: cat Makefile
       - run: promu --config .promu-cgo.yml crossbuild -v --parallelism $CIRCLE_NODE_TOTAL --parallelism-thread $CIRCLE_NODE_INDEX
       - persist_to_workspace:
           root: .
