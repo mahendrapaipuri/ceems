@@ -32,9 +32,10 @@ func init() {
 }
 
 var (
-	raplZoneLabel = kingpin.Flag("collector.rapl.enable-zone-label", "Enables RAPL zone labels").
-		Default("false").
-		Bool()
+	raplZoneLabel = kingpin.Flag(
+		"collector.rapl.enable-zone-label",
+		"Enables RAPL zone labels",
+	).Default("false").Bool()
 )
 
 // NewRaplCollector returns a new Collector exposing RAPL metrics.

@@ -7,16 +7,21 @@ import (
 	"testing"
 
 	"github.com/go-kit/log"
+	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/emissions"
+)
+
+var (
+	logger = log.NewNopLogger()
 )
 
 func TestEmissionsMetrics(t *testing.T) {
 	// Mock GetRteEnergyMixData
 	expectedFactor := float64(55)
-	getRteEnergyMixData = func() (float64, error) {
+	getRteEnergyMixData = func(client emissions.Client, logger log.Logger) (float64, error) {
 		return expectedFactor, nil
 	}
 	c := emissionsCollector{
-		logger:      log.NewNopLogger(),
+		logger:      logger,
 		countryCode: "FRA",
 		energyData:  map[string]float64{"FRA": 50, "DEU": 51, "CHL": 52},
 	}
@@ -26,7 +31,7 @@ func TestEmissionsMetrics(t *testing.T) {
 	}
 
 	// Change mock to give different value
-	getRteEnergyMixData = func() (float64, error) {
+	getRteEnergyMixData = func(client emissions.Client, logger log.Logger) (float64, error) {
 		return float64(65), nil
 	}
 	value = c.getCurrentEmissionFactor()
