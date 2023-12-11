@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	binary, _ = filepath.Abs("batchjob_exporter")
+	binary, _ = filepath.Abs("bin/batchjob_exporter")
 )
 
 const (
