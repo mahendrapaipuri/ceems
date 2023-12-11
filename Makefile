@@ -21,6 +21,8 @@ CGROUPS_MODE            ?= $([ $(stat -fc %T /sys/fs/cgroup/) = "cgroup2fs" ] &&
 
 STATICCHECK_IGNORE =
 
+CGO_ENABLED             ?= 0
+
 ifeq ($(GOHOSTOS), linux)
 	test-e2e := test-e2e
 else
@@ -34,22 +36,18 @@ else
 endif
 
 # Use CGO for batchjob_stats_* and GO for batchjob_exporter.
-ifndef CGO_ENABLED
-	PROMU_CONF ?= .promu.yml
-	pkgs := ./pkg/collector ./pkg/emissions ./cmd/batchjob_exporter
-	ifeq ($(GOHOSTOS), linux)
-		test-e2e := test-e2e-go
-	else
-		test-e2e := skip-test-e2e
-	endif
-else
+ifeq ($(CGO_ENABLED), 1)
 	PROMU_CONF ?= .promu-cgo.yml
 	pkgs := ./pkg/jobstats ./cmd/batchjob_stats_db ./cmd/batchjob_stats_server
-	ifeq ($(GOHOSTOS), linux)
-		test-e2e := test-e2e-cgo
-	else
-		test-e2e := skip-test-e2e
-	endif
+else
+	PROMU_CONF ?= .promu.yml
+	pkgs := ./pkg/collector ./pkg/emissions ./cmd/batchjob_exporter
+endif
+
+ifeq ($(GOHOSTOS), linux)
+	test-e2e := test-e2e
+else
+	test-e2e := skip-test-e2e
 endif
 
 # We are using SQLite3 which needs CGO and thus, this logic
@@ -132,15 +130,18 @@ update_fixtures:
 	rm -vf pkg/collector/fixtures/sys/.unpacked
 	./scripts/ttar -C pkg/collector/fixtures -c -f pkg/collector/fixtures/sys.ttar sys
 
+ifeq ($(CGO_ENABLED), 0)
 .PHONY: test-e2e
 test-e2e: build pkg/collector/fixtures/sys/.unpacked 
 	@echo ">> running end-to-end tests"
-	if [ -z "${CGO_ENABLED}" ]; then \
-		./scripts/e2e-test.sh -p exporter; \
-	else \
-		./scripts/e2e-test.sh -p stats_db; \
-		./scripts/e2e-test.sh -p stats_server; \
-	fi
+	./scripts/e2e-test.sh -p exporter
+else
+.PHONY: test-e2e
+test-e2e: build pkg/collector/fixtures/sys/.unpacked
+	@echo ">> running end-to-end tests"
+	./scripts/e2e-test.sh -p stats_db
+	./scripts/e2e-test.sh -p stats_server
+endif
 
 .PHONY: skip-test-e2e
 skip-test-e2e:
