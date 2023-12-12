@@ -204,6 +204,11 @@ func (s *JobstatsServer) jobs(w http.ResponseWriter, r *http.Request) {
 
 	// Get query parameters
 	accounts := r.URL.Query()["account"]
+	// Add accounts from var-account query parameter as well
+	// This is to take into account query string made by grafana when getting
+	// from variables
+	accounts = append(accounts, r.URL.Query()["var-account"]...)
+
 	var from, to string
 	// If no from provided, use 1 week from now as from
 	if from = r.URL.Query().Get("from"); from == "" {
@@ -278,14 +283,16 @@ func getAccounts(user string, logger log.Logger) ([]Account, error) {
 
 	// Loop through rows, using Scan to assign column data to struct fields.
 	var accounts []Account
+	var accountNames []string
 	for rows.Next() {
 		var account string
 		if err := rows.Scan(&account); err != nil {
 			level.Error(logger).Log("msg", "Could not scan row for accounts query", "user", user, "err", err)
 		}
 		accounts = append(accounts, Account{ID: account})
+		accountNames = append(accountNames, account)
 	}
-	level.Debug(logger).Log("msg", "Accounts found for user", "user", user, "accounts", accounts)
+	level.Debug(logger).Log("msg", "Accounts found for user", "user", user, "accounts", strings.Join(accountNames, ","))
 	return accounts, nil
 }
 
