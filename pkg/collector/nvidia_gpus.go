@@ -25,6 +25,7 @@ var (
 )
 
 type Device struct {
+	index string
 	name  string
 	uuid  string
 	isMig bool
@@ -57,7 +58,7 @@ func init() {
 //
 // NOTE: Hoping this command returns MIG devices too
 func getAllDevices(logger log.Logger) ([]Device, error) {
-	args := []string{"--query-gpu=name,uuid", "--format=csv"}
+	args := []string{"--query-gpu=index,name,uuid", "--format=csv"}
 	nvidiaSmiOutput, err := helpers.Execute("nvidia-smi", args, logger)
 	if err != nil {
 		level.Error(logger).
@@ -69,20 +70,21 @@ func getAllDevices(logger log.Logger) ([]Device, error) {
 	allDevices := []Device{}
 	for _, line := range strings.Split(string(nvidiaSmiOutput), "\n") {
 		// Header line
-		if strings.HasPrefix(line, "name") {
+		if strings.HasPrefix(line, "index") {
 			continue
 		}
 
 		devDetails := strings.Split(line, ",")
-		if len(devDetails) < 2 {
+		if len(devDetails) < 3 {
 			level.Error(logger).
 				Log("msg", "Cannot parse output from nvidia-smi command", "output", line)
 			continue
 		}
 
-		// Get device name and UUID
-		devName := strings.TrimSpace(devDetails[0])
-		devUuid := strings.TrimSpace(devDetails[1])
+		// Get device index, name and UUID
+		devIndx := strings.TrimSpace(devDetails[0])
+		devName := strings.TrimSpace(devDetails[1])
+		devUuid := strings.TrimSpace(devDetails[2])
 
 		// Check if device is in MiG mode
 		isMig := false
@@ -92,7 +94,7 @@ func getAllDevices(logger log.Logger) ([]Device, error) {
 		level.Debug(logger).
 			Log("msg", "Found nVIDIA GPU", "name", devName, "UUID", devUuid, "isMig:", isMig)
 
-		allDevices = append(allDevices, Device{name: devName, uuid: devUuid, isMig: isMig})
+		allDevices = append(allDevices, Device{index: devIndx, name: devName, uuid: devUuid, isMig: isMig})
 	}
 	return allDevices, nil
 }
@@ -128,13 +130,18 @@ func (c *nvidiaGpuJobMapCollector) getJobId() (map[string]float64, error) {
 	gpuJobMapper := make(map[string]float64)
 	for _, dev := range c.devices {
 		var jobId int64 = 0
-		var slurmInfo string = fmt.Sprintf("%s/%s", *gpuStatPath, dev.uuid)
+		var slurmInfo string = fmt.Sprintf("%s/%s", *gpuStatPath, dev.index)
 
+		// NOTE: Look for file name with UUID as it will be more appropriate with
+		// MIG instances.
+		// If /run/gpustat/0 file is not found, check for the file with UUID as name?
 		if _, err := os.Stat(slurmInfo); err == nil {
 			content, err := os.ReadFile(slurmInfo)
 			if err != nil {
-				level.Error(c.logger).
-					Log("msg", "Failed to get job ID for GPU", "name", dev.uuid, "err", err)
+				level.Error(c.logger).Log(
+					"msg", "Failed to get job ID for GPU",
+					"index", dev.index, "uuid", dev.uuid, "err", err,
+				)
 				gpuJobMapper[dev.uuid] = float64(0)
 			}
 			fmt.Sscanf(string(content), "%d", &jobId)

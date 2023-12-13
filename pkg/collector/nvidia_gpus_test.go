@@ -11,11 +11,19 @@ import (
 )
 
 var (
-	devices = []Device{{name: "fakeGpu1",
-		uuid:  "GPU-f124aa59-d406-d45b-9481-8fcd694e6c9e",
-		isMig: false}, {name: "fakeGpu2",
-		uuid:  "GPU-61a65011-6571-a6d2-5ab8-66cbb6f7f9c3",
-		isMig: false}}
+	devices = []Device{
+		{
+			index: "0",
+			name:  "fakeGpu1",
+			uuid:  "GPU-f124aa59-d406-d45b-9481-8fcd694e6c9e",
+			isMig: false,
+		}, {
+			index: "1",
+			name:  "fakeGpu2",
+			uuid:  "GPU-61a65011-6571-a6d2-5ab8-66cbb6f7f9c3",
+			isMig: false,
+		},
+	}
 )
 
 func TestNvidiaJobGpuMap(t *testing.T) {
