@@ -64,26 +64,34 @@ func getAllDevices(logger log.Logger) ([]Device, error) {
 			Log("msg", "nvidia-smi command to get list of devices failed", "err", err)
 		return nil, err
 	}
+
+	// Get all devices
 	allDevices := []Device{}
 	for _, line := range strings.Split(string(nvidiaSmiOutput), "\n") {
 		// Header line
 		if strings.HasPrefix(line, "name") {
 			continue
 		}
+
 		devDetails := strings.Split(line, ",")
 		if len(devDetails) < 2 {
 			level.Error(logger).
 				Log("msg", "Cannot parse output from nvidia-smi command", "output", line)
 			continue
 		}
+
+		// Get device name and UUID
 		devName := strings.TrimSpace(devDetails[0])
 		devUuid := strings.TrimSpace(devDetails[1])
+
+		// Check if device is in MiG mode
 		isMig := false
 		if strings.HasPrefix(devUuid, "MIG") {
 			isMig = true
 		}
 		level.Debug(logger).
 			Log("msg", "Found nVIDIA GPU", "name", devName, "UUID", devUuid, "isMig:", isMig)
+
 		allDevices = append(allDevices, Device{name: devName, uuid: devUuid, isMig: isMig})
 	}
 	return allDevices, nil
