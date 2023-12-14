@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log/level"
+	batchjob_runtime "github.com/mahendrapaipuri/batchjob_monitoring/internal/runtime"
 	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats"
 	"github.com/prometheus/common/promlog"
 	"github.com/prometheus/common/promlog/flag"
@@ -62,6 +63,8 @@ func main() {
 
 	level.Info(logger).Log("msg", fmt.Sprintf("Running %s", jobstats.JobstatServerAppName), "version", version.Info())
 	level.Info(logger).Log("msg", "Build context", "build_context", version.BuildContext())
+	level.Info(logger).Log("fd_limits", batchjob_runtime.Uname())
+	level.Info(logger).Log("fd_limits", batchjob_runtime.FdLimits())
 
 	runtime.GOMAXPROCS(*maxProcs)
 	level.Debug(logger).Log("msg", "Go MAXPROCS", "procs", runtime.GOMAXPROCS(0))
