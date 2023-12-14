@@ -102,7 +102,7 @@ func (c *impiCollector) Update(ch chan<- prometheus.Metric) error {
 		level.Error(c.logger).Log("msg", "Failed to collect IPMI DCMI data", "error", err)
 		return err
 	}
-	
+
 	// Returned value negative == Power Measurement is not avail
 	if currentPowerConsumption > -1 {
 		ch <- prometheus.MustNewConstMetric(c.wattsMetricDesc, prometheus.CounterValue, float64(currentPowerConsumption))
@@ -117,7 +117,7 @@ func (c *impiCollector) getCurrentPowerConsumption(ipmiOutput []byte) (float64, 
 	if err != nil {
 		return -1, err
 	}
-	
+
 	// When Power Measurement in 'Active' state - we can get watts
 	if value == "Active" {
 		value, err := getValue(ipmiOutput, ipmiDCMICurrentPowerRegex)
