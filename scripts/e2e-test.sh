@@ -118,7 +118,7 @@ then
     --path.sysfs="pkg/collector/fixtures/sys" \
     --path.cgroupfs="pkg/collector/fixtures/sys/fs/cgroup" \
     --collector.slurm.job.stat.path="pkg/collector/fixtures/slurmjobstat" \
-    --collector.ipmi.dcmi.wrapper.path="pkg/collector/fixtures/ipmi-dcmi-wrapper.sh" \
+    --collector.ipmi.dcmi.exec.path="pkg/collector/fixtures/ipmi-dcmi-wrapper.sh" \
     --collector.nvidia_gpu \
     --collector.nvidia.gpu.stat.path="pkg/collector/fixtures/gpustat" \
     --web.listen-address "127.0.0.1:${port}" \

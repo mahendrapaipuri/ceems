@@ -28,10 +28,14 @@ type impiCollector struct {
 }
 
 var (
-	ipmiDcmiWrapperExec = kingpin.Flag(
-		"collector.ipmi.dcmi.wrapper.path",
-		"Path to IPMI DCMI executable wrapper.",
+	ipmiDcmiExec = kingpin.Flag(
+		"collector.ipmi.dcmi.exec.path",
+		"Path to IPMI DCMI executable.",
 	).Default("ipmi-dcmi-wrapper").String()
+	ipmiDcmiExecAsRoot = kingpin.Flag(
+		"collector.ipmi.dcmi.exec.run.as.root",
+		"Execute IPMI DCMI command as root. This requires batchjob_exporter to run as root or to have appropriate capabilities (cap_setuid).",
+	).Default("false").Bool()
 	ipmiDCMIPowerMeasurementRegex = regexp.MustCompile(
 		`^Power Measurement\s*:\s*(?P<value>Active|Not\sAvailable).*`,
 	)
@@ -78,16 +82,27 @@ func getValue(ipmiOutput []byte, regex *regexp.Regexp) (string, error) {
 
 // Update implements Collector and exposes IPMI DCMI power related metrics.
 func (c *impiCollector) Update(ch chan<- prometheus.Metric) error {
-	args := []string{""}
-	stdOut, err := helpers.Execute(*ipmiDcmiWrapperExec, args, c.logger)
+	args := []string{"--get-system-power-statistics"}
+	var stdOut []byte
+	var err error
+
+	// Execute ipmi-dcmi command
+	if *ipmiDcmiExecAsRoot {
+		stdOut, err = helpers.ExecuteAs(*ipmiDcmiExec, args, 0, 0, c.logger)
+	} else {
+		stdOut, err = helpers.Execute(*ipmiDcmiExec, args, c.logger)
+	}
 	if err != nil {
 		return err
 	}
+
+	// Parse power consumption from output
 	currentPowerConsumption, err := c.getCurrentPowerConsumption(stdOut)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "Failed to collect IPMI DCMI data", "error", err)
 		return err
 	}
+	
 	// Returned value negative == Power Measurement is not avail
 	if currentPowerConsumption > -1 {
 		ch <- prometheus.MustNewConstMetric(c.wattsMetricDesc, prometheus.CounterValue, float64(currentPowerConsumption))
@@ -102,6 +117,7 @@ func (c *impiCollector) getCurrentPowerConsumption(ipmiOutput []byte) (float64, 
 	if err != nil {
 		return -1, err
 	}
+	
 	// When Power Measurement in 'Active' state - we can get watts
 	if value == "Active" {
 		value, err := getValue(ipmiOutput, ipmiDCMICurrentPowerRegex)
