@@ -20,8 +20,8 @@ CREATE TABLE jobs (
 		"Nodelist" TEXT,
 		"NodelistExp" TEXT
 	  );
-INSERT INTO jobs VALUES(1,'1479763','667127ae-68d0-47aa-78e3-76ae76e4aba7','part1','acc1','grp','1000','usr','1000','2023-02-21T14:37:02','2023-02-21T14:37:07','2023-02-21T15:26:29','00:49:22','0:0','CANCELLED by 1000','1','compute-0','compute-0');
-INSERT INTO jobs VALUES(2,'1481508','6bfbe049-b5ee-ea02-6cd8-3dd95acdd0e4','part1','acc1','grp','1000','usr','1000','2023-02-21T15:48:20','2023-02-21T15:49:06','2023-02-21T15:57:23','00:08:17','0:0','CANCELLED by 1000','2','compute-[0-2]','compute-0|compute-1|compute-2');
+INSERT INTO jobs VALUES(1,'1479763','a3bd0ca1-5021-7e4d-943e-9529f8390f05','part1','acc1','grp','1000','usr','1000','2023-02-21T14:37:02','2023-02-21T14:37:07','2023-02-21T15:26:29','00:49:22','0:0','CANCELLED by 1000','1','compute-0','compute-0');
+INSERT INTO jobs VALUES(2,'1481508','759a4e2e-1e47-c58b-3d1b-885a03ca323b','part1','acc1','grp','1000','usr','1000','2023-02-21T15:48:20','2023-02-21T15:49:06','2023-02-21T15:57:23','00:08:17','0:0','CANCELLED by 1000','2','compute-[0-2]','compute-0|compute-1|compute-2');
 DELETE FROM sqlite_sequence;
 INSERT INTO sqlite_sequence VALUES('jobs',2);
 CREATE INDEX i1 ON jobs (Usr,Account,Start);

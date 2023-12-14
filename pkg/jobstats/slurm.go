@@ -58,14 +58,13 @@ func parseSacctCmdOutput(sacctOutput string, logger log.Logger) ([]BatchJob, int
 				wg.Done()
 				return
 			}
-			// Generate UUID from jobID, uid, account, nodelist(lowercase), workdir(lowercase)
+			// Generate UUID from jobID, uid, account, nodelist(lowercase)
 			jobUuid, err := helpers.GetUuidFromString(
 				[]string{
-					components[0],
-					components[6],
-					strings.ToLower(components[2]),
-					strings.ToLower(components[14]),
-					strings.ToLower(components[16]),
+					strings.TrimSpace(components[0]),
+					strings.TrimSpace(components[6]),
+					strings.ToLower(strings.TrimSpace(components[2])),
+					strings.ToLower(strings.TrimSpace(components[14])),
 				},
 			)
 			if err != nil {

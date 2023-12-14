@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -19,12 +20,13 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/batchjob_monitoring/internal/helpers"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/procfs"
 )
 
 const slurmCollectorSubsystem = "slurm_job"
 
 var (
-	cgroupV2        = false
+	cgroupsV2       = false
 	metricLock      = sync.RWMutex{}
 	collectJobSteps = kingpin.Flag(
 		"collector.slurm.jobsteps.metrics",
@@ -33,12 +35,12 @@ var (
 	).Default("false").Bool()
 	// useJobIdHash = kingpin.Flag(
 	// 	"collector.slurm.unique.jobid",
-	// 	"Whether to calculate a hash based on job SLURM_JOBID, SLURM_JOB_UID, SLURM_JOB_ACCOUNT, SLURM_JOB_NODELIST, SLURM_JOB_WORKDIR to get unique job identifier.",
+	// 	"Whether to calculate a hash based on job SLURM_JOBID, SLURM_JOB_UID, SLURM_JOB_ACCOUNT, SLURM_JOB_NODELIST to get unique job identifier.",
 	// ).Default("false").Bool()
 	jobStatPath = kingpin.Flag(
 		"collector.slurm.job.stat.path",
 		`Path to jobstat files that contains a file for each job with line 
-\"$SLURM_JOB_UID $SLURM_JOB_ACCOUNT $SLURM_JOB_NODELIST $SLURM_JOB_WORKDIR\". 
+\"$SLURM_JOB_UID $SLURM_JOB_ACCOUNT $SLURM_JOB_NODELIST\". 
 An deterministic UUID is computed on the variables in this file and job ID to get an 
 unique job identifier.`,
 	).Default("/run/slurmjobstat").String()
@@ -70,7 +72,7 @@ type CgroupMetric struct {
 }
 
 type slurmCollector struct {
-	cgroupV2        bool
+	cgroupsV2       bool
 	cpuUser         *prometheus.Desc
 	cpuSystem       *prometheus.Desc
 	cpuTotal        *prometheus.Desc
@@ -94,13 +96,13 @@ func init() {
 // NewSlurmCollector returns a new Collector exposing a summary of cgroups.
 func NewSlurmCollector(logger log.Logger) (Collector, error) {
 	if cgroups.Mode() == cgroups.Unified {
-		cgroupV2 = true
+		cgroupsV2 = true
 		level.Info(logger).Log("msg", "Cgroup version v2 detected", "mount", *cgroupfsPath)
 	} else {
 		level.Info(logger).Log("msg", "Cgroup version v2 not detected, will proceed with v1.")
 	}
 	return &slurmCollector{
-		cgroupV2: cgroupV2,
+		cgroupsV2: cgroupsV2,
 		cpuUser: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "cpu", "user_seconds"),
 			"Cumulative CPU user seconds",
@@ -232,7 +234,7 @@ func (c *slurmCollector) getJobsMetrics() (map[string]CgroupMetric, error) {
 	var metrics = make(map[string]CgroupMetric)
 	var topPath string
 	var fullPath string
-	if c.cgroupV2 {
+	if c.cgroupsV2 {
 		topPath = *cgroupfsPath
 		fullPath = topPath + "/system.slice/slurmstepd.scope"
 	} else {
@@ -278,7 +280,7 @@ func (c *slurmCollector) getJobsMetrics() (map[string]CgroupMetric, error) {
 	// fix it by looking at the parent
 	// we loop through names once as it was the result of Walk so top paths are seen first
 	// also some cgroups we ignore, like path=/system.slice/slurmstepd.scope/job_216/step_interactive/user, hence the need to loop through multiple parents
-	if c.cgroupV2 {
+	if c.cgroupsV2 {
 		for _, name := range names {
 			metric, ok := metrics[name]
 			if ok && metric.memoryTotal < 0 {
@@ -298,7 +300,7 @@ func (c *slurmCollector) getJobsMetrics() (map[string]CgroupMetric, error) {
 
 // Get metrics of a given SLURM cgroups path
 func (c *slurmCollector) getMetrics(name string) (CgroupMetric, error) {
-	if c.cgroupV2 {
+	if c.cgroupsV2 {
 		return c.getCgroupsV2Metrics(name)
 	} else {
 		return c.getCgroupsV1Metrics(name)
@@ -343,7 +345,7 @@ func (c *slurmCollector) parseCpuSet(cpuset string) ([]string, error) {
 // Get list of CPUs in the cgroup
 func (c *slurmCollector) getCPUs(name string) ([]string, error) {
 	var cpusPath string
-	if c.cgroupV2 {
+	if c.cgroupsV2 {
 		cpusPath = fmt.Sprintf("%s%s/cpuset.cpus.effective", *cgroupfsPath, name)
 	} else {
 		cpusPath = fmt.Sprintf("%s/cpuset%s/cpuset.cpus", *cgroupfsPath, name)
@@ -369,8 +371,7 @@ func (c *slurmCollector) getJobLabels(jobid string) (string, string, string) {
 	var jobUuid string
 	var jobUid string = ""
 	var jobAccount string = ""
-	var jobNodelist = ""
-	var jobWorkDir = ""
+	var jobNodelist string = ""
 	var slurmJobInfo = fmt.Sprintf("%s/%s", *jobStatPath, jobid)
 	if _, err := os.Stat(slurmJobInfo); err == nil {
 		content, err := os.ReadFile(slurmJobInfo)
@@ -378,22 +379,57 @@ func (c *slurmCollector) getJobLabels(jobid string) (string, string, string) {
 			level.Error(c.logger).
 				Log("msg", "Failed to get metadata for job", "jobid", jobid, "err", err)
 		} else {
-			fmt.Sscanf(string(content), "%s %s %s %s", &jobUid, &jobAccount, &jobNodelist, &jobWorkDir)
+			fmt.Sscanf(string(content), "%s %s %s", &jobUid, &jobAccount, &jobNodelist)
 		}
-		jobUuid, err = helpers.GetUuidFromString(
-			[]string{
-				jobid,
-				jobUid,
-				strings.ToLower(jobAccount),
-				strings.ToLower(jobNodelist),
-				strings.ToLower(jobWorkDir),
-			},
-		)
+	} else {
+		// Attempt to get UID, Account, Nodelist from /proc file system by looking into
+		// environ for the process that has same SLURM_JOB_ID
+		allProcs, err := procfs.AllProcs()
 		if err != nil {
-			level.Error(c.logger).
-				Log("msg", "Failed to generate UUID for job", "jobid", jobid, "err", err)
-			jobUuid = jobid
+			level.Error(c.logger).Log("msg", "Failed to read /proc", "err", err)
+			goto outside
 		}
+		jobIDEnv := fmt.Sprintf("SLURM_JOB_ID=%s", jobid)
+
+		// Iterate through all procs and look for SLURM_JOB_ID env entry
+		for _, proc := range allProcs {
+			environments, err := proc.Environ()
+			if err != nil {
+				continue
+			}
+
+			// When env var entry found, get all necessary env vars
+			if slices.Contains(environments, jobIDEnv) {
+				for _, env := range environments {
+					if strings.Contains(env, "SLURM_JOB_UID") {
+						jobUid = strings.Split(env, "=")[1]
+					}
+					if strings.Contains(env, "SLURM_JOB_ACCOUNT") {
+						jobAccount = strings.Split(env, "=")[1]
+					}
+					if strings.Contains(env, "SLURM_JOB_NODELIST") {
+						jobNodelist = strings.Split(env, "=")[1]
+					}
+				}
+
+				// Break loop once all env vars are read
+				goto outside
+			}
+		}
+	}
+outside:
+	jobUuid, err := helpers.GetUuidFromString(
+		[]string{
+			strings.TrimSpace(jobid),
+			strings.TrimSpace(jobUid),
+			strings.ToLower(strings.TrimSpace(jobAccount)),
+			strings.ToLower(strings.TrimSpace(jobNodelist)),
+		},
+	)
+	if err != nil {
+		level.Error(c.logger).
+			Log("msg", "Failed to generate UUID for job", "jobid", jobid, "err", err)
+		jobUuid = jobid
 	}
 	return jobUuid, jobUid, jobAccount
 }

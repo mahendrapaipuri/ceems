@@ -22,7 +22,7 @@ func TestCgroupsV2SlurmJobMetrics(t *testing.T) {
 	); err != nil {
 		t.Fatal(err)
 	}
-	c := slurmCollector{cgroupV2: true, logger: log.NewNopLogger()}
+	c := slurmCollector{cgroupsV2: true, logger: log.NewNopLogger()}
 	metrics, err := c.getJobsMetrics()
 	expectedSlurmMetrics = CgroupMetric{
 		name:            "/system.slice/slurmstepd.scope/job_1009248",
@@ -42,7 +42,7 @@ func TestCgroupsV2SlurmJobMetrics(t *testing.T) {
 		jobuid:          "1000",
 		jobaccount:      "testacc",
 		jobid:           "1009248",
-		jobuuid:         "7f6c39b7-2740-fc1f-32c2-8fc28880829c",
+		jobuuid:         "ac28caf5-ce6c-35f6-73fb-47d9d43f7780",
 		step:            "",
 		task:            "",
 		batch:           "slurm",
@@ -64,7 +64,7 @@ func TestCgroupsV1SlurmJobMetrics(t *testing.T) {
 	); err != nil {
 		t.Fatal(err)
 	}
-	c := slurmCollector{cgroupV2: false, logger: log.NewNopLogger()}
+	c := slurmCollector{cgroupsV2: false, logger: log.NewNopLogger()}
 	metrics, err := c.getJobsMetrics()
 	expectedSlurmMetrics = CgroupMetric{
 		name:            "/slurm/uid_1000/job_1009248",
@@ -84,7 +84,7 @@ func TestCgroupsV1SlurmJobMetrics(t *testing.T) {
 		jobuid:          "1000",
 		jobaccount:      "testacc",
 		jobid:           "1009248",
-		jobuuid:         "7f6c39b7-2740-fc1f-32c2-8fc28880829c",
+		jobuuid:         "ac28caf5-ce6c-35f6-73fb-47d9d43f7780",
 		step:            "",
 		task:            "",
 		batch:           "slurm",
