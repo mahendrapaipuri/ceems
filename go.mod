@@ -14,6 +14,7 @@ require (
 	github.com/prometheus/exporter-toolkit v0.10.0
 	github.com/prometheus/procfs v0.12.0
 	github.com/zeebo/xxh3 v1.0.2
+	golang.org/x/sys v0.13.0
 )
 
 require (
@@ -38,7 +39,6 @@ require (
 	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/oauth2 v0.12.0 // indirect
 	golang.org/x/sync v0.3.0 // indirect
-	golang.org/x/sys v0.13.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
