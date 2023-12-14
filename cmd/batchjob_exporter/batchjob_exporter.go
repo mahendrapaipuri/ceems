@@ -18,6 +18,7 @@ import (
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	batchjob_runtime "github.com/mahendrapaipuri/batchjob_monitoring/internal/runtime"
 	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/collector"
 	"github.com/prometheus/client_golang/prometheus"
 	promcollectors "github.com/prometheus/client_golang/prometheus/collectors"
@@ -180,10 +181,14 @@ func main() {
 	}
 	level.Info(logger).Log("msg", "Starting batchjob_exporter", "version", version.Info())
 	level.Info(logger).Log("msg", "Build context", "build_context", version.BuildContext())
+	level.Info(logger).Log("fd_limits", batchjob_runtime.Uname())
+	level.Info(logger).Log("fd_limits", batchjob_runtime.FdLimits())
+
 	if user, err := user.Current(); err == nil && user.Uid == "0" {
 		level.Warn(logger).
-			Log("msg", "Batch Job Metrics Exporter is running as root user. This exporter is designed to run as unprivileged user, root is not required.")
+			Log("msg", "Batch Job Metrics Exporter is running as root user. This exporter can be run as unprivileged user, root is not required.")
 	}
+
 	runtime.GOMAXPROCS(*maxProcs)
 	level.Debug(logger).Log("msg", "Go MAXPROCS", "procs", runtime.GOMAXPROCS(0))
 
