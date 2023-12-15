@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0-rc.0 / 2023-12-14
+## Unreleased
 
 - [FEATURE] Add Runtime pkg [#10](https://github.com/mahendrapaipuri/batchjob_monitoring/pull/10) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
 - [FEATURE] Misc features [#9](https://github.com/mahendrapaipuri/batchjob_monitoring/pull/9) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
