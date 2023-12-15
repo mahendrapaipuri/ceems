@@ -7,6 +7,7 @@ executors:
   golang:
     docker:
       - image: cimg/go:1.21
+    resource_class: medium
   arm:
     machine:
       image: ubuntu-2204:current
@@ -32,11 +33,12 @@ jobs:
   build:
     machine:
       image: ubuntu-2204:current
+    resource_class: medium
     parallelism: 3
     steps:
       - prometheus/setup_environment
       # - run: docker run --privileged linuxkit/binfmt:af88a591f9cc896a52ce596b9cf7ca26a061ef97
-      - run: promu crossbuild -v --parallelism $CIRCLE_NODE_TOTAL --parallelism-thread $CIRCLE_NODE_INDEX
+      - run: promu --config .promu-go.yml crossbuild -v --parallelism $CIRCLE_NODE_TOTAL --parallelism-thread $CIRCLE_NODE_INDEX
       # Replace default CGO_BUILD before we run CGO. There is no way to inject this env 
       # variable into golang-builder container. So we artificially replace the default
       # CGO_BUILD variable in Makefile and run CGO promu
