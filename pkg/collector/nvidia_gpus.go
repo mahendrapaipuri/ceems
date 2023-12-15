@@ -6,6 +6,8 @@ package collector
 import (
 	"fmt"
 	"os"
+	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/alecthomas/kingpin/v2"
@@ -13,6 +15,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/batchjob_monitoring/internal/helpers"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/procfs"
 )
 
 const nvidiaGpuJobMapCollectorSubsystem = "nvidia_gpu"
@@ -146,7 +149,59 @@ func (c *nvidiaGpuJobMapCollector) getJobId() (map[string]float64, error) {
 			}
 			fmt.Sscanf(string(content), "%d", &jobId)
 			gpuJobMapper[dev.uuid] = float64(jobId)
+		} else {
+			// Attempt to get GPU dev indices from /proc file system by looking into
+			// environ for the process that has same SLURM_JOB_ID
+			allProcs, err := procfs.AllProcs()
+			if err != nil {
+				level.Error(c.logger).Log("msg", "Failed to read /proc", "err", err)
+				gpuJobMapper[dev.uuid] = float64(0)
+
+				// If we cannot read procfs break
+				goto outside
+			}
+
+			// Iterate through all procs and look for SLURM_JOB_ID env entry
+			for _, proc := range allProcs {
+				environments, err := proc.Environ()
+				if err != nil {
+					continue
+				}
+
+				var gpuIndices []string
+				var slurmJobId string = ""
+
+				// Loop through all env vars and get SLURM_SETP_GPUS/SLURM_JOB_GPUS
+				// and SLURM_JOB_ID
+				for _, env := range environments {
+					// Check both SLURM_SETP_GPUS and SLURM_JOB_GPUS vars and only when
+					// gpuIndices is empty.
+					// We dont want an empty env var to override already populated
+					// gpuIndices slice
+					if (strings.Contains(env, "SLURM_STEP_GPUS") || strings.Contains(env, "SLURM_JOBS_GPUS")) && len(gpuIndices) == 0 {
+						gpuIndices = strings.Split(strings.Split(env, "=")[1], ",")
+					}
+					if strings.Contains(env, "SLURM_JOB_ID") {
+						slurmJobId = strings.Split(env, "=")[1]
+					}
+				}
+
+				// If gpuIndices has current GPU index, assign the jobID and break loop
+				if slices.Contains(gpuIndices, dev.index) {
+					jid, err := strconv.Atoi(slurmJobId)
+					if err != nil {
+						gpuJobMapper[dev.uuid] = float64(0)
+					}
+					gpuJobMapper[dev.uuid] = float64(jid)
+					goto outside
+				}
+			}
 		}
+	outside:
+		level.Debug(c.logger).Log(
+			"msg", "Foung job ID for GPU", "index", dev.index, "uuid", dev.uuid,
+			"jobid", gpuJobMapper[dev.uuid],
+		)
 	}
 	return gpuJobMapper, nil
 }
