@@ -40,7 +40,7 @@ ifeq ($(CGO_BUILD), 1)
 	PROMU_CONF ?= .promu-cgo.yml
 	pkgs := ./pkg/jobstats ./cmd/batchjob_stats_db ./cmd/batchjob_stats_server
 else
-	PROMU_CONF ?= .promu.yml
+	PROMU_CONF ?= .promu-go.yml
 	pkgs := ./pkg/collector ./pkg/emissions ./cmd/batchjob_exporter
 endif
 
@@ -49,31 +49,6 @@ ifeq ($(GOHOSTOS), linux)
 else
 	test-e2e := skip-test-e2e
 endif
-
-# We are using SQLite3 which needs CGO and thus, this logic
-# is not relevant for us anymore
-# ifeq ($(GOOS), linux)
-# 	PROMU_CONF ?= .promu.yml
-# else
-# 	ifndef GOOS
-# 		ifeq ($(GOHOSTOS), linux)
-# 			PROMU_CONF ?= .promu.yml
-# 		else
-# 			PROMU_CONF ?= .promu-cgo.yml
-# 		endif
-# 	else
-# 		# Do not use CGO for openbsd/amd64 builds
-# 		ifeq ($(GOOS), openbsd)
-# 			ifeq ($(GOARCH), amd64)
-# 				PROMU_CONF ?= .promu.yml
-# 			else
-# 				PROMU_CONF ?= .promu-cgo.yml
-# 			endif
-# 		else
-# 			PROMU_CONF ?= .promu-cgo.yml
-# 		endif
-# 	endif
-# endif
 
 PROMU := $(FIRST_GOPATH)/bin/promu --config $(PROMU_CONF)
 
