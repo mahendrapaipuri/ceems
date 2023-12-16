@@ -72,21 +72,23 @@ type CgroupMetric struct {
 }
 
 type slurmCollector struct {
-	cgroupsV2       bool
-	cpuUser         *prometheus.Desc
-	cpuSystem       *prometheus.Desc
-	cpuTotal        *prometheus.Desc
-	cpus            *prometheus.Desc
-	memoryRSS       *prometheus.Desc
-	memoryCache     *prometheus.Desc
-	memoryUsed      *prometheus.Desc
-	memoryTotal     *prometheus.Desc
-	memoryFailCount *prometheus.Desc
-	memswUsed       *prometheus.Desc
-	memswTotal      *prometheus.Desc
-	memswFailCount  *prometheus.Desc
-	collectError    *prometheus.Desc
-	logger          log.Logger
+	cgroups          string // v1 or v2
+	cgroupsRootPath  string
+	slurmCgroupsPath string
+	cpuUser          *prometheus.Desc
+	cpuSystem        *prometheus.Desc
+	cpuTotal         *prometheus.Desc
+	cpus             *prometheus.Desc
+	memoryRSS        *prometheus.Desc
+	memoryCache      *prometheus.Desc
+	memoryUsed       *prometheus.Desc
+	memoryTotal      *prometheus.Desc
+	memoryFailCount  *prometheus.Desc
+	memswUsed        *prometheus.Desc
+	memswTotal       *prometheus.Desc
+	memswFailCount   *prometheus.Desc
+	collectError     *prometheus.Desc
+	logger           log.Logger
 }
 
 func init() {
@@ -95,14 +97,38 @@ func init() {
 
 // NewSlurmCollector returns a new Collector exposing a summary of cgroups.
 func NewSlurmCollector(logger log.Logger) (Collector, error) {
+	var cgroupsVer string
+	var cgroupsRootPath string
+	var slurmCgroupsPath string
+
 	if cgroups.Mode() == cgroups.Unified {
-		cgroupsV2 = true
+		cgroupsVer = "v2"
 		level.Info(logger).Log("msg", "Cgroup version v2 detected", "mount", *cgroupfsPath)
+		cgroupsRootPath = *cgroupfsPath
+		slurmCgroupsPath = fmt.Sprintf("%s/system.slice/slurmstepd.scope", *cgroupfsPath)
 	} else {
+		cgroupsVer = "v1"
 		level.Info(logger).Log("msg", "Cgroup version v2 not detected, will proceed with v1.")
+		cgroupsRootPath = fmt.Sprintf("%s/cpuacct", *cgroupfsPath)
+		slurmCgroupsPath = fmt.Sprintf("%s/slurm", cgroupsRootPath)
 	}
+
+	// Snippet for testing e2e tests for cgroups v1
+	// cgroupsVer = "v1"
+	// level.Info(logger).Log("msg", "Cgroup version v2 not detected, will proceed with v1.")
+	// cgroupsRootPath = fmt.Sprintf("%s/cpuacct", *cgroupfsPath)
+	// slurmCgroupsPath = fmt.Sprintf("%s/slurm", cgroupsRootPath)
+
+	// Check if cgroups exist
+	if _, err := os.Stat(slurmCgroupsPath); err != nil {
+		level.Error(logger).Log("msg", "Slurm cgroups hierarchy not found", "path", slurmCgroupsPath, "err", err)
+		return nil, err
+	}
+
 	return &slurmCollector{
-		cgroupsV2: cgroupsV2,
+		cgroups:          cgroupsVer,
+		cgroupsRootPath:  cgroupsRootPath,
+		slurmCgroupsPath: slurmCgroupsPath,
 		cpuUser: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "cpu", "user_seconds"),
 			"Cumulative CPU user seconds",
@@ -232,17 +258,10 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 func (c *slurmCollector) getJobsMetrics() (map[string]CgroupMetric, error) {
 	var names []string
 	var metrics = make(map[string]CgroupMetric)
-	var topPath string
-	var fullPath string
-	if c.cgroupsV2 {
-		topPath = *cgroupfsPath
-		fullPath = topPath + "/system.slice/slurmstepd.scope"
-	} else {
-		topPath = *cgroupfsPath + "/cpuacct"
-		fullPath = topPath + "/slurm"
-	}
-	level.Debug(c.logger).Log("msg", "Loading cgroup", "path", fullPath)
-	err := filepath.Walk(fullPath, func(p string, info os.FileInfo, err error) error {
+
+	level.Debug(c.logger).Log("msg", "Loading cgroup", "path", c.slurmCgroupsPath)
+
+	err := filepath.Walk(c.slurmCgroupsPath, func(p string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -251,7 +270,7 @@ func (c *slurmCollector) getJobsMetrics() (map[string]CgroupMetric, error) {
 			if !*collectJobSteps && strings.Contains(p, "/step_") {
 				return nil
 			}
-			rel, _ := filepath.Rel(topPath, p)
+			rel, _ := filepath.Rel(c.cgroupsRootPath, p)
 			level.Debug(c.logger).Log("msg", "Get cgroup Name", "name", p, "rel", rel)
 			names = append(names, "/"+rel)
 		}
@@ -259,9 +278,10 @@ func (c *slurmCollector) getJobsMetrics() (map[string]CgroupMetric, error) {
 	})
 	if err != nil {
 		level.Error(c.logger).
-			Log("msg", "Error walking cgroup subsystem", "path", fullPath, "err", err)
+			Log("msg", "Error walking cgroup subsystem", "path", c.slurmCgroupsPath, "err", err)
 		return metrics, nil
 	}
+
 	wg := &sync.WaitGroup{}
 	wg.Add(len(names))
 	for _, name := range names {
@@ -276,11 +296,12 @@ func (c *slurmCollector) getJobsMetrics() (map[string]CgroupMetric, error) {
 		}(name)
 	}
 	wg.Wait()
+
 	// if memory.max = "max" case we set memory max to -1
 	// fix it by looking at the parent
 	// we loop through names once as it was the result of Walk so top paths are seen first
 	// also some cgroups we ignore, like path=/system.slice/slurmstepd.scope/job_216/step_interactive/user, hence the need to loop through multiple parents
-	if c.cgroupsV2 {
+	if c.cgroups == "v2" {
 		for _, name := range names {
 			metric, ok := metrics[name]
 			if ok && metric.memoryTotal < 0 {
@@ -300,7 +321,7 @@ func (c *slurmCollector) getJobsMetrics() (map[string]CgroupMetric, error) {
 
 // Get metrics of a given SLURM cgroups path
 func (c *slurmCollector) getMetrics(name string) (CgroupMetric, error) {
-	if c.cgroupsV2 {
+	if c.cgroups == "v2" {
 		return c.getCgroupsV2Metrics(name)
 	} else {
 		return c.getCgroupsV1Metrics(name)
@@ -345,7 +366,7 @@ func (c *slurmCollector) parseCpuSet(cpuset string) ([]string, error) {
 // Get list of CPUs in the cgroup
 func (c *slurmCollector) getCPUs(name string) ([]string, error) {
 	var cpusPath string
-	if c.cgroupsV2 {
+	if c.cgroups == "v2" {
 		cpusPath = fmt.Sprintf("%s%s/cpuset.cpus.effective", *cgroupfsPath, name)
 	} else {
 		cpusPath = fmt.Sprintf("%s/cpuset%s/cpuset.cpus", *cgroupfsPath, name)
@@ -566,7 +587,7 @@ func (c *slurmCollector) getCgroupsV2Metrics(name string) (CgroupMetric, error) 
 	}
 	data, err := LoadCgroupsV2Metrics(name, *cgroupfsPath, controllers)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "Failed to load cgroups", "path", name, "err", err)
+		level.Error(c.logger).Log("msg", "Failed to load cgroups v2", "path", name, "err", err)
 		metric.err = true
 		return metric, err
 	}
