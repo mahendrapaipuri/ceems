@@ -8,10 +8,8 @@ build:
     binaries:
         - name: batchjob_exporter
           path: ./cmd/batchjob_exporter
-        - name: batchjob_stats_db
-          path: ./cmd/batchjob_stats_db
-        - name: batchjob_stats_server
-          path: ./cmd/batchjob_stats_server
+        - name: batchjob_stats_api
+          path: ./cmd/batchjob_stats_api
     flags: -a -tags 'netgo osusergo static_build'
     ldflags: |
         -X github.com/prometheus/common/version.Version={{.Version}}

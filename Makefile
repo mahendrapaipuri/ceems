@@ -38,7 +38,7 @@ endif
 # Use CGO for batchjob_stats_* and GO for batchjob_exporter.
 ifeq ($(CGO_BUILD), 1)
 	PROMU_CONF ?= .promu-cgo.yml
-	pkgs := ./pkg/jobstats ./cmd/batchjob_stats_db ./cmd/batchjob_stats_server
+	pkgs := ./pkg/jobstats ./cmd/batchjob_stats_api
 else
 	PROMU_CONF ?= .promu-go.yml
 	pkgs := ./pkg/collector ./pkg/emissions ./cmd/batchjob_exporter
@@ -114,8 +114,7 @@ else
 .PHONY: test-e2e
 test-e2e: build pkg/collector/fixtures/sys/.unpacked
 	@echo ">> running end-to-end tests"
-	./scripts/e2e-test.sh -p stats_db
-	./scripts/e2e-test.sh -p stats_server
+	./scripts/e2e-test.sh -p stats
 endif
 
 .PHONY: skip-test-e2e
