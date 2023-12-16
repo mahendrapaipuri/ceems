@@ -81,8 +81,8 @@ func (c *raplCollector) Update(ch chan<- prometheus.Metric) error {
 		microJoules, err := rz.GetEnergyMicrojoules()
 		if err != nil {
 			if errors.Is(err, os.ErrPermission) {
-				level.Debug(c.logger).
-					Log("msg", "Can't access energy_uj file", "zone", rz, "err", err)
+				level.Error(c.logger).
+					Log("msg", "Can't access energy_uj file", "zone", rz.Name, "err", err)
 				return ErrNoData
 			}
 			return err
