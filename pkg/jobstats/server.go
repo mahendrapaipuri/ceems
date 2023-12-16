@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
@@ -18,9 +19,9 @@ import (
 )
 
 var (
-	JobstatServerAppName = "batchjob_stats_server"
-	JobstatServerApp     = kingpin.New(
-		JobstatServerAppName,
+	JobstatsAppName = "batchjob_stats_server"
+	JobstatsApp     = kingpin.New(
+		JobstatsAppName,
 		"API server to serve the job and user stats of batch job user.",
 	)
 	db             *sql.DB
@@ -90,11 +91,12 @@ func (s *JobstatsServer) Start() error {
 }
 
 // Shutdown server
-func (s *JobstatsServer) Shutdown(ctx context.Context) error {
+func (s *JobstatsServer) Shutdown(ctx context.Context, wg *sync.WaitGroup) error {
 	if err := s.server.Shutdown(ctx); err != nil {
 		level.Error(s.logger).Log("msg", "Failed to shutdown HTTP server", "err", err)
 		return err
 	}
+	wg.Done()
 	return nil
 }
 
