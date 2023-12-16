@@ -38,7 +38,14 @@ func NewJobStatsDB(
 	retentionPeriod int,
 	jobsLastTimeStampFile string,
 	vacuumLastTimeStampFile string,
-) *jobStatsDB {
+) (*jobStatsDB, error) {
+	// Do sanity checks
+	if checksFunc, ok := checksMap[batchScheduler]; ok {
+		err := checksFunc.(func(log.Logger) error)(logger)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return &jobStatsDB{
 		logger:                  logger,
 		batchScheduler:          batchScheduler,
@@ -47,14 +54,7 @@ func NewJobStatsDB(
 		retentionPeriod:         retentionPeriod,
 		jobsLastTimeStampFile:   jobsLastTimeStampFile,
 		vacuumLastTimeStampFile: vacuumLastTimeStampFile,
-	}
-}
-
-// Do preliminary checks
-func (j *jobStatsDB) checks() {
-	if checksFunc, ok := checksMap[j.batchScheduler]; ok {
-		checksFunc.(func(log.Logger))(j.logger)
-	}
+	}, nil
 }
 
 // Open DB connection and return connection poiner
@@ -237,7 +237,7 @@ func (j *jobStatsDB) writeLastTimeStampFile(lastTimeStampFile string, endTime ti
 // Get job stats and insert them into DB
 func (j *jobStatsDB) GetJobStats() error {
 	// First do basic checks
-	j.checks()
+	// j.checks()
 	// Get start and end times for retrieving jobs
 	startTime, endTime := j.getStartEndTimes()
 	var jobs []BatchJob
