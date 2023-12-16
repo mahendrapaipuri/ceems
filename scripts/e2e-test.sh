@@ -30,7 +30,7 @@ do
       ;;
     *)
       echo "Usage: $0 [-p] [-k] [-u] [-v]"
-      echo "  -p: package to test [options: exporter, stats_db, stats_server]"
+      echo "  -p: package to test [options: exporter, stats]"
       echo "  -k: keep temporary files and leave batchjob_exporter running"
       echo "  -u: update fixtures"
       echo "  -v: verbose output"
@@ -53,17 +53,12 @@ then
   logfile="${tmpdir}/batchjob_exporter.log"
   fixture_output="${tmpdir}/e2e-test-exporter-output.txt"
   pidfile="${tmpdir}/batchjob_exporter.pid"
-elif [ "${package}" = "stats_db" ] 
+elif [ "${package}" = "stats" ] 
 then
-  fixture='pkg/jobstats/fixtures/jobstats.dump'
-  logfile="${tmpdir}/batchjob_stats_db.log"
-  fixture_output="${tmpdir}/e2e-test-stats-db-output.txt"
-  pidfile="${tmpdir}/batchjob_stats_db.pid"
-else
-  fixture='pkg/jobstats/fixtures/jobstats.dump'
-  logfile="${tmpdir}/batchjob_stats_server.log"
+  fixture='pkg/jobstats/fixtures/e2e-test-stats-server-output.txt'
+  logfile="${tmpdir}/batchjob_stats_api.log"
   fixture_output="${tmpdir}/e2e-test-stats-server-output.txt"
-  pidfile="${tmpdir}/batchjob_stats_server.pid"
+  pidfile="${tmpdir}/batchjob_stats_api.pid"
 fi
 
 finish() {
@@ -118,7 +113,7 @@ then
     --path.sysfs="pkg/collector/fixtures/sys" \
     --path.cgroupfs="pkg/collector/fixtures/sys/fs/cgroup" \
     --collector.slurm.job.stat.path="pkg/collector/fixtures/slurmjobstat" \
-    --collector.ipmi.dcmi.exec.path="pkg/collector/fixtures/ipmi-dcmi-wrapper.sh" \
+    --collector.ipmi.dcmi.cmd="pkg/collector/fixtures/ipmi-dcmi-wrapper.sh" \
     --collector.nvidia_gpu \
     --collector.nvidia.gpu.stat.path="pkg/collector/fixtures/gpustat" \
     --web.listen-address "127.0.0.1:${port}" \
@@ -129,49 +124,17 @@ then
   sleep 1
 
   get "127.0.0.1:${port}/metrics" | grep -E -v "${skip_re}" > "${fixture_output}"
-elif [ "${package}" = "stats_db" ] 
+elif [ "${package}" = "stats" ] 
 then
-  if [ ! -x ./bin/batchjob_stats_db ]
+  if [ ! -x ./bin/batchjob_stats_api ]
   then
-      echo './bin/batchjob_stats_db not found. Consider running `go build` first.' >&2
+      echo './bin/batchjob_stats_api not found. Consider running `go build` first.' >&2
       exit 1
   fi
 
-  ./bin/batchjob_stats_db \
+  ./bin/batchjob_stats_api \
     --slurm.sacct.path="pkg/jobstats/fixtures/sacct" \
     --path.data="${tmpdir}" \
-    --log.level="debug" > "${logfile}" 2>&1 &
-
-  echo $! > "${pidfile}"
-
-  sleep 2
-
-  if ! command -v sqlite3 &> /dev/null
-  then
-      echo "sqlite3 could not be found. Skipping batchjob_stats_db test..."
-      exit 0
-  fi
-
-  sqlite3 "${tmpdir}/jobstats.db" .dump >"${fixture_output}"
-elif [ "${package}" = "stats_server" ] 
-then
-  if [ ! -x ./bin/batchjob_stats_server ]
-  then
-      echo './bin/batchjob_stats_server not found. Consider running `go build` first.' >&2
-      exit 1
-  fi
-
-  if ! command -v sqlite3 &> /dev/null
-  then
-      echo "sqlite3 could not be found. Skipping batchjob_stats_db test..."
-      exit 0
-  fi
-
-  cat "${fixture}" | sqlite3 "${tmpdir}/jobstats.db"
-  fixture='pkg/jobstats/fixtures/e2e-test-stats-server-output.txt'
-
-  ./bin/batchjob_stats_server \
-    --path.db="${tmpdir}/jobstats.db" \
     --web.listen-address="127.0.0.1:${port}" \
     --log.level="debug" > "${logfile}" 2>&1 &
 
