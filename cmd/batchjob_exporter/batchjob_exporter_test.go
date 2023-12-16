@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	binary, _ = filepath.Abs("bin/batchjob_exporter")
+	binary, _ = filepath.Abs("../../bin/batchjob_exporter")
 )
 
 const (
@@ -36,7 +36,14 @@ func TestFileDescriptorLeak(t *testing.T) {
 		t.Errorf("unable to read process stats: %s", err)
 	}
 
-	exporter := exec.Command(binary, "--web.listen-address", address)
+	fixturePath, err := filepath.Abs("../../pkg/collector/fixtures/sys/fs/cgroup")
+	if err != nil {
+		t.Errorf("Failed to read fixtures: %s", err)
+	}
+
+	exporter := exec.Command(
+		binary, "--web.listen-address", address, "--path.cgroupfs", fixturePath,
+	)
 	test := func(pid int) error {
 		if err := queryExporter(address); err != nil {
 			return err
@@ -75,6 +82,7 @@ func TestFileDescriptorLeak(t *testing.T) {
 
 func queryExporter(address string) error {
 	resp, err := http.Get(fmt.Sprintf("http://%s/metrics", address))
+	fmt.Println(err)
 	if err != nil {
 		return err
 	}
