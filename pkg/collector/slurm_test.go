@@ -4,6 +4,7 @@
 package collector
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -22,7 +23,12 @@ func TestCgroupsV2SlurmJobMetrics(t *testing.T) {
 	); err != nil {
 		t.Fatal(err)
 	}
-	c := slurmCollector{cgroupsV2: true, logger: log.NewNopLogger()}
+	c := slurmCollector{
+		cgroups:          "v2",
+		cgroupsRootPath:  *cgroupfsPath,
+		slurmCgroupsPath: fmt.Sprintf("%s/system.slice/slurmstepd.scope", *cgroupfsPath),
+		logger:           log.NewNopLogger(),
+	}
 	metrics, err := c.getJobsMetrics()
 	expectedSlurmMetrics = CgroupMetric{
 		name:            "/system.slice/slurmstepd.scope/job_1009248",
@@ -64,7 +70,12 @@ func TestCgroupsV1SlurmJobMetrics(t *testing.T) {
 	); err != nil {
 		t.Fatal(err)
 	}
-	c := slurmCollector{cgroupsV2: false, logger: log.NewNopLogger()}
+	c := slurmCollector{
+		cgroups:          "v1",
+		logger:           log.NewNopLogger(),
+		cgroupsRootPath:  fmt.Sprintf("%s/cpuacct", *cgroupfsPath),
+		slurmCgroupsPath: fmt.Sprintf("%s/cpuacct/slurm", *cgroupfsPath),
+	}
 	metrics, err := c.getJobsMetrics()
 	expectedSlurmMetrics = CgroupMetric{
 		name:            "/slurm/uid_1000/job_1009248",
