@@ -30,15 +30,16 @@ var (
 	).Default("false").Bool()
 	runSacctAsSlurmUser = JobstatsApp.Flag(
 		"slurm.sacct.run.as.slurmuser",
-		"sacct command will be run as slurm user. This option requires cap_setuid capability on "+
+		"sacct command will be run as slurm user. This requires CAP_SET(UID,GID) capabilities on "+
 			"current process. This option is mutually exclusive with --slurm.sacct.run.with.sudo.",
 	).Default("false").Bool()
 )
 
 // Run sacct command and return output
 func runSacctCmd(startTime string, endTime string, logger log.Logger) ([]byte, error) {
+	// Use jobIDRaw that outputs the array jobs as regular job IDs instead of id_array format
 	args := []string{"-D", "--allusers", "--parsable2",
-		"--format", "jobid,partition,account,group,gid,user,uid,submit,start,end,elapsed,exitcode,state,nnodes,nodelist,jobname,workdir",
+		"--format", "jobidraw,partition,account,group,gid,user,uid,submit,start,end,elapsed,exitcode,state,nnodes,nodelist,jobname,workdir",
 		"--state", "CANCELLED,COMPLETED,FAILED,NODE_FAIL,PREEMPTED,TIMEOUT",
 		"--starttime", startTime, "--endtime", endTime}
 
