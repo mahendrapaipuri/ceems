@@ -30,15 +30,15 @@ var (
 	ipmiDcmiCmd = kingpin.Flag(
 		"collector.ipmi.dcmi.cmd",
 		"IPMI DCMI command to get system power statistics. Use full path to executables.",
-	).Default("ipmi-dcmi --get-system-power-statistics").String()
+	).Default("/usr/sbin/ipmi-dcmi --get-system-power-statistics").String()
 	ipmiDcmiExecAsRoot = kingpin.Flag(
 		"collector.ipmi.dcmi.exec.run.as.root",
-		"Execute IPMI DCMI command as root. This requires the current process to have appropriate capabilities (cap_setuid).",
+		"Execute IPMI DCMI command as root. This requires the current process to have CAP_SET(UID,GID) capabilities.",
 	).Default("false").Bool()
-	ipmiDcmiExecWithSudo = kingpin.Flag(
-		"collector.ipmi.dcmi.exec.run.with.sudo",
-		"Execute IPMI DCMI command with sudo. This requires the current has sudo privileges on command set in --collector.ipmi.dcmi.cmd.",
-	).Default("false").Bool()
+	// ipmiDcmiExecWithSudo = kingpin.Flag(
+	// 	"collector.ipmi.dcmi.exec.run.with.sudo",
+	// 	"Execute IPMI DCMI command with sudo. This requires the current has sudo privileges on command set in --collector.ipmi.dcmi.cmd.",
+	// ).Default("false").Bool()
 	ipmiDCMIPowerMeasurementRegex = regexp.MustCompile(
 		`^Power Measurement\s*:\s*(?P<value>Active|Not\sAvailable).*`,
 	)
@@ -85,7 +85,6 @@ func getValue(ipmiOutput []byte, regex *regexp.Regexp) (string, error) {
 
 // Update implements Collector and exposes IPMI DCMI power related metrics.
 func (c *impiCollector) Update(ch chan<- prometheus.Metric) error {
-	// args := []string{"--get-system-power-statistics"}
 	var stdOut []byte
 	var err error
 
@@ -93,8 +92,6 @@ func (c *impiCollector) Update(ch chan<- prometheus.Metric) error {
 	cmdSlice := strings.Split(*ipmiDcmiCmd, " ")
 	if *ipmiDcmiExecAsRoot {
 		stdOut, err = helpers.ExecuteAs(cmdSlice[0], cmdSlice[1:], 0, 0, c.logger)
-	} else if *ipmiDcmiExecWithSudo {
-		stdOut, err = helpers.Execute("sudo", cmdSlice, c.logger)
 	} else {
 		stdOut, err = helpers.Execute(cmdSlice[0], cmdSlice[1:], c.logger)
 	}
