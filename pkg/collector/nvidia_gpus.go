@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/log"
@@ -21,10 +22,11 @@ import (
 const nvidiaGpuJobMapCollectorSubsystem = "nvidia_gpu"
 
 var (
+	jobMapLock  = sync.RWMutex{}
 	gpuStatPath = kingpin.Flag(
-		"collector.nvidia.gpu.stat.path",
-		"Path to gpustat file that maps GPU ordinals to job IDs.",
-	).Default("/run/gpustat").String()
+		"collector.nvidia.gpu.job.map.path",
+		"Path to file that maps GPU ordinals to job IDs.",
+	).Default("/run/gpujobmap").String()
 )
 
 type Device struct {
@@ -152,7 +154,16 @@ func (c *nvidiaGpuJobMapCollector) getJobId() (map[string]float64, error) {
 		} else {
 			// Attempt to get GPU dev indices from /proc file system by looking into
 			// environ for the process that has same SLURM_JOB_ID
-			allProcs, err := procfs.AllProcs()
+			//
+			// Instantiate a new Proc FS
+			procFS, err := procfs.NewFS(*procfsPath)
+			if err != nil {
+				level.Error(c.logger).Log("msg", "Unable to open procfs", "path", *procfsPath)
+				goto outside
+			}
+
+			// Get all procs from current proc fs
+			allProcs, err := procFS.AllProcs()
 			if err != nil {
 				level.Error(c.logger).Log("msg", "Failed to read /proc", "err", err)
 				gpuJobMapper[dev.uuid] = float64(0)
@@ -161,47 +172,102 @@ func (c *nvidiaGpuJobMapCollector) getJobId() (map[string]float64, error) {
 				goto outside
 			}
 
+			// Initialize a waitgroup for all go routines that we will spawn later
+			wg := &sync.WaitGroup{}
+			wg.Add(len(allProcs))
+
 			// Iterate through all procs and look for SLURM_JOB_ID env entry
 			for _, proc := range allProcs {
-				environments, err := proc.Environ()
-				if err != nil {
-					continue
-				}
+				go func(p procfs.Proc) {
+					// Read process environment variables
+					// NOTE: This needs CAP_SYS_PTRACE and CAP_DAC_READ_SEARCH caps
+					// on the current process
+					environments, err := p.Environ()
 
-				var gpuIndices []string
-				var slurmJobId string = ""
-
-				// Loop through all env vars and get SLURM_SETP_GPUS/SLURM_JOB_GPUS
-				// and SLURM_JOB_ID
-				for _, env := range environments {
-					// Check both SLURM_SETP_GPUS and SLURM_JOB_GPUS vars and only when
-					// gpuIndices is empty.
-					// We dont want an empty env var to override already populated
-					// gpuIndices slice
-					if (strings.Contains(env, "SLURM_STEP_GPUS") || strings.Contains(env, "SLURM_JOBS_GPUS")) && len(gpuIndices) == 0 {
-						gpuIndices = strings.Split(strings.Split(env, "=")[1], ",")
-					}
-					if strings.Contains(env, "SLURM_JOB_ID") {
-						slurmJobId = strings.Split(env, "=")[1]
-					}
-				}
-
-				// If gpuIndices has current GPU index, assign the jobID and break loop
-				if slices.Contains(gpuIndices, dev.index) {
-					jid, err := strconv.Atoi(slurmJobId)
+					// Skip if we cannot read file
 					if err != nil {
-						gpuJobMapper[dev.uuid] = float64(0)
+						wg.Done()
+						return
 					}
-					gpuJobMapper[dev.uuid] = float64(jid)
-					goto outside
-				}
+
+					var gpuIndices []string
+					var slurmJobId string = ""
+
+					// Loop through all env vars and get SLURM_SETP_GPUS/SLURM_JOB_GPUS
+					// and SLURM_JOB_ID
+					for _, env := range environments {
+						// Check both SLURM_SETP_GPUS and SLURM_JOB_GPUS vars
+						if strings.Contains(env, "SLURM_STEP_GPUS") || strings.Contains(env, "SLURM_JOBS_GPUS") {
+							gpuIndices = strings.Split(strings.Split(env, "=")[1], ",")
+						}
+						if strings.Contains(env, "SLURM_JOB_ID") {
+							slurmJobId = strings.Split(env, "=")[1]
+						}
+					}
+
+					// If gpuIndices has current GPU index, assign the jobID and break loop
+					if slices.Contains(gpuIndices, dev.index) {
+						jobMapLock.Lock()
+						jid, err := strconv.Atoi(slurmJobId)
+						if err != nil {
+							gpuJobMapper[dev.uuid] = float64(0)
+						}
+						gpuJobMapper[dev.uuid] = float64(jid)
+						jobMapLock.Unlock()
+					}
+
+					// Mark routine as done
+					wg.Done()
+
+				}(proc)
+				// environments, err := proc.Environ()
+				// if err != nil {
+				// 	continue
+				// }
+
+				// var gpuIndices []string
+				// var slurmJobId string = ""
+
+				// // Loop through all env vars and get SLURM_SETP_GPUS/SLURM_JOB_GPUS
+				// // and SLURM_JOB_ID
+				// for _, env := range environments {
+				// 	// Check both SLURM_SETP_GPUS and SLURM_JOB_GPUS vars and only when
+				// 	// gpuIndices is empty.
+				// 	// We dont want an empty env var to override already populated
+				// 	// gpuIndices slice
+				// 	if (strings.Contains(env, "SLURM_STEP_GPUS") || strings.Contains(env, "SLURM_JOBS_GPUS")) && len(gpuIndices) == 0 {
+				// 		gpuIndices = strings.Split(strings.Split(env, "=")[1], ",")
+				// 	}
+				// 	if strings.Contains(env, "SLURM_JOB_ID") {
+				// 		slurmJobId = strings.Split(env, "=")[1]
+				// 	}
+				// }
+
+				// // If gpuIndices has current GPU index, assign the jobID and break loop
+				// if slices.Contains(gpuIndices, dev.index) {
+				// 	jid, err := strconv.Atoi(slurmJobId)
+				// 	if err != nil {
+				// 		gpuJobMapper[dev.uuid] = float64(0)
+				// 	}
+				// 	gpuJobMapper[dev.uuid] = float64(jid)
+				// 	goto outside
+				// }
 			}
+
+			// Wait for all go routines
+			wg.Wait()
 		}
 	outside:
-		level.Debug(c.logger).Log(
-			"msg", "Foung job ID for GPU", "index", dev.index, "uuid", dev.uuid,
-			"jobid", gpuJobMapper[dev.uuid],
-		)
+		if gpuJobMapper[dev.uuid] == 0 {
+			level.Error(c.logger).Log(
+				"msg", "Failed to get job ID for GPU", "index", dev.index, "uuid", dev.uuid,
+			)
+		} else {
+			level.Debug(c.logger).Log(
+				"msg", "Foung job ID for GPU", "index", dev.index, "uuid", dev.uuid,
+				"jobid", gpuJobMapper[dev.uuid],
+			)
+		}
 	}
 	return gpuJobMapper, nil
 }
