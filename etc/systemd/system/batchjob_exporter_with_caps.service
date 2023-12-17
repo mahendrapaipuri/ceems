@@ -1,0 +1,27 @@
+[Unit]
+Description=Batchjob Exporter Using Capabilities and Without Prolog and Epilog Scripts
+After=network-online.target
+
+[Service]
+Type=simple
+User=batchjob-exp
+Group=batchjob-exp
+ExecStart=/usr/local/bin/batchjob_exporter \
+    --collector.ipmi.dcmi.cmd="sudo /usr/sbin/ipmi-dcmi --get-system-power-statistics" \
+    --collector.nvidia_gpu \
+    --log.level="debug"
+
+SyslogIdentifier=batchjob_exporter
+Restart=always
+RestartSec=1
+StartLimitInterval=0
+
+AmbientCapabilities=CAP_SYS_PTRACE CAP_DAC_READ_SEARCH
+
+ProtectSystem=strict
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=yes
+
+[Install]
+WantedBy=multi-user.target
