@@ -82,7 +82,7 @@ $(eval $(call goarch_pair,mips64el,mipsel))
 all:: vet checkmetrics checkrules common-all $(cross-test) $(test-docker) $(test-e2e)
 
 .PHONY: test
-test: pkg/collector/fixtures/sys/.unpacked 
+test: pkg/collector/fixtures/sys/.unpacked pkg/collector/fixtures/proc/.unpacked
 	@echo ">> running tests"
 	$(GO) test -short $(test-flags) $(pkgs)
 
@@ -102,17 +102,18 @@ skip-test-32bit:
 	touch $@
 
 update_fixtures:
-	rm -vf pkg/collector/fixtures/sys/.unpacked
+	rm -vf pkg/collector/fixtures/sys/.unpacked pkg/collector/fixtures/proc/.unpacked
 	./scripts/ttar -C pkg/collector/fixtures -c -f pkg/collector/fixtures/sys.ttar sys
+	./scripts/ttar -C pkg/collector/fixtures -c -f pkg/collector/fixtures/proc.ttar proc
 
 ifeq ($(CGO_BUILD), 0)
 .PHONY: test-e2e
-test-e2e: build pkg/collector/fixtures/sys/.unpacked 
+test-e2e: build pkg/collector/fixtures/sys/.unpacked pkg/collector/fixtures/proc/.unpacked
 	@echo ">> running end-to-end tests"
 	./scripts/e2e-test.sh -p exporter
 else
 .PHONY: test-e2e
-test-e2e: build pkg/collector/fixtures/sys/.unpacked
+test-e2e: build pkg/collector/fixtures/sys/.unpacked pkg/collector/fixtures/proc/.unpacked
 	@echo ">> running end-to-end tests"
 	./scripts/e2e-test.sh -p stats
 endif

@@ -23,6 +23,7 @@ go.work
 
 # Ignore fixtures
 pkg/collector/fixtures/sys
+pkg/collector/fixtures/proc
 
 # Ignore scripts
 run.sh
