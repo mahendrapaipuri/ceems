@@ -112,10 +112,10 @@ then
   PATH=$PWD/pkg/collector/fixtures:$PATH ./bin/batchjob_exporter \
     --path.sysfs="pkg/collector/fixtures/sys" \
     --path.cgroupfs="pkg/collector/fixtures/sys/fs/cgroup" \
-    --collector.slurm.job.stat.path="pkg/collector/fixtures/slurmjobstat" \
+    --collector.slurm.job.props.path="pkg/collector/fixtures/slurmjobprops" \
     --collector.ipmi.dcmi.cmd="pkg/collector/fixtures/ipmi-dcmi-wrapper.sh" \
     --collector.nvidia_gpu \
-    --collector.nvidia.gpu.stat.path="pkg/collector/fixtures/gpustat" \
+    --collector.nvidia.gpu.job.map.path="pkg/collector/fixtures/gpujobmap" \
     --web.listen-address "127.0.0.1:${port}" \
     --log.level="debug" > "${logfile}" 2>&1 &
 
