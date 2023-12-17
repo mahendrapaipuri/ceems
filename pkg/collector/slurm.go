@@ -38,12 +38,12 @@ var (
 	// 	"Whether to calculate a hash based on job SLURM_JOBID, SLURM_JOB_UID, SLURM_JOB_ACCOUNT, SLURM_JOB_NODELIST to get unique job identifier.",
 	// ).Default("false").Bool()
 	jobStatPath = kingpin.Flag(
-		"collector.slurm.job.stat.path",
+		"collector.slurm.job.props.path",
 		`Path to jobstat files that contains a file for each job with line 
 \"$SLURM_JOB_UID $SLURM_JOB_ACCOUNT $SLURM_JOB_NODELIST\". 
 An deterministic UUID is computed on the variables in this file and job ID to get an 
 unique job identifier.`,
-	).Default("/run/slurmjobstat").String()
+	).Default("/run/slurmjobprops").String()
 )
 
 type CgroupMetric struct {
@@ -405,22 +405,43 @@ func (c *slurmCollector) getJobLabels(jobid string) (string, string, string) {
 	} else {
 		// Attempt to get UID, Account, Nodelist from /proc file system by looking into
 		// environ for the process that has same SLURM_JOB_ID
-		allProcs, err := procfs.AllProcs()
+		//
+		// Instantiate a new Proc FS
+		procFS, err := procfs.NewFS(*procfsPath)
+		if err != nil {
+			level.Error(c.logger).Log("msg", "Unable to open procfs", "path", *procfsPath)
+			goto outside
+		}
+
+		// Get all procs from current proc fs
+		allProcs, err := procFS.AllProcs()
 		if err != nil {
 			level.Error(c.logger).Log("msg", "Failed to read /proc", "err", err)
 			goto outside
 		}
+
+		// Env var that we will search
 		jobIDEnv := fmt.Sprintf("SLURM_JOB_ID=%s", jobid)
+
+		// Initialize a waitgroup for all go routines that we will spawn later
+		wg := &sync.WaitGroup{}
+		wg.Add(len(allProcs))
 
 		// Iterate through all procs and look for SLURM_JOB_ID env entry
 		for _, proc := range allProcs {
-			environments, err := proc.Environ()
-			if err != nil {
-				continue
-			}
+			go func(p procfs.Proc) {
+				// Read process environment variables
+				// NOTE: This needs CAP_SYS_PTRACE and CAP_DAC_READ_SEARCH caps
+				// on the current process
+				environments, err := p.Environ()
 
-			// When env var entry found, get all necessary env vars
-			if slices.Contains(environments, jobIDEnv) {
+				// Skip if we cannot read file or job ID env var is not found
+				if err != nil || !slices.Contains(environments, jobIDEnv) {
+					wg.Done()
+					return
+				}
+
+				// When env var entry found, get all necessary env vars
 				for _, env := range environments {
 					if strings.Contains(env, "SLURM_JOB_UID") {
 						jobUid = strings.Split(env, "=")[1]
@@ -433,12 +454,22 @@ func (c *slurmCollector) getJobLabels(jobid string) (string, string, string) {
 					}
 				}
 
-				// Break loop once all env vars are read
-				goto outside
-			}
+				// Mark routine as done
+				wg.Done()
+
+			}(proc)
 		}
+		// Wait for all go routines to finish
+		wg.Wait()
 	}
 outside:
+	// Emit a warning if we could not get all job properties
+	if jobUid == "" && jobAccount == "" && jobNodelist == "" {
+		level.Warn(c.logger).
+			Log("msg", "Failed to get job properties", "jobid", jobid)
+	}
+
+	// Get UUID using job properties
 	jobUuid, err := helpers.GetUuidFromString(
 		[]string{
 			strings.TrimSpace(jobid),
