@@ -6,7 +6,7 @@ After=network-online.target
 Type=simple
 User=batchjob-stats
 Group=batchjob-stats
-ExecStart=/usr/local/bin/batchjob_stats_api \
+ExecStart=/usr/local/bin/batchjob_stats_server \
     --slurm.sacct.path="/usr/local/bin/sacct" \
     --slurm.sacct.run.with.sudo \
     --path.data="/var/lib/batchjob_stats" \
@@ -14,7 +14,7 @@ ExecStart=/usr/local/bin/batchjob_stats_api \
     --data.retention.period=365 \
     --log.level="debug"
 
-SyslogIdentifier=batchjob_stats
+SyslogIdentifier=batchjob_stats_server
 Restart=always
 RestartSec=1
 StartLimitInterval=0

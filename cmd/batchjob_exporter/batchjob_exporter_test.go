@@ -82,7 +82,6 @@ func TestFileDescriptorLeak(t *testing.T) {
 
 func queryExporter(address string) error {
 	resp, err := http.Get(fmt.Sprintf("http://%s/metrics", address))
-	fmt.Println(err)
 	if err != nil {
 		return err
 	}

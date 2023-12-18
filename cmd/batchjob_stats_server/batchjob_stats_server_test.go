@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	binary, _ = filepath.Abs("../../bin/batchjob_stats")
+	binary, _ = filepath.Abs("../../bin/batchjob_stats_server")
 )
 
 const (

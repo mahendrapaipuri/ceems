@@ -56,9 +56,9 @@ then
 elif [ "${package}" = "stats" ] 
 then
   fixture='pkg/jobstats/fixtures/e2e-test-stats-server-output.txt'
-  logfile="${tmpdir}/batchjob_stats_api.log"
+  logfile="${tmpdir}/batchjob_stats_server.log"
   fixture_output="${tmpdir}/e2e-test-stats-server-output.txt"
-  pidfile="${tmpdir}/batchjob_stats_api.pid"
+  pidfile="${tmpdir}/batchjob_stats_server.pid"
 fi
 
 finish() {
@@ -126,13 +126,13 @@ then
   get "127.0.0.1:${port}/metrics" | grep -E -v "${skip_re}" > "${fixture_output}"
 elif [ "${package}" = "stats" ] 
 then
-  if [ ! -x ./bin/batchjob_stats_api ]
+  if [ ! -x ./bin/batchjob_stats_server ]
   then
-      echo './bin/batchjob_stats_api not found. Consider running `go build` first.' >&2
+      echo './bin/batchjob_stats_server not found. Consider running `go build` first.' >&2
       exit 1
   fi
 
-  ./bin/batchjob_stats_api \
+  ./bin/batchjob_stats_server \
     --slurm.sacct.path="pkg/jobstats/fixtures/sacct" \
     --path.data="${tmpdir}" \
     --web.listen-address="127.0.0.1:${port}" \

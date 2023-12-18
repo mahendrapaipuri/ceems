@@ -89,7 +89,7 @@ Pre-compiled binaries of the apps can be downloaded from the
 
 ### Build
 
-As the `batchjob_stats_api` uses SQLite3 as DB backend, we are dependent on CGO for 
+As the `batchjob_stats_server` uses SQLite3 as DB backend, we are dependent on CGO for 
 compiling that app. On the other hand, `batchjob_exporter` is a pure GO application. 
 Thus, in order to build from sources, users need to execute two build commands
 
@@ -103,7 +103,7 @@ that builds `batchjob_exporter` binary and
 CGO_BUILD=1 make build
 ```
 
-which builds `batchjob_stats_api` app.
+which builds `batchjob_stats_server` app.
 
 Both of them will be placed in `bin` folder in the root of the repository
 
@@ -223,7 +223,7 @@ directory to give read permissions to the user that is running `batchjob_exporte
 
 ### Batch Job Stats API server
 
-As discussed in the [introduction](#batch-job-stats-api-server), `batchjob_stats_api` 
+As discussed in the [introduction](#batch-job-stats-api-server), `batchjob_stats_server` 
 exposes accounts and jobs details of users _via_ API end points. This data will be 
 gathered from the underlying batch scheduler at a configured interval of time and 
 keep it in a local DB. In the case of SLURM, the app executes `sacct` command to get 
@@ -246,11 +246,11 @@ same time, server will not start by returning an error.
 ## Linux capabilities
 
 Linux capabilities can be assigned to either file or process. For instance, capabilities 
-on the `batchjob_exporter` and `batchjob_stats_api` binaries can be set as follows:
+on the `batchjob_exporter` and `batchjob_stats_server` binaries can be set as follows:
 
 ```
 sudo setcap cap_sys_ptrace,cap_dac_read_search,cap_setuid,cap_setgid+ep /full/path/to/batchjob_exporter
-sudo setcap cap_setuid,cap_setgid+ep /full/path/to/batchjob_stats_api
+sudo setcap cap_setuid,cap_setgid+ep /full/path/to/batchjob_stats_server
 ```
 
 This will assign all the capabilities that are necessary to run `batchjob_exporter` 
@@ -358,12 +358,12 @@ file capabilities or process capabilities, the flags `--collector.slurm.job.prop
 and `--collector.nvidia.gpu.job.map.path` can be omitted and there is no need to 
 set up prolog and epilog scripts.
 
-### `batchjob_stats_api`
+### `batchjob_stats_server`
 
 The stats server can be started as follows:
 
 ```
-/path/to/batchjob_stats_api \
+/path/to/batchjob_stats_server \
     --slurm.sacct.path="/usr/local/bin/sacct" \
     --path.data="/var/lib/batchjob_stats" \
     --log.level="debug"
@@ -376,7 +376,7 @@ proper permissions before starting the server.
 To execute `sacct` command as `slurm` user, command becomes following:
 
 ```
-/path/to/batchjob_stats_api \
+/path/to/batchjob_stats_server \
     --slurm.sacct.path="/usr/local/bin/sacct" \
     --slurm.sacct.run.as.slurmuser \
     --path.data="/var/lib/batchjob_stats" \
@@ -387,7 +387,7 @@ Note that this approach needs capabilities assigned to process. On the other han
 we want to use `sudo` approach to execute `sacct` command, the command becomes:
 
 ```
-/path/to/batchjob_stats_api \
+/path/to/batchjob_stats_server \
     --slurm.sacct.path="/usr/local/bin/sacct" \
     --slurm.sacct.run.with.sudo \
     --path.data="/var/lib/batchjob_stats" \
@@ -395,15 +395,15 @@ we want to use `sudo` approach to execute `sacct` command, the command becomes:
 ```
 
 This requires an entry into sudoers file that permits the user starting 
-`batchjob_stats_api` to execute `sudo sacct` without password.
+`batchjob_stats_server` to execute `sudo sacct` without password.
 
-`batchjob_stats_api` updates the local DB with job information regularly. The frequency 
+`batchjob_stats_server` updates the local DB with job information regularly. The frequency 
 of this update and period for which the job data will be retained can be configured
 too. For instance, the following command will update the job DB for every 30 min and 
 keeps the job data for the past one year.
 
 ```
-/path/to/batchjob_stats_api \
+/path/to/batchjob_stats_server \
     --slurm.sacct.path="/usr/local/bin/sacct" \
     --slurm.sacct.run.with.sudo \
     --path.data="/var/lib/batchjob_stats" \
@@ -420,7 +420,7 @@ basic auth, users need to use `--web-config-file` CLI flag as follows
 
 ```
 batchjob_exporter --web-config-file=web-config.yaml
-batchjob_stats_api --web-config-file=web-config.yaml
+batchjob_stats_server --web-config-file=web-config.yaml
 ```
 
 A sample `web-config.yaml` file can be fetched from 
