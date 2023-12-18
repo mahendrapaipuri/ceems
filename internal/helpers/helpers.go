@@ -27,27 +27,31 @@ func Execute(cmd string, args []string, logger log.Logger) ([]byte, error) {
 	level.Debug(logger).Log("msg", "Executing", "command", cmd, "args", fmt.Sprintf("%+v", args))
 	out, err := exec.Command(cmd, args...).CombinedOutput()
 	if err != nil {
-		level.Error(logger).Log("msg", "Error executing command", "command", cmd, "args", fmt.Sprintf("%+v", args), "err", err)
+		level.Error(logger).
+			Log("msg", "Error executing command", "command", cmd, "args", fmt.Sprintf("%+v", args), "err", err)
 	}
 	return out, err
 }
 
 // Execute command as a given UID and GID and return stdout/stderr
 func ExecuteAs(cmd string, args []string, uid int, gid int, logger log.Logger) ([]byte, error) {
-	level.Debug(logger).Log("msg", "Executing as user", "command", cmd, "args", fmt.Sprintf("%+v", args), "uid", uid, "gid", gid)
+	level.Debug(logger).
+		Log("msg", "Executing as user", "command", cmd, "args", fmt.Sprintf("%+v", args), "uid", uid, "gid", gid)
 	execCmd := exec.Command(cmd, args...)
 	execCmd.SysProcAttr = &syscall.SysProcAttr{}
 	execCmd.SysProcAttr.Credential = &syscall.Credential{Uid: uint32(uid), Gid: uint32(gid)}
 	out, err := execCmd.CombinedOutput()
 	if err != nil {
-		level.Error(logger).Log("msg", "Error executing command as user", "command", cmd, "args", fmt.Sprintf("%+v", args), "uid", uid, "gid", gid, "err", err)
+		level.Error(logger).
+			Log("msg", "Error executing command as user", "command", cmd, "args", fmt.Sprintf("%+v", args), "uid", uid, "gid", gid, "err", err)
 	}
 	return out, err
 }
 
 // Execute command with timeout and return stdout/stderr
 func ExecuteWithTimeout(cmd string, args []string, timeout int, logger log.Logger) ([]byte, error) {
-	level.Debug(logger).Log("msg", "Executing with timeout", "command", cmd, "args", fmt.Sprintf("%+v", args), "timeout", timeout)
+	level.Debug(logger).
+		Log("msg", "Executing with timeout", "command", cmd, "args", fmt.Sprintf("%+v", args), "timeout", timeout)
 
 	ctx := context.Background()
 	if timeout > 0 {
@@ -63,14 +67,16 @@ func ExecuteWithTimeout(cmd string, args []string, timeout int, logger log.Logge
 
 	out, err := execCmd.CombinedOutput()
 	if err != nil {
-		level.Error(logger).Log("msg", "Error executing command", "command", cmd, "args", fmt.Sprintf("%+v", args), "err", err)
+		level.Error(logger).
+			Log("msg", "Error executing command", "command", cmd, "args", fmt.Sprintf("%+v", args), "err", err)
 	}
 	return out, err
 }
 
 // Execute command with timeout as a given UID and GID and return stdout/stderr
 func ExecuteAsWithTimeout(cmd string, args []string, uid int, gid int, timeout int, logger log.Logger) ([]byte, error) {
-	level.Debug(logger).Log("msg", "Executing with timeout as user", "command", cmd, "args", fmt.Sprintf("%+v", args), "uid", uid, "gid", gid, "timout")
+	level.Debug(logger).
+		Log("msg", "Executing with timeout as user", "command", cmd, "args", fmt.Sprintf("%+v", args), "uid", uid, "gid", gid, "timout")
 
 	ctx := context.Background()
 	if timeout > 0 {
@@ -85,7 +91,8 @@ func ExecuteAsWithTimeout(cmd string, args []string, uid int, gid int, timeout i
 
 	out, err := execCmd.CombinedOutput()
 	if err != nil {
-		level.Error(logger).Log("msg", "Error executing command as user", "command", cmd, "args", fmt.Sprintf("%+v", args), "uid", uid, "gid", gid, "err", err)
+		level.Error(logger).
+			Log("msg", "Error executing command as user", "command", cmd, "args", fmt.Sprintf("%+v", args), "uid", uid, "gid", gid, "err", err)
 	}
 	return out, err
 }
