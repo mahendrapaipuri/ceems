@@ -33,10 +33,11 @@ var (
 		`Whether to collect metrics of all slurm job steps and tasks 
 [WARNING: This option can result in very high cardinality of metrics].`,
 	).Default("false").Bool()
-	// useJobIdHash = kingpin.Flag(
-	// 	"collector.slurm.unique.jobid",
-	// 	"Whether to calculate a hash based on job SLURM_JOBID, SLURM_JOB_UID, SLURM_JOB_ACCOUNT, SLURM_JOB_NODELIST to get unique job identifier.",
-	// ).Default("false").Bool()
+	useJobIdHash = kingpin.Flag(
+		"collector.slurm.create.unique.jobids",
+		`Whether to calculate a hash based job ID based on SLURM_JOBID, SLURM_JOB_UID, 
+SLURM_JOB_ACCOUNT, SLURM_JOB_NODELIST to get unique job identifier.`,
+	).Default("false").Bool()
 	jobStatPath = kingpin.Flag(
 		"collector.slurm.job.props.path",
 		`Path to jobstat files that contains a file for each job with line 
@@ -119,11 +120,12 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 	// cgroupsRootPath = fmt.Sprintf("%s/cpuacct", *cgroupfsPath)
 	// slurmCgroupsPath = fmt.Sprintf("%s/slurm", cgroupsRootPath)
 
+	// Dont fail starting collector. Let it fail during scraping
 	// Check if cgroups exist
-	if _, err := os.Stat(slurmCgroupsPath); err != nil {
-		level.Error(logger).Log("msg", "Slurm cgroups hierarchy not found", "path", slurmCgroupsPath, "err", err)
-		return nil, err
-	}
+	// if _, err := os.Stat(slurmCgroupsPath); err != nil {
+	// 	level.Error(logger).Log("msg", "Slurm cgroups hierarchy not found", "path", slurmCgroupsPath, "err", err)
+	// 	return nil, err
+	// }
 
 	return &slurmCollector{
 		cgroups:          cgroupsVer,
@@ -393,6 +395,12 @@ func (c *slurmCollector) getJobLabels(jobid string) (string, string, string) {
 	var jobUid string = ""
 	var jobAccount string = ""
 	var jobNodelist string = ""
+
+	// If useJobIdHash is false return with empty strings
+	if !*useJobIdHash {
+		return jobUuid, jobUid, jobAccount
+	}
+
 	var slurmJobInfo = fmt.Sprintf("%s/%s", *jobStatPath, jobid)
 	if _, err := os.Stat(slurmJobInfo); err == nil {
 		content, err := os.ReadFile(slurmJobInfo)

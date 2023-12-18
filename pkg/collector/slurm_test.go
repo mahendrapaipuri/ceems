@@ -18,6 +18,7 @@ func TestCgroupsV2SlurmJobMetrics(t *testing.T) {
 	if _, err := kingpin.CommandLine.Parse(
 		[]string{
 			"--path.cgroupfs", "fixtures/sys/fs/cgroup",
+			"--collector.slurm.create.unique.jobids",
 			"--collector.slurm.job.props.path", "fixtures/slurmjobprops",
 		},
 	); err != nil {
@@ -65,6 +66,7 @@ func TestCgroupsV2WithProcFsSlurmJobMetrics(t *testing.T) {
 	if _, err := kingpin.CommandLine.Parse(
 		[]string{
 			"--path.cgroupfs", "fixtures/sys/fs/cgroup",
+			"--collector.slurm.create.unique.jobids",
 			"--path.procfs", "fixtures/proc",
 		},
 	); err != nil {
@@ -112,6 +114,7 @@ func TestCgroupsV1SlurmJobMetrics(t *testing.T) {
 	if _, err := kingpin.CommandLine.Parse(
 		[]string{
 			"--path.cgroupfs", "fixtures/sys/fs/cgroup",
+			"--collector.slurm.create.unique.jobids",
 			"--collector.slurm.job.props.path", "fixtures/slurmjobprops",
 		},
 	); err != nil {
