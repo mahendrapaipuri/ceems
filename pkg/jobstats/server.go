@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	_ "net/http/pprof"
 	"strings"
 	"sync"
 	"time"
@@ -24,7 +25,7 @@ var (
 		JobstatsAppName,
 		"API server to serve the job and user stats of batch job user.",
 	)
-	db             *sql.DB
+	dbConn         *sql.DB
 	jobstatDBFile  string
 	jobstatDBTable string
 )
@@ -71,9 +72,12 @@ func NewJobstatsServer(c *Config) (*JobstatsServer, func(), error) {
 	router.HandleFunc("/api/accounts", server.accounts).Methods("GET")
 	router.HandleFunc("/api/jobs", server.jobs).Methods("GET")
 
+	// pprof debug end points
+	router.PathPrefix("/debug/").Handler(http.DefaultServeMux)
+
 	// Open DB connection
 	var err error
-	db, err = sql.Open("sqlite3", jobstatDBFile)
+	dbConn, err = sql.Open("sqlite3", jobstatDBFile)
 	if err != nil {
 		return nil, func() {}, err
 	}
@@ -270,7 +274,7 @@ func (s *JobstatsServer) health(w http.ResponseWriter, r *http.Request) {
 // Get user accounts using SQL query
 func getAccounts(user string, logger log.Logger) ([]Account, error) {
 	// Prepare statement
-	stmt, err := db.Prepare(fmt.Sprintf("SELECT DISTINCT Account FROM %s WHERE Usr = ?", jobstatDBTable))
+	stmt, err := dbConn.Prepare(fmt.Sprintf("SELECT DISTINCT Account FROM %s WHERE Usr = ?", jobstatDBTable))
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to prepare SQL statement for accounts query", "user", user, "err", err)
 		return nil, err
@@ -303,7 +307,7 @@ func getJobs(user string, accounts []string, from string, to string, logger log.
 	allFields := GetStructFieldName(BatchJob{})
 
 	// Prepare SQL statement
-	stmt, err := db.Prepare(
+	stmt, err := dbConn.Prepare(
 		fmt.Sprintf("SELECT %s FROM %s WHERE Usr = ? AND Start BETWEEN ? AND ? AND Account IN (%s)",
 			strings.Join(allFields, ","),
 			jobstatDBTable,
@@ -390,7 +394,7 @@ func getJobs(user string, accounts []string, from string, to string, logger log.
 
 // Ping DB for connection test
 func getDBStatus(logger log.Logger) bool {
-	err := db.Ping()
+	err := dbConn.Ping()
 	if err != nil {
 		level.Error(logger).Log("msg", "DB Ping failed", "err", err)
 		return false
