@@ -20,7 +20,6 @@ jobs:
       - prometheus/setup_environment
       - run: go mod download
       - run: make
-      - run: sudo apt-get update && sudo apt-get install sqlite3 -y && sqlite3 --version
       - run: CGO_BUILD=1 make
   test-arm:
     executor: arm
@@ -28,7 +27,6 @@ jobs:
       - checkout
       - run: uname -a
       - run: make test-e2e
-      - run: sudo apt-get update && sudo apt-get install sqlite3 -y && sqlite3 --version
       - run: CGO_BUILD=1 make test-e2e
   build:
     machine:
