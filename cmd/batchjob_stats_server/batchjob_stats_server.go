@@ -25,8 +25,7 @@ import (
 )
 
 var (
-	jobsTimestampFile   = "jobslasttimestamp"
-	vacuumTimeStampFile = "vacuumlasttimestamp"
+	jobsTimestampFile = "lastjobsupdatetime"
 )
 
 func main() {
@@ -41,28 +40,32 @@ func main() {
 		).Default("").String()
 		batchScheduler = jobstats.JobstatsApp.Flag(
 			"batch.scheduler",
-			"Name of batch scheduler (eg slurm, lsf, pbs).",
+			"Name of batch scheduler (eg slurm, lsf, pbs). Currently only slurm is supported.",
 		).Default("slurm").String()
 		dataPath = jobstats.JobstatsApp.Flag(
-			"path.data",
-			"Absolute path to a directory where job data is placed. SQLite DB that contains jobs stats will be saved to this directory.",
+			"data.path",
+			"Absolute path to a directory where job data is stored. SQLite DB that contains jobs stats will be saved to this directory.",
 		).Default("/var/lib/jobstats").String()
-		jobstatDBFile = jobstats.JobstatsApp.Flag(
-			"db.name",
-			"Name of the SQLite DB file that contains jobs stats.",
-		).Default("jobstats.db").String()
-		jobstatDBTable = jobstats.JobstatsApp.Flag(
-			"db.table.name",
-			"Name of the table in SQLite DB file that contains jobs stats.",
-		).Default("jobs").String()
-		updateInterval = jobstats.JobstatsApp.Flag(
-			"db.update.interval",
-			"Time period in seconds at which DB will be updated with jobs stats.",
-		).Default("1800").Int()
 		retentionPeriod = jobstats.JobstatsApp.Flag(
 			"data.retention.period",
 			"Period in days for which job stats data will be retained.",
 		).Default("365").Int()
+		jobstatDBFile = jobstats.JobstatsApp.Flag(
+			"db.name",
+			"Name of the SQLite DB file that contains job stats.",
+		).Default("jobstats.db").String()
+		jobstatDBTable = jobstats.JobstatsApp.Flag(
+			"db.table.name",
+			"Name of the table in SQLite DB file that contains job stats.",
+		).Default("jobs").String()
+		lastUpdateTime = jobstats.JobstatsApp.Flag(
+			"db.last.update.time",
+			"Last time the DB was updated. Job stats from this time will be added for new DB.",
+		).Default(time.Now().Format("2006-01-02")).String()
+		updateInterval = jobstats.JobstatsApp.Flag(
+			"db.update.interval",
+			"Time period in seconds at which DB will be updated with job stats.",
+		).Default("1800").Int()
 		maxProcs = jobstats.JobstatsApp.Flag(
 			"runtime.gomaxprocs", "The target number of CPUs Go will run on (GOMAXPROCS)",
 		).Envar("GOMAXPROCS").Default("1").Int()
@@ -96,9 +99,12 @@ func main() {
 	runtime.GOMAXPROCS(*maxProcs)
 	level.Debug(logger).Log("msg", "Go MAXPROCS", "procs", runtime.GOMAXPROCS(0))
 
-	jobstatDBPath := filepath.Join(*dataPath, *jobstatDBFile)
-	jobsLastTimeStampFile := filepath.Join(*dataPath, jobsTimestampFile)
-	vacuumLastTimeStampFile := filepath.Join(*dataPath, vacuumTimeStampFile)
+	absDataPath, err := filepath.Abs(*dataPath)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to get absolute path for --data.path=%s. Error: %s", *dataPath, err))
+	}
+	jobstatDBPath := filepath.Join(absDataPath, *jobstatDBFile)
+	jobsLastTimeStampFile := filepath.Join(absDataPath, jobsTimestampFile)
 
 	// Create context that listens for the interrupt signal from the OS.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
@@ -116,7 +122,7 @@ func main() {
 	server, cleanup, err := jobstats.NewJobstatsServer(config)
 	defer cleanup()
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create server", "err", err)
+		level.Error(logger).Log("msg", "Failed to create jobstats server", "err", err)
 		return
 	}
 
@@ -126,8 +132,8 @@ func main() {
 		jobstatDBPath,
 		*jobstatDBTable,
 		*retentionPeriod,
+		*lastUpdateTime,
 		jobsLastTimeStampFile,
-		vacuumLastTimeStampFile,
 	)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create jobstats DB", "err", err)
@@ -146,7 +152,7 @@ func main() {
 	loop:
 		for {
 			level.Info(logger).Log("msg", "Updating JobStats DB")
-			err := jobCollector.GetJobStats()
+			err := jobCollector.Collect()
 			if err != nil {
 				level.Error(logger).Log("msg", "Failed to get job stats", "err", err)
 			}
@@ -156,6 +162,10 @@ func main() {
 				continue
 			case <-ctx.Done():
 				level.Info(logger).Log("msg", "Received Interrupt. Stopping DB update")
+				err := jobCollector.Stop()
+				if err != nil {
+					level.Error(logger).Log("msg", "Failed to close DB connection", "err", err)
+				}
 				wg.Done()
 				break loop
 			}
