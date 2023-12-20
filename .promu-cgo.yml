@@ -9,7 +9,9 @@ build:
     binaries:
         - name: batchjob_stats_server
           path: ./cmd/batchjob_stats_server
-    flags: -a -tags 'netgo osusergo static_build'
+    tags:
+      all: [osusergo, netgo, static_build]
+    flags: -a
     ldflags: |
         -X github.com/prometheus/common/version.Version={{.Version}}
         -X github.com/prometheus/common/version.Revision={{.Revision}}

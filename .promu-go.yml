@@ -8,7 +8,9 @@ build:
     binaries:
         - name: batchjob_exporter
           path: ./cmd/batchjob_exporter
-    flags: -a -tags 'netgo osusergo static_build'
+    tags:
+      all: [osusergo, netgo, static_build]
+    flags: -a
     ldflags: |
         -X github.com/prometheus/common/version.Version={{.Version}}
         -X github.com/prometheus/common/version.Revision={{.Revision}}
