@@ -128,8 +128,7 @@ Currently, the exporter supports only SLURM. `batchjob_exporter` provides follow
 
 ### Slurm collector
 
-As batch job schedulers tend to reset 
-job IDs after certain overflow, it is desirable 
+As batch job schedulers tend to reset job IDs after certain overflow, it is desirable 
 to have a _unique_ job ID during these resets. This constraint is more important on 
 big HPC platforms that have high churn of batch jobs. `cgroups` created by SLURM do not 
 have any information on job except for its job ID. Hence, we need to get few more 
@@ -161,7 +160,8 @@ read from environment variables in `/proc` file system.
 It is recommended to use Prolog and Epilog scripts to get job properties and GPU to job ID maps 
 as it does not require any privileges and exporter can run completely in the 
 userland. If the admins would not want to have the burden of maintaining prolog and 
-epilog scripts, it is better to assign capabilities. These two approaches should be always favoured to running the exporter as `root`. 
+epilog scripts, it is better to assign capabilities. These two approaches should be 
+always favoured to running the exporter as `root`. 
 
 ### nVIDIA GPU job map collector
 
@@ -230,18 +230,23 @@ keep it in a local DB. In the case of SLURM, the app executes `sacct` command to
 info on jobs. However, `sacct` command needs to be executed as either `root` or `slurm` 
 user to get job details of _all_ users. 
 
-Current implementation supports two approaches for this privileged action
+Current implementation does following during DB initialization
 
-- Spawn a subprocess for `sacct` and execute it as `slurm` user by using 
-`CAP_SETUID` and `CAP_SETGID` capabilities. This approach can be used by passing flag 
-`--slurm.sacct.run.as.slurmuser`.
+- If current user is `root` or `slurm`, no new privileges are needed. As these two users
+are capable of pulling job data of all users. 
 
-- Run `sacct` with `sudo`. This required that we need to give the user permission to use 
-`sudo` by adding an entry into sudoers file. This approach can be used by passing 
-`--slurm.sacct.run.with.sudo`.
+- Spawn a subprocess for `sacct` and execute it as `slurm` user. If the subprocess 
+execution succeeds, it will be used in periodic update of DB. For this approach to work,
+`CAP_SETUID` and `CAP_SETGID` capabilities must be assigned to current process.
 
-Above stated approaches are mutually exclusive. If attempted to use both of them at the 
-same time, server will not start by returning an error.
+- If the above approach fails, we attempt to run `sacct` with `sudo`. This required 
+that we need to give the user permission to use `sudo` by adding an entry into 
+sudoers file. If it succeeds, this method will be used in periodic update.
+
+If none of the above approaches work, `sacct` command will be executed natively, _i.e.,_
+we will run the command with whatever option is passed to `--slurm.sacct.path`. This 
+would work if admins use their own wrappers to `sacct` that does privilege escalation 
+using different methods like `setuid` sticky bit.
 
 ## Linux capabilities
 
@@ -365,15 +370,16 @@ The stats server can be started as follows:
 ```
 /path/to/batchjob_stats_server \
     --slurm.sacct.path="/usr/local/bin/sacct" \
-    --path.data="/var/lib/batchjob_stats" \
+    --data.path="/var/lib/batchjob_stats" \
     --log.level="debug"
 ```
 
 Data files like SQLite3 DB created for the server will be placed in 
-`/var/lib/batchjob_stats` directory. Note that this directory needs to be created with 
-proper permissions before starting the server. 
+`/var/lib/batchjob_stats` directory. Note that if this directory does exist, 
+`batchjob_stats_server` will attempt to create one if it has enough privileges. If it 
+fails to create, error will be shown up.
 
-To execute `sacct` command as `slurm` user, command becomes following:
+<!-- To execute `sacct` command as `slurm` user, command becomes following:
 
 ```
 /path/to/batchjob_stats_server \
@@ -395,7 +401,7 @@ we want to use `sudo` approach to execute `sacct` command, the command becomes:
 ```
 
 This requires an entry into sudoers file that permits the user starting 
-`batchjob_stats_server` to execute `sudo sacct` without password.
+`batchjob_stats_server` to execute `sudo sacct` without password. -->
 
 `batchjob_stats_server` updates the local DB with job information regularly. The frequency 
 of this update and period for which the job data will be retained can be configured
