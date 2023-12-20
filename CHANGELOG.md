@@ -1,7 +1,8 @@
 # Changelog
 
-## 0.1.0-rc.1 / 2023-12-18
+## 0.1.0-rc.1 / 2023-12-20
 
+- [FEATURE] Bug fixes and refactoring [#14](https://github.com/mahendrapaipuri/batchjob_monitoring/pull/14) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
 - [FEATURE] Misc improvements [#13](https://github.com/mahendrapaipuri/batchjob_monitoring/pull/13) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
 - [FEATURE] Merge job stats DB and server commands [#12](https://github.com/mahendrapaipuri/batchjob_monitoring/pull/12) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
 - [FEATURE] Support GPU jobID map from /proc [#11](https://github.com/mahendrapaipuri/batchjob_monitoring/pull/11) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
