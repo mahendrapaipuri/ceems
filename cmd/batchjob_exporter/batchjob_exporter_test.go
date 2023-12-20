@@ -18,7 +18,7 @@ var (
 )
 
 const (
-	address = "localhost:19100"
+	address = "localhost:19010"
 )
 
 func TestFileDescriptorLeak(t *testing.T) {
@@ -42,7 +42,9 @@ func TestFileDescriptorLeak(t *testing.T) {
 	}
 
 	exporter := exec.Command(
-		binary, "--web.listen-address", address, "--path.cgroupfs", fixturePath,
+		binary,
+		"--web.listen-address", address,
+		"--path.cgroupfs", fixturePath,
 	)
 	test := func(pid int) error {
 		if err := queryExporter(address); err != nil {

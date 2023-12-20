@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 var (
@@ -46,5 +47,10 @@ func runCommandAndTests(cmd *exec.Cmd) error {
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("failed to start command: %s", err)
 	}
+
+	// Sleep for a while and kill process
+	time.Sleep(1 * time.Second)
+
+	cmd.Process.Kill()
 	return nil
 }
