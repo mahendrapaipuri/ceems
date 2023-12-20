@@ -5,6 +5,7 @@ package collector
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -263,7 +264,7 @@ func (c *slurmCollector) getJobsMetrics() (map[string]CgroupMetric, error) {
 
 	level.Debug(c.logger).Log("msg", "Loading cgroup", "path", c.slurmCgroupsPath)
 
-	err := filepath.Walk(c.slurmCgroupsPath, func(p string, info os.FileInfo, err error) error {
+	err := filepath.WalkDir(c.slurmCgroupsPath, func(p string, info fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
