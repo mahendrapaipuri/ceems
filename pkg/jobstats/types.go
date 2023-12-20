@@ -1,20 +1,24 @@
 package jobstats
 
 import (
+	"database/sql"
 	"net/http"
+	"time"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/exporter-toolkit/web"
 )
 
 type jobStatsDB struct {
-	logger                  log.Logger
-	batchScheduler          string
-	jobstatDBPath           string
-	jobstatDBTable          string
-	retentionPeriod         int
-	jobsLastTimeStampFile   string
-	vacuumLastTimeStampFile string
+	logger                 log.Logger
+	db                     *sql.DB
+	batchScheduler         string
+	jobstatDBPath          string
+	jobstatDBTable         string
+	retentionPeriod        int
+	lastJobsUpdateTime     time.Time
+	lastDBVacuumTime       time.Time
+	lastJobsUpdateTimeFile string
 }
 
 type BatchJob struct {
