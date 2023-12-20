@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -18,120 +19,33 @@ var (
 		JobstatDBAppName,
 		"Application that conslidates the batch job stats into a local DB.",
 	)
-	dateFormat       = "2006-01-02T15:04:05"
+	dateFormat = "2006-01-02T15:04:05"
+	// Ref: https://stackoverflow.com/questions/1711631/improve-insert-per-second-performance-of-sqlite
+	// Ref: https://gitlab.com/gnufred/logslate/-/blob/8eda5cedc9a28da3793dcf73480d618c95cc322c/playground/sqlite3.go
+	// Ref: https://github.com/mattn/go-sqlite3/issues/1145#issuecomment-1519012055
 	pragmaStatements = []string{
 		"PRAGMA synchronous = OFF",
 		"PRAGMA journal_mode = MEMORY",
 	}
 	indexStatements = []string{
-		`CREATE INDEX i1 ON %s (Usr,Account,Start);`,
-		`CREATE INDEX i2 ON %s (Usr,Jobuuid);`,
+		`CREATE INDEX IF NOT EXISTS i1 ON %s (Usr,Account,Start);`,
+		`CREATE INDEX IF NOT EXISTS i2 ON %s (Usr,Jobuuid);`,
 	}
 	allFields = GetStructFieldName(BatchJob{})
 )
 
-func NewJobStatsDB(
-	logger log.Logger,
-	batchScheduler string,
-	jobstatDBPath string,
-	jobstatDBTable string,
-	retentionPeriod int,
-	jobsLastTimeStampFile string,
-	vacuumLastTimeStampFile string,
-) (*jobStatsDB, error) {
-	// Do sanity checks
-	if checksFunc, ok := checksMap[batchScheduler]; ok {
-		err := checksFunc.(func(log.Logger) error)(logger)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return &jobStatsDB{
-		logger:                  logger,
-		batchScheduler:          batchScheduler,
-		jobstatDBPath:           jobstatDBPath,
-		jobstatDBTable:          jobstatDBTable,
-		retentionPeriod:         retentionPeriod,
-		jobsLastTimeStampFile:   jobsLastTimeStampFile,
-		vacuumLastTimeStampFile: vacuumLastTimeStampFile,
-	}, nil
-}
-
-// Open DB connection and return connection poiner
-func (j *jobStatsDB) openDBConnection() (*sql.DB, error) {
-	dbConn, err := sql.Open("sqlite3", j.jobstatDBPath)
+// Write timestamp to a file
+func writeTimeStampToFile(filePath string, timeStamp time.Time, logger log.Logger) {
+	timeStampString := timeStamp.Format(dateFormat)
+	timeStampByte := []byte(timeStampString)
+	err := os.WriteFile(filePath, timeStampByte, 0644)
 	if err != nil {
-		return nil, err
+		level.Error(logger).Log("msg", "Failed to write timestamp to file", "time", timeStampString, "file", filePath, "err", err)
 	}
-	return dbConn, nil
-}
-
-// Set all necessary PRAGMA statement on DB
-func (j *jobStatsDB) setPragmaDirectives(db *sql.DB) {
-	// Ref: https://stackoverflow.com/questions/1711631/improve-insert-per-second-performance-of-sqlite
-	// Ref: https://gitlab.com/gnufred/logslate/-/blob/8eda5cedc9a28da3793dcf73480d618c95cc322c/playground/sqlite3.go
-	// Ref: https://github.com/mattn/go-sqlite3/issues/1145#issuecomment-1519012055
-	for _, stmt := range pragmaStatements {
-		_, err := db.Exec(stmt)
-		if err != nil {
-			level.Error(j.logger).Log("msg", "Failed to execute pragma statement", "statement", stmt, "err", err)
-		}
-	}
-}
-
-// Check if DB is locked
-func (j *jobStatsDB) checkDBLock(db *sql.DB) error {
-	_, err := db.Exec("BEGIN EXCLUSIVE TRANSACTION;")
-	if err != nil {
-		return err
-	}
-	_, err = db.Exec("COMMIT;")
-	if err != nil {
-		level.Error(j.logger).Log("msg", "Failed to commit exclusive transcation", "err", err)
-		return err
-	}
-	return nil
-}
-
-// Setup DB and create table
-func (j *jobStatsDB) setupDB() (*sql.DB, error) {
-	if _, err := os.Stat(j.jobstatDBPath); err == nil {
-		// Open the created SQLite File
-		db, err := j.openDBConnection()
-		if err != nil {
-			level.Error(j.logger).Log("msg", "Failed to open DB file", "err", err)
-			return nil, err
-		}
-		return db, nil
-	}
-
-	// If file does not exist, create SQLite file
-	file, err := os.Create(j.jobstatDBPath)
-	if err != nil {
-		level.Error(j.logger).Log("msg", "Failed to create DB file", "err", err)
-		return nil, err
-	}
-	file.Close()
-
-	// Open the created SQLite File
-	db, err := j.openDBConnection()
-	if err != nil {
-		level.Error(j.logger).Log("msg", "Failed to open DB file", "err", err)
-		return nil, err
-	}
-
-	// Create Table
-	err = j.createTable(db)
-	if err != nil {
-		level.Error(j.logger).Log("msg", "Failed to create DB table", "err", err)
-		return nil, err
-	}
-	return db, nil
 }
 
 // Create a table for storing job stats
-func (j *jobStatsDB) createTable(db *sql.DB) error {
-	// allFields := GetStructFieldName(BatchJob{})
+func createTable(dbTableName string, db *sql.DB, logger log.Logger) error {
 	fieldLines := []string{}
 	for _, field := range allFields {
 		fieldLines = append(fieldLines, fmt.Sprintf("		\"%s\" TEXT,", field))
@@ -140,13 +54,13 @@ func (j *jobStatsDB) createTable(db *sql.DB) error {
 	createBatchJobStatSQL := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (
 		"id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,		
 		%s
-	  );`, j.jobstatDBTable, strings.Join(fieldLines, "\n"))
+	  );`, dbTableName, strings.Join(fieldLines, "\n"))
 
 	// Prepare SQL DB creation Statement
-	level.Info(j.logger).Log("msg", "Creating SQLite DB table for storing job stats")
+	level.Info(logger).Log("msg", "Creating SQLite DB table for storing job stats")
 	statement, err := db.Prepare(createBatchJobStatSQL)
 	if err != nil {
-		level.Error(j.logger).
+		level.Error(logger).
 			Log("msg", "Failed to prepare SQL statement duirng DB creation", "err", err)
 		return err
 	}
@@ -154,17 +68,17 @@ func (j *jobStatsDB) createTable(db *sql.DB) error {
 	// Execute SQL DB creation Statements
 	_, err = statement.Exec()
 	if err != nil {
-		level.Error(j.logger).Log("msg", "Failed to execute SQL command creation statement", "err", err)
+		level.Error(logger).Log("msg", "Failed to execute SQL command creation statement", "err", err)
 		return err
 	}
 
 	// Prepare SQL DB index creation Statement
 	for _, stmt := range indexStatements {
-		level.Info(j.logger).Log("msg", "Creating DB index with Usr,Account,Start columns")
-		createIndexSQL := fmt.Sprintf(stmt, j.jobstatDBTable)
+		level.Info(logger).Log("msg", "Creating DB index with Usr,Account,Start columns")
+		createIndexSQL := fmt.Sprintf(stmt, dbTableName)
 		statement, err = db.Prepare(createIndexSQL)
 		if err != nil {
-			level.Error(j.logger).
+			level.Error(logger).
 				Log("msg", "Failed to prepare SQL statement for index creation", "err", err)
 			return err
 		}
@@ -172,11 +86,169 @@ func (j *jobStatsDB) createTable(db *sql.DB) error {
 		// Execute SQL DB index creation Statements
 		_, err = statement.Exec()
 		if err != nil {
-			level.Error(j.logger).Log("msg", "Failed to execute SQL command for index creation statement", "err", err)
+			level.Error(logger).Log("msg", "Failed to execute SQL command for index creation statement", "err", err)
 			return err
 		}
 	}
-	level.Info(j.logger).Log("msg", "SQLite DB table for jobstats successfully created")
+	level.Info(logger).Log("msg", "SQLite DB table for jobstats successfully created")
+	return nil
+}
+
+// Open DB connection and return connection poiner
+func openDBConnection(dbFilePath string) (*sql.DB, error) {
+	db, err := sql.Open("sqlite3", dbFilePath)
+	if err != nil {
+		return nil, err
+	}
+	return db, nil
+}
+
+// Setup DB and create table
+func setupDB(dbFilePath string, dbTableName string, logger log.Logger) (*sql.DB, error) {
+	if _, err := os.Stat(dbFilePath); err == nil {
+		// Open the created SQLite File
+		db, err := openDBConnection(dbFilePath)
+		if err != nil {
+			level.Error(logger).Log("msg", "Failed to open DB file", "err", err)
+			return nil, err
+		}
+		return db, nil
+	}
+
+	// If file does not exist, create SQLite file
+	file, err := os.Create(dbFilePath)
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create DB file", "err", err)
+		return nil, err
+	}
+	file.Close()
+
+	// Open the created SQLite File
+	db, err := openDBConnection(dbFilePath)
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to open DB file", "err", err)
+		return nil, err
+	}
+
+	// Create Table
+	err = createTable(dbTableName, db, logger)
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create DB table", "err", err)
+		return nil, err
+	}
+	return db, nil
+}
+
+// Make new JobStatsDB struct
+func NewJobStatsDB(
+	logger log.Logger,
+	batchScheduler string,
+	jobstatDBPath string,
+	jobstatDBTable string,
+	retentionPeriod int,
+	lastJobsUpdateTimeString string,
+	lastJobsUpdateTimeFile string,
+) (*jobStatsDB, error) {
+	// Emit debug logs
+	level.Debug(logger).Log(
+		"msg", "DB config:",
+		"db.path", jobstatDBPath,
+		"db.table", jobstatDBTable,
+		"data.retention.period", retentionPeriod,
+		"data.last.update.time", lastJobsUpdateTimeString,
+		"data.lasttimestamp.file", lastJobsUpdateTimeFile,
+	)
+
+	// Check if data path exists and attempt to create if it does not exist
+	var lastJobsUpdateTime time.Time
+	var err error
+	dataPath := filepath.Dir(jobstatDBPath)
+	if _, err := os.Stat(dataPath); err != nil {
+		level.Info(logger).Log("msg", "Data path directory does not exist. Creating...", "path", dataPath)
+		if err := os.Mkdir(dataPath, 0750); err != nil {
+			level.Error(logger).Log("msg", "Could not create data path directory.", "path", dataPath, "err", err)
+			return nil, err
+		}
+		goto updatetime
+	} else {
+		// If data directory exists, try to read lastJobsUpdateTimeFile
+		if _, err := os.Stat(lastJobsUpdateTimeFile); err == nil {
+			lastUpdateTimeString, err := os.ReadFile(lastJobsUpdateTimeFile)
+			if err != nil {
+				level.Error(logger).Log("msg", "Failed to read lastjobsupdatetime file", "err", err)
+				goto updatetime
+			} else {
+				lastJobsUpdateTime, err = time.Parse(dateFormat, string(lastUpdateTimeString))
+				if err != nil {
+					level.Error(logger).Log("msg", "Failed to parse time string in lastjobsupdatetime file", "time", lastUpdateTimeString, "err", err)
+					goto updatetime
+				}
+			}
+			goto checks
+		} else {
+			goto updatetime
+		}
+	}
+
+updatetime:
+	lastJobsUpdateTime, err = time.Parse("2006-01-02", lastJobsUpdateTimeString)
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to parse time string.", "time", lastJobsUpdateTimeString, "err", err)
+		return nil, err
+	}
+
+	// Write to file for persistence in case of restarts
+	writeTimeStampToFile(lastJobsUpdateTimeFile, lastJobsUpdateTime, logger)
+
+checks:
+	// Do sanity checks
+	if checksFunc, ok := checksMap[batchScheduler]; ok {
+		err := checksFunc.(func(log.Logger) error)(logger)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Setup DB
+	db, err := setupDB(jobstatDBPath, jobstatDBTable, logger)
+	if err != nil {
+		level.Error(logger).Log("msg", "DB setup failed", "err", err)
+		return nil, err
+	}
+	return &jobStatsDB{
+		logger:                 logger,
+		db:                     db,
+		batchScheduler:         batchScheduler,
+		jobstatDBPath:          jobstatDBPath,
+		jobstatDBTable:         jobstatDBTable,
+		retentionPeriod:        retentionPeriod,
+		lastJobsUpdateTime:     lastJobsUpdateTime,
+		lastDBVacuumTime:       time.Now(),
+		lastJobsUpdateTimeFile: lastJobsUpdateTimeFile,
+	}, nil
+}
+
+// Set all necessary PRAGMA statement on DB
+func (j *jobStatsDB) setPragmaDirectives() {
+	for _, stmt := range pragmaStatements {
+		_, err := j.db.Exec(stmt)
+		if err != nil {
+			level.Error(j.logger).Log("msg", "Failed to execute pragma statement", "statement", stmt, "err", err)
+		}
+	}
+}
+
+// Check if DB is locked
+func (j *jobStatsDB) checkDBLock() error {
+	_, err := j.db.Exec("BEGIN EXCLUSIVE TRANSACTION;")
+	if err != nil {
+		return err
+	}
+	_, err = j.db.Exec("COMMIT;")
+	if err != nil {
+		level.Error(j.logger).Log("msg", "Failed to commit exclusive transcation", "err", err)
+		return err
+	}
 	return nil
 }
 
@@ -200,49 +272,43 @@ func (j *jobStatsDB) prepareInsertStatement(tx *sql.Tx, numJobs int) (*sql.Stmt,
 	return stmt, nil
 }
 
-// Get start and end time to query for jobs
-func (j *jobStatsDB) getStartEndTimes() (time.Time, time.Time) {
-	var startTime time.Time
-	var foundStartTime bool = false
-	if _, err := os.Stat(j.jobsLastTimeStampFile); err == nil {
-		timestamp, err := os.ReadFile(j.jobsLastTimeStampFile)
-		if err != nil {
-			level.Error(j.logger).Log("msg", "Failed to read jobs lasttimestamp file", "err", err)
-		} else {
-			startTime, err = time.Parse(dateFormat, string(timestamp))
-			if err != nil {
-				level.Error(j.logger).Log("msg", "Failed to parse jobs lasttimestamp file", "err", err)
-			} else {
-				foundStartTime = true
-			}
-		}
-	}
-	if !foundStartTime {
-		// If not lasttimestamp file found, get data from rententionPeriod number of days
-		startTime = time.Now().Add(time.Duration(-j.retentionPeriod*24) * time.Hour)
-	}
-	endTime := time.Now()
-	return startTime, endTime
-}
+// Collect job stats
+func (j *jobStatsDB) Collect() error {
+	var currentTime = time.Now()
 
-// Write endTime to a file
-func (j *jobStatsDB) writeLastTimeStampFile(lastTimeStampFile string, endTime time.Time) {
-	lastTimeStamp := []byte(endTime.Format(dateFormat))
-	err := os.WriteFile(lastTimeStampFile, lastTimeStamp, 0644)
-	if err != nil {
-		level.Error(j.logger).Log("msg", "Failed to write lasttimestamp file", "err", err)
+	// If duration is less than 1 day do single update
+	if currentTime.Sub(j.lastJobsUpdateTime) < time.Duration(24*time.Hour) {
+		return j.getJobStats(j.lastJobsUpdateTime, currentTime)
+	}
+	level.Info(j.logger).Log("msg", "DB update duration is more than 1 day. Doing incremental update. This may take a while...")
+
+	// If duration is more than 1 day, do update for each day
+	var nextUpdateTime time.Time
+	for {
+		nextUpdateTime = j.lastJobsUpdateTime.Add(24 * time.Hour)
+		if nextUpdateTime.Compare(currentTime) == -1 {
+			level.Debug(j.logger).Log("msg", "Incremental DB update step", "from", j.lastJobsUpdateTime, "to", nextUpdateTime)
+			if err := j.getJobStats(j.lastJobsUpdateTime, nextUpdateTime); err != nil {
+				level.Error(j.logger).Log("msg", "Failed incremental update", "from", j.lastJobsUpdateTime, "to", nextUpdateTime, "err", err)
+				return err
+			}
+		} else {
+			level.Debug(j.logger).Log("msg", "Final incremental DB update step", "from", j.lastJobsUpdateTime, "to", currentTime)
+			return j.getJobStats(j.lastJobsUpdateTime, currentTime)
+		}
+
+		// Sleep for couple of seconds before making next update
+		// This is to avoid let DB breath a bit before serving next request
+		time.Sleep(2 * time.Second)
 	}
 }
 
 // Get job stats and insert them into DB
-func (j *jobStatsDB) GetJobStats() error {
-	// First do basic checks
-	// j.checks()
-	// Get start and end times for retrieving jobs
-	startTime, endTime := j.getStartEndTimes()
+func (j *jobStatsDB) getJobStats(startTime, endTime time.Time) error {
 	var jobs []BatchJob
 	var err error
 	if statsFunc, ok := statsMap[j.batchScheduler]; ok {
+		// Get jobs from last update time until now
 		jobs, err = statsFunc.(func(time.Time, time.Time, log.Logger) ([]BatchJob, error))(
 			startTime,
 			endTime,
@@ -253,36 +319,29 @@ func (j *jobStatsDB) GetJobStats() error {
 		}
 	}
 
-	// Setup DB and return db object
-	db, err := j.setupDB()
-	if err != nil {
-		level.Error(j.logger).Log("msg", "Preparation of DB failed", "err", err)
-		return err
-	}
-
 	// Vacuum DB every Monday after 02h:00 (Sunday after midnight)
-	err = j.vacuumDB(db)
+	err = j.vacuumDB()
 	if err != nil {
 		level.Error(j.logger).Log("msg", "Failed to vacuum DB", "err", err)
 	}
 
 	// Check if DB is already locked.
 	// If locked, return with noop
-	err = j.checkDBLock(db)
+	err = j.checkDBLock()
 	if err != nil {
 		level.Error(j.logger).Log("msg", "DB is locked. Jobs WILL NOT BE inserted.", "err", err)
 		return err
 	}
 
 	// Begin transcation
-	tx, err := db.Begin()
+	tx, err := j.db.Begin()
 	if err != nil {
 		level.Error(j.logger).Log("msg", "Could not start transcation", "err", err)
 		return err
 	}
 
 	// Set pragma statements
-	j.setPragmaDirectives(db)
+	j.setPragmaDirectives()
 	stmt, err := j.prepareInsertStatement(tx, len(jobs))
 	if err != nil {
 		level.Error(j.logger).Log("msg", "Failed to prepare insert job statement in DB", "err", err)
@@ -311,36 +370,26 @@ func (j *jobStatsDB) GetJobStats() error {
 	}
 
 	// Write endTime to file to keep track upon successful insertion of data
-	j.writeLastTimeStampFile(j.jobsLastTimeStampFile, endTime)
+	j.lastJobsUpdateTime = endTime
+	writeTimeStampToFile(j.lastJobsUpdateTimeFile, j.lastJobsUpdateTime, j.logger)
 
 	// Defer Closing the database
 	defer stmt.Close()
-	defer db.Close()
 	return nil
 }
 
+// Close DB connection
+func (j *jobStatsDB) Stop() error {
+	return j.db.Close()
+}
+
 // Vacuum DB to reduce fragementation and size
-func (j *jobStatsDB) vacuumDB(db *sql.DB) error {
+func (j *jobStatsDB) vacuumDB() error {
 	weekday := time.Now().Weekday().String()
 	hours, _, _ := time.Now().Clock()
-	var nextVacuumTime time.Time
 
-	// Check if lasttimestamp for vacuum exists
-	if _, err := os.Stat(j.vacuumLastTimeStampFile); err == nil {
-		timestamp, err := os.ReadFile(j.vacuumLastTimeStampFile)
-		if err != nil {
-			level.Error(j.logger).Log("msg", "Failed to read vacuum lasttimestamp file", "err", err)
-			nextVacuumTime = time.Now()
-		} else {
-			lastVacuumTime, err := time.Parse(dateFormat, string(timestamp))
-			if err != nil {
-				level.Error(j.logger).Log("msg", "Failed to parse vacuum lasttimestamp file", "err", err)
-			}
-			nextVacuumTime = lastVacuumTime.Add(time.Duration(168) * time.Hour)
-		}
-	} else {
-		nextVacuumTime = time.Now()
-	}
+	// Next vacuum time is 7 days after last vacuum
+	nextVacuumTime := j.lastDBVacuumTime.Add(time.Duration(168) * time.Hour)
 
 	// Check if we are on Monday at 02hr and **after** nextVacuumTime
 	if weekday != "Monday" && hours != 2 && time.Now().Compare(nextVacuumTime) == -1 {
@@ -349,14 +398,12 @@ func (j *jobStatsDB) vacuumDB(db *sql.DB) error {
 
 	// Start vacuuming
 	level.Info(j.logger).Log("msg", "Starting to vacuum DB")
-	_, err := db.Exec("VACUUM;")
+	_, err := j.db.Exec("VACUUM;")
 	if err != nil {
 		return err
 	}
 	level.Info(j.logger).Log("msg", "DB vacuum successfully finished")
-
-	// Write endTime to file to keep track upon successful insertion of data
-	j.writeLastTimeStampFile(j.vacuumLastTimeStampFile, time.Now())
+	j.lastDBVacuumTime = time.Now()
 	return nil
 }
 
@@ -382,7 +429,7 @@ func (j *jobStatsDB) insertJobsInDB(statement *sql.Stmt, jobStats []BatchJob) {
 		if jobStat == (BatchJob{}) {
 			continue
 		}
-		level.Debug(j.logger).Log("msg", "Inserting job", "jobid", jobStat.Jobid)
+		// level.Debug(j.logger).Log("msg", "Inserting job", "jobid", jobStat.Jobid)
 		_, err := statement.Exec(
 			jobStat.Jobid,
 			jobStat.Jobuuid,
