@@ -2,7 +2,6 @@ package helpers
 
 import (
 	"context"
-	"fmt"
 	"os/exec"
 	"strings"
 	"syscall"
@@ -24,11 +23,16 @@ func GetUuidFromString(stringSlice []string) (string, error) {
 
 // Execute command and return stdout/stderr
 func Execute(cmd string, args []string, logger log.Logger) ([]byte, error) {
-	level.Debug(logger).Log("msg", "Executing", "command", cmd, "args", fmt.Sprintf("%+v", args))
-	out, err := exec.Command(cmd, args...).CombinedOutput()
+	level.Debug(logger).Log("msg", "Executing", "command", cmd, "args", strings.Join(args, " "))
+
+	execCmd := exec.Command(cmd, args...)
+	if cmd == "sudo" {
+		execCmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	}
+	out, err := execCmd.CombinedOutput()
 	if err != nil {
 		level.Error(logger).
-			Log("msg", "Error executing command", "command", cmd, "args", fmt.Sprintf("%+v", args), "err", err)
+			Log("msg", "Error executing command", "command", cmd, "args", strings.Join(args, " "), "err", err)
 	}
 	return out, err
 }
@@ -36,14 +40,14 @@ func Execute(cmd string, args []string, logger log.Logger) ([]byte, error) {
 // Execute command as a given UID and GID and return stdout/stderr
 func ExecuteAs(cmd string, args []string, uid int, gid int, logger log.Logger) ([]byte, error) {
 	level.Debug(logger).
-		Log("msg", "Executing as user", "command", cmd, "args", fmt.Sprintf("%+v", args), "uid", uid, "gid", gid)
+		Log("msg", "Executing as user", "command", cmd, "args", strings.Join(args, " "), "uid", uid, "gid", gid)
 	execCmd := exec.Command(cmd, args...)
 	execCmd.SysProcAttr = &syscall.SysProcAttr{}
 	execCmd.SysProcAttr.Credential = &syscall.Credential{Uid: uint32(uid), Gid: uint32(gid)}
 	out, err := execCmd.CombinedOutput()
 	if err != nil {
 		level.Error(logger).
-			Log("msg", "Error executing command as user", "command", cmd, "args", fmt.Sprintf("%+v", args), "uid", uid, "gid", gid, "err", err)
+			Log("msg", "Error executing command as user", "command", cmd, "args", strings.Join(args, " "), "uid", uid, "gid", gid, "err", err)
 	}
 	return out, err
 }
@@ -51,7 +55,7 @@ func ExecuteAs(cmd string, args []string, uid int, gid int, logger log.Logger) (
 // Execute command with timeout and return stdout/stderr
 func ExecuteWithTimeout(cmd string, args []string, timeout int, logger log.Logger) ([]byte, error) {
 	level.Debug(logger).
-		Log("msg", "Executing with timeout", "command", cmd, "args", fmt.Sprintf("%+v", args), "timeout", timeout)
+		Log("msg", "Executing with timeout", "command", cmd, "args", strings.Join(args, " "), "timeout", timeout)
 
 	ctx := context.Background()
 	if timeout > 0 {
@@ -61,6 +65,12 @@ func ExecuteWithTimeout(cmd string, args []string, timeout int, logger log.Logge
 	}
 
 	execCmd := exec.CommandContext(ctx, cmd, args...)
+	// Attach a separate terminal less session to the subprocess
+	// This is to avoid prompting for password when we run command with sudo
+	// Ref: https://stackoverflow.com/questions/13432947/exec-external-program-script-and-detect-if-it-requests-user-input
+	if cmd == "sudo" {
+		execCmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	}
 
 	// The signal to send to the children when parent receives a kill signal
 	// execCmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGTERM}
@@ -68,7 +78,7 @@ func ExecuteWithTimeout(cmd string, args []string, timeout int, logger log.Logge
 	out, err := execCmd.CombinedOutput()
 	if err != nil {
 		level.Error(logger).
-			Log("msg", "Error executing command", "command", cmd, "args", fmt.Sprintf("%+v", args), "err", err)
+			Log("msg", "Error executing command", "command", cmd, "args", strings.Join(args, " "), "err", err)
 	}
 	return out, err
 }
@@ -76,7 +86,7 @@ func ExecuteWithTimeout(cmd string, args []string, timeout int, logger log.Logge
 // Execute command with timeout as a given UID and GID and return stdout/stderr
 func ExecuteAsWithTimeout(cmd string, args []string, uid int, gid int, timeout int, logger log.Logger) ([]byte, error) {
 	level.Debug(logger).
-		Log("msg", "Executing with timeout as user", "command", cmd, "args", fmt.Sprintf("%+v", args), "uid", uid, "gid", gid, "timout")
+		Log("msg", "Executing with timeout as user", "command", cmd, "args", strings.Join(args, " "), "uid", uid, "gid", gid, "timout")
 
 	ctx := context.Background()
 	if timeout > 0 {
@@ -92,7 +102,7 @@ func ExecuteAsWithTimeout(cmd string, args []string, uid int, gid int, timeout i
 	out, err := execCmd.CombinedOutput()
 	if err != nil {
 		level.Error(logger).
-			Log("msg", "Error executing command as user", "command", cmd, "args", fmt.Sprintf("%+v", args), "uid", uid, "gid", gid, "err", err)
+			Log("msg", "Error executing command as user", "command", cmd, "args", strings.Join(args, " "), "uid", uid, "gid", gid, "err", err)
 	}
 	return out, err
 }
