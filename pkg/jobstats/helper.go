@@ -80,7 +80,7 @@ func expandNodelist(nodelistExp string) []string {
 			if len(matches) == 0 {
 				continue
 			}
-			
+
 			// Get only first match as we use recursion
 			for _, match := range matches[0:1] {
 				matchSansBrackets := match[1 : len(match)-1]
