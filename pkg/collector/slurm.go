@@ -31,13 +31,13 @@ var (
 	metricLock      = sync.RWMutex{}
 	collectJobSteps = kingpin.Flag(
 		"collector.slurm.jobsteps.metrics",
-		`Whether to collect metrics of all slurm job steps and tasks 
-[WARNING: This option can result in very high cardinality of metrics].`,
+		`Enables collection of metrics of all slurm job steps and tasks 
+[WARNING: This option can result in very high cardinality of metrics] (default: disabled).`,
 	).Default("false").Bool()
 	useJobIdHash = kingpin.Flag(
 		"collector.slurm.create.unique.jobids",
-		`Whether to calculate a hash based job ID based on SLURM_JOBID, SLURM_JOB_UID, 
-SLURM_JOB_ACCOUNT, SLURM_JOB_NODELIST to get unique job identifier.`,
+		`Enables calculation of a unique hash based job ID based on SLURM_JOBID, SLURM_JOB_UID, 
+SLURM_JOB_ACCOUNT, SLURM_JOB_NODELIST (default: disabled).`,
 	).Default("false").Bool()
 	jobStatPath = kingpin.Flag(
 		"collector.slurm.job.props.path",

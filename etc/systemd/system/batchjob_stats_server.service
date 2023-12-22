@@ -8,8 +8,7 @@ User=batchjob-stats
 Group=batchjob-stats
 ExecStart=/usr/local/bin/batchjob_stats_server \
     --slurm.sacct.path="/usr/local/bin/sacct" \
-    --slurm.sacct.run.with.sudo \
-    --path.data="/var/lib/batchjob_stats" \
+    --data.path="/var/lib/batchjob_stats" \
     --db.update.interval=1800 \
     --data.retention.period=365 \
     --log.level="debug"
@@ -19,7 +18,10 @@ Restart=always
 RestartSec=1
 StartLimitInterval=0
 
-NoNewPrivileges=yes
+AmbientCapabilities=CAP_SETUID CAP_SETGID
+
+ProtectHome=read-only
+ReadWritePaths=/var/lib/batchjob_stats
 
 ProtectSystem=strict
 ProtectControlGroups=true
