@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- [BUGFIX] bugfix: Correctly parse SLURM nodelist range string [#15](https://github.com/mahendrapaipuri/batchjob_monitoring/pull/15) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+
 ## 0.1.0-rc.1 / 2023-12-20
 
 - [FEATURE] Bug fixes and refactoring [#14](https://github.com/mahendrapaipuri/batchjob_monitoring/pull/14) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
