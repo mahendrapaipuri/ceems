@@ -173,7 +173,8 @@ func slurmChecks(logger log.Logger) error {
 
 	// If current user is slurm or root pass checks
 	if currentUser, err := user.Current(); err == nil && (currentUser.Username == "slurm" || currentUser.Uid == "0") {
-		level.Debug(logger).Log("msg", "Current user have enough privileges to get job data for all users", "user", currentUser.Username)
+		level.Debug(logger).
+			Log("msg", "Current user have enough privileges to get job data for all users", "user", currentUser.Username)
 		return nil
 	}
 

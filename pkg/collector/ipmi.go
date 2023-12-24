@@ -49,18 +49,18 @@ var (
 )
 
 func init() {
-	registerCollector(ipmiCollectorSubsystem, defaultEnabled, NewIpmiCollector)
+	registerCollector(ipmiCollectorSubsystem, defaultEnabled, NewIPMICollector)
 }
 
-// NewIpmiCollector returns a new Collector exposing IMPI DCMI power metrics.
-func NewIpmiCollector(logger log.Logger) (Collector, error) {
+// NewIPMICollector returns a new Collector exposing IMPI DCMI power metrics.
+func NewIPMICollector(logger log.Logger) (Collector, error) {
 
 	wattsMetricDesc := prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, ipmiCollectorSubsystem, "watts_total"),
 		"Current Power consumption in watts", []string{}, nil,
 	)
 
-	var execMode string = ""
+	var execMode string
 
 	// Split command
 	cmdSlice := strings.Split(*ipmiDcmiCmd, " ")
