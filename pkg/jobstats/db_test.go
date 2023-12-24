@@ -162,7 +162,12 @@ func TestNewJobStatsDB(t *testing.T) {
 
 	// Check content of last update time file. It should change
 	if timeString, err := os.ReadFile(lastJobsUpdateTimeFile); string(timeString) != "2023-12-21T00:00:00" {
-		t.Errorf("Last update time string test failed. Expected %s got %s %s", "2023-12-21T00:00:00", string(timeString), err)
+		t.Errorf(
+			"Last update time string test failed. Expected %s got %s %s",
+			"2023-12-21T00:00:00",
+			string(timeString),
+			err,
+		)
 	}
 
 	// Remove last update time file
@@ -187,7 +192,12 @@ func TestNewJobStatsDB(t *testing.T) {
 
 	// Check content of last update time file. It should change
 	if timeString, err := os.ReadFile(lastJobsUpdateTimeFile); string(timeString) != "2023-12-22T00:00:00" {
-		t.Errorf("Last update time string test failed. Expected %s got %s %s", "2023-12-22T00:00:00", string(timeString), err)
+		t.Errorf(
+			"Last update time string test failed. Expected %s got %s %s",
+			"2023-12-22T00:00:00",
+			string(timeString),
+			err,
+		)
 	}
 }
 

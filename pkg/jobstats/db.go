@@ -40,7 +40,8 @@ func writeTimeStampToFile(filePath string, timeStamp time.Time, logger log.Logge
 	timeStampByte := []byte(timeStampString)
 	err := os.WriteFile(filePath, timeStampByte, 0644)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to write timestamp to file", "time", timeStampString, "file", filePath, "err", err)
+		level.Error(logger).
+			Log("msg", "Failed to write timestamp to file", "time", timeStampString, "file", filePath, "err", err)
 	}
 }
 
@@ -280,16 +281,19 @@ func (j *jobStatsDB) Collect() error {
 	if currentTime.Sub(j.lastJobsUpdateTime) < time.Duration(24*time.Hour) {
 		return j.getJobStats(j.lastJobsUpdateTime, currentTime)
 	}
-	level.Info(j.logger).Log("msg", "DB update duration is more than 1 day. Doing incremental update. This may take a while...")
+	level.Info(j.logger).
+		Log("msg", "DB update duration is more than 1 day. Doing incremental update. This may take a while...")
 
 	// If duration is more than 1 day, do update for each day
 	var nextUpdateTime time.Time
 	for {
 		nextUpdateTime = j.lastJobsUpdateTime.Add(24 * time.Hour)
 		if nextUpdateTime.Compare(currentTime) == -1 {
-			level.Debug(j.logger).Log("msg", "Incremental DB update step", "from", j.lastJobsUpdateTime, "to", nextUpdateTime)
+			level.Debug(j.logger).
+				Log("msg", "Incremental DB update step", "from", j.lastJobsUpdateTime, "to", nextUpdateTime)
 			if err := j.getJobStats(j.lastJobsUpdateTime, nextUpdateTime); err != nil {
-				level.Error(j.logger).Log("msg", "Failed incremental update", "from", j.lastJobsUpdateTime, "to", nextUpdateTime, "err", err)
+				level.Error(j.logger).
+					Log("msg", "Failed incremental update", "from", j.lastJobsUpdateTime, "to", nextUpdateTime, "err", err)
 				return err
 			}
 		} else {
