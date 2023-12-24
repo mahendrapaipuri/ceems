@@ -48,12 +48,19 @@ estimation of power consumed by the batch job, it stays a very good approximatio
 
 ### Emissions
 
-The exporter is capable of exporting emission factor data which can be used in 
-conjunction energy consumption to estimate equivalent CO2 emissions. Currently, for 
+The exporter is capable of exporting emission factors from different data sources 
+which can be used to estimate equivalent CO2 emissions. Currently, for 
 France, a _real_ time emission factor will be used that is based on 
-[RTE eCO2 mix data](https://www.rte-france.com/en/eco2mix/co2-emissions). For other 
-countries, a constant average based on historic data will be used. This historic data 
-is gathered from [CodeCarbon's DB](https://raw.githubusercontent.com/mlco2/codecarbon/master/codecarbon/data/private_infra/global_energy_mix.json).
+[RTE eCO2 mix data](https://www.rte-france.com/en/eco2mix/co2-emissions). Besides, 
+retrieving emission factors from [Electricity Maps](https://app.electricitymaps.com/map) 
+is also supported provided that API token is provided. Electricity Maps provide 
+emission factor data for most of the countries. A static emission factor from historic 
+data is also provided from [OWID data](https://github.com/owid/co2-data). Finally, a 
+constant global average emission factor is also exported.
+
+Emissions collector is capable of exporting emission factors from different sources 
+based on current environment. We should be able to use appropriate one in Grafana 
+dashboards to estimate equivalent CO2 emissions.
 
 ### GPU metrics
 
@@ -220,6 +227,18 @@ kernel version is `>=5.3`, RAPL metrics are only available for `root`. The capab
 `CAP_DAC_READ_SEARCH` should be able to circumvent this restriction although this has 
 not been tested. Another approach is to add a ACL rule on the `/sys/fs/class/powercap` 
 directory to give read permissions to the user that is running `batchjob_exporter`.
+
+#### Emissions collector
+
+The only CLI flag to configure for emissions collector is 
+`--collector.emissions.country.code` and set it to 
+[ISO 2 Country Code](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2). By setting 
+an environment variable `EMAPS_API_TOKEN`, emission factors from 
+[Electricity Maps](https://app.electricitymaps.com/map) data will also be reported.
+
+If country is set to France, emission factor data from 
+[RTE eCO2 Mix](https://www.rte-france.com/en/eco2mix/co2-emissions) will also be reported. 
+There is no need to pass any API token.
 
 ### Batch Job Stats API server
 
