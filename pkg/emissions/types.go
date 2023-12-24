@@ -1,5 +1,11 @@
 package emissions
 
+import (
+	"net/http"
+
+	"github.com/go-kit/log"
+)
+
 // Nicked from https://github.com/nmasse-itix/ego2mix
 type nationalRealTimeFields struct {
 	Bioenergies              int64  `json:"bioenergies"`                 // Bioenergy (MW)
@@ -100,4 +106,55 @@ type energyMixDataFields struct {
 	Total                      float64 `json:"total_TWh"`
 	Wind                       float64 `json:"wind_TWh"`
 	Year                       int64   `json:"year"`
+}
+
+// Country code data fields
+type CountryCodeFields struct {
+	Alpha2Code    string `json:"alpha_2"`
+	Alpha3Code    string `json:"alpha_3"`
+	Name          string `json:"name"`
+	NumericalCode string `json:"numeric"`
+}
+
+// Country code data
+type CountryCode struct {
+	IsoCode []CountryCodeFields `json:"3166-1"`
+}
+
+// Electricity Maps response signature
+type eMapsResponse struct {
+	Zone               string `json:"zone"`
+	CarbonIntensity    int    `json:"carbonIntensity"`
+	DateTime           string `json:"datetime"`
+	UpdatedAt          string `json:"updatedAt"`
+	EmissionFactorType string `json:"emissionFactorType"`
+	IsEstimated        bool   `json:"isEstimated"`
+	EstimationMethod   string `json:"estimationMethod"`
+}
+
+// Use custom type to avoid collisions for context values
+type ContextKey struct{}
+
+// Context values that will be passed to func
+type ContextValues struct {
+	CountryCodeAlpha2 string
+	CountryCodeAlpha3 string
+}
+
+// Client interface
+type Client interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
+// Source is the interface a emission source has to implement.
+type Source interface {
+	// Update current emission factor
+	Update() (float64, error)
+}
+
+// NewEmissionSources implements the interface to collect
+// emission factors from different sources.
+type EmissionSources struct {
+	Sources map[string]Source
+	logger  log.Logger
 }
