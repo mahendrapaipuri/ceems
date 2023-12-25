@@ -9,7 +9,7 @@ import (
 )
 
 type mockScheduler struct {
-	logger          log.Logger
+	logger log.Logger
 }
 
 const mockBatchScheduler = "mock"
@@ -42,7 +42,7 @@ func NewMockScheduler(logger log.Logger) (jobstats.Batch, error) {
 	}
 	level.Info(logger).Log("msg", "Jobs from mock batch scheduler will be retrieved.")
 	return &mockScheduler{
-		logger:          logger,
+		logger: logger,
 	}, nil
 }
 
