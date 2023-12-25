@@ -1,11 +1,8 @@
-// Main entrypoint for batchjob_stats
-
-package main
+package jobstats
 
 import (
 	"context"
 	"fmt"
-	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -14,59 +11,69 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/log/level"
-	_ "github.com/mattn/go-sqlite3"
+	batchjob_runtime "github.com/mahendrapaipuri/batchjob_monitoring/internal/runtime"
 	"github.com/prometheus/common/promlog"
 	"github.com/prometheus/common/promlog/flag"
 	"github.com/prometheus/common/version"
-
-	batchjob_runtime "github.com/mahendrapaipuri/batchjob_monitoring/internal/runtime"
-	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats"
 )
 
-var (
-	jobsTimestampFile = "lastjobsupdatetime"
+// Name of batchjob_stats_server kingpin app
+const BatchJobStatsAppName = "batchjob_stats_server"
+
+// `batchjob_stats_server` CLI app
+var BatchJobStatsServerApp = *kingpin.New(
+	BatchJobStatsAppName,
+	"API server data source for batch job statistics of users.",
 )
 
-func main() {
+// Create a new BatchJobStats struct
+func NewBatchJobStatsServer() (*BatchJobStatsServer, error) {
+	promlogConfig := &promlog.Config{}
+	return &BatchJobStatsServer{
+		promlogConfig: *promlogConfig,
+		appName:       BatchJobStatsAppName,
+		App:           BatchJobStatsServerApp,
+	}, nil
+}
+
+// Main is the entry point of the `batchjob_exporter` command
+func (b *BatchJobStatsServer) Main() {
 	var (
-		webListenAddresses = jobstats.JobstatsApp.Flag(
+		webListenAddresses = b.App.Flag(
 			"web.listen-address",
 			"Addresses on which to expose metrics and web interface.",
 		).Default(":9020").String()
-		webConfigFile = jobstats.JobstatsApp.Flag(
+		webConfigFile = b.App.Flag(
 			"web.config.file",
 			"Path to configuration file that can enable TLS or authentication. See: https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md",
 		).Default("").String()
-		batchScheduler = jobstats.JobstatsApp.Flag(
-			"batch.scheduler",
-			"Name of batch scheduler (eg slurm, lsf, pbs). Currently only slurm is supported.",
-		).Default("slurm").String()
-		dataPath = jobstats.JobstatsApp.Flag(
+		dataPath = b.App.Flag(
 			"data.path",
 			"Absolute path to a directory where job data is stored. SQLite DB that contains jobs stats will be saved to this directory.",
 		).Default("/var/lib/jobstats").String()
-		retentionPeriod = jobstats.JobstatsApp.Flag(
+		retentionPeriod = b.App.Flag(
 			"data.retention.period",
 			"Period in days for which job stats data will be retained.",
 		).Default("365").Int()
-		jobstatDBFile = jobstats.JobstatsApp.Flag(
+		jobstatDBFile = b.App.Flag(
 			"db.name",
 			"Name of the SQLite DB file that contains job stats.",
 		).Default("jobstats.db").String()
-		jobstatDBTable = jobstats.JobstatsApp.Flag(
+		jobstatDBTable = b.App.Flag(
 			"db.table.name",
 			"Name of the table in SQLite DB file that contains job stats.",
 		).Default("jobs").String()
-		lastUpdateTime = jobstats.JobstatsApp.Flag(
+		lastUpdateTime = b.App.Flag(
 			"db.last.update.time",
 			"Last time the DB was updated. Job stats from this time will be added for new DB.",
 		).Default(time.Now().Format("2006-01-02")).String()
-		updateInterval = jobstats.JobstatsApp.Flag(
+		updateInterval = b.App.Flag(
 			"db.update.interval",
 			"Time period in seconds at which DB will be updated with job stats.",
 		).Default("1800").Int()
-		maxProcs = jobstats.JobstatsApp.Flag(
+		maxProcs = b.App.Flag(
 			"runtime.gomaxprocs", "The target number of CPUs Go will run on (GOMAXPROCS)",
 		).Envar("GOMAXPROCS").Default("1").Int()
 	)
@@ -74,44 +81,46 @@ func main() {
 	// Socket activation only available on Linux
 	systemdSocket := func() *bool { b := false; return &b }()
 	if runtime.GOOS == "linux" {
-		systemdSocket = jobstats.JobstatsApp.Flag(
+		systemdSocket = b.App.Flag(
 			"web.systemd-socket",
 			"Use systemd socket activation listeners instead of port listeners (Linux only).",
 		).Bool()
 	}
 
-	promlogConfig := &promlog.Config{}
-	flag.AddFlags(jobstats.JobstatsApp, promlogConfig)
-	jobstats.JobstatsApp.Version(version.Print(jobstats.JobstatsAppName))
-	jobstats.JobstatsApp.UsageWriter(os.Stdout)
-	jobstats.JobstatsApp.HelpFlag.Short('h')
-	_, err := jobstats.JobstatsApp.Parse(os.Args[1:])
+	flag.AddFlags(&b.App, &b.promlogConfig)
+	b.App.Version(version.Print(b.appName))
+	b.App.UsageWriter(os.Stdout)
+	b.App.HelpFlag.Short('h')
+	_, err := b.App.Parse(os.Args[1:])
 	if err != nil {
-		panic(fmt.Sprintf("Failed to parse %s command", jobstats.JobstatsAppName))
+		fmt.Printf("Failed to parse CLI flags. Error: %s", err)
+		os.Exit(1)
 	}
-	logger := promlog.New(promlogConfig)
 
-	level.Info(logger).Log("msg", fmt.Sprintf("Running %s", jobstats.JobstatsAppName), "version", version.Info())
-	level.Info(logger).Log("msg", "Build context", "build_context", version.BuildContext())
-	level.Info(logger).Log("fd_limits", batchjob_runtime.Uname())
-	level.Info(logger).Log("fd_limits", batchjob_runtime.FdLimits())
+	// Set logger here after properly configuring promlog
+	b.logger = promlog.New(&b.promlogConfig)
+
+	level.Info(b.logger).Log("msg", fmt.Sprintf("Starting %s", b.appName), "version", version.Info())
+	level.Info(b.logger).Log("msg", "Build context", "build_context", version.BuildContext())
+	level.Info(b.logger).Log("fd_limits", batchjob_runtime.Uname())
+	level.Info(b.logger).Log("fd_limits", batchjob_runtime.FdLimits())
 
 	runtime.GOMAXPROCS(*maxProcs)
-	level.Debug(logger).Log("msg", "Go MAXPROCS", "procs", runtime.GOMAXPROCS(0))
+	level.Debug(b.logger).Log("msg", "Go MAXPROCS", "procs", runtime.GOMAXPROCS(0))
 
 	absDataPath, err := filepath.Abs(*dataPath)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to get absolute path for --data.path=%s. Error: %s", *dataPath, err))
 	}
 	jobstatDBPath := filepath.Join(absDataPath, *jobstatDBFile)
-	jobsLastTimeStampFile := filepath.Join(absDataPath, jobsTimestampFile)
+	jobsLastTimeStampFile := filepath.Join(absDataPath, "lastjobsupdatetime")
 
 	// Create context that listens for the interrupt signal from the OS.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	config := &jobstats.Config{
-		Logger:           logger,
+	config := &Config{
+		Logger:           b.logger,
 		Address:          *webListenAddresses,
 		WebSystemdSocket: *systemdSocket,
 		WebConfigFile:    *webConfigFile,
@@ -119,24 +128,24 @@ func main() {
 		JobstatDBTable:   *jobstatDBTable,
 	}
 
-	server, cleanup, err := jobstats.NewJobstatsServer(config)
+	server, cleanup, err := NewJobstatsServer(config)
 	defer cleanup()
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create jobstats server", "err", err)
+		level.Error(b.logger).Log("msg", "Failed to create jobstats server", "err", err)
 		return
 	}
 
-	jobCollector, err := jobstats.NewJobStatsDB(
-		logger,
-		*batchScheduler,
+	jobCollector, err := NewJobStatsDB(
+		b.logger,
 		jobstatDBPath,
 		*jobstatDBTable,
 		*retentionPeriod,
 		*lastUpdateTime,
 		jobsLastTimeStampFile,
+		NewBatchScheduler,
 	)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create jobstats DB", "err", err)
+		level.Error(b.logger).Log("msg", "Failed to create jobstats DB", "err", err)
 		return
 	}
 
@@ -151,20 +160,20 @@ func main() {
 
 	loop:
 		for {
-			level.Info(logger).Log("msg", "Updating JobStats DB")
+			level.Info(b.logger).Log("msg", "Updating JobStats DB")
 			err := jobCollector.Collect()
 			if err != nil {
-				level.Error(logger).Log("msg", "Failed to get job stats", "err", err)
+				level.Error(b.logger).Log("msg", "Failed to get job stats", "err", err)
 			}
 
 			select {
 			case <-ticker.C:
 				continue
 			case <-ctx.Done():
-				level.Info(logger).Log("msg", "Received Interrupt. Stopping DB update")
+				level.Info(b.logger).Log("msg", "Received Interrupt. Stopping DB update")
 				err := jobCollector.Stop()
 				if err != nil {
-					level.Error(logger).Log("msg", "Failed to close DB connection", "err", err)
+					level.Error(b.logger).Log("msg", "Failed to close DB connection", "err", err)
 				}
 				wg.Done()
 				break loop
@@ -177,7 +186,7 @@ func main() {
 	wg.Add(1)
 	go func() {
 		if err := server.Start(); err != nil {
-			level.Error(logger).Log("msg", "Failed to start server", "err", err)
+			level.Error(b.logger).Log("msg", "Failed to start server", "err", err)
 		}
 	}()
 
@@ -186,19 +195,19 @@ func main() {
 
 	// Restore default behavior on the interrupt signal and notify user of shutdown.
 	stop()
-	level.Info(logger).Log("msg", "Shutting down gracefully, press Ctrl+C again to force")
+	level.Info(b.logger).Log("msg", "Shutting down gracefully, press Ctrl+C again to force")
 
 	// The context is used to inform the server it has 5 seconds to finish
 	// the request it is currently handling
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := server.Shutdown(ctx, &wg); err != nil {
-		level.Error(logger).Log("msg", "Failed to gracefully shutdown server", "err", err)
+		level.Error(b.logger).Log("msg", "Failed to gracefully shutdown server", "err", err)
 	}
 
 	// Wait for all go routines to finish
 	wg.Wait()
 
-	level.Info(logger).Log("msg", "Server exiting")
-	level.Info(logger).Log("msg", "See you next time!!")
+	level.Info(b.logger).Log("msg", "Server exiting")
+	level.Info(b.logger).Log("msg", "See you next time!!")
 }

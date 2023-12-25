@@ -135,6 +135,7 @@ then
 
   ./bin/batchjob_stats_server \
     --slurm.sacct.path="pkg/jobstats/fixtures/sacct" \
+    --batch.scheduler.slurm \
     --data.path="${tmpdir}" \
     --web.listen-address="127.0.0.1:${port}" \
     --log.level="debug" > "${logfile}" 2>&1 &

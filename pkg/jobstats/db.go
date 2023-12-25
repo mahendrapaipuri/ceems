@@ -8,17 +8,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 var (
-	JobstatDBAppName = "batchjob_stat_db"
-	JobstatDBApp     = kingpin.New(
-		JobstatDBAppName,
-		"Application that conslidates the batch job stats into a local DB.",
-	)
 	dateFormat = "2006-01-02T15:04:05"
 	// Ref: https://stackoverflow.com/questions/1711631/improve-insert-per-second-performance-of-sqlite
 	// Ref: https://gitlab.com/gnufred/logslate/-/blob/8eda5cedc9a28da3793dcf73480d618c95cc322c/playground/sqlite3.go
@@ -143,12 +138,12 @@ func setupDB(dbFilePath string, dbTableName string, logger log.Logger) (*sql.DB,
 // Make new JobStatsDB struct
 func NewJobStatsDB(
 	logger log.Logger,
-	batchScheduler string,
 	jobstatDBPath string,
 	jobstatDBTable string,
 	retentionPeriod int,
 	lastJobsUpdateTimeString string,
 	lastJobsUpdateTimeFile string,
+	newBatchScheduler func(log.Logger) (*BatchScheduler, error),
 ) (*jobStatsDB, error) {
 	// Emit debug logs
 	level.Debug(logger).Log(
@@ -185,7 +180,7 @@ func NewJobStatsDB(
 					goto updatetime
 				}
 			}
-			goto checks
+			goto setup
 		} else {
 			goto updatetime
 		}
@@ -201,13 +196,12 @@ updatetime:
 	// Write to file for persistence in case of restarts
 	writeTimeStampToFile(lastJobsUpdateTimeFile, lastJobsUpdateTime, logger)
 
-checks:
-	// Do sanity checks
-	if checksFunc, ok := checksMap[batchScheduler]; ok {
-		err := checksFunc.(func(log.Logger) error)(logger)
-		if err != nil {
-			return nil, err
-		}
+setup:
+	// Setup scheduler struct that retrieves job data
+	scheduler, err := newBatchScheduler(logger)
+	if err != nil {
+		level.Error(logger).Log("msg", "Batch scheduler setup failed", "err", err)
+		return nil, err
 	}
 
 	// Setup DB
@@ -219,7 +213,7 @@ checks:
 	return &jobStatsDB{
 		logger:                 logger,
 		db:                     db,
-		batchScheduler:         batchScheduler,
+		scheduler:              scheduler,
 		jobstatDBPath:          jobstatDBPath,
 		jobstatDBTable:         jobstatDBTable,
 		retentionPeriod:        retentionPeriod,
@@ -309,18 +303,11 @@ func (j *jobStatsDB) Collect() error {
 
 // Get job stats and insert them into DB
 func (j *jobStatsDB) getJobStats(startTime, endTime time.Time) error {
-	var jobs []BatchJob
-	var err error
-	if statsFunc, ok := statsMap[j.batchScheduler]; ok {
-		// Get jobs from last update time until now
-		jobs, err = statsFunc.(func(time.Time, time.Time, log.Logger) ([]BatchJob, error))(
-			startTime,
-			endTime,
-			j.logger,
-		)
-		if err != nil {
-			return err
-		}
+	// Retrieve jobs from unerlying batch scheduler
+	jobs, err := j.scheduler.GetJobs(startTime, endTime)
+	if err != nil {
+		level.Error(j.logger).Log("msg", "Failed to retrieve jobs from batch scheduler", "err", err)
+		return err
 	}
 
 	// Vacuum DB every Monday after 02h:00 (Sunday after midnight)

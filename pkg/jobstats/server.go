@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/gorilla/mux"
@@ -20,11 +19,6 @@ import (
 )
 
 var (
-	JobstatsAppName = "batchjob_stats_server"
-	JobstatsApp     = kingpin.New(
-		JobstatsAppName,
-		"API server to serve the job and user stats of batch job user.",
-	)
 	dbConn         *sql.DB
 	jobstatDBFile  string
 	jobstatDBTable string

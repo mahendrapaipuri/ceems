@@ -12,6 +12,10 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+type mockScheduler struct{}
+
+var mockJobs = []BatchJob{{Jobid: "10000"}, {Jobid: "10001"}}
+
 func prepareMockConfig(tmpDir string) (string, string, string, string) {
 	dataDir := filepath.Join(tmpDir, "data")
 	jobstatDBTable := "jobstats"
@@ -30,11 +34,19 @@ func prepareMockConfig(tmpDir string) (string, string, string, string) {
 }
 
 func populateDBWithMockData(db *sql.DB, j *jobStatsDB) {
-	jobs := []BatchJob{{Jobid: "10000"}, {Jobid: "10001"}}
 	tx, _ := db.Begin()
-	stmt, _ := j.prepareInsertStatement(tx, len(jobs))
-	j.insertJobsInDB(stmt, jobs)
+	stmt, _ := j.prepareInsertStatement(tx, len(mockJobs))
+	j.insertJobsInDB(stmt, mockJobs)
 	tx.Commit()
+}
+
+func newMockScheduler(logger log.Logger) (*BatchScheduler, error) {
+	return &BatchScheduler{Scheduler: &mockScheduler{}}, nil
+}
+
+// GetJobs implements collection jobs between start and end times
+func (m *mockScheduler) GetJobs(start time.Time, end time.Time) ([]BatchJob, error) {
+	return mockJobs, nil
 }
 
 func TestJobStatsDBPreparation(t *testing.T) {
@@ -43,7 +55,6 @@ func TestJobStatsDBPreparation(t *testing.T) {
 	jobstatDBPath := filepath.Join(tmpDir, "jobstats.db")
 	j := jobStatsDB{
 		logger:         log.NewNopLogger(),
-		batchScheduler: "slurm",
 		jobstatDBPath:  jobstatDBPath,
 		jobstatDBTable: jobstatDBTable,
 	}
@@ -84,12 +95,12 @@ func TestNewJobStatsDB(t *testing.T) {
 	// Make new jobstats DB
 	_, err := NewJobStatsDB(
 		log.NewNopLogger(),
-		"slurm",
 		jobstatDBPath,
 		jobstatDBTable,
 		7,
 		"2023-12-20",
 		lastJobsUpdateTimeFile,
+		newMockScheduler,
 	)
 	if err != nil {
 		t.Errorf("Failed to create new jobstatsDB struct due to %s", err)
@@ -118,12 +129,12 @@ func TestNewJobStatsDB(t *testing.T) {
 	// Make again a new jobstats DB with new lastUpdateTime
 	_, err = NewJobStatsDB(
 		log.NewNopLogger(),
-		"slurm",
 		jobstatDBPath,
 		jobstatDBTable,
 		7,
 		"2023-12-21",
 		lastJobsUpdateTimeFile,
+		newMockScheduler,
 	)
 	if err != nil {
 		t.Errorf("Failed to create new jobstatsDB struct due to %s", err)
@@ -143,12 +154,12 @@ func TestNewJobStatsDB(t *testing.T) {
 	// Make again a new jobstats DB with new lastUpdateTime
 	_, err = NewJobStatsDB(
 		log.NewNopLogger(),
-		"slurm",
 		jobstatDBPath,
 		jobstatDBTable,
 		7,
 		"2023-12-21",
 		lastJobsUpdateTimeFile,
+		newMockScheduler,
 	)
 	if err != nil {
 		t.Errorf("Failed to create new jobstatsDB struct due to %s", err)
@@ -179,12 +190,12 @@ func TestNewJobStatsDB(t *testing.T) {
 	// Make again a new jobstats DB with new lastUpdateTime
 	_, err = NewJobStatsDB(
 		log.NewNopLogger(),
-		"slurm",
 		jobstatDBPath,
 		jobstatDBTable,
 		7,
 		"2023-12-22",
 		lastJobsUpdateTimeFile,
+		newMockScheduler,
 	)
 	if err != nil {
 		t.Errorf("Failed to create new jobstatsDB struct due to %s", err)
@@ -208,12 +219,12 @@ func TestJobStatsDBLock(t *testing.T) {
 	// Make new jobstats DB
 	j, err := NewJobStatsDB(
 		log.NewNopLogger(),
-		"slurm",
 		jobstatDBPath,
 		jobstatDBTable,
 		7,
 		"2023-12-20",
 		lastJobsUpdateTimeFile,
+		newMockScheduler,
 	)
 	if err != nil {
 		t.Errorf("Failed to create new jobstatsDB struct due to %s", err)
@@ -243,12 +254,12 @@ func TestJobStatsDBVacuum(t *testing.T) {
 	// Make new jobstats DB
 	j, err := NewJobStatsDB(
 		log.NewNopLogger(),
-		"slurm",
 		jobstatDBPath,
 		jobstatDBTable,
 		7,
 		"2023-12-20",
 		lastJobsUpdateTimeFile,
+		newMockScheduler,
 	)
 	if err != nil {
 		t.Errorf("Failed to create new jobstatsDB struct due to %s", err)
@@ -272,12 +283,12 @@ func TestJobStatsDeleteOldJobs(t *testing.T) {
 	// Make new jobstats DB
 	j, err := NewJobStatsDB(
 		log.NewNopLogger(),
-		"slurm",
 		jobstatDBPath,
 		jobstatDBTable,
 		7,
 		"2023-12-20",
 		lastJobsUpdateTimeFile,
+		newMockScheduler,
 	)
 	if err != nil {
 		t.Errorf("Failed to create new jobstatsDB struct due to %s", err)
