@@ -14,17 +14,17 @@ import (
 )
 
 // Namespace defines the common namespace to be used by all metrics.
-const namespace = "batchjob"
+const Namespace = "batchjob"
 
 var (
 	scrapeDurationDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "scrape", "collector_duration_seconds"),
+		prometheus.BuildFQName(Namespace, "scrape", "collector_duration_seconds"),
 		"batchjob_exporter: Duration of a collector scrape.",
 		[]string{"collector"},
 		nil,
 	)
 	scrapeSuccessDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "scrape", "collector_success"),
+		prometheus.BuildFQName(Namespace, "scrape", "collector_success"),
 		"batchjob_exporter: Whether a collector succeeded.",
 		[]string{"collector"},
 		nil,
@@ -44,7 +44,7 @@ var (
 	forcedCollectors       = map[string]bool{} // collectors which have been explicitly enabled or disabled
 )
 
-func registerCollector(
+func RegisterCollector(
 	collector string,
 	isDefaultEnabled bool,
 	factory func(logger log.Logger) (Collector, error),
@@ -60,7 +60,7 @@ func registerCollector(
 	flagHelp := fmt.Sprintf("Enable the %s collector (default: %s).", collector, helpDefaultState)
 	defaultValue := fmt.Sprintf("%v", isDefaultEnabled)
 
-	flag := kingpin.Flag(flagName, flagHelp).
+	flag := BatchJobExporterApp.Flag(flagName, flagHelp).
 		Default(defaultValue).
 		Action(collectorFlagAction(collector)).
 		Bool()

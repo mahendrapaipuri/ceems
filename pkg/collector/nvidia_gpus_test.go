@@ -6,7 +6,6 @@ package collector
 import (
 	"testing"
 
-	"github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/log"
 )
 
@@ -27,7 +26,7 @@ var (
 )
 
 func TestNvidiaJobGpuMap(t *testing.T) {
-	if _, err := kingpin.CommandLine.Parse([]string{"--collector.nvidia.gpu.job.map.path", "fixtures/gpujobmap"}); err != nil {
+	if _, err := BatchJobExporterApp.Parse([]string{"--collector.nvidia.gpu.job.map.path", "fixtures/gpujobmap"}); err != nil {
 		t.Fatal(err)
 	}
 	c := nvidiaGpuJobMapCollector{devices: devices, logger: log.NewNopLogger()}
@@ -49,7 +48,7 @@ func TestNvidiaJobGpuMap(t *testing.T) {
 }
 
 func TestNvidiaJobGpuMapWithProcFs(t *testing.T) {
-	if _, err := kingpin.CommandLine.Parse([]string{"--path.procfs", "fixtures/proc"}); err != nil {
+	if _, err := BatchJobExporterApp.Parse([]string{"--path.procfs", "fixtures/proc"}); err != nil {
 		t.Fatal(err)
 	}
 	c := nvidiaGpuJobMapCollector{devices: devices, logger: log.NewNopLogger()}

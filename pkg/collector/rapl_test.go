@@ -6,7 +6,6 @@ package collector
 import (
 	"testing"
 
-	"github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/log"
 	"github.com/prometheus/procfs/sysfs"
 )
@@ -14,7 +13,7 @@ import (
 var expectedEnergyMetrics = []float64{258218293244, 130570505826}
 
 func TestRaplMetrics(t *testing.T) {
-	if _, err := kingpin.CommandLine.Parse([]string{"--path.sysfs", "fixtures/sys"}); err != nil {
+	if _, err := BatchJobExporterApp.Parse([]string{"--path.sysfs", "fixtures/sys"}); err != nil {
 		t.Fatal(err)
 	}
 	fs, err := sysfs.NewFS(*sysPath)

@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
@@ -33,7 +32,7 @@ type emissionsCollector struct {
 var (
 	emissionsLock     = sync.RWMutex{}
 	countryCodeAlpha3 string
-	countryCodeAlpha2 = kingpin.Flag(
+	countryCodeAlpha2 = BatchJobExporterApp.Flag(
 		"collector.emissions.country.code",
 		"ISO 3166-1 alpha-2 Country code.",
 	).Default("FR").String()
@@ -42,7 +41,7 @@ var (
 )
 
 func init() {
-	registerCollector(emissionsCollectorSubsystem, defaultDisabled, NewEmissionsCollector)
+	RegisterCollector(emissionsCollectorSubsystem, defaultDisabled, NewEmissionsCollector)
 }
 
 // Get ISO3 code from ISO2 country code
@@ -57,8 +56,8 @@ func convertISO2ToISO3(countryCodeISO2 string) string {
 
 // NewEmissionsCollector returns a new Collector exposing emission factor metrics.
 func NewEmissionsCollector(logger log.Logger) (Collector, error) {
-	// Ensure a short timeout to avoid long scrapes
-	client := http.Client{Timeout: time.Duration(1) * time.Second}
+	// Start a new HTTP client
+	client := http.Client{}
 
 	// Ensure country code is in upper case
 	*countryCodeAlpha2 = strings.ToUpper(*countryCodeAlpha2)
@@ -74,7 +73,7 @@ func NewEmissionsCollector(logger log.Logger) (Collector, error) {
 
 	// Create metric description
 	emissionsMetricDesc := prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, emissionsCollectorSubsystem, "gCo2_kWh"),
+		prometheus.BuildFQName(Namespace, emissionsCollectorSubsystem, "gCo2_kWh"),
 		"Current emission factor in CO2eq grams per kWh", []string{"source", "country"}, nil,
 	)
 

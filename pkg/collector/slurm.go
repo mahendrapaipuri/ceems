@@ -14,7 +14,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/alecthomas/kingpin/v2"
 	"github.com/containerd/cgroups/v3"
 	"github.com/containerd/cgroups/v3/cgroup1"
 	"github.com/go-kit/log"
@@ -29,22 +28,20 @@ const slurmCollectorSubsystem = "slurm_job"
 var (
 	cgroupsV2       = false
 	metricLock      = sync.RWMutex{}
-	collectJobSteps = kingpin.Flag(
+	collectJobSteps = BatchJobExporterApp.Flag(
 		"collector.slurm.jobsteps.metrics",
-		`Enables collection of metrics of all slurm job steps and tasks 
-[WARNING: This option can result in very high cardinality of metrics] (default: disabled).`,
+		`Enables collection of metrics of all slurm job steps and tasks (default: disabled).
+[WARNING: This option can result in very high cardinality of metrics]`,
 	).Default("false").Bool()
-	useJobIdHash = kingpin.Flag(
+	useJobIdHash = BatchJobExporterApp.Flag(
 		"collector.slurm.create.unique.jobids",
-		`Enables calculation of a unique hash based job ID based on SLURM_JOBID, SLURM_JOB_UID, 
-SLURM_JOB_ACCOUNT, SLURM_JOB_NODELIST (default: disabled).`,
+		`Enables calculation of a unique hash based job UUID (default: disabled). 
+UUID is calculated based on SLURM_JOBID, SLURM_JOB_UID, SLURM_JOB_ACCOUNT, SLURM_JOB_NODELIST.`,
 	).Default("false").Bool()
-	jobStatPath = kingpin.Flag(
+	jobStatPath = BatchJobExporterApp.Flag(
 		"collector.slurm.job.props.path",
-		`Path to jobstat files that contains a file for each job with line 
-\"$SLURM_JOB_UID $SLURM_JOB_ACCOUNT $SLURM_JOB_NODELIST\". 
-An deterministic UUID is computed on the variables in this file and job ID to get an 
-unique job identifier.`,
+		`Directory containing files with job properties. Files should be named after SLURM_JOBID 
+with contents as "$SLURM_JOB_UID $SLURM_JOB_ACCOUNT $SLURM_JOB_NODELIST" in the same order.`,
 	).Default("/run/slurmjobprops").String()
 )
 
@@ -94,7 +91,7 @@ type slurmCollector struct {
 }
 
 func init() {
-	registerCollector(slurmCollectorSubsystem, defaultEnabled, NewSlurmCollector)
+	RegisterCollector(slurmCollectorSubsystem, defaultEnabled, NewSlurmCollector)
 }
 
 // NewSlurmCollector returns a new Collector exposing a summary of cgroups.
@@ -133,79 +130,79 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 		cgroupsRootPath:  cgroupsRootPath,
 		slurmCgroupsPath: slurmCgroupsPath,
 		cpuUser: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "cpu", "user_seconds"),
+			prometheus.BuildFQName(Namespace, "cpu", "user_seconds"),
 			"Cumulative CPU user seconds",
 			[]string{"batch", "jobid", "jobaccount", "jobuuid", "step", "task"},
 			nil,
 		),
 		cpuSystem: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "cpu", "system_seconds"),
+			prometheus.BuildFQName(Namespace, "cpu", "system_seconds"),
 			"Cumulative CPU system seconds",
 			[]string{"batch", "jobid", "jobaccount", "jobuuid", "step", "task"},
 			nil,
 		),
 		cpuTotal: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "cpu", "total_seconds"),
+			prometheus.BuildFQName(Namespace, "cpu", "total_seconds"),
 			"Cumulative CPU total seconds",
 			[]string{"batch", "jobid", "jobaccount", "jobuuid", "step", "task"},
 			nil,
 		),
 		cpus: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "cpus"),
+			prometheus.BuildFQName(Namespace, "", "cpus"),
 			"Number of CPUs",
 			[]string{"batch", "jobid", "jobaccount", "jobuuid", "step", "task"},
 			nil,
 		),
 		memoryRSS: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "memory", "rss_bytes"),
+			prometheus.BuildFQName(Namespace, "memory", "rss_bytes"),
 			"Memory RSS used in bytes",
 			[]string{"batch", "jobid", "jobaccount", "jobuuid", "step", "task"},
 			nil,
 		),
 		memoryCache: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "memory", "cache_bytes"),
+			prometheus.BuildFQName(Namespace, "memory", "cache_bytes"),
 			"Memory cache used in bytes",
 			[]string{"batch", "jobid", "jobaccount", "jobuuid", "step", "task"},
 			nil,
 		),
 		memoryUsed: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "memory", "used_bytes"),
+			prometheus.BuildFQName(Namespace, "memory", "used_bytes"),
 			"Memory used in bytes",
 			[]string{"batch", "jobid", "jobaccount", "jobuuid", "step", "task"},
 			nil,
 		),
 		memoryTotal: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "memory", "total_bytes"),
+			prometheus.BuildFQName(Namespace, "memory", "total_bytes"),
 			"Memory total in bytes",
 			[]string{"batch", "jobid", "jobaccount", "jobuuid", "step", "task"},
 			nil,
 		),
 		memoryFailCount: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "memory", "fail_count"),
+			prometheus.BuildFQName(Namespace, "memory", "fail_count"),
 			"Memory fail count",
 			[]string{"batch", "jobid", "jobaccount", "jobuuid", "step", "task"},
 			nil,
 		),
 		memswUsed: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "memsw", "used_bytes"),
+			prometheus.BuildFQName(Namespace, "memsw", "used_bytes"),
 			"Swap used in bytes",
 			[]string{"batch", "jobid", "jobaccount", "jobuuid", "step", "task"},
 			nil,
 		),
 		memswTotal: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "memsw", "total_bytes"),
+			prometheus.BuildFQName(Namespace, "memsw", "total_bytes"),
 			"Swap total in bytes",
 			[]string{"batch", "jobid", "jobaccount", "jobuuid", "step", "task"},
 			nil,
 		),
 		memswFailCount: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "memsw", "fail_count"),
+			prometheus.BuildFQName(Namespace, "memsw", "fail_count"),
 			"Swap fail count",
 			[]string{"batch", "jobid", "jobaccount", "jobuuid", "step", "task"},
 			nil,
 		),
 		collectError: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "exporter", "collect_error"),
+			prometheus.BuildFQName(Namespace, "exporter", "collect_error"),
 			"Indicates collection error, 0=no error, 1=error",
 			[]string{"batch", "jobid", "jobaccount", "jobuuid", "step", "task"},
 			nil,
@@ -624,6 +621,10 @@ func (c *slurmCollector) getCgroupsV2Metrics(name string) (CgroupMetric, error) 
 		"memory.events",
 		"memory.max",
 		"memory.stat",
+		"memory.swap.current",
+		"memory.swap.max",
+		"memory.swap.high",
+		"memory.swap.events",
 	}
 	data, err := LoadCgroupsV2Metrics(name, *cgroupfsPath, controllers)
 	if err != nil {
@@ -653,9 +654,9 @@ func (c *slurmCollector) getCgroupsV2Metrics(name string) (CgroupMetric, error) 
 	metric.memoryCache = c.getOneMetric(name, "memory.stat.file", true, data)
 	metric.memoryUsed = c.getOneMetric(name, "memory.current", true, data)
 	metric.memoryTotal = c.getOneMetric(name, "memory.max", true, data)
-	metric.memswUsed = 0.0
-	metric.memswTotal = 0.0
-	metric.memswFailCount = 0.0
+	metric.memswUsed = c.getOneMetric(name, "memory.swap.current", true, data)
+	metric.memswTotal = c.getOneMetric(name, "memory.swap.max", true, data)
+	metric.memswFailCount = c.getOneMetric(name, "memory.swap.events.fail", true, data)
 	if cpus, err := c.getCPUs(name); err == nil {
 		metric.cpus = len(cpus)
 	}

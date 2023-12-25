@@ -12,7 +12,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/batchjob_monitoring/internal/helpers"
@@ -28,18 +27,10 @@ type impiCollector struct {
 }
 
 var (
-	ipmiDcmiCmd = kingpin.Flag(
+	ipmiDcmiCmd = BatchJobExporterApp.Flag(
 		"collector.ipmi.dcmi.cmd",
 		"IPMI DCMI command to get system power statistics. Use full path to executables.",
 	).Default("/usr/sbin/ipmi-dcmi --get-system-power-statistics").String()
-	// ipmiDcmiExecAsRoot = kingpin.Flag(
-	// 	"collector.ipmi.dcmi.exec.run.as.root",
-	// 	"Execute IPMI DCMI command as root. This requires the current process to have CAP_SET(UID,GID) capabilities.",
-	// ).Default("false").Bool()
-	// ipmiDcmiExecWithSudo = kingpin.Flag(
-	// 	"collector.ipmi.dcmi.exec.run.with.sudo",
-	// 	"Execute IPMI DCMI command with sudo. This requires the current has sudo privileges on command set in --collector.ipmi.dcmi.cmd.",
-	// ).Default("false").Bool()
 	ipmiDCMIPowerMeasurementRegex = regexp.MustCompile(
 		`^Power Measurement\s*:\s*(?P<value>Active|Not\sAvailable).*`,
 	)
@@ -49,14 +40,14 @@ var (
 )
 
 func init() {
-	registerCollector(ipmiCollectorSubsystem, defaultEnabled, NewIPMICollector)
+	RegisterCollector(ipmiCollectorSubsystem, defaultEnabled, NewIPMICollector)
 }
 
 // NewIPMICollector returns a new Collector exposing IMPI DCMI power metrics.
 func NewIPMICollector(logger log.Logger) (Collector, error) {
 
 	wattsMetricDesc := prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, ipmiCollectorSubsystem, "watts_total"),
+		prometheus.BuildFQName(Namespace, ipmiCollectorSubsystem, "watts_total"),
 		"Current Power consumption in watts", []string{}, nil,
 	)
 

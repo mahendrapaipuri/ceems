@@ -8,14 +8,13 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/log"
 )
 
 var expectedSlurmMetrics CgroupMetric
 
 func TestCgroupsV2SlurmJobMetrics(t *testing.T) {
-	if _, err := kingpin.CommandLine.Parse(
+	if _, err := BatchJobExporterApp.Parse(
 		[]string{
 			"--path.cgroupfs", "fixtures/sys/fs/cgroup",
 			"--collector.slurm.create.unique.jobids",
@@ -43,7 +42,7 @@ func TestCgroupsV2SlurmJobMetrics(t *testing.T) {
 		memoryTotal:     4.294967296e+09,
 		memoryFailCount: 0,
 		memswUsed:       0,
-		memswTotal:      0,
+		memswTotal:      -1,
 		memswFailCount:  0,
 		userslice:       false,
 		jobuid:          "1000",
@@ -63,7 +62,7 @@ func TestCgroupsV2SlurmJobMetrics(t *testing.T) {
 }
 
 func TestCgroupsV2WithProcFsSlurmJobMetrics(t *testing.T) {
-	if _, err := kingpin.CommandLine.Parse(
+	if _, err := BatchJobExporterApp.Parse(
 		[]string{
 			"--path.cgroupfs", "fixtures/sys/fs/cgroup",
 			"--collector.slurm.create.unique.jobids",
@@ -91,7 +90,7 @@ func TestCgroupsV2WithProcFsSlurmJobMetrics(t *testing.T) {
 		memoryTotal:     4.294967296e+09,
 		memoryFailCount: 0,
 		memswUsed:       0,
-		memswTotal:      0,
+		memswTotal:      -1,
 		memswFailCount:  0,
 		userslice:       false,
 		jobuid:          "1000",
@@ -111,7 +110,7 @@ func TestCgroupsV2WithProcFsSlurmJobMetrics(t *testing.T) {
 }
 
 func TestCgroupsV1SlurmJobMetrics(t *testing.T) {
-	if _, err := kingpin.CommandLine.Parse(
+	if _, err := BatchJobExporterApp.Parse(
 		[]string{
 			"--path.cgroupfs", "fixtures/sys/fs/cgroup",
 			"--collector.slurm.create.unique.jobids",

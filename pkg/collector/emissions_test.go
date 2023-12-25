@@ -6,7 +6,6 @@ package collector
 import (
 	"testing"
 
-	"github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/emissions"
 )
@@ -16,7 +15,7 @@ var (
 )
 
 func TestISO2ToISO3Convertion(t *testing.T) {
-	if _, err := kingpin.CommandLine.Parse(
+	if _, err := BatchJobExporterApp.Parse(
 		[]string{
 			"--collector.emissions.country.code", "FR",
 		},

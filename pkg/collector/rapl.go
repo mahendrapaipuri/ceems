@@ -11,7 +11,6 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
@@ -28,11 +27,11 @@ type raplCollector struct {
 }
 
 func init() {
-	registerCollector(raplCollectorSubsystem, defaultEnabled, NewRaplCollector)
+	RegisterCollector(raplCollectorSubsystem, defaultEnabled, NewRaplCollector)
 }
 
 var (
-	raplZoneLabel = kingpin.Flag(
+	raplZoneLabel = BatchJobExporterApp.Flag(
 		"collector.rapl.enable-zone-label",
 		"Enables RAPL zone labels (default: disabled)",
 	).Default("false").Bool()
@@ -47,7 +46,7 @@ func NewRaplCollector(logger log.Logger) (Collector, error) {
 	}
 
 	joulesMetricDesc := prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, raplCollectorSubsystem, "joules_total"),
+		prometheus.BuildFQName(Namespace, raplCollectorSubsystem, "joules_total"),
 		"Current RAPL value in joules",
 		[]string{"index", "path", "rapl_zone"}, nil,
 	)
@@ -103,7 +102,7 @@ func (c *raplCollector) joulesMetric(z sysfs.RaplZone, v float64) prometheus.Met
 	index := strconv.Itoa(z.Index)
 	descriptor := prometheus.NewDesc(
 		prometheus.BuildFQName(
-			namespace,
+			Namespace,
 			raplCollectorSubsystem,
 			fmt.Sprintf("%s_joules_total", SanitizeMetricName(z.Name)),
 		),

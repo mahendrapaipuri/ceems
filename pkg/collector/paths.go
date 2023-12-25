@@ -2,15 +2,13 @@ package collector
 
 import (
 	"path/filepath"
-
-	"github.com/alecthomas/kingpin/v2"
 )
 
 var (
 	// The path of the proc filesystem.
-	sysPath      = kingpin.Flag("path.sysfs", "sysfs mountpoint.").Default("/sys").String()
-	procfsPath   = kingpin.Flag("path.procfs", "procfs mountpoint.").Default("/proc").String()
-	cgroupfsPath = kingpin.Flag("path.cgroupfs", "cgroupfs mountpoint.").
+	sysPath      = BatchJobExporterApp.Flag("path.sysfs", "sysfs mountpoint.").Default("/sys").String()
+	procfsPath   = BatchJobExporterApp.Flag("path.procfs", "procfs mountpoint.").Default("/proc").String()
+	cgroupfsPath = BatchJobExporterApp.Flag("path.cgroupfs", "cgroupfs mountpoint.").
 			Default("/sys/fs/cgroup").
 			String()
 )

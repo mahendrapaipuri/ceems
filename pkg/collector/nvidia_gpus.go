@@ -11,7 +11,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/batchjob_monitoring/internal/helpers"
@@ -23,7 +22,7 @@ const nvidiaGpuJobMapCollectorSubsystem = "nvidia_gpu"
 
 var (
 	jobMapLock  = sync.RWMutex{}
-	gpuStatPath = kingpin.Flag(
+	gpuStatPath = BatchJobExporterApp.Flag(
 		"collector.nvidia.gpu.job.map.path",
 		"Path to file that maps GPU ordinals to job IDs.",
 	).Default("/run/gpujobmap").String()
@@ -43,7 +42,7 @@ type nvidiaGpuJobMapCollector struct {
 }
 
 func init() {
-	registerCollector(
+	RegisterCollector(
 		nvidiaGpuJobMapCollectorSubsystem,
 		defaultDisabled,
 		NewNvidiaGpuJobMapCollector,
@@ -108,7 +107,7 @@ func getAllDevices(logger log.Logger) ([]Device, error) {
 func NewNvidiaGpuJobMapCollector(logger log.Logger) (Collector, error) {
 	allDevices, _ := getAllDevices(logger)
 	gpuJobMapDesc := prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, nvidiaGpuJobMapCollectorSubsystem, "jobid"),
+		prometheus.BuildFQName(Namespace, nvidiaGpuJobMapCollectorSubsystem, "jobid"),
 		"Batch Job ID of current nVIDIA GPU",
 		[]string{"uuid"}, nil,
 	)
