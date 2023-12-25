@@ -2,7 +2,7 @@ package emissions
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -20,7 +20,7 @@ func mockRTEAPIRequest(ctx context.Context, client Client, logger log.Logger) (f
 }
 
 func mockRTEAPIFailRequest(ctx context.Context, client Client, logger log.Logger) (float64, error) {
-	return float64(-1), errors.New("Failed API request")
+	return float64(-1), fmt.Errorf("Failed API request")
 }
 
 func TestRTEDataSource(t *testing.T) {

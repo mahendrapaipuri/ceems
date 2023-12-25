@@ -6,7 +6,6 @@ package emissions
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -42,7 +41,7 @@ func init() {
 func NewRTESource(ctx context.Context, client Client, logger log.Logger) (Source, error) {
 	// Check if country is FR and if not return
 	if ctx.Value(ContextKey{}).(ContextValues).CountryCodeAlpha2 != "FR" {
-		return nil, errors.New("RTE eCO2 data is only available for France")
+		return nil, fmt.Errorf("RTE eCO2 data is only available for France")
 	}
 	level.Info(logger).Log("msg", "Emission factor from RTE eCO2 mix will be reported.")
 	return &rteSource{

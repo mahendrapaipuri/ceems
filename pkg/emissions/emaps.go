@@ -6,7 +6,6 @@ package emissions
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -48,7 +47,7 @@ func NewEMapsSource(ctx context.Context, client Client, logger log.Logger) (Sour
 		level.Info(logger).Log("msg", "Emission factor from Electricity Maps will be reported.")
 		eMapsAPIToken = token
 	} else {
-		return nil, errors.New("No API token found for Electricity Maps data.")
+		return nil, fmt.Errorf("No API token found for Electricity Maps data.")
 	}
 	return &emapsSource{
 		logger:             logger,

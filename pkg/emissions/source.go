@@ -45,7 +45,7 @@ func NewEmissionSources(ctx context.Context, client Client, logger log.Logger) (
 
 	// Loop over factories and create new instances
 	for key, factory := range factories {
-		source, err := factory(ctx, client, log.With(logger, "collector", key))
+		source, err := factory(ctx, client, log.With(logger, "source", key))
 		if err != nil {
 			level.Error(logger).Log("msg", "Failed to create data source", "source", key, "err", err)
 			continue
