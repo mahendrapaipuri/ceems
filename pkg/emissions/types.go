@@ -152,7 +152,7 @@ type Source interface {
 	Update() (float64, error)
 }
 
-// NewEmissionSources implements the interface to collect
+// EmissionSources implements the interface to collect
 // emission factors from different sources.
 type EmissionSources struct {
 	Sources map[string]Source
