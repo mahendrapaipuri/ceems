@@ -85,6 +85,19 @@ type nationalRealTimeResponse struct {
 	Records []nationalRealTimeRecord `json:"records"`
 }
 
+// Opendatasoft API v2
+// Ref: https://reseaux-energies-rte.opendatasoft.com/api/explore/v2.1/console
+// Ref: https://help.opendatasoft.com/apis/ods-explore-v2/
+type nationalRealTimeFieldsV2 struct {
+	TauxCo2   int64  `json:"taux_co2"`
+	DateHeure string `json:"date_heure"`
+}
+
+type nationalRealTimeResponseV2 struct {
+	TotalCount int                        `json:"total_count"`
+	Results    []nationalRealTimeFieldsV2 `json:"results"`
+}
+
 // code carbon global energy data mix interface
 type energyMixDataFields struct {
 	BioFuel                    float64 `json:"biofuel_TWh"`
