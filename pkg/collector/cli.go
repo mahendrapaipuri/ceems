@@ -23,10 +23,8 @@ import (
 
 // BatchJobExporter represents the `batchjob_exporter` cli.
 type BatchJobExporter struct {
-	logger        log.Logger
-	promlogConfig promlog.Config
-	appName       string
-	App           kingpin.Application
+	appName string
+	App     kingpin.Application
 }
 
 // Name of batchjob_exporter kingpin app
@@ -40,21 +38,19 @@ var BatchJobExporterApp = *kingpin.New(
 
 // Create a new BatchJobExporter struct
 func NewBatchJobExporter() (*BatchJobExporter, error) {
-	promlogConfig := &promlog.Config{}
 	return &BatchJobExporter{
-		promlogConfig: *promlogConfig,
-		appName:       BatchJobExporterAppName,
-		App:           BatchJobExporterApp,
+		appName: BatchJobExporterAppName,
+		App:     BatchJobExporterApp,
 	}, nil
 }
 
 // Create a new handler for exporting metrics
-func (b *BatchJobExporter) newHandler(includeExporterMetrics bool, maxRequests int) *handler {
+func (b *BatchJobExporter) newHandler(includeExporterMetrics bool, maxRequests int, logger log.Logger) *handler {
 	h := &handler{
 		exporterMetricsRegistry: prometheus.NewRegistry(),
 		includeExporterMetrics:  includeExporterMetrics,
 		maxRequests:             maxRequests,
-		logger:                  b.logger,
+		logger:                  logger,
 	}
 	if h.includeExporterMetrics {
 		h.exporterMetricsRegistry.MustRegister(
@@ -95,7 +91,8 @@ func (b *BatchJobExporter) Main() {
 		toolkitFlags = kingpinflag.AddFlags(&b.App, ":9010")
 	)
 
-	flag.AddFlags(&b.App, &b.promlogConfig)
+	promlogConfig := &promlog.Config{}
+	flag.AddFlags(&b.App, promlogConfig)
 	b.App.Version(version.Print(b.appName))
 	b.App.UsageWriter(os.Stdout)
 	b.App.HelpFlag.Short('h')
@@ -106,25 +103,25 @@ func (b *BatchJobExporter) Main() {
 	}
 
 	// Set logger here after properly configuring promlog
-	b.logger = promlog.New(&b.promlogConfig)
+	logger := promlog.New(promlogConfig)
 
 	if *disableDefaultCollectors {
 		DisableDefaultCollectors()
 	}
-	level.Info(b.logger).Log("msg", fmt.Sprintf("Starting %s", b.appName), "version", version.Info())
-	level.Info(b.logger).Log("msg", "Build context", "build_context", version.BuildContext())
-	level.Info(b.logger).Log("fd_limits", batchjob_runtime.Uname())
-	level.Info(b.logger).Log("fd_limits", batchjob_runtime.FdLimits())
+	level.Info(logger).Log("msg", fmt.Sprintf("Starting %s", b.appName), "version", version.Info())
+	level.Info(logger).Log("msg", "Build context", "build_context", version.BuildContext())
+	level.Info(logger).Log("fd_limits", batchjob_runtime.Uname())
+	level.Info(logger).Log("fd_limits", batchjob_runtime.FdLimits())
 
 	if user, err := user.Current(); err == nil && user.Uid == "0" {
-		level.Warn(b.logger).
+		level.Warn(logger).
 			Log("msg", "Batch Job Metrics Exporter is running as root user. This exporter can be run as unprivileged user, root is not required.")
 	}
 
 	runtime.GOMAXPROCS(*maxProcs)
-	level.Debug(b.logger).Log("msg", "Go MAXPROCS", "procs", runtime.GOMAXPROCS(0))
+	level.Debug(logger).Log("msg", "Go MAXPROCS", "procs", runtime.GOMAXPROCS(0))
 
-	http.Handle(*metricsPath, b.newHandler(!*disableExporterMetrics, *maxRequests))
+	http.Handle(*metricsPath, b.newHandler(!*disableExporterMetrics, *maxRequests, logger))
 	if *metricsPath != "/" {
 		landingConfig := web.LandingConfig{
 			Name:        b.App.Name,
@@ -139,15 +136,15 @@ func (b *BatchJobExporter) Main() {
 		}
 		landingPage, err := web.NewLandingPage(landingConfig)
 		if err != nil {
-			level.Error(b.logger).Log("err", err)
+			level.Error(logger).Log("err", err)
 			os.Exit(1)
 		}
 		http.Handle("/", landingPage)
 	}
 
 	server := &http.Server{}
-	if err := web.ListenAndServe(server, toolkitFlags, b.logger); err != nil {
-		level.Error(b.logger).Log("err", err)
+	if err := web.ListenAndServe(server, toolkitFlags, logger); err != nil {
+		level.Error(logger).Log("err", err)
 		os.Exit(1)
 	}
 }
