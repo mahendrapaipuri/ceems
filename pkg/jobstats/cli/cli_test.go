@@ -1,4 +1,4 @@
-package jobstats
+package cli
 
 import (
 	"fmt"
@@ -32,7 +32,7 @@ func TestBatchStatsServerMain(t *testing.T) {
 	// Remove test related args
 	os.Args = append([]string{os.Args[0]}, fmt.Sprintf("--data.path=%s", tmpDir))
 	os.Args = append(os.Args, "--batch.scheduler.slurm")
-	os.Args = append(os.Args, "--slurm.sacct.path=fixtures/sacct")
+	os.Args = append(os.Args, "--slurm.sacct.path=../fixtures/sacct")
 	a, _ := NewBatchJobStatsServer()
 
 	// Start Main

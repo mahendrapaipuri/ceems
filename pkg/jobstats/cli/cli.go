@@ -1,4 +1,4 @@
-package jobstats
+package cli
 
 import (
 	"context"
@@ -14,27 +14,26 @@ import (
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/log/level"
 	batchjob_runtime "github.com/mahendrapaipuri/batchjob_monitoring/internal/runtime"
+	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/base"
+	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/db"
+	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/schedulers"
+	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/server"
 	"github.com/prometheus/common/promlog"
 	"github.com/prometheus/common/promlog/flag"
 	"github.com/prometheus/common/version"
 )
 
-// Name of batchjob_stats_server kingpin app
-const BatchJobStatsAppName = "batchjob_stats_server"
-
-// `batchjob_stats_server` CLI app
-var BatchJobStatsServerApp = *kingpin.New(
-	BatchJobStatsAppName,
-	"API server data source for batch job statistics of users.",
-)
+// BatchJobStatsServer represents the `batchjob_stats_server` cli.
+type BatchJobStatsServer struct {
+	appName string
+	App     kingpin.Application
+}
 
 // Create a new BatchJobStats struct
 func NewBatchJobStatsServer() (*BatchJobStatsServer, error) {
-	promlogConfig := &promlog.Config{}
 	return &BatchJobStatsServer{
-		promlogConfig: *promlogConfig,
-		appName:       BatchJobStatsAppName,
-		App:           BatchJobStatsServerApp,
+		appName: base.BatchJobStatsServerAppName,
+		App:     base.BatchJobStatsServerApp,
 	}, nil
 }
 
@@ -87,7 +86,8 @@ func (b *BatchJobStatsServer) Main() {
 		).Bool()
 	}
 
-	flag.AddFlags(&b.App, &b.promlogConfig)
+	promlogConfig := &promlog.Config{}
+	flag.AddFlags(&b.App, promlogConfig)
 	b.App.Version(version.Print(b.appName))
 	b.App.UsageWriter(os.Stdout)
 	b.App.HelpFlag.Short('h')
@@ -98,15 +98,15 @@ func (b *BatchJobStatsServer) Main() {
 	}
 
 	// Set logger here after properly configuring promlog
-	b.logger = promlog.New(&b.promlogConfig)
+	logger := promlog.New(promlogConfig)
 
-	level.Info(b.logger).Log("msg", fmt.Sprintf("Starting %s", b.appName), "version", version.Info())
-	level.Info(b.logger).Log("msg", "Build context", "build_context", version.BuildContext())
-	level.Info(b.logger).Log("fd_limits", batchjob_runtime.Uname())
-	level.Info(b.logger).Log("fd_limits", batchjob_runtime.FdLimits())
+	level.Info(logger).Log("msg", fmt.Sprintf("Starting %s", b.appName), "version", version.Info())
+	level.Info(logger).Log("msg", "Build context", "build_context", version.BuildContext())
+	level.Info(logger).Log("fd_limits", batchjob_runtime.Uname())
+	level.Info(logger).Log("fd_limits", batchjob_runtime.FdLimits())
 
 	runtime.GOMAXPROCS(*maxProcs)
-	level.Debug(b.logger).Log("msg", "Go MAXPROCS", "procs", runtime.GOMAXPROCS(0))
+	level.Debug(logger).Log("msg", "Go MAXPROCS", "procs", runtime.GOMAXPROCS(0))
 
 	absDataPath, err := filepath.Abs(*dataPath)
 	if err != nil {
@@ -119,8 +119,9 @@ func (b *BatchJobStatsServer) Main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	config := &Config{
-		Logger:           b.logger,
+	// Make server config
+	serverConfig := &server.Config{
+		Logger:           logger,
 		Address:          *webListenAddresses,
 		WebSystemdSocket: *systemdSocket,
 		WebConfigFile:    *webConfigFile,
@@ -128,24 +129,29 @@ func (b *BatchJobStatsServer) Main() {
 		JobstatDBTable:   *jobstatDBTable,
 	}
 
-	server, cleanup, err := NewJobstatsServer(config)
+	// Create server instance
+	apiServer, cleanup, err := server.NewJobstatsServer(serverConfig)
 	defer cleanup()
 	if err != nil {
-		level.Error(b.logger).Log("msg", "Failed to create jobstats server", "err", err)
+		level.Error(logger).Log("msg", "Failed to create jobstats server", "err", err)
 		return
 	}
 
-	jobCollector, err := NewJobStatsDB(
-		b.logger,
-		jobstatDBPath,
-		*jobstatDBTable,
-		*retentionPeriod,
-		*lastUpdateTime,
-		jobsLastTimeStampFile,
-		NewBatchScheduler,
-	)
+	// Make DB config
+	dbConfig := &db.Config{
+		Logger:                  logger,
+		JobstatsDBPath:          jobstatDBPath,
+		JobstatsDBTable:         *jobstatDBTable,
+		RetentionPeriod:         *retentionPeriod,
+		LastUpdateTimeString:    *lastUpdateTime,
+		LastUpdateTimeStampFile: jobsLastTimeStampFile,
+		BatchScheduler:          schedulers.NewBatchScheduler,
+	}
+
+	// Create DB instance
+	jobCollector, err := db.NewJobStatsDB(dbConfig)
 	if err != nil {
-		level.Error(b.logger).Log("msg", "Failed to create jobstats DB", "err", err)
+		level.Error(logger).Log("msg", "Failed to create jobstats DB", "err", err)
 		return
 	}
 
@@ -160,20 +166,20 @@ func (b *BatchJobStatsServer) Main() {
 
 	loop:
 		for {
-			level.Info(b.logger).Log("msg", "Updating JobStats DB")
+			level.Info(logger).Log("msg", "Updating JobStats DB")
 			err := jobCollector.Collect()
 			if err != nil {
-				level.Error(b.logger).Log("msg", "Failed to get job stats", "err", err)
+				level.Error(logger).Log("msg", "Failed to get job stats", "err", err)
 			}
 
 			select {
 			case <-ticker.C:
 				continue
 			case <-ctx.Done():
-				level.Info(b.logger).Log("msg", "Received Interrupt. Stopping DB update")
+				level.Info(logger).Log("msg", "Received Interrupt. Stopping DB update")
 				err := jobCollector.Stop()
 				if err != nil {
-					level.Error(b.logger).Log("msg", "Failed to close DB connection", "err", err)
+					level.Error(logger).Log("msg", "Failed to close DB connection", "err", err)
 				}
 				wg.Done()
 				break loop
@@ -185,8 +191,8 @@ func (b *BatchJobStatsServer) Main() {
 	// it won't block the graceful shutdown handling below
 	wg.Add(1)
 	go func() {
-		if err := server.Start(); err != nil {
-			level.Error(b.logger).Log("msg", "Failed to start server", "err", err)
+		if err := apiServer.Start(); err != nil {
+			level.Error(logger).Log("msg", "Failed to start server", "err", err)
 		}
 	}()
 
@@ -195,19 +201,19 @@ func (b *BatchJobStatsServer) Main() {
 
 	// Restore default behavior on the interrupt signal and notify user of shutdown.
 	stop()
-	level.Info(b.logger).Log("msg", "Shutting down gracefully, press Ctrl+C again to force")
+	level.Info(logger).Log("msg", "Shutting down gracefully, press Ctrl+C again to force")
 
 	// The context is used to inform the server it has 5 seconds to finish
 	// the request it is currently handling
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if err := server.Shutdown(ctx, &wg); err != nil {
-		level.Error(b.logger).Log("msg", "Failed to gracefully shutdown server", "err", err)
+	if err := apiServer.Shutdown(ctx, &wg); err != nil {
+		level.Error(logger).Log("msg", "Failed to gracefully shutdown server", "err", err)
 	}
 
 	// Wait for all go routines to finish
 	wg.Wait()
 
-	level.Info(b.logger).Log("msg", "Server exiting")
-	level.Info(b.logger).Log("msg", "See you next time!!")
+	level.Info(logger).Log("msg", "Server exiting")
+	level.Info(logger).Log("msg", "See you next time!!")
 }

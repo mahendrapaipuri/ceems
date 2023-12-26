@@ -1,4 +1,4 @@
-package jobstats
+package server
 
 import (
 	"encoding/json"
@@ -9,22 +9,23 @@ import (
 	"testing"
 
 	"github.com/go-kit/log"
+	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/base"
 )
 
 func setupServer() *JobstatsServer {
 	logger := log.NewNopLogger()
 	server, _, _ := NewJobstatsServer(&Config{Logger: logger})
-	server.AccountsGetter = getMockAccounts
-	server.JobsGetter = getMockJobs
+	server.Accounts = getMockAccounts
+	server.Jobs = getMockJobs
 	return server
 }
 
-func getMockAccounts(user string, logger log.Logger) ([]Account, error) {
-	return []Account{{ID: "foo"}, {ID: "bar"}}, nil
+func getMockAccounts(user string, logger log.Logger) ([]base.Account, error) {
+	return []base.Account{{ID: "foo"}, {ID: "bar"}}, nil
 }
 
-func getMockJobs(user string, accounts []string, from string, to string, logger log.Logger) ([]BatchJob, error) {
-	return []BatchJob{{Jobid: "1000"}, {Jobid: "10001"}}, nil
+func getMockJobs(user string, accounts []string, from string, to string, logger log.Logger) ([]base.BatchJob, error) {
+	return []base.BatchJob{{Jobid: "1000"}, {Jobid: "10001"}}, nil
 }
 
 // Test /api/accounts when no user header found
@@ -46,7 +47,7 @@ func TestAccountsHandlerNoUserHeader(t *testing.T) {
 	}
 
 	// Unmarshal byte into structs.
-	var response AccountsResponse
+	var response base.AccountsResponse
 	json.Unmarshal(data, &response)
 
 	if response.Status != "error" {
@@ -55,7 +56,7 @@ func TestAccountsHandlerNoUserHeader(t *testing.T) {
 	if response.ErrorType != "User Error" {
 		t.Errorf("expected User Error type got %v", response.ErrorType)
 	}
-	if !reflect.DeepEqual(response.Data, []Account{}) {
+	if !reflect.DeepEqual(response.Data, []base.Account{}) {
 		t.Errorf("expected empty data got %v", response.Data)
 	}
 }
@@ -81,10 +82,10 @@ func TestAccountsHandlerWithUserHeader(t *testing.T) {
 	}
 
 	// Expected result
-	expectedAccounts, _ := getMockAccounts("foo", logger)
+	expectedAccounts, _ := getMockAccounts("foo", server.logger)
 
 	// Unmarshal byte into structs.
-	var response AccountsResponse
+	var response base.AccountsResponse
 	json.Unmarshal(data, &response)
 
 	if response.Status != "success" {
@@ -114,7 +115,7 @@ func TestJobsHandlerNoUserHeader(t *testing.T) {
 	}
 
 	// Unmarshal byte into structs.
-	var response JobsResponse
+	var response base.JobsResponse
 	json.Unmarshal(data, &response)
 
 	if response.Status != "error" {
@@ -123,7 +124,7 @@ func TestJobsHandlerNoUserHeader(t *testing.T) {
 	if response.ErrorType != "User Error" {
 		t.Errorf("expected User Error type got %v", response.ErrorType)
 	}
-	if !reflect.DeepEqual(response.Data, []BatchJob{}) {
+	if !reflect.DeepEqual(response.Data, []base.BatchJob{}) {
 		t.Errorf("expected empty data got %v", response.Data)
 	}
 }
@@ -149,10 +150,10 @@ func TestJobsHandlerWithUserHeader(t *testing.T) {
 	}
 
 	// Expected result
-	expectedJobs, _ := getMockJobs("foo", []string{"foo", "bar"}, "", "", logger)
+	expectedJobs, _ := getMockJobs("foo", []string{"foo", "bar"}, "", "", server.logger)
 
 	// Unmarshal byte into structs.
-	var response JobsResponse
+	var response base.JobsResponse
 	json.Unmarshal(data, &response)
 
 	if response.Status != "success" {

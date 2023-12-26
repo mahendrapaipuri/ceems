@@ -1,4 +1,4 @@
-package jobstats
+package schedulers
 
 import (
 	"os"
@@ -11,6 +11,8 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/batchjob_monitoring/internal/helpers"
+	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/base"
+	jobstats_helper "github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/helper"
 )
 
 type slurmScheduler struct {
@@ -25,11 +27,11 @@ var (
 	slurmUserUid int
 	slurmUserGid int
 	jobLock      = sync.RWMutex{}
-	sacctPath    = BatchJobStatsServerApp.Flag(
+	sacctPath    = base.BatchJobStatsServerApp.Flag(
 		"slurm.sacct.path",
 		"Absolute path to sacct executable.",
 	).Default("/usr/local/bin/sacct").String()
-	slurmWalltimeCutoff = BatchJobStatsServerApp.Flag(
+	slurmWalltimeCutoff = base.BatchJobStatsServerApp.Flag(
 		"slurm.elapsed.time.cutoff",
 		"Jobs that have elapsed time less than this value (in seconds) will be ignored.",
 	).Default("60").Int()
@@ -96,7 +98,7 @@ sudomode:
 }
 
 // NewSlurmScheduler returns a new SlurmScheduler that returns batch job stats
-func NewSlurmScheduler(logger log.Logger) (Batch, error) {
+func NewSlurmScheduler(logger log.Logger) (Fetcher, error) {
 	execMode, err := preflightChecks(logger)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to setup Slurm batch scheduler for retreiving jobs", "err", err)
@@ -111,7 +113,7 @@ func NewSlurmScheduler(logger log.Logger) (Batch, error) {
 }
 
 // Get jobs from slurm
-func (s *slurmScheduler) GetJobs(start time.Time, end time.Time) ([]BatchJob, error) {
+func (s *slurmScheduler) Fetch(start time.Time, end time.Time) ([]base.BatchJob, error) {
 	startTime := start.Format(s.slurmDateFormat)
 	endTime := end.Format(s.slurmDateFormat)
 
@@ -119,7 +121,7 @@ func (s *slurmScheduler) GetJobs(start time.Time, end time.Time) ([]BatchJob, er
 	sacctOutput, err := runSacctCmd(s.execMode, startTime, endTime, s.logger)
 	if err != nil {
 		level.Error(s.logger).Log("msg", "Failed to execute SLURM sacct command", "err", err)
-		return []BatchJob{}, err
+		return []base.BatchJob{}, err
 	}
 
 	// Parse sacct output and create BatchJob structs slice
@@ -147,19 +149,19 @@ func runSacctCmd(execMode string, startTime string, endTime string, logger log.L
 }
 
 // Parse sacct command output and return batchjob slice
-func parseSacctCmdOutput(sacctOutput string, elapsedCutoff int, logger log.Logger) ([]BatchJob, int) {
+func parseSacctCmdOutput(sacctOutput string, elapsedCutoff int, logger log.Logger) ([]base.BatchJob, int) {
 	// Strip first line
 	sacctOutputLines := strings.Split(string(sacctOutput), "\n")[1:]
 
 	var numJobs int = 0
-	var jobs = make([]BatchJob, len(sacctOutputLines))
+	var jobs = make([]base.BatchJob, len(sacctOutputLines))
 
 	wg := &sync.WaitGroup{}
 	wg.Add(len(sacctOutputLines))
 
 	for iline, line := range sacctOutputLines {
 		go func(i int, l string) {
-			var jobStat BatchJob
+			var jobStat base.BatchJob
 			components := strings.Split(l, "|")
 			jobid := components[0]
 
@@ -202,9 +204,9 @@ func parseSacctCmdOutput(sacctOutput string, elapsedCutoff int, logger log.Logge
 				jobUuid = jobid
 			}
 
-			allNodes := NodelistParser(components[15])
+			allNodes := jobstats_helper.NodelistParser(components[15])
 			nodelistExp := strings.Join(allNodes, "|")
-			jobStat = BatchJob{
+			jobStat = base.BatchJob{
 				Jobid:       components[0],
 				Jobuuid:     jobUuid,
 				Partition:   components[1],
