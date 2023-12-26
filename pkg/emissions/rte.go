@@ -24,12 +24,11 @@ const (
 
 type rteSource struct {
 	logger             log.Logger
-	client             Client
 	ctx                context.Context
 	cacheDuration      int64
 	lastRequestTime    int64
 	lastEmissionFactor float64
-	fetch              func(ctx context.Context, client Client, logger log.Logger) (float64, error)
+	fetch              func(ctx context.Context, logger log.Logger) (float64, error)
 }
 
 func init() {
@@ -38,7 +37,7 @@ func init() {
 }
 
 // NewRTESource returns a new Source that returns emission factor from RTE eCO2 mix
-func NewRTESource(ctx context.Context, client Client, logger log.Logger) (Source, error) {
+func NewRTESource(ctx context.Context, logger log.Logger) (Source, error) {
 	// Check if country is FR and if not return
 	if ctx.Value(ContextKey{}).(ContextValues).CountryCodeAlpha2 != "FR" {
 		return nil, fmt.Errorf("RTE eCO2 data is only available for France")
@@ -46,7 +45,6 @@ func NewRTESource(ctx context.Context, client Client, logger log.Logger) (Source
 	level.Info(logger).Log("msg", "Emission factor from RTE eCO2 mix will be reported.")
 	return &rteSource{
 		logger:             logger,
-		client:             client,
 		ctx:                ctx,
 		cacheDuration:      1800,
 		lastRequestTime:    time.Now().Unix(),
@@ -62,7 +60,7 @@ func NewRTESource(ctx context.Context, client Client, logger log.Logger) (Source
 // scrape intervals.
 func (s *rteSource) Update() (float64, error) {
 	if time.Now().Unix()-s.lastRequestTime > s.cacheDuration || s.lastEmissionFactor == -1 {
-		currentEmissionFactor, err := s.fetch(s.ctx, s.client, s.logger)
+		currentEmissionFactor, err := s.fetch(s.ctx, s.logger)
 		if err != nil {
 			level.Warn(s.logger).Log("msg", "Failed to retrieve emission factor from RTE source", "err", err)
 
@@ -86,7 +84,7 @@ func (s *rteSource) Update() (float64, error) {
 }
 
 // Make request to Opendatasoft API
-func makeRTEAPIRequest(ctx context.Context, client Client, logger log.Logger) (float64, error) {
+func makeRTEAPIRequest(ctx context.Context, logger log.Logger) (float64, error) {
 	// Make query string
 	params := url.Values{}
 	params.Add("dataset", "eco2mix-national-tr")
@@ -104,6 +102,10 @@ func makeRTEAPIRequest(ctx context.Context, client Client, logger log.Logger) (f
 	)
 	queryString := params.Encode()
 
+	// Create a context with timeout to ensure we dont have deadlocks
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
 		fmt.Sprintf(opendatasoftAPIPath, opendatasoftAPIBaseUrl, queryString), nil,
 	)
@@ -112,7 +114,7 @@ func makeRTEAPIRequest(ctx context.Context, client Client, logger log.Logger) (f
 		return float64(-1), err
 	}
 
-	resp, err := client.Do(req)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to make HTTP request for RTE source", "err", err)
 		return float64(-1), err

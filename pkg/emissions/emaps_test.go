@@ -14,12 +14,12 @@ var (
 	emapsIdx            = 0
 )
 
-func mockEMapsAPIRequest(token string, ctx context.Context, client Client, logger log.Logger) (float64, error) {
+func mockEMapsAPIRequest(token string, ctx context.Context, logger log.Logger) (float64, error) {
 	emapsIdx++
 	return expectedEMapsFactor[emapsIdx-1], nil
 }
 
-func mockEMapsAPIFailRequest(token string, ctx context.Context, client Client, logger log.Logger) (float64, error) {
+func mockEMapsAPIFailRequest(token string, ctx context.Context, logger log.Logger) (float64, error) {
 	return float64(-1), fmt.Errorf("Failed API request")
 }
 

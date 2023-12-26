@@ -53,7 +53,7 @@ func init() {
 }
 
 // NewOWIDSource returns a new Source that returns emission factor from OWID data
-func NewOWIDSource(ctx context.Context, client Client, logger log.Logger) (Source, error) {
+func NewOWIDSource(ctx context.Context, logger log.Logger) (Source, error) {
 	// Retrieve context values
 	contextValues := ctx.Value(ContextKey{}).(ContextValues)
 	level.Info(logger).Log("msg", "Emission factor from OWID data will be reported.")

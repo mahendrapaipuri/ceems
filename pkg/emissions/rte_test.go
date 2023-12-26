@@ -14,12 +14,12 @@ var (
 	rteIdx            = 0
 )
 
-func mockRTEAPIRequest(ctx context.Context, client Client, logger log.Logger) (float64, error) {
+func mockRTEAPIRequest(ctx context.Context, logger log.Logger) (float64, error) {
 	rteIdx++
 	return expectedRTEFactor[rteIdx-1], nil
 }
 
-func mockRTEAPIFailRequest(ctx context.Context, client Client, logger log.Logger) (float64, error) {
+func mockRTEAPIFailRequest(ctx context.Context, logger log.Logger) (float64, error) {
 	return float64(-1), fmt.Errorf("Failed API request")
 }
 

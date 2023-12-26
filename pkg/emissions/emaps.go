@@ -25,13 +25,12 @@ const (
 
 type emapsSource struct {
 	logger             log.Logger
-	client             Client
 	ctx                context.Context
 	apiToken           string
 	cacheDuration      int64
 	lastRequestTime    int64
 	lastEmissionFactor float64
-	fetch              func(apiToken string, ctx context.Context, client Client, logger log.Logger) (float64, error)
+	fetch              func(apiToken string, ctx context.Context, logger log.Logger) (float64, error)
 }
 
 func init() {
@@ -40,7 +39,7 @@ func init() {
 }
 
 // NewEMapsSource returns a new Source that returns emission factor from electricity maps data
-func NewEMapsSource(ctx context.Context, client Client, logger log.Logger) (Source, error) {
+func NewEMapsSource(ctx context.Context, logger log.Logger) (Source, error) {
 	var eMapsAPIToken string
 	// Check if EMAPS_API_TOKEN is set
 	if token, present := os.LookupEnv("EMAPS_API_TOKEN"); present {
@@ -52,7 +51,6 @@ func NewEMapsSource(ctx context.Context, client Client, logger log.Logger) (Sour
 	return &emapsSource{
 		logger:             logger,
 		ctx:                ctx,
-		client:             client,
 		apiToken:           eMapsAPIToken,
 		cacheDuration:      1800,
 		lastRequestTime:    time.Now().Unix(),
@@ -68,7 +66,7 @@ func NewEMapsSource(ctx context.Context, client Client, logger log.Logger) (Sour
 // scrape intervals.
 func (s *emapsSource) Update() (float64, error) {
 	if time.Now().Unix()-s.lastRequestTime > s.cacheDuration || s.lastEmissionFactor == -1 {
-		currentEmissionFactor, err := s.fetch(s.apiToken, s.ctx, s.client, s.logger)
+		currentEmissionFactor, err := s.fetch(s.apiToken, s.ctx, s.logger)
 		if err != nil {
 			level.Warn(s.logger).Log("msg", "Failed to retrieve emission factor from Electricity maps source", "err", err)
 
@@ -92,13 +90,17 @@ func (s *emapsSource) Update() (float64, error) {
 }
 
 // Make request to Electricity maps API
-func makeEMapsAPIRequest(apiToken string, ctx context.Context, client Client, logger log.Logger) (float64, error) {
+func makeEMapsAPIRequest(apiToken string, ctx context.Context, logger log.Logger) (float64, error) {
 	// Retrieve context values
 	contextValues := ctx.Value(ContextKey{}).(ContextValues)
 
 	params := url.Values{}
 	params.Add("zone", contextValues.CountryCodeAlpha2)
 	queryString := params.Encode()
+
+	// Create a context with timeout to ensure we dont have deadlocks
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
 		fmt.Sprintf(eMapAPIBaseUrlPath, eMapAPIBaseUrl, queryString), nil,
@@ -111,7 +113,7 @@ func makeEMapsAPIRequest(apiToken string, ctx context.Context, client Client, lo
 	// Add token to auth header
 	req.Header.Add("auth-token", apiToken)
 
-	resp, err := client.Do(req)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to make HTTP request for Electricity Maps source", "err", err)
 		return float64(-1), err

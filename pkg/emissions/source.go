@@ -16,7 +16,7 @@ var dataDir embed.FS
 var (
 	CountryCodes  CountryCode
 	emissionsLock = sync.RWMutex{}
-	factories     = make(map[string]func(ctx context.Context, client Client, logger log.Logger) (Source, error))
+	factories     = make(map[string]func(ctx context.Context, logger log.Logger) (Source, error))
 )
 
 func init() {
@@ -35,17 +35,17 @@ func init() {
 // Register emission factor source
 func RegisterSource(
 	source string,
-	factory func(ctx context.Context, client Client, logger log.Logger) (Source, error)) {
+	factory func(ctx context.Context, logger log.Logger) (Source, error)) {
 	factories[source] = factory
 }
 
 // NewEmissionSources creates a new EmissionSources
-func NewEmissionSources(ctx context.Context, client Client, logger log.Logger) (*EmissionSources, error) {
+func NewEmissionSources(ctx context.Context, logger log.Logger) (*EmissionSources, error) {
 	sources := make(map[string]Source)
 
 	// Loop over factories and create new instances
 	for key, factory := range factories {
-		source, err := factory(ctx, client, log.With(logger, "source", key))
+		source, err := factory(ctx, log.With(logger, "source", key))
 		if err != nil {
 			level.Error(logger).Log("msg", "Failed to create data source", "source", key, "err", err)
 			continue
