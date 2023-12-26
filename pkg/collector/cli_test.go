@@ -39,13 +39,12 @@ func queryExporter(address string) error {
 
 func TestBatchJobExporterAppHandler(t *testing.T) {
 	a := BatchJobExporter{
-		logger:  log.NewNopLogger(),
 		appName: mockBatchJobExporterAppName,
 		App:     mockBatchJobExporterApp,
 	}
 
 	// Create handler
-	handler := a.newHandler(false, 1)
+	handler := a.newHandler(false, 1, log.NewNopLogger())
 	if handler.maxRequests != 1 {
 		t.Errorf("Expected maxRequests to %d. Got %d", 1, handler.maxRequests)
 	}
@@ -55,7 +54,6 @@ func TestBatchJobExporterMain(t *testing.T) {
 	// Remove test related args and add a dummy arg
 	os.Args = append([]string{os.Args[0]}, "--web.max-requests=2")
 	a := BatchJobExporter{
-		logger:  log.NewNopLogger(),
 		appName: mockBatchJobExporterAppName,
 		App:     mockBatchJobExporterApp,
 	}
