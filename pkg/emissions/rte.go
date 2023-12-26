@@ -142,8 +142,6 @@ func makeRTEAPIRequest(ctx context.Context, logger log.Logger) (float64, error) 
 	}
 
 	var fields []nationalRealTimeFieldsV2
-	for _, r := range data.Results {
-		fields = append(fields, r)
-	}
+	fields = append(fields, data.Results...)
 	return float64(fields[0].TauxCo2), nil
 }
