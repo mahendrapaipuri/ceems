@@ -5,7 +5,6 @@ package collector
 
 import (
 	"context"
-	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -21,7 +20,6 @@ const emissionsCollectorSubsystem = "emissions"
 
 type emissionsCollector struct {
 	logger              log.Logger
-	client              http.Client
 	ctx                 context.Context
 	emissionSources     emissions.EmissionSources
 	emissionsMetricDesc *prometheus.Desc
@@ -56,9 +54,6 @@ func convertISO2ToISO3(countryCodeISO2 string) string {
 
 // NewEmissionsCollector returns a new Collector exposing emission factor metrics.
 func NewEmissionsCollector(logger log.Logger) (Collector, error) {
-	// Start a new HTTP client
-	client := http.Client{}
-
 	// Ensure country code is in upper case
 	*countryCodeAlpha2 = strings.ToUpper(*countryCodeAlpha2)
 
@@ -78,7 +73,7 @@ func NewEmissionsCollector(logger log.Logger) (Collector, error) {
 	)
 
 	// Create a new instance of EmissionCollector
-	emissionSources, err := newEmissionSources(ctx, &client, logger)
+	emissionSources, err := newEmissionSources(ctx, logger)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create new EmissionCollector", "err", err)
 		return nil, err
@@ -86,7 +81,6 @@ func NewEmissionsCollector(logger log.Logger) (Collector, error) {
 
 	return &emissionsCollector{
 		logger:              logger,
-		client:              client,
 		ctx:                 ctx,
 		emissionSources:     *emissionSources,
 		emissionsMetricDesc: emissionsMetricDesc,

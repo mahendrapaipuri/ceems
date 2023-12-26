@@ -24,7 +24,7 @@ func init() {
 }
 
 // NewGlobalSource returns a new Source that returns a constant global average emission factor
-func NewGlobalSource(ctx context.Context, client Client, logger log.Logger) (Source, error) {
+func NewGlobalSource(ctx context.Context, logger log.Logger) (Source, error) {
 	return &globalSource{
 		logger: logger,
 	}, nil
