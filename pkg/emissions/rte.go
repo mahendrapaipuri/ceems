@@ -143,5 +143,9 @@ func makeRTEAPIRequest(ctx context.Context, logger log.Logger) (float64, error) 
 
 	var fields []nationalRealTimeFieldsV2
 	fields = append(fields, data.Results...)
-	return float64(fields[0].TauxCo2), nil
+	// Check size of fields as it can be zero sometimes
+	if len(fields) >= 1 {
+		return float64(fields[0].TauxCo2), nil
+	}
+	return -1, fmt.Errorf("Null response received from RTE server: %v", fields)
 }
