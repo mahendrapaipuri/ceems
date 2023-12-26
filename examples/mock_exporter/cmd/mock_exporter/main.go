@@ -1,5 +1,4 @@
 // Boiler plate code to create a new instance of BatchJobExporter entrypoint
-
 package main
 
 // Ensure to import the current mock collector

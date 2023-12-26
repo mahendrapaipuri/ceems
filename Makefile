@@ -38,7 +38,10 @@ endif
 # Use CGO for batchjob_stats_* and GO for batchjob_exporter.
 ifeq ($(CGO_BUILD), 1)
 	PROMU_CONF ?= .promu-cgo.yml
-	pkgs := ./pkg/jobstats ./cmd/batchjob_stats_server
+	pkgs := ./pkg/jobstats/base ./pkg/jobstats/cli \
+			./pkg/jobstats/db ./pkg/jobstats/helper \
+			./pkg/jobstats/schedulers ./pkg/jobstats/server \
+			./cmd/batchjob_stats_server
 else
 	PROMU_CONF ?= .promu-go.yml
 	pkgs := ./pkg/collector ./pkg/emissions ./cmd/batchjob_exporter

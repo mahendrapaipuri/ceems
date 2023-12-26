@@ -1,11 +1,11 @@
 package main
 
-import "github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats"
+import "github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/cli"
 
 // Main entry point for `batchjob_stats_server` app
 func main() {
 	// Create a new app
-	batchJobStatsServer, err := jobstats.NewBatchJobStatsServer()
+	batchJobStatsServer, err := cli.NewBatchJobStatsServer()
 	if err != nil {
 		panic("Failed to create an instance of BatchJobStats Server App")
 	}
