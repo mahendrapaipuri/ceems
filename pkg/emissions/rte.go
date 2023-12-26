@@ -98,7 +98,7 @@ func makeRTEAPIRequest(ctx context.Context, logger log.Logger) (float64, error) 
 		"where",
 		fmt.Sprintf(
 			"date_heure in [date'%s' TO now()] and taux_co2 is not null",
-			time.Now().Add(-30*time.Minute).Format("2006-01-02"),
+			time.Now().Format("2006-01-02"),
 		),
 	)
 	queryString := params.Encode()
