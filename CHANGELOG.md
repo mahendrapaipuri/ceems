@@ -1,7 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.1.0-rc.2 / 2023-12-26
 
+- [REFACTOR] Refactor jobstats pkg [#18](https://github.com/mahendrapaipuri/batchjob_monitoring/pull/18) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [REFACTOR] Use default http client for requests for emissions collector [#16](https://github.com/mahendrapaipuri/batchjob_monitoring/pull/16) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [REFACTOR] Refactor emissions pkg [#16](https://github.com/mahendrapaipuri/batchjob_monitoring/pull/16) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
 - [BUGFIX] bugfix: Correctly parse SLURM nodelist range string [#15](https://github.com/mahendrapaipuri/batchjob_monitoring/pull/15) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
 
 ## 0.1.0-rc.1 / 2023-12-20

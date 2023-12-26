@@ -148,7 +148,7 @@ properties to a file which can be read by the exporter. Thee scripts will create
 named after job ID with required properties as its content delimited by space. 
 Similarly, for GPU to job maps, each GPU will create a file with its index as file name
 and writes the job ID in the file. In the epilog scripts, that created files will be 
-removed. Example [prolog and epilog scripts](./etc/slurm) are provided in the repo. 
+removed. Example [prolog and epilog scripts](./configs/slurm) are provided in the repo. 
 This approach requires the `batchjob_exporter` to be configured with command line 
 option `--collector.slurm.job.props.path=/run/slurmjobprops` assuming the files with 
 slurm job properties are being written in `/run/slurmjobprops` directory.
@@ -179,7 +179,7 @@ job and this info is not available post job. Thus, similar approaches as SLURM c
 are available for this collector too.
 
 - Use prolog and epilog scripts to get the GPU to job ID map. Example prolog script 
-is provided in the [repo](./etc/slurm/prolog.d/gpujobmap.sh). Similarly, this approach 
+is provided in the [repo](./configs/slurm/prolog.d/gpujobmap.sh). Similarly, this approach 
 needs `--collector.nvidia.gpu.job.map.path=/run/gpujobmap` command line option.
 
 - Using capabilities to read the environment variables directly from `/proc` file system.
@@ -295,7 +295,7 @@ AmbientCapabilities=CAP_SYS_PTRACE CAP_DAC_READ_SEARCH CAP_SETUID CAP_SETGID
 
 Note that it is bare minimum service file and it is only to demonstrate on how to use 
 `AmbientCapabilities`. Production ready service files examples are provided in 
-[repo](./etc/systemd)
+[repo](./init/systemd)
 
 ## Usage
 
@@ -431,6 +431,7 @@ keeps the job data for the past one year.
 /path/to/batchjob_stats_server \
     --slurm.sacct.path="/usr/local/bin/sacct" \
     --slurm.sacct.run.with.sudo \
+    --batch.scheduler.slurm \
     --path.data="/var/lib/batchjob_stats" \
     --db.update.interval=1800 \
     --data.retention.period=365 \
