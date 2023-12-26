@@ -1,4 +1,4 @@
-package jobstats
+package server
 
 import (
 	"context"
@@ -14,14 +14,37 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/gorilla/mux"
+	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/base"
+	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/helper"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/prometheus/exporter-toolkit/web"
 )
+
+// Server config struct
+type Config struct {
+	Logger           log.Logger
+	Address          string
+	WebSystemdSocket bool
+	WebConfigFile    string
+	JobstatDBFile    string
+	JobstatDBTable   string
+}
+
+// Job Stats Server struct
+type JobstatsServer struct {
+	logger      log.Logger
+	server      *http.Server
+	webConfig   *web.FlagConfig
+	Accounts    func(string, log.Logger) ([]base.Account, error)
+	Jobs        func(string, []string, string, string, log.Logger) ([]base.BatchJob, error)
+	HealthCheck func(log.Logger) bool
+}
 
 var (
 	dbConn         *sql.DB
 	jobstatDBFile  string
 	jobstatDBTable string
+	dateFormat     = "2006-01-02T15:04:05"
 )
 
 // Create new Jobstats server
@@ -40,9 +63,9 @@ func NewJobstatsServer(c *Config) (*JobstatsServer, func(), error) {
 			WebSystemdSocket:   &c.WebSystemdSocket,
 			WebConfigFile:      &c.WebConfigFile,
 		},
-		AccountsGetter: getAccounts,
-		JobsGetter:     getJobs,
-		HealthChecker:  getDBStatus,
+		Accounts:    fetchAccounts,
+		Jobs:        fetchJobs,
+		HealthCheck: getDBStatus,
 	}
 
 	jobstatDBFile = c.JobstatDBFile
@@ -117,7 +140,7 @@ func (s *JobstatsServer) setHeaders(w http.ResponseWriter) {
 // GET /api/accounts
 // Get all accounts of a user
 func (s *JobstatsServer) accounts(w http.ResponseWriter, r *http.Request) {
-	var response AccountsResponse
+	var response base.AccountsResponse
 	s.setHeaders(w)
 	w.WriteHeader(http.StatusOK)
 
@@ -125,13 +148,13 @@ func (s *JobstatsServer) accounts(w http.ResponseWriter, r *http.Request) {
 	user := s.getUser(r)
 	// If no user found, return empty response
 	if user == "" {
-		response = AccountsResponse{
-			Response: Response{
+		response = base.AccountsResponse{
+			Response: base.Response{
 				Status:    "error",
 				ErrorType: "User Error",
 				Error:     "No user identified",
 			},
-			Data: []Account{},
+			Data: []base.Account{},
 		}
 		err := json.NewEncoder(w).Encode(&response)
 		if err != nil {
@@ -142,16 +165,16 @@ func (s *JobstatsServer) accounts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get all user accounts
-	accounts, err := s.AccountsGetter(user, s.logger)
+	accounts, err := s.Accounts(user, s.logger)
 	if err != nil {
 		level.Error(s.logger).Log("msg", "Failed to retrieve accounts", "user", user, "err", err)
-		response = AccountsResponse{
-			Response: Response{
+		response = base.AccountsResponse{
+			Response: base.Response{
 				Status:    "error",
 				ErrorType: "Data error",
 				Error:     "Failed to retrieve user accounts",
 			},
-			Data: []Account{},
+			Data: []base.Account{},
 		}
 		err = json.NewEncoder(w).Encode(&response)
 		if err != nil {
@@ -162,8 +185,8 @@ func (s *JobstatsServer) accounts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Write response
-	response = AccountsResponse{
-		Response: Response{
+	response = base.AccountsResponse{
+		Response: base.Response{
 			Status: "success",
 		},
 		Data: accounts,
@@ -178,7 +201,7 @@ func (s *JobstatsServer) accounts(w http.ResponseWriter, r *http.Request) {
 // GET /api/jobs
 // Get jobs of a user based on query params
 func (s *JobstatsServer) jobs(w http.ResponseWriter, r *http.Request) {
-	var response JobsResponse
+	var response base.JobsResponse
 	s.setHeaders(w)
 	w.WriteHeader(http.StatusOK)
 
@@ -186,13 +209,13 @@ func (s *JobstatsServer) jobs(w http.ResponseWriter, r *http.Request) {
 	user := s.getUser(r)
 	// If no user found, return empty response
 	if user == "" {
-		response = JobsResponse{
-			Response: Response{
+		response = base.JobsResponse{
+			Response: base.Response{
 				Status:    "error",
 				ErrorType: "User Error",
 				Error:     "No user identified",
 			},
-			Data: []BatchJob{},
+			Data: []base.BatchJob{},
 		}
 		err := json.NewEncoder(w).Encode(&response)
 		if err != nil {
@@ -219,16 +242,16 @@ func (s *JobstatsServer) jobs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get all user jobs in the given time window
-	jobs, err := s.JobsGetter(user, accounts, from, to, s.logger)
+	jobs, err := s.Jobs(user, accounts, from, to, s.logger)
 	if err != nil {
 		level.Error(s.logger).Log("msg", "Failed to retrieve jobs", "user", user, "err", err)
-		response = JobsResponse{
-			Response: Response{
+		response = base.JobsResponse{
+			Response: base.Response{
 				Status:    "error",
 				ErrorType: "Data error",
 				Error:     "Failed to retrieve user jobs",
 			},
-			Data: []BatchJob{},
+			Data: []base.BatchJob{},
 		}
 		err = json.NewEncoder(w).Encode(&response)
 		if err != nil {
@@ -239,8 +262,8 @@ func (s *JobstatsServer) jobs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Write response
-	response = JobsResponse{
-		Response: Response{
+	response = base.JobsResponse{
+		Response: base.Response{
 			Status: "success",
 		},
 		Data: jobs,
@@ -254,7 +277,7 @@ func (s *JobstatsServer) jobs(w http.ResponseWriter, r *http.Request) {
 
 // Check status of server
 func (s *JobstatsServer) health(w http.ResponseWriter, r *http.Request) {
-	if !s.HealthChecker(s.logger) {
+	if !s.HealthCheck(s.logger) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.WriteHeader(http.StatusServiceUnavailable)
 		w.Write([]byte("KO"))
@@ -266,7 +289,7 @@ func (s *JobstatsServer) health(w http.ResponseWriter, r *http.Request) {
 }
 
 // Get user accounts using SQL query
-func getAccounts(user string, logger log.Logger) ([]Account, error) {
+func fetchAccounts(user string, logger log.Logger) ([]base.Account, error) {
 	// Prepare statement
 	stmt, err := dbConn.Prepare(fmt.Sprintf("SELECT DISTINCT Account FROM %s WHERE Usr = ?", jobstatDBTable))
 	if err != nil {
@@ -282,14 +305,14 @@ func getAccounts(user string, logger log.Logger) ([]Account, error) {
 	}
 
 	// Loop through rows, using Scan to assign column data to struct fields.
-	var accounts []Account
+	var accounts []base.Account
 	var accountNames []string
 	for rows.Next() {
 		var account string
 		if err := rows.Scan(&account); err != nil {
 			level.Error(logger).Log("msg", "Could not scan row for accounts query", "user", user, "err", err)
 		}
-		accounts = append(accounts, Account{ID: account})
+		accounts = append(accounts, base.Account{ID: account})
 		accountNames = append(accountNames, account)
 	}
 	level.Debug(logger).Log("msg", "Accounts found for user", "user", user, "accounts", strings.Join(accountNames, ","))
@@ -297,8 +320,8 @@ func getAccounts(user string, logger log.Logger) ([]Account, error) {
 }
 
 // Get user jobs using SQL query
-func getJobs(user string, accounts []string, from string, to string, logger log.Logger) ([]BatchJob, error) {
-	allFields := GetStructFieldName(BatchJob{})
+func fetchJobs(user string, accounts []string, from string, to string, logger log.Logger) ([]base.BatchJob, error) {
+	allFields := helper.GetStructFieldName(base.BatchJob{})
 
 	// Prepare SQL statement
 	stmt, err := dbConn.Prepare(
@@ -328,7 +351,7 @@ func getJobs(user string, accounts []string, from string, to string, logger log.
 	}
 
 	// Loop through rows, using Scan to assign column data to struct fields.
-	var jobs []BatchJob
+	var jobs []base.BatchJob
 	for rows.Next() {
 		var jobid, jobuuid,
 			partition, account,
@@ -358,7 +381,7 @@ func getJobs(user string, accounts []string, from string, to string, logger log.
 			level.Error(logger).Log("msg", "Could not scan row for accounts query", "user", user, "err", err)
 		}
 		jobs = append(jobs,
-			BatchJob{
+			base.BatchJob{
 				Jobid:       jobid,
 				Jobuuid:     jobuuid,
 				Partition:   partition,

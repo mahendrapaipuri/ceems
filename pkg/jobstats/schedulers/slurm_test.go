@@ -1,10 +1,11 @@
-package jobstats
+package schedulers
 
 import (
 	"reflect"
 	"testing"
 
 	"github.com/go-kit/log"
+	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/base"
 )
 
 var (
@@ -13,7 +14,7 @@ var (
 1481508|part1|acc1|grp|1000|usr|1000|2023-02-21T15:48:20|2023-02-21T15:49:06|2023-02-21T15:57:23|00:08:17|4920|0:0|CANCELLED by 302137|2|compute-[0-2]|test_script2|/home/usr
 1481510|part1|acc1|grp|1000|usr|1000|2023-02-21T15:48:20|2023-02-21T15:49:06|2023-02-21T15:57:23|00:00:17|17|0:0|CANCELLED by 302137|2|compute-[0-2]|test_script2|/home/usr`
 	logger            = log.NewNopLogger()
-	expectedBatchJobs = []BatchJob{
+	expectedBatchJobs = []base.BatchJob{
 		{
 			Jobid:       "1479763",
 			Jobuuid:     "a3bd0ca1-5021-7e4d-943e-9529f8390f05",

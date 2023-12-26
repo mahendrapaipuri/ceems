@@ -1,4 +1,4 @@
-package jobstats
+package schedulers
 
 import (
 	"fmt"
@@ -7,10 +7,24 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/base"
 )
 
+// Fetcher is the interface batch scheduler has to implement.
+type Fetcher interface {
+	// Fetch BatchJobs between start and end times
+	Fetch(start time.Time, end time.Time) ([]base.BatchJob, error)
+}
+
+// BatchScheduler implements the interface to collect
+// batch jobs from different batch schedulers.
+type BatchScheduler struct {
+	Scheduler Fetcher
+	logger    log.Logger
+}
+
 var (
-	factories      = make(map[string]func(logger log.Logger) (Batch, error))
+	factories      = make(map[string]func(logger log.Logger) (Fetcher, error))
 	schedulerState = make(map[string]*bool)
 )
 
@@ -18,7 +32,7 @@ var (
 func RegisterBatch(
 	scheduler string,
 	isDefaultEnabled bool,
-	factory func(logger log.Logger) (Batch, error),
+	factory func(logger log.Logger) (Fetcher, error),
 ) {
 	var helpDefaultState string
 	if isDefaultEnabled {
@@ -28,10 +42,10 @@ func RegisterBatch(
 	}
 
 	flagName := fmt.Sprintf("batch.scheduler.%s", scheduler)
-	flagHelp := fmt.Sprintf("Retreieve jobs from %s scheduler (default: %s).", scheduler, helpDefaultState)
+	flagHelp := fmt.Sprintf("Fetch jobs from %s scheduler (default: %s).", scheduler, helpDefaultState)
 	defaultValue := fmt.Sprintf("%v", isDefaultEnabled)
 
-	flag := BatchJobStatsServerApp.Flag(flagName, flagHelp).
+	flag := base.BatchJobStatsServerApp.Flag(flagName, flagHelp).
 		Default(defaultValue).
 		Bool()
 	schedulerState[scheduler] = flag
@@ -40,7 +54,7 @@ func RegisterBatch(
 
 // NewBatchSchedulers creates a new BatchSchedulers
 func NewBatchScheduler(logger log.Logger) (*BatchScheduler, error) {
-	var scheduler Batch
+	var scheduler Fetcher
 	var err error
 	var factoryKeys []string
 
@@ -50,7 +64,7 @@ func NewBatchScheduler(logger log.Logger) (*BatchScheduler, error) {
 		if *schedulerState[key] {
 			scheduler, err = factory(log.With(logger, "batch", key))
 			if err != nil {
-				level.Error(logger).Log("msg", "Failed to create batch scheduler", "name", key, "err", err)
+				level.Error(logger).Log("msg", "Failed to setup batch scheduler", "name", key, "err", err)
 				return nil, err
 			}
 			return &BatchScheduler{Scheduler: scheduler, logger: logger}, nil
@@ -59,7 +73,7 @@ func NewBatchScheduler(logger log.Logger) (*BatchScheduler, error) {
 	return nil, fmt.Errorf("No batch scheduler enabled. Please choose one of [%s] using flag --batch.scheduler.<name>", strings.Join(factoryKeys, ", "))
 }
 
-// GetJobs implements collection jobs between start and end times
-func (b BatchScheduler) GetJobs(start time.Time, end time.Time) ([]BatchJob, error) {
-	return b.Scheduler.GetJobs(start, end)
+// Fetch implements collection jobs between start and end times
+func (b BatchScheduler) Fetch(start time.Time, end time.Time) ([]base.BatchJob, error) {
+	return b.Scheduler.Fetch(start, end)
 }

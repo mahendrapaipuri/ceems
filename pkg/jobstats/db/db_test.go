@@ -1,4 +1,4 @@
-package jobstats
+package db
 
 import (
 	"database/sql"
@@ -9,14 +9,25 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/base"
+	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/schedulers"
 	_ "github.com/mattn/go-sqlite3"
 )
 
 type mockScheduler struct{}
 
-var mockJobs = []BatchJob{{Jobid: "10000"}, {Jobid: "10001"}}
+var mockJobs = []base.BatchJob{{Jobid: "10000"}, {Jobid: "10001"}}
 
-func prepareMockConfig(tmpDir string) (string, string, string, string) {
+func newMockScheduler(logger log.Logger) (*schedulers.BatchScheduler, error) {
+	return &schedulers.BatchScheduler{Scheduler: &mockScheduler{}}, nil
+}
+
+// GetJobs implements collection jobs between start and end times
+func (m *mockScheduler) Fetch(start time.Time, end time.Time) ([]base.BatchJob, error) {
+	return mockJobs, nil
+}
+
+func prepareMockConfig(tmpDir string) *Config {
 	dataDir := filepath.Join(tmpDir, "data")
 	jobstatDBTable := "jobstats"
 	jobstatDBPath := filepath.Join(dataDir, "jobstats.db")
@@ -28,9 +39,15 @@ func prepareMockConfig(tmpDir string) (string, string, string, string) {
 		fmt.Println(err)
 	}
 	sacctFile.Close()
-
-	*sacctPath = filepath.Join(tmpDir, "sacct")
-	return dataDir, jobstatDBPath, jobstatDBTable, lastJobsUpdateTimeFile
+	return &Config{
+		Logger:                  log.NewNopLogger(),
+		JobstatsDBPath:          jobstatDBPath,
+		JobstatsDBTable:         jobstatDBTable,
+		LastUpdateTimeStampFile: lastJobsUpdateTimeFile,
+		LastUpdateTimeString:    "2023-12-20",
+		RetentionPeriod:         7,
+		BatchScheduler:          newMockScheduler,
+	}
 }
 
 func populateDBWithMockData(db *sql.DB, j *jobStatsDB) {
@@ -38,15 +55,6 @@ func populateDBWithMockData(db *sql.DB, j *jobStatsDB) {
 	stmt, _ := j.prepareInsertStatement(tx, len(mockJobs))
 	j.insertJobsInDB(stmt, mockJobs)
 	tx.Commit()
-}
-
-func newMockScheduler(logger log.Logger) (*BatchScheduler, error) {
-	return &BatchScheduler{Scheduler: &mockScheduler{}}, nil
-}
-
-// GetJobs implements collection jobs between start and end times
-func (m *mockScheduler) GetJobs(start time.Time, end time.Time) ([]BatchJob, error) {
-	return mockJobs, nil
 }
 
 func TestJobStatsDBPreparation(t *testing.T) {
@@ -60,7 +68,7 @@ func TestJobStatsDBPreparation(t *testing.T) {
 	}
 
 	// Test setupDB function
-	db, err := setupDB(jobstatDBPath, jobstatDBTable, logger)
+	db, err := setupDB(jobstatDBPath, jobstatDBTable, j.logger)
 	if err != nil {
 		t.Errorf("Failed to prepare DB due to %s", err)
 	}
@@ -69,7 +77,7 @@ func TestJobStatsDBPreparation(t *testing.T) {
 	}
 
 	// Call setupDB again. This should return with db conn
-	_, err = setupDB(jobstatDBPath, jobstatDBTable, logger)
+	_, err = setupDB(jobstatDBPath, jobstatDBTable, j.logger)
 	if err != nil {
 		t.Errorf("Failed to return DB connection on already prepared DB due to %s", err)
 	}
@@ -90,18 +98,13 @@ func TestJobStatsDBPreparation(t *testing.T) {
 
 func TestNewJobStatsDB(t *testing.T) {
 	tmpDir := t.TempDir()
-	dataDir, jobstatDBPath, jobstatDBTable, lastJobsUpdateTimeFile := prepareMockConfig(tmpDir)
+	c := prepareMockConfig(tmpDir)
+
+	// Get dataDir
+	dataDir := filepath.Dir(c.JobstatsDBPath)
 
 	// Make new jobstats DB
-	_, err := NewJobStatsDB(
-		log.NewNopLogger(),
-		jobstatDBPath,
-		jobstatDBTable,
-		7,
-		"2023-12-20",
-		lastJobsUpdateTimeFile,
-		newMockScheduler,
-	)
+	_, err := NewJobStatsDB(c)
 	if err != nil {
 		t.Errorf("Failed to create new jobstatsDB struct due to %s", err)
 	}
@@ -112,67 +115,52 @@ func TestNewJobStatsDB(t *testing.T) {
 	}
 
 	// Check if last update time file has been written
-	if _, err := os.Stat(lastJobsUpdateTimeFile); err != nil {
+	if _, err := os.Stat(c.LastUpdateTimeStampFile); err != nil {
 		t.Errorf("Last update time file not created")
 	}
 
 	// Check content of last update time file
-	if timeString, _ := os.ReadFile(lastJobsUpdateTimeFile); string(timeString) != "2023-12-20T00:00:00" {
+	if timeString, _ := os.ReadFile(c.LastUpdateTimeStampFile); string(timeString) != "2023-12-20T00:00:00" {
 		t.Errorf("Last update time string test failed. Expected %s got %s", "2023-12-20T00:00:00", string(timeString))
 	}
 
 	// Check DB file exists
-	if _, err := os.Stat(jobstatDBPath); err != nil {
+	if _, err := os.Stat(c.JobstatsDBPath); err != nil {
 		t.Errorf("DB file not created")
 	}
 
 	// Make again a new jobstats DB with new lastUpdateTime
-	_, err = NewJobStatsDB(
-		log.NewNopLogger(),
-		jobstatDBPath,
-		jobstatDBTable,
-		7,
-		"2023-12-21",
-		lastJobsUpdateTimeFile,
-		newMockScheduler,
-	)
+	c.LastUpdateTimeString = "2023-12-21"
+	_, err = NewJobStatsDB(c)
 	if err != nil {
 		t.Errorf("Failed to create new jobstatsDB struct due to %s", err)
 	}
 
 	// Check content of last update time file. It should not change
-	if timeString, _ := os.ReadFile(lastJobsUpdateTimeFile); string(timeString) != "2023-12-20T00:00:00" {
+	if timeString, _ := os.ReadFile(c.LastUpdateTimeStampFile); string(timeString) != "2023-12-20T00:00:00" {
 		t.Errorf("Last update time string test failed. Expected %s got %s", "2023-12-20T00:00:00", string(timeString))
 	}
 
 	// Remove read permissions on lastupdatetimefile
-	err = os.Chmod(lastJobsUpdateTimeFile, 0200)
+	err = os.Chmod(c.LastUpdateTimeStampFile, 0200)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Make again a new jobstats DB with new lastUpdateTime
-	_, err = NewJobStatsDB(
-		log.NewNopLogger(),
-		jobstatDBPath,
-		jobstatDBTable,
-		7,
-		"2023-12-21",
-		lastJobsUpdateTimeFile,
-		newMockScheduler,
-	)
+	_, err = NewJobStatsDB(c)
 	if err != nil {
 		t.Errorf("Failed to create new jobstatsDB struct due to %s", err)
 	}
 
 	// Add back read permissions on lastupdatetimefile
-	err = os.Chmod(lastJobsUpdateTimeFile, 0644)
+	err = os.Chmod(c.LastUpdateTimeStampFile, 0644)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Check content of last update time file. It should change
-	if timeString, err := os.ReadFile(lastJobsUpdateTimeFile); string(timeString) != "2023-12-21T00:00:00" {
+	if timeString, err := os.ReadFile(c.LastUpdateTimeStampFile); string(timeString) != "2023-12-21T00:00:00" {
 		t.Errorf(
 			"Last update time string test failed. Expected %s got %s %s",
 			"2023-12-21T00:00:00",
@@ -182,27 +170,20 @@ func TestNewJobStatsDB(t *testing.T) {
 	}
 
 	// Remove last update time file
-	err = os.Remove(lastJobsUpdateTimeFile)
+	err = os.Remove(c.LastUpdateTimeStampFile)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Make again a new jobstats DB with new lastUpdateTime
-	_, err = NewJobStatsDB(
-		log.NewNopLogger(),
-		jobstatDBPath,
-		jobstatDBTable,
-		7,
-		"2023-12-22",
-		lastJobsUpdateTimeFile,
-		newMockScheduler,
-	)
+	c.LastUpdateTimeString = "2023-12-22"
+	_, err = NewJobStatsDB(c)
 	if err != nil {
 		t.Errorf("Failed to create new jobstatsDB struct due to %s", err)
 	}
 
 	// Check content of last update time file. It should change
-	if timeString, err := os.ReadFile(lastJobsUpdateTimeFile); string(timeString) != "2023-12-22T00:00:00" {
+	if timeString, err := os.ReadFile(c.LastUpdateTimeStampFile); string(timeString) != "2023-12-22T00:00:00" {
 		t.Errorf(
 			"Last update time string test failed. Expected %s got %s %s",
 			"2023-12-22T00:00:00",
@@ -214,18 +195,10 @@ func TestNewJobStatsDB(t *testing.T) {
 
 func TestJobStatsDBLock(t *testing.T) {
 	tmpDir := t.TempDir()
-	_, jobstatDBPath, jobstatDBTable, lastJobsUpdateTimeFile := prepareMockConfig(tmpDir)
+	c := prepareMockConfig(tmpDir)
 
 	// Make new jobstats DB
-	j, err := NewJobStatsDB(
-		log.NewNopLogger(),
-		jobstatDBPath,
-		jobstatDBTable,
-		7,
-		"2023-12-20",
-		lastJobsUpdateTimeFile,
-		newMockScheduler,
-	)
+	j, err := NewJobStatsDB(c)
 	if err != nil {
 		t.Errorf("Failed to create new jobstatsDB struct due to %s", err)
 	}
@@ -249,18 +222,10 @@ func TestJobStatsDBLock(t *testing.T) {
 
 func TestJobStatsDBVacuum(t *testing.T) {
 	tmpDir := t.TempDir()
-	_, jobstatDBPath, jobstatDBTable, lastJobsUpdateTimeFile := prepareMockConfig(tmpDir)
+	c := prepareMockConfig(tmpDir)
 
 	// Make new jobstats DB
-	j, err := NewJobStatsDB(
-		log.NewNopLogger(),
-		jobstatDBPath,
-		jobstatDBTable,
-		7,
-		"2023-12-20",
-		lastJobsUpdateTimeFile,
-		newMockScheduler,
-	)
+	j, err := NewJobStatsDB(c)
 	if err != nil {
 		t.Errorf("Failed to create new jobstatsDB struct due to %s", err)
 	}
@@ -278,24 +243,16 @@ func TestJobStatsDBVacuum(t *testing.T) {
 func TestJobStatsDeleteOldJobs(t *testing.T) {
 	tmpDir := t.TempDir()
 	jobId := "1111"
-	_, jobstatDBPath, jobstatDBTable, lastJobsUpdateTimeFile := prepareMockConfig(tmpDir)
+	c := prepareMockConfig(tmpDir)
 
 	// Make new jobstats DB
-	j, err := NewJobStatsDB(
-		log.NewNopLogger(),
-		jobstatDBPath,
-		jobstatDBTable,
-		7,
-		"2023-12-20",
-		lastJobsUpdateTimeFile,
-		newMockScheduler,
-	)
+	j, err := NewJobStatsDB(c)
 	if err != nil {
 		t.Errorf("Failed to create new jobstatsDB struct due to %s", err)
 	}
 
 	// Add new row that should be deleted
-	jobs := []BatchJob{
+	jobs := []base.BatchJob{
 		{
 			Jobid: jobId,
 			Submit: time.Now().
@@ -319,7 +276,7 @@ func TestJobStatsDeleteOldJobs(t *testing.T) {
 
 	// Query for deleted job
 	result, err := j.db.Prepare(
-		fmt.Sprintf("SELECT COUNT(Jobid) FROM %s WHERE Jobid = ?;", jobstatDBTable),
+		fmt.Sprintf("SELECT COUNT(Jobid) FROM %s WHERE Jobid = ?;", c.JobstatsDBTable),
 	)
 	if err != nil {
 		t.Errorf("Failed to prepare SQL statement")

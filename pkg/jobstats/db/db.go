@@ -1,4 +1,4 @@
-package jobstats
+package db
 
 import (
 	"database/sql"
@@ -10,8 +10,35 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/base"
+	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/helper"
+	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/schedulers"
 	_ "github.com/mattn/go-sqlite3"
 )
+
+// DB config
+type Config struct {
+	Logger                  log.Logger
+	JobstatsDBPath          string
+	JobstatsDBTable         string
+	RetentionPeriod         int
+	LastUpdateTimeString    string
+	LastUpdateTimeStampFile string
+	BatchScheduler          func(log.Logger) (*schedulers.BatchScheduler, error)
+}
+
+// job stats DB struct
+type jobStatsDB struct {
+	logger                 log.Logger
+	db                     *sql.DB
+	scheduler              *schedulers.BatchScheduler
+	jobstatDBPath          string
+	jobstatDBTable         string
+	retentionPeriod        int
+	lastJobsUpdateTime     time.Time
+	lastDBVacuumTime       time.Time
+	lastJobsUpdateTimeFile string
+}
 
 var (
 	dateFormat = "2006-01-02T15:04:05"
@@ -26,7 +53,7 @@ var (
 		`CREATE INDEX IF NOT EXISTS i1 ON %s (Usr,Account,Start);`,
 		`CREATE INDEX IF NOT EXISTS i2 ON %s (Usr,Jobuuid);`,
 	}
-	allFields = GetStructFieldName(BatchJob{})
+	allFields = helper.GetStructFieldName(base.BatchJob{})
 )
 
 // Write timestamp to a file
@@ -136,48 +163,40 @@ func setupDB(dbFilePath string, dbTableName string, logger log.Logger) (*sql.DB,
 }
 
 // Make new JobStatsDB struct
-func NewJobStatsDB(
-	logger log.Logger,
-	jobstatDBPath string,
-	jobstatDBTable string,
-	retentionPeriod int,
-	lastJobsUpdateTimeString string,
-	lastJobsUpdateTimeFile string,
-	newBatchScheduler func(log.Logger) (*BatchScheduler, error),
-) (*jobStatsDB, error) {
+func NewJobStatsDB(c *Config) (*jobStatsDB, error) {
 	// Emit debug logs
-	level.Debug(logger).Log(
+	level.Debug(c.Logger).Log(
 		"msg", "DB config:",
-		"db.path", jobstatDBPath,
-		"db.table", jobstatDBTable,
-		"data.retention.period", retentionPeriod,
-		"data.last.update.time", lastJobsUpdateTimeString,
-		"data.lasttimestamp.file", lastJobsUpdateTimeFile,
+		"db.path", c.JobstatsDBPath,
+		"db.table", c.JobstatsDBTable,
+		"data.retention.period", c.RetentionPeriod,
+		"data.last.update.time", c.LastUpdateTimeString,
+		"data.last.update.timestamp.file", c.LastUpdateTimeStampFile,
 	)
 
 	// Check if data path exists and attempt to create if it does not exist
 	var lastJobsUpdateTime time.Time
 	var err error
-	dataPath := filepath.Dir(jobstatDBPath)
+	dataPath := filepath.Dir(c.JobstatsDBPath)
 	if _, err := os.Stat(dataPath); err != nil {
-		level.Info(logger).Log("msg", "Data path directory does not exist. Creating...", "path", dataPath)
+		level.Info(c.Logger).Log("msg", "Data path directory does not exist. Creating...", "path", dataPath)
 		if err := os.Mkdir(dataPath, 0750); err != nil {
-			level.Error(logger).Log("msg", "Could not create data path directory", "path", dataPath, "err", err)
+			level.Error(c.Logger).Log("msg", "Could not create data path directory", "path", dataPath, "err", err)
 			return nil, err
 		}
 		goto updatetime
 	} else {
 		// If data directory exists, try to read lastJobsUpdateTimeFile
-		if _, err := os.Stat(lastJobsUpdateTimeFile); err == nil {
-			lastUpdateTimeString, err := os.ReadFile(lastJobsUpdateTimeFile)
+		if _, err := os.Stat(c.LastUpdateTimeStampFile); err == nil {
+			lastUpdateTimeString, err := os.ReadFile(c.LastUpdateTimeStampFile)
 			if err != nil {
-				level.Error(logger).Log("msg", "Failed to read lastjobsupdatetime file", "err", err)
+				level.Error(c.Logger).Log("msg", "Failed to read lastjobsupdatetime file", "err", err)
 				goto updatetime
 			} else {
 				// Trim any spaces and new lines
 				lastJobsUpdateTime, err = time.Parse(dateFormat, strings.TrimSuffix(strings.TrimSpace(string(lastUpdateTimeString)), "\n"))
 				if err != nil {
-					level.Error(logger).Log("msg", "Failed to parse time string in lastjobsupdatetime file", "time", lastUpdateTimeString, "err", err)
+					level.Error(c.Logger).Log("msg", "Failed to parse time string in lastjobsupdatetime file", "time", lastUpdateTimeString, "err", err)
 					goto updatetime
 				}
 			}
@@ -188,39 +207,39 @@ func NewJobStatsDB(
 	}
 
 updatetime:
-	lastJobsUpdateTime, err = time.Parse("2006-01-02", lastJobsUpdateTimeString)
+	lastJobsUpdateTime, err = time.Parse("2006-01-02", c.LastUpdateTimeString)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to parse time string", "time", lastJobsUpdateTimeString, "err", err)
+		level.Error(c.Logger).Log("msg", "Failed to parse time string", "time", c.LastUpdateTimeString, "err", err)
 		return nil, err
 	}
 
 	// Write to file for persistence in case of restarts
-	writeTimeStampToFile(lastJobsUpdateTimeFile, lastJobsUpdateTime, logger)
+	writeTimeStampToFile(c.LastUpdateTimeStampFile, lastJobsUpdateTime, c.Logger)
 
 setup:
 	// Setup scheduler struct that retrieves job data
-	scheduler, err := newBatchScheduler(logger)
+	scheduler, err := c.BatchScheduler(c.Logger)
 	if err != nil {
-		level.Error(logger).Log("msg", "Batch scheduler setup failed", "err", err)
+		level.Error(c.Logger).Log("msg", "Batch scheduler setup failed", "err", err)
 		return nil, err
 	}
 
 	// Setup DB
-	db, err := setupDB(jobstatDBPath, jobstatDBTable, logger)
+	db, err := setupDB(c.JobstatsDBPath, c.JobstatsDBTable, c.Logger)
 	if err != nil {
-		level.Error(logger).Log("msg", "DB setup failed", "err", err)
+		level.Error(c.Logger).Log("msg", "DB setup failed", "err", err)
 		return nil, err
 	}
 	return &jobStatsDB{
-		logger:                 logger,
+		logger:                 c.Logger,
 		db:                     db,
 		scheduler:              scheduler,
-		jobstatDBPath:          jobstatDBPath,
-		jobstatDBTable:         jobstatDBTable,
-		retentionPeriod:        retentionPeriod,
+		jobstatDBPath:          c.JobstatsDBPath,
+		jobstatDBTable:         c.JobstatsDBTable,
+		retentionPeriod:        c.RetentionPeriod,
 		lastJobsUpdateTime:     lastJobsUpdateTime,
 		lastDBVacuumTime:       time.Now(),
-		lastJobsUpdateTimeFile: lastJobsUpdateTimeFile,
+		lastJobsUpdateTimeFile: c.LastUpdateTimeStampFile,
 	}, nil
 }
 
@@ -305,7 +324,7 @@ func (j *jobStatsDB) Collect() error {
 // Get job stats and insert them into DB
 func (j *jobStatsDB) getJobStats(startTime, endTime time.Time) error {
 	// Retrieve jobs from unerlying batch scheduler
-	jobs, err := j.scheduler.GetJobs(startTime, endTime)
+	jobs, err := j.scheduler.Fetch(startTime, endTime)
 	if err != nil {
 		level.Error(j.logger).Log("msg", "Failed to retrieve jobs from batch scheduler", "err", err)
 		return err
@@ -415,10 +434,10 @@ func (j *jobStatsDB) deleteOldJobs(tx *sql.Tx) error {
 }
 
 // Insert job stat into DB
-func (j *jobStatsDB) insertJobsInDB(statement *sql.Stmt, jobStats []BatchJob) {
+func (j *jobStatsDB) insertJobsInDB(statement *sql.Stmt, jobStats []base.BatchJob) {
 	for _, jobStat := range jobStats {
 		// Empty job
-		if jobStat == (BatchJob{}) {
+		if jobStat == (base.BatchJob{}) {
 			continue
 		}
 		// level.Debug(j.logger).Log("msg", "Inserting job", "jobid", jobStat.Jobid)

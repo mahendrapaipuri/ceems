@@ -1,4 +1,4 @@
-package jobstats
+package helper
 
 import (
 	"reflect"
