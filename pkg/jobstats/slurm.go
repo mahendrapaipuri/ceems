@@ -99,10 +99,10 @@ sudomode:
 func NewSlurmScheduler(logger log.Logger) (Batch, error) {
 	execMode, err := preflightChecks(logger)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create Slurm batch scheduler for retreiving jobs.", "err", err)
+		level.Error(logger).Log("msg", "Failed to setup Slurm batch scheduler for retreiving jobs", "err", err)
 		return nil, err
 	}
-	level.Info(logger).Log("msg", "Jobs from slurm batch scheduler will be retrieved.")
+	level.Info(logger).Log("msg", "Jobs from slurm batch scheduler will be retrieved")
 	return &slurmScheduler{
 		logger:          logger,
 		execMode:        execMode,
@@ -115,16 +115,16 @@ func (s *slurmScheduler) GetJobs(start time.Time, end time.Time) ([]BatchJob, er
 	startTime := start.Format(s.slurmDateFormat)
 	endTime := end.Format(s.slurmDateFormat)
 
-	level.Info(s.logger).Log("msg", "Retrieving Slurm jobs", "start", startTime, "end", endTime)
-
+	// Execute sacct command between start and end times
 	sacctOutput, err := runSacctCmd(s.execMode, startTime, endTime, s.logger)
 	if err != nil {
 		level.Error(s.logger).Log("msg", "Failed to execute SLURM sacct command", "err", err)
 		return []BatchJob{}, err
 	}
 
+	// Parse sacct output and create BatchJob structs slice
 	jobs, numJobs := parseSacctCmdOutput(string(sacctOutput), *slurmWalltimeCutoff, s.logger)
-	level.Info(s.logger).Log("msg", "Number of Slurm jobs.", "njobs", numJobs)
+	level.Info(s.logger).Log("msg", "Retrieved Slurm jobs", "start", startTime, "end", endTime, "njobs", numJobs)
 	return jobs, nil
 }
 

@@ -162,7 +162,7 @@ func NewJobStatsDB(
 	if _, err := os.Stat(dataPath); err != nil {
 		level.Info(logger).Log("msg", "Data path directory does not exist. Creating...", "path", dataPath)
 		if err := os.Mkdir(dataPath, 0750); err != nil {
-			level.Error(logger).Log("msg", "Could not create data path directory.", "path", dataPath, "err", err)
+			level.Error(logger).Log("msg", "Could not create data path directory", "path", dataPath, "err", err)
 			return nil, err
 		}
 		goto updatetime
@@ -174,7 +174,8 @@ func NewJobStatsDB(
 				level.Error(logger).Log("msg", "Failed to read lastjobsupdatetime file", "err", err)
 				goto updatetime
 			} else {
-				lastJobsUpdateTime, err = time.Parse(dateFormat, string(lastUpdateTimeString))
+				// Trim any spaces and new lines
+				lastJobsUpdateTime, err = time.Parse(dateFormat, strings.TrimSuffix(strings.TrimSpace(string(lastUpdateTimeString)), "\n"))
 				if err != nil {
 					level.Error(logger).Log("msg", "Failed to parse time string in lastjobsupdatetime file", "time", lastUpdateTimeString, "err", err)
 					goto updatetime
@@ -189,7 +190,7 @@ func NewJobStatsDB(
 updatetime:
 	lastJobsUpdateTime, err = time.Parse("2006-01-02", lastJobsUpdateTimeString)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to parse time string.", "time", lastJobsUpdateTimeString, "err", err)
+		level.Error(logger).Log("msg", "Failed to parse time string", "time", lastJobsUpdateTimeString, "err", err)
 		return nil, err
 	}
 
@@ -340,18 +341,18 @@ func (j *jobStatsDB) getJobStats(startTime, endTime time.Time) error {
 	}
 
 	// Insert data into DB
-	level.Info(j.logger).Log("msg", "Inserting jobs into DB")
+	level.Debug(j.logger).Log("msg", "Inserting jobs into DB")
 	j.insertJobsInDB(stmt, jobs)
-	level.Info(j.logger).Log("msg", "Finished inserting jobs into DB")
+	level.Debug(j.logger).Log("msg", "Finished inserting jobs into DB")
 
 	// Delete older entries
-	level.Info(j.logger).Log("msg", "Deleting old jobs")
+	level.Debug(j.logger).Log("msg", "Deleting old jobs")
 	err = j.deleteOldJobs(tx)
 	if err != nil {
 		level.Error(j.logger).Log("msg", "Failed to delete old job entries", "err", err)
 		return err
 	}
-	level.Info(j.logger).Log("msg", "Finished deleting old jobs in DB")
+	level.Debug(j.logger).Log("msg", "Finished deleting old jobs in DB")
 
 	// Commit changes
 	err = tx.Commit()
@@ -383,7 +384,7 @@ func (j *jobStatsDB) vacuumDB() error {
 	nextVacuumTime := j.lastDBVacuumTime.Add(time.Duration(168) * time.Hour)
 
 	// Check if we are on Monday at 02hr and **after** nextVacuumTime
-	if weekday != "Monday" && hours != 2 && time.Now().Compare(nextVacuumTime) == -1 {
+	if weekday != "Monday" || hours != 02 || time.Now().Compare(nextVacuumTime) == -1 {
 		return nil
 	}
 
