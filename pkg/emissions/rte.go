@@ -17,8 +17,8 @@ import (
 )
 
 const (
-	opendatasoftAPIBaseUrl = "https://odre.opendatasoft.com"
-	opendatasoftAPIPath    = `%s/api/records/1.0/search/?%s`
+	opendatasoftAPIBaseUrl = "https://reseaux-energies-rte.opendatasoft.com"
+	opendatasoftAPIPath    = `%s/api/explore/v2.1/catalog/datasets/eco2mix-national-tr/records?%s`
 	rteEmissionsSource     = "rte"
 )
 
@@ -87,23 +87,26 @@ func (s *rteSource) Update() (float64, error) {
 func makeRTEAPIRequest(ctx context.Context, logger log.Logger) (float64, error) {
 	// Make query string
 	params := url.Values{}
-	params.Add("dataset", "eco2mix-national-tr")
-	params.Add("facet", "nature")
-	params.Add("facet", "date_heure")
-	params.Add("start", "0")
-	params.Add("rows", "1")
-	params.Add("sort", "date_heure")
+	params.Add("select", "taux_co2,date_heure")
+	params.Add("order_by", "date_heure desc")
+	params.Add("offset", "0")
+	params.Add("limit", "1")
+	params.Add("timezone", "Europe/Paris")
+	params.Add("include_links", "false")
+	params.Add("include_app_metas", "false")
 	params.Add(
-		"q",
+		"where",
 		fmt.Sprintf(
-			"date_heure:[%s TO #now()] AND NOT #null(taux_co2)",
-			time.Now().Format("2006-01-02"),
+			"date_heure in [date'%s' TO now()] and taux_co2 is not null",
+			time.Now().Add(-30*time.Minute).Format("2006-01-02"),
 		),
 	)
 	queryString := params.Encode()
 
 	// Create a context with timeout to ensure we dont have deadlocks
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	// Dont use a long timeout. If one source takes too long, whole scrape will be
+	// marked as fail when there is a timeout
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
@@ -114,6 +117,11 @@ func makeRTEAPIRequest(ctx context.Context, logger log.Logger) (float64, error) 
 		return float64(-1), err
 	}
 
+	// tlsConfig := &http.Transport{
+    //     TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+    // }
+    // client := &http.Client{Transport: tlsConfig}
+	// resp, err := client.Do(req)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to make HTTP request for RTE source", "err", err)
@@ -126,16 +134,16 @@ func makeRTEAPIRequest(ctx context.Context, logger log.Logger) (float64, error) 
 		return float64(-1), err
 	}
 
-	var data nationalRealTimeResponse
+	var data nationalRealTimeResponseV2
 	err = json.Unmarshal(body, &data)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to unmarshal HTTP response body for RTE source", "err", err)
 		return float64(-1), err
 	}
 
-	var fields []nationalRealTimeFields
-	for _, r := range data.Records {
-		fields = append(fields, r.Fields)
+	var fields []nationalRealTimeFieldsV2
+	for _, r := range data.Results {
+		fields = append(fields, r)
 	}
 	return float64(fields[0].TauxCo2), nil
 }

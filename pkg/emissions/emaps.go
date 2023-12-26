@@ -99,7 +99,9 @@ func makeEMapsAPIRequest(apiToken string, ctx context.Context, logger log.Logger
 	queryString := params.Encode()
 
 	// Create a context with timeout to ensure we dont have deadlocks
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	// Dont use a long timeout. If one source takes too long, whole scrape will be
+	// marked as fail when there is a timeout
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
