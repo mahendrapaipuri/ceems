@@ -118,9 +118,9 @@ func makeRTEAPIRequest(ctx context.Context, logger log.Logger) (float64, error) 
 	}
 
 	// tlsConfig := &http.Transport{
-    //     TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-    // }
-    // client := &http.Client{Transport: tlsConfig}
+	//     TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	// }
+	// client := &http.Client{Transport: tlsConfig}
 	// resp, err := client.Do(req)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
