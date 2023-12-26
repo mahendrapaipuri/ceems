@@ -68,7 +68,7 @@ func (s *emapsSource) Update() (float64, error) {
 	if time.Now().Unix()-s.lastRequestTime > s.cacheDuration || s.lastEmissionFactor == -1 {
 		currentEmissionFactor, err := s.fetch(s.apiToken, s.ctx, s.logger)
 		if err != nil {
-			level.Warn(s.logger).Log("msg", "Failed to retrieve emission factor from Electricity maps source", "err", err)
+			level.Warn(s.logger).Log("msg", "Failed to fetch emission factor from Electricity maps source", "err", err)
 
 			// Check if last emission factor is valid and if it is use the same for current
 			if s.lastEmissionFactor > -1 {

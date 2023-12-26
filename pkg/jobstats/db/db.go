@@ -326,7 +326,7 @@ func (j *jobStatsDB) getJobStats(startTime, endTime time.Time) error {
 	// Retrieve jobs from unerlying batch scheduler
 	jobs, err := j.scheduler.Fetch(startTime, endTime)
 	if err != nil {
-		level.Error(j.logger).Log("msg", "Failed to retrieve jobs from batch scheduler", "err", err)
+		level.Error(j.logger).Log("msg", "Failed to fetch jobs from batch scheduler", "err", err)
 		return err
 	}
 

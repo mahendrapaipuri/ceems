@@ -54,7 +54,7 @@ func TestCgroupsV2SlurmJobMetrics(t *testing.T) {
 		batch:           "slurm",
 		err:             false}
 	if err != nil {
-		t.Fatalf("Cannot retrieve data from getJobsMetrics function: %v ", err)
+		t.Fatalf("Cannot fetch data from getJobsMetrics function: %v ", err)
 	}
 	if !reflect.DeepEqual(metrics["1009248"], expectedSlurmMetrics) {
 		t.Fatalf("Expected metrics data is %+v: \nGot %+v", expectedSlurmMetrics, metrics)
@@ -102,7 +102,7 @@ func TestCgroupsV2WithProcFsSlurmJobMetrics(t *testing.T) {
 		batch:           "slurm",
 		err:             false}
 	if err != nil {
-		t.Fatalf("Cannot retrieve data from getJobsMetrics function: %v ", err)
+		t.Fatalf("Cannot fetch data from getJobsMetrics function: %v ", err)
 	}
 	if !reflect.DeepEqual(metrics["1009248"], expectedSlurmMetrics) {
 		t.Fatalf("Expected metrics data is %+v: \nGot %+v", expectedSlurmMetrics, metrics)
@@ -150,7 +150,7 @@ func TestCgroupsV1SlurmJobMetrics(t *testing.T) {
 		batch:           "slurm",
 		err:             false}
 	if err != nil {
-		t.Fatalf("Cannot retrieve data from getJobsMetrics function: %v ", err)
+		t.Fatalf("Cannot fetch data from getJobsMetrics function: %v ", err)
 	}
 	if !reflect.DeepEqual(metrics["1009248"], expectedSlurmMetrics) {
 		t.Fatalf("Expected metrics data is %+v: \nGot %+v", expectedSlurmMetrics, metrics)

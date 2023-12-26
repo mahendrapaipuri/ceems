@@ -64,7 +64,7 @@ func (e EmissionSources) Collect() map[string]float64 {
 		go func(name string, s Source) {
 			factor, err := s.Update()
 			if err != nil {
-				level.Error(e.logger).Log("msg", "Failed to retrieve emission factor", "source", name, "err", err)
+				level.Error(e.logger).Log("msg", "Failed to fetch emission factor", "source", name, "err", err)
 			}
 			emissionsLock.Lock()
 			emissionFactors[name] = factor

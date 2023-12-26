@@ -28,7 +28,7 @@ func TestRaplMetrics(t *testing.T) {
 	for iz, rz := range zones {
 		microJoules, err := rz.GetEnergyMicrojoules()
 		if err != nil {
-			t.Fatalf("Cannot retrieve energy data from GetEnergyMicrojoules function: %v ", err)
+			t.Fatalf("Cannot fetch energy data from GetEnergyMicrojoules function: %v ", err)
 		}
 		if expectedEnergyMetrics[iz] != float64(microJoules) {
 			t.Fatalf(

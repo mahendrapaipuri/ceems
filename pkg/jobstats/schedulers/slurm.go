@@ -126,7 +126,7 @@ func (s *slurmScheduler) Fetch(start time.Time, end time.Time) ([]base.BatchJob,
 
 	// Parse sacct output and create BatchJob structs slice
 	jobs, numJobs := parseSacctCmdOutput(string(sacctOutput), *slurmWalltimeCutoff, s.logger)
-	level.Info(s.logger).Log("msg", "Retrieved Slurm jobs", "start", startTime, "end", endTime, "njobs", numJobs)
+	level.Info(s.logger).Log("msg", "Slurm jobs fetched", "start", startTime, "end", endTime, "njobs", numJobs)
 	return jobs, nil
 }
 

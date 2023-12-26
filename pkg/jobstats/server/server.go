@@ -167,12 +167,12 @@ func (s *JobstatsServer) accounts(w http.ResponseWriter, r *http.Request) {
 	// Get all user accounts
 	accounts, err := s.Accounts(user, s.logger)
 	if err != nil {
-		level.Error(s.logger).Log("msg", "Failed to retrieve accounts", "user", user, "err", err)
+		level.Error(s.logger).Log("msg", "Failed to fetch accounts", "user", user, "err", err)
 		response = base.AccountsResponse{
 			Response: base.Response{
 				Status:    "error",
-				ErrorType: "Data error",
-				Error:     "Failed to retrieve user accounts",
+				ErrorType: "Internal server error",
+				Error:     "Failed to fetch user accounts",
 			},
 			Data: []base.Account{},
 		}
@@ -244,12 +244,12 @@ func (s *JobstatsServer) jobs(w http.ResponseWriter, r *http.Request) {
 	// Get all user jobs in the given time window
 	jobs, err := s.Jobs(user, accounts, from, to, s.logger)
 	if err != nil {
-		level.Error(s.logger).Log("msg", "Failed to retrieve jobs", "user", user, "err", err)
+		level.Error(s.logger).Log("msg", "Failed to fetch jobs", "user", user, "err", err)
 		response = base.JobsResponse{
 			Response: base.Response{
 				Status:    "error",
-				ErrorType: "Data error",
-				Error:     "Failed to retrieve user jobs",
+				ErrorType: "Internal server error",
+				Error:     "Failed to fetch user jobs",
 			},
 			Data: []base.BatchJob{},
 		}

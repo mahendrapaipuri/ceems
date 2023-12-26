@@ -73,7 +73,7 @@ func (c *raplCollector) Update(ch chan<- prometheus.Metric) error {
 			level.Debug(c.logger).Log("msg", "Can't access powercap files", "err", err)
 			return ErrNoData
 		}
-		return fmt.Errorf("failed to retrieve rapl stats: %w", err)
+		return fmt.Errorf("failed to fetch rapl stats: %w", err)
 	}
 
 	for _, rz := range zones {
