@@ -42,6 +42,7 @@ type Device struct {
 type nvidiaGpuJobMapCollector struct {
 	devices       []Device
 	logger        log.Logger
+	hostname      string
 	gpuJobMapDesc *prometheus.Desc
 }
 
@@ -116,16 +117,28 @@ func getAllDevices(logger log.Logger) ([]Device, error) {
 
 // NewNvidiaGpuJobMapCollector returns a new Collector exposing batch jobs to nVIDIA GPU ordinals mapping.
 func NewNvidiaGpuJobMapCollector(logger log.Logger) (Collector, error) {
+	var hostname string
+	var err error
+
+	// Get hostname
+	if !*emptyHostnameLabel {
+		hostname, err = os.Hostname()
+		if err != nil {
+			level.Error(logger).Log("msg", "Failed to get hostname", "err", err)
+		}
+	}
+
 	allDevices, _ := getAllDevices(logger)
 	gpuJobMapDesc := prometheus.NewDesc(
 		prometheus.BuildFQName(Namespace, nvidiaGpuJobMapCollectorSubsystem, "jobid"),
 		"Batch Job ID of current nVIDIA GPU",
-		[]string{"uuid"}, nil,
+		[]string{"hostname", "uuid", "UUID"}, nil,
 	)
 
 	collector := nvidiaGpuJobMapCollector{
 		devices:       allDevices,
 		logger:        logger,
+		hostname:      hostname,
 		gpuJobMapDesc: gpuJobMapDesc,
 	}
 	return &collector, nil
@@ -135,7 +148,7 @@ func NewNvidiaGpuJobMapCollector(logger log.Logger) (Collector, error) {
 func (c *nvidiaGpuJobMapCollector) Update(ch chan<- prometheus.Metric) error {
 	gpuJobMapper, _ := c.getJobId()
 	for _, dev := range c.devices {
-		ch <- prometheus.MustNewConstMetric(c.gpuJobMapDesc, prometheus.GaugeValue, gpuJobMapper[dev.uuid], dev.uuid)
+		ch <- prometheus.MustNewConstMetric(c.gpuJobMapDesc, prometheus.GaugeValue, gpuJobMapper[dev.uuid], c.hostname, dev.uuid, dev.uuid)
 	}
 	return nil
 }

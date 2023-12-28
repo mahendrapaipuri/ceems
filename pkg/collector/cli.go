@@ -36,6 +36,12 @@ var BatchJobExporterApp = *kingpin.New(
 	"Prometheus Exporter to export batch job metrics.",
 )
 
+// Empty hostname flag (Used only for testing)
+var emptyHostnameLabel = BatchJobExporterApp.Flag(
+	"collector.empty.hostname.label",
+	"Use empty hostname in labels. Only for testing. (default is disabled)",
+).Hidden().Default("false").Bool()
+
 // Create a new BatchJobExporter struct
 func NewBatchJobExporter() (*BatchJobExporter, error) {
 	return &BatchJobExporter{

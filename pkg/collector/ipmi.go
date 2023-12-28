@@ -8,6 +8,7 @@ package collector
 
 import (
 	"fmt"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -22,6 +23,7 @@ const ipmiCollectorSubsystem = "ipmi_dcmi"
 
 type impiCollector struct {
 	logger          log.Logger
+	hostname        string
 	execMode        string
 	wattsMetricDesc *prometheus.Desc
 }
@@ -45,13 +47,22 @@ func init() {
 
 // NewIPMICollector returns a new Collector exposing IMPI DCMI power metrics.
 func NewIPMICollector(logger log.Logger) (Collector, error) {
+	var execMode string
+	var hostname string
+	var err error
+
+	// Get hostname
+	if !*emptyHostnameLabel {
+		hostname, err = os.Hostname()
+		if err != nil {
+			level.Error(logger).Log("msg", "Failed to get hostname", "err", err)
+		}
+	}
 
 	wattsMetricDesc := prometheus.NewDesc(
 		prometheus.BuildFQName(Namespace, ipmiCollectorSubsystem, "watts_total"),
-		"Current Power consumption in watts", []string{}, nil,
+		"Current Power consumption in watts", []string{"hostname"}, nil,
 	)
-
-	var execMode string
 
 	// Split command
 	cmdSlice := strings.Split(*ipmiDcmiCmd, " ")
@@ -81,6 +92,7 @@ func NewIPMICollector(logger log.Logger) (Collector, error) {
 outside:
 	collector := impiCollector{
 		logger:          logger,
+		hostname:        hostname,
 		execMode:        execMode,
 		wattsMetricDesc: wattsMetricDesc,
 	}
@@ -134,7 +146,7 @@ func (c *impiCollector) Update(ch chan<- prometheus.Metric) error {
 
 	// Returned value negative == Power Measurement is not avail
 	if currentPowerConsumption > -1 {
-		ch <- prometheus.MustNewConstMetric(c.wattsMetricDesc, prometheus.CounterValue, float64(currentPowerConsumption))
+		ch <- prometheus.MustNewConstMetric(c.wattsMetricDesc, prometheus.CounterValue, float64(currentPowerConsumption), c.hostname)
 	}
 	return nil
 }
