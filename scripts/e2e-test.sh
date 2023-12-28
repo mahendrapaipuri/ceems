@@ -109,13 +109,14 @@ then
       exit 1
   fi
 
-  PATH=$PWD/pkg/collector/fixtures:$PATH ./bin/batchjob_exporter \
+  ./bin/batchjob_exporter \
     --path.sysfs="pkg/collector/fixtures/sys" \
     --path.cgroupfs="pkg/collector/fixtures/sys/fs/cgroup" \
     --collector.slurm.create.unique.jobids \
     --collector.slurm.job.props.path="pkg/collector/fixtures/slurmjobprops" \
     --collector.ipmi.dcmi.cmd="pkg/collector/fixtures/ipmi-dcmi-wrapper.sh" \
     --collector.nvidia_gpu \
+    --collector.nvidia.smi.path="pkg/collector/fixtures/nvidia-smi" \
     --collector.nvidia.gpu.job.map.path="pkg/collector/fixtures/gpujobmap" \
     --web.listen-address "127.0.0.1:${port}" \
     --log.level="debug" > "${logfile}" 2>&1 &

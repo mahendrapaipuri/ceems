@@ -22,6 +22,10 @@ const nvidiaGpuJobMapCollectorSubsystem = "nvidia_gpu"
 
 var (
 	jobMapLock  = sync.RWMutex{}
+	nvidiaSmiPath = BatchJobExporterApp.Flag(
+		"collector.nvidia.smi.path",
+		"Absolute path to nvidia-smi executable.",
+	).Default("/usr/bin/nvidia-smi").String()
 	gpuStatPath = BatchJobExporterApp.Flag(
 		"collector.nvidia.gpu.job.map.path",
 		"Path to file that maps GPU ordinals to job IDs.",
@@ -62,8 +66,15 @@ func init() {
 //
 // NOTE: Hoping this command returns MIG devices too
 func getAllDevices(logger log.Logger) ([]Device, error) {
+	// Check if nvidia-smi binary exists
+	if _, err := os.Stat(*nvidiaSmiPath); err != nil {
+		level.Error(logger).Log("msg", "Failed to open nvidia-smi executable", "path", *nvidiaSmiPath, "err", err)
+		return nil, err
+	}
+
+	// Execute nvidia-smi command to get available GPUs
 	args := []string{"--query-gpu=index,name,uuid", "--format=csv"}
-	nvidiaSmiOutput, err := helpers.Execute("nvidia-smi", args, logger)
+	nvidiaSmiOutput, err := helpers.Execute(*nvidiaSmiPath, args, logger)
 	if err != nil {
 		level.Error(logger).
 			Log("msg", "nvidia-smi command to get list of devices failed", "err", err)
@@ -73,8 +84,8 @@ func getAllDevices(logger log.Logger) ([]Device, error) {
 	// Get all devices
 	allDevices := []Device{}
 	for _, line := range strings.Split(string(nvidiaSmiOutput), "\n") {
-		// Header line
-		if strings.HasPrefix(line, "index") {
+		// Header line, empty line and newlines are ignored
+		if line == "" || line == "\n" || strings.HasPrefix(line, "index") {
 			continue
 		}
 
@@ -196,7 +207,7 @@ func (c *nvidiaGpuJobMapCollector) getJobId() (map[string]float64, error) {
 					// and SLURM_JOB_ID
 					for _, env := range environments {
 						// Check both SLURM_SETP_GPUS and SLURM_JOB_GPUS vars
-						if strings.Contains(env, "SLURM_STEP_GPUS") || strings.Contains(env, "SLURM_JOBS_GPUS") {
+						if strings.Contains(env, "SLURM_STEP_GPUS") || strings.Contains(env, "SLURM_JOB_GPUS") {
 							gpuIndices = strings.Split(strings.Split(env, "=")[1], ",")
 						}
 						if strings.Contains(env, "SLURM_JOB_ID") {
@@ -219,38 +230,6 @@ func (c *nvidiaGpuJobMapCollector) getJobId() (map[string]float64, error) {
 					wg.Done()
 
 				}(proc)
-				// environments, err := proc.Environ()
-				// if err != nil {
-				// 	continue
-				// }
-
-				// var gpuIndices []string
-				// var slurmJobId string = ""
-
-				// // Loop through all env vars and get SLURM_SETP_GPUS/SLURM_JOB_GPUS
-				// // and SLURM_JOB_ID
-				// for _, env := range environments {
-				// 	// Check both SLURM_SETP_GPUS and SLURM_JOB_GPUS vars and only when
-				// 	// gpuIndices is empty.
-				// 	// We dont want an empty env var to override already populated
-				// 	// gpuIndices slice
-				// 	if (strings.Contains(env, "SLURM_STEP_GPUS") || strings.Contains(env, "SLURM_JOBS_GPUS")) && len(gpuIndices) == 0 {
-				// 		gpuIndices = strings.Split(strings.Split(env, "=")[1], ",")
-				// 	}
-				// 	if strings.Contains(env, "SLURM_JOB_ID") {
-				// 		slurmJobId = strings.Split(env, "=")[1]
-				// 	}
-				// }
-
-				// // If gpuIndices has current GPU index, assign the jobID and break loop
-				// if slices.Contains(gpuIndices, dev.index) {
-				// 	jid, err := strconv.Atoi(slurmJobId)
-				// 	if err != nil {
-				// 		gpuJobMapper[dev.uuid] = float64(0)
-				// 	}
-				// 	gpuJobMapper[dev.uuid] = float64(jid)
-				// 	goto outside
-				// }
 			}
 
 			// Wait for all go routines
