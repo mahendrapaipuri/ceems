@@ -20,9 +20,9 @@ import (
 const raplCollectorSubsystem = "rapl"
 
 type raplCollector struct {
-	fs     sysfs.FS
-	logger log.Logger
-
+	fs               sysfs.FS
+	logger           log.Logger
+	hostname         string
 	joulesMetricDesc *prometheus.Desc
 }
 
@@ -39,8 +39,18 @@ var (
 
 // NewRaplCollector returns a new Collector exposing RAPL metrics.
 func NewRaplCollector(logger log.Logger) (Collector, error) {
-	fs, err := sysfs.NewFS(*sysPath)
+	var hostname string
+	var err error
 
+	// Get hostname
+	if !*emptyHostnameLabel {
+		hostname, err = os.Hostname()
+		if err != nil {
+			level.Error(logger).Log("msg", "Failed to get hostname", "err", err)
+		}
+	}
+
+	fs, err := sysfs.NewFS(*sysPath)
 	if err != nil {
 		return nil, err
 	}
@@ -48,12 +58,13 @@ func NewRaplCollector(logger log.Logger) (Collector, error) {
 	joulesMetricDesc := prometheus.NewDesc(
 		prometheus.BuildFQName(Namespace, raplCollectorSubsystem, "joules_total"),
 		"Current RAPL value in joules",
-		[]string{"index", "path", "rapl_zone"}, nil,
+		[]string{"hostname", "index", "path", "rapl_zone"}, nil,
 	)
 
 	collector := raplCollector{
 		fs:               fs,
 		logger:           logger,
+		hostname:         hostname,
 		joulesMetricDesc: joulesMetricDesc,
 	}
 	return &collector, nil
@@ -107,13 +118,13 @@ func (c *raplCollector) joulesMetric(z sysfs.RaplZone, v float64) prometheus.Met
 			fmt.Sprintf("%s_joules_total", SanitizeMetricName(z.Name)),
 		),
 		fmt.Sprintf("Current RAPL %s value in joules", z.Name),
-		[]string{"index", "path"}, nil,
+		[]string{"hostname", "index", "path"}, nil,
 	)
-
 	return prometheus.MustNewConstMetric(
 		descriptor,
 		prometheus.CounterValue,
 		v,
+		c.hostname,
 		index,
 		z.Path,
 	)
@@ -121,11 +132,11 @@ func (c *raplCollector) joulesMetric(z sysfs.RaplZone, v float64) prometheus.Met
 
 func (c *raplCollector) joulesMetricWithZoneLabel(z sysfs.RaplZone, v float64) prometheus.Metric {
 	index := strconv.Itoa(z.Index)
-
 	return prometheus.MustNewConstMetric(
 		c.joulesMetricDesc,
 		prometheus.CounterValue,
 		v,
+		c.hostname,
 		index,
 		z.Path,
 		z.Name,
