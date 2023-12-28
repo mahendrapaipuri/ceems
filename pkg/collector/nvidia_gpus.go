@@ -21,7 +21,7 @@ import (
 const nvidiaGpuJobMapCollectorSubsystem = "nvidia_gpu"
 
 var (
-	jobMapLock  = sync.RWMutex{}
+	jobMapLock    = sync.RWMutex{}
 	nvidiaSmiPath = BatchJobExporterApp.Flag(
 		"collector.nvidia.smi.path",
 		"Absolute path to nvidia-smi executable.",
