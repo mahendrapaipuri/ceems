@@ -20,7 +20,7 @@ var (
 	slurmUserGid int
 	macctPath    = base.BatchJobStatsServerApp.Flag(
 		"mock.acct.path",
-		"Absolute path to macct executable.",
+		"Absolute path to mock scheduler's accounting executable.",
 	).Default("/usr/local/bin/macct").String()
 )
 
@@ -35,7 +35,7 @@ func preflightChecks(logger log.Logger) error {
 }
 
 // NewMockScheduler returns a new MockScheduler that returns batch job stats
-func NewMockScheduler(logger log.Logger) (schedulers.Fetcher, error) {
+func NewMockScheduler(logger log.Logger) (schedulers.BatchJobFetcher, error) {
 	err := preflightChecks(logger)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create mock batch scheduler for retreiving jobs.", "err", err)

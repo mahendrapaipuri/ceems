@@ -12,9 +12,9 @@ import (
 	"github.com/go-kit/log/level"
 )
 
-const owidEmissionsSource = "owid"
+const owidEmissionsProvider = "owid"
 
-type owidSource struct {
+type owidProvider struct {
 	logger      log.Logger
 	countryCode string
 }
@@ -48,28 +48,28 @@ func init() {
 		}
 	}
 
-	// Register emissions source
-	RegisterSource(owidEmissionsSource, NewOWIDSource)
+	// Register emissions provider
+	RegisterProvider(owidEmissionsProvider, "OWID", NewOWIDProvider)
 }
 
-// NewOWIDSource returns a new Source that returns emission factor from OWID data
-func NewOWIDSource(ctx context.Context, logger log.Logger) (Source, error) {
+// NewOWIDProvider returns a new Provider that returns emission factor from OWID data
+func NewOWIDProvider(ctx context.Context, logger log.Logger) (Provider, error) {
 	// Retrieve context values
 	contextValues := ctx.Value(ContextKey{}).(ContextValues)
 	level.Info(logger).Log("msg", "Emission factor from OWID data will be reported.")
-	return &owidSource{
+	return &owidProvider{
 		logger:      logger,
 		countryCode: contextValues.CountryCodeAlpha3,
 	}, nil
 }
 
 // Get emission factor for a given country
-func (s *owidSource) Update() (float64, error) {
+func (s *owidProvider) Update() (float64, error) {
 	emissionFactor, ok := StaticEmissionData[s.countryCode]
 	if ok {
 		return float64(emissionFactor), nil
 	} else {
-		level.Error(s.logger).Log("msg", "Failed to retrieve data for OWID source", "err", "Country data not found")
+		level.Error(s.logger).Log("msg", "Failed to retrieve data for OWID provider", "err", "Country data not found")
 	}
 	return float64(-1), nil
 }

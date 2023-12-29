@@ -10,8 +10,8 @@ import (
 	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/base"
 )
 
-// Fetcher is the interface batch scheduler has to implement.
-type Fetcher interface {
+// BatchJobFetcher is the interface batch scheduler has to implement.
+type BatchJobFetcher interface {
 	// Fetch BatchJobs between start and end times
 	Fetch(start time.Time, end time.Time) ([]base.BatchJob, error)
 }
@@ -19,12 +19,12 @@ type Fetcher interface {
 // BatchScheduler implements the interface to collect
 // batch jobs from different batch schedulers.
 type BatchScheduler struct {
-	Scheduler Fetcher
+	Scheduler BatchJobFetcher
 	logger    log.Logger
 }
 
 var (
-	factories      = make(map[string]func(logger log.Logger) (Fetcher, error))
+	factories      = make(map[string]func(logger log.Logger) (BatchJobFetcher, error))
 	schedulerState = make(map[string]*bool)
 )
 
@@ -32,7 +32,7 @@ var (
 func RegisterBatch(
 	scheduler string,
 	isDefaultEnabled bool,
-	factory func(logger log.Logger) (Fetcher, error),
+	factory func(logger log.Logger) (BatchJobFetcher, error),
 ) {
 	var helpDefaultState string
 	if isDefaultEnabled {
@@ -54,7 +54,7 @@ func RegisterBatch(
 
 // NewBatchSchedulers creates a new BatchSchedulers
 func NewBatchScheduler(logger log.Logger) (*BatchScheduler, error) {
-	var scheduler Fetcher
+	var scheduler BatchJobFetcher
 	var err error
 	var factoryKeys []string
 

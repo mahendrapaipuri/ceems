@@ -23,8 +23,8 @@ func mockEMapsAPIFailRequest(token string, ctx context.Context, logger log.Logge
 	return float64(-1), fmt.Errorf("Failed API request")
 }
 
-func TestEMapsDataSource(t *testing.T) {
-	s := emapsSource{
+func TestEMapsDataProvider(t *testing.T) {
+	s := emapsProvider{
 		logger:             log.NewNopLogger(),
 		cacheDuration:      1,
 		lastRequestTime:    time.Now().Unix(),
@@ -52,8 +52,8 @@ func TestEMapsDataSource(t *testing.T) {
 	}
 }
 
-func TestEMapsDataSourceError(t *testing.T) {
-	s := emapsSource{
+func TestEMapsDataProviderError(t *testing.T) {
+	s := emapsProvider{
 		logger:             log.NewNopLogger(),
 		cacheDuration:      2,
 		lastRequestTime:    time.Now().Unix(),

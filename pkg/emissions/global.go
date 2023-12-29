@@ -10,27 +10,27 @@ import (
 )
 
 const (
-	globalEmissionFactor  = 475
-	globalEmissionsSource = "global"
+	globalEmissionFactor    = 475
+	globalEmissionsProvider = "global"
 )
 
-type globalSource struct {
+type globalProvider struct {
 	logger log.Logger
 }
 
 func init() {
-	// Register emissions source
-	RegisterSource(globalEmissionsSource, NewGlobalSource)
+	// Register emissions provider
+	RegisterProvider(globalEmissionsProvider, "Global Average", NewGlobalProvider)
 }
 
-// NewGlobalSource returns a new Source that returns a constant global average emission factor
-func NewGlobalSource(ctx context.Context, logger log.Logger) (Source, error) {
-	return &globalSource{
+// NewGlobalProvider returns a new Provider that returns a constant global average emission factor
+func NewGlobalProvider(ctx context.Context, logger log.Logger) (Provider, error) {
+	return &globalProvider{
 		logger: logger,
 	}, nil
 }
 
 // Get emission factor for a given country
-func (s *globalSource) Update() (float64, error) {
+func (s *globalProvider) Update() (float64, error) {
 	return float64(globalEmissionFactor), nil
 }
