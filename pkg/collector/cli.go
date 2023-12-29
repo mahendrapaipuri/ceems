@@ -37,10 +37,7 @@ var BatchJobExporterApp = *kingpin.New(
 )
 
 // Empty hostname flag (Used only for testing)
-var emptyHostnameLabel = BatchJobExporterApp.Flag(
-	"collector.empty.hostname.label",
-	"Use empty hostname in labels. Only for testing. (default is disabled)",
-).Hidden().Default("false").Bool()
+var emptyHostnameLabel *bool
 
 // Create a new BatchJobExporter struct
 func NewBatchJobExporter() (*BatchJobExporter, error) {
@@ -96,6 +93,12 @@ func (b *BatchJobExporter) Main() {
 		).Envar("GOMAXPROCS").Default("1").Int()
 		toolkitFlags = kingpinflag.AddFlags(&b.App, ":9010")
 	)
+
+	// This is hidden flag only used for e2e testing
+	emptyHostnameLabel = b.App.Flag(
+		"collector.empty.hostname.label",
+		"Use empty hostname in labels. Only for testing. (default is disabled)",
+	).Hidden().Default("false").Bool()
 
 	promlogConfig := &promlog.Config{}
 	flag.AddFlags(&b.App, promlogConfig)
