@@ -12,9 +12,15 @@ batchjob_cpu_user_seconds{batch="slurm",hostname="",jobaccount="testacc",jobid="
 batchjob_cpus{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 0
 # HELP batchjob_exporter_build_info A metric with a constant '1' value labeled by version, revision, branch, goversion from which batchjob_exporter was built, and the goos and goarch for the build.
 # TYPE batchjob_exporter_build_info gauge
-# HELP batchjob_ipmi_dcmi_watts_total Current Power consumption in watts
-# TYPE batchjob_ipmi_dcmi_watts_total counter
-batchjob_ipmi_dcmi_watts_total{hostname=""} 332
+# HELP batchjob_ipmi_dcmi_current_watts_total Current Power consumption in watts
+# TYPE batchjob_ipmi_dcmi_current_watts_total counter
+batchjob_ipmi_dcmi_current_watts_total{hostname=""} 332
+# HELP batchjob_ipmi_dcmi_max_watts_total Maximum Power consumption in watts
+# TYPE batchjob_ipmi_dcmi_max_watts_total counter
+batchjob_ipmi_dcmi_max_watts_total{hostname=""} 504
+# HELP batchjob_ipmi_dcmi_min_watts_total Minimum Power consumption in watts
+# TYPE batchjob_ipmi_dcmi_min_watts_total counter
+batchjob_ipmi_dcmi_min_watts_total{hostname=""} 68
 # HELP batchjob_memory_cache_bytes Memory cache used in bytes
 # TYPE batchjob_memory_cache_bytes gauge
 batchjob_memory_cache_bytes{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 2.1086208e+07

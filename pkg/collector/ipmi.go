@@ -22,11 +22,21 @@ import (
 const ipmiCollectorSubsystem = "ipmi_dcmi"
 
 type impiCollector struct {
-	logger          log.Logger
-	hostname        string
-	execMode        string
-	wattsMetricDesc *prometheus.Desc
+	logger     log.Logger
+	hostname   string
+	execMode   string
+	metricDesc map[string]*prometheus.Desc
 }
+
+// Expected output from DCMI spec
+// Ref: https://www.intel.com/content/dam/www/public/us/en/documents/technical-specifications/dcmi-v1-5-rev-spec.pdf
+// Current Power                        : 164 Watts
+// Minimum Power over sampling duration : 48 watts
+// Maximum Power over sampling duration : 361 watts
+// Average Power over sampling duration : 157 watts
+// Time Stamp                           : 12/29/2023 - 08:58:00
+// Statistics reporting time period     : 1473439000 milliseconds
+// Power Measurement                    : Active
 
 var (
 	ipmiDcmiCmd = BatchJobExporterApp.Flag(
@@ -36,9 +46,17 @@ var (
 	ipmiDCMIPowerMeasurementRegex = regexp.MustCompile(
 		`^Power Measurement\s*:\s*(?P<value>Active|Not\sAvailable).*`,
 	)
-	ipmiDCMICurrentPowerRegex = regexp.MustCompile(
-		`^Current Power\s*:\s*(?P<value>[0-9.]*)\s*Watts.*`,
-	)
+	ipmiDCMIPowerReadingRegexMap = map[string]*regexp.Regexp{
+		"current": regexp.MustCompile(
+			`^Current Power\s*:\s*(?P<value>[0-9.]*)\s*[w|W]atts.*`,
+		),
+		"min": regexp.MustCompile(
+			`^Minimum Power over sampling duration\s*:\s*(?P<value>[0-9.]*)\s*[w|W]atts.*`,
+		),
+		"max": regexp.MustCompile(
+			`^Maximum Power over sampling duration\s*:\s*(?P<value>[0-9.]*)\s*[w|W]atts.*`,
+		),
+	}
 )
 
 func init() {
@@ -59,9 +77,19 @@ func NewIPMICollector(logger log.Logger) (Collector, error) {
 		}
 	}
 
-	wattsMetricDesc := prometheus.NewDesc(
-		prometheus.BuildFQName(Namespace, ipmiCollectorSubsystem, "watts_total"),
+	// Initialize metricDesc map
+	var metricDesc = make(map[string]*prometheus.Desc, 3)
+	metricDesc["current"] = prometheus.NewDesc(
+		prometheus.BuildFQName(Namespace, ipmiCollectorSubsystem, "current_watts_total"),
 		"Current Power consumption in watts", []string{"hostname"}, nil,
+	)
+	metricDesc["min"] = prometheus.NewDesc(
+		prometheus.BuildFQName(Namespace, ipmiCollectorSubsystem, "min_watts_total"),
+		"Minimum Power consumption in watts", []string{"hostname"}, nil,
+	)
+	metricDesc["max"] = prometheus.NewDesc(
+		prometheus.BuildFQName(Namespace, ipmiCollectorSubsystem, "max_watts_total"),
+		"Maximum Power consumption in watts", []string{"hostname"}, nil,
 	)
 
 	// Split command
@@ -91,10 +119,10 @@ func NewIPMICollector(logger log.Logger) (Collector, error) {
 
 outside:
 	collector := impiCollector{
-		logger:          logger,
-		hostname:        hostname,
-		execMode:        execMode,
-		wattsMetricDesc: wattsMetricDesc,
+		logger:     logger,
+		hostname:   hostname,
+		execMode:   execMode,
+		metricDesc: metricDesc,
 	}
 	return &collector, nil
 }
@@ -138,34 +166,49 @@ func (c *impiCollector) Update(ch chan<- prometheus.Metric) error {
 	}
 
 	// Parse power consumption from output
-	currentPowerConsumption, err := c.getCurrentPowerConsumption(stdOut)
+	powerReadings, err := c.getPowerReadings(stdOut)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "Failed to parse IPMI DCMI command output", "error", err)
 		return err
 	}
 
 	// Returned value negative == Power Measurement is not avail
-	if currentPowerConsumption > -1 {
-		ch <- prometheus.MustNewConstMetric(c.wattsMetricDesc, prometheus.CounterValue, float64(currentPowerConsumption), c.hostname)
+	if len(powerReadings) > 1 {
+		for rType, rValue := range powerReadings {
+			if rValue > -1 {
+				ch <- prometheus.MustNewConstMetric(c.metricDesc[rType], prometheus.CounterValue, float64(rValue), c.hostname)
+			}
+		}
 	}
 	return nil
 }
 
-// Get current power consumption
-func (c *impiCollector) getCurrentPowerConsumption(ipmiOutput []byte) (float64, error) {
+// Get current, min and max power readings
+func (c *impiCollector) getPowerReadings(ipmiOutput []byte) (map[string]float64, error) {
 	// Check for Power Measurement are avail
 	value, err := getValue(ipmiOutput, ipmiDCMIPowerMeasurementRegex)
 	if err != nil {
-		return -1, err
+		return nil, err
 	}
 
 	// When Power Measurement in 'Active' state - we can get watts
+	var powerReadings = make(map[string]float64, 3)
 	if value == "Active" {
-		value, err := getValue(ipmiOutput, ipmiDCMICurrentPowerRegex)
-		if err != nil {
-			return -1, err
+		// Get power readings
+		for rType, regex := range ipmiDCMIPowerReadingRegexMap {
+			reading, err := getValue(ipmiOutput, regex)
+			if err != nil {
+				powerReadings[rType] = float64(-1)
+				continue
+			}
+			readingValue, err := strconv.ParseFloat(reading, 64)
+			if err != nil {
+				powerReadings[rType] = float64(-1)
+				continue
+			}
+			powerReadings[rType] = readingValue
 		}
-		return strconv.ParseFloat(value, 64)
+		return powerReadings, nil
 	}
-	return -1, nil
+	return nil, fmt.Errorf("IPMI Power readings not Active")
 }
