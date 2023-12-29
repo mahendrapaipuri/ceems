@@ -159,15 +159,22 @@ type Client interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-// Source is the interface a emission source has to implement.
-type Source interface {
+// Provider is the interface a emission provider has to implement.
+type Provider interface {
 	// Update current emission factor
 	Update() (float64, error)
 }
 
-// EmissionSources implements the interface to collect
+// FactorProviders implements the interface to collect
 // emission factors from different sources.
-type EmissionSources struct {
-	Sources map[string]Source
-	logger  log.Logger
+type FactorProviders struct {
+	Providers     map[string]Provider
+	ProviderNames map[string]string
+	logger        log.Logger
+}
+
+// Factor payload to collector
+type PayLoad struct {
+	Factor float64
+	Name   string
 }

@@ -24,7 +24,7 @@ func mockRTEAPIFailRequest(ctx context.Context, logger log.Logger) (float64, err
 }
 
 func TestRTEDataSource(t *testing.T) {
-	s := rteSource{
+	s := rteProvider{
 		logger:             log.NewNopLogger(),
 		cacheDuration:      1,
 		lastRequestTime:    time.Now().Unix(),
@@ -53,7 +53,7 @@ func TestRTEDataSource(t *testing.T) {
 }
 
 func TestRTEDataSourceError(t *testing.T) {
-	s := rteSource{
+	s := rteProvider{
 		logger:             log.NewNopLogger(),
 		cacheDuration:      2,
 		lastRequestTime:    time.Now().Unix(),

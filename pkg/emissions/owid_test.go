@@ -10,8 +10,8 @@ var (
 	expectedOWIDFactor = float64(67.39)
 )
 
-func TestOWIDDataSource(t *testing.T) {
-	s := owidSource{
+func TestOWIDDataProvider(t *testing.T) {
+	s := owidProvider{
 		logger:      log.NewNopLogger(),
 		countryCode: "FRA",
 	}

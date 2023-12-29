@@ -98,7 +98,7 @@ sudomode:
 }
 
 // NewSlurmScheduler returns a new SlurmScheduler that returns batch job stats
-func NewSlurmScheduler(logger log.Logger) (Fetcher, error) {
+func NewSlurmScheduler(logger log.Logger) (BatchJobFetcher, error) {
 	execMode, err := preflightChecks(logger)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to setup Slurm batch scheduler for retreiving jobs", "err", err)

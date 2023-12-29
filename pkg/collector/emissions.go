@@ -19,12 +19,12 @@ import (
 const emissionsCollectorSubsystem = "emissions"
 
 type emissionsCollector struct {
-	logger              log.Logger
-	ctx                 context.Context
-	emissionSources     emissions.EmissionSources
-	emissionsMetricDesc *prometheus.Desc
-	prevReadTime        int64
-	prevEmissionFactors map[string]float64
+	logger                   log.Logger
+	ctx                      context.Context
+	emissionFactorProviders  emissions.FactorProviders
+	emissionFactorMetricDesc *prometheus.Desc
+	prevReadTime             int64
+	prevEmissionFactors      map[string]float64
 }
 
 var (
@@ -35,7 +35,7 @@ var (
 		"ISO 3166-1 alpha-2 Country code.",
 	).Default("FR").String()
 	countryCodesMap    = emissions.CountryCodes.IsoCode
-	newEmissionSources = emissions.NewEmissionSources
+	newFactorProviders = emissions.NewFactorProviders
 )
 
 func init() {
@@ -69,33 +69,33 @@ func NewEmissionsCollector(logger log.Logger) (Collector, error) {
 	// Create metric description
 	emissionsMetricDesc := prometheus.NewDesc(
 		prometheus.BuildFQName(Namespace, emissionsCollectorSubsystem, "gCo2_kWh"),
-		"Current emission factor in CO2eq grams per kWh", []string{"source", "country"}, nil,
+		"Current emission factor in CO2eq grams per kWh", []string{"provider", "provider_name", "country"}, nil,
 	)
 
 	// Create a new instance of EmissionCollector
-	emissionSources, err := newEmissionSources(ctx, logger)
+	emissionFactorProviders, err := newFactorProviders(ctx, logger)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create new EmissionCollector", "err", err)
 		return nil, err
 	}
 
 	return &emissionsCollector{
-		logger:              logger,
-		ctx:                 ctx,
-		emissionSources:     *emissionSources,
-		emissionsMetricDesc: emissionsMetricDesc,
-		prevReadTime:        time.Now().Unix(),
-		prevEmissionFactors: make(map[string]float64),
+		logger:                   logger,
+		ctx:                      ctx,
+		emissionFactorProviders:  *emissionFactorProviders,
+		emissionFactorMetricDesc: emissionsMetricDesc,
+		prevReadTime:             time.Now().Unix(),
+		prevEmissionFactors:      make(map[string]float64),
 	}, nil
 }
 
 // Update implements Collector and exposes emission factor.
 func (c *emissionsCollector) Update(ch chan<- prometheus.Metric) error {
-	currentEmissionFactors := c.emissionSources.Collect()
+	currentEmissionFactors := c.emissionFactorProviders.Collect()
 	// Returned value negative == emissions factor is not avail
-	for source, factor := range currentEmissionFactors {
-		if factor > -1 {
-			ch <- prometheus.MustNewConstMetric(c.emissionsMetricDesc, prometheus.GaugeValue, float64(factor), source, *countryCodeAlpha2)
+	for provider, payload := range currentEmissionFactors {
+		if payload.Factor > -1 {
+			ch <- prometheus.MustNewConstMetric(c.emissionFactorMetricDesc, prometheus.GaugeValue, float64(payload.Factor), provider, payload.Name, *countryCodeAlpha2)
 		}
 	}
 	return nil
