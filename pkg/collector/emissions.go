@@ -69,7 +69,8 @@ func NewEmissionsCollector(logger log.Logger) (Collector, error) {
 	// Create metric description
 	emissionsMetricDesc := prometheus.NewDesc(
 		prometheus.BuildFQName(Namespace, emissionsCollectorSubsystem, "gCo2_kWh"),
-		"Current emission factor in CO2eq grams per kWh", []string{"provider", "provider_name", "country"}, nil,
+		"Current emission factor in CO2eq grams per kWh", 
+		[]string{"provider", "provider_name", "country"}, nil,
 	)
 
 	// Create a new instance of EmissionCollector
