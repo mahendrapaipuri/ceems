@@ -114,6 +114,7 @@ ifeq ($(CGO_BUILD), 0)
 test-e2e: build pkg/collector/fixtures/sys/.unpacked pkg/collector/fixtures/proc/.unpacked
 	@echo ">> running end-to-end tests"
 	./scripts/e2e-test.sh -p exporter
+	./scripts/e2e-test.sh -p exporter-alt
 else
 .PHONY: test-e2e
 test-e2e: build pkg/collector/fixtures/sys/.unpacked pkg/collector/fixtures/proc/.unpacked

@@ -25,6 +25,9 @@ batchjob_scrape_collector_success{collector="ipmi_dcmi"} 1
 batchjob_scrape_collector_success{collector="nvidia_gpu"} 1
 batchjob_scrape_collector_success{collector="rapl"} 1
 batchjob_scrape_collector_success{collector="slurm_job"} 1
+# HELP batchjob_slurm_job_cpu_psi_seconds Cumulative CPU PSI seconds
+# TYPE batchjob_slurm_job_cpu_psi_seconds gauge
+batchjob_slurm_job_cpu_psi_seconds{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 0
 # HELP batchjob_slurm_job_cpu_system_seconds Cumulative CPU system seconds
 # TYPE batchjob_slurm_job_cpu_system_seconds gauge
 batchjob_slurm_job_cpu_system_seconds{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 115.777502
@@ -43,6 +46,9 @@ batchjob_slurm_job_memory_cache_bytes{batch="slurm",hostname="",jobaccount="test
 # HELP batchjob_slurm_job_memory_fail_count Memory fail count
 # TYPE batchjob_slurm_job_memory_fail_count gauge
 batchjob_slurm_job_memory_fail_count{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 0
+# HELP batchjob_slurm_job_memory_psi_seconds Cumulative memory PSI seconds
+# TYPE batchjob_slurm_job_memory_psi_seconds gauge
+batchjob_slurm_job_memory_psi_seconds{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 0
 # HELP batchjob_slurm_job_memory_rss_bytes Memory RSS used in bytes
 # TYPE batchjob_slurm_job_memory_rss_bytes gauge
 batchjob_slurm_job_memory_rss_bytes{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 4.098592768e+09
