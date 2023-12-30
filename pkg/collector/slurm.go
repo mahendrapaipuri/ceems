@@ -609,7 +609,7 @@ func (c *slurmCollector) getCgroupsV1Metrics(name string) (CgroupMetric, error) 
 			metric.memswFailCount = float64(stats.Memory.Swap.Failcnt)
 		}
 	}
-	
+
 	// Get cgroup info
 	c.getInfoV1(name, &metric)
 
@@ -697,7 +697,7 @@ func (c *slurmCollector) getCgroupsV2Metrics(name string) (CgroupMetric, error) 
 	if stats.Memory != nil {
 		metric.memoryUsed = float64(stats.Memory.Usage)
 		metric.memoryTotal = float64(stats.Memory.UsageLimit)
-		metric.memoryCache = float64(stats.Memory.File)  // This is page cache
+		metric.memoryCache = float64(stats.Memory.File) // This is page cache
 		metric.memoryRSS = float64(stats.Memory.Anon)
 		metric.memswUsed = float64(stats.Memory.SwapUsage)
 		metric.memswTotal = float64(stats.Memory.SwapLimit)
