@@ -43,7 +43,7 @@ func TestCgroupsV2SlurmJobMetrics(t *testing.T) {
 		memoryTotal:     4.294967296e+09,
 		memoryFailCount: 0,
 		memswUsed:       0,
-		memswTotal:      1.8446744073709552e+19,  // cgroupv2 just returns math.MaxUint64
+		memswTotal:      1.8446744073709552e+19, // cgroupv2 just returns math.MaxUint64
 		memswFailCount:  0,
 		memoryPressure:  0,
 		userslice:       false,
