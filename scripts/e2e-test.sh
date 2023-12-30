@@ -39,7 +39,7 @@ do
   esac
 done
 
-if [ "${package}" = "exporter" ]
+if [[ "${package}" =~ "exporter" ]]
 then
   cgroups_mode=$([ $(stat -fc %T /sys/fs/cgroup/) = "cgroup2fs" ] && echo "unified" || ( [ -e /sys/fs/cgroup/unified/ ] && echo "hybrid" || echo "legacy"))
   # cgroups_mode="legacy"
@@ -53,7 +53,7 @@ then
   logfile="${tmpdir}/batchjob_exporter.log"
   fixture_output="${tmpdir}/e2e-test-exporter-output.txt"
   pidfile="${tmpdir}/batchjob_exporter.pid"
-elif [ "${package}" = "stats" ] 
+elif [[ "${package}" =~ "stats" ]] 
 then
   fixture='pkg/jobstats/fixtures/e2e-test-stats-server-output.txt'
   logfile="${tmpdir}/batchjob_stats_server.log"
@@ -118,6 +118,31 @@ then
     --collector.nvidia_gpu \
     --collector.nvidia.smi.path="pkg/collector/fixtures/nvidia-smi" \
     --collector.nvidia.gpu.job.map.path="pkg/collector/fixtures/gpujobmap" \
+    --collector.empty.hostname.label \
+    --web.listen-address "127.0.0.1:${port}" \
+    --log.level="debug" > "${logfile}" 2>&1 &
+
+  echo $! > "${pidfile}"
+
+  sleep 1
+
+  get "127.0.0.1:${port}/metrics" | grep -E -v "${skip_re}" > "${fixture_output}"
+elif [ "${package}" = "exporter-alt" ] 
+then
+  if [ ! -x ./bin/batchjob_exporter ]
+  then
+      echo './bin/batchjob_exporter not found. Consider running `go build` first.' >&2
+      exit 1
+  fi
+
+  ./bin/batchjob_exporter \
+    --path.sysfs="pkg/collector/fixtures/sys" \
+    --path.cgroupfs="pkg/collector/fixtures/sys/fs/cgroup" \
+    --path.procfs="pkg/collector/fixtures/proc" \
+    --collector.slurm.create.unique.jobids \
+    --collector.ipmi.dcmi.cmd="pkg/collector/fixtures/ipmi-dcmi-wrapper.sh" \
+    --collector.nvidia_gpu \
+    --collector.nvidia.smi.path="pkg/collector/fixtures/nvidia-smi" \
     --collector.empty.hostname.label \
     --web.listen-address "127.0.0.1:${port}" \
     --log.level="debug" > "${logfile}" 2>&1 &

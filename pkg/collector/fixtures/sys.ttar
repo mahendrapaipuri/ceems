@@ -1,4 +1,4 @@
-# Archive created by ttar -C collector/fixtures -c -f collector/fixtures/sys.ttar sys
+# Archive created by ttar -C pkg/collector/fixtures -c -f pkg/collector/fixtures/sys.ttar sys
 Directory: sys
 Mode: 775
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1324,10 +1324,6 @@ Lines: 1
 max 100000
 Mode: 640
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/cpu.pressure
-Lines: 0
-Mode: 640
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/cpu.stat
 Lines: 6
 usage_usec 60491070351
@@ -1372,10 +1368,6 @@ Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/cpuset.mems.effect
 Lines: 1
 0-1
 Mode: 440
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/io.pressure
-Lines: 0
-Mode: 640
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/memory.current
 Lines: 1
@@ -1453,10 +1445,6 @@ Mode: 440
 Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/memory.oom.group
 Lines: 1
 0
-Mode: 640
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/memory.pressure
-Lines: 0
 Mode: 640
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/memory.stat
@@ -5082,4 +5070,8 @@ Path: sys/fs/cgroup/system.slice/slurmstepd.scope/system/memory.swap.max
 Lines: 1
 max
 Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/.unpacked
+Lines: 0
+Mode: 664
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
