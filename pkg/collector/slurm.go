@@ -27,12 +27,19 @@ import (
 const slurmCollectorSubsystem = "slurm_job"
 
 var (
-	cgroupsV2       = false
 	metricLock      = sync.RWMutex{}
 	collectJobSteps = BatchJobExporterApp.Flag(
 		"collector.slurm.jobsteps.metrics",
 		`Enables collection of metrics of all slurm job steps and tasks (default: disabled).
 [WARNING: This option can result in very high cardinality of metrics]`,
+	).Default("false").Bool()
+	collectSwapMemoryStats = BatchJobExporterApp.Flag(
+		"collector.slurm.swap.memory.metrics",
+		"Enables collection of swap memory metrics (default: disabled)",
+	).Default("false").Bool()
+	collectPSIStats = BatchJobExporterApp.Flag(
+		"collector.slurm.psi.metrics",
+		"Enables collection of PSI metrics (default: disabled)",
 	).Default("false").Bool()
 	useJobIdHash = BatchJobExporterApp.Flag(
 		"collector.slurm.create.unique.jobids",
@@ -44,6 +51,18 @@ UUID is calculated based on SLURM_JOBID, SLURM_JOB_UID, SLURM_JOB_ACCOUNT, SLURM
 		`Directory containing files with job properties. Files should be named after SLURM_JOBID 
 with contents as "$SLURM_JOB_UID $SLURM_JOB_ACCOUNT $SLURM_JOB_NODELIST" in the same order.`,
 	).Default("/run/slurmjobprops").String()
+	gpuStatPath = BatchJobExporterApp.Flag(
+		"collector.slurm.nvidia.gpu.job.map.path",
+		"Path to file that maps GPU ordinals to job IDs.",
+	).Default("/run/gpujobmap").String()
+	nvidiaSmiPath = BatchJobExporterApp.Flag(
+		"collector.slurm.nvidia.smi.path",
+		"Absolute path to nvidia-smi executable.",
+	).Default("/usr/bin/nvidia-smi").String()
+	forceCgroupsVersion = BatchJobExporterApp.Flag(
+		"collector.slurm.force.cgroups.version",
+		"Set cgroups version manually. Used only for testing.",
+	).Hidden().Enum("v1", "v2")
 )
 
 type CgroupMetric struct {
@@ -69,6 +88,7 @@ type CgroupMetric struct {
 	jobaccount      string
 	jobid           string
 	jobuuid         string
+	jobGpuOrdinals  []string
 	step            string
 	task            string
 	err             bool
@@ -79,6 +99,7 @@ type slurmCollector struct {
 	cgroupsRootPath  string
 	slurmCgroupsPath string
 	hostname         string
+	nvidiaGPUDevs    map[string]Device
 	cpuUser          *prometheus.Desc
 	cpuSystem        *prometheus.Desc
 	cpuTotal         *prometheus.Desc
@@ -93,6 +114,7 @@ type slurmCollector struct {
 	memswTotal       *prometheus.Desc
 	memswFailCount   *prometheus.Desc
 	memoryPressure   *prometheus.Desc
+	gpuJobMap        *prometheus.Desc
 	collectError     *prometheus.Desc
 	logger           log.Logger
 }
@@ -103,19 +125,19 @@ func init() {
 
 // NewSlurmCollector returns a new Collector exposing a summary of cgroups.
 func NewSlurmCollector(logger log.Logger) (Collector, error) {
-	var cgroupsVer string
+	var cgroupsVersion string
 	var cgroupsRootPath string
 	var slurmCgroupsPath string
 	var hostname string
 	var err error
 
 	if cgroups.Mode() == cgroups.Unified {
-		cgroupsVer = "v2"
+		cgroupsVersion = "v2"
 		level.Info(logger).Log("msg", "Cgroup version v2 detected", "mount", *cgroupfsPath)
 		cgroupsRootPath = *cgroupfsPath
 		slurmCgroupsPath = fmt.Sprintf("%s/system.slice/slurmstepd.scope", *cgroupfsPath)
 	} else {
-		cgroupsVer = "v1"
+		cgroupsVersion = "v1"
 		level.Info(logger).Log("msg", "Cgroup version v2 not detected, will proceed with v1.")
 		cgroupsRootPath = fmt.Sprintf("%s/cpuacct", *cgroupfsPath)
 		slurmCgroupsPath = fmt.Sprintf("%s/slurm", cgroupsRootPath)
@@ -129,24 +151,29 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 		}
 	}
 
-	// // Snippet for testing e2e tests for cgroups v1
-	// cgroupsVer = "v1"
-	// level.Info(logger).Log("msg", "Cgroup version v2 not detected, will proceed with v1.")
-	// cgroupsRootPath = fmt.Sprintf("%s/cpuacct", *cgroupfsPath)
-	// slurmCgroupsPath = fmt.Sprintf("%s/slurm", cgroupsRootPath)
+	// If cgroup version is set via CLI flag for testing override the one we got earlier
+	if *forceCgroupsVersion != "" {
+		cgroupsVersion = *forceCgroupsVersion
+		if cgroupsVersion == "v2" {
+			cgroupsRootPath = *cgroupfsPath
+			slurmCgroupsPath = fmt.Sprintf("%s/system.slice/slurmstepd.scope", *cgroupfsPath)
+		} else if cgroupsVersion == "v1" {
+			cgroupsRootPath = fmt.Sprintf("%s/cpuacct", *cgroupfsPath)
+			slurmCgroupsPath = fmt.Sprintf("%s/slurm", cgroupsRootPath)
+		}
+	}
 
-	// Dont fail starting collector. Let it fail during scraping
-	// Check if cgroups exist
-	// if _, err := os.Stat(slurmCgroupsPath); err != nil {
-	// 	level.Error(logger).Log("msg", "Slurm cgroups hierarchy not found", "path", slurmCgroupsPath, "err", err)
-	// 	return nil, err
-	// }
-
+	// Attempt to get nVIDIA GPU devices
+	nvidiaGPUDevs, err := GetNvidiaGPUDevices(*nvidiaSmiPath, logger)
+	if err == nil {
+		level.Info(logger).Log("msg", "nVIDIA GPU devices found")
+	}
 	return &slurmCollector{
-		cgroups:          cgroupsVer,
+		cgroups:          cgroupsVersion,
 		cgroupsRootPath:  cgroupsRootPath,
 		slurmCgroupsPath: slurmCgroupsPath,
 		hostname:         hostname,
+		nvidiaGPUDevs:    nvidiaGPUDevs,
 		cpuUser: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "cpu_user_seconds"),
 			"Cumulative CPU user seconds",
@@ -237,6 +264,11 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 			[]string{"batch", "hostname", "jobid", "jobaccount", "jobuuid", "step", "task"},
 			nil,
 		),
+		gpuJobMap: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "nvidia_gpu_jobid"),
+			"Batch Job ID of current nVIDIA GPU",
+			[]string{"batch", "hostname", "index", "uuid", "UUID"}, nil,
+		),
 		logger: logger,
 	}, nil
 }
@@ -257,6 +289,12 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 		return err
 	}
 	for n, m := range metrics {
+		// Convert job id to int
+		jid, err := strconv.Atoi(m.jobid)
+		if err != nil {
+			level.Debug(c.logger).Log("msg", "Failed to convert SLURM jobID to int", "jobID", m.jobid)
+			jid = 0
+		}
 		if m.err {
 			ch <- prometheus.MustNewConstMetric(c.collectError, prometheus.GaugeValue, 1, m.name)
 		}
@@ -272,16 +310,27 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 			}
 		}
 		ch <- prometheus.MustNewConstMetric(c.cpus, prometheus.GaugeValue, float64(cpus), m.batch, m.hostname, m.jobid, m.jobaccount, m.jobuuid, m.step, m.task)
-		ch <- prometheus.MustNewConstMetric(c.cpuPressure, prometheus.GaugeValue, m.cpuPressure, m.batch, m.hostname, m.jobid, m.jobaccount, m.jobuuid, m.step, m.task)
 		ch <- prometheus.MustNewConstMetric(c.memoryRSS, prometheus.GaugeValue, m.memoryRSS, m.batch, m.hostname, m.jobid, m.jobaccount, m.jobuuid, m.step, m.task)
 		ch <- prometheus.MustNewConstMetric(c.memoryCache, prometheus.GaugeValue, m.memoryCache, m.batch, m.hostname, m.jobid, m.jobaccount, m.jobuuid, m.step, m.task)
 		ch <- prometheus.MustNewConstMetric(c.memoryUsed, prometheus.GaugeValue, m.memoryUsed, m.batch, m.hostname, m.jobid, m.jobaccount, m.jobuuid, m.step, m.task)
 		ch <- prometheus.MustNewConstMetric(c.memoryTotal, prometheus.GaugeValue, m.memoryTotal, m.batch, m.hostname, m.jobid, m.jobaccount, m.jobuuid, m.step, m.task)
 		ch <- prometheus.MustNewConstMetric(c.memoryFailCount, prometheus.GaugeValue, m.memoryFailCount, m.batch, m.hostname, m.jobid, m.jobaccount, m.jobuuid, m.step, m.task)
-		ch <- prometheus.MustNewConstMetric(c.memswUsed, prometheus.GaugeValue, m.memswUsed, m.batch, m.hostname, m.jobid, m.jobaccount, m.jobuuid, m.step, m.task)
-		ch <- prometheus.MustNewConstMetric(c.memswTotal, prometheus.GaugeValue, m.memswTotal, m.batch, m.hostname, m.jobid, m.jobaccount, m.jobuuid, m.step, m.task)
-		ch <- prometheus.MustNewConstMetric(c.memswFailCount, prometheus.GaugeValue, m.memswFailCount, m.batch, m.hostname, m.jobid, m.jobaccount, m.jobuuid, m.step, m.task)
-		ch <- prometheus.MustNewConstMetric(c.memoryPressure, prometheus.GaugeValue, m.memoryPressure, m.batch, m.hostname, m.jobid, m.jobaccount, m.jobuuid, m.step, m.task)
+		if *collectSwapMemoryStats {
+			ch <- prometheus.MustNewConstMetric(c.memswUsed, prometheus.GaugeValue, m.memswUsed, m.batch, m.hostname, m.jobid, m.jobaccount, m.jobuuid, m.step, m.task)
+			ch <- prometheus.MustNewConstMetric(c.memswTotal, prometheus.GaugeValue, m.memswTotal, m.batch, m.hostname, m.jobid, m.jobaccount, m.jobuuid, m.step, m.task)
+			ch <- prometheus.MustNewConstMetric(c.memswFailCount, prometheus.GaugeValue, m.memswFailCount, m.batch, m.hostname, m.jobid, m.jobaccount, m.jobuuid, m.step, m.task)
+		}
+		if *collectPSIStats {
+			ch <- prometheus.MustNewConstMetric(c.cpuPressure, prometheus.GaugeValue, m.cpuPressure, m.batch, m.hostname, m.jobid, m.jobaccount, m.jobuuid, m.step, m.task)
+			ch <- prometheus.MustNewConstMetric(c.memoryPressure, prometheus.GaugeValue, m.memoryPressure, m.batch, m.hostname, m.jobid, m.jobaccount, m.jobuuid, m.step, m.task)
+		}
+		for _, gpuOrdinal := range m.jobGpuOrdinals {
+			var uuid string
+			if dev, ok := c.nvidiaGPUDevs[gpuOrdinal]; ok {
+				uuid = dev.uuid
+			}
+			ch <- prometheus.MustNewConstMetric(c.gpuJobMap, prometheus.GaugeValue, float64(jid), m.batch, c.hostname, gpuOrdinal, uuid, uuid)
+		}
 	}
 	return nil
 }
@@ -328,26 +377,6 @@ func (c *slurmCollector) getJobsMetrics() (map[string]CgroupMetric, error) {
 		}(name)
 	}
 	wg.Wait()
-
-	// if memory.max = "max" case we set memory max to -1
-	// fix it by looking at the parent
-	// we loop through names once as it was the result of Walk so top paths are seen first
-	// also some cgroups we ignore, like path=/system.slice/slurmstepd.scope/job_216/step_interactive/user, hence the need to loop through multiple parents
-	if c.cgroups == "v2" {
-		for _, name := range names {
-			metric, ok := metrics[name]
-			if ok && metric.memoryTotal < 0 {
-				for upName := name; len(upName) > 1; {
-					upName = filepath.Dir(upName)
-					upMetric, ok := metrics[upName]
-					if ok {
-						metric.memoryTotal = upMetric.memoryTotal
-						metrics[name] = metric
-					}
-				}
-			}
-		}
-	}
 	return metrics, nil
 }
 
@@ -419,18 +448,18 @@ func (c *slurmCollector) getCPUs(name string) ([]string, error) {
 	return cpus, nil
 }
 
-// Get different labels of Job
-func (c *slurmCollector) getJobLabels(jobid string, pids []uint64) (string, string, string) {
+// Get different properties of Job
+func (c *slurmCollector) getJobProperties(metric *CgroupMetric, pids []uint64) {
+	jobid := metric.jobid
 	var jobUuid string
 	var jobUid string = ""
 	var jobAccount string = ""
 	var jobNodelist string = ""
+	var gpuJobId string = ""
+	var jobGpuOrdinals []string
+	var err error
 
-	// If useJobIdHash is false return with empty strings
-	if !*useJobIdHash {
-		return jobUuid, jobUid, jobAccount
-	}
-
+	// First try to read files that might be created by SLURM prolog scripts
 	var slurmJobInfo = fmt.Sprintf("%s/%s", *jobStatPath, jobid)
 	if _, err := os.Stat(slurmJobInfo); err == nil {
 		content, err := os.ReadFile(slurmJobInfo)
@@ -440,7 +469,35 @@ func (c *slurmCollector) getJobLabels(jobid string, pids []uint64) (string, stri
 		} else {
 			fmt.Sscanf(string(content), "%s %s %s", &jobUid, &jobAccount, &jobNodelist)
 		}
-	} else {
+	}
+
+	// If there are no GPUs this loop will be skipped anyways
+	for _, dev := range c.nvidiaGPUDevs {
+		gpuJobMapInfo := fmt.Sprintf("%s/%s", *gpuStatPath, dev.index)
+
+		// NOTE: Look for file name with UUID as it will be more appropriate with
+		// MIG instances.
+		// If /run/gpustat/0 file is not found, check for the file with UUID as name?
+		if _, err := os.Stat(gpuJobMapInfo); err == nil {
+			content, err := os.ReadFile(gpuJobMapInfo)
+			if err != nil {
+				level.Error(c.logger).Log(
+					"msg", "Failed to get job ID for GPU",
+					"index", dev.index, "uuid", dev.uuid, "err", err,
+				)
+				continue
+			}
+			fmt.Sscanf(string(content), "%s", &gpuJobId)
+			if gpuJobId == jobid {
+				jobGpuOrdinals = append(jobGpuOrdinals, dev.index)
+			}
+		}
+	}
+
+	// If we fail to get any of the job properties or if there are atleast one GPU devices
+	// and if we fail to get gpu ordinals for that job, try to get these properties
+	// by looking into environment variables
+	if jobUid == "" || jobAccount == "" || jobNodelist == "" || (len(jobGpuOrdinals) == 0 && len(c.nvidiaGPUDevs) > 0) {
 		// Attempt to get UID, Account, Nodelist from /proc file system by looking into
 		// environ for the process that has same SLURM_JOB_ID
 		//
@@ -451,15 +508,16 @@ func (c *slurmCollector) getJobLabels(jobid string, pids []uint64) (string, stri
 			goto outside
 		}
 
-		// Get all procs from current proc fs if pids is nill
+		// Get all procs from current proc fs if passed pids slice is nil
 		if pids == nil {
 			allProcs, err := procFS.AllProcs()
 			if err != nil {
 				level.Error(c.logger).Log("msg", "Failed to read /proc", "err", err)
 				goto outside
 			}
-			for _, proc := range allProcs {
-				pids = append(pids, uint64(proc.PID))
+			pids = make([]uint64, len(allProcs))
+			for idx, proc := range allProcs {
+				pids[idx] = uint64(proc.PID)
 			}
 		}
 
@@ -500,6 +558,9 @@ func (c *slurmCollector) getJobLabels(jobid string, pids []uint64) (string, stri
 					if strings.Contains(env, "SLURM_JOB_NODELIST") {
 						jobNodelist = strings.Split(env, "=")[1]
 					}
+					if strings.Contains(env, "SLURM_STEP_GPUS") || strings.Contains(env, "SLURM_JOB_GPUS") {
+						jobGpuOrdinals = strings.Split(strings.Split(env, "=")[1], ",")
+					}
 				}
 
 				// Mark routine as done
@@ -510,28 +571,39 @@ func (c *slurmCollector) getJobLabels(jobid string, pids []uint64) (string, stri
 		// Wait for all go routines to finish
 		wg.Wait()
 	}
+
 outside:
 	// Emit a warning if we could not get all job properties
 	if jobUid == "" && jobAccount == "" && jobNodelist == "" {
 		level.Warn(c.logger).
 			Log("msg", "Failed to get job properties", "jobid", jobid)
 	}
+	// Emit warning when there are GPUs but no job to GPU map found
+	if len(c.nvidiaGPUDevs) > 0 && len(jobGpuOrdinals) == 0 {
+		level.Warn(c.logger).
+			Log("msg", "Failed to get GPU ordinals for job", "jobid", jobid)
+	}
 
 	// Get UUID using job properties
-	jobUuid, err := helpers.GetUuidFromString(
-		[]string{
-			strings.TrimSpace(jobid),
-			strings.TrimSpace(jobUid),
-			strings.ToLower(strings.TrimSpace(jobAccount)),
-			strings.ToLower(strings.TrimSpace(jobNodelist)),
-		},
-	)
-	if err != nil {
-		level.Error(c.logger).
-			Log("msg", "Failed to generate UUID for job", "jobid", jobid, "err", err)
-		jobUuid = jobid
+	if *useJobIdHash {
+		jobUuid, err = helpers.GetUuidFromString(
+			[]string{
+				strings.TrimSpace(jobid),
+				strings.TrimSpace(jobUid),
+				strings.ToLower(strings.TrimSpace(jobAccount)),
+				strings.ToLower(strings.TrimSpace(jobNodelist)),
+			},
+		)
+		if err != nil {
+			level.Error(c.logger).
+				Log("msg", "Failed to generate UUID for job", "jobid", jobid, "err", err)
+			jobUuid = jobid
+		}
 	}
-	return jobUuid, jobUid, jobAccount
+	metric.jobuid = jobUid
+	metric.jobuuid = jobUuid
+	metric.jobaccount = jobAccount
+	metric.jobGpuOrdinals = jobGpuOrdinals
 }
 
 // Get job details from cgroups v1
@@ -614,24 +686,8 @@ func (c *slurmCollector) getCgroupsV1Metrics(name string) (CgroupMetric, error) 
 	c.getInfoV1(name, &metric)
 
 	// Get job Info
-	metric.jobuuid, metric.jobuid, metric.jobaccount = c.getJobLabels(metric.jobid, nil)
+	c.getJobProperties(&metric, nil)
 	return metric, nil
-}
-
-// Convenience function that will check if name+metric exists in the data
-// and log an error if it does not. It returns 0 in such case but otherwise
-// returns the value
-func (c *slurmCollector) getOneMetric(
-	name string,
-	metric string,
-	required bool,
-	data map[string]float64,
-) float64 {
-	val, ok := data[metric]
-	if !ok && required {
-		level.Error(c.logger).Log("msg", "Failed to load", "metric", metric, "cgroup", name)
-	}
-	return val
 }
 
 // Get Job info for cgroups v2
@@ -684,7 +740,7 @@ func (c *slurmCollector) getCgroupsV2Metrics(name string) (CgroupMetric, error) 
 		metric.cpuUser = float64(stats.CPU.UserUsec) / 1000000.0
 		metric.cpuSystem = float64(stats.CPU.SystemUsec) / 1000000.0
 		metric.cpuTotal = float64(stats.CPU.UsageUsec) / 1000000.0
-		if stats.CPU.PSI != nil {
+		if *collectPSIStats && stats.CPU.PSI != nil {
 			metric.cpuPressure = float64(stats.CPU.PSI.Full.Total) / 1000000.0
 		}
 	}
@@ -701,7 +757,7 @@ func (c *slurmCollector) getCgroupsV2Metrics(name string) (CgroupMetric, error) 
 		metric.memoryRSS = float64(stats.Memory.Anon)
 		metric.memswUsed = float64(stats.Memory.SwapUsage)
 		metric.memswTotal = float64(stats.Memory.SwapLimit)
-		if stats.Memory.PSI != nil {
+		if *collectPSIStats && stats.Memory.PSI != nil {
 			metric.memoryPressure = float64(stats.Memory.PSI.Full.Total) / 1000000.0
 		}
 	}
@@ -718,6 +774,8 @@ func (c *slurmCollector) getCgroupsV2Metrics(name string) (CgroupMetric, error) 
 	if err != nil {
 		level.Error(c.logger).Log("msg", "Failed to get proc pids in cgroup", "path", name)
 	}
-	metric.jobuuid, metric.jobuid, metric.jobaccount = c.getJobLabels(metric.jobid, cgroupProcPids)
+
+	// Get job Info
+	c.getJobProperties(&metric, cgroupProcPids)
 	return metric, nil
 }

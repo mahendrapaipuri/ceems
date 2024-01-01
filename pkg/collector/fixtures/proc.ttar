@@ -2295,7 +2295,7 @@ SymlinkTo: /usr/bin
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: proc/3346567/environ
 Lines: 1
-PATH=/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/binNULLBYTEHOSTNAME=cd24e11f73a5NULLBYTETERM=xtermNULLBYTEGOLANG_VERSION=1.12.5NULLBYTEGOPATH=/goNULLBYTEHOME=/rootNULLBYTESLURM_JOB_UID=1000NULLBYTESLURM_JOB_ID=1009248NULLBYTESLURM_JOB_ACCOUNT=testaccNULLBYTESLURM_JOB_NODELIST=compute-[0-2]NULLBYTE
+PATH=/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/binNULLBYTEHOSTNAME=cd24e11f73a5NULLBYTETERM=xtermNULLBYTEGOLANG_VERSION=1.12.5NULLBYTEGOPATH=/goNULLBYTEHOME=/rootNULLBYTESLURM_JOB_UID=1000NULLBYTESLURM_JOB_ID=1009248NULLBYTESLURM_JOB_ACCOUNT=testaccNULLBYTESLURM_JOB_NODELIST=compute-[0-2]NULLBYTESLURM_JOB_GPUS=2,3NULLBYTE
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: proc/3346567/exe

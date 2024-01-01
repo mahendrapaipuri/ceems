@@ -113,13 +113,16 @@ ifeq ($(CGO_BUILD), 0)
 .PHONY: test-e2e
 test-e2e: build pkg/collector/fixtures/sys/.unpacked pkg/collector/fixtures/proc/.unpacked
 	@echo ">> running end-to-end tests"
-	./scripts/e2e-test.sh -p exporter
-	./scripts/e2e-test.sh -p exporter-alt
+	./scripts/e2e-test.sh -s exporter-cgroups-v1
+	./scripts/e2e-test.sh -s exporter-cgroups-v2
+	./scripts/e2e-test.sh -s exporter-cgroups-v2-nogpu
+	./scripts/e2e-test.sh -s exporter-cgroups-v2-procfs
+	./scripts/e2e-test.sh -s exporter-cgroups-v2-all-metrics
 else
 .PHONY: test-e2e
 test-e2e: build pkg/collector/fixtures/sys/.unpacked pkg/collector/fixtures/proc/.unpacked
 	@echo ">> running end-to-end tests"
-	./scripts/e2e-test.sh -p stats
+	./scripts/e2e-test.sh -s stats
 endif
 
 .PHONY: skip-test-e2e
