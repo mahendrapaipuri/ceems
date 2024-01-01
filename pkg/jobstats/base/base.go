@@ -1,6 +1,9 @@
 package base
 
-import "github.com/alecthomas/kingpin/v2"
+import (
+	"github.com/alecthomas/kingpin/v2"
+	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/helper"
+)
 
 // Name of batchjob_stats_server kingpin app
 const BatchJobStatsServerAppName = "batchjob_stats_server"
@@ -17,6 +20,7 @@ type BatchJob struct {
 	Jobid       string `json:"jobid"`
 	Jobuuid     string `json:"id"`
 	Partition   string `json:"partition"`
+	QoS         string `jsob:"qos"`
 	Account     string `json:"account"`
 	Grp         string `json:"group"`
 	Gid         string `json:"gid"`
@@ -29,8 +33,11 @@ type BatchJob struct {
 	Exitcode    string `json:"exitcode"`
 	State       string `json:"state"`
 	Nnodes      string `json:"nnodes"`
+	Ncpus       string `json:"ncpus"`
 	Nodelist    string `json:"nodelist"`
 	NodelistExp string `json:"nodelistexp"`
+	JobName     string `json:"jobname"`
+	WorkDir     string `json:"workdir"`
 }
 
 // Account struct
@@ -58,3 +65,6 @@ type JobsResponse struct {
 	Response
 	Data []BatchJob `json:"data"`
 }
+
+// Slice of all field names of BatchJob struct
+var BatchJobFieldNames = helper.GetStructFieldName(BatchJob{})
