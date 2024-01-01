@@ -9,10 +9,6 @@ batchjob_ipmi_dcmi_max_watts_total{hostname=""} 504
 # HELP batchjob_ipmi_dcmi_min_watts_total Minimum Power consumption in watts
 # TYPE batchjob_ipmi_dcmi_min_watts_total counter
 batchjob_ipmi_dcmi_min_watts_total{hostname=""} 68
-# HELP batchjob_nvidia_gpu_jobid Batch Job ID of current nVIDIA GPU
-# TYPE batchjob_nvidia_gpu_jobid gauge
-batchjob_nvidia_gpu_jobid{UUID="GPU-61a65011-6571-a6d2-5ab8-66cbb6f7f9c3",hostname="",uuid="GPU-61a65011-6571-a6d2-5ab8-66cbb6f7f9c3"} 11000
-batchjob_nvidia_gpu_jobid{UUID="GPU-f124aa59-d406-d45b-9481-8fcd694e6c9e",hostname="",uuid="GPU-f124aa59-d406-d45b-9481-8fcd694e6c9e"} 10000
 # HELP batchjob_rapl_package_joules_total Current RAPL package value in joules
 # TYPE batchjob_rapl_package_joules_total counter
 batchjob_rapl_package_joules_total{hostname="",index="0",path="pkg/collector/fixtures/sys/class/powercap/intel-rapl:0"} 258218.293244
@@ -22,12 +18,8 @@ batchjob_rapl_package_joules_total{hostname="",index="1",path="pkg/collector/fix
 # HELP batchjob_scrape_collector_success batchjob_exporter: Whether a collector succeeded.
 # TYPE batchjob_scrape_collector_success gauge
 batchjob_scrape_collector_success{collector="ipmi_dcmi"} 1
-batchjob_scrape_collector_success{collector="nvidia_gpu"} 1
 batchjob_scrape_collector_success{collector="rapl"} 1
 batchjob_scrape_collector_success{collector="slurm_job"} 1
-# HELP batchjob_slurm_job_cpu_psi_seconds Cumulative CPU PSI seconds
-# TYPE batchjob_slurm_job_cpu_psi_seconds gauge
-batchjob_slurm_job_cpu_psi_seconds{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 0
 # HELP batchjob_slurm_job_cpu_system_seconds Cumulative CPU system seconds
 # TYPE batchjob_slurm_job_cpu_system_seconds gauge
 batchjob_slurm_job_cpu_system_seconds{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 115.777502
@@ -46,9 +38,6 @@ batchjob_slurm_job_memory_cache_bytes{batch="slurm",hostname="",jobaccount="test
 # HELP batchjob_slurm_job_memory_fail_count Memory fail count
 # TYPE batchjob_slurm_job_memory_fail_count gauge
 batchjob_slurm_job_memory_fail_count{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 0
-# HELP batchjob_slurm_job_memory_psi_seconds Cumulative memory PSI seconds
-# TYPE batchjob_slurm_job_memory_psi_seconds gauge
-batchjob_slurm_job_memory_psi_seconds{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 0
 # HELP batchjob_slurm_job_memory_rss_bytes Memory RSS used in bytes
 # TYPE batchjob_slurm_job_memory_rss_bytes gauge
 batchjob_slurm_job_memory_rss_bytes{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 4.098592768e+09
@@ -58,15 +47,10 @@ batchjob_slurm_job_memory_total_bytes{batch="slurm",hostname="",jobaccount="test
 # HELP batchjob_slurm_job_memory_used_bytes Memory used in bytes
 # TYPE batchjob_slurm_job_memory_used_bytes gauge
 batchjob_slurm_job_memory_used_bytes{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 4.111491072e+09
-# HELP batchjob_slurm_job_memsw_fail_count Swap fail count
-# TYPE batchjob_slurm_job_memsw_fail_count gauge
-batchjob_slurm_job_memsw_fail_count{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 0
-# HELP batchjob_slurm_job_memsw_total_bytes Swap total in bytes
-# TYPE batchjob_slurm_job_memsw_total_bytes gauge
-batchjob_slurm_job_memsw_total_bytes{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 1.8446744073709552e+19
-# HELP batchjob_slurm_job_memsw_used_bytes Swap used in bytes
-# TYPE batchjob_slurm_job_memsw_used_bytes gauge
-batchjob_slurm_job_memsw_used_bytes{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 0
+# HELP batchjob_slurm_job_nvidia_gpu_jobid Batch Job ID of current nVIDIA GPU
+# TYPE batchjob_slurm_job_nvidia_gpu_jobid gauge
+batchjob_slurm_job_nvidia_gpu_jobid{UUID="GPU-61a65011-6571-a64n-5ab8-66cbb6f7f9c3",batch="slurm",hostname="",index="3",uuid="GPU-61a65011-6571-a64n-5ab8-66cbb6f7f9c3"} 1.009248e+06
+batchjob_slurm_job_nvidia_gpu_jobid{UUID="GPU-61a65011-6571-a6d2-5th8-66cbb6f7f9c3",batch="slurm",hostname="",index="2",uuid="GPU-61a65011-6571-a6d2-5th8-66cbb6f7f9c3"} 1.009248e+06
 # HELP go_gc_duration_seconds A summary of the pause duration of garbage collection cycles.
 # TYPE go_gc_duration_seconds summary
 # HELP go_goroutines Number of goroutines that currently exist.
