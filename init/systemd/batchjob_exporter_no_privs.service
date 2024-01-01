@@ -8,9 +8,8 @@ User=batchjob-exp
 Group=batchjob-exp
 ExecStart=/usr/local/bin/batchjob_exporter \
     --collector.slurm.job.props.path="/run/slurmjobprops" \
+    --collector.slurm.nvidia.gpu.job.map.path="/run/gpujobmap" \
     --collector.ipmi.dcmi.cmd="sudo /usr/sbin/ipmi-dcmi --get-system-power-statistics" \
-    --collector.nvidia_gpu \
-    --collector.nvidia.gpu.job.map.path="/run/gpujobmap" \
     --log.level="debug"
 
 SyslogIdentifier=batchjob_exporter
