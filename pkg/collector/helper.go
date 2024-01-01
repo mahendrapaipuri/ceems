@@ -99,7 +99,7 @@ func LoadCgroupsV2Metrics(
 // exporter simple.
 //
 // NOTE: Hoping this command returns MIG devices too
-func GetNvidiaGPUDevices(nvidiaSmiPath string, logger log.Logger) (map[string]Device, error) {
+func GetNvidiaGPUDevices(nvidiaSmiPath string, logger log.Logger) (map[int]Device, error) {
 	// Check if nvidia-smi binary exists
 	if _, err := os.Stat(nvidiaSmiPath); err != nil {
 		level.Error(logger).Log("msg", "Failed to open nvidia-smi executable", "path", nvidiaSmiPath, "err", err)
@@ -116,7 +116,8 @@ func GetNvidiaGPUDevices(nvidiaSmiPath string, logger log.Logger) (map[string]De
 	}
 
 	// Get all devices
-	gpuDevices := map[string]Device{}
+	gpuDevices := map[int]Device{}
+	devIndxInt := 0
 	for _, line := range strings.Split(string(nvidiaSmiOutput), "\n") {
 		// Header line, empty line and newlines are ignored
 		if line == "" || line == "\n" || strings.HasPrefix(line, "index") {
@@ -143,7 +144,8 @@ func GetNvidiaGPUDevices(nvidiaSmiPath string, logger log.Logger) (map[string]De
 		level.Debug(logger).
 			Log("msg", "Found nVIDIA GPU", "name", devName, "UUID", devUuid, "isMig:", isMig)
 
-		gpuDevices[devIndx] = Device{index: devIndx, name: devName, uuid: devUuid, isMig: isMig}
+		gpuDevices[devIndxInt] = Device{index: devIndx, name: devName, uuid: devUuid, isMig: isMig}
+		devIndxInt++
 	}
 	return gpuDevices, nil
 }

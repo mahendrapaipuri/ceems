@@ -99,7 +99,7 @@ type slurmCollector struct {
 	cgroupsRootPath  string
 	slurmCgroupsPath string
 	hostname         string
-	nvidiaGPUDevs    map[string]Device
+	nvidiaGPUDevs    map[int]Device
 	cpuUser          *prometheus.Desc
 	cpuSystem        *prometheus.Desc
 	cpuTotal         *prometheus.Desc
@@ -326,8 +326,12 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 		}
 		for _, gpuOrdinal := range m.jobGpuOrdinals {
 			var uuid string
-			if dev, ok := c.nvidiaGPUDevs[gpuOrdinal]; ok {
-				uuid = dev.uuid
+			// Check the int index of devices where gpuOrdinal == dev.index
+			for _, dev := range c.nvidiaGPUDevs {
+				if gpuOrdinal == dev.index {
+					uuid = dev.uuid
+					break
+				}
 			}
 			ch <- prometheus.MustNewConstMetric(c.gpuJobMap, prometheus.GaugeValue, float64(jid), m.batch, c.hostname, gpuOrdinal, uuid, uuid)
 		}
@@ -472,7 +476,18 @@ func (c *slurmCollector) getJobProperties(metric *CgroupMetric, pids []uint64) {
 	}
 
 	// If there are no GPUs this loop will be skipped anyways
-	for _, dev := range c.nvidiaGPUDevs {
+	// NOTE: In go loop over map is not reproducible. The order is undefined and thus
+	// we might end up with a situation where jobGpuOrdinals will [1 2] or [2 1] if
+	// current Job has two GPUs. This will fail unit tests as order in Slice is important
+	// in Go
+	//
+	// So we use map[int]Device to have int indices for devices which we use internally
+	// We are not using device index as it might be a non-integer. We are not sure about
+	// it but just to be safe. This will have a small overhead as we need to check the
+	// correct integer index for each device index. We can live with it as there are
+	// typically 2/4/8 GPUs per node.
+	for i := 0; i <= len(c.nvidiaGPUDevs); i++ {
+		dev := c.nvidiaGPUDevs[i]
 		gpuJobMapInfo := fmt.Sprintf("%s/%s", *gpuStatPath, dev.index)
 
 		// NOTE: Look for file name with UUID as it will be more appropriate with
