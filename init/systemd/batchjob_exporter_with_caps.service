@@ -8,7 +8,6 @@ User=batchjob-exp
 Group=batchjob-exp
 ExecStart=/usr/local/bin/batchjob_exporter \
     --collector.ipmi.dcmi.cmd="sudo /usr/sbin/ipmi-dcmi --get-system-power-statistics" \
-    --collector.nvidia_gpu \
     --log.level="debug"
 
 SyslogIdentifier=batchjob_exporter

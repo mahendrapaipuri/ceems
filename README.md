@@ -127,8 +127,7 @@ CGO_BUILD=1 make tests
 
 Currently, the exporter supports only SLURM. `batchjob_exporter` provides following collectors:
 
-- Slurm collector: Exports SLURM job metrics like CPU, memory and IO usage
-- nVIDIA GPU collector: Exports GPU indices to job ID maps
+- Slurm collector: Exports SLURM job metrics like CPU, memory and GPU indices to job ID maps
 - IPMI collector: Exports power usage reported by `ipmi` tools
 - RAPL collector: Exports RAPL energy metrics
 - Emissions collector: Exports emission factor (g eCO2/kWh)
@@ -170,17 +169,15 @@ userland. If the admins would not want to have the burden of maintaining prolog 
 epilog scripts, it is better to assign capabilities. These two approaches should be 
 always favoured to running the exporter as `root`. 
 
-### nVIDIA GPU job map collector
-
 This collector exports the GPU ordinal index to job ID map to Prometheus. The actual 
 GPU metrics are exported using [dcgm-exporter](https://github.com/NVIDIA/dcgm-exporter). 
-Like in the case of SLURM collector, we need to know which GPU is allocated to which 
-job and this info is not available post job. Thus, similar approaches as SLURM collector 
-are available for this collector too.
+To use `dcgm-exporter`, we need to know which GPU is allocated to which 
+job and this info is not available post job. Thus, similar approaches as used to retrieve 
+SLURM job properties can be used here as well
 
 - Use prolog and epilog scripts to get the GPU to job ID map. Example prolog script 
 is provided in the [repo](./configs/slurm/prolog.d/gpujobmap.sh). Similarly, this approach 
-needs `--collector.nvidia.gpu.job.map.path=/run/gpujobmap` command line option.
+needs `--collector.slurm.nvidia.gpu.job.map.path=/run/gpujobmap` command line option.
 
 - Using capabilities to read the environment variables directly from `/proc` file system.
 
@@ -196,6 +193,8 @@ output of the command expects following lines:
 
 ```
 Current Power                        : 332 Watts
+Minimum Power over sampling duration : 68 watts
+Maximum Power over sampling duration : 504 watts
 Power Measurement                    : Active
 ```
 
@@ -307,9 +306,8 @@ Using prolog and epilog scripts approach and `sudo` for `ipmi`,
 ```
 /path/to/batchjob_exporter \
     --collector.slurm.job.props.path="/run/slurmjobprops" \
+    --collector.slurm.nvidia.gpu.job.map.path="/run/gpujobmap" \
     --collector.ipmi.dcmi.cmd="sudo /usr/sbin/ipmi-dcmi --get-system-power-statistics" \
-    --collector.nvidia_gpu \
-    --collector.nvidia.gpu.job.map.path="/run/gpujobmap" \
     --log.level="debug"
 ```
 
@@ -317,69 +315,64 @@ This will start exporter server on default 9010 port. Metrics can be consulted u
 `curl http://localhost:9010/metrics` command which will give an output as follows:
 
 ```
-# HELP batchjob_cpu_system_seconds Cumulative CPU system seconds
-# TYPE batchjob_cpu_system_seconds gauge
-batchjob_cpu_system_seconds{batch="slurm",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 115.777502
-# HELP batchjob_cpu_total_seconds Cumulative CPU total seconds
-# TYPE batchjob_cpu_total_seconds gauge
-batchjob_cpu_total_seconds{batch="slurm",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 60491.070351
-# HELP batchjob_cpu_user_seconds Cumulative CPU user seconds
-# TYPE batchjob_cpu_user_seconds gauge
-batchjob_cpu_user_seconds{batch="slurm",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 60375.292848
-# HELP batchjob_cpus Number of CPUs
-# TYPE batchjob_cpus gauge
-batchjob_cpus{batch="slurm",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 2
 # HELP batchjob_exporter_build_info A metric with a constant '1' value labeled by version, revision, branch, goversion from which batchjob_exporter was built, and the goos and goarch for the build.
 # TYPE batchjob_exporter_build_info gauge
-batchjob_exporter_build_info{branch="main",goarch="amd64",goos="linux",goversion="go1.21.3",revision="50a5db3888711a35341891a2bdd4925549ad6a14",tags="netgo osusergo static_build",version="Unreleased"} 1
-# HELP batchjob_ipmi_dcmi_watts_total Current Power consumption in watts
-# TYPE batchjob_ipmi_dcmi_watts_total counter
-batchjob_ipmi_dcmi_watts_total 332
-# HELP batchjob_memory_cache_bytes Memory cache used in bytes
-# TYPE batchjob_memory_cache_bytes gauge
-batchjob_memory_cache_bytes{batch="slurm",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 0
-# HELP batchjob_memory_fail_count Memory fail count
-# TYPE batchjob_memory_fail_count gauge
-batchjob_memory_fail_count{batch="slurm",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 0
-# HELP batchjob_memory_rss_bytes Memory RSS used in bytes
-# TYPE batchjob_memory_rss_bytes gauge
-batchjob_memory_rss_bytes{batch="slurm",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 4.098592768e+09
-# HELP batchjob_memory_total_bytes Memory total in bytes
-# TYPE batchjob_memory_total_bytes gauge
-batchjob_memory_total_bytes{batch="slurm",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 4.294967296e+09
-# HELP batchjob_memory_used_bytes Memory used in bytes
-# TYPE batchjob_memory_used_bytes gauge
-batchjob_memory_used_bytes{batch="slurm",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 4.111491072e+09
-# HELP batchjob_memsw_fail_count Swap fail count
-# TYPE batchjob_memsw_fail_count gauge
-batchjob_memsw_fail_count{batch="slurm",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 0
-# HELP batchjob_memsw_total_bytes Swap total in bytes
-# TYPE batchjob_memsw_total_bytes gauge
-batchjob_memsw_total_bytes{batch="slurm",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 0
-# HELP batchjob_memsw_used_bytes Swap used in bytes
-# TYPE batchjob_memsw_used_bytes gauge
-batchjob_memsw_used_bytes{batch="slurm",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 0
+# HELP batchjob_ipmi_dcmi_current_watts_total Current Power consumption in watts
+# TYPE batchjob_ipmi_dcmi_current_watts_total counter
+batchjob_ipmi_dcmi_current_watts_total{hostname=""} 332
+# HELP batchjob_ipmi_dcmi_max_watts_total Maximum Power consumption in watts
+# TYPE batchjob_ipmi_dcmi_max_watts_total counter
+batchjob_ipmi_dcmi_max_watts_total{hostname=""} 504
+# HELP batchjob_ipmi_dcmi_min_watts_total Minimum Power consumption in watts
+# TYPE batchjob_ipmi_dcmi_min_watts_total counter
+batchjob_ipmi_dcmi_min_watts_total{hostname=""} 68
 # HELP batchjob_rapl_package_joules_total Current RAPL package value in joules
 # TYPE batchjob_rapl_package_joules_total counter
-batchjob_rapl_package_joules_total{index="0",path="pkg/collector/fixtures/sys/class/powercap/intel-rapl:0"} 258218.293244
-batchjob_rapl_package_joules_total{index="1",path="pkg/collector/fixtures/sys/class/powercap/intel-rapl:1"} 130570.505826
+batchjob_rapl_package_joules_total{hostname="",index="0",path="pkg/collector/fixtures/sys/class/powercap/intel-rapl:0"} 258218.293244
+batchjob_rapl_package_joules_total{hostname="",index="1",path="pkg/collector/fixtures/sys/class/powercap/intel-rapl:1"} 130570.505826
 # HELP batchjob_scrape_collector_duration_seconds batchjob_exporter: Duration of a collector scrape.
 # TYPE batchjob_scrape_collector_duration_seconds gauge
-batchjob_scrape_collector_duration_seconds{collector="ipmi_dcmi"} 0.003479042
-batchjob_scrape_collector_duration_seconds{collector="nvidia_gpu"} 1.66e-05
-batchjob_scrape_collector_duration_seconds{collector="rapl"} 0.001222098
-batchjob_scrape_collector_duration_seconds{collector="slurm_job"} 0.005055937
 # HELP batchjob_scrape_collector_success batchjob_exporter: Whether a collector succeeded.
 # TYPE batchjob_scrape_collector_success gauge
 batchjob_scrape_collector_success{collector="ipmi_dcmi"} 1
-batchjob_scrape_collector_success{collector="nvidia_gpu"} 1
 batchjob_scrape_collector_success{collector="rapl"} 1
 batchjob_scrape_collector_success{collector="slurm_job"} 1
+# HELP batchjob_slurm_job_cpu_system_seconds Cumulative CPU system seconds
+# TYPE batchjob_slurm_job_cpu_system_seconds gauge
+batchjob_slurm_job_cpu_system_seconds{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 115.777502
+# HELP batchjob_slurm_job_cpu_total_seconds Cumulative CPU total seconds
+# TYPE batchjob_slurm_job_cpu_total_seconds gauge
+batchjob_slurm_job_cpu_total_seconds{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 60491.070351
+# HELP batchjob_slurm_job_cpu_user_seconds Cumulative CPU user seconds
+# TYPE batchjob_slurm_job_cpu_user_seconds gauge
+batchjob_slurm_job_cpu_user_seconds{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 60375.292848
+# HELP batchjob_slurm_job_cpus Number of CPUs
+# TYPE batchjob_slurm_job_cpus gauge
+batchjob_slurm_job_cpus{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 2
+# HELP batchjob_slurm_job_memory_cache_bytes Memory cache used in bytes
+# TYPE batchjob_slurm_job_memory_cache_bytes gauge
+batchjob_slurm_job_memory_cache_bytes{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 0
+# HELP batchjob_slurm_job_memory_fail_count Memory fail count
+# TYPE batchjob_slurm_job_memory_fail_count gauge
+batchjob_slurm_job_memory_fail_count{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 0
+# HELP batchjob_slurm_job_memory_rss_bytes Memory RSS used in bytes
+# TYPE batchjob_slurm_job_memory_rss_bytes gauge
+batchjob_slurm_job_memory_rss_bytes{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 4.098592768e+09
+# HELP batchjob_slurm_job_memory_total_bytes Memory total in bytes
+# TYPE batchjob_slurm_job_memory_total_bytes gauge
+batchjob_slurm_job_memory_total_bytes{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 4.294967296e+09
+# HELP batchjob_slurm_job_memory_used_bytes Memory used in bytes
+# TYPE batchjob_slurm_job_memory_used_bytes gauge
+batchjob_slurm_job_memory_used_bytes{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 4.111491072e+09
+# HELP batchjob_slurm_job_nvidia_gpu_jobid Batch Job ID of current nVIDIA GPU
+# TYPE batchjob_slurm_job_nvidia_gpu_jobid gauge
+batchjob_slurm_job_nvidia_gpu_jobid{UUID="GPU-61a65011-6571-a64n-5ab8-66cbb6f7f9c3",batch="slurm",hostname="",index="3",uuid="GPU-61a65011-6571-a64n-5ab8-66cbb6f7f9c3"} 1.009248e+06
+batchjob_slurm_job_nvidia_gpu_jobid{UUID="GPU-61a65011-6571-a6d2-5th8-66cbb6f7f9c3",batch="slurm",hostname="",index="2",uuid="GPU-61a65011-6571-a6d2-5th8-66cbb6f7f9c3"} 1.009248e+06
 ```
 
 If the `batchjob_exporter` process have necessary capabilities assigned either _via_ 
 file capabilities or process capabilities, the flags `--collector.slurm.job.props.path` 
-and `--collector.nvidia.gpu.job.map.path` can be omitted and there is no need to 
+and `--collector.slurm.nvidia.gpu.job.map.path` can be omitted and there is no need to 
 set up prolog and epilog scripts.
 
 ### `batchjob_stats_server`
