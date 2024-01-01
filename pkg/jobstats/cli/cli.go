@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -18,6 +19,7 @@ import (
 	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/db"
 	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/schedulers"
 	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/server"
+	"github.com/prometheus/common/model"
 	"github.com/prometheus/common/promlog"
 	"github.com/prometheus/common/promlog/flag"
 	"github.com/prometheus/common/version"
@@ -48,14 +50,18 @@ func (b *BatchJobStatsServer) Main() {
 			"web.config.file",
 			"Path to configuration file that can enable TLS or authentication. See: https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md",
 		).Default("").String()
+		adminUsers = b.App.Flag(
+			"web.admin-users",
+			"Comma separated list of admin users.",
+		).Default("").String()
 		dataPath = b.App.Flag(
 			"data.path",
 			"Absolute path to a directory where job data is stored. SQLite DB that contains jobs stats will be saved to this directory.",
 		).Default("/var/lib/jobstats").String()
-		retentionPeriod = b.App.Flag(
+		retentionPeriodString = b.App.Flag(
 			"data.retention.period",
-			"Period in days for which job stats data will be retained.",
-		).Default("365").Int()
+			"Period in days for which job stats data will be retained. Units Supported: y, w, d, h, m, s, ms.",
+		).Default("1y").String()
 		jobstatDBFile = b.App.Flag(
 			"db.name",
 			"Name of the SQLite DB file that contains job stats.",
@@ -66,12 +72,12 @@ func (b *BatchJobStatsServer) Main() {
 		).Default("jobs").String()
 		lastUpdateTime = b.App.Flag(
 			"db.last.update.time",
-			"Last time the DB was updated. Job stats from this time will be added for new DB.",
+			"Last time the DB was updated. Job stats from this time will be added for new DB. Supported formate: YYYY-MM-DD.",
 		).Default(time.Now().Format("2006-01-02")).String()
-		updateInterval = b.App.Flag(
+		updateIntervalString = b.App.Flag(
 			"db.update.interval",
-			"Time period in seconds at which DB will be updated with job stats.",
-		).Default("1800").Int()
+			"Time period at which DB will be updated with job stats. Units Supported: y, w, d, h, m, s, ms.",
+		).Default("15m").String()
 		maxProcs = b.App.Flag(
 			"runtime.gomaxprocs", "The target number of CPUs Go will run on (GOMAXPROCS)",
 		).Envar("GOMAXPROCS").Default("1").Int()
@@ -97,6 +103,25 @@ func (b *BatchJobStatsServer) Main() {
 		os.Exit(1)
 	}
 
+	// Parse retentionPeriod and updateInterval
+	retentionPeriod, err := model.ParseDuration(*retentionPeriodString)
+	if err != nil {
+		fmt.Printf("Failed to parse --data.retention.period flag. Error: %s", err)
+		os.Exit(1)
+	}
+	updateInterval, err := model.ParseDuration(*updateIntervalString)
+	if err != nil {
+		fmt.Printf("Failed to parse --db.update.interval flag. Error: %s", err)
+		os.Exit(1)
+	}
+
+	// Parse lastUpdateTime to check if it is in correct format
+	_, err = time.Parse("2006-01-02", *lastUpdateTime)
+	if err != nil {
+		fmt.Printf("Failed to parse --db.last.update.time flag. Error: %s", err)
+		os.Exit(1)
+	}
+
 	// Set logger here after properly configuring promlog
 	logger := promlog.New(promlogConfig)
 
@@ -119,14 +144,25 @@ func (b *BatchJobStatsServer) Main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	// Make DB config
+	dbConfig := &db.Config{
+		Logger:                  logger,
+		JobstatsDBPath:          jobstatDBPath,
+		JobstatsDBTable:         *jobstatDBTable,
+		RetentionPeriod:         time.Duration(retentionPeriod),
+		LastUpdateTimeString:    *lastUpdateTime,
+		LastUpdateTimeStampFile: jobsLastTimeStampFile,
+		BatchScheduler:          schedulers.NewBatchScheduler,
+	}
+
 	// Make server config
 	serverConfig := &server.Config{
 		Logger:           logger,
 		Address:          *webListenAddresses,
 		WebSystemdSocket: *systemdSocket,
 		WebConfigFile:    *webConfigFile,
-		JobstatDBFile:    jobstatDBPath,
-		JobstatDBTable:   *jobstatDBTable,
+		DBConfig:         *dbConfig,
+		AdminUsers:       strings.Split(*adminUsers, ","),
 	}
 
 	// Create server instance
@@ -135,17 +171,6 @@ func (b *BatchJobStatsServer) Main() {
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create jobstats server", "err", err)
 		return
-	}
-
-	// Make DB config
-	dbConfig := &db.Config{
-		Logger:                  logger,
-		JobstatsDBPath:          jobstatDBPath,
-		JobstatsDBTable:         *jobstatDBTable,
-		RetentionPeriod:         *retentionPeriod,
-		LastUpdateTimeString:    *lastUpdateTime,
-		LastUpdateTimeStampFile: jobsLastTimeStampFile,
-		BatchScheduler:          schedulers.NewBatchScheduler,
 	}
 
 	// Create DB instance
@@ -161,7 +186,7 @@ func (b *BatchJobStatsServer) Main() {
 	wg.Add(1)
 	go func() {
 		// Start a ticker
-		ticker := time.NewTicker(time.Second * time.Duration(*updateInterval))
+		ticker := time.NewTicker(time.Duration(updateInterval))
 		defer ticker.Stop()
 
 	loop:
