@@ -13,12 +13,14 @@ import (
 	"github.com/mahendrapaipuri/batchjob_monitoring/internal/helpers"
 	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/base"
 	jobstats_helper "github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/helper"
+	"github.com/prometheus/common/model"
 )
 
 type slurmScheduler struct {
-	logger          log.Logger
-	execMode        string
-	slurmDateFormat string
+	logger              log.Logger
+	execMode            string
+	slurmDateFormat     string
+	slurmWalltimeCutoff time.Duration
 }
 
 const slurmBatchScheduler = "slurm"
@@ -31,10 +33,10 @@ var (
 		"slurm.sacct.path",
 		"Absolute path to sacct executable.",
 	).Default("/usr/local/bin/sacct").String()
-	slurmWalltimeCutoff = base.BatchJobStatsServerApp.Flag(
+	slurmWalltimeCutoffString = base.BatchJobStatsServerApp.Flag(
 		"slurm.elapsed.time.cutoff",
-		"Jobs that have elapsed time less than this value (in seconds) will be ignored.",
-	).Default("60").Int()
+		"Jobs that have elapsed time less than this value will be ignored. Units Supported: y, w, d, h, m, s, ms.",
+	).Default("1m").String()
 )
 
 func init() {
@@ -49,6 +51,13 @@ func preflightChecks(logger log.Logger) (string, error) {
 	// Check if sacct binary exists
 	if _, err := os.Stat(*sacctPath); err != nil {
 		level.Error(logger).Log("msg", "Failed to open sacct executable", "path", *sacctPath, "err", err)
+		return "", err
+	}
+
+	// Check if slurm walltime cutoff is valid
+	_, err := model.ParseDuration(*slurmWalltimeCutoffString)
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to parse --slurm.elapsed.time.cutoff CLI flag", "err", err)
 		return "", err
 	}
 
@@ -104,11 +113,15 @@ func NewSlurmScheduler(logger log.Logger) (BatchJobFetcher, error) {
 		level.Error(logger).Log("msg", "Failed to setup Slurm batch scheduler for retreiving jobs", "err", err)
 		return nil, err
 	}
+
+	// We can safely discard error here as we would have already checked that in preflights
+	slurmWalltimeCutoffString, _ := model.ParseDuration(*slurmWalltimeCutoffString)
 	level.Info(logger).Log("msg", "Jobs from slurm batch scheduler will be retrieved")
 	return &slurmScheduler{
-		logger:          logger,
-		execMode:        execMode,
-		slurmDateFormat: "2006-01-02T15:04:05",
+		logger:              logger,
+		execMode:            execMode,
+		slurmDateFormat:     "2006-01-02T15:04:05",
+		slurmWalltimeCutoff: time.Duration(slurmWalltimeCutoffString),
 	}, nil
 }
 
@@ -125,7 +138,7 @@ func (s *slurmScheduler) Fetch(start time.Time, end time.Time) ([]base.BatchJob,
 	}
 
 	// Parse sacct output and create BatchJob structs slice
-	jobs, numJobs := parseSacctCmdOutput(string(sacctOutput), *slurmWalltimeCutoff, s.logger)
+	jobs, numJobs := parseSacctCmdOutput(string(sacctOutput), s.slurmWalltimeCutoff, s.logger)
 	level.Info(s.logger).Log("msg", "Slurm jobs fetched", "start", startTime, "end", endTime, "njobs", numJobs)
 	return jobs, nil
 }
@@ -133,10 +146,13 @@ func (s *slurmScheduler) Fetch(start time.Time, end time.Time) ([]base.BatchJob,
 // Run sacct command and return output
 func runSacctCmd(execMode string, startTime string, endTime string, logger log.Logger) ([]byte, error) {
 	// Use jobIDRaw that outputs the array jobs as regular job IDs instead of id_array format
-	args := []string{"-D", "--allusers", "--parsable2",
-		"--format", "jobidraw,partition,account,group,gid,user,uid,submit,start,end,elapsed,elapsedraw,exitcode,state,nnodes,nodelist,jobname,workdir",
+	args := []string{
+		"-D", "--allusers", "--parsable2",
+		"--format", "jobidraw,partition,qos,account,group,gid,user,uid,submit,start,end,elapsed,elapsedraw,exitcode,state,allocnodes,alloccpus,nodelist,jobname,workdir",
 		"--state", "CANCELLED,COMPLETED,FAILED,NODE_FAIL,PREEMPTED,TIMEOUT",
-		"--starttime", startTime, "--endtime", endTime}
+		"--starttime", startTime,
+		"--endtime", endTime,
+	}
 
 	// Run command as slurm user
 	if execMode == "cap" {
@@ -149,7 +165,7 @@ func runSacctCmd(execMode string, startTime string, endTime string, logger log.L
 }
 
 // Parse sacct command output and return batchjob slice
-func parseSacctCmdOutput(sacctOutput string, elapsedCutoff int, logger log.Logger) ([]base.BatchJob, int) {
+func parseSacctCmdOutput(sacctOutput string, elapsedCutoff time.Duration, logger log.Logger) ([]base.BatchJob, int) {
 	// Strip first line
 	sacctOutputLines := strings.Split(string(sacctOutput), "\n")[1:]
 
@@ -166,7 +182,7 @@ func parseSacctCmdOutput(sacctOutput string, elapsedCutoff int, logger log.Logge
 			jobid := components[0]
 
 			// Ignore if we cannot get all components
-			if len(components) < 18 {
+			if len(components) < 20 {
 				wg.Done()
 				return
 			}
@@ -184,7 +200,8 @@ func parseSacctCmdOutput(sacctOutput string, elapsedCutoff int, logger log.Logge
 			}
 
 			// Ignore jobs that ran for less than slurmWalltimeCutoff seconds
-			if elapsedTime, err := strconv.Atoi(components[11]); err == nil && elapsedTime < elapsedCutoff {
+			if elapsedTime, err := strconv.Atoi(components[12]); err == nil &&
+				elapsedTime < int(elapsedCutoff.Seconds()) {
 				wg.Done()
 				return
 			}
@@ -193,9 +210,9 @@ func parseSacctCmdOutput(sacctOutput string, elapsedCutoff int, logger log.Logge
 			jobUuid, err := helpers.GetUuidFromString(
 				[]string{
 					strings.TrimSpace(components[0]),
-					strings.TrimSpace(components[6]),
-					strings.ToLower(strings.TrimSpace(components[2])),
-					strings.ToLower(strings.TrimSpace(components[15])),
+					strings.TrimSpace(components[7]),
+					strings.ToLower(strings.TrimSpace(components[3])),
+					strings.ToLower(strings.TrimSpace(components[17])),
 				},
 			)
 			if err != nil {
@@ -204,26 +221,33 @@ func parseSacctCmdOutput(sacctOutput string, elapsedCutoff int, logger log.Logge
 				jobUuid = jobid
 			}
 
-			allNodes := jobstats_helper.NodelistParser(components[15])
+			// Expand nodelist range expressions
+			allNodes := jobstats_helper.NodelistParser(components[17])
 			nodelistExp := strings.Join(allNodes, "|")
+
+			// Make jobStats struct for each job and put it in jobs slice
 			jobStat = base.BatchJob{
 				Jobid:       components[0],
 				Jobuuid:     jobUuid,
 				Partition:   components[1],
-				Account:     components[2],
-				Grp:         components[3],
-				Gid:         components[4],
-				Usr:         components[5],
-				Uid:         components[6],
-				Submit:      components[7],
-				Start:       components[8],
-				End:         components[9],
-				Elapsed:     components[10],
-				Exitcode:    components[12],
-				State:       components[13],
-				Nnodes:      components[14],
-				Nodelist:    components[15],
+				QoS:         components[2],
+				Account:     components[3],
+				Grp:         components[4],
+				Gid:         components[5],
+				Usr:         components[6],
+				Uid:         components[7],
+				Submit:      components[8],
+				Start:       components[9],
+				End:         components[10],
+				Elapsed:     components[11],
+				Exitcode:    components[13],
+				State:       components[14],
+				Nnodes:      components[15],
+				Ncpus:       components[16],
+				Nodelist:    components[17],
 				NodelistExp: nodelistExp,
+				JobName:     components[18],
+				WorkDir:     components[19],
 			}
 			jobLock.Lock()
 			jobs[i] = jobStat

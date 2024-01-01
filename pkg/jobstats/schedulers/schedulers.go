@@ -70,7 +70,10 @@ func NewBatchScheduler(logger log.Logger) (*BatchScheduler, error) {
 			return &BatchScheduler{Scheduler: scheduler, logger: logger}, nil
 		}
 	}
-	return nil, fmt.Errorf("No batch scheduler enabled. Please choose one of [%s] using flag --batch.scheduler.<name>", strings.Join(factoryKeys, ", "))
+	return nil, fmt.Errorf(
+		"No batch scheduler enabled. Please choose one of [%s] using flag --batch.scheduler.<name>",
+		strings.Join(factoryKeys, ", "),
+	)
 }
 
 // Fetch implements collection jobs between start and end times

@@ -11,7 +11,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/base"
-	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/helper"
 	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/schedulers"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -21,7 +20,7 @@ type Config struct {
 	Logger                  log.Logger
 	JobstatsDBPath          string
 	JobstatsDBTable         string
-	RetentionPeriod         int
+	RetentionPeriod         time.Duration
 	LastUpdateTimeString    string
 	LastUpdateTimeStampFile string
 	BatchScheduler          func(log.Logger) (*schedulers.BatchScheduler, error)
@@ -34,7 +33,7 @@ type jobStatsDB struct {
 	scheduler              *schedulers.BatchScheduler
 	jobstatDBPath          string
 	jobstatDBTable         string
-	retentionPeriod        int
+	retentionPeriod        time.Duration
 	lastJobsUpdateTime     time.Time
 	lastDBVacuumTime       time.Time
 	lastJobsUpdateTimeFile string
@@ -52,8 +51,8 @@ var (
 	indexStatements = []string{
 		`CREATE INDEX IF NOT EXISTS i1 ON %s (Usr,Account,Start);`,
 		`CREATE INDEX IF NOT EXISTS i2 ON %s (Usr,Jobuuid);`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS i3 ON %s (Jobid,Start);`, // To ensure we dont insert duplicated rows
 	}
-	allFields = helper.GetStructFieldName(base.BatchJob{})
 )
 
 // Write timestamp to a file
@@ -70,12 +69,12 @@ func writeTimeStampToFile(filePath string, timeStamp time.Time, logger log.Logge
 // Create a table for storing job stats
 func createTable(dbTableName string, db *sql.DB, logger log.Logger) error {
 	fieldLines := []string{}
-	for _, field := range allFields {
+	for _, field := range base.BatchJobFieldNames {
 		fieldLines = append(fieldLines, fmt.Sprintf("		\"%s\" TEXT,", field))
 	}
 	fieldLines[len(fieldLines)-1] = strings.Split(fieldLines[len(fieldLines)-1], ",")[0]
 	createBatchJobStatSQL := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (
-		"id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,		
+		"id" integer NOT NULL PRIMARY KEY,		
 		%s
 	  );`, dbTableName, strings.Join(fieldLines, "\n"))
 
@@ -167,11 +166,11 @@ func NewJobStatsDB(c *Config) (*jobStatsDB, error) {
 	// Emit debug logs
 	level.Debug(c.Logger).Log(
 		"msg", "DB config:",
-		"db.path", c.JobstatsDBPath,
-		"db.table", c.JobstatsDBTable,
-		"data.retention.period", c.RetentionPeriod,
-		"data.last.update.time", c.LastUpdateTimeString,
-		"data.last.update.timestamp.file", c.LastUpdateTimeStampFile,
+		"jobstatsDBPath", c.JobstatsDBPath,
+		"jobstatsDBTable", c.JobstatsDBTable,
+		"retentionPeriod", c.RetentionPeriod,
+		"lastUpdateTime", c.LastUpdateTimeString,
+		"lastUpdateTimeStampFile", c.LastUpdateTimeStampFile,
 	)
 
 	// Check if data path exists and attempt to create if it does not exist
@@ -267,26 +266,6 @@ func (j *jobStatsDB) checkDBLock() error {
 	return nil
 }
 
-// Make and return prepare statement for inserting entries
-func (j *jobStatsDB) prepareInsertStatement(tx *sql.Tx, numJobs int) (*sql.Stmt, error) {
-	placeHolderString := fmt.Sprintf(
-		"(%s)",
-		strings.Join(strings.Split(strings.Repeat("?", len(allFields)), ""), ","),
-	)
-	fieldNamesString := strings.Join(allFields, ",")
-	insertStatement := fmt.Sprintf(
-		"INSERT INTO %s(%s) VALUES %s",
-		j.jobstatDBTable,
-		fieldNamesString,
-		placeHolderString,
-	)
-	stmt, err := tx.Prepare(insertStatement)
-	if err != nil {
-		return nil, err
-	}
-	return stmt, nil
-}
-
 // Collect job stats
 func (j *jobStatsDB) Collect() error {
 	var currentTime = time.Now()
@@ -361,7 +340,7 @@ func (j *jobStatsDB) getJobStats(startTime, endTime time.Time) error {
 
 	// Insert data into DB
 	level.Debug(j.logger).Log("msg", "Inserting jobs into DB")
-	j.insertJobsInDB(stmt, jobs)
+	j.insertJobs(stmt, jobs)
 	level.Debug(j.logger).Log("msg", "Finished inserting jobs into DB")
 
 	// Delete older entries
@@ -423,7 +402,7 @@ func (j *jobStatsDB) deleteOldJobs(tx *sql.Tx) error {
 	deleteSQLCmd := fmt.Sprintf(
 		"DELETE FROM %s WHERE Start <= date('now', '-%d day')",
 		j.jobstatDBTable,
-		j.retentionPeriod,
+		int(j.retentionPeriod.Hours()/24),
 	)
 	_, err := tx.Exec(deleteSQLCmd)
 	if err != nil {
@@ -433,8 +412,28 @@ func (j *jobStatsDB) deleteOldJobs(tx *sql.Tx) error {
 	return nil
 }
 
+// Make and return prepare statement for inserting entries
+func (j *jobStatsDB) prepareInsertStatement(tx *sql.Tx, numJobs int) (*sql.Stmt, error) {
+	placeHolderString := fmt.Sprintf(
+		"(%s)",
+		strings.Join(strings.Split(strings.Repeat("?", len(base.BatchJobFieldNames)), ""), ","),
+	)
+	fieldNamesString := strings.Join(base.BatchJobFieldNames, ",")
+	insertStatement := fmt.Sprintf(
+		"INSERT OR REPLACE INTO %s(%s) VALUES %s",
+		j.jobstatDBTable,
+		fieldNamesString,
+		placeHolderString,
+	)
+	stmt, err := tx.Prepare(insertStatement)
+	if err != nil {
+		return nil, err
+	}
+	return stmt, nil
+}
+
 // Insert job stat into DB
-func (j *jobStatsDB) insertJobsInDB(statement *sql.Stmt, jobStats []base.BatchJob) {
+func (j *jobStatsDB) insertJobs(statement *sql.Stmt, jobStats []base.BatchJob) {
 	for _, jobStat := range jobStats {
 		// Empty job
 		if jobStat == (base.BatchJob{}) {
@@ -445,6 +444,7 @@ func (j *jobStatsDB) insertJobsInDB(statement *sql.Stmt, jobStats []base.BatchJo
 			jobStat.Jobid,
 			jobStat.Jobuuid,
 			jobStat.Partition,
+			jobStat.QoS,
 			jobStat.Account,
 			jobStat.Grp,
 			jobStat.Gid,
@@ -457,8 +457,11 @@ func (j *jobStatsDB) insertJobsInDB(statement *sql.Stmt, jobStats []base.BatchJo
 			jobStat.Exitcode,
 			jobStat.State,
 			jobStat.Nnodes,
+			jobStat.Ncpus,
 			jobStat.Nodelist,
 			jobStat.NodelistExp,
+			jobStat.JobName,
+			jobStat.WorkDir,
 		)
 		if err != nil {
 			level.Error(j.logger).

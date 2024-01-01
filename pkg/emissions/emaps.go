@@ -68,7 +68,8 @@ func (s *emapsProvider) Update() (float64, error) {
 	if time.Now().Unix()-s.lastRequestTime > s.cacheDuration || s.lastEmissionFactor == -1 {
 		currentEmissionFactor, err := s.fetch(s.apiToken, s.ctx, s.logger)
 		if err != nil {
-			level.Warn(s.logger).Log("msg", "Failed to fetch emission factor from Electricity maps provider", "err", err)
+			level.Warn(s.logger).
+				Log("msg", "Failed to fetch emission factor from Electricity maps provider", "err", err)
 
 			// Check if last emission factor is valid and if it is use the same for current
 			if s.lastEmissionFactor > -1 {
@@ -130,7 +131,8 @@ func makeEMapsAPIRequest(apiToken string, ctx context.Context, logger log.Logger
 	var data eMapsResponse
 	err = json.Unmarshal(body, &data)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to unmarshal HTTP response body for Electricity Maps provider", "err", err)
+		level.Error(logger).
+			Log("msg", "Failed to unmarshal HTTP response body for Electricity Maps provider", "err", err)
 		return -1, err
 	}
 	return float64(data.CarbonIntensity), nil
