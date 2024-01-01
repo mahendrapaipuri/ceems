@@ -5,7 +5,7 @@ set -euf -o pipefail
 cd "$(dirname $0)/.."
 
 port="$((10000 + (RANDOM % 10000)))"
-tmpdir=$(mktemp -d /tmp/batchjob_exporter_e2e_test.XXXXXX)
+tmpdir=$(mktemp -d /tmp/batchjob_monitoring_e2e_test.XXXXXX)
 
 skip_re="^(go_|batchjob_exporter_build_info|batchjob_scrape_collector_duration_seconds|process_|batchjob_textfile_mtime_seconds|batchjob_time_(zone|seconds)|batchjob_network_(receive|transmit)_(bytes|packets)_total)"
 
@@ -31,7 +31,7 @@ do
     *)
       echo "Usage: $0 [-p] [-k] [-u] [-v]"
       echo "  -s: scenario to test [options: exporter, stats]"
-      echo "  -k: keep temporary files and leave batchjob_exporter running"
+      echo "  -k: keep temporary files and leave batchjob_{exporter,stats_server} running"
       echo "  -u: update fixtures"
       echo "  -v: verbose output"
       exit 1
@@ -71,8 +71,6 @@ then
     fixture='pkg/collector/fixtures/output/e2e-test-cgroupsv2-all-metrics-output.txt'
   fi
 
-  echo "using scenario: ${scenario}. Description: ${desc}"
-
   # case "${cgroups_mode}" in
   #   legacy|hybrid) fixture='pkg/collector/fixtures/output/e2e-test-cgroupsv1-output.txt' ;;
   #   *) fixture='pkg/collector/fixtures/output/e2e-test-cgroupsv2-output.txt' ;;
@@ -83,11 +81,35 @@ then
   pidfile="${tmpdir}/batchjob_exporter.pid"
 elif [[ "${scenario}" =~ "stats" ]] 
 then
-  fixture='pkg/jobstats/fixtures/e2e-test-stats-server-output.txt'
+
+  if [ "${scenario}" = "stats-account-query" ]
+  then
+    desc="/api/accounts end point test"
+    fixture='pkg/jobstats/fixtures/output/e2e-test-stats-server-account-query.txt'
+  elif [ "${scenario}" = "stats-jobuuid-query" ]
+  then
+    desc="/api/jobs end point test with jobuuid query param"
+    fixture='pkg/jobstats/fixtures/output/e2e-test-stats-server-jobuuid-query.txt'
+  elif [ "${scenario}" = "stats-jobid-query" ]
+  then
+    desc="/api/jobs end point test with jobid query param"
+    fixture='pkg/jobstats/fixtures/output/e2e-test-stats-server-jobid-query.txt'
+  elif [ "${scenario}" = "stats-jobuuid-jobid-query" ]
+  then
+    desc="/api/jobs end point test with jobuuid and jobid query param"
+    fixture='pkg/jobstats/fixtures/output/e2e-test-stats-server-jobuuid-jobid-query.txt'
+  elif [ "${scenario}" = "stats-admin-query" ]
+  then
+    desc="/api/jobs end point test for admin query"
+    fixture='pkg/jobstats/fixtures/output/e2e-test-stats-server-admin-query.txt'
+  fi
+
   logfile="${tmpdir}/batchjob_stats_server.log"
   fixture_output="${tmpdir}/e2e-test-stats-server-output.txt"
   pidfile="${tmpdir}/batchjob_stats_server.pid"
 fi
+
+echo "using scenario: ${scenario}. Description: ${desc}"
 
 finish() {
   if [ $? -ne 0 -o ${verbose} -ne 0 ]
@@ -129,7 +151,7 @@ get() {
   fi
 }
 
-if [ "${scenario}" = "exporter-cgroups-v1" ] 
+if [[ "${scenario}" =~ "exporter" ]] 
 then
   if [ ! -x ./bin/batchjob_exporter ]
   then
@@ -137,128 +159,87 @@ then
       exit 1
   fi
 
-  ./bin/batchjob_exporter \
-    --path.sysfs="pkg/collector/fixtures/sys" \
-    --path.cgroupfs="pkg/collector/fixtures/sys/fs/cgroup" \
-    --collector.slurm.create.unique.jobids \
-    --collector.slurm.job.props.path="pkg/collector/fixtures/slurmjobprops" \
-    --collector.slurm.nvidia.smi.path="pkg/collector/fixtures/nvidia-smi" \
-    --collector.slurm.force.cgroups.version="v1" \
-    --collector.slurm.nvidia.gpu.job.map.path="pkg/collector/fixtures/gpujobmap" \
-    --collector.ipmi.dcmi.cmd="pkg/collector/fixtures/ipmi-dcmi-wrapper.sh" \
-    --collector.empty.hostname.label \
-    --web.listen-address "127.0.0.1:${port}" \
-    --log.level="debug" > "${logfile}" 2>&1 &
-
-  echo $! > "${pidfile}"
-
-  sleep 1
-
-  get "127.0.0.1:${port}/metrics" | grep -E -v "${skip_re}" > "${fixture_output}"
-elif [ "${scenario}" = "exporter-cgroups-v2" ] 
-then
-  if [ ! -x ./bin/batchjob_exporter ]
+  if [ "${scenario}" = "exporter-cgroups-v1" ] 
   then
-      echo './bin/batchjob_exporter not found. Consider running `go build` first.' >&2
-      exit 1
+      ./bin/batchjob_exporter \
+        --path.sysfs="pkg/collector/fixtures/sys" \
+        --path.cgroupfs="pkg/collector/fixtures/sys/fs/cgroup" \
+        --collector.slurm.create.unique.jobids \
+        --collector.slurm.job.props.path="pkg/collector/fixtures/slurmjobprops" \
+        --collector.slurm.nvidia.smi.path="pkg/collector/fixtures/nvidia-smi" \
+        --collector.slurm.force.cgroups.version="v1" \
+        --collector.slurm.nvidia.gpu.job.map.path="pkg/collector/fixtures/gpujobmap" \
+        --collector.ipmi.dcmi.cmd="pkg/collector/fixtures/ipmi-dcmi-wrapper.sh" \
+        --collector.empty.hostname.label \
+        --web.listen-address "127.0.0.1:${port}" \
+        --log.level="debug" > "${logfile}" 2>&1 &
+
+  elif [ "${scenario}" = "exporter-cgroups-v2" ] 
+  then
+      ./bin/batchjob_exporter \
+        --path.sysfs="pkg/collector/fixtures/sys" \
+        --path.cgroupfs="pkg/collector/fixtures/sys/fs/cgroup" \
+        --collector.slurm.create.unique.jobids \
+        --collector.slurm.job.props.path="pkg/collector/fixtures/slurmjobprops" \
+        --collector.slurm.nvidia.smi.path="pkg/collector/fixtures/nvidia-smi" \
+        --collector.slurm.force.cgroups.version="v2" \
+        --collector.slurm.nvidia.gpu.job.map.path="pkg/collector/fixtures/gpujobmap" \
+        --collector.ipmi.dcmi.cmd="pkg/collector/fixtures/ipmi-dcmi-wrapper.sh" \
+        --collector.empty.hostname.label \
+        --web.listen-address "127.0.0.1:${port}" \
+        --log.level="debug" > "${logfile}" 2>&1 &
+
+  elif [ "${scenario}" = "exporter-cgroups-v2-nogpu" ] 
+  then
+      ./bin/batchjob_exporter \
+        --path.sysfs="pkg/collector/fixtures/sys" \
+        --path.cgroupfs="pkg/collector/fixtures/sys/fs/cgroup" \
+        --collector.slurm.create.unique.jobids \
+        --collector.slurm.job.props.path="pkg/collector/fixtures/slurmjobprops" \
+        --collector.slurm.force.cgroups.version="v2" \
+        --collector.ipmi.dcmi.cmd="pkg/collector/fixtures/ipmi-dcmi-wrapper.sh" \
+        --collector.empty.hostname.label \
+        --web.listen-address "127.0.0.1:${port}" \
+        --log.level="debug" > "${logfile}" 2>&1 &
+
+  elif [ "${scenario}" = "exporter-cgroups-v2-procfs" ] 
+  then
+      ./bin/batchjob_exporter \
+        --path.sysfs="pkg/collector/fixtures/sys" \
+        --path.cgroupfs="pkg/collector/fixtures/sys/fs/cgroup" \
+        --path.procfs="pkg/collector/fixtures/proc" \
+        --collector.slurm.create.unique.jobids \
+        --collector.slurm.nvidia.smi.path="pkg/collector/fixtures/nvidia-smi" \
+        --collector.slurm.force.cgroups.version="v2" \
+        --collector.ipmi.dcmi.cmd="pkg/collector/fixtures/ipmi-dcmi-wrapper.sh" \
+        --collector.empty.hostname.label \
+        --web.listen-address "127.0.0.1:${port}" \
+        --log.level="debug" > "${logfile}" 2>&1 &
+  
+  elif [ "${scenario}" = "exporter-cgroups-v2-all-metrics" ] 
+  then
+      ./bin/batchjob_exporter \
+        --path.sysfs="pkg/collector/fixtures/sys" \
+        --path.cgroupfs="pkg/collector/fixtures/sys/fs/cgroup" \
+        --collector.slurm.create.unique.jobids \
+        --collector.slurm.job.props.path="pkg/collector/fixtures/slurmjobprops" \
+        --collector.slurm.nvidia.smi.path="pkg/collector/fixtures/nvidia-smi" \
+        --collector.slurm.force.cgroups.version="v2" \
+        --collector.slurm.nvidia.gpu.job.map.path="pkg/collector/fixtures/gpujobmap" \
+        --collector.slurm.swap.memory.metrics \
+        --collector.slurm.psi.metrics \
+        --collector.ipmi.dcmi.cmd="pkg/collector/fixtures/ipmi-dcmi-wrapper.sh" \
+        --collector.empty.hostname.label \
+        --web.listen-address "127.0.0.1:${port}" \
+        --log.level="debug" > "${logfile}" 2>&1 &
   fi
 
- ./bin/batchjob_exporter \
-    --path.sysfs="pkg/collector/fixtures/sys" \
-    --path.cgroupfs="pkg/collector/fixtures/sys/fs/cgroup" \
-    --collector.slurm.create.unique.jobids \
-    --collector.slurm.job.props.path="pkg/collector/fixtures/slurmjobprops" \
-    --collector.slurm.nvidia.smi.path="pkg/collector/fixtures/nvidia-smi" \
-    --collector.slurm.force.cgroups.version="v2" \
-    --collector.slurm.nvidia.gpu.job.map.path="pkg/collector/fixtures/gpujobmap" \
-    --collector.ipmi.dcmi.cmd="pkg/collector/fixtures/ipmi-dcmi-wrapper.sh" \
-    --collector.empty.hostname.label \
-    --web.listen-address "127.0.0.1:${port}" \
-    --log.level="debug" > "${logfile}" 2>&1 &
-
   echo $! > "${pidfile}"
 
   sleep 1
 
   get "127.0.0.1:${port}/metrics" | grep -E -v "${skip_re}" > "${fixture_output}"
-elif [ "${scenario}" = "exporter-cgroups-v2-nogpu" ] 
-then
-  if [ ! -x ./bin/batchjob_exporter ]
-  then
-      echo './bin/batchjob_exporter not found. Consider running `go build` first.' >&2
-      exit 1
-  fi
-
- ./bin/batchjob_exporter \
-    --path.sysfs="pkg/collector/fixtures/sys" \
-    --path.cgroupfs="pkg/collector/fixtures/sys/fs/cgroup" \
-    --collector.slurm.create.unique.jobids \
-    --collector.slurm.job.props.path="pkg/collector/fixtures/slurmjobprops" \
-    --collector.slurm.force.cgroups.version="v2" \
-    --collector.ipmi.dcmi.cmd="pkg/collector/fixtures/ipmi-dcmi-wrapper.sh" \
-    --collector.empty.hostname.label \
-    --web.listen-address "127.0.0.1:${port}" \
-    --log.level="debug" > "${logfile}" 2>&1 &
-
-  echo $! > "${pidfile}"
-
-  sleep 1
-
-  get "127.0.0.1:${port}/metrics" | grep -E -v "${skip_re}" > "${fixture_output}"
-elif [ "${scenario}" = "exporter-cgroups-v2-procfs" ] 
-then
-  if [ ! -x ./bin/batchjob_exporter ]
-  then
-      echo './bin/batchjob_exporter not found. Consider running `go build` first.' >&2
-      exit 1
-  fi
-
- ./bin/batchjob_exporter \
-    --path.sysfs="pkg/collector/fixtures/sys" \
-    --path.cgroupfs="pkg/collector/fixtures/sys/fs/cgroup" \
-    --path.procfs="pkg/collector/fixtures/proc" \
-    --collector.slurm.create.unique.jobids \
-    --collector.slurm.nvidia.smi.path="pkg/collector/fixtures/nvidia-smi" \
-    --collector.slurm.force.cgroups.version="v2" \
-    --collector.ipmi.dcmi.cmd="pkg/collector/fixtures/ipmi-dcmi-wrapper.sh" \
-    --collector.empty.hostname.label \
-    --web.listen-address "127.0.0.1:${port}" \
-    --log.level="debug" > "${logfile}" 2>&1 &
-
-  echo $! > "${pidfile}"
-
-  sleep 1
-
-  get "127.0.0.1:${port}/metrics" | grep -E -v "${skip_re}" > "${fixture_output}"
-elif [ "${scenario}" = "exporter-cgroups-v2-all-metrics" ] 
-then
-  if [ ! -x ./bin/batchjob_exporter ]
-  then
-      echo './bin/batchjob_exporter not found. Consider running `go build` first.' >&2
-      exit 1
-  fi
-
-  ./bin/batchjob_exporter \
-    --path.sysfs="pkg/collector/fixtures/sys" \
-    --path.cgroupfs="pkg/collector/fixtures/sys/fs/cgroup" \
-    --collector.slurm.create.unique.jobids \
-    --collector.slurm.job.props.path="pkg/collector/fixtures/slurmjobprops" \
-    --collector.slurm.nvidia.smi.path="pkg/collector/fixtures/nvidia-smi" \
-    --collector.slurm.force.cgroups.version="v2" \
-    --collector.slurm.nvidia.gpu.job.map.path="pkg/collector/fixtures/gpujobmap" \
-    --collector.slurm.swap.memory.metrics \
-    --collector.slurm.psi.metrics \
-    --collector.ipmi.dcmi.cmd="pkg/collector/fixtures/ipmi-dcmi-wrapper.sh" \
-    --collector.empty.hostname.label \
-    --web.listen-address "127.0.0.1:${port}" \
-    --log.level="debug" > "${logfile}" 2>&1 &
-
-  echo $! > "${pidfile}"
-
-  sleep 1
-
-  get "127.0.0.1:${port}/metrics" | grep -E -v "${skip_re}" > "${fixture_output}"
-elif [ "${scenario}" = "stats" ] 
+elif [[ "${scenario}" =~ "stats" ]] 
 then
   if [ ! -x ./bin/batchjob_stats_server ]
   then
@@ -271,13 +252,29 @@ then
     --batch.scheduler.slurm \
     --data.path="${tmpdir}" \
     --web.listen-address="127.0.0.1:${port}" \
+    --web.admin-users="grafana" \
     --log.level="debug" > "${logfile}" 2>&1 &
 
   echo $! > "${pidfile}"
 
   sleep 2
 
-  get -H "X-Grafana-User: usr" "127.0.0.1:${port}/api/jobs?from=2023-02-20&to=2023-02-25&account=acc1" > "${fixture_output}"
+  if [ "${scenario}" = "stats-account-query" ]
+  then
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/accounts" > "${fixture_output}"
+  elif [ "${scenario}" = "stats-jobuuid-query" ]
+  then
+    get -H "X-Grafana-User: usr2" "127.0.0.1:${port}/api/jobs?jobuuid=baee651d-df44-af2c-fa09-50f5523b5e19&account=acc2&from=2023-02-21T00:00:00&to=2023-02-21T23:59:59" > "${fixture_output}"
+  elif [ "${scenario}" = "stats-jobid-query" ]
+  then
+    get -H "X-Grafana-User: usr8" "127.0.0.1:${port}/api/jobs?jobid=1479763&account=acc1&from=2023-02-21T00:00:00&to=2023-02-22T00:00:00" > "${fixture_output}"
+  elif [ "${scenario}" = "stats-jobuuid-jobid-query" ]
+  then
+    get -H "X-Grafana-User: usr15" "127.0.0.1:${port}/api/jobs?jobuuid=e653f045-73b7-c928-e8df-00c4083cb9bc&jobid=11508&jobid=81510&account=acc1&from=2023-02-21T00:00:00&to=2023-02-22T00:00:00" > "${fixture_output}"
+  elif [ "${scenario}" = "stats-admin-query" ]
+  then
+    get -H "X-Grafana-User: grafana" -H "X-Dashboard-User: usr3" "127.0.0.1:${port}/api/jobs?account=acc3&from=2023-01-21T15:49:06&to=2023-02-27T15:49:06" > "${fixture_output}"
+  fi
 fi
 
 diff -u \

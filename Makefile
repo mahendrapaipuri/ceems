@@ -122,7 +122,11 @@ else
 .PHONY: test-e2e
 test-e2e: build pkg/collector/fixtures/sys/.unpacked pkg/collector/fixtures/proc/.unpacked
 	@echo ">> running end-to-end tests"
-	./scripts/e2e-test.sh -s stats
+	./scripts/e2e-test.sh -s stats-account-query
+	./scripts/e2e-test.sh -s stats-jobuuid-query
+	./scripts/e2e-test.sh -s stats-jobid-query
+	./scripts/e2e-test.sh -s stats-jobuuid-jobid-query
+	./scripts/e2e-test.sh -s stats-admin-query
 endif
 
 .PHONY: skip-test-e2e

@@ -20,12 +20,21 @@ func setupServer() *JobstatsServer {
 	return server
 }
 
-func getMockAccounts(user string, logger log.Logger) ([]base.Account, error) {
+func getMockAccounts(dbTable string, user string, logger log.Logger) ([]base.Account, error) {
 	return []base.Account{{ID: "foo"}, {ID: "bar"}}, nil
 }
 
-func getMockJobs(user string, accounts []string, from string, to string, logger log.Logger) ([]base.BatchJob, error) {
-	return []base.BatchJob{{Jobid: "1000"}, {Jobid: "10001"}}, nil
+func getMockJobs(
+	dbTable string,
+	user string,
+	accounts []string,
+	jobids []string,
+	jobuuids []string,
+	from string,
+	to string,
+	logger log.Logger,
+) ([]base.BatchJob, error) {
+	return []base.BatchJob{{Jobid: "1000", Usr: user}, {Jobid: "10001", Usr: user}}, nil
 }
 
 // Test /api/accounts when no user header found
@@ -82,7 +91,7 @@ func TestAccountsHandlerWithUserHeader(t *testing.T) {
 	}
 
 	// Expected result
-	expectedAccounts, _ := getMockAccounts("foo", server.logger)
+	expectedAccounts, _ := getMockAccounts("mockDB", "foo", server.logger)
 
 	// Unmarshal byte into structs.
 	var response base.AccountsResponse
@@ -135,7 +144,8 @@ func TestJobsHandlerWithUserHeader(t *testing.T) {
 	// Create request
 	req := httptest.NewRequest(http.MethodGet, "/api/jobs", nil)
 	// Add user header
-	req.Header.Set("X-Grafana-User", "foo")
+	currentUser := "foo"
+	req.Header.Set("X-Grafana-User", currentUser)
 
 	// Start recorder
 	w := httptest.NewRecorder()
@@ -150,7 +160,166 @@ func TestJobsHandlerWithUserHeader(t *testing.T) {
 	}
 
 	// Expected result
-	expectedJobs, _ := getMockJobs("foo", []string{"foo", "bar"}, "", "", server.logger)
+	expectedJobs, _ := getMockJobs("mockDB", currentUser, []string{"foo", "bar"}, []string{}, []string{}, "", "", server.logger)
+
+	// Unmarshal byte into structs.
+	var response base.JobsResponse
+	json.Unmarshal(data, &response)
+
+	if response.Status != "success" {
+		t.Errorf("expected success status got %v", response.Status)
+	}
+	if !reflect.DeepEqual(response.Data, expectedJobs) {
+		t.Errorf("expected %v got %v", expectedJobs, response.Data)
+	}
+}
+
+// Test /api/jobs when user header and impersonated user header found
+func TestJobsHandlerWithUserHeaderAndAdmin(t *testing.T) {
+	server := setupServer()
+	server.adminUsers = []string{"admin"}
+	// Create request
+	req := httptest.NewRequest(http.MethodGet, "/api/jobs", nil)
+	// Add user header
+	currentUser := "foo"
+	req.Header.Set("X-Grafana-User", server.adminUsers[0])
+	req.Header.Set("X-Dashboard-User", currentUser)
+
+	// Start recorder
+	w := httptest.NewRecorder()
+	server.jobs(w, req)
+	res := w.Result()
+	defer res.Body.Close()
+
+	// Get body
+	data, err := io.ReadAll(res.Body)
+	if err != nil {
+		t.Errorf("expected error to be nil got %v", err)
+	}
+
+	// Expected result
+	expectedJobs, _ := getMockJobs("mockDB", currentUser, []string{"foo", "bar"}, []string{}, []string{}, "", "", server.logger)
+
+	// Unmarshal byte into structs.
+	var response base.JobsResponse
+	json.Unmarshal(data, &response)
+
+	if response.Status != "success" {
+		t.Errorf("expected success status got %v", response.Status)
+	}
+	if !reflect.DeepEqual(response.Data, expectedJobs) {
+		t.Errorf("expected %v got %v", expectedJobs, response.Data)
+	}
+}
+
+// Test /api/jobs when from/to query parameters are malformed
+func TestJobsHandlerWithMalformedQueryParams(t *testing.T) {
+	server := setupServer()
+	// Create request
+	req := httptest.NewRequest(http.MethodGet, "/api/jobs", nil)
+	// Add user header
+	req.Header.Set("X-Grafana-User", "foo")
+	// Add from query parameter
+	q := req.URL.Query()
+	q.Add("from", "10-12-2023")
+	req.URL.RawQuery = q.Encode()
+
+	// Start recorder
+	w := httptest.NewRecorder()
+	server.jobs(w, req)
+	res := w.Result()
+	defer res.Body.Close()
+
+	// Get body
+	data, err := io.ReadAll(res.Body)
+	if err != nil {
+		t.Errorf("expected error to be nil got %v", err)
+	}
+
+	// Unmarshal byte into structs.
+	var response base.JobsResponse
+	json.Unmarshal(data, &response)
+
+	if response.Status != "error" {
+		t.Errorf("expected error status got %v", response.Status)
+	}
+	if response.ErrorType != "Internal server error" {
+		t.Errorf("expected Internal server error type got %v", response.ErrorType)
+	}
+	if !reflect.DeepEqual(response.Data, []base.BatchJob{}) {
+		t.Errorf("expected empty data got %v", response.Data)
+	}
+}
+
+// Test /api/jobs when from/to query parameters exceed max time window
+func TestJobsHandlerWithQueryWindowExceeded(t *testing.T) {
+	server := setupServer()
+	// Create request
+	req := httptest.NewRequest(http.MethodGet, "/api/jobs", nil)
+	// Add user header
+	req.Header.Set("X-Grafana-User", "foo")
+	// Add from query parameter
+	q := req.URL.Query()
+	q.Add("from", "2023-01-01T00:00:00")
+	q.Add("to", "2023-06-01T00:00:00")
+	req.URL.RawQuery = q.Encode()
+
+	// Start recorder
+	w := httptest.NewRecorder()
+	server.jobs(w, req)
+	res := w.Result()
+	defer res.Body.Close()
+
+	// Get body
+	data, err := io.ReadAll(res.Body)
+	if err != nil {
+		t.Errorf("expected error to be nil got %v", err)
+	}
+
+	// Unmarshal byte into structs.
+	var response base.JobsResponse
+	json.Unmarshal(data, &response)
+
+	if response.Status != "error" {
+		t.Errorf("expected error status got %v", response.Status)
+	}
+	if response.Error != "Maximum query window exceeded" {
+		t.Errorf("expected Maximum time window exceeded got %v", response.Error)
+	}
+	if !reflect.DeepEqual(response.Data, []base.BatchJob{}) {
+		t.Errorf("expected empty data got %v", response.Data)
+	}
+}
+
+// Test /api/jobs when from/to query parameters exceed max time window but when jobuuids
+// are present
+func TestJobsHandlerWithJobuuidsQueryParams(t *testing.T) {
+	server := setupServer()
+	// Create request
+	req := httptest.NewRequest(http.MethodGet, "/api/jobs", nil)
+	// Add user header
+	req.Header.Set("X-Grafana-User", "foo")
+	// Add from query parameter
+	q := req.URL.Query()
+	q.Add("from", "2023-01-01T00:00:00")
+	q.Add("to", "2023-06-01T00:00:00")
+	q.Add("jobuuid", "foo-bar")
+	req.URL.RawQuery = q.Encode()
+
+	// Start recorder
+	w := httptest.NewRecorder()
+	server.jobs(w, req)
+	res := w.Result()
+	defer res.Body.Close()
+
+	// Get body
+	data, err := io.ReadAll(res.Body)
+	if err != nil {
+		t.Errorf("expected error to be nil got %v", err)
+	}
+
+	// Expected result
+	expectedJobs, _ := getMockJobs("mockDB", "foo", []string{"foo", "bar"}, []string{}, []string{}, "", "", server.logger)
 
 	// Unmarshal byte into structs.
 	var response base.JobsResponse
