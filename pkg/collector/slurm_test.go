@@ -14,11 +14,11 @@ import (
 
 var expectedSlurmMetrics CgroupMetric
 
-func mockGPUDevices() map[string]Device {
-	var devs = make(map[string]Device, 4)
+func mockGPUDevices() map[int]Device {
+	var devs = make(map[int]Device, 4)
 	for i := 0; i <= 4; i++ {
 		idxString := strconv.Itoa(i)
-		devs[idxString] = Device{index: idxString, uuid: fmt.Sprintf("GPU-%d", i)}
+		devs[i] = Device{index: idxString, uuid: fmt.Sprintf("GPU-%d", i)}
 	}
 	return devs
 }
