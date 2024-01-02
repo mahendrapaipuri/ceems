@@ -755,7 +755,7 @@ func (c *slurmCollector) getCgroupsV2Metrics(name string) (CgroupMetric, error) 
 		metric.cpuUser = float64(stats.CPU.UserUsec) / 1000000.0
 		metric.cpuSystem = float64(stats.CPU.SystemUsec) / 1000000.0
 		metric.cpuTotal = float64(stats.CPU.UsageUsec) / 1000000.0
-		if *collectPSIStats && stats.CPU.PSI != nil {
+		if stats.CPU.PSI != nil {
 			metric.cpuPressure = float64(stats.CPU.PSI.Full.Total) / 1000000.0
 		}
 	}
@@ -772,7 +772,7 @@ func (c *slurmCollector) getCgroupsV2Metrics(name string) (CgroupMetric, error) 
 		metric.memoryRSS = float64(stats.Memory.Anon)
 		metric.memswUsed = float64(stats.Memory.SwapUsage)
 		metric.memswTotal = float64(stats.Memory.SwapLimit)
-		if *collectPSIStats && stats.Memory.PSI != nil {
+		if stats.Memory.PSI != nil {
 			metric.memoryPressure = float64(stats.Memory.PSI.Full.Total) / 1000000.0
 		}
 	}
