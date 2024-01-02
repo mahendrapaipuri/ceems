@@ -142,7 +142,7 @@ func (b *BatchJobStatsServer) Main() {
 
 	// Get slice of admin users
 	var adminUsersList []string
-	for _, user := range(strings.Split(*adminUsers, ",")) {
+	for _, user := range strings.Split(*adminUsers, ",") {
 		adminUsersList = append(adminUsersList, strings.TrimSpace(user))
 	}
 
