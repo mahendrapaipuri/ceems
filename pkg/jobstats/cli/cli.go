@@ -52,7 +52,7 @@ func (b *BatchJobStatsServer) Main() {
 		).Default("").String()
 		adminUsers = b.App.Flag(
 			"web.admin-users",
-			"Comma separated list of admin users.",
+			"Comma separated list of admin users (example: \"admin1,admin2\").",
 		).Default("").String()
 		dataPath = b.App.Flag(
 			"data.path",
@@ -140,6 +140,12 @@ func (b *BatchJobStatsServer) Main() {
 	jobstatDBPath := filepath.Join(absDataPath, *jobstatDBFile)
 	jobsLastTimeStampFile := filepath.Join(absDataPath, "lastjobsupdatetime")
 
+	// Get slice of admin users
+	var adminUsersList []string
+	for _, user := range(strings.Split(*adminUsers, ",")) {
+		adminUsersList = append(adminUsersList, strings.TrimSpace(user))
+	}
+
 	// Create context that listens for the interrupt signal from the OS.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -162,7 +168,7 @@ func (b *BatchJobStatsServer) Main() {
 		WebSystemdSocket: *systemdSocket,
 		WebConfigFile:    *webConfigFile,
 		DBConfig:         *dbConfig,
-		AdminUsers:       strings.Split(*adminUsers, ","),
+		AdminUsers:       adminUsersList,
 	}
 
 	// Create server instance
