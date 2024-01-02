@@ -382,6 +382,7 @@ The stats server can be started as follows:
 ```
 /path/to/batchjob_stats_server \
     --slurm.sacct.path="/usr/local/bin/sacct" \
+    --batch.scheduler.slurm \
     --data.path="/var/lib/batchjob_stats" \
     --log.level="debug"
 ```
@@ -423,11 +424,10 @@ keeps the job data for the past one year.
 ```
 /path/to/batchjob_stats_server \
     --slurm.sacct.path="/usr/local/bin/sacct" \
-    --slurm.sacct.run.with.sudo \
     --batch.scheduler.slurm \
     --path.data="/var/lib/batchjob_stats" \
-    --db.update.interval=1800 \
-    --data.retention.period=365 \
+    --db.update.interval="30m" \
+    --data.retention.period="1y" \
     --log.level="debug"
 ```
 
