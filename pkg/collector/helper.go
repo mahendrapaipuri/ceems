@@ -118,7 +118,7 @@ func GetNvidiaGPUDevices(nvidiaSmiPath string, logger log.Logger) (map[int]Devic
 	// Get all devices
 	gpuDevices := map[int]Device{}
 	devIndxInt := 0
-	for _, line := range strings.Split(string(nvidiaSmiOutput), "\n") {
+	for _, line := range strings.Split(strings.TrimSpace(string(nvidiaSmiOutput)), "\n") {
 		// Header line, empty line and newlines are ignored
 		if line == "" || line == "\n" || strings.HasPrefix(line, "index") {
 			continue

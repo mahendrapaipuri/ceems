@@ -486,7 +486,7 @@ func (c *slurmCollector) getJobProperties(metric *CgroupMetric, pids []uint64) {
 	// it but just to be safe. This will have a small overhead as we need to check the
 	// correct integer index for each device index. We can live with it as there are
 	// typically 2/4/8 GPUs per node.
-	for i := 0; i <= len(c.nvidiaGPUDevs); i++ {
+	for i := 0; i < len(c.nvidiaGPUDevs); i++ {
 		dev := c.nvidiaGPUDevs[i]
 		gpuJobMapInfo := fmt.Sprintf("%s/%s", *gpuStatPath, dev.index)
 
