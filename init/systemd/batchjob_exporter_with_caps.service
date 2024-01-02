@@ -16,6 +16,7 @@ RestartSec=1
 StartLimitInterval=0
 
 AmbientCapabilities=CAP_SYS_PTRACE CAP_DAC_READ_SEARCH
+BoundingCapabilities=CAP_SYS_PTRACE CAP_DAC_READ_SEARCH
 
 ProtectSystem=strict
 ProtectControlGroups=true
