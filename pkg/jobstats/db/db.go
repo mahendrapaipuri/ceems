@@ -375,14 +375,14 @@ func (j *jobStatsDB) Stop() error {
 
 // Vacuum DB to reduce fragementation and size
 func (j *jobStatsDB) vacuumDB() error {
-	weekday := time.Now().Weekday().String()
-	hours, _, _ := time.Now().Clock()
+	hour, _, _ := time.Now().Clock()
 
 	// Next vacuum time is 7 days after last vacuum
 	nextVacuumTime := j.lastDBVacuumTime.Add(time.Duration(168) * time.Hour)
 
-	// Check if we are on Monday at 02hr and **after** nextVacuumTime
-	if weekday != "Monday" || hours != 02 || time.Now().Compare(nextVacuumTime) == -1 {
+	// Check if we are at 02hr and **after** nextVacuumTime
+	// We try to vacuum DB during night when there will be smallest activity
+	if hour != 02 || time.Now().Compare(nextVacuumTime) == -1 {
 		return nil
 	}
 
@@ -393,6 +393,8 @@ func (j *jobStatsDB) vacuumDB() error {
 		return err
 	}
 	level.Info(j.logger).Log("msg", "DB vacuum successfully finished")
+
+	// Update last vacuum time
 	j.lastDBVacuumTime = time.Now()
 	return nil
 }
