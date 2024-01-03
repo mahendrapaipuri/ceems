@@ -332,7 +332,7 @@ func (j *jobStatsDB) getJobStats(startTime, endTime time.Time) error {
 
 	// Set pragma statements
 	j.setPragmaDirectives()
-	stmt, err := j.prepareInsertStatement(tx, len(jobs))
+	stmt, err := j.prepareInsertStatement(tx)
 	if err != nil {
 		level.Error(j.logger).Log("msg", "Failed to prepare insert job statement in DB", "err", err)
 		return err
@@ -415,7 +415,7 @@ func (j *jobStatsDB) deleteOldJobs(tx *sql.Tx) error {
 }
 
 // Make and return prepare statement for inserting entries
-func (j *jobStatsDB) prepareInsertStatement(tx *sql.Tx, numJobs int) (*sql.Stmt, error) {
+func (j *jobStatsDB) prepareInsertStatement(tx *sql.Tx) (*sql.Stmt, error) {
 	placeHolderString := fmt.Sprintf(
 		"(%s)",
 		strings.Join(strings.Split(strings.Repeat("?", len(base.BatchJobFieldNames)), ""), ","),
