@@ -10,11 +10,13 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/base"
+	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/db"
 )
 
 func setupServer() *JobstatsServer {
 	logger := log.NewNopLogger()
 	server, _, _ := NewJobstatsServer(&Config{Logger: logger})
+	server.dbConfig = db.Config{JobstatsDBTable: "jobs"}
 	server.Accounts = getMockAccounts
 	server.Jobs = getMockJobs
 	return server
@@ -25,16 +27,10 @@ func getMockAccounts(dbTable string, user string, logger log.Logger) ([]base.Acc
 }
 
 func getMockJobs(
-	dbTable string,
-	user string,
-	accounts []string,
-	jobids []string,
-	jobuuids []string,
-	from string,
-	to string,
+	query Query,
 	logger log.Logger,
 ) ([]base.BatchJob, error) {
-	return []base.BatchJob{{Jobid: "1000", Usr: user}, {Jobid: "10001", Usr: user}}, nil
+	return []base.BatchJob{{Jobid: "1000", Usr: "user"}, {Jobid: "10001", Usr: "user"}}, nil
 }
 
 // Test /api/accounts when no user header found
@@ -160,7 +156,7 @@ func TestJobsHandlerWithUserHeader(t *testing.T) {
 	}
 
 	// Expected result
-	expectedJobs, _ := getMockJobs("mockDB", currentUser, []string{"foo", "bar"}, []string{}, []string{}, "", "", server.logger)
+	expectedJobs, _ := getMockJobs(Query{}, server.logger)
 
 	// Unmarshal byte into structs.
 	var response base.JobsResponse
@@ -181,9 +177,8 @@ func TestJobsHandlerWithUserHeaderAndAdmin(t *testing.T) {
 	// Create request
 	req := httptest.NewRequest(http.MethodGet, "/api/jobs", nil)
 	// Add user header
-	currentUser := "foo"
 	req.Header.Set("X-Grafana-User", server.adminUsers[0])
-	req.Header.Set("X-Dashboard-User", currentUser)
+	req.Header.Set("X-Dashboard-User", "foo")
 
 	// Start recorder
 	w := httptest.NewRecorder()
@@ -198,7 +193,7 @@ func TestJobsHandlerWithUserHeaderAndAdmin(t *testing.T) {
 	}
 
 	// Expected result
-	expectedJobs, _ := getMockJobs("mockDB", currentUser, []string{"foo", "bar"}, []string{}, []string{}, "", "", server.logger)
+	expectedJobs, _ := getMockJobs(Query{}, server.logger)
 
 	// Unmarshal byte into structs.
 	var response base.JobsResponse
@@ -260,8 +255,8 @@ func TestJobsHandlerWithQueryWindowExceeded(t *testing.T) {
 	req.Header.Set("X-Grafana-User", "foo")
 	// Add from query parameter
 	q := req.URL.Query()
-	q.Add("from", "2023-01-01T00:00:00")
-	q.Add("to", "2023-06-01T00:00:00")
+	q.Add("from", "2023-01-01T00:00:00Z")
+	q.Add("to", "2023-06-01T00:00:00Z")
 	req.URL.RawQuery = q.Encode()
 
 	// Start recorder
@@ -301,8 +296,8 @@ func TestJobsHandlerWithJobuuidsQueryParams(t *testing.T) {
 	req.Header.Set("X-Grafana-User", "foo")
 	// Add from query parameter
 	q := req.URL.Query()
-	q.Add("from", "2023-01-01T00:00:00")
-	q.Add("to", "2023-06-01T00:00:00")
+	q.Add("from", "2023-01-01T00:00:00Z")
+	q.Add("to", "2023-06-01T00:00:00Z")
 	q.Add("jobuuid", "foo-bar")
 	req.URL.RawQuery = q.Encode()
 
@@ -319,7 +314,7 @@ func TestJobsHandlerWithJobuuidsQueryParams(t *testing.T) {
 	}
 
 	// Expected result
-	expectedJobs, _ := getMockJobs("mockDB", "foo", []string{"foo", "bar"}, []string{}, []string{}, "", "", server.logger)
+	expectedJobs, _ := getMockJobs(Query{}, server.logger)
 
 	// Unmarshal byte into structs.
 	var response base.JobsResponse

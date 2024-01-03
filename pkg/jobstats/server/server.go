@@ -39,14 +39,39 @@ type JobstatsServer struct {
 	dbConfig    db.Config
 	adminUsers  []string
 	Accounts    func(string, string, log.Logger) ([]base.Account, error)
-	Jobs        func(string, string, []string, []string, []string, string, string, log.Logger) ([]base.BatchJob, error)
+	Jobs        func(Query, log.Logger) ([]base.BatchJob, error)
 	HealthCheck func(log.Logger) bool
 }
 
-var (
-	dbConn     *sql.DB
-	dateFormat = "2006-01-02T15:04:05"
-)
+// Query builder struct
+type Query struct {
+	builder strings.Builder
+	params  []string
+}
+
+// Add query to builder
+func (q *Query) query(s string) {
+	q.builder.WriteString(s)
+}
+
+// Add parameter and its placeholder
+func (q *Query) param(val string) {
+	q.builder.WriteString("?")
+	q.params = append(q.params, val)
+}
+
+// Add multiple parameters and its placeholder
+func (q *Query) multiParam(val []string) {
+	q.builder.WriteString(fmt.Sprintf("(%s)", strings.Join(strings.Split(strings.Repeat("?", len(val)), ""), ",")))
+	q.params = append(q.params, val...)
+}
+
+// Get current query string and its parameters
+func (q *Query) get() (string, []string) {
+	return q.builder.String(), q.params
+}
+
+var dbConn *sql.DB
 
 // Create new Jobstats server
 func NewJobstatsServer(c *Config) (*JobstatsServer, func(), error) {
@@ -122,12 +147,12 @@ func (s *JobstatsServer) Shutdown(ctx context.Context, wg *sync.WaitGroup) error
 }
 
 // Get current user from the header
-func (s *JobstatsServer) getUser(r *http.Request) string {
+func (s *JobstatsServer) getUser(r *http.Request) (string, string) {
 	// Check if username header is available
-	user := r.Header.Get("X-Grafana-User")
-	if user == "" {
+	loggedUser := r.Header.Get("X-Grafana-User")
+	if loggedUser == "" {
 		level.Warn(s.logger).Log("msg", "Header X-Grafana-User not found")
-		return user
+		return loggedUser, loggedUser
 	}
 
 	// If current user is in list of admin users, get "actual" user from
@@ -135,15 +160,17 @@ func (s *JobstatsServer) getUser(r *http.Request) string {
 	// as their username.
 	// For admin users who can look at dashboard of "any" user this will be the
 	// username of the "impersonated" user and we take it into account
-	if slices.Contains(s.adminUsers, user) {
+	// Besides, X-Dashboard-User can have a special user "all" that will return jobs
+	// of all users
+	if slices.Contains(s.adminUsers, loggedUser) {
 		if dashboardUser := r.Header.Get("X-Dashboard-User"); dashboardUser != "" {
 			level.Info(s.logger).Log(
-				"msg", "Admin user accessing dashboards", "currentUser", user, "impersonatedUser", dashboardUser,
+				"msg", "Admin user accessing dashboards", "loggedUser", loggedUser, "dashboardUser", dashboardUser,
 			)
-			user = dashboardUser
+			return loggedUser, dashboardUser
 		}
 	}
-	return user
+	return loggedUser, loggedUser
 }
 
 // Set response headers
@@ -160,7 +187,7 @@ func (s *JobstatsServer) accounts(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	// Get current user from header
-	user := s.getUser(r)
+	user, _ := s.getUser(r)
 	// If no user found, return empty response
 	if user == "" {
 		response = base.AccountsResponse{
@@ -237,60 +264,76 @@ func (s *JobstatsServer) jobs(w http.ResponseWriter, r *http.Request) {
 	s.setHeaders(w)
 	w.WriteHeader(http.StatusOK)
 
-	// Get current user from header
-	user := s.getUser(r)
+	// Initialise utility vars
+	checkQueryWindow := true                             // Check query window size
+	defaultQueryWindow := time.Duration(168) * time.Hour // One week
+
+	// Get current logged user and dashboard user from headers
+	loggedUser, dashboardUser := s.getUser(r)
 	// If no user found, return empty response
-	if user == "" {
+	if loggedUser == "" {
 		s.jobsErrorResponse("User Error", "No user identified", w)
 		return
 	}
 
-	// Get query parameters
-	accounts := r.URL.Query()["account"]
-	// Add accounts from var-account query parameter as well
-	// This is to take into account query string made by grafana when getting
-	// from variables
-	accounts = append(accounts, r.URL.Query()["var-account"]...)
+	// Initialise query builder
+	q := Query{}
+	q.query(fmt.Sprintf("SELECT * FROM %s", s.dbConfig.JobstatsDBTable))
 
-	// Check if jobuuid or var-jobuuid is present in query params
-	jobuuids := r.URL.Query()["jobuuid"]
-	jobuuids = append(jobuuids, r.URL.Query()["var-jobuuid"]...)
+	// Add dummy condition at the beginning
+	q.query(" WHERE id > ")
+	q.param("0")
 
-	// Similarly check for jobid or var-jobid
-	jobids := r.URL.Query()["jobid"]
-	jobids = append(jobids, r.URL.Query()["var-jobid"]...)
+	// Check if logged user is in admin users and if we are quering for "all" jobs
+	// If that is not the case, add user condition in query
+	if !slices.Contains(s.adminUsers, loggedUser) || dashboardUser != "all" {
+		q.query(" AND Usr = ")
+		q.param(dashboardUser)
+	}
+
+	// Get account query parameters if any
+	if accounts := r.URL.Query()["account"]; len(accounts) > 0 {
+		q.query(" AND Account IN ")
+		q.multiParam(accounts)
+	}
+
+	// Check if jobuuid present in query params and add them
+	// If any of jobuuid or jobid query params are present
+	// do not check query window as we are fetching a specific job(s)
+	// Consequently set defaultQueryWindow to maximum which is retention period
+	if jobuuids := r.URL.Query()["jobuuid"]; len(jobuuids) > 0 {
+		q.query(" AND Jobuuid IN ")
+		q.multiParam(jobuuids)
+		checkQueryWindow = false
+		defaultQueryWindow = s.dbConfig.RetentionPeriod
+	}
+
+	// Similarly check for jobid
+	if jobids := r.URL.Query()["jobid"]; len(jobids) > 0 {
+		q.query(" AND Jobid IN ")
+		q.multiParam(jobids)
+		checkQueryWindow = false
+		defaultQueryWindow = s.dbConfig.RetentionPeriod
+	}
 
 	var from, to string
-	var checkQueryWindow = true
 	// If no from provided, use 1 week from now as from
 	if from = r.URL.Query().Get("from"); from == "" {
-		// If query is made for particular jobs and from is not present, use the
-		// default retention period as from as we need to look in whole DB
-		if len(jobuuids) > 0 || len(jobids) > 0 {
-			from = time.Now().Add(-s.dbConfig.RetentionPeriod).Format(dateFormat)
-			checkQueryWindow = false
-		} else {
-			from = time.Now().Add(-time.Duration(168) * time.Hour).Format(dateFormat)
-		}
+		from = time.Now().Add(-defaultQueryWindow).Format(time.RFC3339)
 	}
 	if to = r.URL.Query().Get("to"); to == "" {
-		to = time.Now().Format(dateFormat)
-	}
-
-	// If jobuuids or jobids is present, turn off checkQueryWindow check
-	if len(jobuuids) > 0 || len(jobids) > 0 {
-		checkQueryWindow = false
+		to = time.Now().Format(time.RFC3339)
 	}
 
 	// Convert "from" and "to" to time.Time and return error response if they
 	// cannot be parsed
-	fromTime, err := time.Parse(dateFormat, from)
+	fromTime, err := time.Parse(time.RFC3339, from)
 	if err != nil {
 		level.Error(s.logger).Log("msg", "Failed to parse from datestring", "from", from, "err", err)
 		s.jobsErrorResponse("Internal server error", "Malformed 'from' time string", w)
 		return
 	}
-	toTime, err := time.Parse(dateFormat, to)
+	toTime, err := time.Parse(time.RFC3339, to)
 	if err != nil {
 		level.Error(s.logger).Log("msg", "Failed to parse from datestring", "to", to, "err", err)
 		s.jobsErrorResponse("Internal server error", "Malformed 'to' time string", w)
@@ -309,10 +352,18 @@ func (s *JobstatsServer) jobs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Add from and to to query
+	if checkQueryWindow {
+		q.query(" AND Start BETWEEN ")
+		q.param(from)
+		q.query(" AND ")
+		q.param(to)
+	}
+
 	// Get all user jobs in the given time window
-	jobs, err := s.Jobs(s.dbConfig.JobstatsDBTable, user, accounts, jobids, jobuuids, from, to, s.logger)
+	jobs, err := s.Jobs(q, s.logger)
 	if err != nil {
-		level.Error(s.logger).Log("msg", "Failed to fetch jobs", "user", user, "err", err)
+		level.Error(s.logger).Log("msg", "Failed to fetch jobs", "loggedUser", loggedUser, "err", err)
 		s.jobsErrorResponse("Internal server error", "Failed to fetch user jobs", w)
 		return
 	}
@@ -377,131 +428,53 @@ func fetchAccounts(dbTable string, user string, logger log.Logger) ([]base.Accou
 
 // Get user jobs within a given time window
 func fetchJobs(
-	dbTable string,
-	user string,
-	accounts []string,
-	jobids []string,
-	jobuuids []string,
-	from string,
-	to string,
+	query Query,
 	logger log.Logger,
 ) ([]base.BatchJob, error) {
 	var numJobs int
-
-	// Requested jobuuids for logging
-	queryAccounts := strings.Join(accounts, ",")
-	queryJobuuids := strings.Join(jobuuids, ",")
-	queryJobids := strings.Join(jobids, ",")
-
-	// Placeholders
-	accountPlaceholder := strings.Join(strings.Split(strings.Repeat("?", len(accounts)), ""), ",")
-	jobuuidPlaceholder := strings.Join(strings.Split(strings.Repeat("?", len(jobuuids)), ""), ",")
-	jobidPlaceholder := strings.Join(strings.Split(strings.Repeat("?", len(jobids)), ""), ",")
-
-	// Make correct query strings based on queried jobuuid and jobid
-	var queryStmtString string
-	var countStmtString string
-	if len(jobuuids) > 0 && len(jobids) > 0 {
-		countStmtString = fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE Usr = ? AND Start BETWEEN ? AND ? AND Account IN (%s) AND (Jobuuid IN (%s) OR Jobid IN (%s))",
-			dbTable,
-			accountPlaceholder,
-			jobuuidPlaceholder,
-			jobidPlaceholder,
-		)
-		queryStmtString = fmt.Sprintf("SELECT %s FROM %s WHERE Usr = ? AND Start BETWEEN ? AND ? AND Account IN (%s) AND (Jobuuid IN (%s) OR Jobid IN (%s))",
-			strings.Join(base.BatchJobFieldNames, ","),
-			dbTable,
-			accountPlaceholder,
-			jobuuidPlaceholder,
-			jobidPlaceholder,
-		)
-	} else if len(jobuuids) > 0 && len(jobids) == 0 {
-		countStmtString = fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE Usr = ? AND Start BETWEEN ? AND ? AND Account IN (%s) AND Jobuuid IN (%s)",
-			dbTable,
-			accountPlaceholder,
-			jobuuidPlaceholder,
-		)
-		queryStmtString = fmt.Sprintf("SELECT %s FROM %s WHERE Usr = ? AND Start BETWEEN ? AND ? AND Account IN (%s) AND Jobuuid IN (%s)",
-			strings.Join(base.BatchJobFieldNames, ","),
-			dbTable,
-			accountPlaceholder,
-			jobuuidPlaceholder,
-		)
-	} else if len(jobuuids) == 0 && len(jobids) > 0 {
-		countStmtString = fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE Usr = ? AND Start BETWEEN ? AND ? AND Account IN (%s) AND Jobid IN (%s)",
-			dbTable,
-			accountPlaceholder,
-			jobidPlaceholder,
-		)
-		queryStmtString = fmt.Sprintf("SELECT %s FROM %s WHERE Usr = ? AND Start BETWEEN ? AND ? AND Account IN (%s) AND Jobid IN (%s)",
-			strings.Join(base.BatchJobFieldNames, ","),
-			dbTable,
-			accountPlaceholder,
-			jobidPlaceholder,
-		)
-	} else {
-		countStmtString = fmt.Sprintf(
-			"SELECT COUNT(*) FROM %s WHERE Usr = ? AND Start BETWEEN ? AND ? AND Account IN (%s)",
-			dbTable,
-			accountPlaceholder,
-		)
-		queryStmtString = fmt.Sprintf("SELECT %s FROM %s WHERE Usr = ? AND Start BETWEEN ? AND ? AND Account IN (%s)",
-			strings.Join(base.BatchJobFieldNames, ","),
-			dbTable,
-			accountPlaceholder,
-		)
-	}
+	// Get query string and params
+	queryString, queryParams := query.get()
 
 	// Prepare SQL statements
-	countStmt, err := dbConn.Prepare(countStmtString)
+	countStmt, err := dbConn.Prepare(strings.Replace(queryString, "*", "COUNT(*)", 1))
 	if err != nil {
 		level.Error(logger).Log(
-			"msg", "Failed to prepare count SQL statement for jobs", "user", user,
-			"accounts", queryAccounts, "jobuuids", queryJobuuids, "jobids", queryJobids,
-			"from", from, "to", to, "err", err,
+			"msg", "Failed to prepare count SQL statement for jobs", "query", queryString,
+			"queryParams", strings.Join(queryParams, ","), "err", err,
 		)
 		return nil, err
 	}
 	defer countStmt.Close()
 
-	queryStmt, err := dbConn.Prepare(queryStmtString)
+	queryStmt, err := dbConn.Prepare(strings.Replace(queryString, "*", strings.Join(base.BatchJobFieldNames, ","), 1))
 	if err != nil {
 		level.Error(logger).Log(
-			"msg", "Failed to prepare query SQL statement for jobs", "user", user,
-			"accounts", queryAccounts, "jobuuids", queryJobuuids, "jobids", queryJobids,
-			"from", from, "to", to, "err", err,
+			"msg", "Failed to prepare query SQL statement for jobs", "query", queryString,
+			"queryParams", strings.Join(queryParams, ","), "err", err,
 		)
 		return nil, err
 	}
 	defer queryStmt.Close()
 
-	// Prepare query args
-	var args = []any{user, from, to}
-	for _, account := range accounts {
-		args = append(args, account)
-	}
-	for _, jobuuid := range jobuuids {
-		args = append(args, jobuuid)
-	}
-	for _, jobid := range jobids {
-		args = append(args, jobid)
+	// queryParams has to be an inteface. Do casting here
+	qParams := make([]interface{}, len(queryParams))
+	for i, v := range queryParams {
+		qParams[i] = v
 	}
 
 	// First make a query to get number of rows that will be returned by query
-	_ = countStmt.QueryRow(args...).Scan(&numJobs)
+	_ = countStmt.QueryRow(qParams...).Scan(&numJobs)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to execute count SQL statement for jobs query",
-			"user", user, "accounts", queryAccounts, "jobuuids", queryJobuuids, "jobids", queryJobids,
-			"from", from, "to", to, "err", err,
+			"query", queryString, "queryParams", strings.Join(queryParams, ","), "err", err,
 		)
 		return nil, err
 	}
 
-	rows, err := queryStmt.Query(args...)
+	rows, err := queryStmt.Query(qParams...)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to execute query SQL statement for jobs query",
-			"user", user, "accounts", queryAccounts, "jobuuids", queryJobuuids, "jobids", queryJobids,
-			"from", from, "to", to, "err", err,
+			"query", queryString, "queryParams", strings.Join(queryParams, ","), "err", err,
 		)
 		return nil, err
 	}
@@ -568,9 +541,8 @@ func fetchJobs(
 		rowIdx++
 	}
 	level.Debug(logger).Log(
-		"msg", "Jobs found for user", "user", user,
-		"numjobs", len(jobs), "accounts", queryAccounts, "jobuuids", queryJobuuids, "jobids", queryJobids,
-		"from", from, "to", to,
+		"msg", "Jobs found for user", "numjobs", len(jobs), "query", queryString,
+		"queryParams", strings.Join(queryParams, ","),
 	)
 	return jobs, nil
 }

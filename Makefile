@@ -127,6 +127,7 @@ test-e2e: build pkg/collector/fixtures/sys/.unpacked pkg/collector/fixtures/proc
 	./scripts/e2e-test.sh -s stats-jobid-query
 	./scripts/e2e-test.sh -s stats-jobuuid-jobid-query
 	./scripts/e2e-test.sh -s stats-admin-query
+	./scripts/e2e-test.sh -s stats-admin-query-all
 endif
 
 .PHONY: skip-test-e2e
