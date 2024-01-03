@@ -20,7 +20,7 @@ type BatchJob struct {
 	Jobid       string `json:"jobid"`
 	Jobuuid     string `json:"id"`
 	Partition   string `json:"partition"`
-	QoS         string `jsob:"qos"`
+	QoS         string `json:"qos"`
 	Account     string `json:"account"`
 	Grp         string `json:"group"`
 	Gid         string `json:"gid"`
