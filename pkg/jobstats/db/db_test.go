@@ -52,7 +52,7 @@ func prepareMockConfig(tmpDir string) *Config {
 
 func populateDBWithMockData(db *sql.DB, j *jobStatsDB) {
 	tx, _ := db.Begin()
-	stmt, _ := j.prepareInsertStatement(tx, len(mockJobs))
+	stmt, _ := j.prepareInsertStatement(tx)
 	j.insertJobs(stmt, mockJobs)
 	tx.Commit()
 }
@@ -261,7 +261,7 @@ func TestJobStatsDeleteOldJobs(t *testing.T) {
 		},
 	}
 	tx, _ := j.db.Begin()
-	stmt, err := j.prepareInsertStatement(tx, len(jobs))
+	stmt, err := j.prepareInsertStatement(tx)
 	if err != nil {
 		t.Errorf("Failed to prepare SQL statements")
 	}
