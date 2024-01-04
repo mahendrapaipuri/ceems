@@ -188,9 +188,9 @@ func (s *JobstatsServer) accounts(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	// Get current user from header
-	user, _ := s.getUser(r)
+	loggedUser, dashboardUser := s.getUser(r)
 	// If no user found, return empty response
-	if user == "" {
+	if loggedUser == "" {
 		response = base.AccountsResponse{
 			Response: base.Response{
 				Status:    "error",
@@ -208,9 +208,9 @@ func (s *JobstatsServer) accounts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get all user accounts
-	accounts, err := s.Accounts(s.dbConfig.JobstatsDBTable, user, s.logger)
+	accounts, err := s.Accounts(s.dbConfig.JobstatsDBTable, dashboardUser, s.logger)
 	if err != nil {
-		level.Error(s.logger).Log("msg", "Failed to fetch accounts", "user", user, "err", err)
+		level.Error(s.logger).Log("msg", "Failed to fetch accounts", "user", dashboardUser, "err", err)
 		response = base.AccountsResponse{
 			Response: base.Response{
 				Status:    "error",
