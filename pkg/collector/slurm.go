@@ -99,7 +99,7 @@ type slurmCollector struct {
 	cgroupsRootPath  string
 	slurmCgroupsPath string
 	hostname         string
-	nvidiaGPUDevs    map[int]Device
+	gpuDevs          map[int]Device
 	cpuUser          *prometheus.Desc
 	cpuSystem        *prometheus.Desc
 	cpuTotal         *prometheus.Desc
@@ -115,6 +115,7 @@ type slurmCollector struct {
 	memswFailCount   *prometheus.Desc
 	memoryPressure   *prometheus.Desc
 	gpuJobMap        *prometheus.Desc
+	gpuJobFlag       *prometheus.Desc
 	collectError     *prometheus.Desc
 	logger           log.Logger
 }
@@ -163,17 +164,20 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 		}
 	}
 
-	// Attempt to get nVIDIA GPU devices
-	nvidiaGPUDevs, err := GetNvidiaGPUDevices(*nvidiaSmiPath, logger)
-	if err == nil {
-		level.Info(logger).Log("msg", "nVIDIA GPU devices found")
+	// Attempt to get GPU devices
+	var gpuDevs map[int]Device
+	if _, err := os.Stat(*nvidiaSmiPath); err == nil {
+		gpuDevs, err = GetNvidiaGPUDevices(*nvidiaSmiPath, logger)
+		if err == nil {
+			level.Info(logger).Log("msg", "nVIDIA GPU devices found")
+		}
 	}
 	return &slurmCollector{
 		cgroups:          cgroupsVersion,
 		cgroupsRootPath:  cgroupsRootPath,
 		slurmCgroupsPath: slurmCgroupsPath,
 		hostname:         hostname,
-		nvidiaGPUDevs:    nvidiaGPUDevs,
+		gpuDevs:          gpuDevs,
 		cpuUser: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "cpu_user_seconds"),
 			"Cumulative CPU user seconds",
@@ -264,6 +268,11 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 			[]string{"batch", "hostname", "jobid", "jobaccount", "jobuuid", "step", "task"},
 			nil,
 		),
+		gpuJobFlag: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "nvidia_gpu_jobid_flag"),
+			"Indicates running job on GPU, 1=job running",
+			[]string{"batch", "hostname", "jobid", "jobaccount", "jobuuid", "index", "uuid", "UUID"}, nil,
+		),
 		gpuJobMap: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "nvidia_gpu_jobid"),
 			"Batch Job ID of current nVIDIA GPU",
@@ -327,13 +336,14 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 		for _, gpuOrdinal := range m.jobGpuOrdinals {
 			var uuid string
 			// Check the int index of devices where gpuOrdinal == dev.index
-			for _, dev := range c.nvidiaGPUDevs {
+			for _, dev := range c.gpuDevs {
 				if gpuOrdinal == dev.index {
 					uuid = dev.uuid
 					break
 				}
 			}
 			ch <- prometheus.MustNewConstMetric(c.gpuJobMap, prometheus.GaugeValue, float64(jid), m.batch, c.hostname, gpuOrdinal, uuid, uuid)
+			ch <- prometheus.MustNewConstMetric(c.gpuJobFlag, prometheus.GaugeValue, float64(1), m.batch, c.hostname, m.jobid, m.jobaccount, m.jobuuid, gpuOrdinal, uuid, uuid)
 		}
 	}
 	return nil
@@ -486,8 +496,8 @@ func (c *slurmCollector) getJobProperties(metric *CgroupMetric, pids []uint64) {
 	// it but just to be safe. This will have a small overhead as we need to check the
 	// correct integer index for each device index. We can live with it as there are
 	// typically 2/4/8 GPUs per node.
-	for i := 0; i < len(c.nvidiaGPUDevs); i++ {
-		dev := c.nvidiaGPUDevs[i]
+	for i := 0; i < len(c.gpuDevs); i++ {
+		dev := c.gpuDevs[i]
 		gpuJobMapInfo := fmt.Sprintf("%s/%s", *gpuStatPath, dev.index)
 
 		// NOTE: Look for file name with UUID as it will be more appropriate with
@@ -512,7 +522,7 @@ func (c *slurmCollector) getJobProperties(metric *CgroupMetric, pids []uint64) {
 	// If we fail to get any of the job properties or if there are atleast one GPU devices
 	// and if we fail to get gpu ordinals for that job, try to get these properties
 	// by looking into environment variables
-	if jobUid == "" || jobAccount == "" || jobNodelist == "" || (len(jobGpuOrdinals) == 0 && len(c.nvidiaGPUDevs) > 0) {
+	if jobUid == "" || jobAccount == "" || jobNodelist == "" || (len(jobGpuOrdinals) == 0 && len(c.gpuDevs) > 0) {
 		// Attempt to get UID, Account, Nodelist from /proc file system by looking into
 		// environ for the process that has same SLURM_JOB_ID
 		//
@@ -594,7 +604,7 @@ outside:
 			Log("msg", "Failed to get job properties", "jobid", jobid)
 	}
 	// Emit warning when there are GPUs but no job to GPU map found
-	if len(c.nvidiaGPUDevs) > 0 && len(jobGpuOrdinals) == 0 {
+	if len(c.gpuDevs) > 0 && len(jobGpuOrdinals) == 0 {
 		level.Warn(c.logger).
 			Log("msg", "Failed to get GPU ordinals for job", "jobid", jobid)
 	}

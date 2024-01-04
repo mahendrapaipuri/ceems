@@ -51,6 +51,10 @@ batchjob_slurm_job_memory_used_bytes{batch="slurm",hostname="",jobaccount="testa
 # TYPE batchjob_slurm_job_nvidia_gpu_jobid gauge
 batchjob_slurm_job_nvidia_gpu_jobid{UUID="GPU-61a65011-6571-a64n-5ab8-66cbb6f7f9c3",batch="slurm",hostname="",index="3",uuid="GPU-61a65011-6571-a64n-5ab8-66cbb6f7f9c3"} 1.009248e+06
 batchjob_slurm_job_nvidia_gpu_jobid{UUID="GPU-61a65011-6571-a6d2-5th8-66cbb6f7f9c3",batch="slurm",hostname="",index="2",uuid="GPU-61a65011-6571-a6d2-5th8-66cbb6f7f9c3"} 1.009248e+06
+# HELP batchjob_slurm_job_nvidia_gpu_jobid_flag Indicates running job on GPU, 1=job running
+# TYPE batchjob_slurm_job_nvidia_gpu_jobid_flag gauge
+batchjob_slurm_job_nvidia_gpu_jobid_flag{UUID="GPU-61a65011-6571-a64n-5ab8-66cbb6f7f9c3",batch="slurm",hostname="",index="3",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",uuid="GPU-61a65011-6571-a64n-5ab8-66cbb6f7f9c3"} 1
+batchjob_slurm_job_nvidia_gpu_jobid_flag{UUID="GPU-61a65011-6571-a6d2-5th8-66cbb6f7f9c3",batch="slurm",hostname="",index="2",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",uuid="GPU-61a65011-6571-a6d2-5th8-66cbb6f7f9c3"} 1
 # HELP go_gc_duration_seconds A summary of the pause duration of garbage collection cycles.
 # TYPE go_gc_duration_seconds summary
 # HELP go_goroutines Number of goroutines that currently exist.

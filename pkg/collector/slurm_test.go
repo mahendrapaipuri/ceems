@@ -36,7 +36,7 @@ func TestCgroupsV2SlurmJobMetrics(t *testing.T) {
 	}
 	c := slurmCollector{
 		cgroups:          "v2",
-		nvidiaGPUDevs:    mockGPUDevices(),
+		gpuDevs:          mockGPUDevices(),
 		cgroupsRootPath:  *cgroupfsPath,
 		slurmCgroupsPath: fmt.Sprintf("%s/system.slice/slurmstepd.scope", *cgroupfsPath),
 		logger:           log.NewNopLogger(),
@@ -90,7 +90,7 @@ func TestCgroupsV2SlurmJobMetricsWithProcFs(t *testing.T) {
 	c := slurmCollector{
 		cgroups:          "v2",
 		cgroupsRootPath:  *cgroupfsPath,
-		nvidiaGPUDevs:    mockGPUDevices(),
+		gpuDevs:          mockGPUDevices(),
 		slurmCgroupsPath: fmt.Sprintf("%s/system.slice/slurmstepd.scope", *cgroupfsPath),
 		logger:           log.NewNopLogger(),
 	}
@@ -142,7 +142,7 @@ func TestCgroupsV2SlurmJobMetricsNoJobProps(t *testing.T) {
 	c := slurmCollector{
 		cgroups:          "v2",
 		cgroupsRootPath:  *cgroupfsPath,
-		nvidiaGPUDevs:    mockGPUDevices(),
+		gpuDevs:          mockGPUDevices(),
 		slurmCgroupsPath: fmt.Sprintf("%s/system.slice/slurmstepd.scope", *cgroupfsPath),
 		logger:           log.NewNopLogger(),
 	}
@@ -195,7 +195,7 @@ func TestCgroupsV1SlurmJobMetrics(t *testing.T) {
 	c := slurmCollector{
 		cgroups:          "v1",
 		logger:           log.NewNopLogger(),
-		nvidiaGPUDevs:    mockGPUDevices(),
+		gpuDevs:          mockGPUDevices(),
 		cgroupsRootPath:  fmt.Sprintf("%s/cpuacct", *cgroupfsPath),
 		slurmCgroupsPath: fmt.Sprintf("%s/cpuacct/slurm", *cgroupfsPath),
 	}
