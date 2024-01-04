@@ -155,6 +155,10 @@ get() {
   fi
 }
 
+waitport() {
+  timeout 5 bash -c "while ! curl -s -f "http://localhost:${port}" > /dev/null; do sleep 0.1; done";
+}
+
 if [[ "${scenario}" =~ "exporter" ]] 
 then
   if [ ! -x ./bin/batchjob_exporter ]
@@ -240,7 +244,8 @@ then
 
   echo $! > "${pidfile}"
 
-  sleep 1
+  # sleep 1
+  waitport
 
   get "127.0.0.1:${port}/metrics" | grep -E -v "${skip_re}" > "${fixture_output}"
 elif [[ "${scenario}" =~ "stats" ]] 
@@ -261,26 +266,27 @@ then
 
   echo $! > "${pidfile}"
 
-  sleep 2
+  # sleep 2
+  waitport
 
   if [ "${scenario}" = "stats-account-query" ]
   then
     get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/accounts" > "${fixture_output}"
   elif [ "${scenario}" = "stats-jobuuid-query" ]
   then
-    get -H "X-Grafana-User: usr2" "127.0.0.1:${port}/api/jobs?jobuuid=baee651d-df44-af2c-fa09-50f5523b5e19&account=acc2&from=2023-02-21T00:00:00Z&to=2023-02-21T23:59:59Z" > "${fixture_output}"
+    get -H "X-Grafana-User: usr2" "127.0.0.1:${port}/api/jobs?jobuuid=baee651d-df44-af2c-fa09-50f5523b5e19&account=acc2" > "${fixture_output}"
   elif [ "${scenario}" = "stats-jobid-query" ]
   then
-    get -H "X-Grafana-User: usr8" "127.0.0.1:${port}/api/jobs?jobid=1479763&account=acc1&from=2023-02-21T00:00:00Z&to=2023-02-22T00:00:00Z" > "${fixture_output}"
+    get -H "X-Grafana-User: usr8" "127.0.0.1:${port}/api/jobs?jobid=1479763&account=acc1&from=1676934000&to=1677020400" > "${fixture_output}"
   elif [ "${scenario}" = "stats-jobuuid-jobid-query" ]
   then
-    get -H "X-Grafana-User: usr15" "127.0.0.1:${port}/api/jobs?jobuuid=e653f045-73b7-c928-e8df-00c4083cb9bc&jobid=11508&jobid=81510&account=acc1&from=2023-02-21T00:00:00Z&to=2023-02-22T00:00:00Z" > "${fixture_output}"
+    get -H "X-Grafana-User: usr15" "127.0.0.1:${port}/api/jobs?jobuuid=e653f045-73b7-c928-e8df-00c4083cb9bc&jobid=11508&jobid=81510&account=acc1" > "${fixture_output}"
   elif [ "${scenario}" = "stats-admin-query" ]
   then
-    get -H "X-Grafana-User: grafana" -H "X-Dashboard-User: usr3" "127.0.0.1:${port}/api/jobs?account=acc3&from=2023-01-21T15:49:06Z&to=2023-02-27T15:49:06Z" > "${fixture_output}"
+    get -H "X-Grafana-User: grafana" -H "X-Dashboard-User: usr3" "127.0.0.1:${port}/api/jobs?account=acc3&from=1676934000&to=1677538800" > "${fixture_output}"
   elif [ "${scenario}" = "stats-admin-query-all" ]
   then
-    get -H "X-Grafana-User: grafana" -H "X-Dashboard-User: all" "127.0.0.1:${port}/api/jobs?from=2023-01-21T15:49:06Z&to=2023-02-27T15:49:06Z" > "${fixture_output}"
+    get -H "X-Grafana-User: grafana" -H "X-Dashboard-User: all" "127.0.0.1:${port}/api/jobs?from=1676934000&to=1677538800" > "${fixture_output}"
   fi
 fi
 

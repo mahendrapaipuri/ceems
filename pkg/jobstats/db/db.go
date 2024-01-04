@@ -436,13 +436,15 @@ func (j *jobStatsDB) prepareInsertStatement(tx *sql.Tx) (*sql.Stmt, error) {
 
 // Insert job stat into DB
 func (j *jobStatsDB) insertJobs(statement *sql.Stmt, jobStats []base.BatchJob) {
+	var err error
 	for _, jobStat := range jobStats {
 		// Empty job
 		if jobStat == (base.BatchJob{}) {
 			continue
 		}
+
 		// level.Debug(j.logger).Log("msg", "Inserting job", "jobid", jobStat.Jobid)
-		_, err := statement.Exec(
+		_, err = statement.Exec(
 			jobStat.Jobid,
 			jobStat.Jobuuid,
 			jobStat.Partition,
@@ -455,6 +457,9 @@ func (j *jobStatsDB) insertJobs(statement *sql.Stmt, jobStats []base.BatchJob) {
 			jobStat.Submit,
 			jobStat.Start,
 			jobStat.End,
+			jobStat.SubmitTS,
+			jobStat.StartTS,
+			jobStat.EndTS,
 			jobStat.Elapsed,
 			jobStat.Exitcode,
 			jobStat.State,
