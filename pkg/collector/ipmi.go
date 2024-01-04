@@ -96,7 +96,7 @@ func NewIPMICollector(logger log.Logger) (Collector, error) {
 	cmdSlice := strings.Split(*ipmiDcmiCmd, " ")
 
 	// Verify if running ipmiDcmiCmd works
-	if _, err := helpers.Execute(cmdSlice[0], cmdSlice[1:], logger); err == nil {
+	if _, err := helpers.Execute(cmdSlice[0], cmdSlice[1:], nil, logger); err == nil {
 		execMode = "native"
 		goto outside
 	}
@@ -104,7 +104,7 @@ func NewIPMICollector(logger log.Logger) (Collector, error) {
 	// If ipmiDcmiCmd failed to run and if sudo is not already present in command,
 	// add sudo to command and execute. If current user has sudo rights it will be a success
 	if cmdSlice[0] != "sudo" {
-		if _, err := helpers.ExecuteWithTimeout("sudo", cmdSlice, 2, logger); err == nil {
+		if _, err := helpers.ExecuteWithTimeout("sudo", cmdSlice, 2, nil, logger); err == nil {
 			execMode = "sudo"
 			goto outside
 		}
@@ -112,7 +112,7 @@ func NewIPMICollector(logger log.Logger) (Collector, error) {
 
 	// As last attempt, run the command as root user by forking subprocess
 	// as root. If there is setuid cap on the process, it will be a success
-	if _, err := helpers.ExecuteAs(cmdSlice[0], cmdSlice[1:], 0, 0, logger); err == nil {
+	if _, err := helpers.ExecuteAs(cmdSlice[0], cmdSlice[1:], 0, 0, nil, logger); err == nil {
 		execMode = "cap"
 		goto outside
 	}
@@ -152,11 +152,11 @@ func (c *impiCollector) Update(ch chan<- prometheus.Metric) error {
 	// Execute ipmi-dcmi command
 	cmdSlice := strings.Split(*ipmiDcmiCmd, " ")
 	if c.execMode == "cap" {
-		stdOut, err = helpers.ExecuteAs(cmdSlice[0], cmdSlice[1:], 0, 0, c.logger)
+		stdOut, err = helpers.ExecuteAs(cmdSlice[0], cmdSlice[1:], 0, 0, nil, c.logger)
 	} else if c.execMode == "sudo" {
-		stdOut, err = helpers.ExecuteWithTimeout("sudo", cmdSlice, 1, c.logger)
+		stdOut, err = helpers.ExecuteWithTimeout("sudo", cmdSlice, 1, nil, c.logger)
 	} else if c.execMode == "native" {
-		stdOut, err = helpers.Execute(cmdSlice[0], cmdSlice[1:], c.logger)
+		stdOut, err = helpers.Execute(cmdSlice[0], cmdSlice[1:], nil, c.logger)
 	} else {
 		err = fmt.Errorf("Current process do not have permissions to execute %s", *ipmiDcmiCmd)
 	}

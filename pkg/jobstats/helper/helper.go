@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var (
@@ -121,4 +122,12 @@ func expandNodelist(nodelistExp string) []string {
 // Expand SLURM NODELIST into slice of nodenames
 func NodelistParser(nodelistExp string) []string {
 	return expandNodelist(replaceNodelistDelimiter(nodelistExp))
+}
+
+// Converts a date in a given layout to unix timestamp of the date
+func TimeToTimestamp(layout string, date string) int64 {
+	if t, err := time.Parse(layout, date); err == nil {
+		return int64(t.Local().Unix())
+	}
+	return 0
 }

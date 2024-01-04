@@ -108,7 +108,7 @@ func GetNvidiaGPUDevices(nvidiaSmiPath string, logger log.Logger) (map[int]Devic
 
 	// Execute nvidia-smi command to get available GPUs
 	args := []string{"--query-gpu=index,name,uuid", "--format=csv"}
-	nvidiaSmiOutput, err := helpers.Execute(nvidiaSmiPath, args, logger)
+	nvidiaSmiOutput, err := helpers.Execute(nvidiaSmiPath, args, nil, logger)
 	if err != nil {
 		level.Error(logger).
 			Log("msg", "nvidia-smi command to get list of devices failed", "err", err)
