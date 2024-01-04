@@ -29,6 +29,9 @@ type BatchJob struct {
 	Submit      string `json:"submit"`
 	Start       string `json:"start"`
 	End         string `json:"end"`
+	SubmitTS    string `json:"submitts"`
+	StartTS     string `json:"startts"`
+	EndTS       string `json:"endts"`
 	Elapsed     string `json:"elapsed"`
 	Exitcode    string `json:"exitcode"`
 	State       string `json:"state"`

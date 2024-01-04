@@ -1,6 +1,7 @@
 package schedulers
 
 import (
+	"fmt"
 	"os"
 	"os/user"
 	"strconv"
@@ -12,6 +13,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/batchjob_monitoring/internal/helpers"
 	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/base"
+	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/helper"
 	jobstats_helper "github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/helper"
 	"github.com/prometheus/common/model"
 )
@@ -19,17 +21,18 @@ import (
 type slurmScheduler struct {
 	logger              log.Logger
 	execMode            string
-	slurmDateFormat     string
 	slurmWalltimeCutoff time.Duration
 }
 
 const slurmBatchScheduler = "slurm"
 
 var (
-	slurmUserUid int
-	slurmUserGid int
-	jobLock      = sync.RWMutex{}
-	sacctPath    = base.BatchJobStatsServerApp.Flag(
+	slurmUserUid    int
+	slurmUserGid    int
+	defaultLayout   = fmt.Sprintf("%sT%s", time.DateOnly, time.TimeOnly)
+	slurmTimeFormat = fmt.Sprintf("%s-0700", defaultLayout)
+	jobLock         = sync.RWMutex{}
+	sacctPath       = base.BatchJobStatsServerApp.Flag(
 		"slurm.sacct.path",
 		"Absolute path to sacct executable.",
 	).Default("/usr/local/bin/sacct").String()
@@ -88,7 +91,7 @@ func preflightChecks(logger log.Logger) (string, error) {
 		goto sudomode
 	}
 
-	if _, err := helpers.ExecuteAs(*sacctPath, []string{"--help"}, slurmUserUid, slurmUserGid, logger); err == nil {
+	if _, err := helpers.ExecuteAs(*sacctPath, []string{"--help"}, slurmUserUid, slurmUserGid, nil, logger); err == nil {
 		execMode = "cap"
 		level.Debug(logger).Log("msg", "Linux capabilities will be used to execute sacct as slurm user")
 		return execMode, nil
@@ -96,7 +99,7 @@ func preflightChecks(logger log.Logger) (string, error) {
 
 sudomode:
 	// Last attempt to run sacct with sudo
-	if _, err := helpers.ExecuteWithTimeout("sudo", []string{*sacctPath, "--help"}, 5, logger); err == nil {
+	if _, err := helpers.ExecuteWithTimeout("sudo", []string{*sacctPath, "--help"}, 5, nil, logger); err == nil {
 		execMode = "sudo"
 		level.Debug(logger).Log("msg", "sudo will be used to execute sacct command")
 		return execMode, nil
@@ -120,15 +123,14 @@ func NewSlurmScheduler(logger log.Logger) (BatchJobFetcher, error) {
 	return &slurmScheduler{
 		logger:              logger,
 		execMode:            execMode,
-		slurmDateFormat:     "2006-01-02T15:04:05",
 		slurmWalltimeCutoff: time.Duration(slurmWalltimeCutoffString),
 	}, nil
 }
 
 // Get jobs from slurm
 func (s *slurmScheduler) Fetch(start time.Time, end time.Time) ([]base.BatchJob, error) {
-	startTime := start.Format(s.slurmDateFormat)
-	endTime := end.Format(s.slurmDateFormat)
+	startTime := start.Format(defaultLayout)
+	endTime := end.Format(defaultLayout)
 
 	// Execute sacct command between start and end times
 	sacctOutput, err := runSacctCmd(s.execMode, startTime, endTime, s.logger)
@@ -147,21 +149,24 @@ func (s *slurmScheduler) Fetch(start time.Time, end time.Time) ([]base.BatchJob,
 func runSacctCmd(execMode string, startTime string, endTime string, logger log.Logger) ([]byte, error) {
 	// Use jobIDRaw that outputs the array jobs as regular job IDs instead of id_array format
 	args := []string{
-		"-D", "--allusers", "--parsable2",
+		"-D", "-X", "--allusers", "--parsable2",
 		"--format", "jobidraw,partition,qos,account,group,gid,user,uid,submit,start,end,elapsed,elapsedraw,exitcode,state,allocnodes,alloccpus,nodelist,jobname,workdir",
 		"--state", "CANCELLED,COMPLETED,FAILED,NODE_FAIL,PREEMPTED,TIMEOUT",
 		"--starttime", startTime,
 		"--endtime", endTime,
 	}
 
+	// Use SLURM_TIME_FORMAT env var to get timezone offset
+	env := []string{"SLURM_TIME_FORMAT=\"%Y-%m-%dT%H:%M:%S%z\""}
+
 	// Run command as slurm user
 	if execMode == "cap" {
-		return helpers.ExecuteAs(*sacctPath, args, slurmUserUid, slurmUserGid, logger)
+		return helpers.ExecuteAs(*sacctPath, args, slurmUserUid, slurmUserGid, env, logger)
 	} else if execMode == "sudo" {
 		args = append([]string{*sacctPath}, args...)
-		return helpers.Execute("sudo", args, logger)
+		return helpers.Execute("sudo", args, env, logger)
 	}
-	return helpers.Execute(*sacctPath, args, logger)
+	return helpers.Execute(*sacctPath, args, env, logger)
 }
 
 // Parse sacct command output and return batchjob slice
@@ -239,6 +244,9 @@ func parseSacctCmdOutput(sacctOutput string, elapsedCutoff time.Duration, logger
 				Submit:      components[8],
 				Start:       components[9],
 				End:         components[10],
+				SubmitTS:    strconv.FormatInt(helper.TimeToTimestamp(slurmTimeFormat, components[8]), 10),
+				StartTS:     strconv.FormatInt(helper.TimeToTimestamp(slurmTimeFormat, components[9]), 10),
+				EndTS:       strconv.FormatInt(helper.TimeToTimestamp(slurmTimeFormat, components[10]), 10),
 				Elapsed:     components[11],
 				Exitcode:    components[13],
 				State:       components[14],
