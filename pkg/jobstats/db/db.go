@@ -401,16 +401,21 @@ func (j *jobStatsDB) vacuumDB() error {
 
 // Delete old entries in DB
 func (j *jobStatsDB) deleteOldJobs(tx *sql.Tx) error {
-	deleteSQLCmd := fmt.Sprintf(
+	deleteRowQuery := fmt.Sprintf(
 		"DELETE FROM %s WHERE Start <= date('now', '-%d day')",
 		j.jobstatDBTable,
 		int(j.retentionPeriod.Hours()/24),
 	)
-	_, err := tx.Exec(deleteSQLCmd)
+	_, err := tx.Exec(deleteRowQuery)
 	if err != nil {
 		level.Error(j.logger).Log("msg", "Failed to delete old jobs", "err", err)
 		return err
 	}
+
+	// Get changes
+	var rowsDeleted int
+	_ = tx.QueryRow("SELECT changes();").Scan(&rowsDeleted)
+	level.Debug(j.logger).Log("msg", "Queried for changes after deletion", "rowsDeleted", rowsDeleted)
 	return nil
 }
 
