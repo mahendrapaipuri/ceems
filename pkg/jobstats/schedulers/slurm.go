@@ -157,7 +157,7 @@ func runSacctCmd(execMode string, startTime string, endTime string, logger log.L
 	}
 
 	// Use SLURM_TIME_FORMAT env var to get timezone offset
-	env := []string{"SLURM_TIME_FORMAT=\"%Y-%m-%dT%H:%M:%S%z\""}
+	env := []string{"SLURM_TIME_FORMAT=%Y-%m-%dT%H:%M:%S%z"}
 
 	// Run command as slurm user
 	if execMode == "cap" {
