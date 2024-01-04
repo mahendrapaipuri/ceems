@@ -8,6 +8,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -55,16 +56,16 @@ func (q *Query) query(s string) {
 }
 
 // Add parameter and its placeholder
-func (q *Query) param(val string) {
-	q.builder.WriteString("?")
-	q.params = append(q.params, val)
-}
-
-// Add multiple parameters and its placeholder
-func (q *Query) multiParam(val []string) {
+func (q *Query) param(val []string) {
 	q.builder.WriteString(fmt.Sprintf("(%s)", strings.Join(strings.Split(strings.Repeat("?", len(val)), ""), ",")))
 	q.params = append(q.params, val...)
 }
+
+// Add multiple parameters and its placeholder
+// func (q *Query) multiParam(val []string) {
+// 	q.builder.WriteString(fmt.Sprintf("(%s)", strings.Join(strings.Split(strings.Repeat("?", len(val)), ""), ",")))
+// 	q.params = append(q.params, val...)
+// }
 
 // Get current query string and its parameters
 func (q *Query) get() (string, []string) {
@@ -260,6 +261,7 @@ func (s *JobstatsServer) jobsErrorResponse(errorString string, errorType string,
 // GET /api/jobs
 // Get jobs of a user based on query params
 func (s *JobstatsServer) jobs(w http.ResponseWriter, r *http.Request) {
+	var fromTime, toTime time.Time
 	var response base.JobsResponse
 	s.setHeaders(w)
 	w.WriteHeader(http.StatusOK)
@@ -281,84 +283,91 @@ func (s *JobstatsServer) jobs(w http.ResponseWriter, r *http.Request) {
 	q.query(fmt.Sprintf("SELECT * FROM %s", s.dbConfig.JobstatsDBTable))
 
 	// Add dummy condition at the beginning
-	q.query(" WHERE id > ")
-	q.param("0")
+	q.query(" WHERE id > 0")
 
 	// Check if logged user is in admin users and if we are quering for "all" jobs
 	// If that is not the case, add user condition in query
 	if !slices.Contains(s.adminUsers, loggedUser) || dashboardUser != "all" {
-		q.query(" AND Usr = ")
-		q.param(dashboardUser)
+		q.query(" AND Usr IN ")
+		q.param([]string{dashboardUser})
 	}
 
 	// Get account query parameters if any
 	if accounts := r.URL.Query()["account"]; len(accounts) > 0 {
 		q.query(" AND Account IN ")
-		q.multiParam(accounts)
+		q.param(accounts)
 	}
 
 	// Check if jobuuid present in query params and add them
 	// If any of jobuuid or jobid query params are present
 	// do not check query window as we are fetching a specific job(s)
-	// Consequently set defaultQueryWindow to maximum which is retention period
 	if jobuuids := r.URL.Query()["jobuuid"]; len(jobuuids) > 0 {
 		q.query(" AND Jobuuid IN ")
-		q.multiParam(jobuuids)
+		q.param(jobuuids)
 		checkQueryWindow = false
-		defaultQueryWindow = s.dbConfig.RetentionPeriod
 	}
 
 	// Similarly check for jobid
 	if jobids := r.URL.Query()["jobid"]; len(jobids) > 0 {
 		q.query(" AND Jobid IN ")
-		q.multiParam(jobids)
+		q.param(jobids)
 		checkQueryWindow = false
-		defaultQueryWindow = s.dbConfig.RetentionPeriod
 	}
 
-	var from, to string
-	// If no from provided, use 1 week from now as from
-	if from = r.URL.Query().Get("from"); from == "" {
-		from = time.Now().Add(-defaultQueryWindow).Format(time.RFC3339)
-	}
-	if to = r.URL.Query().Get("to"); to == "" {
-		to = time.Now().Format(time.RFC3339)
+	// If we dont have to specific query window skip next section of code as it becomes
+	// irrelevant
+	if !checkQueryWindow {
+		goto queryJobs
 	}
 
-	// Convert "from" and "to" to time.Time and return error response if they
-	// cannot be parsed
-	fromTime, err := time.Parse(time.RFC3339, from)
-	if err != nil {
-		level.Error(s.logger).Log("msg", "Failed to parse from datestring", "from", from, "err", err)
-		s.jobsErrorResponse("Internal server error", "Malformed 'from' time string", w)
-		return
+	// Get to and from query parameters and do checks on them
+	if f := r.URL.Query().Get("from"); f == "" {
+		// If from is not present in query params, use a default query window of 1 week
+		fromTime = time.Now().Add(-defaultQueryWindow)
+	} else {
+		// Return error response if from is not a timestamp
+		if ts, err := strconv.Atoi(f); err != nil {
+			level.Error(s.logger).Log("msg", "Failed to parse from timestamp", "from", f, "err", err)
+			s.jobsErrorResponse("Internal server error", "Malformed 'from' timestamp", w)
+			return
+		} else {
+			fromTime = time.Unix(int64(ts), 0)
+		}
 	}
-	toTime, err := time.Parse(time.RFC3339, to)
-	if err != nil {
-		level.Error(s.logger).Log("msg", "Failed to parse from datestring", "to", to, "err", err)
-		s.jobsErrorResponse("Internal server error", "Malformed 'to' time string", w)
-		return
+	if t := r.URL.Query().Get("to"); t == "" {
+		// Use current time as default to
+		toTime = time.Now()
+	} else {
+		// Return error response if to is not a timestamp
+		if ts, err := strconv.Atoi(t); err != nil {
+			level.Error(s.logger).Log("msg", "Failed to parse to timestamp", "to", t, "err", err)
+			s.jobsErrorResponse("Internal server error", "Malformed 'to' timestamp", w)
+			return
+		} else {
+			toTime = time.Unix(int64(ts), 0)
+		}
 	}
 
-	// If difference between from and to is more than 3 months, return with empty
+	// If difference between from and to is more than 1 months, return with empty
 	// response. This is to prevent users from making "big" requests that can "potentially"
 	// choke server and end up in OOM errors
-	if toTime.Sub(fromTime) > time.Duration(3*30*24)*time.Hour && checkQueryWindow {
+	if toTime.Sub(fromTime) > time.Duration(30*24)*time.Hour {
 		level.Error(s.logger).Log(
-			"msg", "Exceeded maximum query time window of 3 months", "from", from, "to", to,
+			"msg", "Exceeded maximum query time window of 3 months",
+			"from", fromTime.Format(time.DateTime), "to", toTime.Format(time.DateTime),
 			"queryWindow", toTime.Sub(fromTime).String(),
 		)
 		s.jobsErrorResponse("Internal server error", "Maximum query window exceeded", w)
 		return
 	}
 
-	// Add from and to to query
-	if checkQueryWindow {
-		q.query(" AND Start BETWEEN ")
-		q.param(from)
-		q.query(" AND ")
-		q.param(to)
-	}
+	// Add from and to to query only when checkQueryWindow is true
+	q.query(" AND Start BETWEEN ")
+	q.param([]string{fromTime.Format(time.DateTime)})
+	q.query(" AND ")
+	q.param([]string{toTime.Format(time.DateTime)})
+
+queryJobs:
 
 	// Get all user jobs in the given time window
 	jobs, err := s.Jobs(q, s.logger)
@@ -486,8 +495,9 @@ func fetchJobs(
 		var jobid, jobuuid,
 			partition, qos, account,
 			group, gid, user, uid,
-			submit, start, end, elapsed,
-			exitcode, state,
+			submit, start, end,
+			submitTs, startTs, endTs,
+			elapsed, exitcode, state,
 			nnodes, ncpus, nodelist,
 			nodelistExp, jobName, workDir string
 		if err := rows.Scan(
@@ -503,6 +513,9 @@ func fetchJobs(
 			&submit,
 			&start,
 			&end,
+			&submitTs,
+			&startTs,
+			&endTs,
 			&elapsed,
 			&exitcode,
 			&state,
@@ -528,6 +541,9 @@ func fetchJobs(
 			Submit:      submit,
 			Start:       start,
 			End:         end,
+			SubmitTS:    submitTs,
+			StartTS:     startTs,
+			EndTS:       endTs,
 			Elapsed:     elapsed,
 			Exitcode:    exitcode,
 			State:       state,

@@ -255,8 +255,8 @@ func TestJobsHandlerWithQueryWindowExceeded(t *testing.T) {
 	req.Header.Set("X-Grafana-User", "foo")
 	// Add from query parameter
 	q := req.URL.Query()
-	q.Add("from", "2023-01-01T00:00:00Z")
-	q.Add("to", "2023-06-01T00:00:00Z")
+	q.Add("from", "1672527600")
+	q.Add("to", "1685570400")
 	req.URL.RawQuery = q.Encode()
 
 	// Start recorder
@@ -296,8 +296,6 @@ func TestJobsHandlerWithJobuuidsQueryParams(t *testing.T) {
 	req.Header.Set("X-Grafana-User", "foo")
 	// Add from query parameter
 	q := req.URL.Query()
-	q.Add("from", "2023-01-01T00:00:00Z")
-	q.Add("to", "2023-06-01T00:00:00Z")
 	q.Add("jobuuid", "foo-bar")
 	req.URL.RawQuery = q.Encode()
 
