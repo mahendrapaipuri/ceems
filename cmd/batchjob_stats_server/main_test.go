@@ -35,7 +35,8 @@ func TestBatchjobStatsExecutable(t *testing.T) {
 	}
 
 	jobstats := exec.Command(
-		binary, "--path.data", tmpDir, "--slurm.sacct.path", tmpSacctPath,
+		binary, "--path.data", tmpDir,
+		"--slurm.sacct.path", tmpSacctPath,
 		"--batch.scheduler.slurm",
 		"--web.listen-address", address,
 	)
