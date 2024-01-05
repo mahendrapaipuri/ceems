@@ -9,8 +9,8 @@ import (
 	"time"
 )
 
-func queryExporter(address string) error {
-	resp, err := http.Get(fmt.Sprintf("http://%s/api/jobs", address))
+func queryServer(address string) error {
+	resp, err := http.Get(fmt.Sprintf("http://%s/api/health", address))
 	if err != nil {
 		return err
 	}
@@ -42,7 +42,7 @@ func TestBatchStatsServerMain(t *testing.T) {
 
 	// Query exporter
 	for i := 0; i < 10; i++ {
-		if err := queryExporter("localhost:9020"); err == nil {
+		if err := queryServer("localhost:9020"); err == nil {
 			break
 		}
 		time.Sleep(500 * time.Millisecond)

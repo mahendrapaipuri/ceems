@@ -185,12 +185,12 @@ func (s *JobstatsServer) setHeaders(w http.ResponseWriter) {
 func (s *JobstatsServer) accounts(w http.ResponseWriter, r *http.Request) {
 	var response base.AccountsResponse
 	s.setHeaders(w)
-	w.WriteHeader(http.StatusOK)
 
 	// Get current user from header
 	loggedUser, dashboardUser := s.getUser(r)
 	// If no user found, return empty response
 	if loggedUser == "" {
+		w.WriteHeader(http.StatusUnauthorized)
 		response = base.AccountsResponse{
 			Response: base.Response{
 				Status:    "error",
@@ -211,6 +211,7 @@ func (s *JobstatsServer) accounts(w http.ResponseWriter, r *http.Request) {
 	accounts, err := s.Accounts(s.dbConfig.JobstatsDBTable, dashboardUser, s.logger)
 	if err != nil {
 		level.Error(s.logger).Log("msg", "Failed to fetch accounts", "user", dashboardUser, "err", err)
+		w.WriteHeader(http.StatusInternalServerError)
 		response = base.AccountsResponse{
 			Response: base.Response{
 				Status:    "error",
@@ -228,6 +229,7 @@ func (s *JobstatsServer) accounts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Write response
+	w.WriteHeader(http.StatusOK)
 	response = base.AccountsResponse{
 		Response: base.Response{
 			Status: "success",
@@ -264,7 +266,6 @@ func (s *JobstatsServer) jobs(w http.ResponseWriter, r *http.Request) {
 	var fromTime, toTime time.Time
 	var response base.JobsResponse
 	s.setHeaders(w)
-	w.WriteHeader(http.StatusOK)
 
 	// Initialise utility vars
 	checkQueryWindow := true                             // Check query window size
@@ -274,6 +275,7 @@ func (s *JobstatsServer) jobs(w http.ResponseWriter, r *http.Request) {
 	loggedUser, dashboardUser := s.getUser(r)
 	// If no user found, return empty response
 	if loggedUser == "" {
+		w.WriteHeader(http.StatusUnauthorized)
 		s.jobsErrorResponse("User Error", "No user identified", w)
 		return
 	}
@@ -328,6 +330,7 @@ func (s *JobstatsServer) jobs(w http.ResponseWriter, r *http.Request) {
 		// Return error response if from is not a timestamp
 		if ts, err := strconv.Atoi(f); err != nil {
 			level.Error(s.logger).Log("msg", "Failed to parse from timestamp", "from", f, "err", err)
+			w.WriteHeader(http.StatusBadRequest)
 			s.jobsErrorResponse("Internal server error", "Malformed 'from' timestamp", w)
 			return
 		} else {
@@ -341,6 +344,7 @@ func (s *JobstatsServer) jobs(w http.ResponseWriter, r *http.Request) {
 		// Return error response if to is not a timestamp
 		if ts, err := strconv.Atoi(t); err != nil {
 			level.Error(s.logger).Log("msg", "Failed to parse to timestamp", "to", t, "err", err)
+			w.WriteHeader(http.StatusBadRequest)
 			s.jobsErrorResponse("Internal server error", "Malformed 'to' timestamp", w)
 			return
 		} else {
@@ -357,6 +361,7 @@ func (s *JobstatsServer) jobs(w http.ResponseWriter, r *http.Request) {
 			"from", fromTime.Format(time.DateTime), "to", toTime.Format(time.DateTime),
 			"queryWindow", toTime.Sub(fromTime).String(),
 		)
+		w.WriteHeader(http.StatusBadRequest)
 		s.jobsErrorResponse("Internal server error", "Maximum query window exceeded", w)
 		return
 	}
@@ -373,11 +378,13 @@ queryJobs:
 	jobs, err := s.Jobs(q, s.logger)
 	if err != nil {
 		level.Error(s.logger).Log("msg", "Failed to fetch jobs", "loggedUser", loggedUser, "err", err)
+		w.WriteHeader(http.StatusInternalServerError)
 		s.jobsErrorResponse("Internal server error", "Failed to fetch user jobs", w)
 		return
 	}
 
 	// Write response
+	w.WriteHeader(http.StatusOK)
 	response = base.JobsResponse{
 		Response: base.Response{
 			Status: "success",
