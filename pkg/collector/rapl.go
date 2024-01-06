@@ -39,17 +39,6 @@ var (
 
 // NewRaplCollector returns a new Collector exposing RAPL metrics.
 func NewRaplCollector(logger log.Logger) (Collector, error) {
-	var hostname string
-	var err error
-
-	// Get hostname
-	if !*emptyHostnameLabel {
-		hostname, err = os.Hostname()
-		if err != nil {
-			level.Error(logger).Log("msg", "Failed to get hostname", "err", err)
-		}
-	}
-
 	fs, err := sysfs.NewFS(*sysPath)
 	if err != nil {
 		return nil, err
