@@ -195,6 +195,7 @@ then
       ./bin/batchjob_exporter \
         --path.sysfs="pkg/collector/fixtures/sys" \
         --path.cgroupfs="pkg/collector/fixtures/sys/fs/cgroup" \
+        --path.procfs="pkg/collector/fixtures/proc" \
         --collector.slurm.create.unique.jobids \
         --collector.slurm.job.props.path="pkg/collector/fixtures/slurmjobprops" \
         --collector.slurm.gpu.type="nvidia" \
@@ -211,6 +212,7 @@ then
       ./bin/batchjob_exporter \
         --path.sysfs="pkg/collector/fixtures/sys" \
         --path.cgroupfs="pkg/collector/fixtures/sys/fs/cgroup" \
+        --path.procfs="pkg/collector/fixtures/proc" \
         --collector.slurm.create.unique.jobids \
         --collector.slurm.job.props.path="pkg/collector/fixtures/slurmjobprops" \
         --collector.slurm.gpu.type="amd" \
@@ -227,6 +229,7 @@ then
       ./bin/batchjob_exporter \
         --path.sysfs="pkg/collector/fixtures/sys" \
         --path.cgroupfs="pkg/collector/fixtures/sys/fs/cgroup" \
+        --path.procfs="pkg/collector/fixtures/proc" \
         --collector.slurm.create.unique.jobids \
         --collector.slurm.job.props.path="pkg/collector/fixtures/slurmjobprops" \
         --collector.slurm.force.cgroups.version="v2" \
@@ -255,6 +258,7 @@ then
       ./bin/batchjob_exporter \
         --path.sysfs="pkg/collector/fixtures/sys" \
         --path.cgroupfs="pkg/collector/fixtures/sys/fs/cgroup" \
+        --path.procfs="pkg/collector/fixtures/proc" \
         --collector.slurm.create.unique.jobids \
         --collector.slurm.job.props.path="pkg/collector/fixtures/slurmjobprops" \
         --collector.slurm.gpu.type="amd" \
