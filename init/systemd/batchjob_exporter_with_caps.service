@@ -7,6 +7,7 @@ Type=simple
 User=batchjob-exp
 Group=batchjob-exp
 ExecStart=/usr/local/bin/batchjob_exporter \
+    --collector.slurm.gpu.type="nvidia" \
     --collector.ipmi.dcmi.cmd="sudo /usr/sbin/ipmi-dcmi --get-system-power-statistics" \
     --log.level="debug"
 
