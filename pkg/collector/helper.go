@@ -1,6 +1,9 @@
 package collector
 
 import (
+	"bufio"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -22,6 +25,7 @@ type Device struct {
 
 var (
 	metricNameRegex = regexp.MustCompile(`_*[^0-9A-Za-z_]+_*`)
+	reParens        = regexp.MustCompile(`\((.*)\)`)
 )
 
 // Check if file exists
@@ -87,38 +91,21 @@ func LoadCgroupsV2Metrics(
 	return data, nil
 }
 
-// Get all physical or MIG devices using nvidia-smi command
-// Example output:
-// bash-4.4$ nvidia-smi --query-gpu=name,uuid --format=csv
-// name, uuid
-// Tesla V100-SXM2-32GB, GPU-f124aa59-d406-d45b-9481-8fcd694e6c9e
-// Tesla V100-SXM2-32GB, GPU-61a65011-6571-a6d2-5ab8-66cbb6f7f9c3
-//
-// Here we are using nvidia-smi to avoid having build issues if we use
-// nvml go bindings. This way we dont have deps on nvidia stuff and keep
-// exporter simple.
-//
-// NOTE: Hoping this command returns MIG devices too
-func GetNvidiaGPUDevices(nvidiaSmiPath string, logger log.Logger) (map[int]Device, error) {
-	// Check if nvidia-smi binary exists
-	if _, err := os.Stat(nvidiaSmiPath); err != nil {
-		level.Error(logger).Log("msg", "Failed to open nvidia-smi executable", "path", nvidiaSmiPath, "err", err)
-		return nil, err
+func GetGPUDevices(gpuType string, logger log.Logger) (map[int]Device, error) {
+	if gpuType == "nvidia" {
+		return GetNvidiaGPUDevices(*nvidiaSmiPath, logger)
+	} else if gpuType == "amd" {
+		return GetAMDGPUDevices(*rocmSmiPath, logger)
 	}
+	return nil, fmt.Errorf("Unknown GPU Type %s. Only nVIDIA and AMD GPU devices are supported", gpuType)
+}
 
-	// Execute nvidia-smi command to get available GPUs
-	args := []string{"--query-gpu=index,name,uuid", "--format=csv"}
-	nvidiaSmiOutput, err := helpers.Execute(nvidiaSmiPath, args, nil, logger)
-	if err != nil {
-		level.Error(logger).
-			Log("msg", "nvidia-smi command to get list of devices failed", "err", err)
-		return nil, err
-	}
-
+// Parse nvidia-smi output and return GPU Devices map
+func parseNvidiaSmiOutput(cmdOutput string, logger log.Logger) map[int]Device {
 	// Get all devices
 	gpuDevices := map[int]Device{}
 	devIndxInt := 0
-	for _, line := range strings.Split(strings.TrimSpace(string(nvidiaSmiOutput)), "\n") {
+	for _, line := range strings.Split(strings.TrimSpace(cmdOutput), "\n") {
 		// Header line, empty line and newlines are ignored
 		if line == "" || line == "\n" || strings.HasPrefix(line, "index") {
 			continue
@@ -147,5 +134,153 @@ func GetNvidiaGPUDevices(nvidiaSmiPath string, logger log.Logger) (map[int]Devic
 		gpuDevices[devIndxInt] = Device{index: devIndx, name: devName, uuid: devUuid, isMig: isMig}
 		devIndxInt++
 	}
-	return gpuDevices, nil
+	return gpuDevices
+}
+
+// Get all physical or MIG devices using nvidia-smi command
+// Example output:
+// bash-4.4$ nvidia-smi --query-gpu=name,uuid --format=csv
+// name, uuid
+// Tesla V100-SXM2-32GB, GPU-f124aa59-d406-d45b-9481-8fcd694e6c9e
+// Tesla V100-SXM2-32GB, GPU-61a65011-6571-a6d2-5ab8-66cbb6f7f9c3
+//
+// Here we are using nvidia-smi to avoid having build issues if we use
+// nvml go bindings. This way we dont have deps on nvidia stuff and keep
+// exporter simple.
+//
+// NOTE: Hoping this command returns MIG devices too
+func GetNvidiaGPUDevices(nvidiaSmiPath string, logger log.Logger) (map[int]Device, error) {
+	// Check if nvidia-smi binary exists
+	var nvidiaSmiCmd string
+	if nvidiaSmiPath != "" {
+		if _, err := os.Stat(nvidiaSmiPath); err != nil {
+			level.Error(logger).Log("msg", "Failed to open nvidia-smi executable", "path", nvidiaSmiPath, "err", err)
+			return nil, err
+		}
+		nvidiaSmiCmd = nvidiaSmiPath
+	} else {
+		nvidiaSmiCmd = "nvidia-smi"
+	}
+
+	// Execute nvidia-smi command to get available GPUs
+	args := []string{"--query-gpu=index,name,uuid", "--format=csv"}
+	nvidiaSmiOutput, err := helpers.Execute(nvidiaSmiCmd, args, nil, logger)
+	if err != nil {
+		level.Error(logger).
+			Log("msg", "nvidia-smi command to get list of devices failed", "err", err)
+		return nil, err
+	}
+	// Get all devices
+	return parseNvidiaSmiOutput(string(nvidiaSmiOutput), logger), nil
+}
+
+func parseAmdSmioutput(cmdOutput string, logger log.Logger) map[int]Device {
+	gpuDevices := map[int]Device{}
+	devIndxInt := 0
+	for _, line := range strings.Split(strings.TrimSpace(cmdOutput), "\n") {
+		// Header line, empty line and newlines are ignored
+		if line == "" || line == "\n" || strings.HasPrefix(line, "device") {
+			continue
+		}
+
+		devDetails := strings.Split(line, ",")
+		if len(devDetails) < 6 {
+			level.Error(logger).
+				Log("msg", "Cannot parse output from rocm-smi command", "output", line)
+			continue
+		}
+
+		// Get device index, name and UUID
+		devIndx := strings.TrimPrefix(devDetails[0], "card")
+		devUuid := strings.TrimSpace(devDetails[1])
+		devName := strings.TrimSpace(devDetails[2])
+
+		// Set isMig to false as it does not apply for AMD GPUs
+		isMig := false
+		level.Debug(logger).
+			Log("msg", "Found AMD GPU", "name", devName, "UUID", devUuid)
+
+		gpuDevices[devIndxInt] = Device{index: devIndx, name: devName, uuid: devUuid, isMig: isMig}
+		devIndxInt++
+	}
+	return gpuDevices
+}
+
+// Get all GPU devices using rocm-smi command
+// Example output:
+// bash-4.4$ rocm-smi --showproductname --showserial --csv
+// device,Serial Number,Card series,Card model,Card vendor,Card SKU
+// card0,20170000800c,deon Instinct MI50 32GB,0x0834,Advanced Micro Devices Inc. [AMD/ATI],D16317
+// card1,20170003580c,deon Instinct MI50 32GB,0x0834,Advanced Micro Devices Inc. [AMD/ATI],D16317
+// card2,20180003050c,deon Instinct MI50 32GB,0x0834,Advanced Micro Devices Inc. [AMD/ATI],D16317
+func GetAMDGPUDevices(rocmSmiPath string, logger log.Logger) (map[int]Device, error) {
+	// Check if rocm-smi binary exists
+	var rocmSmiCmd string
+	if rocmSmiPath != "" {
+		if _, err := os.Stat(rocmSmiPath); err != nil {
+			level.Error(logger).Log("msg", "Failed to open rocm-smi executable", "path", rocmSmiPath, "err", err)
+			return nil, err
+		}
+		rocmSmiCmd = rocmSmiPath
+	} else {
+		rocmSmiCmd = "rocm-smi"
+	}
+
+	// Execute nvidia-smi command to get available GPUs
+	args := []string{"--showproductname", "--showserial", "--csv"}
+	rocmSmiOutput, err := helpers.Execute(rocmSmiCmd, args, nil, logger)
+	if err != nil {
+		level.Error(logger).
+			Log("msg", "rocm-smi command to get list of devices failed", "err", err)
+		return nil, err
+	}
+	// Get all devices
+	return parseAmdSmioutput(string(rocmSmiOutput), logger), nil
+}
+
+// Get memory info of the host
+// Nicked from node_exporter: https://github.com/prometheus/node_exporter/blob/master/collector/meminfo_linux.go
+func GetMemInfo() (map[string]float64, error) {
+	file, err := os.Open(procFilePath("meminfo"))
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	return parseMemInfo(file)
+}
+
+// Parse memory info file at /proc/meminfo
+func parseMemInfo(r io.Reader) (map[string]float64, error) {
+	var (
+		memInfo = map[string]float64{}
+		scanner = bufio.NewScanner(r)
+	)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		parts := strings.Fields(line)
+		// Workaround for empty lines occasionally occur in CentOS 6.2 kernel 3.10.90.
+		if len(parts) == 0 {
+			continue
+		}
+		fv, err := strconv.ParseFloat(parts[1], 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid value in meminfo: %w", err)
+		}
+		key := parts[0][:len(parts[0])-1] // remove trailing : from key
+		// Active(anon) -> Active_anon
+		key = reParens.ReplaceAllString(key, "_${1}")
+		switch len(parts) {
+		case 2: // no unit
+		case 3: // has unit, we presume kB
+			fv *= 1024
+			key = key + "_bytes"
+		default:
+			return nil, fmt.Errorf("invalid line in meminfo: %s", line)
+		}
+		memInfo[key] = fv
+	}
+
+	return memInfo, scanner.Err()
 }
