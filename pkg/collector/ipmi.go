@@ -8,7 +8,6 @@ package collector
 
 import (
 	"fmt"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -66,16 +65,6 @@ func init() {
 // NewIPMICollector returns a new Collector exposing IMPI DCMI power metrics.
 func NewIPMICollector(logger log.Logger) (Collector, error) {
 	var execMode string
-	var hostname string
-	var err error
-
-	// Get hostname
-	if !*emptyHostnameLabel {
-		hostname, err = os.Hostname()
-		if err != nil {
-			level.Error(logger).Log("msg", "Failed to get hostname", "err", err)
-		}
-	}
 
 	// Initialize metricDesc map
 	var metricDesc = make(map[string]*prometheus.Desc, 3)

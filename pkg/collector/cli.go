@@ -36,6 +36,9 @@ var BatchJobExporterApp = *kingpin.New(
 	"Prometheus Exporter to export batch job metrics.",
 )
 
+// Current hostname
+var hostname string
+
 // Empty hostname flag (Used only for testing)
 var emptyHostnameLabel *bool
 
@@ -125,6 +128,14 @@ func (b *BatchJobExporter) Main() {
 	if user, err := user.Current(); err == nil && user.Uid == "0" {
 		level.Warn(logger).
 			Log("msg", "Batch Job Metrics Exporter is running as root user. This exporter can be run as unprivileged user, root is not required.")
+	}
+
+	// Get hostname
+	if !*emptyHostnameLabel {
+		hostname, err = os.Hostname()
+		if err != nil {
+			level.Error(logger).Log("msg", "Failed to get hostname", "err", err)
+		}
 	}
 
 	runtime.GOMAXPROCS(*maxProcs)
