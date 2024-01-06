@@ -20,7 +20,7 @@ batchjob_rapl_package_joules_total{hostname="",index="1",path="pkg/collector/fix
 batchjob_scrape_collector_success{collector="ipmi_dcmi"} 1
 batchjob_scrape_collector_success{collector="rapl"} 1
 batchjob_scrape_collector_success{collector="slurm_job"} 1
-# HELP batchjob_slurm_job_cpu_psi_seconds Cumulative CPU PSI seconds
+# HELP batchjob_slurm_job_cpu_psi_seconds Cumulative CPU PSI in seconds
 # TYPE batchjob_slurm_job_cpu_psi_seconds gauge
 batchjob_slurm_job_cpu_psi_seconds{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 0
 # HELP batchjob_slurm_job_cpu_system_seconds Cumulative CPU system seconds
@@ -45,7 +45,7 @@ batchjob_slurm_job_memory_cache_bytes{batch="slurm",hostname="",jobaccount="test
 # HELP batchjob_slurm_job_memory_fail_count Memory fail count
 # TYPE batchjob_slurm_job_memory_fail_count gauge
 batchjob_slurm_job_memory_fail_count{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 0
-# HELP batchjob_slurm_job_memory_psi_seconds Cumulative memory PSI seconds
+# HELP batchjob_slurm_job_memory_psi_seconds Cumulative memory PSI in seconds
 # TYPE batchjob_slurm_job_memory_psi_seconds gauge
 batchjob_slurm_job_memory_psi_seconds{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 0
 # HELP batchjob_slurm_job_memory_rss_bytes Memory RSS used in bytes
@@ -62,10 +62,13 @@ batchjob_slurm_job_memory_used_bytes{batch="slurm",hostname="",jobaccount="testa
 batchjob_slurm_job_memsw_fail_count{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 0
 # HELP batchjob_slurm_job_memsw_total_bytes Swap total in bytes
 # TYPE batchjob_slurm_job_memsw_total_bytes gauge
-batchjob_slurm_job_memsw_total_bytes{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 1.8446744073709552e+19
+batchjob_slurm_job_memsw_total_bytes{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 1.6378171392e+10
 # HELP batchjob_slurm_job_memsw_used_bytes Swap used in bytes
 # TYPE batchjob_slurm_job_memsw_used_bytes gauge
 batchjob_slurm_job_memsw_used_bytes{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 0
+# HELP batchjob_slurm_job_system_memory_total_bytes Available total system memory in bytes
+# TYPE batchjob_slurm_job_system_memory_total_bytes gauge
+batchjob_slurm_job_system_memory_total_bytes{batch="slurm",hostname=""} 1.6378171392e+10
 # HELP go_gc_duration_seconds A summary of the pause duration of garbage collection cycles.
 # TYPE go_gc_duration_seconds summary
 # HELP go_goroutines Number of goroutines that currently exist.
