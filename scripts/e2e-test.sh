@@ -162,6 +162,7 @@ get() {
 
 waitport() {
   timeout 5 bash -c "while ! curl -s -f "http://localhost:${port}" > /dev/null; do sleep 0.1; done";
+  sleep 1
 }
 
 if [[ "${scenario}" =~ "exporter" ]] 
