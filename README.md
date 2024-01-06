@@ -177,7 +177,7 @@ SLURM job properties can be used here as well
 
 - Use prolog and epilog scripts to get the GPU to job ID map. Example prolog script 
 is provided in the [repo](./configs/slurm/prolog.d/gpujobmap.sh). Similarly, this approach 
-needs `--collector.slurm.nvidia.gpu.job.map.path=/run/gpujobmap` command line option.
+needs `--collector.slurm.gpu.job.map.path=/run/gpujobmap` command line option.
 
 - Using capabilities to read the environment variables directly from `/proc` file system.
 
@@ -306,7 +306,8 @@ Using prolog and epilog scripts approach and `sudo` for `ipmi`,
 ```
 /path/to/batchjob_exporter \
     --collector.slurm.job.props.path="/run/slurmjobprops" \
-    --collector.slurm.nvidia.gpu.job.map.path="/run/gpujobmap" \
+    --collector.slurm.gpu.type="nvidia" \
+    --collector.slurm.gpu.job.map.path="/run/gpujobmap" \
     --collector.ipmi.dcmi.cmd="sudo /usr/sbin/ipmi-dcmi --get-system-power-statistics" \
     --log.level="debug"
 ```
@@ -337,42 +338,57 @@ batchjob_rapl_package_joules_total{hostname="",index="1",path="pkg/collector/fix
 batchjob_scrape_collector_success{collector="ipmi_dcmi"} 1
 batchjob_scrape_collector_success{collector="rapl"} 1
 batchjob_scrape_collector_success{collector="slurm_job"} 1
+# HELP batchjob_slurm_job_cpu_psi_seconds Cumulative CPU PSI seconds
+# TYPE batchjob_slurm_job_cpu_psi_seconds gauge
+batchjob_slurm_job_cpu_psi_seconds{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 0
 # HELP batchjob_slurm_job_cpu_system_seconds Cumulative CPU system seconds
 # TYPE batchjob_slurm_job_cpu_system_seconds gauge
-batchjob_slurm_job_cpu_system_seconds{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 115.777502
+batchjob_slurm_job_cpu_system_seconds{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 115.777502
 # HELP batchjob_slurm_job_cpu_total_seconds Cumulative CPU total seconds
 # TYPE batchjob_slurm_job_cpu_total_seconds gauge
-batchjob_slurm_job_cpu_total_seconds{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 60491.070351
+batchjob_slurm_job_cpu_total_seconds{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 60491.070351
 # HELP batchjob_slurm_job_cpu_user_seconds Cumulative CPU user seconds
 # TYPE batchjob_slurm_job_cpu_user_seconds gauge
-batchjob_slurm_job_cpu_user_seconds{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 60375.292848
+batchjob_slurm_job_cpu_user_seconds{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 60375.292848
 # HELP batchjob_slurm_job_cpus Number of CPUs
 # TYPE batchjob_slurm_job_cpus gauge
-batchjob_slurm_job_cpus{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 2
+batchjob_slurm_job_cpus{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 2
+# HELP batchjob_slurm_job_gpu_jobid_flag Indicates running job on GPU, 1=job running
+# TYPE batchjob_slurm_job_gpu_jobid_flag gauge
+batchjob_slurm_job_gpu_jobid_flag{UUID="20170005280c",batch="slurm",hostname="",index="3",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",uuid="20170005280c"} 1
+batchjob_slurm_job_gpu_jobid_flag{UUID="20180003050c",batch="slurm",hostname="",index="2",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",uuid="20180003050c"} 1
 # HELP batchjob_slurm_job_memory_cache_bytes Memory cache used in bytes
 # TYPE batchjob_slurm_job_memory_cache_bytes gauge
-batchjob_slurm_job_memory_cache_bytes{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 0
+batchjob_slurm_job_memory_cache_bytes{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 0
 # HELP batchjob_slurm_job_memory_fail_count Memory fail count
 # TYPE batchjob_slurm_job_memory_fail_count gauge
-batchjob_slurm_job_memory_fail_count{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 0
+batchjob_slurm_job_memory_fail_count{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 0
+# HELP batchjob_slurm_job_memory_psi_seconds Cumulative memory PSI seconds
+# TYPE batchjob_slurm_job_memory_psi_seconds gauge
+batchjob_slurm_job_memory_psi_seconds{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 0
 # HELP batchjob_slurm_job_memory_rss_bytes Memory RSS used in bytes
 # TYPE batchjob_slurm_job_memory_rss_bytes gauge
-batchjob_slurm_job_memory_rss_bytes{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 4.098592768e+09
+batchjob_slurm_job_memory_rss_bytes{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 4.098592768e+09
 # HELP batchjob_slurm_job_memory_total_bytes Memory total in bytes
 # TYPE batchjob_slurm_job_memory_total_bytes gauge
-batchjob_slurm_job_memory_total_bytes{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 4.294967296e+09
+batchjob_slurm_job_memory_total_bytes{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 4.294967296e+09
 # HELP batchjob_slurm_job_memory_used_bytes Memory used in bytes
 # TYPE batchjob_slurm_job_memory_used_bytes gauge
-batchjob_slurm_job_memory_used_bytes{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuuid="ac28caf5-ce6c-35f6-73fb-47d9d43f7780",step="",task=""} 4.111491072e+09
-# HELP batchjob_slurm_job_nvidia_gpu_jobid Batch Job ID of current nVIDIA GPU
-# TYPE batchjob_slurm_job_nvidia_gpu_jobid gauge
-batchjob_slurm_job_nvidia_gpu_jobid{UUID="GPU-61a65011-6571-a64n-5ab8-66cbb6f7f9c3",batch="slurm",hostname="",index="3",uuid="GPU-61a65011-6571-a64n-5ab8-66cbb6f7f9c3"} 1.009248e+06
-batchjob_slurm_job_nvidia_gpu_jobid{UUID="GPU-61a65011-6571-a6d2-5th8-66cbb6f7f9c3",batch="slurm",hostname="",index="2",uuid="GPU-61a65011-6571-a6d2-5th8-66cbb6f7f9c3"} 1.009248e+06
+batchjob_slurm_job_memory_used_bytes{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 4.111491072e+09
+# HELP batchjob_slurm_job_memsw_fail_count Swap fail count
+# TYPE batchjob_slurm_job_memsw_fail_count gauge
+batchjob_slurm_job_memsw_fail_count{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 0
+# HELP batchjob_slurm_job_memsw_total_bytes Swap total in bytes
+# TYPE batchjob_slurm_job_memsw_total_bytes gauge
+batchjob_slurm_job_memsw_total_bytes{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 1.8446744073709552e+19
+# HELP batchjob_slurm_job_memsw_used_bytes Swap used in bytes
+# TYPE batchjob_slurm_job_memsw_used_bytes gauge
+batchjob_slurm_job_memsw_used_bytes{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 0
 ```
 
 If the `batchjob_exporter` process have necessary capabilities assigned either _via_ 
 file capabilities or process capabilities, the flags `--collector.slurm.job.props.path` 
-and `--collector.slurm.nvidia.gpu.job.map.path` can be omitted and there is no need to 
+and `--collector.slurm.gpu.job.map.path` can be omitted and there is no need to 
 set up prolog and epilog scripts.
 
 ### `batchjob_stats_server`
