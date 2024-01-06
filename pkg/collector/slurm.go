@@ -124,6 +124,7 @@ type slurmCollector struct {
 	memswTotal       *prometheus.Desc
 	memswFailCount   *prometheus.Desc
 	memoryPressure   *prometheus.Desc
+	memoryAvailable  *prometheus.Desc
 	gpuJobFlag       *prometheus.Desc
 	collectError     *prometheus.Desc
 	logger           log.Logger
@@ -174,9 +175,10 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 	// Get total memory of instance
 	var memTotal float64
 	memInfo, err := GetMemInfo()
-	if err != nil {
-		level.Info(logger).Log("msg", "Failed to get total memory of the host", "err", err)
-		memTotal = memInfo["MemTotal"]
+	if err == nil {
+		memTotal = memInfo["MemTotal_bytes"]
+	} else {
+		level.Error(logger).Log("msg", "Failed to get total memory of the host", "err", err)
 	}
 	return &slurmCollector{
 		cgroups:          cgroupsVersion,
@@ -211,7 +213,7 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 		),
 		cpuPressure: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "cpu_psi_seconds"),
-			"Cumulative CPU PSI seconds",
+			"Cumulative CPU PSI in seconds",
 			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid", "step", "task"},
 			nil,
 		),
@@ -265,8 +267,14 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 		),
 		memoryPressure: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "memory_psi_seconds"),
-			"Cumulative memory PSI seconds",
+			"Cumulative memory PSI in seconds",
 			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid", "step", "task"},
+			nil,
+		),
+		memoryAvailable: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "system_memory_total_bytes"),
+			"Available total system memory in bytes",
+			[]string{"batch", "hostname"},
 			nil,
 		),
 		collectError: prometheus.NewDesc(
@@ -341,6 +349,7 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 			ch <- prometheus.MustNewConstMetric(c.gpuJobFlag, prometheus.GaugeValue, float64(1), m.batch, c.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid, gpuOrdinal, uuid, uuid)
 		}
 	}
+	ch <- prometheus.MustNewConstMetric(c.memoryAvailable, prometheus.GaugeValue, float64(c.memTotal), "slurm", c.hostname)
 	return nil
 }
 
