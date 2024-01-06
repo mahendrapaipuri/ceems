@@ -55,14 +55,7 @@ endif
 
 PROMU := $(FIRST_GOPATH)/bin/promu --config $(PROMU_CONF)
 
-e2e-cgroupsv2-out = pkg/collector/fixtures/e2e-test-cgroupsv2-output.txt
-e2e-cgroupsv1-out = pkg/collector/fixtures/e2e-test-cgroupsv1-output.txt
-
-ifeq ($(CGROUPS_MODE), unified)
-	e2e-out = $(e2e-cgroupsv2-out)
-else
-	e2e-out = $(e2e-cgroupsv1-out)
-endif
+e2e-out = pkg/collector/fixtures/output
 
 # 64bit -> 32bit mapping for cross-checking. At least for amd64/386, the 64bit CPU can execute 32bit code but not the other way around, so we don't support cross-testing upwards.
 cross-test = skip-test-32bit
