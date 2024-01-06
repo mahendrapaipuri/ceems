@@ -49,11 +49,16 @@ then
     cgroups_mode="legacy"
     desc="Cgroups V1"
     fixture='pkg/collector/fixtures/output/e2e-test-cgroupsv1-output.txt'
-  elif [ "${scenario}" = "exporter-cgroups-v2" ]
+  elif [ "${scenario}" = "exporter-cgroups-v2-nvidia" ]
   then
     cgroups_mode="unified"
     desc="Cgroups V2"
-    fixture='pkg/collector/fixtures/output/e2e-test-cgroupsv2-output.txt'
+    fixture='pkg/collector/fixtures/output/e2e-test-cgroupsv2-nvidia-output.txt'
+   elif [ "${scenario}" = "exporter-cgroups-v2-amd" ]
+  then
+    cgroups_mode="unified"
+    desc="Cgroups V2"
+    fixture='pkg/collector/fixtures/output/e2e-test-cgroupsv2-amd-output.txt'
   elif [ "${scenario}" = "exporter-cgroups-v2-nogpu" ]
   then
     cgroups_mode="unified"
@@ -174,24 +179,42 @@ then
         --path.cgroupfs="pkg/collector/fixtures/sys/fs/cgroup" \
         --collector.slurm.create.unique.jobids \
         --collector.slurm.job.props.path="pkg/collector/fixtures/slurmjobprops" \
+        --collector.slurm.gpu.type="nvidia" \
         --collector.slurm.nvidia.smi.path="pkg/collector/fixtures/nvidia-smi" \
         --collector.slurm.force.cgroups.version="v1" \
-        --collector.slurm.nvidia.gpu.job.map.path="pkg/collector/fixtures/gpujobmap" \
+        --collector.slurm.gpu.job.map.path="pkg/collector/fixtures/gpujobmap" \
         --collector.ipmi.dcmi.cmd="pkg/collector/fixtures/ipmi-dcmi-wrapper.sh" \
         --collector.empty.hostname.label \
         --web.listen-address "127.0.0.1:${port}" \
         --log.level="debug" > "${logfile}" 2>&1 &
 
-  elif [ "${scenario}" = "exporter-cgroups-v2" ] 
+  elif [ "${scenario}" = "exporter-cgroups-v2-nvidia" ] 
   then
       ./bin/batchjob_exporter \
         --path.sysfs="pkg/collector/fixtures/sys" \
         --path.cgroupfs="pkg/collector/fixtures/sys/fs/cgroup" \
         --collector.slurm.create.unique.jobids \
         --collector.slurm.job.props.path="pkg/collector/fixtures/slurmjobprops" \
+        --collector.slurm.gpu.type="nvidia" \
         --collector.slurm.nvidia.smi.path="pkg/collector/fixtures/nvidia-smi" \
         --collector.slurm.force.cgroups.version="v2" \
-        --collector.slurm.nvidia.gpu.job.map.path="pkg/collector/fixtures/gpujobmap" \
+        --collector.slurm.gpu.job.map.path="pkg/collector/fixtures/gpujobmap" \
+        --collector.ipmi.dcmi.cmd="pkg/collector/fixtures/ipmi-dcmi-wrapper.sh" \
+        --collector.empty.hostname.label \
+        --web.listen-address "127.0.0.1:${port}" \
+        --log.level="debug" > "${logfile}" 2>&1 &
+
+  elif [ "${scenario}" = "exporter-cgroups-v2-amd" ] 
+  then
+      ./bin/batchjob_exporter \
+        --path.sysfs="pkg/collector/fixtures/sys" \
+        --path.cgroupfs="pkg/collector/fixtures/sys/fs/cgroup" \
+        --collector.slurm.create.unique.jobids \
+        --collector.slurm.job.props.path="pkg/collector/fixtures/slurmjobprops" \
+        --collector.slurm.gpu.type="amd" \
+        --collector.slurm.rocm.smi.path="pkg/collector/fixtures/rocm-smi" \
+        --collector.slurm.force.cgroups.version="v2" \
+        --collector.slurm.gpu.job.map.path="pkg/collector/fixtures/gpujobmap" \
         --collector.ipmi.dcmi.cmd="pkg/collector/fixtures/ipmi-dcmi-wrapper.sh" \
         --collector.empty.hostname.label \
         --web.listen-address "127.0.0.1:${port}" \
@@ -217,6 +240,7 @@ then
         --path.cgroupfs="pkg/collector/fixtures/sys/fs/cgroup" \
         --path.procfs="pkg/collector/fixtures/proc" \
         --collector.slurm.create.unique.jobids \
+        --collector.slurm.gpu.type="nvidia" \
         --collector.slurm.nvidia.smi.path="pkg/collector/fixtures/nvidia-smi" \
         --collector.slurm.force.cgroups.version="v2" \
         --collector.ipmi.dcmi.cmd="pkg/collector/fixtures/ipmi-dcmi-wrapper.sh" \
@@ -231,9 +255,10 @@ then
         --path.cgroupfs="pkg/collector/fixtures/sys/fs/cgroup" \
         --collector.slurm.create.unique.jobids \
         --collector.slurm.job.props.path="pkg/collector/fixtures/slurmjobprops" \
-        --collector.slurm.nvidia.smi.path="pkg/collector/fixtures/nvidia-smi" \
+        --collector.slurm.gpu.type="amd" \
+        --collector.slurm.rocm.smi.path="pkg/collector/fixtures/rocm-smi" \
         --collector.slurm.force.cgroups.version="v2" \
-        --collector.slurm.nvidia.gpu.job.map.path="pkg/collector/fixtures/gpujobmap" \
+        --collector.slurm.gpu.job.map.path="pkg/collector/fixtures/gpujobmap" \
         --collector.slurm.swap.memory.metrics \
         --collector.slurm.psi.metrics \
         --collector.ipmi.dcmi.cmd="pkg/collector/fixtures/ipmi-dcmi-wrapper.sh" \

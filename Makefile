@@ -114,7 +114,8 @@ ifeq ($(CGO_BUILD), 0)
 test-e2e: build pkg/collector/fixtures/sys/.unpacked pkg/collector/fixtures/proc/.unpacked
 	@echo ">> running end-to-end tests"
 	./scripts/e2e-test.sh -s exporter-cgroups-v1
-	./scripts/e2e-test.sh -s exporter-cgroups-v2
+	./scripts/e2e-test.sh -s exporter-cgroups-v2-nvidia
+	./scripts/e2e-test.sh -s exporter-cgroups-v2-amd
 	./scripts/e2e-test.sh -s exporter-cgroups-v2-nogpu
 	./scripts/e2e-test.sh -s exporter-cgroups-v2-procfs
 	./scripts/e2e-test.sh -s exporter-cgroups-v2-all-metrics

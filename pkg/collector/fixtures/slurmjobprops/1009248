@@ -1,1 +1,1 @@
-1000 testacc compute-[0-2] /home/user/slurm 
+testusr testacc compute-[0-2] /home/user/slurm 
