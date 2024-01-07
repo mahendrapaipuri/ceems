@@ -19,33 +19,30 @@ batchjob_rapl_package_joules_total{hostname="",index="1",path="pkg/collector/fix
 # TYPE batchjob_scrape_collector_success gauge
 batchjob_scrape_collector_success{collector="ipmi_dcmi"} 1
 batchjob_scrape_collector_success{collector="rapl"} 1
-batchjob_scrape_collector_success{collector="slurm_job"} 1
-# HELP batchjob_slurm_job_cpu_psi_seconds Cumulative CPU PSI in seconds
+batchjob_scrape_collector_success{collector="slurm"} 1
+# HELP batchjob_slurm_job_cpu_psi_seconds Total CPU PSI in seconds
 # TYPE batchjob_slurm_job_cpu_psi_seconds gauge
 batchjob_slurm_job_cpu_psi_seconds{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 0
-# HELP batchjob_slurm_job_cpu_system_seconds Cumulative CPU system seconds
+# HELP batchjob_slurm_job_cpu_system_seconds Total job CPU system seconds
 # TYPE batchjob_slurm_job_cpu_system_seconds gauge
 batchjob_slurm_job_cpu_system_seconds{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 115.777502
-# HELP batchjob_slurm_job_cpu_total_seconds Cumulative CPU total seconds
-# TYPE batchjob_slurm_job_cpu_total_seconds gauge
-batchjob_slurm_job_cpu_total_seconds{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 60491.070351
-# HELP batchjob_slurm_job_cpu_user_seconds Cumulative CPU user seconds
+# HELP batchjob_slurm_job_cpu_user_seconds Total job CPU user seconds
 # TYPE batchjob_slurm_job_cpu_user_seconds gauge
 batchjob_slurm_job_cpu_user_seconds{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 60375.292848
-# HELP batchjob_slurm_job_cpus Number of CPUs
+# HELP batchjob_slurm_job_cpus Total number of job CPUs
 # TYPE batchjob_slurm_job_cpus gauge
 batchjob_slurm_job_cpus{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 2
-# HELP batchjob_slurm_job_gpu_jobid_flag Indicates running job on GPU, 1=job running
-# TYPE batchjob_slurm_job_gpu_jobid_flag gauge
-batchjob_slurm_job_gpu_jobid_flag{UUID="20170005280c",batch="slurm",hostname="",index="3",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",uuid="20170005280c"} 1
-batchjob_slurm_job_gpu_jobid_flag{UUID="20180003050c",batch="slurm",hostname="",index="2",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",uuid="20180003050c"} 1
+# HELP batchjob_slurm_job_gpu_index_flag Indicates running job on GPU, 1=job running
+# TYPE batchjob_slurm_job_gpu_index_flag gauge
+batchjob_slurm_job_gpu_index_flag{UUID="20170005280c",batch="slurm",hostname="",index="3",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",uuid="20170005280c"} 1
+batchjob_slurm_job_gpu_index_flag{UUID="20180003050c",batch="slurm",hostname="",index="2",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",uuid="20180003050c"} 1
 # HELP batchjob_slurm_job_memory_cache_bytes Memory cache used in bytes
 # TYPE batchjob_slurm_job_memory_cache_bytes gauge
 batchjob_slurm_job_memory_cache_bytes{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 0
 # HELP batchjob_slurm_job_memory_fail_count Memory fail count
 # TYPE batchjob_slurm_job_memory_fail_count gauge
 batchjob_slurm_job_memory_fail_count{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 0
-# HELP batchjob_slurm_job_memory_psi_seconds Cumulative memory PSI in seconds
+# HELP batchjob_slurm_job_memory_psi_seconds Total memory PSI in seconds
 # TYPE batchjob_slurm_job_memory_psi_seconds gauge
 batchjob_slurm_job_memory_psi_seconds{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 0
 # HELP batchjob_slurm_job_memory_rss_bytes Memory RSS used in bytes
@@ -66,9 +63,12 @@ batchjob_slurm_job_memsw_total_bytes{batch="slurm",hostname="",jobaccount="testa
 # HELP batchjob_slurm_job_memsw_used_bytes Swap used in bytes
 # TYPE batchjob_slurm_job_memsw_used_bytes gauge
 batchjob_slurm_job_memsw_used_bytes{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 0
-# HELP batchjob_slurm_job_system_memory_total_bytes Available total system memory in bytes
-# TYPE batchjob_slurm_job_system_memory_total_bytes gauge
-batchjob_slurm_job_system_memory_total_bytes{batch="slurm",hostname=""} 1.6042172416e+10
+# HELP batchjob_system_memory_total_bytes Available total system memory in bytes
+# TYPE batchjob_system_memory_total_bytes gauge
+batchjob_system_memory_total_bytes{batch="slurm",hostname=""} 1.6042172416e+10
+# HELP batchjob_system_proc_cpu_total_seconds Total processes CPU time in seconds
+# TYPE batchjob_system_proc_cpu_total_seconds gauge
+batchjob_system_proc_cpu_total_seconds{batch="slurm",hostname=""} 4137.76
 # HELP go_gc_duration_seconds A summary of the pause duration of garbage collection cycles.
 # TYPE go_gc_duration_seconds summary
 # HELP go_goroutines Number of goroutines that currently exist.

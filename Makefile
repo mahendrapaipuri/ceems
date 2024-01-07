@@ -128,6 +128,28 @@ test-e2e: build pkg/collector/fixtures/sys/.unpacked pkg/collector/fixtures/proc
 	./scripts/e2e-test.sh -s stats-admin-query-all
 endif
 
+ifeq ($(CGO_BUILD), 0)
+.PHONY: test-e2e-update
+test-e2e-update: build pkg/collector/fixtures/sys/.unpacked pkg/collector/fixtures/proc/.unpacked
+	@echo ">> updating end-to-end tests outputs"
+	./scripts/e2e-test.sh -s exporter-cgroups-v1 -u || true
+	./scripts/e2e-test.sh -s exporter-cgroups-v2-nvidia -u || true
+	./scripts/e2e-test.sh -s exporter-cgroups-v2-amd -u || true
+	./scripts/e2e-test.sh -s exporter-cgroups-v2-nogpu -u || true
+	./scripts/e2e-test.sh -s exporter-cgroups-v2-procfs -u || true
+	./scripts/e2e-test.sh -s exporter-cgroups-v2-all-metrics -u || true
+else
+.PHONY: test-e2e-update
+test-e2e-update: build pkg/collector/fixtures/sys/.unpacked pkg/collector/fixtures/proc/.unpacked
+	@echo ">> updating end-to-end tests outputs"
+	./scripts/e2e-test.sh -s stats-account-query -u || true
+	./scripts/e2e-test.sh -s stats-jobuuid-query -u || true
+	./scripts/e2e-test.sh -s stats-jobid-query -u || true
+	./scripts/e2e-test.sh -s stats-jobuuid-jobid-query -u || true
+	./scripts/e2e-test.sh -s stats-admin-query -u || true
+	./scripts/e2e-test.sh -s stats-admin-query-all -u || true
+endif
+
 .PHONY: skip-test-e2e
 skip-test-e2e:
 	@echo ">> SKIP running end-to-end tests on $(GOHOSTOS)"
