@@ -441,7 +441,10 @@ func (j *jobStatsDB) getJobStats(startTime, endTime time.Time) error {
 
 	// Set pragma statements
 	j.setPragmaDirectives()
+
+	// Make prepare statement and defer closing statement
 	stmt, err := j.prepareInsertStatement(tx)
+	defer stmt.Close()
 	if err != nil {
 		level.Error(j.logger).Log("msg", "Failed to prepare insert job statement in DB", "err", err)
 		return err
@@ -478,9 +481,6 @@ func (j *jobStatsDB) getJobStats(startTime, endTime time.Time) error {
 		j.deleteTimeSeries(ignoredJobs)
 		level.Debug(j.logger).Log("msg", "Finished deleting time series in Prometheus")
 	}
-
-	// Defer Closing the database
-	defer stmt.Close()
 	return nil
 }
 
