@@ -444,11 +444,11 @@ func (j *jobStatsDB) getJobStats(startTime, endTime time.Time) error {
 
 	// Make prepare statement and defer closing statement
 	stmt, err := j.prepareInsertStatement(tx)
-	defer stmt.Close()
 	if err != nil {
 		level.Error(j.logger).Log("msg", "Failed to prepare insert job statement in DB", "err", err)
 		return err
 	}
+	defer stmt.Close()
 
 	// Insert data into DB
 	level.Debug(j.logger).Log("msg", "Inserting jobs into DB")
