@@ -572,8 +572,12 @@ func (j *jobStatsDB) insertJobs(statement *sql.Stmt, jobStats []base.BatchJob) [
 		}
 
 		// Ignore jobs that ran for less than jobCutoffPeriod seconds
-		if elapsedTime, err := strconv.Atoi(jobStat.ElapsedRaw); err == nil && elapsedTime < int(j.storage.cutoffPeriod.Seconds()) {
-			ignoredJobs = append(ignoredJobs, tsdbLabels{id: jobStat.Jobid, user: jobStat.Usr, account: jobStat.Account})
+		if elapsedTime, err := strconv.Atoi(jobStat.ElapsedRaw); err == nil &&
+			elapsedTime < int(j.storage.cutoffPeriod.Seconds()) {
+			ignoredJobs = append(
+				ignoredJobs,
+				tsdbLabels{id: jobStat.Jobid, user: jobStat.Usr, account: jobStat.Account},
+			)
 			continue
 		}
 
@@ -610,6 +614,7 @@ func (j *jobStatsDB) insertJobs(statement *sql.Stmt, jobStats []base.BatchJob) [
 				Log("msg", "Failed to insert job in DB", "jobid", jobStat.Jobid, "err", err)
 		}
 	}
+	level.Debug(j.logger).Log("msg", "Ignored jobs", "numjobs", len(ignoredJobs))
 	return ignoredJobs
 }
 
@@ -618,7 +623,10 @@ func (j *jobStatsDB) deleteTimeSeries(jobs []tsdbLabels) {
 	var tsSlice []string
 	for _, job := range jobs {
 		for _, ts := range j.tsdb.tsToDelete {
-			tsSlice = append(tsSlice, fmt.Sprintf("%s{jobid=\"%s\",jobuser=\"%s\",jobaccount=\"%s\"}", ts, job.id, job.user, job.account))
+			tsSlice = append(
+				tsSlice,
+				fmt.Sprintf("%s{jobid=\"%s\",jobuser=\"%s\",jobaccount=\"%s\"}", ts, job.id, job.user, job.account),
+			)
 		}
 	}
 
@@ -628,7 +636,8 @@ func (j *jobStatsDB) deleteTimeSeries(jobs []tsdbLabels) {
 	// Create a new POST request
 	req, err := http.NewRequest(http.MethodPost, j.tsdb.deleteSeriesEndpoint, strings.NewReader(values.Encode()))
 	if err != nil {
-		level.Error(j.logger).Log("msg", "Failed to make a new HTTP request for deleting time series in Prometheus", "err", err)
+		level.Error(j.logger).
+			Log("msg", "Failed to make a new HTTP request for deleting time series in Prometheus", "err", err)
 	}
 
 	// Add necessary headers

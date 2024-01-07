@@ -173,7 +173,11 @@ func (b *BatchJobStatsServer) Main() {
 		// Check if Prometheus is reachable
 		_, err = client.Do(req)
 		if err != nil {
-			fmt.Printf("--prometheus.data.vacuum.tsdb is set to true but Prometheus at %s is unreachable %s", promURL.Redacted(), err)
+			fmt.Printf(
+				"--prometheus.data.vacuum.tsdb is set to true but Prometheus at %s is unreachable %s",
+				promURL.Redacted(),
+				err,
+			)
 			os.Exit(1)
 		}
 	}
