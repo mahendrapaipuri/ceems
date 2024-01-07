@@ -5,7 +5,7 @@ set -euf -o pipefail
 cd "$(dirname $0)/.."
 
 port="$((10000 + (RANDOM % 10000)))"
-tmpdir=$(mktemp -d /tmp/batchjob_monitoring_e2e_test.XXXXXX)
+tmpdir=$(mktemp -d /tmp/batchjob_metrics_monitor_e2e_test.XXXXXX)
 
 skip_re="^(go_|batchjob_exporter_build_info|batchjob_scrape_collector_duration_seconds|process_|batchjob_textfile_mtime_seconds|batchjob_time_(zone|seconds)|batchjob_network_(receive|transmit)_(bytes|packets)_total)"
 

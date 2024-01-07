@@ -3,7 +3,7 @@ go:
     # .promu-cgo.yml should also be updated.
     version: 1.21
 repository:
-    path: github.com/mahendrapaipuri/batchjob_monitoring
+    path: github.com/mahendrapaipuri/batchjob_metrics_monitor
 build:
     binaries:
         - name: batchjob_exporter

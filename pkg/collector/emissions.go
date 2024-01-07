@@ -13,7 +13,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/emissions"
+	"github.com/mahendrapaipuri/batchjob_metrics_monitor/pkg/emissions"
 )
 
 const emissionsCollectorSubsystem = "emissions"

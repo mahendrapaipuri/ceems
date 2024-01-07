@@ -2,7 +2,7 @@ package base
 
 import (
 	"github.com/alecthomas/kingpin/v2"
-	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/helper"
+	"github.com/mahendrapaipuri/batchjob_metrics_monitor/pkg/jobstats/helper"
 )
 
 // Name of batchjob_stats_server kingpin app

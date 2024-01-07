@@ -11,10 +11,10 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/mahendrapaipuri/batchjob_monitoring/internal/helpers"
-	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/base"
-	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/helper"
-	jobstats_helper "github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/helper"
+	"github.com/mahendrapaipuri/batchjob_metrics_monitor/internal/helpers"
+	"github.com/mahendrapaipuri/batchjob_metrics_monitor/pkg/jobstats/base"
+	"github.com/mahendrapaipuri/batchjob_metrics_monitor/pkg/jobstats/helper"
+	jobstats_helper "github.com/mahendrapaipuri/batchjob_metrics_monitor/pkg/jobstats/helper"
 )
 
 type slurmScheduler struct {
