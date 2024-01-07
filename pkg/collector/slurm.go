@@ -117,22 +117,22 @@ type slurmCollector struct {
 	cpuUser          *prometheus.Desc
 	cpuSystem        *prometheus.Desc
 	// cpuTotal         *prometheus.Desc
-	cpus             *prometheus.Desc
-	cpuPressure      *prometheus.Desc
-	memoryRSS        *prometheus.Desc
-	memoryCache      *prometheus.Desc
-	memoryUsed       *prometheus.Desc
-	memoryTotal      *prometheus.Desc
-	memoryFailCount  *prometheus.Desc
-	memswUsed        *prometheus.Desc
-	memswTotal       *prometheus.Desc
-	memswFailCount   *prometheus.Desc
-	memoryPressure   *prometheus.Desc
-	memoryAvailable  *prometheus.Desc
-	procCpuTotal     *prometheus.Desc
-	gpuJobFlag       *prometheus.Desc
-	collectError     *prometheus.Desc
-	logger           log.Logger
+	cpus            *prometheus.Desc
+	cpuPressure     *prometheus.Desc
+	memoryRSS       *prometheus.Desc
+	memoryCache     *prometheus.Desc
+	memoryUsed      *prometheus.Desc
+	memoryTotal     *prometheus.Desc
+	memoryFailCount *prometheus.Desc
+	memswUsed       *prometheus.Desc
+	memswTotal      *prometheus.Desc
+	memswFailCount  *prometheus.Desc
+	memoryPressure  *prometheus.Desc
+	memoryAvailable *prometheus.Desc
+	procCpuTotal    *prometheus.Desc
+	gpuJobFlag      *prometheus.Desc
+	collectError    *prometheus.Desc
+	logger          log.Logger
 }
 
 func init() {
@@ -302,7 +302,7 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 			nil,
 		),
 		gpuJobFlag: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "gpu_jobid_flag"),
+			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_gpu_index_flag"),
 			"Indicates running job on GPU, 1=job running",
 			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid", "index", "uuid", "UUID"}, nil,
 		),
