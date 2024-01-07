@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/go-kit/log"
-	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/base"
-	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/db"
+	"github.com/mahendrapaipuri/batchjob_metrics_monitor/pkg/jobstats/base"
+	"github.com/mahendrapaipuri/batchjob_metrics_monitor/pkg/jobstats/db"
 )
 
 func setupServer() *JobstatsServer {

@@ -13,7 +13,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/mahendrapaipuri/batchjob_monitoring/internal/helpers"
+	"github.com/mahendrapaipuri/batchjob_metrics_monitor/internal/helpers"
 )
 
 type Device struct {

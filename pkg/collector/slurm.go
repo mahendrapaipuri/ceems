@@ -20,7 +20,7 @@ import (
 	"github.com/containerd/cgroups/v3/cgroup2"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/mahendrapaipuri/batchjob_monitoring/internal/helpers"
+	"github.com/mahendrapaipuri/batchjob_metrics_monitor/internal/helpers"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/procfs"
 )

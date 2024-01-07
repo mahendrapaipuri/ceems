@@ -3,8 +3,8 @@ package main
 
 // Ensure to import the current mock collector
 import (
-	_ "github.com/mahendrapaipuri/batchjob_monitoring/examples/mock_exporter/pkg/collector"
-	batchjob_collector "github.com/mahendrapaipuri/batchjob_monitoring/pkg/collector"
+	_ "github.com/mahendrapaipuri/batchjob_metrics_monitor/examples/mock_exporter/pkg/collector"
+	batchjob_collector "github.com/mahendrapaipuri/batchjob_metrics_monitor/pkg/collector"
 )
 
 // Main entry point for `batchjob_exporter` app

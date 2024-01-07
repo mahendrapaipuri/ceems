@@ -15,8 +15,8 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/base"
-	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/schedulers"
+	"github.com/mahendrapaipuri/batchjob_metrics_monitor/pkg/jobstats/base"
+	"github.com/mahendrapaipuri/batchjob_metrics_monitor/pkg/jobstats/schedulers"
 	_ "github.com/mattn/go-sqlite3"
 )
 

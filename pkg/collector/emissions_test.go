@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/go-kit/log"
-	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/emissions"
+	"github.com/mahendrapaipuri/batchjob_metrics_monitor/pkg/emissions"
 )
 
 var (
