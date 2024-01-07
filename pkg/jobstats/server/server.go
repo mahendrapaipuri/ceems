@@ -61,12 +61,6 @@ func (q *Query) param(val []string) {
 	q.params = append(q.params, val...)
 }
 
-// Add multiple parameters and its placeholder
-// func (q *Query) multiParam(val []string) {
-// 	q.builder.WriteString(fmt.Sprintf("(%s)", strings.Join(strings.Split(strings.Repeat("?", len(val)), ""), ",")))
-// 	q.params = append(q.params, val...)
-// }
-
 // Get current query string and its parameters
 func (q *Query) get() (string, []string) {
 	return q.builder.String(), q.params
@@ -504,8 +498,8 @@ func fetchJobs(
 			group, gid, user, uid,
 			submit, start, end,
 			submitTs, startTs, endTs,
-			elapsed, exitcode, state,
-			nnodes, ncpus, nodelist,
+			elapsed, elapsedraw, exitcode,
+			state, nnodes, ncpus, nodelist,
 			nodelistExp, jobName, workDir string
 		if err := rows.Scan(
 			&jobid,
@@ -524,6 +518,7 @@ func fetchJobs(
 			&startTs,
 			&endTs,
 			&elapsed,
+			&elapsedraw,
 			&exitcode,
 			&state,
 			&nnodes,
@@ -552,6 +547,7 @@ func fetchJobs(
 			StartTS:     startTs,
 			EndTS:       endTs,
 			Elapsed:     elapsed,
+			ElapsedRaw:  elapsedraw,
 			Exitcode:    exitcode,
 			State:       state,
 			Nnodes:      nnodes,

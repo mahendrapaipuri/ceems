@@ -3,7 +3,6 @@ package schedulers
 import (
 	"reflect"
 	"testing"
-	"time"
 
 	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/base"
@@ -18,7 +17,7 @@ var (
 	expectedBatchJobs = []base.BatchJob{
 		{
 			Jobid:       "1479763",
-			Jobuuid:     "a3bd0ca1-5021-7e4d-943e-9529f8390f05",
+			Jobuuid:     "f28bd0d1-e5b1-d90c-8969-a581d8ca3880",
 			Partition:   "part1",
 			QoS:         "qos1",
 			Account:     "acc1",
@@ -33,6 +32,7 @@ var (
 			StartTS:     "1676986627000",
 			EndTS:       "1676989589000",
 			Elapsed:     "00:49:22",
+			ElapsedRaw:  "3000",
 			Exitcode:    "0:0",
 			State:       "CANCELLED by 302137",
 			Nnodes:      "1",
@@ -44,7 +44,7 @@ var (
 		},
 		{
 			Jobid:       "1481508",
-			Jobuuid:     "759a4e2e-1e47-c58b-3d1b-885a03ca323b",
+			Jobuuid:     "73359475-dec0-ab9b-5b82-d717b2a78514",
 			Partition:   "part1",
 			QoS:         "qos1",
 			Account:     "acc1",
@@ -59,6 +59,7 @@ var (
 			StartTS:     "1676990946000",
 			EndTS:       "1676991443000",
 			Elapsed:     "00:08:17",
+			ElapsedRaw:  "4920",
 			Exitcode:    "0:0",
 			State:       "CANCELLED by 302137",
 			Nnodes:      "2",
@@ -68,16 +69,42 @@ var (
 			JobName:     "test_script2",
 			WorkDir:     "/home/usr",
 		},
-		{}, // Ignored jobs will have empty struct
+		{
+			Jobid:       "1481510",
+			Jobuuid:     "e2c25cff-8e5b-e54d-455d-46402ccd0e63",
+			Partition:   "part1",
+			QoS:         "qos1",
+			Account:     "acc1",
+			Grp:         "grp",
+			Gid:         "1000",
+			Usr:         "usr",
+			Uid:         "1000",
+			Submit:      "2023-02-21T15:48:20+0100",
+			Start:       "2023-02-21T15:49:06+0100",
+			End:         "2023-02-21T15:57:23+0100",
+			SubmitTS:    "1676990900000",
+			StartTS:     "1676990946000",
+			EndTS:       "1676991443000",
+			Elapsed:     "00:00:17",
+			ElapsedRaw:  "17",
+			Exitcode:    "0:0",
+			State:       "CANCELLED by 302137",
+			Nnodes:      "2",
+			Ncpus:       "16",
+			Nodelist:    "compute-[0-2]",
+			NodelistExp: "compute-0|compute-1|compute-2",
+			JobName:     "test_script2",
+			WorkDir:     "/home/usr",
+		},
 	}
 )
 
 func TestParseSacctCmdOutput(t *testing.T) {
-	batchJobs, numJobs := parseSacctCmdOutput(sacctCmdOutput, time.Duration(60*time.Second), logger)
+	batchJobs, numJobs := parseSacctCmdOutput(sacctCmdOutput, logger)
 	if !reflect.DeepEqual(batchJobs, expectedBatchJobs) {
 		t.Errorf("Expected batch jobs %#v. \n\nGot %#v", expectedBatchJobs, batchJobs)
 	}
-	if numJobs != 2 {
-		t.Errorf("Expected batch jobs num %d. Got %d", 2, numJobs)
+	if numJobs != len(expectedBatchJobs) {
+		t.Errorf("Expected batch jobs num %d. Got %d", len(expectedBatchJobs), numJobs)
 	}
 }

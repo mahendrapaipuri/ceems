@@ -2,9 +2,14 @@ package db
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -15,28 +20,66 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+// Prometheus response
+type tsdbLabelsResponse struct {
+	Status    string   `json:"status"`
+	Data      []string `json:"data"`
+	ErrorType string   `json:"errorType"`
+	Error     string   `json:"error"`
+	Warnings  []string `json:"warnings"`
+}
+
+// Unique job labels to identify time series that needed to be deleted
+type tsdbLabels struct {
+	id      string
+	user    string
+	account string
+}
+
+// Prometheus related config
+type tsdbConfig struct {
+	url                  string
+	vacuum               bool
+	tsToDelete           []string
+	deleteSeriesEndpoint string
+	client               *http.Client
+}
+
 // DB config
 type Config struct {
 	Logger                  log.Logger
 	JobstatsDBPath          string
 	JobstatsDBTable         string
+	JobCutoffPeriod         time.Duration
 	RetentionPeriod         time.Duration
+	SkipDeleteOldJobs       bool
+	VacuumTSDB              bool
+	PrometheusURL           *url.URL
+	HTTPClient              *http.Client
 	LastUpdateTimeString    string
 	LastUpdateTimeStampFile string
 	BatchScheduler          func(log.Logger) (*schedulers.BatchScheduler, error)
 }
 
+// Storage
+type storageConfig struct {
+	dbPath             string
+	dbTable            string
+	retentionPeriod    time.Duration
+	cutoffPeriod       time.Duration
+	lastUpdateTime     time.Time
+	lastVacuumTime     time.Time
+	lastUpdateTimeFile string
+	skipDeleteOldJobs  bool
+}
+
 // job stats DB struct
 type jobStatsDB struct {
-	logger                 log.Logger
-	db                     *sql.DB
-	scheduler              *schedulers.BatchScheduler
-	jobstatDBPath          string
-	jobstatDBTable         string
-	retentionPeriod        time.Duration
-	lastJobsUpdateTime     time.Time
-	lastDBVacuumTime       time.Time
-	lastJobsUpdateTimeFile string
+	logger    log.Logger
+	db        *sql.DB
+	scheduler *schedulers.BatchScheduler
+	tsdb      *tsdbConfig
+	storage   *storageConfig
 }
 
 var (
@@ -161,6 +204,38 @@ func setupDB(dbFilePath string, dbTableName string, logger log.Logger) (*sql.DB,
 	return db, nil
 }
 
+// Get list of time series to delete
+func setupTimeseriesToDelete(url string, client *http.Client, logger log.Logger) ([]string, error) {
+	resp, err := client.Get(url)
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to get series names from Prometheus", "err", err)
+		return nil, err
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to read HTTP response body from Prometheus", "err", err)
+		return nil, err
+	}
+
+	var data tsdbLabelsResponse
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		level.Error(logger).
+			Log("msg", "Failed to unmarshal HTTP response body from Prometheus", "err", err)
+		return nil, err
+	}
+
+	// Get series names
+	var tsToDelete []string
+	for _, ts := range data.Data {
+		if strings.HasPrefix(ts, "batchjob") {
+			tsToDelete = append(tsToDelete, ts)
+		}
+	}
+	return tsToDelete, nil
+}
+
 // Make new JobStatsDB struct
 func NewJobStatsDB(c *Config) (*jobStatsDB, error) {
 	// Emit debug logs
@@ -229,16 +304,55 @@ setup:
 		level.Error(c.Logger).Log("msg", "DB setup failed", "err", err)
 		return nil, err
 	}
+
+	// Storage config
+	storageConfig := &storageConfig{
+		dbPath:             c.JobstatsDBPath,
+		dbTable:            c.JobstatsDBTable,
+		retentionPeriod:    c.RetentionPeriod,
+		cutoffPeriod:       c.JobCutoffPeriod,
+		lastUpdateTime:     lastJobsUpdateTime,
+		lastVacuumTime:     time.Now(),
+		lastUpdateTimeFile: c.LastUpdateTimeStampFile,
+		skipDeleteOldJobs:  c.SkipDeleteOldJobs,
+	}
+
+	// If VacuumTSDB is set to true, get list of series names
+	var tsToDelete []string
+	vacuumTsdb := c.VacuumTSDB
+	if c.VacuumTSDB {
+		tsToDelete, err = setupTimeseriesToDelete(
+			c.PrometheusURL.JoinPath("/api/v1/label/__name__/values").String(),
+			c.HTTPClient,
+			c.Logger,
+		)
+		if err != nil {
+			vacuumTsdb = false
+			level.Warn(c.Logger).Log("msg", "Prometheus TSDB will not be vacuumed")
+		}
+	}
+
+	// tsdb config
+	var tsdb *tsdbConfig
+	if vacuumTsdb {
+		tsdb = &tsdbConfig{
+			url:                  c.PrometheusURL.String(),
+			vacuum:               vacuumTsdb,
+			tsToDelete:           tsToDelete,
+			client:               c.HTTPClient,
+			deleteSeriesEndpoint: c.PrometheusURL.JoinPath("/api/v1/admin/tsdb/delete_series").String(),
+		}
+	} else {
+		tsdb = &tsdbConfig{
+			vacuum: vacuumTsdb,
+		}
+	}
 	return &jobStatsDB{
-		logger:                 c.Logger,
-		db:                     db,
-		scheduler:              scheduler,
-		jobstatDBPath:          c.JobstatsDBPath,
-		jobstatDBTable:         c.JobstatsDBTable,
-		retentionPeriod:        c.RetentionPeriod,
-		lastJobsUpdateTime:     lastJobsUpdateTime,
-		lastDBVacuumTime:       time.Now(),
-		lastJobsUpdateTimeFile: c.LastUpdateTimeStampFile,
+		logger:    c.Logger,
+		db:        db,
+		scheduler: scheduler,
+		tsdb:      tsdb,
+		storage:   storageConfig,
 	}, nil
 }
 
@@ -271,8 +385,8 @@ func (j *jobStatsDB) Collect() error {
 	var currentTime = time.Now()
 
 	// If duration is less than 1 day do single update
-	if currentTime.Sub(j.lastJobsUpdateTime) < time.Duration(24*time.Hour) {
-		return j.getJobStats(j.lastJobsUpdateTime, currentTime)
+	if currentTime.Sub(j.storage.lastUpdateTime) < time.Duration(24*time.Hour) {
+		return j.getJobStats(j.storage.lastUpdateTime, currentTime)
 	}
 	level.Info(j.logger).
 		Log("msg", "DB update duration is more than 1 day. Doing incremental update. This may take a while...")
@@ -280,18 +394,18 @@ func (j *jobStatsDB) Collect() error {
 	// If duration is more than 1 day, do update for each day
 	var nextUpdateTime time.Time
 	for {
-		nextUpdateTime = j.lastJobsUpdateTime.Add(24 * time.Hour)
+		nextUpdateTime = j.storage.lastUpdateTime.Add(24 * time.Hour)
 		if nextUpdateTime.Compare(currentTime) == -1 {
 			level.Debug(j.logger).
-				Log("msg", "Incremental DB update step", "from", j.lastJobsUpdateTime, "to", nextUpdateTime)
-			if err := j.getJobStats(j.lastJobsUpdateTime, nextUpdateTime); err != nil {
+				Log("msg", "Incremental DB update step", "from", j.storage.lastUpdateTime, "to", nextUpdateTime)
+			if err := j.getJobStats(j.storage.lastUpdateTime, nextUpdateTime); err != nil {
 				level.Error(j.logger).
-					Log("msg", "Failed incremental update", "from", j.lastJobsUpdateTime, "to", nextUpdateTime, "err", err)
+					Log("msg", "Failed incremental update", "from", j.storage.lastUpdateTime, "to", nextUpdateTime, "err", err)
 				return err
 			}
 		} else {
-			level.Debug(j.logger).Log("msg", "Final incremental DB update step", "from", j.lastJobsUpdateTime, "to", currentTime)
-			return j.getJobStats(j.lastJobsUpdateTime, currentTime)
+			level.Debug(j.logger).Log("msg", "Final incremental DB update step", "from", j.storage.lastUpdateTime, "to", currentTime)
+			return j.getJobStats(j.storage.lastUpdateTime, currentTime)
 		}
 
 		// Sleep for couple of seconds before making next update
@@ -340,7 +454,7 @@ func (j *jobStatsDB) getJobStats(startTime, endTime time.Time) error {
 
 	// Insert data into DB
 	level.Debug(j.logger).Log("msg", "Inserting jobs into DB")
-	j.insertJobs(stmt, jobs)
+	ignoredJobs := j.insertJobs(stmt, jobs)
 	level.Debug(j.logger).Log("msg", "Finished inserting jobs into DB")
 
 	// Delete older entries
@@ -360,8 +474,15 @@ func (j *jobStatsDB) getJobStats(startTime, endTime time.Time) error {
 	}
 
 	// Write endTime to file to keep track upon successful insertion of data
-	j.lastJobsUpdateTime = endTime
-	writeTimeStampToFile(j.lastJobsUpdateTimeFile, j.lastJobsUpdateTime, j.logger)
+	j.storage.lastUpdateTime = endTime
+	writeTimeStampToFile(j.storage.lastUpdateTimeFile, j.storage.lastUpdateTime, j.logger)
+
+	// Finally make API requests to Prometheus to delete timeseries of ignored jobs
+	if j.tsdb.vacuum {
+		level.Debug(j.logger).Log("msg", "Deleting time series in Prometheus of ignored jobs")
+		j.deleteTimeSeries(ignoredJobs)
+		level.Debug(j.logger).Log("msg", "Finished deleting time series in Prometheus")
+	}
 
 	// Defer Closing the database
 	defer stmt.Close()
@@ -378,7 +499,7 @@ func (j *jobStatsDB) vacuumDB() error {
 	hour, _, _ := time.Now().Clock()
 
 	// Next vacuum time is 7 days after last vacuum
-	nextVacuumTime := j.lastDBVacuumTime.Add(time.Duration(168) * time.Hour)
+	nextVacuumTime := j.storage.lastVacuumTime.Add(time.Duration(168) * time.Hour)
 
 	// Check if we are at 02hr and **after** nextVacuumTime
 	// We try to vacuum DB during night when there will be smallest activity
@@ -395,16 +516,22 @@ func (j *jobStatsDB) vacuumDB() error {
 	level.Info(j.logger).Log("msg", "DB vacuum successfully finished")
 
 	// Update last vacuum time
-	j.lastDBVacuumTime = time.Now()
+	j.storage.lastVacuumTime = time.Now()
 	return nil
 }
 
 // Delete old entries in DB
 func (j *jobStatsDB) deleteOldJobs(tx *sql.Tx) error {
+	// In testing we want to skip this
+	if j.storage.skipDeleteOldJobs {
+		level.Debug(j.logger).Log("msg", "Skipping deletion of old jobs for testing")
+		return nil
+	}
+
 	deleteRowQuery := fmt.Sprintf(
 		"DELETE FROM %s WHERE Start <= date('now', '-%d day')",
-		j.jobstatDBTable,
-		int(j.retentionPeriod.Hours()/24),
+		j.storage.dbTable,
+		int(j.storage.retentionPeriod.Hours()/24),
 	)
 	_, err := tx.Exec(deleteRowQuery)
 	if err != nil {
@@ -428,7 +555,7 @@ func (j *jobStatsDB) prepareInsertStatement(tx *sql.Tx) (*sql.Stmt, error) {
 	fieldNamesString := strings.Join(base.BatchJobFieldNames, ",")
 	insertStatement := fmt.Sprintf(
 		"INSERT OR REPLACE INTO %s(%s) VALUES %s",
-		j.jobstatDBTable,
+		j.storage.dbTable,
 		fieldNamesString,
 		placeHolderString,
 	)
@@ -440,11 +567,18 @@ func (j *jobStatsDB) prepareInsertStatement(tx *sql.Tx) (*sql.Stmt, error) {
 }
 
 // Insert job stat into DB
-func (j *jobStatsDB) insertJobs(statement *sql.Stmt, jobStats []base.BatchJob) {
+func (j *jobStatsDB) insertJobs(statement *sql.Stmt, jobStats []base.BatchJob) []tsdbLabels {
+	var ignoredJobs []tsdbLabels
 	var err error
 	for _, jobStat := range jobStats {
 		// Empty job
 		if jobStat == (base.BatchJob{}) {
+			continue
+		}
+
+		// Ignore jobs that ran for less than jobCutoffPeriod seconds
+		if elapsedTime, err := strconv.Atoi(jobStat.ElapsedRaw); err == nil && elapsedTime < int(j.storage.cutoffPeriod.Seconds()) {
+			ignoredJobs = append(ignoredJobs, tsdbLabels{id: jobStat.Jobid, user: jobStat.Usr, account: jobStat.Account})
 			continue
 		}
 
@@ -466,6 +600,7 @@ func (j *jobStatsDB) insertJobs(statement *sql.Stmt, jobStats []base.BatchJob) {
 			jobStat.StartTS,
 			jobStat.EndTS,
 			jobStat.Elapsed,
+			jobStat.ElapsedRaw,
 			jobStat.Exitcode,
 			jobStat.State,
 			jobStat.Nnodes,
@@ -479,5 +614,34 @@ func (j *jobStatsDB) insertJobs(statement *sql.Stmt, jobStats []base.BatchJob) {
 			level.Error(j.logger).
 				Log("msg", "Failed to insert job in DB", "jobid", jobStat.Jobid, "err", err)
 		}
+	}
+	return ignoredJobs
+}
+
+// Delete time series data of ignored jobs
+func (j *jobStatsDB) deleteTimeSeries(jobs []tsdbLabels) {
+	var tsSlice []string
+	for _, job := range jobs {
+		for _, ts := range j.tsdb.tsToDelete {
+			tsSlice = append(tsSlice, fmt.Sprintf("%s{jobid=\"%s\",jobuser=\"%s\",jobaccount=\"%s\"}", ts, job.id, job.user, job.account))
+		}
+	}
+
+	// Add form data to request
+	values := url.Values{"match[]": tsSlice}
+
+	// Create a new POST request
+	req, err := http.NewRequest(http.MethodPost, j.tsdb.deleteSeriesEndpoint, strings.NewReader(values.Encode()))
+	if err != nil {
+		level.Error(j.logger).Log("msg", "Failed to make a new HTTP request for deleting time series in Prometheus", "err", err)
+	}
+
+	// Add necessary headers
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+	// Make request
+	_, err = j.tsdb.client.Do(req)
+	if err != nil {
+		level.Error(j.logger).Log("msg", "Failed to delete time series in Prometheus", "err", err)
 	}
 }

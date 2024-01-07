@@ -61,10 +61,13 @@ func TestJobStatsDBPreparation(t *testing.T) {
 	tmpDir := t.TempDir()
 	jobstatDBTable := "jobstats"
 	jobstatDBPath := filepath.Join(tmpDir, "jobstats.db")
+	s := &storageConfig{
+		dbPath:  jobstatDBPath,
+		dbTable: jobstatDBTable,
+	}
 	j := jobStatsDB{
-		logger:         log.NewNopLogger(),
-		jobstatDBPath:  jobstatDBPath,
-		jobstatDBTable: jobstatDBTable,
+		logger:  log.NewNopLogger(),
+		storage: s,
 	}
 
 	// Test setupDB function
@@ -256,7 +259,7 @@ func TestJobStatsDeleteOldJobs(t *testing.T) {
 		{
 			Jobid: jobId,
 			Submit: time.Now().
-				Add(time.Duration(-j.retentionPeriod*24*2) * time.Hour).
+				Add(time.Duration(-j.storage.retentionPeriod*24*2) * time.Hour).
 				Format(dateFormat),
 		},
 	}

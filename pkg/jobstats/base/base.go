@@ -33,6 +33,7 @@ type BatchJob struct {
 	StartTS     string `json:"startts"`
 	EndTS       string `json:"endts"`
 	Elapsed     string `json:"elapsed"`
+	ElapsedRaw  string `json:"elapsedraw"`
 	Exitcode    string `json:"exitcode"`
 	State       string `json:"state"`
 	Nnodes      string `json:"nnodes"`
