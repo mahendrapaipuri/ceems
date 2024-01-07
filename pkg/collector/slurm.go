@@ -25,7 +25,9 @@ import (
 	"github.com/prometheus/procfs"
 )
 
-const slurmCollectorSubsystem = "slurm_job"
+const (
+	slurmCollectorSubsystem = "slurm"
+)
 
 var (
 	metricLock      = sync.RWMutex{}
@@ -90,6 +92,7 @@ type CgroupMetric struct {
 	memswTotal      float64
 	memswFailCount  float64
 	memoryPressure  float64
+	procCpuTime     float64
 	userslice       bool
 	batch           string
 	hostname        string
@@ -109,10 +112,11 @@ type slurmCollector struct {
 	slurmCgroupsPath string
 	hostname         string
 	gpuDevs          map[int]Device
+	procfs           procfs.FS
 	memTotal         float64
 	cpuUser          *prometheus.Desc
 	cpuSystem        *prometheus.Desc
-	cpuTotal         *prometheus.Desc
+	// cpuTotal         *prometheus.Desc
 	cpus             *prometheus.Desc
 	cpuPressure      *prometheus.Desc
 	memoryRSS        *prometheus.Desc
@@ -125,6 +129,7 @@ type slurmCollector struct {
 	memswFailCount   *prometheus.Desc
 	memoryPressure   *prometheus.Desc
 	memoryAvailable  *prometheus.Desc
+	procCpuTotal     *prometheus.Desc
 	gpuJobFlag       *prometheus.Desc
 	collectError     *prometheus.Desc
 	logger           log.Logger
@@ -172,7 +177,7 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 		level.Info(logger).Log("msg", "GPU devices found")
 	}
 
-	// Get total memory of instance
+	// Get total memory of host
 	var memTotal float64
 	memInfo, err := GetMemInfo()
 	if err == nil {
@@ -180,100 +185,113 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 	} else {
 		level.Error(logger).Log("msg", "Failed to get total memory of the host", "err", err)
 	}
+
+	// Create an instance of procfs
+	fs, err := procfs.NewFS(*procfsPath)
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to open procfs", "err", err)
+	}
 	return &slurmCollector{
 		cgroups:          cgroupsVersion,
 		cgroupsRootPath:  cgroupsRootPath,
 		slurmCgroupsPath: slurmCgroupsPath,
+		procfs:           fs,
 		hostname:         hostname,
 		gpuDevs:          gpuDevs,
 		memTotal:         memTotal,
 		cpuUser: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "cpu_user_seconds"),
-			"Cumulative CPU user seconds",
+			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_cpu_user_seconds"),
+			"Total job CPU user seconds",
 			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid", "step", "task"},
 			nil,
 		),
 		cpuSystem: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "cpu_system_seconds"),
-			"Cumulative CPU system seconds",
+			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_cpu_system_seconds"),
+			"Total job CPU system seconds",
 			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid", "step", "task"},
 			nil,
 		),
-		cpuTotal: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "cpu_total_seconds"),
-			"Cumulative CPU total seconds",
-			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid", "step", "task"},
-			nil,
-		),
+		// cpuTotal: prometheus.NewDesc(
+		// 	prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_cpu_total_seconds"),
+		// 	"Total job CPU total seconds",
+		// 	[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid", "step", "task"},
+		// 	nil,
+		// ),
 		cpus: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "cpus"),
-			"Number of CPUs",
+			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_cpus"),
+			"Total number of job CPUs",
 			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid", "step", "task"},
 			nil,
 		),
 		cpuPressure: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "cpu_psi_seconds"),
-			"Cumulative CPU PSI in seconds",
+			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_cpu_psi_seconds"),
+			"Total CPU PSI in seconds",
 			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid", "step", "task"},
 			nil,
 		),
 		memoryRSS: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "memory_rss_bytes"),
+			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_memory_rss_bytes"),
 			"Memory RSS used in bytes",
 			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid", "step", "task"},
 			nil,
 		),
 		memoryCache: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "memory_cache_bytes"),
+			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_memory_cache_bytes"),
 			"Memory cache used in bytes",
 			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid", "step", "task"},
 			nil,
 		),
 		memoryUsed: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "memory_used_bytes"),
+			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_memory_used_bytes"),
 			"Memory used in bytes",
 			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid", "step", "task"},
 			nil,
 		),
 		memoryTotal: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "memory_total_bytes"),
+			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_memory_total_bytes"),
 			"Memory total in bytes",
 			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid", "step", "task"},
 			nil,
 		),
 		memoryFailCount: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "memory_fail_count"),
+			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_memory_fail_count"),
 			"Memory fail count",
 			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid", "step", "task"},
 			nil,
 		),
 		memswUsed: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "memsw_used_bytes"),
+			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_memsw_used_bytes"),
 			"Swap used in bytes",
 			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid", "step", "task"},
 			nil,
 		),
 		memswTotal: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "memsw_total_bytes"),
+			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_memsw_total_bytes"),
 			"Swap total in bytes",
 			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid", "step", "task"},
 			nil,
 		),
 		memswFailCount: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "memsw_fail_count"),
+			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_memsw_fail_count"),
 			"Swap fail count",
 			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid", "step", "task"},
 			nil,
 		),
 		memoryPressure: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "memory_psi_seconds"),
-			"Cumulative memory PSI in seconds",
+			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_memory_psi_seconds"),
+			"Total memory PSI in seconds",
 			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid", "step", "task"},
 			nil,
 		),
 		memoryAvailable: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "system_memory_total_bytes"),
+			prometheus.BuildFQName(Namespace, "system", "memory_total_bytes"),
 			"Available total system memory in bytes",
+			[]string{"batch", "hostname"},
+			nil,
+		),
+		procCpuTotal: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, "system", "proc_cpu_total_seconds"),
+			"Total processes CPU time in seconds",
 			[]string{"batch", "hostname"},
 			nil,
 		),
@@ -303,6 +321,17 @@ func subsystem() ([]cgroup1.Subsystem, error) {
 
 // Update implements Collector and exposes cgroup statistics.
 func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
+	// Get total CPU time of all procs
+	var procCpuTime float64
+	if procStat, err := c.procfs.Stat(); err == nil {
+		procCpuTime = procStat.CPUTotal.System + procStat.CPUTotal.User
+	}
+
+	// Send node level metrics
+	ch <- prometheus.MustNewConstMetric(c.memoryAvailable, prometheus.GaugeValue, float64(c.memTotal), slurmCollectorSubsystem, c.hostname)
+	ch <- prometheus.MustNewConstMetric(c.procCpuTotal, prometheus.GaugeValue, float64(procCpuTime), slurmCollectorSubsystem, c.hostname)
+
+	// Send job level metrics
 	metrics, err := c.getJobsMetrics()
 	if err != nil {
 		return err
@@ -313,7 +342,7 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 		}
 		ch <- prometheus.MustNewConstMetric(c.cpuUser, prometheus.GaugeValue, m.cpuUser, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid, m.step, m.task)
 		ch <- prometheus.MustNewConstMetric(c.cpuSystem, prometheus.GaugeValue, m.cpuSystem, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid, m.step, m.task)
-		ch <- prometheus.MustNewConstMetric(c.cpuTotal, prometheus.GaugeValue, m.cpuTotal, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid, m.step, m.task)
+		// ch <- prometheus.MustNewConstMetric(c.cpuTotal, prometheus.GaugeValue, m.cpuTotal, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid, m.step, m.task)
 		cpus := m.cpus
 		if cpus == 0 {
 			dir := filepath.Dir(n)
@@ -349,7 +378,6 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 			ch <- prometheus.MustNewConstMetric(c.gpuJobFlag, prometheus.GaugeValue, float64(1), m.batch, c.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid, gpuOrdinal, uuid, uuid)
 		}
 	}
-	ch <- prometheus.MustNewConstMetric(c.memoryAvailable, prometheus.GaugeValue, float64(c.memTotal), "slurm", c.hostname)
 	return nil
 }
 
@@ -664,7 +692,7 @@ func (c *slurmCollector) getInfoV1(name string, metric *CgroupMetric) {
 
 // Get metrics from cgroups v1
 func (c *slurmCollector) getCgroupsV1Metrics(name string) (CgroupMetric, error) {
-	metric := CgroupMetric{name: name, batch: "slurm", hostname: c.hostname}
+	metric := CgroupMetric{name: name, batch: slurmCollectorSubsystem, hostname: c.hostname}
 	metric.err = false
 	level.Debug(c.logger).Log("msg", "Loading cgroup v1", "path", name)
 	ctrl, err := cgroup1.Load(cgroup1.StaticPath(name), cgroup1.WithHiearchy(subsystem))
@@ -755,7 +783,7 @@ func (c *slurmCollector) getInfoV2(name string, metric *CgroupMetric) {
 
 // Get Job metrics from cgroups v2
 func (c *slurmCollector) getCgroupsV2Metrics(name string) (CgroupMetric, error) {
-	metric := CgroupMetric{name: name, batch: "slurm", hostname: c.hostname}
+	metric := CgroupMetric{name: name, batch: slurmCollectorSubsystem, hostname: c.hostname}
 	metric.err = false
 	level.Debug(c.logger).Log("msg", "Loading cgroup v2", "path", name)
 
