@@ -42,9 +42,13 @@ ifeq ($(CGO_BUILD), 1)
 			./pkg/jobstats/db ./pkg/jobstats/helper \
 			./pkg/jobstats/schedulers ./pkg/jobstats/server \
 			./cmd/batchjob_stats_server
+	checkmetrics := skip-checkmetrics
+	checkrules := skip-checkrules
 else
 	PROMU_CONF ?= .promu-go.yml
 	pkgs := ./pkg/collector ./pkg/emissions ./cmd/batchjob_exporter
+	checkmetrics := checkmetrics
+	checkrules := checkrules
 endif
 
 ifeq ($(GOHOSTOS), linux)
@@ -75,7 +79,7 @@ $(eval $(call goarch_pair,amd64,386))
 $(eval $(call goarch_pair,mips64,mips))
 $(eval $(call goarch_pair,mips64el,mipsel))
 
-all:: vet checkmetrics checkrules common-all $(cross-test) $(test-docker) $(test-e2e)
+all:: vet common-all $(cross-test) $(test-docker) $(checkmetrics) $(checkrules) $(test-e2e)
 
 .PHONY: test
 test: pkg/collector/fixtures/sys/.unpacked pkg/collector/fixtures/proc/.unpacked
@@ -133,10 +137,18 @@ checkmetrics: $(PROMTOOL)
 	@echo ">> checking metrics for correctness"
 	./scripts/checkmetrics.sh $(PROMTOOL) $(e2e-out)
 
+.PHONY: skip-checkmetrics
+skip-checkmetrics: $(PROMTOOL)
+	@echo ">> SKIP checking metrics for correctness"
+
 .PHONY: checkrules
 checkrules: $(PROMTOOL)
 	@echo ">> checking rules for correctness"
 	find . -name "*rules*.yml" | xargs -I {} $(PROMTOOL) check rules {}
+
+.PHONY: skip-checkrules
+skip-checkrules: $(PROMTOOL)
+	@echo ">> SKIP checking rules for correctness"
 
 .PHONY: test-docker
 test-docker:

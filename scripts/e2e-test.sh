@@ -290,7 +290,8 @@ then
   ./bin/batchjob_stats_server \
     --slurm.sacct.path="pkg/jobstats/fixtures/sacct" \
     --batch.scheduler.slurm \
-    --data.path="${tmpdir}" \
+    --storage.data.path="${tmpdir}" \
+    --storage.data.skip.delete.old.jobs \
     --web.listen-address="127.0.0.1:${port}" \
     --web.admin-users="grafana" \
     --log.level="debug" > "${logfile}" 2>&1 &
@@ -305,13 +306,13 @@ then
     get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/accounts" > "${fixture_output}"
   elif [ "${scenario}" = "stats-jobuuid-query" ]
   then
-    get -H "X-Grafana-User: usr2" "127.0.0.1:${port}/api/jobs?jobuuid=baee651d-df44-af2c-fa09-50f5523b5e19&account=acc2" > "${fixture_output}"
+    get -H "X-Grafana-User: usr2" "127.0.0.1:${port}/api/jobs?jobuuid=3e821675-0fec-9519-635e-ff219cdaa6e5&account=acc2" > "${fixture_output}"
   elif [ "${scenario}" = "stats-jobid-query" ]
   then
     get -H "X-Grafana-User: usr8" "127.0.0.1:${port}/api/jobs?jobid=1479763&account=acc1&from=1676934000&to=1677020400" > "${fixture_output}"
   elif [ "${scenario}" = "stats-jobuuid-jobid-query" ]
   then
-    get -H "X-Grafana-User: usr15" "127.0.0.1:${port}/api/jobs?jobuuid=e653f045-73b7-c928-e8df-00c4083cb9bc&jobid=11508&jobid=81510&account=acc1" > "${fixture_output}"
+    get -H "X-Grafana-User: usr15" "127.0.0.1:${port}/api/jobs?jobuuid=6311b9ce-d741-d5ba-a27a-9c22eb21254c&jobid=11508&jobid=81510&account=acc1" > "${fixture_output}"
   elif [ "${scenario}" = "stats-admin-query" ]
   then
     get -H "X-Grafana-User: grafana" -H "X-Dashboard-User: usr3" "127.0.0.1:${port}/api/jobs?account=acc3&from=1676934000&to=1677538800" > "${fixture_output}"

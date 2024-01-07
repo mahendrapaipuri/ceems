@@ -30,7 +30,7 @@ func queryServer(address string) error {
 func TestBatchStatsServerMain(t *testing.T) {
 	tmpDir := t.TempDir()
 	// Remove test related args
-	os.Args = append([]string{os.Args[0]}, fmt.Sprintf("--data.path=%s", tmpDir))
+	os.Args = append([]string{os.Args[0]}, fmt.Sprintf("--storage.data.path=%s", tmpDir))
 	os.Args = append(os.Args, "--batch.scheduler.slurm")
 	os.Args = append(os.Args, "--slurm.sacct.path=../fixtures/sacct")
 	a, _ := NewBatchJobStatsServer()

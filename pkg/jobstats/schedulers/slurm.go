@@ -15,13 +15,11 @@ import (
 	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/base"
 	"github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/helper"
 	jobstats_helper "github.com/mahendrapaipuri/batchjob_monitoring/pkg/jobstats/helper"
-	"github.com/prometheus/common/model"
 )
 
 type slurmScheduler struct {
-	logger              log.Logger
-	execMode            string
-	slurmWalltimeCutoff time.Duration
+	logger   log.Logger
+	execMode string
 }
 
 const slurmBatchScheduler = "slurm"
@@ -36,10 +34,6 @@ var (
 		"slurm.sacct.path",
 		"Absolute path to sacct executable.",
 	).Default("/usr/local/bin/sacct").String()
-	slurmWalltimeCutoffString = base.BatchJobStatsServerApp.Flag(
-		"slurm.elapsed.time.cutoff",
-		"Jobs that have elapsed time less than this value will be ignored. Units Supported: y, w, d, h, m, s, ms.",
-	).Default("1m").String()
 )
 
 func init() {
@@ -54,13 +48,6 @@ func preflightChecks(logger log.Logger) (string, error) {
 	// Check if sacct binary exists
 	if _, err := os.Stat(*sacctPath); err != nil {
 		level.Error(logger).Log("msg", "Failed to open sacct executable", "path", *sacctPath, "err", err)
-		return "", err
-	}
-
-	// Check if slurm walltime cutoff is valid
-	_, err := model.ParseDuration(*slurmWalltimeCutoffString)
-	if err != nil {
-		level.Error(logger).Log("msg", "Failed to parse --slurm.elapsed.time.cutoff CLI flag", "err", err)
 		return "", err
 	}
 
@@ -117,13 +104,10 @@ func NewSlurmScheduler(logger log.Logger) (BatchJobFetcher, error) {
 		return nil, err
 	}
 
-	// We can safely discard error here as we would have already checked that in preflights
-	slurmWalltimeCutoffString, _ := model.ParseDuration(*slurmWalltimeCutoffString)
 	level.Info(logger).Log("msg", "Jobs from slurm batch scheduler will be retrieved")
 	return &slurmScheduler{
-		logger:              logger,
-		execMode:            execMode,
-		slurmWalltimeCutoff: time.Duration(slurmWalltimeCutoffString),
+		logger:   logger,
+		execMode: execMode,
 	}, nil
 }
 
@@ -140,7 +124,7 @@ func (s *slurmScheduler) Fetch(start time.Time, end time.Time) ([]base.BatchJob,
 	}
 
 	// Parse sacct output and create BatchJob structs slice
-	jobs, numJobs := parseSacctCmdOutput(string(sacctOutput), s.slurmWalltimeCutoff, s.logger)
+	jobs, numJobs := parseSacctCmdOutput(string(sacctOutput), s.logger)
 	level.Info(s.logger).Log("msg", "Slurm jobs fetched", "start", startTime, "end", endTime, "njobs", numJobs)
 	return jobs, nil
 }
@@ -170,7 +154,7 @@ func runSacctCmd(execMode string, startTime string, endTime string, logger log.L
 }
 
 // Parse sacct command output and return batchjob slice
-func parseSacctCmdOutput(sacctOutput string, elapsedCutoff time.Duration, logger log.Logger) ([]base.BatchJob, int) {
+func parseSacctCmdOutput(sacctOutput string, logger log.Logger) ([]base.BatchJob, int) {
 	// Strip first line
 	sacctOutputLines := strings.Split(string(sacctOutput), "\n")[1:]
 
@@ -199,23 +183,16 @@ func parseSacctCmdOutput(sacctOutput string, elapsedCutoff time.Duration, logger
 			}
 
 			// Ignore jobs that never ran
-			if components[15] == "None assigned" {
+			if components[17] == "None assigned" {
 				wg.Done()
 				return
 			}
 
-			// Ignore jobs that ran for less than slurmWalltimeCutoff seconds
-			if elapsedTime, err := strconv.Atoi(components[12]); err == nil &&
-				elapsedTime < int(elapsedCutoff.Seconds()) {
-				wg.Done()
-				return
-			}
-
-			// Generate UUID from jobID, uid, account, nodelist(lowercase)
+			// Generate UUID from jobID, user, account, nodelist(lowercase)
 			jobUuid, err := helpers.GetUuidFromString(
 				[]string{
 					strings.TrimSpace(components[0]),
-					strings.TrimSpace(components[7]),
+					strings.TrimSpace(components[6]),
 					strings.ToLower(strings.TrimSpace(components[3])),
 					strings.ToLower(strings.TrimSpace(components[17])),
 				},
@@ -248,6 +225,7 @@ func parseSacctCmdOutput(sacctOutput string, elapsedCutoff time.Duration, logger
 				StartTS:     strconv.FormatInt(helper.TimeToTimestamp(slurmTimeFormat, components[9]), 10),
 				EndTS:       strconv.FormatInt(helper.TimeToTimestamp(slurmTimeFormat, components[10]), 10),
 				Elapsed:     components[11],
+				ElapsedRaw:  components[12],
 				Exitcode:    components[13],
 				State:       components[14],
 				Nnodes:      components[15],
