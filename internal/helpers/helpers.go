@@ -112,7 +112,15 @@ func ExecuteWithTimeout(cmd string, args []string, timeout int, env []string, lo
 }
 
 // Execute command with timeout as a given UID and GID and return stdout/stderr
-func ExecuteAsWithTimeout(cmd string, args []string, uid int, gid int, timeout int, env []string, logger log.Logger) ([]byte, error) {
+func ExecuteAsWithTimeout(
+	cmd string,
+	args []string,
+	uid int,
+	gid int,
+	timeout int,
+	env []string,
+	logger log.Logger,
+) ([]byte, error) {
 	level.Debug(logger).
 		Log("msg", "Executing with timeout as user", "command", cmd, "args", strings.Join(args, " "), "uid", uid, "gid", gid, "timout")
 

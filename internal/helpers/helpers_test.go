@@ -22,7 +22,12 @@ func TestGetUuid(t *testing.T) {
 
 func TestExecute(t *testing.T) {
 	// Test successful command execution
-	out, err := Execute("bash", []string{"-c", "echo ${VAR1} ${VAR2}"}, []string{"VAR1=1", "VAR2=2"}, log.NewNopLogger())
+	out, err := Execute(
+		"bash",
+		[]string{"-c", "echo ${VAR1} ${VAR2}"},
+		[]string{"VAR1=1", "VAR2=2"},
+		log.NewNopLogger(),
+	)
 	if err != nil {
 		t.Errorf("Failed to execute command %s", err)
 	}
