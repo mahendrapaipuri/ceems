@@ -238,16 +238,6 @@ func setupTimeseriesToDelete(url string, client *http.Client, logger log.Logger)
 
 // Make new JobStatsDB struct
 func NewJobStatsDB(c *Config) (*jobStatsDB, error) {
-	// Emit debug logs
-	level.Debug(c.Logger).Log(
-		"msg", "DB config:",
-		"jobstatsDBPath", c.JobstatsDBPath,
-		"jobstatsDBTable", c.JobstatsDBTable,
-		"retentionPeriod", c.RetentionPeriod,
-		"lastUpdateTime", c.LastUpdateTimeString,
-		"lastUpdateTimeStampFile", c.LastUpdateTimeStampFile,
-	)
-
 	// Check if data path exists and attempt to create if it does not exist
 	var lastJobsUpdateTime time.Time
 	var err error
@@ -316,6 +306,11 @@ setup:
 		lastUpdateTimeFile: c.LastUpdateTimeStampFile,
 		skipDeleteOldJobs:  c.SkipDeleteOldJobs,
 	}
+
+	// Emit debug logs
+	level.Debug(c.Logger).Log(
+		"msg", "Storage config:", fmt.Sprintf("%v", storageConfig),
+	)
 
 	// If VacuumTSDB is set to true, get list of series names
 	var tsToDelete []string
