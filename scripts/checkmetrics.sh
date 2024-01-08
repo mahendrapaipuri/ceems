@@ -9,7 +9,7 @@ fi
 search_dir="$2"
 for entry in "$search_dir"/*
 do
-  lint=$($1 check metrics < "$entry" 2>&1 | grep -v -E "^batchjob_slurm_job_(memory_fail_count|memsw_fail_count)")
+  lint=$($1 check metrics < "$entry" 2>&1 | grep -v -E "^batchjob_slurm_job_(memory_fail_count|memsw_fail_count)|batchjob_meminfo_")
 
   if [[ -n $lint ]]; then
       echo -e "Some Prometheus metrics do not follow best practices:\n"

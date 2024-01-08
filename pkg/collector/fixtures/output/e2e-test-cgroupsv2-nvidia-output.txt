@@ -1,3 +1,13 @@
+# HELP batchjob_cpu_seconds_total Seconds the CPUs spent in each mode.
+# TYPE batchjob_cpu_seconds_total counter
+batchjob_cpu_seconds_total{hostname="",mode="idle"} 89790.04
+batchjob_cpu_seconds_total{hostname="",mode="iowait"} 35.52
+batchjob_cpu_seconds_total{hostname="",mode="irq"} 0.02
+batchjob_cpu_seconds_total{hostname="",mode="nice"} 6.12
+batchjob_cpu_seconds_total{hostname="",mode="softirq"} 39.44
+batchjob_cpu_seconds_total{hostname="",mode="steal"} 0
+batchjob_cpu_seconds_total{hostname="",mode="system"} 1119.22
+batchjob_cpu_seconds_total{hostname="",mode="user"} 3018.54
 # HELP batchjob_exporter_build_info A metric with a constant '1' value labeled by version, revision, branch, goversion from which batchjob_exporter was built, and the goos and goarch for the build.
 # TYPE batchjob_exporter_build_info gauge
 # HELP batchjob_ipmi_dcmi_current_watts_total Current Power consumption in watts
@@ -9,6 +19,15 @@ batchjob_ipmi_dcmi_max_watts_total{hostname=""} 504
 # HELP batchjob_ipmi_dcmi_min_watts_total Minimum Power consumption in watts
 # TYPE batchjob_ipmi_dcmi_min_watts_total counter
 batchjob_ipmi_dcmi_min_watts_total{hostname=""} 68
+# HELP batchjob_meminfo_MemAvailable_bytes Memory information field MemAvailable_bytes.
+# TYPE batchjob_meminfo_MemAvailable_bytes gauge
+batchjob_meminfo_MemAvailable_bytes{hostname=""} 0
+# HELP batchjob_meminfo_MemFree_bytes Memory information field MemFree_bytes.
+# TYPE batchjob_meminfo_MemFree_bytes gauge
+batchjob_meminfo_MemFree_bytes{hostname=""} 4.50891776e+08
+# HELP batchjob_meminfo_MemTotal_bytes Memory information field MemTotal_bytes.
+# TYPE batchjob_meminfo_MemTotal_bytes gauge
+batchjob_meminfo_MemTotal_bytes{hostname=""} 1.6042172416e+10
 # HELP batchjob_rapl_package_joules_total Current RAPL package value in joules
 # TYPE batchjob_rapl_package_joules_total counter
 batchjob_rapl_package_joules_total{hostname="",index="0",path="pkg/collector/fixtures/sys/class/powercap/intel-rapl:0"} 258218.293244
@@ -17,7 +36,9 @@ batchjob_rapl_package_joules_total{hostname="",index="1",path="pkg/collector/fix
 # TYPE batchjob_scrape_collector_duration_seconds gauge
 # HELP batchjob_scrape_collector_success batchjob_exporter: Whether a collector succeeded.
 # TYPE batchjob_scrape_collector_success gauge
+batchjob_scrape_collector_success{collector="cpu"} 1
 batchjob_scrape_collector_success{collector="ipmi_dcmi"} 1
+batchjob_scrape_collector_success{collector="meminfo"} 1
 batchjob_scrape_collector_success{collector="rapl"} 1
 batchjob_scrape_collector_success{collector="slurm"} 1
 # HELP batchjob_slurm_job_cpu_system_seconds Total job CPU system seconds
@@ -48,12 +69,6 @@ batchjob_slurm_job_memory_total_bytes{batch="slurm",hostname="",jobaccount="test
 # HELP batchjob_slurm_job_memory_used_bytes Memory used in bytes
 # TYPE batchjob_slurm_job_memory_used_bytes gauge
 batchjob_slurm_job_memory_used_bytes{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 4.111491072e+09
-# HELP batchjob_system_memory_total_bytes Available total system memory in bytes
-# TYPE batchjob_system_memory_total_bytes gauge
-batchjob_system_memory_total_bytes{batch="slurm",hostname=""} 1.6042172416e+10
-# HELP batchjob_system_proc_cpu_total_seconds Total processes CPU time in seconds
-# TYPE batchjob_system_proc_cpu_total_seconds gauge
-batchjob_system_proc_cpu_total_seconds{batch="slurm",hostname=""} 4137.76
 # HELP go_gc_duration_seconds A summary of the pause duration of garbage collection cycles.
 # TYPE go_gc_duration_seconds summary
 # HELP go_goroutines Number of goroutines that currently exist.
