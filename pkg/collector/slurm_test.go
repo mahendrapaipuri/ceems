@@ -38,7 +38,7 @@ func TestCgroupsV2SlurmJobMetrics(t *testing.T) {
 		cgroups:          "v2",
 		gpuDevs:          mockGPUDevices(),
 		cgroupsRootPath:  *cgroupfsPath,
-		memTotal:         float64(123456),
+		hostMemTotal:     float64(123456),
 		slurmCgroupsPath: fmt.Sprintf("%s/system.slice/slurmstepd.scope", *cgroupfsPath),
 		logger:           log.NewNopLogger(),
 	}
@@ -92,7 +92,7 @@ func TestCgroupsV2SlurmJobMetricsWithProcFs(t *testing.T) {
 		cgroups:          "v2",
 		cgroupsRootPath:  *cgroupfsPath,
 		gpuDevs:          mockGPUDevices(),
-		memTotal:         float64(123456),
+		hostMemTotal:     float64(123456),
 		slurmCgroupsPath: fmt.Sprintf("%s/system.slice/slurmstepd.scope", *cgroupfsPath),
 		logger:           log.NewNopLogger(),
 	}
