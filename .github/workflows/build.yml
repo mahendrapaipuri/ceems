@@ -1,0 +1,44 @@
+name: tests
+on:
+  push:
+    branches:
+      - "main"
+    paths:
+      - "go.sum"
+      - "go.mod"
+      - "**.go"
+      - ".github/workflows/build.yml"
+  pull_request:
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.21.x
+
+      - name: Install promu
+        run: |
+          make promu
+          go mod download
+
+      - name: Cross compile Go packages
+        run: promu --config .promu-go.yml crossbuild -v
+
+      - name: Cross compile CGo packages
+        run: |
+          sed -i -e 's/CGO_BUILD               ?= 0/CGO_BUILD               ?= 1/g' Makefile
+          promu --config .promu-cgo.yml crossbuild -v
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-artifacts
+          path: .build/linux-amd64
+          retention-days: 3
