@@ -2,9 +2,7 @@ package db
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -20,15 +18,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-// Prometheus response
-type tsdbLabelsResponse struct {
-	Status    string   `json:"status"`
-	Data      []string `json:"data"`
-	ErrorType string   `json:"errorType"`
-	Error     string   `json:"error"`
-	Warnings  []string `json:"warnings"`
-}
-
 // Unique job labels to identify time series that needed to be deleted
 type tsdbLabels struct {
 	id      string
@@ -36,12 +25,11 @@ type tsdbLabels struct {
 	account string
 }
 
-// Prometheus related config
+// TSDB related config
 type tsdbConfig struct {
-	url                  string
-	vacuum               bool
-	tsToDelete           []string
-	deleteSeriesEndpoint string
+	url                  *url.URL
+	cleanUp              bool
+	deleteSeriesEndpoint *url.URL
 	client               *http.Client
 }
 
@@ -53,8 +41,8 @@ type Config struct {
 	JobCutoffPeriod         time.Duration
 	RetentionPeriod         time.Duration
 	SkipDeleteOldJobs       bool
-	VacuumTSDB              bool
-	PrometheusURL           *url.URL
+	TSDBCleanUp             bool
+	TSDBURL                 *url.URL
 	HTTPClient              *http.Client
 	LastUpdateTimeString    string
 	LastUpdateTimeStampFile string
@@ -98,12 +86,29 @@ var (
 	}
 )
 
+// Stringer receiver for storageConfig
+func (s *storageConfig) String() string {
+	return fmt.Sprintf(
+		"storageConfig{dbPath: %s, dbTable: %s, retentionPeriod: %s, cutoffPeriod: %s, "+
+			"lastUpdateTime: %s, lastVacuumTime: %s, lastUpdateTimeFile: %s}",
+		s.dbPath, s.dbTable, s.retentionPeriod, s.cutoffPeriod, s.lastUpdateTime,
+		s.lastVacuumTime, s.lastUpdateTimeFile,
+	)
+}
+
+// Stringer receiver for tsdbConfig
+func (t *tsdbConfig) String() string {
+	return fmt.Sprintf(
+		"tsdbConfig{url: %s, cleanUp: %t, deleteSeriesEndpoint: %s}",
+		t.url.Redacted(), t.cleanUp, t.deleteSeriesEndpoint.Redacted(),
+	)
+}
+
 // Write timestamp to a file
 func writeTimeStampToFile(filePath string, timeStamp time.Time, logger log.Logger) {
 	timeStampString := timeStamp.Format(dateFormat)
 	timeStampByte := []byte(timeStampString)
-	err := os.WriteFile(filePath, timeStampByte, 0644)
-	if err != nil {
+	if err := os.WriteFile(filePath, timeStampByte, 0644); err != nil {
 		level.Error(logger).
 			Log("msg", "Failed to write timestamp to file", "time", timeStampString, "file", filePath, "err", err)
 	}
@@ -131,8 +136,7 @@ func createTable(dbTableName string, db *sql.DB, logger log.Logger) error {
 	}
 
 	// Execute SQL DB creation Statements
-	_, err = statement.Exec()
-	if err != nil {
+	if _, err = statement.Exec(); err != nil {
 		level.Error(logger).Log("msg", "Failed to execute SQL command creation statement", "err", err)
 		return err
 	}
@@ -149,8 +153,7 @@ func createTable(dbTableName string, db *sql.DB, logger log.Logger) error {
 		}
 
 		// Execute SQL DB index creation Statements
-		_, err = statement.Exec()
-		if err != nil {
+		if _, err = statement.Exec(); err != nil {
 			level.Error(logger).Log("msg", "Failed to execute SQL command for index creation statement", "err", err)
 			return err
 		}
@@ -196,44 +199,11 @@ func setupDB(dbFilePath string, dbTableName string, logger log.Logger) (*sql.DB,
 	}
 
 	// Create Table
-	err = createTable(dbTableName, db, logger)
-	if err != nil {
+	if err = createTable(dbTableName, db, logger); err != nil {
 		level.Error(logger).Log("msg", "Failed to create DB table", "err", err)
 		return nil, err
 	}
 	return db, nil
-}
-
-// Get list of time series to delete
-func setupTimeseriesToDelete(url string, client *http.Client, logger log.Logger) ([]string, error) {
-	resp, err := client.Get(url)
-	if err != nil {
-		level.Error(logger).Log("msg", "Failed to get series names from Prometheus", "err", err)
-		return nil, err
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		level.Error(logger).Log("msg", "Failed to read HTTP response body from Prometheus", "err", err)
-		return nil, err
-	}
-
-	var data tsdbLabelsResponse
-	err = json.Unmarshal(body, &data)
-	if err != nil {
-		level.Error(logger).
-			Log("msg", "Failed to unmarshal HTTP response body from Prometheus", "err", err)
-		return nil, err
-	}
-
-	// Get series names
-	var tsToDelete []string
-	for _, ts := range data.Data {
-		if strings.HasPrefix(ts, "batchjob") {
-			tsToDelete = append(tsToDelete, ts)
-		}
-	}
-	return tsToDelete, nil
 }
 
 // Make new JobStatsDB struct
@@ -295,6 +265,18 @@ setup:
 		return nil, err
 	}
 
+	// Now make an instance of time.Date with proper format and zone
+	lastJobsUpdateTime = time.Date(
+		lastJobsUpdateTime.Year(), 
+		lastJobsUpdateTime.Month(), 
+		lastJobsUpdateTime.Day(), 
+		lastJobsUpdateTime.Hour(), 
+		lastJobsUpdateTime.Minute(), 
+		lastJobsUpdateTime.Second(), 
+		lastJobsUpdateTime.Nanosecond(), 
+		time.Now().Location(),
+	)
+
 	// Storage config
 	storageConfig := &storageConfig{
 		dbPath:             c.JobstatsDBPath,
@@ -308,45 +290,29 @@ setup:
 	}
 
 	// Emit debug logs
-	level.Debug(c.Logger).Log(
-		"msg", "Storage config:", fmt.Sprintf("%v", storageConfig),
-	)
-
-	// If VacuumTSDB is set to true, get list of series names
-	var tsToDelete []string
-	vacuumTsdb := c.VacuumTSDB
-	if c.VacuumTSDB {
-		tsToDelete, err = setupTimeseriesToDelete(
-			c.PrometheusURL.JoinPath("/api/v1/label/__name__/values").String(),
-			c.HTTPClient,
-			c.Logger,
-		)
-		if err != nil {
-			vacuumTsdb = false
-			level.Warn(c.Logger).Log("msg", "Prometheus TSDB will not be vacuumed")
-		}
-	}
+	level.Debug(c.Logger).Log("msg", "Storage config", "cfg", storageConfig)
 
 	// tsdb config
-	var tsdb *tsdbConfig
-	if vacuumTsdb {
-		tsdb = &tsdbConfig{
-			url:                  c.PrometheusURL.String(),
-			vacuum:               vacuumTsdb,
-			tsToDelete:           tsToDelete,
+	var tsdbCfg *tsdbConfig
+	if c.TSDBCleanUp {
+		tsdbCfg = &tsdbConfig{
+			url:                  c.TSDBURL,
+			cleanUp:              c.TSDBCleanUp,
 			client:               c.HTTPClient,
-			deleteSeriesEndpoint: c.PrometheusURL.JoinPath("/api/v1/admin/tsdb/delete_series").String(),
+			deleteSeriesEndpoint: c.TSDBURL.JoinPath("/api/v1/admin/tsdb/delete_series"),
 		}
 	} else {
-		tsdb = &tsdbConfig{
-			vacuum: vacuumTsdb,
+		tsdbCfg = &tsdbConfig{
+			cleanUp: c.TSDBCleanUp,
 		}
 	}
+	// Emit debug logs
+	level.Debug(c.Logger).Log("msg", "TSDB config", "cfg", tsdbCfg)
 	return &jobStatsDB{
 		logger:    c.Logger,
 		db:        db,
 		scheduler: scheduler,
-		tsdb:      tsdb,
+		tsdb:      tsdbCfg,
 		storage:   storageConfig,
 	}, nil
 }
@@ -363,12 +329,10 @@ func (j *jobStatsDB) setPragmaDirectives() {
 
 // Check if DB is locked
 func (j *jobStatsDB) checkDBLock() error {
-	_, err := j.db.Exec("BEGIN EXCLUSIVE TRANSACTION;")
-	if err != nil {
+	if _, err := j.db.Exec("BEGIN EXCLUSIVE TRANSACTION;"); err != nil {
 		return err
 	}
-	_, err = j.db.Exec("COMMIT;")
-	if err != nil {
+	if _, err := j.db.Exec("COMMIT;"); err != nil {
 		level.Error(j.logger).Log("msg", "Failed to commit exclusive transcation", "err", err)
 		return err
 	}
@@ -419,15 +383,13 @@ func (j *jobStatsDB) getJobStats(startTime, endTime time.Time) error {
 	}
 
 	// Vacuum DB every Monday after 02h:00 (Sunday after midnight)
-	err = j.vacuumDB()
-	if err != nil {
+	if err = j.vacuumDB(); err != nil {
 		level.Error(j.logger).Log("msg", "Failed to vacuum DB", "err", err)
 	}
 
 	// Check if DB is already locked.
 	// If locked, return with noop
-	err = j.checkDBLock()
-	if err != nil {
+	if err = j.checkDBLock(); err != nil {
 		level.Error(j.logger).Log("msg", "DB is locked. Jobs WILL NOT BE inserted.", "err", err)
 		return err
 	}
@@ -457,30 +419,31 @@ func (j *jobStatsDB) getJobStats(startTime, endTime time.Time) error {
 
 	// Delete older entries
 	level.Debug(j.logger).Log("msg", "Deleting old jobs")
-	err = j.deleteOldJobs(tx)
-	if err != nil {
+	if err = j.deleteOldJobs(tx); err != nil {
 		level.Error(j.logger).Log("msg", "Failed to delete old job entries", "err", err)
-		return err
+	} else {
+		level.Debug(j.logger).Log("msg", "Finished deleting old jobs in DB")
 	}
-	level.Debug(j.logger).Log("msg", "Finished deleting old jobs in DB")
 
 	// Commit changes
-	err = tx.Commit()
-	if err != nil {
+	if err = tx.Commit(); err != nil {
 		level.Error(j.logger).Log("msg", "Failed to commit DB transcation", "err", err)
 		return err
+	}
+
+	// Finally make API requests to TSDB to delete timeseries of ignored jobs
+	if j.tsdb.cleanUp {
+		level.Debug(j.logger).Log("msg", "Deleting time series in TSDB of ignored jobs")
+		if err = j.deleteTimeSeries(startTime, endTime, ignoredJobs); err != nil {
+			level.Error(j.logger).Log("msg", "Failed to delete time series in TSDB", "err", err)
+		} else {
+			level.Debug(j.logger).Log("msg", "Finished deleting time series in TSDB")
+		}
 	}
 
 	// Write endTime to file to keep track upon successful insertion of data
 	j.storage.lastUpdateTime = endTime
 	writeTimeStampToFile(j.storage.lastUpdateTimeFile, j.storage.lastUpdateTime, j.logger)
-
-	// Finally make API requests to Prometheus to delete timeseries of ignored jobs
-	if j.tsdb.vacuum {
-		level.Debug(j.logger).Log("msg", "Deleting time series in Prometheus of ignored jobs")
-		j.deleteTimeSeries(ignoredJobs)
-		level.Debug(j.logger).Log("msg", "Finished deleting time series in Prometheus")
-	}
 	return nil
 }
 
@@ -562,8 +525,8 @@ func (j *jobStatsDB) prepareInsertStatement(tx *sql.Tx) (*sql.Stmt, error) {
 }
 
 // Insert job stat into DB
-func (j *jobStatsDB) insertJobs(statement *sql.Stmt, jobStats []base.BatchJob) []tsdbLabels {
-	var ignoredJobs []tsdbLabels
+func (j *jobStatsDB) insertJobs(statement *sql.Stmt, jobStats []base.BatchJob) []string {
+	var ignoredJobs []string
 	var err error
 	for _, jobStat := range jobStats {
 		// Empty job
@@ -571,12 +534,16 @@ func (j *jobStatsDB) insertJobs(statement *sql.Stmt, jobStats []base.BatchJob) [
 			continue
 		}
 
-		// Ignore jobs that ran for less than jobCutoffPeriod seconds
+		// Ignore jobs that ran for less than jobCutoffPeriod seconds and check if
+		// job has end time stamp. If we decide to populate DB with running jobs,
+		// EndTS will be zero as we cannot convert unknown time into time stamp.
+		// Check if we EndTS is not zero before ignoring job. If it is zero, it means
+		// it must be RUNNING job
 		if elapsedTime, err := strconv.Atoi(jobStat.ElapsedRaw); err == nil &&
-			elapsedTime < int(j.storage.cutoffPeriod.Seconds()) {
+			elapsedTime < int(j.storage.cutoffPeriod.Seconds()) && jobStat.EndTS != "0" {
 			ignoredJobs = append(
 				ignoredJobs,
-				tsdbLabels{id: jobStat.Jobid, user: jobStat.Usr, account: jobStat.Account},
+				jobStat.Jobid,
 			)
 			continue
 		}
@@ -619,25 +586,46 @@ func (j *jobStatsDB) insertJobs(statement *sql.Stmt, jobStats []base.BatchJob) [
 }
 
 // Delete time series data of ignored jobs
-func (j *jobStatsDB) deleteTimeSeries(jobs []tsdbLabels) {
-	var tsSlice []string
-	for _, job := range jobs {
-		for _, ts := range j.tsdb.tsToDelete {
-			tsSlice = append(
-				tsSlice,
-				fmt.Sprintf("%s{jobid=\"%s\",jobuser=\"%s\",jobaccount=\"%s\"}", ts, job.id, job.user, job.account),
-			)
-		}
-	}
+func (j *jobStatsDB) deleteTimeSeries(startTime time.Time, endTime time.Time, jobs []string) error {
+	// Join them with | as delimiter. We will use regex match to match all series
+	// with the label jobid=~"$jobids"
+	allJobIds := strings.Join(jobs, "|")
+
+	/*
+		We should give start and end query params as well. If not, TSDB has to look over
+		"all" time blocks (potentially 1000s or more) and try to find the series.
+		The thing is the time series data of these "ignored" jobs should be head block
+		as they have started and finished very "recently".
+
+		Imagine we are updating jobs data for every 15 min and we would like to ignore jobs
+		that have wall time less than 10 min. If we are updating jobs from, say 10h-10h-15,
+		the jobs that have been ignored cannot start earlier than 9h50 to have finished within
+		10h-10h15 window. So, all these time series must be in the head block of TSDB and
+		we should provide start and end query params corresponding to
+		9h50 (lastupdatetime - ignored job duration) and current time, respectively. This
+		will help TSDB to narrow the search to head block and hence deletion of time series
+		will be easy as they are potentially not yet persisted to disk.
+	*/
+	start := startTime.Add(-j.storage.cutoffPeriod)
+	end := endTime
+
+	// Matcher must be of format "{job=~"<regex>"}"
+	// Ref: https://ganeshvernekar.com/blog/prometheus-tsdb-queries/
+	matcher := fmt.Sprintf("{jobid=~\"%s\"}", allJobIds)
 
 	// Add form data to request
-	values := url.Values{"match[]": tsSlice}
+	// TSDB expects time stamps in UTC zone
+	values := url.Values{
+		"match[]": []string{matcher},
+		"start":   []string{start.UTC().Format(time.RFC3339Nano)},
+		"end":     []string{end.UTC().Format(time.RFC3339Nano)},
+	}
 
 	// Create a new POST request
-	req, err := http.NewRequest(http.MethodPost, j.tsdb.deleteSeriesEndpoint, strings.NewReader(values.Encode()))
+	req, err := http.NewRequest(http.MethodPost, j.tsdb.deleteSeriesEndpoint.String(), strings.NewReader(values.Encode()))
 	if err != nil {
 		level.Error(j.logger).
-			Log("msg", "Failed to make a new HTTP request for deleting time series in Prometheus", "err", err)
+			Log("msg", "Failed to make a new HTTP request for deleting time series in TSDB", "err", err)
 	}
 
 	// Add necessary headers
@@ -645,7 +633,5 @@ func (j *jobStatsDB) deleteTimeSeries(jobs []tsdbLabels) {
 
 	// Make request
 	_, err = j.tsdb.client.Do(req)
-	if err != nil {
-		level.Error(j.logger).Log("msg", "Failed to delete time series in Prometheus", "err", err)
-	}
+	return err
 }
