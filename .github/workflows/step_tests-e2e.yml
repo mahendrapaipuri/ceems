@@ -1,18 +1,12 @@
-name: tests
+name: e2e-tests
+run-name: End2End Tests
+
 on:
-  push:
-    branches:
-      - "main"
-    paths:
-      - "go.sum"
-      - "go.mod"
-      - "**.go"
-      - ".github/workflows/test.yml"
-  pull_request:
+  workflow_call:
 
 jobs:
-  tests:
-    name: test
+  e2e-tests:
+    name: e2e-tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -28,8 +22,8 @@ jobs:
           make promu
           go mod download
 
-      - name: Run test for pure Go packages
-        run: make
+      - name: Run e2e tests for Go packages
+        run: make 
 
-      - name: Run test for CGo packages
+      - name: Run e2e tests for CGo packages
         run: CGO_BUILD=1 make

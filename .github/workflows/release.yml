@@ -1,0 +1,64 @@
+name: Release
+on:
+  push:
+    tags:
+      - "v.*"
+  workflow_dispatch:
+    inputs:
+      skip-tests:
+        type: boolean
+        description: Skip
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  test-lint:
+    uses: ./.github/workflows/step_tests-lint.yml
+    if: !inputs.skip-tests
+
+  test-unit:
+    needs: [test-lint]
+    uses: ./.github/workflows/step_tests-unit.yml
+    if: !inputs.skip-tests
+
+  test-e2e:
+    needs: [test-lint]
+    uses: ./.github/workflows/step_tests-e2e.yml
+    if: !inputs.skip-tests
+
+  build:
+    needs: [test-unit, test-e2e]
+    uses: ./.github/workflows/step_build.yml
+
+  publish:
+    needs: [build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.21.x
+
+      - name: Install promu
+        run: |
+          make promu
+          go mod download
+
+      # These steps are taken from https://circleci.com/developer/orbs/orb/prometheus/prometheus#jobs-publish_release
+      - name: Setup build environment
+        run: |
+          docker version
+          docker run --privileged linuxkit/binfmt:v0.8
+      
+      - name: Publish release
+        run: |
+          promu crossbuild tarballs
+          promu checksum .tarballs
+          promu release .tarballs
