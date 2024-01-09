@@ -267,13 +267,13 @@ setup:
 
 	// Now make an instance of time.Date with proper format and zone
 	lastJobsUpdateTime = time.Date(
-		lastJobsUpdateTime.Year(), 
-		lastJobsUpdateTime.Month(), 
-		lastJobsUpdateTime.Day(), 
-		lastJobsUpdateTime.Hour(), 
-		lastJobsUpdateTime.Minute(), 
-		lastJobsUpdateTime.Second(), 
-		lastJobsUpdateTime.Nanosecond(), 
+		lastJobsUpdateTime.Year(),
+		lastJobsUpdateTime.Month(),
+		lastJobsUpdateTime.Day(),
+		lastJobsUpdateTime.Hour(),
+		lastJobsUpdateTime.Minute(),
+		lastJobsUpdateTime.Second(),
+		lastJobsUpdateTime.Nanosecond(),
 		time.Now().Location(),
 	)
 
