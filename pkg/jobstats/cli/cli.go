@@ -77,18 +77,18 @@ func (b *BatchJobStatsServer) Main() {
 			"storage.data.job.duration.cutoff",
 			"Jobs with wall time less than this period will be ignored. Units Supported: y, w, d, h, m, s, ms.",
 		).Default("5m").String()
-		prometheusURL = b.App.Flag(
-			"prometheus.web.url",
-			"Prometheus URL. If basic auth is enabled for Prometheus consider providing this URL using environment variable PROMETHEUS_URL.",
-		).Default(os.Getenv("PROMETHEUS_URL")).String()
-		prometheusSkipTLSVerify = b.App.Flag(
-			"prometheus.web.skip-tls-verify",
+		tsdbWebUrl = b.App.Flag(
+			"tsdb.web.url",
+			"TSDB URL (Prometheus/Victoria Metrics). If basic auth is enabled consider providing this URL using environment variable TSDB_WEBURL.",
+		).Default(os.Getenv("TSDB_WEBURL")).String()
+		tsdbWebSkipTLSVerify = b.App.Flag(
+			"tsdb.web.skip-tls-verify",
 			"Whether to skip TLS verification when using self signed certificates (default is false).",
 		).Default("false").Bool()
-		vacuumTSDB = b.App.Flag(
-			"prometheus.data.vacuum.tsdb",
-			"Prometheus TSDB will be vacuumed to remove time series of ignored jobs based on value set for --storage.data.job.duration.cutoff."+
-				" --prometheus.web.url should be provided if this flag is set to true. (default is false)",
+		tsdbCleanUp = b.App.Flag(
+			"tsdb.data.clean",
+			"TSDB will be cleaned by removing time series of ignored jobs based on value set for --storage.data.job.duration.cutoff."+
+				" --tsdb.web.url should be provided if this flag is set to true. (default is false)",
 		).Default("false").Bool()
 		skipDeleteOldJobs = b.App.Flag(
 			"storage.data.skip.delete.old.jobs",
@@ -143,39 +143,39 @@ func (b *BatchJobStatsServer) Main() {
 		os.Exit(1)
 	}
 
-	// Check if TSDB vacuum flag is turned on, a valid prometheus URL is provided
+	// Check if TSDB delete series flag is turned on, a valid TSDB Web URL is provided
 	var client *http.Client
-	var promURL *url.URL
-	if *vacuumTSDB {
-		promURL, err = url.Parse(*prometheusURL)
+	var tsdbURL *url.URL
+	if *tsdbCleanUp {
+		tsdbURL, err = url.Parse(*tsdbWebUrl)
 		if err != nil {
-			fmt.Printf("Failed to parse --prometheus.web.url %s", err)
+			fmt.Printf("Failed to parse --tsdb.web.url %s", err)
 			os.Exit(1)
 		}
 
-		// If skip verify is set to true for Prometheus add it to client
-		if *prometheusSkipTLSVerify {
+		// If skip verify is set to true for TSDB add it to client
+		if *tsdbWebSkipTLSVerify {
 			tr := &http.Transport{
 				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 			}
-			client = &http.Client{Transport: tr, Timeout: time.Duration(1) * time.Second}
+			client = &http.Client{Transport: tr, Timeout: time.Duration(30 * time.Second)}
 		} else {
-			client = &http.Client{Timeout: time.Duration(1) * time.Second}
+			client = &http.Client{Timeout: time.Duration(30 * time.Second)}
 		}
 
-		// Create a new GET request to reach out to Prometheus
-		req, err := http.NewRequest(http.MethodGet, promURL.String(), nil)
+		// Create a new GET request to reach out to TSDB
+		req, err := http.NewRequest(http.MethodGet, tsdbURL.String(), nil)
 		if err != nil {
-			fmt.Printf("Failed to make a new HTTP request for Prometheus %s", err)
+			fmt.Printf("Failed to make a new HTTP request for TSDB %s", err)
 			os.Exit(1)
 		}
 
-		// Check if Prometheus is reachable
+		// Check if TSDB is reachable
 		_, err = client.Do(req)
 		if err != nil {
 			fmt.Printf(
-				"--prometheus.data.vacuum.tsdb is set to true but Prometheus at %s is unreachable %s",
-				promURL.Redacted(),
+				"--tsdb.data.clean is set to true but TSDB at %s is unreachable %s",
+				tsdbURL.Redacted(),
 				err,
 			)
 			os.Exit(1)
@@ -218,8 +218,8 @@ func (b *BatchJobStatsServer) Main() {
 		JobCutoffPeriod:         time.Duration(jobDurationCutoff),
 		RetentionPeriod:         time.Duration(retentionPeriod),
 		SkipDeleteOldJobs:       *skipDeleteOldJobs,
-		VacuumTSDB:              *vacuumTSDB,
-		PrometheusURL:           promURL,
+		TSDBCleanUp:             *tsdbCleanUp,
+		TSDBURL:                 tsdbURL,
 		HTTPClient:              client,
 		LastUpdateTimeString:    *lastUpdateTime,
 		LastUpdateTimeStampFile: jobsLastTimeStampFile,
