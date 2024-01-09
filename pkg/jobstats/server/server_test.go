@@ -58,8 +58,8 @@ func TestAccountsHandlerNoUserHeader(t *testing.T) {
 	if response.Status != "error" {
 		t.Errorf("expected error status got %v", response.Status)
 	}
-	if response.ErrorType != "User Error" {
-		t.Errorf("expected User Error type got %v", response.ErrorType)
+	if response.ErrorType != "user_error" {
+		t.Errorf("expected user_error type got %v", response.ErrorType)
 	}
 	if !reflect.DeepEqual(response.Data, []base.Account{}) {
 		t.Errorf("expected empty data got %v", response.Data)
@@ -126,8 +126,8 @@ func TestJobsHandlerNoUserHeader(t *testing.T) {
 	if response.Status != "error" {
 		t.Errorf("expected error status got %v", response.Status)
 	}
-	if response.ErrorType != "User Error" {
-		t.Errorf("expected User Error type got %v", response.ErrorType)
+	if response.ErrorType != "user_error" {
+		t.Errorf("expected user_error type got %v", response.ErrorType)
 	}
 	if !reflect.DeepEqual(response.Data, []base.BatchJob{}) {
 		t.Errorf("expected empty data got %v", response.Data)
@@ -238,8 +238,8 @@ func TestJobsHandlerWithMalformedQueryParams(t *testing.T) {
 	if response.Status != "error" {
 		t.Errorf("expected error status got %v", response.Status)
 	}
-	if response.ErrorType != "Internal server error" {
-		t.Errorf("expected Internal server error type got %v", response.ErrorType)
+	if response.ErrorType != "data_error" {
+		t.Errorf("expected data_error type got %v", response.ErrorType)
 	}
 	if !reflect.DeepEqual(response.Data, []base.BatchJob{}) {
 		t.Errorf("expected empty data got %v", response.Data)

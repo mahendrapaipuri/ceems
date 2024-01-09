@@ -114,8 +114,7 @@ func NewJobstatsServer(c *Config) (*JobstatsServer, func(), error) {
 
 	// Open DB connection
 	var err error
-	dbConn, err = sql.Open("sqlite3", c.DBConfig.JobstatsDBPath)
-	if err != nil {
+	if dbConn, err = sql.Open("sqlite3", c.DBConfig.JobstatsDBPath); err != nil {
 		return nil, func() {}, err
 	}
 	return server, func() {}, nil
@@ -188,13 +187,12 @@ func (s *JobstatsServer) accounts(w http.ResponseWriter, r *http.Request) {
 		response = base.AccountsResponse{
 			Response: base.Response{
 				Status:    "error",
-				ErrorType: "User Error",
+				ErrorType: "user_error",
 				Error:     "No user identified",
 			},
 			Data: []base.Account{},
 		}
-		err := json.NewEncoder(w).Encode(&response)
-		if err != nil {
+		if err := json.NewEncoder(w).Encode(&response); err != nil {
 			level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
 			w.Write([]byte("KO"))
 		}
@@ -209,13 +207,12 @@ func (s *JobstatsServer) accounts(w http.ResponseWriter, r *http.Request) {
 		response = base.AccountsResponse{
 			Response: base.Response{
 				Status:    "error",
-				ErrorType: "Internal server error",
+				ErrorType: "data_error",
 				Error:     "Failed to fetch user accounts",
 			},
 			Data: []base.Account{},
 		}
-		err = json.NewEncoder(w).Encode(&response)
-		if err != nil {
+		if err = json.NewEncoder(w).Encode(&response); err != nil {
 			level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
 			w.Write([]byte("KO"))
 		}
@@ -230,25 +227,23 @@ func (s *JobstatsServer) accounts(w http.ResponseWriter, r *http.Request) {
 		},
 		Data: accounts,
 	}
-	err = json.NewEncoder(w).Encode(&response)
-	if err != nil {
+	if err = json.NewEncoder(w).Encode(&response); err != nil {
 		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
 		w.Write([]byte("KO"))
 	}
 }
 
 // Return error response for jobs with setting errorString and errorType in response
-func (s *JobstatsServer) jobsErrorResponse(errorString string, errorType string, w http.ResponseWriter) {
+func (s *JobstatsServer) jobsErrorResponse(errorType string, errorString string, w http.ResponseWriter) {
 	response := base.JobsResponse{
 		Response: base.Response{
 			Status:    "error",
-			ErrorType: errorString,
-			Error:     errorType,
+			ErrorType: errorType,
+			Error:     errorString,
 		},
 		Data: []base.BatchJob{},
 	}
-	err := json.NewEncoder(w).Encode(&response)
-	if err != nil {
+	if err := json.NewEncoder(w).Encode(&response); err != nil {
 		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
 		w.Write([]byte("KO"))
 	}
@@ -270,7 +265,7 @@ func (s *JobstatsServer) jobs(w http.ResponseWriter, r *http.Request) {
 	// If no user found, return empty response
 	if loggedUser == "" {
 		w.WriteHeader(http.StatusUnauthorized)
-		s.jobsErrorResponse("User Error", "No user identified", w)
+		s.jobsErrorResponse("user_error", "No user identified", w)
 		return
 	}
 
@@ -325,7 +320,7 @@ func (s *JobstatsServer) jobs(w http.ResponseWriter, r *http.Request) {
 		if ts, err := strconv.Atoi(f); err != nil {
 			level.Error(s.logger).Log("msg", "Failed to parse from timestamp", "from", f, "err", err)
 			w.WriteHeader(http.StatusBadRequest)
-			s.jobsErrorResponse("Internal server error", "Malformed 'from' timestamp", w)
+			s.jobsErrorResponse("data_error", "Malformed 'from' timestamp", w)
 			return
 		} else {
 			fromTime = time.Unix(int64(ts), 0)
@@ -339,7 +334,7 @@ func (s *JobstatsServer) jobs(w http.ResponseWriter, r *http.Request) {
 		if ts, err := strconv.Atoi(t); err != nil {
 			level.Error(s.logger).Log("msg", "Failed to parse to timestamp", "to", t, "err", err)
 			w.WriteHeader(http.StatusBadRequest)
-			s.jobsErrorResponse("Internal server error", "Malformed 'to' timestamp", w)
+			s.jobsErrorResponse("data_error", "Malformed 'to' timestamp", w)
 			return
 		} else {
 			toTime = time.Unix(int64(ts), 0)
@@ -356,7 +351,7 @@ func (s *JobstatsServer) jobs(w http.ResponseWriter, r *http.Request) {
 			"queryWindow", toTime.Sub(fromTime).String(),
 		)
 		w.WriteHeader(http.StatusBadRequest)
-		s.jobsErrorResponse("Internal server error", "Maximum query window exceeded", w)
+		s.jobsErrorResponse("data_error", "Maximum query window exceeded", w)
 		return
 	}
 
@@ -373,7 +368,7 @@ queryJobs:
 	if err != nil {
 		level.Error(s.logger).Log("msg", "Failed to fetch jobs", "loggedUser", loggedUser, "err", err)
 		w.WriteHeader(http.StatusInternalServerError)
-		s.jobsErrorResponse("Internal server error", "Failed to fetch user jobs", w)
+		s.jobsErrorResponse("data_error", "Failed to fetch user jobs", w)
 		return
 	}
 
@@ -385,8 +380,7 @@ queryJobs:
 		},
 		Data: jobs,
 	}
-	err = json.NewEncoder(w).Encode(&response)
-	if err != nil {
+	if err = json.NewEncoder(w).Encode(&response); err != nil {
 		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
 		w.Write([]byte("KO"))
 	}
@@ -459,7 +453,7 @@ func fetchJobs(
 	queryStmt, err := dbConn.Prepare(strings.Replace(queryString, "*", strings.Join(base.BatchJobFieldNames, ","), 1))
 	if err != nil {
 		level.Error(logger).Log(
-			"msg", "Failed to prepare query SQL statement for jobs", "query", queryString,
+			"msg", "Failed to prepare query SQL statement for jobs query", "query", queryString,
 			"queryParams", strings.Join(queryParams, ","), "err", err,
 		)
 		return nil, err
@@ -473,9 +467,8 @@ func fetchJobs(
 	}
 
 	// First make a query to get number of rows that will be returned by query
-	_ = countStmt.QueryRow(qParams...).Scan(&numJobs)
-	if err != nil {
-		level.Error(logger).Log("msg", "Failed to execute count SQL statement for jobs query",
+	if err = countStmt.QueryRow(qParams...).Scan(&numJobs); err != nil {
+		level.Error(logger).Log("msg", "Failed to get number of jobs",
 			"query", queryString, "queryParams", strings.Join(queryParams, ","), "err", err,
 		)
 		return nil, err
@@ -483,7 +476,7 @@ func fetchJobs(
 
 	rows, err := queryStmt.Query(qParams...)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to execute query SQL statement for jobs query",
+		level.Error(logger).Log("msg", "Failed to get jobs",
 			"query", queryString, "queryParams", strings.Join(queryParams, ","), "err", err,
 		)
 		return nil, err
@@ -568,8 +561,7 @@ func fetchJobs(
 
 // Ping DB for connection test
 func getDBStatus(logger log.Logger) bool {
-	err := dbConn.Ping()
-	if err != nil {
+	if err := dbConn.Ping(); err != nil {
 		level.Error(logger).Log("msg", "DB Ping failed", "err", err)
 		return false
 	}
