@@ -1,14 +1,8 @@
 name: build
+run-name: Build
+
 on:
-  push:
-    branches:
-      - "main"
-    paths:
-      - "go.sum"
-      - "go.mod"
-      - "**.go"
-      - ".github/workflows/build.yml"
-  pull_request:
+  workflow_call:
 
 jobs:
   build:
@@ -35,10 +29,10 @@ jobs:
         run: |
           sed -i -e 's/CGO_BUILD               ?= 0/CGO_BUILD               ?= 1/g' Makefile
           promu --config .promu-cgo.yml crossbuild -v
-      
-      - name: Upload build artifacts
+
+      - name: Upload go build artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: build-artifacts
-          path: .build/linux-amd64
+          name: build-go-artifacts
+          path: .build
           retention-days: 3

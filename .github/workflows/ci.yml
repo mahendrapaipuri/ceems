@@ -1,0 +1,39 @@
+name: CI
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "go.sum"
+      - "go.mod"
+      - "**.go"
+      - "scripts/errcheck_excludes.txt"
+      - ".github/workflows/golangci-lint.yml"
+      - ".golangci.yml"
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  # All nested workflows will inherit these permissions and so no need to declare
+  # in each step file
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-lint:
+    uses: ./.github/workflows/step_tests-lint.yml
+
+  test-unit:
+    needs: [test-lint]
+    uses: ./.github/workflows/step_tests-unit.yml
+
+  test-e2e:
+    needs: [test-lint]
+    uses: ./.github/workflows/step_tests-e2e.yml
+
+  build:
+    needs: [test-lint, test-unit, test-e2e]
+    uses: ./.github/workflows/step_build.yml
