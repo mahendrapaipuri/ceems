@@ -229,7 +229,7 @@ kernel version is `>=5.3`, RAPL metrics are only available for `root`. The capab
 not been tested. Another approach is to add a ACL rule on the `/sys/fs/class/powercap` 
 directory to give read permissions to the user that is running `batchjob_exporter`.
 
-#### Emissions collector
+### Emissions collector
 
 The only CLI flag to configure for emissions collector is 
 `--collector.emissions.country.code` and set it to 
@@ -241,7 +241,7 @@ If country is set to France, emission factor data from
 [RTE eCO2 Mix](https://www.rte-france.com/en/eco2mix/co2-emissions) will also be reported. 
 There is no need to pass any API token.
 
-#### CPU and meminfo collectors
+### CPU and meminfo collectors
 
 Both collectors export node level metrics. CPU collector export CPU time in different
 modes by parsing `/proc/stat` file. Similarly, meminfo collector exports memory usage 
@@ -251,7 +251,7 @@ statistics by parsing `/proc/meminfo` file. These collectors are heavily inspire
 These metrics are mainly used to estimate the proportion of CPU and memory usage by the 
 individual jobs and to estimate the energy consumption of jobs based on these proportions.
 
-### Batch Job Stats API server
+## Batch Job Stats API server
 
 As discussed in the [introduction](#batch-job-stats-api-server), `batchjob_stats_server` 
 exposes accounts and jobs details of users _via_ API end points. This data will be 
