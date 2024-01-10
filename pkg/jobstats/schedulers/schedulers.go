@@ -31,9 +31,9 @@ var (
 // Register batch scheduler
 func RegisterBatch(
 	scheduler string,
-	isDefaultEnabled bool,
 	factory func(logger log.Logger) (BatchJobFetcher, error),
 ) {
+	var isDefaultEnabled = false
 	var helpDefaultState string
 	if isDefaultEnabled {
 		helpDefaultState = "enabled"

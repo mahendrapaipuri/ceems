@@ -26,7 +26,7 @@ var (
 
 func init() {
 	// Register batch scheduler with jobstats pkg
-	schedulers.RegisterBatch(mockBatchScheduler, true, NewMockScheduler)
+	schedulers.RegisterBatch(mockBatchScheduler, NewMockScheduler)
 }
 
 // Do all basic checks here
