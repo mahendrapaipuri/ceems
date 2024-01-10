@@ -6,7 +6,7 @@ on:
       - "go.sum"
       - "go.mod"
       - "**.go"
-      - ".github/workflows"
+      - ".github/workflows/**"
       - ".golangci.yml"
     branches: [main]
   pull_request:
