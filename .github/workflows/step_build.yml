@@ -22,13 +22,15 @@ jobs:
           make promu
           go mod download
 
+      # Cross compile for only AMD and ARM archs in CI to reduce CI time and artifacts size
+      # We will compile for all supported archs in release workflow
       - name: Cross compile Go packages
-        run: promu --config .promu-go.yml crossbuild -v
+        run: promu --config .promu-go.yml crossbuild -v -p linux/amd64 linux/arm64
 
       - name: Cross compile CGo packages
         run: |
           sed -i -e 's/CGO_BUILD               ?= 0/CGO_BUILD               ?= 1/g' Makefile
-          promu --config .promu-cgo.yml crossbuild -v
+          promu --config .promu-cgo.yml crossbuild -v -p linux/amd64 linux/arm64
 
       - name: Upload go build artifacts
         uses: actions/upload-artifact@v3
