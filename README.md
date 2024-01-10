@@ -131,6 +131,8 @@ Currently, the exporter supports only SLURM. `batchjob_exporter` provides follow
 - IPMI collector: Exports power usage reported by `ipmi` tools
 - RAPL collector: Exports RAPL energy metrics
 - Emissions collector: Exports emission factor (g eCO2/kWh)
+- CPU collector: Exports CPU time in different modes (at node level)
+- Meminfo collector: Exports memory related statistics (at node level)
 
 ### Slurm collector
 
@@ -238,6 +240,16 @@ an environment variable `EMAPS_API_TOKEN`, emission factors from
 If country is set to France, emission factor data from 
 [RTE eCO2 Mix](https://www.rte-france.com/en/eco2mix/co2-emissions) will also be reported. 
 There is no need to pass any API token.
+
+#### CPU and meminfo collectors
+
+Both collectors export node level metrics. CPU collector export CPU time in different
+modes by parsing `/proc/stat` file. Similarly, meminfo collector exports memory usage 
+statistics by parsing `/proc/meminfo` file. These collectors are heavily inspired from 
+[`node_exporter`](https://github.com/prometheus/node_exporter). 
+
+These metrics are mainly used to estimate the proportion of CPU and memory usage by the 
+individual jobs and to estimate the energy consumption of jobs based on these proportions.
 
 ### Batch Job Stats API server
 
@@ -399,7 +411,7 @@ The stats server can be started as follows:
 /path/to/batchjob_stats_server \
     --slurm.sacct.path="/usr/local/bin/sacct" \
     --batch.scheduler.slurm \
-    --data.path="/var/lib/batchjob_stats" \
+    --storage.data.path="/var/lib/batchjob_stats" \
     --log.level="debug"
 ```
 
@@ -441,9 +453,9 @@ keeps the job data for the past one year.
 /path/to/batchjob_stats_server \
     --slurm.sacct.path="/usr/local/bin/sacct" \
     --batch.scheduler.slurm \
-    --path.data="/var/lib/batchjob_stats" \
-    --db.update.interval="30m" \
-    --data.retention.period="1y" \
+    --storage.path.data="/var/lib/batchjob_stats" \
+    --storage.data.update.interval="30m" \
+    --storage.data.retention.period="1y" \
     --log.level="debug"
 ```
 

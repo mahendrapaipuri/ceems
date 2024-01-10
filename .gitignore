@@ -44,3 +44,6 @@ lasttimestamp
 
 # Ignore promu related files
 promu*
+
+# Ignore data folder in root
+data

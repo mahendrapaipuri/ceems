@@ -9,9 +9,9 @@ Group=batchjob-stats
 ExecStart=/usr/local/bin/batchjob_stats_server \
     --batch.scheduler.slurm \
     --slurm.sacct.path="/usr/local/bin/sacct" \
-    --data.path="/var/lib/batchjob_stats" \
-    --db.update.interval="30m" \
-    --data.retention.period="1y" \
+    --storage.data.path="/var/lib/batchjob_stats" \
+    --storage.data.update.interval="30m" \
+    --storage.data.retention.period="1y" \
     --log.level="debug"
 
 SyslogIdentifier=batchjob_stats_server
