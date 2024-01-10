@@ -143,7 +143,7 @@ func createTable(dbTableName string, db *sql.DB, logger log.Logger) error {
 
 	// Prepare SQL DB index creation Statement
 	for _, stmt := range indexStatements {
-		level.Info(logger).Log("msg", "Creating DB index with Usr,Account,Start columns")
+		level.Info(logger).Log("msg", "Creating DB index", "index", stmt)
 		createIndexSQL := fmt.Sprintf(stmt, dbTableName)
 		statement, err = db.Prepare(createIndexSQL)
 		if err != nil {

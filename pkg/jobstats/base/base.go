@@ -11,7 +11,7 @@ const BatchJobStatsServerAppName = "batchjob_stats_server"
 // `batchjob_stats_server` CLI app
 var BatchJobStatsServerApp = *kingpin.New(
 	BatchJobStatsServerAppName,
-	"API server data source for batch job statistics of users.",
+	"API server for batch job statistics of users.",
 )
 
 // Models
