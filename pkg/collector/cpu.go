@@ -16,6 +16,7 @@ import (
 type cpuCollector struct {
 	fs            procfs.FS
 	cpu           *prometheus.Desc
+	ncpu          *prometheus.Desc
 	logger        log.Logger
 	cpuStats      procfs.CPUStat
 	cpuStatsMutex sync.Mutex
@@ -49,6 +50,11 @@ func NewCPUCollector(logger log.Logger) (Collector, error) {
 			"Seconds the CPUs spent in each mode.",
 			[]string{"hostname", "mode"}, nil,
 		),
+		ncpu: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, cpuCollectorSubsystem, "count"),
+			"Number of CPUs.",
+			[]string{"hostname"}, nil,
+		),
 		logger:   logger,
 		hostname: hostname,
 		cpuStats: procfs.CPUStat{},
@@ -62,11 +68,16 @@ func (c *cpuCollector) Update(ch chan<- prometheus.Metric) error {
 		return err
 	}
 
+	// Get total number of cpus
+	ncpus := len(stats.CPU)
+
+	// Update CPU stats
 	c.updateCPUStats(stats.CPUTotal)
 
 	// Acquire a lock to read the stats.
 	c.cpuStatsMutex.Lock()
 	defer c.cpuStatsMutex.Unlock()
+	ch <- prometheus.MustNewConstMetric(c.ncpu, prometheus.GaugeValue, float64(ncpus), c.hostname)
 	ch <- prometheus.MustNewConstMetric(c.cpu, prometheus.CounterValue, c.cpuStats.User, c.hostname, "user")
 	ch <- prometheus.MustNewConstMetric(c.cpu, prometheus.CounterValue, c.cpuStats.Nice, c.hostname, "nice")
 	ch <- prometheus.MustNewConstMetric(c.cpu, prometheus.CounterValue, c.cpuStats.System, c.hostname, "system")
