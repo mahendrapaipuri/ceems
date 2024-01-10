@@ -278,7 +278,7 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 		jobGpuFlag: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_gpu_index_flag"),
 			"Indicates running job on GPU, 1=job running",
-			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid", "index", "uuid", "UUID"}, nil,
+			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid", "index", "hindex", "uuid", "UUID"}, nil,
 		),
 		collectError: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "collect_error"),
@@ -345,7 +345,7 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 					break
 				}
 			}
-			ch <- prometheus.MustNewConstMetric(c.jobGpuFlag, prometheus.GaugeValue, float64(1), m.batch, c.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid, gpuOrdinal, uuid, uuid)
+			ch <- prometheus.MustNewConstMetric(c.jobGpuFlag, prometheus.GaugeValue, float64(1), m.batch, c.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid, gpuOrdinal, fmt.Sprintf("%s-gpu-%s", m.hostname, gpuOrdinal), uuid, uuid)
 		}
 	}
 	return nil

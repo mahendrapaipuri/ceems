@@ -1,3 +1,6 @@
+# HELP batchjob_cpu_count Number of CPUs.
+# TYPE batchjob_cpu_count gauge
+batchjob_cpu_count{hostname=""} 8
 # HELP batchjob_cpu_seconds_total Seconds the CPUs spent in each mode.
 # TYPE batchjob_cpu_seconds_total counter
 batchjob_cpu_seconds_total{hostname="",mode="idle"} 89790.04
@@ -52,8 +55,8 @@ batchjob_slurm_job_cpu_user_seconds{batch="slurm",hostname="",jobaccount="testac
 batchjob_slurm_job_cpus{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 2
 # HELP batchjob_slurm_job_gpu_index_flag Indicates running job on GPU, 1=job running
 # TYPE batchjob_slurm_job_gpu_index_flag gauge
-batchjob_slurm_job_gpu_index_flag{UUID="20170005280c",batch="slurm",hostname="",index="3",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",uuid="20170005280c"} 1
-batchjob_slurm_job_gpu_index_flag{UUID="20180003050c",batch="slurm",hostname="",index="2",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",uuid="20180003050c"} 1
+batchjob_slurm_job_gpu_index_flag{UUID="20170005280c",batch="slurm",hindex="-gpu-3",hostname="",index="3",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",uuid="20170005280c"} 1
+batchjob_slurm_job_gpu_index_flag{UUID="20180003050c",batch="slurm",hindex="-gpu-2",hostname="",index="2",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",uuid="20180003050c"} 1
 # HELP batchjob_slurm_job_memory_cache_bytes Memory cache used in bytes
 # TYPE batchjob_slurm_job_memory_cache_bytes gauge
 batchjob_slurm_job_memory_cache_bytes{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 0
