@@ -3,6 +3,7 @@ package schedulers
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"os/user"
 	"strconv"
 	"strings"
@@ -32,23 +33,34 @@ var (
 	jobLock         = sync.RWMutex{}
 	sacctPath       = base.BatchJobStatsServerApp.Flag(
 		"slurm.sacct.path",
-		"Absolute path to sacct executable.",
-	).Default("/usr/local/bin/sacct").String()
+		"Absolute path to sacct executable. If empty sacct on PATH will be used.",
+	).Default("").String()
 )
 
 func init() {
 	// Register batch scheduler
-	RegisterBatch(slurmBatchScheduler, false, NewSlurmScheduler)
+	RegisterBatch(slurmBatchScheduler, NewSlurmScheduler)
 }
 
 // Run basic checks like checking path of executable etc
 func preflightChecks(logger log.Logger) (string, error) {
 	// Assume execMode is always native
 	execMode := "native"
-	// Check if sacct binary exists
-	if _, err := os.Stat(*sacctPath); err != nil {
-		level.Error(logger).Log("msg", "Failed to open sacct executable", "path", *sacctPath, "err", err)
-		return "", err
+
+	// If no sacct path is provided, assume it is available on PATH
+	if *sacctPath == "" {
+		path, err := exec.LookPath("sacct")
+		if err != nil {
+			level.Error(logger).Log("msg", "Failed to find sacct executable on PATH", "err", err)
+			return "", err
+		}
+		*sacctPath = path
+	} else {
+		// Check if sacct binary exists at the given path
+		if _, err := os.Stat(*sacctPath); err != nil {
+			level.Error(logger).Log("msg", "Failed to open sacct executable", "path", *sacctPath, "err", err)
+			return "", err
+		}
 	}
 
 	// If current user is slurm or root pass checks
