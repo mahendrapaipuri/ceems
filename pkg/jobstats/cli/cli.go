@@ -59,8 +59,8 @@ func (b *BatchJobStatsServer) Main() {
 		).Default("").String()
 		dataPath = b.App.Flag(
 			"storage.data.path",
-			"Base path for data storage.",
-		).Default("/var/lib/jobstats").String()
+			"Base path for data storage. Default is current working directory.",
+		).Default("").String()
 		retentionPeriodString = b.App.Flag(
 			"storage.data.retention.period",
 			"How long to retain job data. Units Supported: y, w, d, h, m, s, ms.",
@@ -193,9 +193,26 @@ func (b *BatchJobStatsServer) Main() {
 	runtime.GOMAXPROCS(*maxProcs)
 	level.Debug(logger).Log("msg", "Go MAXPROCS", "procs", runtime.GOMAXPROCS(0))
 
+	// If dataPath is empty, use current directory
+	if *dataPath == "" {
+		path, err := os.Getwd()
+		if err != nil {
+			panic(fmt.Sprintf("Failed to get current working directory. Error: %s", err))
+		}
+		*dataPath = filepath.Join(path, "data")
+	}
+
+	// Get absolute Data path
 	absDataPath, err := filepath.Abs(*dataPath)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to get absolute path for --storage.data.path=%s. Error: %s", *dataPath, err))
+	}
+
+	// Check if absDataPath exists and create one if it does not
+	if _, err := os.Stat(absDataPath); os.IsNotExist(err) {
+		if err := os.Mkdir(absDataPath, 0750); err != nil {
+			panic(fmt.Sprintf("Failed to create data directory. Error: %s", err))
+		}
 	}
 	jobstatDBPath := filepath.Join(absDataPath, "jobstats.db")
 	jobsLastTimeStampFile := filepath.Join(absDataPath, "lastjobsupdatetime")
