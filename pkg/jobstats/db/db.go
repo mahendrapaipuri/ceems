@@ -71,7 +71,6 @@ type jobStatsDB struct {
 }
 
 var (
-	dateFormat = "2006-01-02T15:04:05"
 	// Ref: https://stackoverflow.com/questions/1711631/improve-insert-per-second-performance-of-sqlite
 	// Ref: https://gitlab.com/gnufred/logslate/-/blob/8eda5cedc9a28da3793dcf73480d618c95cc322c/playground/sqlite3.go
 	// Ref: https://github.com/mattn/go-sqlite3/issues/1145#issuecomment-1519012055
@@ -106,7 +105,7 @@ func (t *tsdbConfig) String() string {
 
 // Write timestamp to a file
 func writeTimeStampToFile(filePath string, timeStamp time.Time, logger log.Logger) {
-	timeStampString := timeStamp.Format(dateFormat)
+	timeStampString := timeStamp.Format(base.DatetimeLayout)
 	timeStampByte := []byte(timeStampString)
 	if err := os.WriteFile(filePath, timeStampByte, 0644); err != nil {
 		level.Error(logger).
@@ -228,7 +227,7 @@ func NewJobStatsDB(c *Config) (*jobStatsDB, error) {
 				goto updatetime
 			} else {
 				// Trim any spaces and new lines
-				lastJobsUpdateTime, err = time.Parse(dateFormat, strings.TrimSuffix(strings.TrimSpace(string(lastUpdateTimeString)), "\n"))
+				lastJobsUpdateTime, err = time.Parse(base.DatetimeLayout, strings.TrimSuffix(strings.TrimSpace(string(lastUpdateTimeString)), "\n"))
 				if err != nil {
 					level.Error(c.Logger).Log("msg", "Failed to parse time string in lastjobsupdatetime file", "time", lastUpdateTimeString, "err", err)
 					goto updatetime

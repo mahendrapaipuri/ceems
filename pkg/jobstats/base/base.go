@@ -1,6 +1,9 @@
 package base
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/mahendrapaipuri/batchjob_monitor/pkg/jobstats/helper"
 )
@@ -72,3 +75,6 @@ type JobsResponse struct {
 
 // Slice of all field names of BatchJob struct
 var BatchJobFieldNames = helper.GetStructFieldName(BatchJob{})
+
+// Layout of datetime to be used in the package
+var DatetimeLayout = fmt.Sprintf("%sT%s", time.DateOnly, time.TimeOnly)

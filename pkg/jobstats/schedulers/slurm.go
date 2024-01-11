@@ -28,8 +28,7 @@ const slurmBatchScheduler = "slurm"
 var (
 	slurmUserUid    int
 	slurmUserGid    int
-	defaultLayout   = fmt.Sprintf("%sT%s", time.DateOnly, time.TimeOnly)
-	slurmTimeFormat = fmt.Sprintf("%s-0700", defaultLayout)
+	slurmTimeFormat = fmt.Sprintf("%s-0700", base.DatetimeLayout)
 	jobLock         = sync.RWMutex{}
 	sacctPath       = base.BatchJobStatsServerApp.Flag(
 		"slurm.sacct.path",
@@ -125,8 +124,8 @@ func NewSlurmScheduler(logger log.Logger) (BatchJobFetcher, error) {
 
 // Get jobs from slurm
 func (s *slurmScheduler) Fetch(start time.Time, end time.Time) ([]base.BatchJob, error) {
-	startTime := start.Format(defaultLayout)
-	endTime := end.Format(defaultLayout)
+	startTime := start.Format(base.DatetimeLayout)
+	endTime := end.Format(base.DatetimeLayout)
 
 	// Execute sacct command between start and end times
 	sacctOutput, err := runSacctCmd(s.execMode, startTime, endTime, s.logger)

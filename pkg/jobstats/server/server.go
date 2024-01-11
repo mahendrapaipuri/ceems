@@ -357,9 +357,9 @@ func (s *JobstatsServer) jobs(w http.ResponseWriter, r *http.Request) {
 
 	// Add from and to to query only when checkQueryWindow is true
 	q.query(" AND Start BETWEEN ")
-	q.param([]string{fromTime.Format(time.DateTime)})
+	q.param([]string{fromTime.Format(base.DatetimeLayout)})
 	q.query(" AND ")
-	q.param([]string{toTime.Format(time.DateTime)})
+	q.param([]string{toTime.Format(base.DatetimeLayout)})
 
 queryJobs:
 
