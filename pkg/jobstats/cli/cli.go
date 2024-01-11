@@ -65,6 +65,18 @@ func (b *BatchJobStatsServer) Main() {
 			"web.admin-users.sync.from.grafana",
 			"Synchronize admin users from Grafana (default is false). Admin users feteched from Grafana will be merged with users set in --web.admin-users.",
 		).Default("false").Bool()
+		grafanaWebUrl = b.App.Flag(
+			"grafana.web.url",
+			"Grafana URL for fetching admin users list from a service account.",
+		).Default("").String()
+		grafanaWebSkipTLSVerify = b.App.Flag(
+			"grafana.web.skip-tls-verify",
+			"Whether to skip TLS verification when using self signed certificates (default is false).",
+		).Default("false").Bool()
+		grafanaAdminTeamID = b.App.Flag(
+			"grafana.teams.admin.id",
+			"Grafana admins team ID. An API token must be set via GRAFANA_API_TOKEN environment variable.",
+		).Default("").String()
 		dataPath = b.App.Flag(
 			"storage.data.path",
 			"Base path for data storage. Default is current working directory.",
@@ -98,18 +110,6 @@ func (b *BatchJobStatsServer) Main() {
 			"TSDB will be cleaned by removing time series of ignored jobs based on value set for --storage.data.job.duration.cutoff."+
 				" --tsdb.web.url should be provided if this flag is set to true. (default is false)",
 		).Default("false").Bool()
-		grafanaWebUrl = b.App.Flag(
-			"grafana.web.url",
-			"Grafana URL for fetching admin users list from a service account.",
-		).Default("").String()
-		grafanaWebSkipTLSVerify = b.App.Flag(
-			"grafana.web.skip-tls-verify",
-			"Whether to skip TLS verification when using self signed certificates (default is false).",
-		).Default("false").Bool()
-		grafanaAdminTeamID = b.App.Flag(
-			"grafana.teams.admin.id",
-			"Grafana admins team ID. An API token must be set via GRAFANA_API_TOKEN environment variable.",
-		).Default("").String()
 		skipDeleteOldJobs = b.App.Flag(
 			"storage.data.skip.delete.old.jobs",
 			"Skip deleting old jobs. Used only in testing. (default is false)",
@@ -251,7 +251,7 @@ func (b *BatchJobStatsServer) Main() {
 		_, err = grafanaClient.Do(req)
 		if err != nil {
 			fmt.Printf(
-				"--grafana.teams.admin.id is set but Grafana at %s is unreachable %s",
+				"--web.admin-users.sync.from.grafana is set but Grafana at %s is unreachable %s",
 				grafanaURL.Redacted(),
 				err,
 			)
