@@ -1,4 +1,4 @@
-module github.com/mahendrapaipuri/batchjob_metrics_monitor
+module github.com/mahendrapaipuri/batchjob_monitor
 
 go 1.21
 
