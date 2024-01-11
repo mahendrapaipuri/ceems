@@ -4,7 +4,7 @@ go:
     version: 1.21
     cgo: true
 repository:
-    path: github.com/mahendrapaipuri/batchjob_metrics_monitor
+    path: github.com/mahendrapaipuri/batchjob_monitor
 build:
     binaries:
         - name: batchjob_stats_server

@@ -1,6 +1,6 @@
 package main
 
-import "github.com/mahendrapaipuri/batchjob_metrics_monitor/pkg/jobstats/cli"
+import "github.com/mahendrapaipuri/batchjob_monitor/pkg/jobstats/cli"
 
 // Main entry point for `batchjob_stats_server` app
 func main() {

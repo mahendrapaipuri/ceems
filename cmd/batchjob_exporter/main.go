@@ -1,6 +1,6 @@
 package main
 
-import "github.com/mahendrapaipuri/batchjob_metrics_monitor/pkg/collector"
+import "github.com/mahendrapaipuri/batchjob_monitor/pkg/collector"
 
 // Main entry point for `batchjob_exporter` app
 func main() {
