@@ -53,10 +53,18 @@ func (b *BatchJobStatsServer) Main() {
 			"web.config.file",
 			"Path to configuration file that can enable TLS or authentication. See: https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md",
 		).Default("").String()
+		maxQueryString = b.App.Flag(
+			"web.max.query.period",
+			"Maximum allowable query period to get job statistics. Units Supported: y, w, d, h, m, s, ms.",
+		).Default("1w").String()
 		adminUsers = b.App.Flag(
 			"web.admin-users",
 			"Comma separated list of admin users (example: \"admin1,admin2\").",
 		).Default("").String()
+		syncAdminUsers = b.App.Flag(
+			"web.admin-users.sync.from.grafana",
+			"Synchronize admin users from Grafana (default is false). Admin users feteched from Grafana will be merged with users set in --web.admin-users.",
+		).Default("false").Bool()
 		dataPath = b.App.Flag(
 			"storage.data.path",
 			"Base path for data storage. Default is current working directory.",
@@ -67,7 +75,7 @@ func (b *BatchJobStatsServer) Main() {
 		).Default("1y").String()
 		lastUpdateTime = b.App.Flag(
 			"storage.data.update.from",
-			"Job data from this day will be gathered. Supported format: YYYY-MM-DD.",
+			"Job data from this day will be gathered. Format Supported: YYYY-MM-DD.",
 		).Default(time.Now().Format("2006-01-02")).String()
 		updateIntervalString = b.App.Flag(
 			"storage.data.update.interval",
@@ -90,6 +98,18 @@ func (b *BatchJobStatsServer) Main() {
 			"TSDB will be cleaned by removing time series of ignored jobs based on value set for --storage.data.job.duration.cutoff."+
 				" --tsdb.web.url should be provided if this flag is set to true. (default is false)",
 		).Default("false").Bool()
+		grafanaWebUrl = b.App.Flag(
+			"grafana.web.url",
+			"Grafana URL for fetching admin users list from a service account.",
+		).Default("").String()
+		grafanaWebSkipTLSVerify = b.App.Flag(
+			"grafana.web.skip-tls-verify",
+			"Whether to skip TLS verification when using self signed certificates (default is false).",
+		).Default("false").Bool()
+		grafanaAdminTeamID = b.App.Flag(
+			"grafana.teams.admin.id",
+			"Grafana admins team ID. An API token must be set via GRAFANA_API_TOKEN environment variable.",
+		).Default("").String()
 		skipDeleteOldJobs = b.App.Flag(
 			"storage.data.skip.delete.old.jobs",
 			"Skip deleting old jobs. Used only in testing. (default is false)",
@@ -135,6 +155,11 @@ func (b *BatchJobStatsServer) Main() {
 		fmt.Printf("Failed to parse --storage.data.job.duration.cutoff flag. Error: %s", err)
 		os.Exit(1)
 	}
+	maxQuery, err := model.ParseDuration(*maxQueryString)
+	if err != nil {
+		fmt.Printf("Failed to parse --web.max.query.period flag. Error: %s", err)
+		os.Exit(1)
+	}
 
 	// Parse lastUpdateTime to check if it is in correct format
 	_, err = time.Parse("2006-01-02", *lastUpdateTime)
@@ -144,7 +169,7 @@ func (b *BatchJobStatsServer) Main() {
 	}
 
 	// Check if TSDB delete series flag is turned on, a valid TSDB Web URL is provided
-	var client *http.Client
+	var tsdbClient *http.Client
 	var tsdbURL *url.URL
 	if *tsdbCleanUp {
 		tsdbURL, err = url.Parse(*tsdbWebUrl)
@@ -158,24 +183,76 @@ func (b *BatchJobStatsServer) Main() {
 			tr := &http.Transport{
 				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 			}
-			client = &http.Client{Transport: tr, Timeout: time.Duration(30 * time.Second)}
+			tsdbClient = &http.Client{Transport: tr, Timeout: time.Duration(30 * time.Second)}
 		} else {
-			client = &http.Client{Timeout: time.Duration(30 * time.Second)}
+			tsdbClient = &http.Client{Timeout: time.Duration(30 * time.Second)}
 		}
 
 		// Create a new GET request to reach out to TSDB
 		req, err := http.NewRequest(http.MethodGet, tsdbURL.String(), nil)
 		if err != nil {
-			fmt.Printf("Failed to make a new HTTP request for TSDB %s", err)
+			fmt.Printf("Failed to create a HTTP request to TSDB %s", err)
 			os.Exit(1)
 		}
 
 		// Check if TSDB is reachable
-		_, err = client.Do(req)
+		_, err = tsdbClient.Do(req)
 		if err != nil {
 			fmt.Printf(
 				"--tsdb.data.clean is set to true but TSDB at %s is unreachable %s",
 				tsdbURL.Redacted(),
+				err,
+			)
+			os.Exit(1)
+		}
+	}
+
+	// Check if Grafana admin teams ID and URL are provided
+	var grafanaClient *http.Client
+	var grafanaURL *url.URL
+	if *syncAdminUsers {
+		// Check if Grafana URL and Teams ID are present
+		if *grafanaWebUrl == "" || *grafanaAdminTeamID == "" {
+			fmt.Printf("--web.admin-users.sync.from.grafana is set to true but --grafana.web.url and/or --grafana.teams.admin.id is not provided.")
+			os.Exit(1)
+		}
+
+		// Check if API Token is provided
+		if os.Getenv("GRAFANA_API_TOKEN") == "" {
+			fmt.Printf("GRAFANA_API_TOKEN environment variable not set")
+			os.Exit(1)
+		}
+
+		// Parse Grafana web Url
+		grafanaURL, err = url.Parse(*grafanaWebUrl)
+		if err != nil {
+			fmt.Printf("Failed to parse --grafana.web.url %s", err)
+			os.Exit(1)
+		}
+
+		// If skip verify is set to true for TSDB add it to client
+		if *grafanaWebSkipTLSVerify {
+			tr := &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			}
+			grafanaClient = &http.Client{Transport: tr, Timeout: time.Duration(30 * time.Second)}
+		} else {
+			grafanaClient = &http.Client{Timeout: time.Duration(30 * time.Second)}
+		}
+
+		// Create a new GET request to reach out to Grafana teams API
+		req, err := http.NewRequest(http.MethodGet, grafanaURL.String(), nil)
+		if err != nil {
+			fmt.Printf("Failed to create a HTTP request to Grafana %s", err)
+			os.Exit(1)
+		}
+
+		// Check if Grafana is reachable
+		_, err = grafanaClient.Do(req)
+		if err != nil {
+			fmt.Printf(
+				"--grafana.teams.admin.id is set but Grafana at %s is unreachable %s",
+				grafanaURL.Redacted(),
 				err,
 			)
 			os.Exit(1)
@@ -220,7 +297,10 @@ func (b *BatchJobStatsServer) Main() {
 	// Get slice of admin users
 	var adminUsersList []string
 	for _, user := range strings.Split(*adminUsers, ",") {
-		adminUsersList = append(adminUsersList, strings.TrimSpace(user))
+		u := strings.TrimSpace(user)
+		if u != "" {
+			adminUsersList = append(adminUsersList, u)
+		}
 	}
 
 	// Create context that listens for the interrupt signal from the OS.
@@ -237,7 +317,7 @@ func (b *BatchJobStatsServer) Main() {
 		SkipDeleteOldJobs:       *skipDeleteOldJobs,
 		TSDBCleanUp:             *tsdbCleanUp,
 		TSDBURL:                 tsdbURL,
-		HTTPClient:              client,
+		HTTPClient:              tsdbClient,
 		LastUpdateTimeString:    *lastUpdateTime,
 		LastUpdateTimeStampFile: jobsLastTimeStampFile,
 		BatchScheduler:          schedulers.NewBatchScheduler,
@@ -245,12 +325,17 @@ func (b *BatchJobStatsServer) Main() {
 
 	// Make server config
 	serverConfig := &server.Config{
-		Logger:           logger,
-		Address:          *webListenAddresses,
-		WebSystemdSocket: *systemdSocket,
-		WebConfigFile:    *webConfigFile,
-		DBConfig:         *dbConfig,
-		AdminUsers:       adminUsersList,
+		Logger:             logger,
+		Address:            *webListenAddresses,
+		WebSystemdSocket:   *systemdSocket,
+		WebConfigFile:      *webConfigFile,
+		DBConfig:           *dbConfig,
+		MaxQueryPeriod:     time.Duration(maxQuery),
+		SyncAdminUsers:     *syncAdminUsers,
+		AdminUsers:         adminUsersList,
+		GrafanaURL:         grafanaURL,
+		GrafanaAdminTeamID: *grafanaAdminTeamID,
+		HTTPClient:         grafanaClient,
 	}
 
 	// Create server instance

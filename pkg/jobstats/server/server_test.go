@@ -5,8 +5,10 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/batchjob_monitor/pkg/jobstats/base"
@@ -16,7 +18,9 @@ import (
 func setupServer() *JobstatsServer {
 	logger := log.NewNopLogger()
 	server, _, _ := NewJobstatsServer(&Config{Logger: logger})
+	server.maxQueryPeriod = time.Duration(time.Hour * 168)
 	server.dbConfig = db.Config{JobstatsDBTable: "jobs"}
+	server.grafana = &GrafanaConfig{sync: false, Admins: getMockAdminUsers}
 	server.Accounts = getMockAccounts
 	server.Jobs = getMockJobs
 	return server
@@ -31,6 +35,31 @@ func getMockJobs(
 	logger log.Logger,
 ) ([]base.BatchJob, error) {
 	return []base.BatchJob{{Jobid: "1000", Usr: "user"}, {Jobid: "10001", Usr: "user"}}, nil
+}
+
+func getMockAdminUsers(url string, client *http.Client, logger log.Logger) ([]string, error) {
+	return []string{"adm1", "adm2"}, nil
+}
+
+// Test admin users sync
+func TestAdminUsersSync(t *testing.T) {
+	server := setupServer()
+	server.grafana.sync = true
+	server.grafana.teamMembersEndpoint, _ = url.Parse("http://localhost:9090")
+	// Create request
+	req := httptest.NewRequest(http.MethodGet, "/api/accounts", nil)
+
+	// Start recorder
+	w := httptest.NewRecorder()
+	server.accounts(w, req)
+	res := w.Result()
+	defer res.Body.Close()
+
+	// Expected admin users
+	adminUsers, _ := getMockAdminUsers("", nil, server.logger)
+	if !reflect.DeepEqual(adminUsers, server.adminUsers) {
+		t.Errorf("expected %v got %v", adminUsers, server.adminUsers)
+	}
 }
 
 // Test /api/accounts when no user header found
