@@ -5,8 +5,11 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	_ "net/http/pprof"
+	"net/url"
+	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -22,26 +25,57 @@ import (
 	"github.com/prometheus/exporter-toolkit/web"
 )
 
+// Grafana teams API response
+type grafanaTeamsReponse struct {
+	OrgID      int      `json:"orgId"`
+	TeamID     int      `json:"teamId"`
+	TeamUID    string   `json:"teamUID"`
+	UserID     int      `json:"userId"`
+	AuthModule string   `json:"auth_module"`
+	Email      string   `json:"email"`
+	Name       string   `json:"name"`
+	Login      string   `json:"login"`
+	AvatarURL  string   `json:"avatarUrl"`
+	Labels     []string `json:"labels"`
+	Permission int      `json:"permission"`
+}
+
 // Server config struct
 type Config struct {
-	Logger           log.Logger
-	Address          string
-	WebSystemdSocket bool
-	WebConfigFile    string
-	DBConfig         db.Config
-	AdminUsers       []string
+	Logger             log.Logger
+	Address            string
+	WebSystemdSocket   bool
+	WebConfigFile      string
+	DBConfig           db.Config
+	MaxQueryPeriod     time.Duration
+	SyncAdminUsers     bool
+	AdminUsers         []string
+	GrafanaURL         *url.URL
+	GrafanaAdminTeamID string
+	HTTPClient         *http.Client
+}
+
+// Grafana config struct
+type GrafanaConfig struct {
+	sync                bool
+	teamMembersEndpoint *url.URL
+	client              *http.Client
+	lastAdminsUpdate    time.Time
+	Admins              func(string, *http.Client, log.Logger) ([]string, error)
 }
 
 // Job Stats Server struct
 type JobstatsServer struct {
-	logger      log.Logger
-	server      *http.Server
-	webConfig   *web.FlagConfig
-	dbConfig    db.Config
-	adminUsers  []string
-	Accounts    func(string, string, log.Logger) ([]base.Account, error)
-	Jobs        func(Query, log.Logger) ([]base.BatchJob, error)
-	HealthCheck func(log.Logger) bool
+	logger         log.Logger
+	server         *http.Server
+	webConfig      *web.FlagConfig
+	dbConfig       db.Config
+	maxQueryPeriod time.Duration
+	adminUsers     []string
+	grafana        *GrafanaConfig
+	Accounts       func(string, string, log.Logger) ([]base.Account, error)
+	Jobs           func(Query, log.Logger) ([]base.BatchJob, error)
+	HealthCheck    func(log.Logger) bool
 }
 
 // Query builder struct
@@ -84,11 +118,23 @@ func NewJobstatsServer(c *Config) (*JobstatsServer, func(), error) {
 			WebSystemdSocket:   &c.WebSystemdSocket,
 			WebConfigFile:      &c.WebConfigFile,
 		},
-		dbConfig:    c.DBConfig,
-		adminUsers:  c.AdminUsers,
+		dbConfig:       c.DBConfig,
+		maxQueryPeriod: c.MaxQueryPeriod,
+		adminUsers:     c.AdminUsers,
+		grafana: &GrafanaConfig{
+			sync:   c.SyncAdminUsers,
+			client: c.HTTPClient,
+			Admins: FetchAdminsFromGrafana,
+		},
 		Accounts:    fetchAccounts,
 		Jobs:        fetchJobs,
 		HealthCheck: getDBStatus,
+	}
+
+	// Add teamMembersEndpoint only when sync is true. If sync is false c.GrafanaURL will
+	// be a nil pointer most probably
+	if server.grafana.sync {
+		server.grafana.teamMembersEndpoint = c.GrafanaURL.JoinPath(fmt.Sprintf("/api/teams/%s/members", c.GrafanaAdminTeamID))
 	}
 
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -140,8 +186,30 @@ func (s *JobstatsServer) Shutdown(ctx context.Context, wg *sync.WaitGroup) error
 	return nil
 }
 
+// Update admin users from Grafana teams
+func (s *JobstatsServer) updateAdminUsers() {
+	if s.grafana.lastAdminsUpdate.IsZero() || time.Since(s.grafana.lastAdminsUpdate) > time.Duration(time.Hour) {
+		adminUsers, err := s.grafana.Admins(s.grafana.teamMembersEndpoint.String(), s.grafana.client, s.logger)
+		if err != nil {
+			return
+		}
+
+		// Get list of all usernames and add them to admin users
+		s.adminUsers = append(s.adminUsers, adminUsers...)
+		level.Debug(s.logger).Log("msg", "Admin users updated from Grafana teams API", "admins", strings.Join(s.adminUsers, ","))
+
+		// Update the lastAdminsUpdate time
+		s.grafana.lastAdminsUpdate = time.Now()
+	}
+}
+
 // Get current user from the header
 func (s *JobstatsServer) getUser(r *http.Request) (string, string) {
+	// First update admin users
+	if s.grafana.sync {
+		s.updateAdminUsers()
+	}
+
 	// Check if username header is available
 	loggedUser := r.Header.Get("X-Grafana-User")
 	if loggedUser == "" {
@@ -257,8 +325,8 @@ func (s *JobstatsServer) jobs(w http.ResponseWriter, r *http.Request) {
 	s.setHeaders(w)
 
 	// Initialise utility vars
-	checkQueryWindow := true                             // Check query window size
-	defaultQueryWindow := time.Duration(168) * time.Hour // One week
+	checkQueryWindow := true                           // Check query window size
+	defaultQueryWindow := time.Duration(2) * time.Hour // Two hours
 
 	// Get current logged user and dashboard user from headers
 	loggedUser, dashboardUser := s.getUser(r)
@@ -341,12 +409,13 @@ func (s *JobstatsServer) jobs(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// If difference between from and to is more than 1 months, return with empty
+	// If difference between from and to is more than max query period, return with empty
 	// response. This is to prevent users from making "big" requests that can "potentially"
 	// choke server and end up in OOM errors
-	if toTime.Sub(fromTime) > time.Duration(30*24)*time.Hour {
+	if toTime.Sub(fromTime) > s.maxQueryPeriod {
 		level.Error(s.logger).Log(
-			"msg", "Exceeded maximum query time window of 3 months",
+			"msg", "Exceeded maximum query time window",
+			"maxQueryWindow", s.maxQueryPeriod,
 			"from", fromTime.Format(time.DateTime), "to", toTime.Format(time.DateTime),
 			"queryWindow", toTime.Sub(fromTime).String(),
 		)
@@ -421,7 +490,7 @@ func fetchAccounts(dbTable string, user string, logger log.Logger) ([]base.Accou
 	for rows.Next() {
 		var account string
 		if err := rows.Scan(&account); err != nil {
-			level.Error(logger).Log("msg", "Could not scan row for accounts query", "user", user, "err", err)
+			level.Error(logger).Log("msg", "Could not scan rows returned by accounts query", "user", user, "err", err)
 		}
 		accounts = append(accounts, base.Account{ID: account})
 		accountNames = append(accountNames, account)
@@ -443,7 +512,7 @@ func fetchJobs(
 	countStmt, err := dbConn.Prepare(strings.Replace(queryString, "*", "COUNT(*)", 1))
 	if err != nil {
 		level.Error(logger).Log(
-			"msg", "Failed to prepare count SQL statement for jobs", "query", queryString,
+			"msg", "Failed to prepare count SQL statement for jobs query", "query", queryString,
 			"queryParams", strings.Join(queryParams, ","), "err", err,
 		)
 		return nil, err
@@ -521,7 +590,7 @@ func fetchJobs(
 			&jobName,
 			&workDir,
 		); err != nil {
-			level.Error(logger).Log("msg", "Could not scan row for accounts query", "user", user, "err", err)
+			level.Error(logger).Log("msg", "Could not scan row returned by jobs query", "user", user, "err", err)
 		}
 		jobs[rowIdx] = base.BatchJob{
 			Jobid:       jobid,
@@ -566,4 +635,52 @@ func getDBStatus(logger log.Logger) bool {
 		return false
 	}
 	return true
+}
+
+// Fetch Admin users from Grafana Teams via API call
+func FetchAdminsFromGrafana(url string, client *http.Client, logger log.Logger) ([]string, error) {
+	// Create a new POST request
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		level.Error(logger).
+			Log("msg", "Failed to create a HTTP request for Grafana teams API", "err", err)
+	}
+
+	// Add token to auth header
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", os.Getenv("GRAFANA_API_TOKEN")))
+
+	// Add necessary headers
+	req.Header.Add("Content-Type", "application/json")
+
+	// Make request
+	resp, err := client.Do(req)
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to make HTTP request for Grafana teams API", "err", err)
+		return nil, err
+	}
+
+	// Read response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to read HTTP response body for Grafana teams API", "err", err)
+		return nil, err
+	}
+
+	// Unpack into data
+	var data []grafanaTeamsReponse
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		level.Error(logger).
+			Log("msg", "Failed to unmarshal HTTP response body for Grafana teams API", "err", err)
+		return nil, err
+	}
+
+	// Get list of all usernames and add them to admin users
+	var adminUsers []string
+	for _, user := range data {
+		if user.Login != "" {
+			adminUsers = append(adminUsers, user.Login)
+		}
+	}
+	return adminUsers, nil
 }
