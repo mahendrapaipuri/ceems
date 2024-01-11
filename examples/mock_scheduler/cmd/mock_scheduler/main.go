@@ -3,8 +3,8 @@ package main
 
 // Ensure to import the current mock scheduler
 import (
-	_ "github.com/mahendrapaipuri/batchjob_metrics_monitor/examples/mock_scheduler/pkg/scheduler"
-	batchjob_stats_cli "github.com/mahendrapaipuri/batchjob_metrics_monitor/pkg/jobstats/cli"
+	_ "github.com/mahendrapaipuri/batchjob_monitor/examples/mock_scheduler/pkg/scheduler"
+	batchjob_stats_cli "github.com/mahendrapaipuri/batchjob_monitor/pkg/jobstats/cli"
 )
 
 // Main entry point for `batchjob_stats_server` app

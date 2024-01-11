@@ -92,7 +92,7 @@ populate the local DB.
 ### Install
 
 Pre-compiled binaries of the apps can be downloaded from the 
-[releases](https://github.com/mahendrapaipuri/batchjob_metrics_monitor/releases/).
+[releases](https://github.com/mahendrapaipuri/batchjob_monitor/releases/).
 
 ### Build
 

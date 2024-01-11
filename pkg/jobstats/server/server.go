@@ -16,8 +16,8 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/gorilla/mux"
-	"github.com/mahendrapaipuri/batchjob_metrics_monitor/pkg/jobstats/base"
-	"github.com/mahendrapaipuri/batchjob_metrics_monitor/pkg/jobstats/db"
+	"github.com/mahendrapaipuri/batchjob_monitor/pkg/jobstats/base"
+	"github.com/mahendrapaipuri/batchjob_monitor/pkg/jobstats/db"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/prometheus/exporter-toolkit/web"
 )

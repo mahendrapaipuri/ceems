@@ -4,7 +4,7 @@ import (
 	"math/rand"
 
 	"github.com/go-kit/log"
-	"github.com/mahendrapaipuri/batchjob_metrics_monitor/pkg/collector"
+	"github.com/mahendrapaipuri/batchjob_monitor/pkg/collector"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
