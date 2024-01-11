@@ -432,7 +432,7 @@ func (j *jobStatsDB) getJobStats(startTime, endTime time.Time) error {
 
 	// Finally make API requests to TSDB to delete timeseries of ignored jobs
 	if j.tsdb.cleanUp {
-		level.Debug(j.logger).Log("msg", "Deleting time series in TSDB of ignored jobs")
+		level.Debug(j.logger).Log("msg", "Deleting time series of ignored jobs in TSDB")
 		if err = j.deleteTimeSeries(startTime, endTime, ignoredJobs); err != nil {
 			level.Error(j.logger).Log("msg", "Failed to delete time series in TSDB", "err", err)
 		} else {
@@ -624,7 +624,7 @@ func (j *jobStatsDB) deleteTimeSeries(startTime time.Time, endTime time.Time, jo
 	req, err := http.NewRequest(http.MethodPost, j.tsdb.deleteSeriesEndpoint.String(), strings.NewReader(values.Encode()))
 	if err != nil {
 		level.Error(j.logger).
-			Log("msg", "Failed to make a new HTTP request for deleting time series in TSDB", "err", err)
+			Log("msg", "Failed to create a HTTP request for deleting time series in TSDB", "err", err)
 	}
 
 	// Add necessary headers
