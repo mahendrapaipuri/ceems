@@ -65,8 +65,6 @@ func TestCgroupsV2SlurmJobMetrics(t *testing.T) {
 		jobid:           "1009248",
 		jobuuid:         "0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",
 		jobGpuOrdinals:  []string{"2", "3"},
-		step:            "",
-		task:            "",
 		batch:           "slurm",
 		err:             false,
 	}
@@ -119,8 +117,6 @@ func TestCgroupsV2SlurmJobMetricsWithProcFs(t *testing.T) {
 		jobid:           "1009248",
 		jobuuid:         "0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",
 		jobGpuOrdinals:  []string{"2", "3"},
-		step:            "",
-		task:            "",
 		batch:           "slurm",
 		err:             false,
 	}
@@ -170,8 +166,6 @@ func TestCgroupsV2SlurmJobMetricsNoJobProps(t *testing.T) {
 		jobaccount:      "",
 		jobid:           "1009248",
 		jobuuid:         "a0523e93-a037-c2b1-8b34-410c9996399c",
-		step:            "",
-		task:            "",
 		batch:           "slurm",
 		err:             false,
 	}
@@ -224,8 +218,6 @@ func TestCgroupsV1SlurmJobMetrics(t *testing.T) {
 		jobid:           "1009248",
 		jobuuid:         "0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",
 		jobGpuOrdinals:  []string{"2", "3"},
-		step:            "",
-		task:            "",
 		batch:           "slurm",
 		err:             false,
 	}
