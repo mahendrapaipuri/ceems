@@ -46,32 +46,32 @@ batchjob_scrape_collector_success{collector="rapl"} 1
 batchjob_scrape_collector_success{collector="slurm"} 1
 # HELP batchjob_slurm_job_cpu_system_seconds Total job CPU system seconds
 # TYPE batchjob_slurm_job_cpu_system_seconds gauge
-batchjob_slurm_job_cpu_system_seconds{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 115.777502
+batchjob_slurm_job_cpu_system_seconds{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 115.777502
 # HELP batchjob_slurm_job_cpu_user_seconds Total job CPU user seconds
 # TYPE batchjob_slurm_job_cpu_user_seconds gauge
-batchjob_slurm_job_cpu_user_seconds{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 60375.292848
+batchjob_slurm_job_cpu_user_seconds{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 60375.292848
 # HELP batchjob_slurm_job_cpus Total number of job CPUs
 # TYPE batchjob_slurm_job_cpus gauge
-batchjob_slurm_job_cpus{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 2
+batchjob_slurm_job_cpus{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 2
 # HELP batchjob_slurm_job_gpu_index_flag Indicates running job on GPU, 1=job running
 # TYPE batchjob_slurm_job_gpu_index_flag gauge
 batchjob_slurm_job_gpu_index_flag{UUID="20170005280c",batch="slurm",hindex="-gpu-3",hostname="",index="3",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",uuid="20170005280c"} 1
 batchjob_slurm_job_gpu_index_flag{UUID="20180003050c",batch="slurm",hindex="-gpu-2",hostname="",index="2",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",uuid="20180003050c"} 1
 # HELP batchjob_slurm_job_memory_cache_bytes Memory cache used in bytes
 # TYPE batchjob_slurm_job_memory_cache_bytes gauge
-batchjob_slurm_job_memory_cache_bytes{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 0
+batchjob_slurm_job_memory_cache_bytes{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 0
 # HELP batchjob_slurm_job_memory_fail_count Memory fail count
 # TYPE batchjob_slurm_job_memory_fail_count gauge
-batchjob_slurm_job_memory_fail_count{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 0
+batchjob_slurm_job_memory_fail_count{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 0
 # HELP batchjob_slurm_job_memory_rss_bytes Memory RSS used in bytes
 # TYPE batchjob_slurm_job_memory_rss_bytes gauge
-batchjob_slurm_job_memory_rss_bytes{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 4.098592768e+09
+batchjob_slurm_job_memory_rss_bytes{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 4.098592768e+09
 # HELP batchjob_slurm_job_memory_total_bytes Memory total in bytes
 # TYPE batchjob_slurm_job_memory_total_bytes gauge
-batchjob_slurm_job_memory_total_bytes{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 4.294967296e+09
+batchjob_slurm_job_memory_total_bytes{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 4.294967296e+09
 # HELP batchjob_slurm_job_memory_used_bytes Memory used in bytes
 # TYPE batchjob_slurm_job_memory_used_bytes gauge
-batchjob_slurm_job_memory_used_bytes{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",step="",task=""} 4.111491072e+09
+batchjob_slurm_job_memory_used_bytes{batch="slurm",hostname="",jobaccount="testacc",jobid="1009248",jobuser="testusr",jobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 4.111491072e+09
 # HELP go_gc_duration_seconds A summary of the pause duration of garbage collection cycles.
 # TYPE go_gc_duration_seconds summary
 # HELP go_goroutines Number of goroutines that currently exist.
