@@ -30,12 +30,7 @@ const (
 )
 
 var (
-	metricLock      = sync.RWMutex{}
-	collectJobSteps = BatchJobExporterApp.Flag(
-		"collector.slurm.jobsteps.metrics",
-		`Enables collection of metrics of all slurm job steps and tasks (default: disabled).
-[WARNING: This option can result in very high cardinality of metrics]`,
-	).Default("false").Bool()
+	metricLock             = sync.RWMutex{}
 	collectSwapMemoryStats = BatchJobExporterApp.Flag(
 		"collector.slurm.swap.memory.metrics",
 		"Enables collection of swap memory metrics (default: disabled)",
@@ -100,8 +95,6 @@ type CgroupMetric struct {
 	jobid           string
 	jobuuid         string
 	jobGpuOrdinals  []string
-	step            string
-	task            string
 	err             bool
 }
 
@@ -194,85 +187,85 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 		jobCpuUser: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_cpu_user_seconds"),
 			"Total job CPU user seconds",
-			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid", "step", "task"},
+			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid"},
 			nil,
 		),
 		jobCpuSystem: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_cpu_system_seconds"),
 			"Total job CPU system seconds",
-			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid", "step", "task"},
+			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid"},
 			nil,
 		),
 		// cpuTotal: prometheus.NewDesc(
 		// 	prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_cpu_total_seconds"),
 		// 	"Total job CPU total seconds",
-		// 	[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid", "step", "task"},
+		// 	[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid"},
 		// 	nil,
 		// ),
 		jobCpus: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_cpus"),
 			"Total number of job CPUs",
-			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid", "step", "task"},
+			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid"},
 			nil,
 		),
 		jobCpuPressure: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_cpu_psi_seconds"),
 			"Total CPU PSI in seconds",
-			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid", "step", "task"},
+			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid"},
 			nil,
 		),
 		jobMemoryRSS: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_memory_rss_bytes"),
 			"Memory RSS used in bytes",
-			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid", "step", "task"},
+			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid"},
 			nil,
 		),
 		jobMemoryCache: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_memory_cache_bytes"),
 			"Memory cache used in bytes",
-			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid", "step", "task"},
+			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid"},
 			nil,
 		),
 		jobMemoryUsed: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_memory_used_bytes"),
 			"Memory used in bytes",
-			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid", "step", "task"},
+			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid"},
 			nil,
 		),
 		jobMemoryTotal: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_memory_total_bytes"),
 			"Memory total in bytes",
-			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid", "step", "task"},
+			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid"},
 			nil,
 		),
 		jobMemoryFailCount: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_memory_fail_count"),
 			"Memory fail count",
-			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid", "step", "task"},
+			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid"},
 			nil,
 		),
 		jobMemswUsed: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_memsw_used_bytes"),
 			"Swap used in bytes",
-			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid", "step", "task"},
+			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid"},
 			nil,
 		),
 		jobMemswTotal: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_memsw_total_bytes"),
 			"Swap total in bytes",
-			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid", "step", "task"},
+			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid"},
 			nil,
 		),
 		jobMemswFailCount: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_memsw_fail_count"),
 			"Swap fail count",
-			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid", "step", "task"},
+			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid"},
 			nil,
 		),
 		jobMemoryPressure: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_memory_psi_seconds"),
 			"Total memory PSI in seconds",
-			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid", "step", "task"},
+			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid"},
 			nil,
 		),
 		jobGpuFlag: prometheus.NewDesc(
@@ -283,7 +276,7 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 		collectError: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "collect_error"),
 			"Indicates collection error, 0=no error, 1=error",
-			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid", "step", "task"},
+			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid"},
 			nil,
 		),
 		logger: logger,
@@ -310,9 +303,9 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 		if m.err {
 			ch <- prometheus.MustNewConstMetric(c.collectError, prometheus.GaugeValue, 1, m.name)
 		}
-		ch <- prometheus.MustNewConstMetric(c.jobCpuUser, prometheus.GaugeValue, m.cpuUser, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid, m.step, m.task)
-		ch <- prometheus.MustNewConstMetric(c.jobCpuSystem, prometheus.GaugeValue, m.cpuSystem, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid, m.step, m.task)
-		// ch <- prometheus.MustNewConstMetric(c.cpuTotal, prometheus.GaugeValue, m.cpuTotal, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid, m.step, m.task)
+		ch <- prometheus.MustNewConstMetric(c.jobCpuUser, prometheus.GaugeValue, m.cpuUser, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid)
+		ch <- prometheus.MustNewConstMetric(c.jobCpuSystem, prometheus.GaugeValue, m.cpuSystem, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid)
+		// ch <- prometheus.MustNewConstMetric(c.cpuTotal, prometheus.GaugeValue, m.cpuTotal, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid)
 		cpus := m.cpus
 		if cpus == 0 {
 			dir := filepath.Dir(n)
@@ -321,31 +314,33 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 				cpus = metrics[filepath.Dir(dir)].cpus
 			}
 		}
-		ch <- prometheus.MustNewConstMetric(c.jobCpus, prometheus.GaugeValue, float64(cpus), m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid, m.step, m.task)
-		ch <- prometheus.MustNewConstMetric(c.jobMemoryRSS, prometheus.GaugeValue, m.memoryRSS, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid, m.step, m.task)
-		ch <- prometheus.MustNewConstMetric(c.jobMemoryCache, prometheus.GaugeValue, m.memoryCache, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid, m.step, m.task)
-		ch <- prometheus.MustNewConstMetric(c.jobMemoryUsed, prometheus.GaugeValue, m.memoryUsed, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid, m.step, m.task)
-		ch <- prometheus.MustNewConstMetric(c.jobMemoryTotal, prometheus.GaugeValue, m.memoryTotal, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid, m.step, m.task)
-		ch <- prometheus.MustNewConstMetric(c.jobMemoryFailCount, prometheus.GaugeValue, m.memoryFailCount, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid, m.step, m.task)
+		ch <- prometheus.MustNewConstMetric(c.jobCpus, prometheus.GaugeValue, float64(cpus), m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid)
+		ch <- prometheus.MustNewConstMetric(c.jobMemoryRSS, prometheus.GaugeValue, m.memoryRSS, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid)
+		ch <- prometheus.MustNewConstMetric(c.jobMemoryCache, prometheus.GaugeValue, m.memoryCache, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid)
+		ch <- prometheus.MustNewConstMetric(c.jobMemoryUsed, prometheus.GaugeValue, m.memoryUsed, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid)
+		ch <- prometheus.MustNewConstMetric(c.jobMemoryTotal, prometheus.GaugeValue, m.memoryTotal, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid)
+		ch <- prometheus.MustNewConstMetric(c.jobMemoryFailCount, prometheus.GaugeValue, m.memoryFailCount, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid)
 		if *collectSwapMemoryStats {
-			ch <- prometheus.MustNewConstMetric(c.jobMemswUsed, prometheus.GaugeValue, m.memswUsed, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid, m.step, m.task)
-			ch <- prometheus.MustNewConstMetric(c.jobMemswTotal, prometheus.GaugeValue, m.memswTotal, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid, m.step, m.task)
-			ch <- prometheus.MustNewConstMetric(c.jobMemswFailCount, prometheus.GaugeValue, m.memswFailCount, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid, m.step, m.task)
+			ch <- prometheus.MustNewConstMetric(c.jobMemswUsed, prometheus.GaugeValue, m.memswUsed, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid)
+			ch <- prometheus.MustNewConstMetric(c.jobMemswTotal, prometheus.GaugeValue, m.memswTotal, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid)
+			ch <- prometheus.MustNewConstMetric(c.jobMemswFailCount, prometheus.GaugeValue, m.memswFailCount, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid)
 		}
 		if *collectPSIStats {
-			ch <- prometheus.MustNewConstMetric(c.jobCpuPressure, prometheus.GaugeValue, m.cpuPressure, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid, m.step, m.task)
-			ch <- prometheus.MustNewConstMetric(c.jobMemoryPressure, prometheus.GaugeValue, m.memoryPressure, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid, m.step, m.task)
+			ch <- prometheus.MustNewConstMetric(c.jobCpuPressure, prometheus.GaugeValue, m.cpuPressure, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid)
+			ch <- prometheus.MustNewConstMetric(c.jobMemoryPressure, prometheus.GaugeValue, m.memoryPressure, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid)
 		}
-		for _, gpuOrdinal := range m.jobGpuOrdinals {
-			var uuid string
-			// Check the int index of devices where gpuOrdinal == dev.index
-			for _, dev := range c.gpuDevs {
-				if gpuOrdinal == dev.index {
-					uuid = dev.uuid
-					break
+		if len(c.gpuDevs) > 0 {
+			for _, gpuOrdinal := range m.jobGpuOrdinals {
+				var uuid string
+				// Check the int index of devices where gpuOrdinal == dev.index
+				for _, dev := range c.gpuDevs {
+					if gpuOrdinal == dev.index {
+						uuid = dev.uuid
+						break
+					}
 				}
+				ch <- prometheus.MustNewConstMetric(c.jobGpuFlag, prometheus.GaugeValue, float64(1), m.batch, c.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid, gpuOrdinal, fmt.Sprintf("%s-gpu-%s", m.hostname, gpuOrdinal), uuid, uuid)
 			}
-			ch <- prometheus.MustNewConstMetric(c.jobGpuFlag, prometheus.GaugeValue, float64(1), m.batch, c.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid, gpuOrdinal, fmt.Sprintf("%s-gpu-%s", m.hostname, gpuOrdinal), uuid, uuid)
 		}
 	}
 	return nil
@@ -364,7 +359,8 @@ func (c *slurmCollector) getJobsMetrics() (map[string]CgroupMetric, error) {
 		}
 		if info.IsDir() && strings.Contains(p, "/job_") && !strings.HasSuffix(p, "/slurm") &&
 			!strings.HasSuffix(p, "/user") {
-			if !*collectJobSteps && strings.Contains(p, "/step_") {
+			// Ignore step jobs
+			if strings.Contains(p, "/step_") {
 				return nil
 			}
 			rel, _ := filepath.Rel(c.cgroupsRootPath, p)
@@ -654,8 +650,6 @@ func (c *slurmCollector) getInfoV1(name string, metric *CgroupMetric) {
 		Log("msg", "Got for match", "name", name, "len(slurmMatch)", len(slurmMatch), "slurmMatch", fmt.Sprintf("%v", slurmMatch))
 	if len(slurmMatch) >= 3 {
 		metric.jobid = slurmMatch[2]
-		metric.step = slurmMatch[4]
-		metric.task = slurmMatch[6]
 		return
 	}
 }
@@ -746,8 +740,6 @@ func (c *slurmCollector) getInfoV2(name string, metric *CgroupMetric) {
 		Log("msg", "Got for match", "name", name, "len(slurmMatch)", len(slurmMatch), "slurmMatch", fmt.Sprintf("%v", slurmMatch))
 	if len(slurmMatch) == 6 {
 		metric.jobid = slurmMatch[1]
-		metric.step = slurmMatch[3]
-		metric.task = slurmMatch[5]
 	}
 }
 
