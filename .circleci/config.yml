@@ -53,7 +53,7 @@ jobs:
           destination: /build
 workflows:
   version: 2
-  batchjob_metrics_monitor:
+  batchjob_monitor:
     jobs:
       # - test:
       #     filters:
