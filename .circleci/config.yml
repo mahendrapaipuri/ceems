@@ -55,14 +55,15 @@ workflows:
   version: 2
   batchjob_monitor:
     jobs:
-      # - test:
-      #     filters:
-      #       tags:
-      #         only: /.*/
       - test-arm:
           filters:
             tags:
               only: /.*/
+      # We are doing rest of tests in GitHub CI
+      # - test:
+      #     filters:
+      #       tags:
+      #         only: /.*/
       # - build:
       #     filters:
       #       tags:
