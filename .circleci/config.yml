@@ -55,27 +55,27 @@ workflows:
   version: 2
   batchjob_metrics_monitor:
     jobs:
-      - test:
-          filters:
-            tags:
-              only: /.*/
+      # - test:
+      #     filters:
+      #       tags:
+      #         only: /.*/
       - test-arm:
           filters:
             tags:
               only: /.*/
-      - build:
-          filters:
-            tags:
-              only: /.*/
-      - prometheus/publish_release:
-          context: org-context
-          docker_hub_organization: ''
-          quay_io_organization: ''
-          requires:
-            - test
-            - build
-          filters:
-            tags:
-              only: /^v.*/
-            branches:
-              ignore: /.*/
+      # - build:
+      #     filters:
+      #       tags:
+      #         only: /.*/
+      # - prometheus/publish_release:
+      #     context: org-context
+      #     docker_hub_organization: ''
+      #     quay_io_organization: ''
+      #     requires:
+      #       - test
+      #       - build
+      #     filters:
+      #       tags:
+      #         only: /^v.*/
+      #       branches:
+      #         ignore: /.*/
