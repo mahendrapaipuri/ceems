@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.1.0-rc.3 / 2024-01-22
+
+- [REFACTOR] refactor: Remove support for job steps [#34](https://github.com/mahendrapaipuri/batchjob_metrics_monitor/pull/34) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Fetch admin users from grafana [#33](https://github.com/mahendrapaipuri/batchjob_metrics_monitor/pull/33) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [REFACTOR] Rename pkg [#32](https://github.com/mahendrapaipuri/batchjob_metrics_monitor/pull/32) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Enhancements in collector [#31](https://github.com/mahendrapaipuri/batchjob_metrics_monitor/pull/31) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [BUGFIX] Fix tsdb cleanup [#30](https://github.com/mahendrapaipuri/batchjob_metrics_monitor/pull/30) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [REFACTOR] Split node metrics into separate collectors [#29](https://github.com/mahendrapaipuri/batchjob_metrics_monitor/pull/29) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Add total procs cputime metric [#28](https://github.com/mahendrapaipuri/batchjob_metrics_monitor/pull/28) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Add support for TSDB vacuuming [#27](https://github.com/mahendrapaipuri/batchjob_metrics_monitor/pull/27) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Use a separate time series for each job for mapping GPU [#26](https://github.com/mahendrapaipuri/batchjob_metrics_monitor/pull/26) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Use query builder [#25](https://github.com/mahendrapaipuri/batchjob_metrics_monitor/pull/25) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Job stats server enhancements [#24](https://github.com/mahendrapaipuri/batchjob_metrics_monitor/pull/24) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [REFACTOR] Use cgroups v2 pkg [#23](https://github.com/mahendrapaipuri/batchjob_metrics_monitor/pull/23) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [REFACTOR] Rename emissions factory from source to provider [#22](https://github.com/mahendrapaipuri/batchjob_metrics_monitor/pull/22) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Export min and max power readings from ipmi [#21](https://github.com/mahendrapaipuri/batchjob_metrics_monitor/pull/21) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Add hostname label to exporter metrics [#20](https://github.com/mahendrapaipuri/batchjob_metrics_monitor/pull/20) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [BUGFIX] Correct env var name for getting gpu index [#19](https://github.com/mahendrapaipuri/batchjob_metrics_monitor/pull/19) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+
+
 ## 0.1.0-rc.2 / 2023-12-26
 
 - [REFACTOR] Refactor jobstats pkg [#18](https://github.com/mahendrapaipuri/batchjob_metrics_monitor/pull/18) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
