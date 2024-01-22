@@ -1,14 +1,10 @@
 name: Release
+
 on:
   push:
+    # Run workflow on new tags
     tags:
-      - "v.*"
-  workflow_dispatch:
-    inputs:
-      skip-tests:
-        type: boolean
-        description: Skip
-        default: false
+      - 'v*'
 
 permissions:
   contents: read
@@ -16,17 +12,14 @@ permissions:
 jobs:
   test-lint:
     uses: ./.github/workflows/step_tests-lint.yml
-    if: !inputs.skip-tests
 
   test-unit:
     needs: [test-lint]
     uses: ./.github/workflows/step_tests-unit.yml
-    if: !inputs.skip-tests
 
   test-e2e:
     needs: [test-lint]
     uses: ./.github/workflows/step_tests-e2e.yml
-    if: !inputs.skip-tests
 
   build:
     needs: [test-unit, test-e2e]
@@ -37,6 +30,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -56,6 +51,14 @@ jobs:
         run: |
           docker version
           docker run --privileged linuxkit/binfmt:v0.8
+
+      - name: Cross compile Go packages
+        run: promu --config .promu-go.yml crossbuild -v
+
+      - name: Cross compile CGo packages
+        run: |
+          sed -i -e 's/CGO_BUILD               ?= 0/CGO_BUILD               ?= 1/g' Makefile
+          promu --config .promu-cgo.yml crossbuild -v
       
       - name: Publish release
         run: |
