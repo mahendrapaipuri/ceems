@@ -29,6 +29,7 @@ func (m *mockScheduler) Fetch(start time.Time, end time.Time) ([]base.BatchJob, 
 
 func prepareMockConfig(tmpDir string) *Config {
 	dataDir := filepath.Join(tmpDir, "data")
+	dataBackupDir := filepath.Join(tmpDir, "data-backup")
 	jobstatDBTable := "jobstats"
 	jobstatDBPath := filepath.Join(dataDir, "jobstats.db")
 	lastJobsUpdateTimeFile := filepath.Join(dataDir, "update")
@@ -42,6 +43,7 @@ func prepareMockConfig(tmpDir string) *Config {
 	return &Config{
 		Logger:                  log.NewNopLogger(),
 		JobstatsDBPath:          jobstatDBPath,
+		JobstatsDBBackupPath:    dataBackupDir,
 		JobstatsDBTable:         jobstatDBTable,
 		LastUpdateTimeStampFile: lastJobsUpdateTimeFile,
 		LastUpdateTimeString:    "2023-12-20",
@@ -71,7 +73,7 @@ func TestJobStatsDBPreparation(t *testing.T) {
 	}
 
 	// Test setupDB function
-	db, err := setupDB(jobstatDBPath, jobstatDBTable, j.logger)
+	db, _, err := setupDB(jobstatDBPath, jobstatDBTable, j.logger)
 	if err != nil {
 		t.Errorf("Failed to prepare DB due to %s", err)
 	}
@@ -80,7 +82,7 @@ func TestJobStatsDBPreparation(t *testing.T) {
 	}
 
 	// Call setupDB again. This should return with db conn
-	_, err = setupDB(jobstatDBPath, jobstatDBTable, j.logger)
+	_, _, err = setupDB(jobstatDBPath, jobstatDBTable, j.logger)
 	if err != nil {
 		t.Errorf("Failed to return DB connection on already prepared DB due to %s", err)
 	}
@@ -237,9 +239,80 @@ func TestJobStatsDBVacuum(t *testing.T) {
 	populateDBWithMockData(j.db, j)
 
 	// Run vacuum
-	err = j.vacuumDB()
+	err = j.vacuum()
 	if err != nil {
-		t.Errorf("Failed to vacuum DB")
+		t.Errorf("Failed to vacuum DB due to %s", err)
+	}
+}
+
+func TestJobStatsDBBackup(t *testing.T) {
+	tmpDir := t.TempDir()
+	c := prepareMockConfig(tmpDir)
+
+	// Make new jobstats DB
+	j, err := NewJobStatsDB(c)
+	if err != nil {
+		t.Errorf("Failed to create new jobstatsDB struct due to %s", err)
+	}
+
+	// Populate DB with data
+	populateDBWithMockData(j.db, j)
+
+	// Run backup
+	expectedBackupFile := filepath.Join(c.JobstatsDBBackupPath, "backup.db")
+	err = j.backup(expectedBackupFile)
+	if err != nil {
+		t.Errorf("Failed to backup DB %s", err)
+	}
+
+	if _, err := os.Stat(expectedBackupFile); err != nil {
+		t.Errorf("Backup DB file not found")
+	}
+
+	// Check contents of backed up DB
+	var numRows int
+	db, _, err := openDBConnection(expectedBackupFile)
+	if err != nil {
+		t.Errorf("Failed to create DB connection to backup DB: %s", err)
+	}
+	rows, _ := db.Query(fmt.Sprintf("SELECT * FROM %s;", j.storage.dbTable))
+	for rows.Next() {
+		numRows += 1
+	}
+	if numRows != 2 {
+		t.Errorf("Backup DB check failed. Expected rows 2 , Got %d.", numRows)
+	}
+}
+
+func TestJobStatsDBBackupFailRetries(t *testing.T) {
+	tmpDir := t.TempDir()
+	c := prepareMockConfig(tmpDir)
+
+	// Make new jobstats DB
+	j, err := NewJobStatsDB(c)
+	if err != nil {
+		t.Errorf("Failed to create new jobstatsDB struct due to %s", err)
+	}
+
+	// Make backup dir non existent
+	j.storage.dbBackupPath = "non-existent"
+
+	// Populate DB with data
+	populateDBWithMockData(j.db, j)
+
+	// Run backup
+	for i := 0; i < maxBackupRetries; i++ {
+		j.createBackup()
+	}
+	if j.storage.backupRetries != 0 {
+		t.Errorf("Failed to reset DB backup retries counter. Expected 0, got %d", j.storage.backupRetries)
+	}
+
+	for i := 0; i < maxBackupRetries-1; i++ {
+		j.createBackup()
+	}
+	if j.storage.backupRetries != 0 {
+		t.Errorf("Failed to increment DB backup retries counter. Expected %d, got %d", maxBackupRetries-1, j.storage.backupRetries)
 	}
 }
 

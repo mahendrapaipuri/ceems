@@ -47,3 +47,14 @@ promu*
 
 # Ignore data folder in root
 data
+data-backup
+
+# Ignore zipped files
+*.tar.gz
+
+# Ignore binares
+batchjob_exporter
+batchjob_stats_server
+
+# Ignore extracted folder
+batchjob_monitor-*

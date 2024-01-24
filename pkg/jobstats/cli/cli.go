@@ -93,6 +93,14 @@ func (b *BatchJobStatsServer) Main() {
 			"storage.data.update.interval",
 			"Job data will be updated at this interval. Units Supported: y, w, d, h, m, s, ms.",
 		).Default("15m").String()
+		dataBackupPath = b.App.Flag(
+			"storage.data.backup.path",
+			"Base path for backup data storage. Ideally this should on a separate storage device to achieve fault tolerance.",
+		).Default("data-backup").String()
+		backupIntervalString = b.App.Flag(
+			"storage.data.backup.interval",
+			"Job data DB will be backed up at this interval. Minimum interval is 1 day. Units Supported: y, w, d, h, m, s, ms.",
+		).Default("1d").String()
 		jobDurationCutoffString = b.App.Flag(
 			"storage.data.job.duration.cutoff",
 			"Jobs with wall time less than this period will be ignored. Units Supported: y, w, d, h, m, s, ms.",
@@ -148,6 +156,11 @@ func (b *BatchJobStatsServer) Main() {
 	updateInterval, err := model.ParseDuration(*updateIntervalString)
 	if err != nil {
 		fmt.Printf("Failed to parse --storage.data.update.interval flag. Error: %s", err)
+		os.Exit(1)
+	}
+	backupInterval, err := model.ParseDuration(*backupIntervalString)
+	if err != nil {
+		fmt.Printf("Failed to parse --storage.data.backup.interval flag. Error: %s", err)
 		os.Exit(1)
 	}
 	jobDurationCutoff, err := model.ParseDuration(*jobDurationCutoffString)
@@ -259,9 +272,12 @@ func (b *BatchJobStatsServer) Main() {
 		}
 	}
 
-	// If dataPath is empty, use current directory
+	// If dataPath/dataBackupPath is empty, use current directory
 	if *dataPath == "" {
 		*dataPath = "data"
+	}
+	if *dataBackupPath == "" {
+		*dataBackupPath = "data-backup"
 	}
 
 	// Get absolute Data path
@@ -270,14 +286,25 @@ func (b *BatchJobStatsServer) Main() {
 		fmt.Printf("Failed to get absolute path for --storage.data.path=%s. Error: %s", *dataPath, err)
 		os.Exit(1)
 	}
-
-	// Check if absDataPath exists and create one if it does not
-	if _, err := os.Stat(absDataPath); os.IsNotExist(err) {
-		if err := os.Mkdir(absDataPath, 0750); err != nil {
-			fmt.Printf("Failed to create data directory. Error: %s", err)
-			os.Exit(1)
-		}
+	absDataBackupPath, err := filepath.Abs(*dataBackupPath)
+	if err != nil {
+		fmt.Printf("Failed to get absolute path for --storage.data.backup.path=%s. Error: %s", *dataBackupPath, err)
+		os.Exit(1)
 	}
+
+	// Check if absDataPath/absDataBackupPath exists and create one if it does not
+	// if _, err := os.Stat(absDataPath); os.IsNotExist(err) {
+	// 	if err := os.Mkdir(absDataPath, 0750); err != nil {
+	// 		fmt.Printf("Failed to create data directory. Error: %s", err)
+	// 		os.Exit(1)
+	// 	}
+	// }
+	// if _, err := os.Stat(absDataBackupPath); os.IsNotExist(err) {
+	// 	if err := os.Mkdir(absDataBackupPath, 0750); err != nil {
+	// 		fmt.Printf("Failed to create backup data directory. Error: %s", err)
+	// 		os.Exit(1)
+	// 	}
+	// }
 
 	// Set logger here after properly configuring promlog
 	logger := promlog.New(promlogConfig)
@@ -302,6 +329,12 @@ func (b *BatchJobStatsServer) Main() {
 		}
 	}
 
+	// Ensure back up interval is atleast one day
+	if time.Duration(backupInterval) < time.Duration(24 * time.Hour) {
+		level.Warn(logger).Log("msg", "Back up interval is set to 1 day", "cliArg", *backupIntervalString)
+		backupInterval, _ = model.ParseDuration("1d")
+	}
+
 	// Create context that listens for the interrupt signal from the OS.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -310,9 +343,11 @@ func (b *BatchJobStatsServer) Main() {
 	dbConfig := &db.Config{
 		Logger:                  logger,
 		JobstatsDBPath:          jobstatDBPath,
+		JobstatsDBBackupPath:    absDataBackupPath,
 		JobstatsDBTable:         "jobs",
 		JobCutoffPeriod:         time.Duration(jobDurationCutoff),
 		RetentionPeriod:         time.Duration(retentionPeriod),
+		BackupInterval:          time.Duration(backupInterval),
 		SkipDeleteOldJobs:       *skipDeleteOldJobs,
 		TSDBCleanUp:             *tsdbCleanUp,
 		TSDBURL:                 tsdbURL,
