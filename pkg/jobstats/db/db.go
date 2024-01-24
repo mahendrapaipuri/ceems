@@ -397,7 +397,7 @@ func (j *jobStatsDB) Collect() error {
 	var currentTime = time.Now()
 
 	// If duration is less than 1 day do single update
-	if currentTime.Sub(j.storage.lastUpdateTime) < time.Duration(24 * time.Hour) {
+	if currentTime.Sub(j.storage.lastUpdateTime) < time.Duration(24*time.Hour) {
 		return j.getJobStats(j.storage.lastUpdateTime, currentTime)
 	}
 	level.Info(j.logger).
@@ -534,7 +534,7 @@ func (j *jobStatsDB) backup(backupDBPath string) error {
 	// increase the amount of backup time but preserve normal operations. This means
 	// that backups will be most successful during low-volume times.
 	//
-	// We will not hit this as we never write and backup at the same time. This is 
+	// We will not hit this as we never write and backup at the same time. This is
 	// put in place for clarity and future extensibility
 	var isDone bool
 	for !isDone {

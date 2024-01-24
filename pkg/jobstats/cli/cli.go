@@ -330,7 +330,7 @@ func (b *BatchJobStatsServer) Main() {
 	}
 
 	// Ensure back up interval is atleast one day
-	if time.Duration(backupInterval) < time.Duration(24 * time.Hour) {
+	if time.Duration(backupInterval) < time.Duration(24*time.Hour) {
 		level.Warn(logger).Log("msg", "Back up interval is set to 1 day", "cliArg", *backupIntervalString)
 		backupInterval, _ = model.ParseDuration("1d")
 	}
