@@ -3,6 +3,9 @@ package main
 
 // Ensure to import the current mock scheduler
 import (
+	"fmt"
+	"os"
+
 	_ "github.com/mahendrapaipuri/batchjob_monitor/examples/mock_scheduler/pkg/scheduler"
 	batchjob_stats_cli "github.com/mahendrapaipuri/batchjob_monitor/pkg/jobstats/cli"
 )
@@ -16,5 +19,8 @@ func main() {
 	}
 
 	// Main entrypoint of the app
-	batchJobStatsServerApp.Main()
+	if err := batchJobStatsServerApp.Main(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 }

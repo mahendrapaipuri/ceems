@@ -1,6 +1,11 @@
 package main
 
-import "github.com/mahendrapaipuri/batchjob_monitor/pkg/jobstats/cli"
+import (
+	"fmt"
+	"os"
+
+	"github.com/mahendrapaipuri/batchjob_monitor/pkg/jobstats/cli"
+)
 
 // Main entry point for `batchjob_stats_server` app
 func main() {
@@ -11,5 +16,8 @@ func main() {
 	}
 
 	// Main entrypoint of the app
-	batchJobStatsServer.Main()
+	if err := batchJobStatsServer.Main(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 }

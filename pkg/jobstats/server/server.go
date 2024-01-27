@@ -13,7 +13,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/go-kit/log"
@@ -177,12 +176,11 @@ func (s *JobstatsServer) Start() error {
 }
 
 // Shutdown server
-func (s *JobstatsServer) Shutdown(ctx context.Context, wg *sync.WaitGroup) error {
+func (s *JobstatsServer) Shutdown(ctx context.Context) error {
 	if err := s.server.Shutdown(ctx); err != nil {
 		level.Error(s.logger).Log("msg", "Failed to shutdown HTTP server", "err", err)
 		return err
 	}
-	wg.Done()
 	return nil
 }
 
@@ -268,7 +266,7 @@ func (s *JobstatsServer) accounts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get all user accounts
-	accounts, err := s.Accounts(s.dbConfig.JobstatsDBTable, dashboardUser, s.logger)
+	accounts, err := s.Accounts(base.JobstatsDBTable, dashboardUser, s.logger)
 	if err != nil {
 		level.Error(s.logger).Log("msg", "Failed to fetch accounts", "user", dashboardUser, "err", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -339,7 +337,7 @@ func (s *JobstatsServer) jobs(w http.ResponseWriter, r *http.Request) {
 
 	// Initialise query builder
 	q := Query{}
-	q.query(fmt.Sprintf("SELECT * FROM %s", s.dbConfig.JobstatsDBTable))
+	q.query(fmt.Sprintf("SELECT * FROM %s", base.JobstatsDBTable))
 
 	// Add dummy condition at the beginning
 	q.query(" WHERE id > 0")

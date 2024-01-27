@@ -3,6 +3,9 @@ package main
 
 // Ensure to import the current mock collector
 import (
+	"fmt"
+	"os"
+
 	_ "github.com/mahendrapaipuri/batchjob_monitor/examples/mock_exporter/pkg/collector"
 	batchjob_collector "github.com/mahendrapaipuri/batchjob_monitor/pkg/collector"
 )
@@ -16,5 +19,8 @@ func main() {
 	}
 
 	// Main entrypoint of the app
-	batchJobExporterApp.Main()
+	if err := batchJobExporterApp.Main(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 }

@@ -73,7 +73,7 @@ func (b *BatchJobExporter) newHandler(includeExporterMetrics bool, maxRequests i
 }
 
 // Main is the entry point of the `batchjob_exporter` command
-func (b *BatchJobExporter) Main() {
+func (b *BatchJobExporter) Main() error {
 	var (
 		metricsPath = b.App.Flag(
 			"web.telemetry-path",
@@ -110,8 +110,7 @@ func (b *BatchJobExporter) Main() {
 	b.App.HelpFlag.Short('h')
 	_, err := b.App.Parse(os.Args[1:])
 	if err != nil {
-		fmt.Printf("Failed to parse CLI flags. Error: %s", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to parse CLI flags: %s", err)
 	}
 
 	// Set logger here after properly configuring promlog
@@ -156,15 +155,14 @@ func (b *BatchJobExporter) Main() {
 		}
 		landingPage, err := web.NewLandingPage(landingConfig)
 		if err != nil {
-			level.Error(logger).Log("err", err)
-			os.Exit(1)
+			return fmt.Errorf("failed to create landing page: %s", err)
 		}
 		http.Handle("/", landingPage)
 	}
 
 	server := &http.Server{}
 	if err := web.ListenAndServe(server, toolkitFlags, logger); err != nil {
-		level.Error(logger).Log("err", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to start server: %s", err)
 	}
+	return nil
 }
