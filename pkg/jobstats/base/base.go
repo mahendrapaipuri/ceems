@@ -78,3 +78,10 @@ var BatchJobFieldNames = helper.GetStructFieldName(BatchJob{})
 
 // Layout of datetime to be used in the package
 var DatetimeLayout = fmt.Sprintf("%sT%s", time.DateOnly, time.TimeOnly)
+
+// DB table names
+var (
+	JobstatsDBTable     = "jobstats"
+	UserstatsDBTable    = "userstats"
+	ProjectStatsDBTable = "projectstats"
+)
