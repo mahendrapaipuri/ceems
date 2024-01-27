@@ -12,14 +12,12 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/batchjob_monitor/pkg/jobstats/base"
-	"github.com/mahendrapaipuri/batchjob_monitor/pkg/jobstats/db"
 )
 
 func setupServer() *JobstatsServer {
 	logger := log.NewNopLogger()
 	server, _, _ := NewJobstatsServer(&Config{Logger: logger})
 	server.maxQueryPeriod = time.Duration(time.Hour * 168)
-	server.dbConfig = db.Config{JobstatsDBTable: "jobs"}
 	server.grafana = &GrafanaConfig{sync: false, Admins: getMockAdminUsers}
 	server.Accounts = getMockAccounts
 	server.Jobs = getMockJobs

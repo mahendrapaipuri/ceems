@@ -43,7 +43,7 @@ func NewBatchJobStatsServer() (*BatchJobStatsServer, error) {
 }
 
 // Main is the entry point of the `batchjob_exporter` command
-func (b *BatchJobStatsServer) Main() {
+func (b *BatchJobStatsServer) Main() error {
 	var (
 		webListenAddresses = b.App.Flag(
 			"web.listen-address",
@@ -95,8 +95,9 @@ func (b *BatchJobStatsServer) Main() {
 		).Default("15m").String()
 		dataBackupPath = b.App.Flag(
 			"storage.data.backup.path",
-			"Base path for backup data storage. Ideally this should on a separate storage device to achieve fault tolerance.",
-		).Default("data-backup").String()
+			"Base path for backup data storage. Ideally this should on a separate storage device to achieve fault tolerance."+
+				" Default is empty, no backups are created.",
+		).Default("").String()
 		backupIntervalString = b.App.Flag(
 			"storage.data.backup.interval",
 			"Job data DB will be backed up at this interval. Minimum interval is 1 day. Units Supported: y, w, d, h, m, s, ms.",
@@ -143,42 +144,34 @@ func (b *BatchJobStatsServer) Main() {
 	b.App.HelpFlag.Short('h')
 	_, err := b.App.Parse(os.Args[1:])
 	if err != nil {
-		fmt.Printf("Failed to parse CLI flags. Error: %s", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to parse CLI flags: %s", err)
 	}
 
 	// Parse retentionPeriod and updateInterval
 	retentionPeriod, err := model.ParseDuration(*retentionPeriodString)
 	if err != nil {
-		fmt.Printf("Failed to parse --storage.data.retention.period flag. Error: %s", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to parse --storage.data.retention.period flag: %s", err)
 	}
 	updateInterval, err := model.ParseDuration(*updateIntervalString)
 	if err != nil {
-		fmt.Printf("Failed to parse --storage.data.update.interval flag. Error: %s", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to parse --storage.data.update.interval flag: %s", err)
 	}
 	backupInterval, err := model.ParseDuration(*backupIntervalString)
 	if err != nil {
-		fmt.Printf("Failed to parse --storage.data.backup.interval flag. Error: %s", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to parse --storage.data.backup.interval flag: %s", err)
 	}
 	jobDurationCutoff, err := model.ParseDuration(*jobDurationCutoffString)
 	if err != nil {
-		fmt.Printf("Failed to parse --storage.data.job.duration.cutoff flag. Error: %s", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to parse --storage.data.job.duration.cutoff flag: %s", err)
 	}
 	maxQuery, err := model.ParseDuration(*maxQueryString)
 	if err != nil {
-		fmt.Printf("Failed to parse --web.max.query.period flag. Error: %s", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to parse --web.max.query.period flag: %s", err)
 	}
 
 	// Parse lastUpdateTime to check if it is in correct format
-	_, err = time.Parse("2006-01-02", *lastUpdateTime)
-	if err != nil {
-		fmt.Printf("Failed to parse --storage.data.update.from flag. Error: %s", err)
-		os.Exit(1)
+	if _, err = time.Parse("2006-01-02", *lastUpdateTime); err != nil {
+		return fmt.Errorf("failed to parse --storage.data.update.from flag: %s", err)
 	}
 
 	// Check if TSDB delete series flag is turned on, a valid TSDB Web URL is provided
@@ -187,8 +180,7 @@ func (b *BatchJobStatsServer) Main() {
 	if *tsdbCleanUp {
 		tsdbURL, err = url.Parse(*tsdbWebUrl)
 		if err != nil {
-			fmt.Printf("Failed to parse --tsdb.web.url %s", err)
-			os.Exit(1)
+			return fmt.Errorf("failed to parse --tsdb.web.url: %s", err)
 		}
 
 		// If skip verify is set to true for TSDB add it to client
@@ -204,19 +196,16 @@ func (b *BatchJobStatsServer) Main() {
 		// Create a new GET request to reach out to TSDB
 		req, err := http.NewRequest(http.MethodGet, tsdbURL.String(), nil)
 		if err != nil {
-			fmt.Printf("Failed to create a HTTP request to TSDB %s", err)
-			os.Exit(1)
+			return fmt.Errorf("failed to create a HTTP request to TSDB: %s", err)
 		}
 
 		// Check if TSDB is reachable
-		_, err = tsdbClient.Do(req)
-		if err != nil {
-			fmt.Printf(
-				"--tsdb.data.clean is set to true but TSDB at %s is unreachable %s",
+		if _, err = tsdbClient.Do(req); err != nil {
+			return fmt.Errorf(
+				"--tsdb.data.clean is set to true but TSDB at %s is unreachable: %s",
 				tsdbURL.Redacted(),
 				err,
 			)
-			os.Exit(1)
 		}
 	}
 
@@ -226,21 +215,17 @@ func (b *BatchJobStatsServer) Main() {
 	if *syncAdminUsers {
 		// Check if Grafana URL and Teams ID are present
 		if *grafanaWebUrl == "" || *grafanaAdminTeamID == "" {
-			fmt.Printf("--web.admin-users.sync.from.grafana is set to true but --grafana.web.url and/or --grafana.teams.admin.id is not provided.")
-			os.Exit(1)
+			return fmt.Errorf("--web.admin-users.sync.from.grafana is set to true but --grafana.web.url and/or --grafana.teams.admin.id is not provided.")
 		}
 
 		// Check if API Token is provided
 		if os.Getenv("GRAFANA_API_TOKEN") == "" {
-			fmt.Printf("GRAFANA_API_TOKEN environment variable not set")
-			os.Exit(1)
+			return fmt.Errorf("GRAFANA_API_TOKEN environment variable not set")
 		}
 
 		// Parse Grafana web Url
-		grafanaURL, err = url.Parse(*grafanaWebUrl)
-		if err != nil {
-			fmt.Printf("Failed to parse --grafana.web.url %s", err)
-			os.Exit(1)
+		if grafanaURL, err = url.Parse(*grafanaWebUrl); err != nil {
+			return fmt.Errorf("Failed to parse --grafana.web.url %s", err)
 		}
 
 		// If skip verify is set to true for TSDB add it to client
@@ -256,19 +241,16 @@ func (b *BatchJobStatsServer) Main() {
 		// Create a new GET request to reach out to Grafana teams API
 		req, err := http.NewRequest(http.MethodGet, grafanaURL.String(), nil)
 		if err != nil {
-			fmt.Printf("Failed to create a HTTP request to Grafana %s", err)
-			os.Exit(1)
+			return fmt.Errorf("failed to create a HTTP request to Grafana: %s", err)
 		}
 
 		// Check if Grafana is reachable
-		_, err = grafanaClient.Do(req)
-		if err != nil {
-			fmt.Printf(
-				"--web.admin-users.sync.from.grafana is set but Grafana at %s is unreachable %s",
+		if _, err = grafanaClient.Do(req); err != nil {
+			return fmt.Errorf(
+				"--web.admin-users.sync.from.grafana is set but Grafana at %s is unreachable: %s",
 				grafanaURL.Redacted(),
 				err,
 			)
-			os.Exit(1)
 		}
 	}
 
@@ -276,35 +258,32 @@ func (b *BatchJobStatsServer) Main() {
 	if *dataPath == "" {
 		*dataPath = "data"
 	}
-	if *dataBackupPath == "" {
-		*dataBackupPath = "data-backup"
-	}
 
 	// Get absolute Data path
+	var absDataBackupPath string
 	absDataPath, err := filepath.Abs(*dataPath)
 	if err != nil {
-		fmt.Printf("Failed to get absolute path for --storage.data.path=%s. Error: %s", *dataPath, err)
-		os.Exit(1)
+		return fmt.Errorf("failed to get absolute path for --storage.data.path=%s: %s", *dataPath, err)
 	}
-	absDataBackupPath, err := filepath.Abs(*dataBackupPath)
-	if err != nil {
-		fmt.Printf("Failed to get absolute path for --storage.data.backup.path=%s. Error: %s", *dataBackupPath, err)
-		os.Exit(1)
+	if *dataBackupPath != "" {
+		if absDataBackupPath, err = filepath.Abs(*dataBackupPath); err != nil {
+			return fmt.Errorf("failed to get absolute path for --storage.data.backup.path=%s: %s", *dataBackupPath, err)
+		}
 	}
 
 	// Check if absDataPath/absDataBackupPath exists and create one if it does not
-	// if _, err := os.Stat(absDataPath); os.IsNotExist(err) {
-	// 	if err := os.Mkdir(absDataPath, 0750); err != nil {
-	// 		fmt.Printf("Failed to create data directory. Error: %s", err)
-	// 		os.Exit(1)
-	// 	}
-	// }
-	// if _, err := os.Stat(absDataBackupPath); os.IsNotExist(err) {
-	// 	if err := os.Mkdir(absDataBackupPath, 0750); err != nil {
-	// 		fmt.Printf("Failed to create backup data directory. Error: %s", err)
-	// 		os.Exit(1)
-	// 	}
-	// }
+	if _, err := os.Stat(absDataPath); os.IsNotExist(err) {
+		if err := os.MkdirAll(absDataPath, 0750); err != nil {
+			return fmt.Errorf("failed to create data directory: %s", err)
+		}
+	}
+	if absDataBackupPath != "" {
+		if _, err := os.Stat(absDataBackupPath); os.IsNotExist(err) {
+			if err := os.MkdirAll(absDataBackupPath, 0750); err != nil {
+				return fmt.Errorf("failed to create backup data directory: %s", err)
+			}
+		}
+	}
 
 	// Set logger here after properly configuring promlog
 	logger := promlog.New(promlogConfig)
@@ -323,15 +302,14 @@ func (b *BatchJobStatsServer) Main() {
 	// Get slice of admin users
 	var adminUsersList []string
 	for _, user := range strings.Split(*adminUsers, ",") {
-		u := strings.TrimSpace(user)
-		if u != "" {
+		if u := strings.TrimSpace(user); u != "" {
 			adminUsersList = append(adminUsersList, u)
 		}
 	}
 
-	// Ensure back up interval is atleast one day
+	// Emit a log line that backup interval of less than 1 day is not possible
 	if time.Duration(backupInterval) < time.Duration(24*time.Hour) {
-		level.Warn(logger).Log("msg", "Back up interval is set to 1 day", "cliArg", *backupIntervalString)
+		level.Warn(logger).Log("msg", "Back up interval of less than 1 day is not supported. Setting back up interval to 1 day.", "arg", *backupIntervalString)
 		backupInterval, _ = model.ParseDuration("1d")
 	}
 
@@ -344,10 +322,8 @@ func (b *BatchJobStatsServer) Main() {
 		Logger:                  logger,
 		JobstatsDBPath:          jobstatDBPath,
 		JobstatsDBBackupPath:    absDataBackupPath,
-		JobstatsDBTable:         "jobs",
 		JobCutoffPeriod:         time.Duration(jobDurationCutoff),
 		RetentionPeriod:         time.Duration(retentionPeriod),
-		BackupInterval:          time.Duration(backupInterval),
 		SkipDeleteOldJobs:       *skipDeleteOldJobs,
 		TSDBCleanUp:             *tsdbCleanUp,
 		TSDBURL:                 tsdbURL,
@@ -377,51 +353,74 @@ func (b *BatchJobStatsServer) Main() {
 	defer cleanup()
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create jobstats server", "err", err)
-		return
+		return err
 	}
 
 	// Create DB instance
 	jobCollector, err := db.NewJobStatsDB(dbConfig)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create jobstats DB", "err", err)
-		return
+		return err
 	}
 
-	// Initialize a wait group
+	// Declare wait group and tickers
 	var wg sync.WaitGroup
+	var dbUpdateTicker, dbBackupTicker *time.Ticker
+
+	// Initialize tickers. We will stop the ticker immediately after signal has received
+	dbUpdateTicker = time.NewTicker(time.Duration(updateInterval))
 
 	wg.Add(1)
 	go func() {
-		// Start a ticker
-		ticker := time.NewTicker(time.Duration(updateInterval))
-		defer ticker.Stop()
+		defer wg.Done()
 
-	loop:
 		for {
+			// This will ensure that we will run the method as soon as go routine
+			// starts instead of waiting for ticker to tick
 			level.Info(logger).Log("msg", "Updating JobStats DB")
-			err := jobCollector.Collect()
-			if err != nil {
+			if err := jobCollector.Collect(); err != nil {
 				level.Error(logger).Log("msg", "Failed to get job stats", "err", err)
 			}
 
 			select {
-			case <-ticker.C:
+			case <-dbUpdateTicker.C:
 				continue
 			case <-ctx.Done():
 				level.Info(logger).Log("msg", "Received Interrupt. Stopping DB update")
-				err := jobCollector.Stop()
-				if err != nil {
-					level.Error(logger).Log("msg", "Failed to close DB connection", "err", err)
-				}
-				wg.Done()
-				break loop
+				return
 			}
 		}
 	}()
 
+	// Start backup go routine only backup path is provided in CLI
+	if *dataBackupPath != "" {
+		// Initialise ticker and increase waitgroup counter
+		dbBackupTicker = time.NewTicker(time.Duration(backupInterval))
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+
+			for {
+				select {
+				case <-dbBackupTicker.C:
+					// Dont run backup as soon as go routine is spawned. In prod, it
+					// can take very long depending on the size of DB and so wait until
+					// first tick to run it
+					level.Info(logger).Log("msg", "Backing up JobStats DB")
+					if err := jobCollector.Backup(); err != nil {
+						level.Error(logger).Log("msg", "Failed to backup DB", "err", err)
+					}
+				case <-ctx.Done():
+					level.Info(logger).Log("msg", "Received Interrupt. Stopping DB backup")
+					return
+				}
+			}
+		}()
+	}
+
 	// Initializing the server in a goroutine so that
 	// it won't block the graceful shutdown handling below
-	wg.Add(1)
 	go func() {
 		if err := apiServer.Start(); err != nil {
 			level.Error(logger).Log("msg", "Failed to start server", "err", err)
@@ -431,6 +430,20 @@ func (b *BatchJobStatsServer) Main() {
 	// Listen for the interrupt signal.
 	<-ctx.Done()
 
+	// Stop tickers
+	dbUpdateTicker.Stop()
+	if *dataBackupPath != "" {
+		dbBackupTicker.Stop()
+	}
+
+	// Wait for all DB go routines to finish
+	wg.Wait()
+
+	// Close DB only after all DB go routines are done
+	if err := jobCollector.Stop(); err != nil {
+		level.Error(logger).Log("msg", "Failed to close DB connection", "err", err)
+	}
+
 	// Restore default behavior on the interrupt signal and notify user of shutdown.
 	stop()
 	level.Info(logger).Log("msg", "Shutting down gracefully, press Ctrl+C again to force")
@@ -439,13 +452,11 @@ func (b *BatchJobStatsServer) Main() {
 	// the request it is currently handling
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if err := apiServer.Shutdown(ctx, &wg); err != nil {
+	if err := apiServer.Shutdown(ctx); err != nil {
 		level.Error(logger).Log("msg", "Failed to gracefully shutdown server", "err", err)
 	}
 
-	// Wait for all go routines to finish
-	wg.Wait()
-
 	level.Info(logger).Log("msg", "Server exiting")
 	level.Info(logger).Log("msg", "See you next time!!")
+	return nil
 }

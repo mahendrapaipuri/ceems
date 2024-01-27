@@ -5,9 +5,16 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
+
+func setCLIArgs() {
+	os.Args = append(os.Args, "--batch.scheduler.slurm")
+	os.Args = append(os.Args, "--slurm.sacct.path=../fixtures/sacct")
+	os.Args = append(os.Args, "--log.level=error")
+}
 
 func queryServer(address string) error {
 	resp, err := http.Get(fmt.Sprintf("http://%s/api/health", address))
@@ -27,12 +34,15 @@ func queryServer(address string) error {
 	return nil
 }
 
-func TestBatchStatsServerMain(t *testing.T) {
+func TestBatchStatsServerMainNestedDirs(t *testing.T) {
 	tmpDir := t.TempDir()
+	dataDir := filepath.Join(tmpDir, "data1", "data2", "data3")
+	backupDataDir := filepath.Join(tmpDir, "data1", "data2", "data3", "bakcup")
+
 	// Remove test related args
-	os.Args = append([]string{os.Args[0]}, fmt.Sprintf("--storage.data.path=%s", tmpDir))
-	os.Args = append(os.Args, "--batch.scheduler.slurm")
-	os.Args = append(os.Args, "--slurm.sacct.path=../fixtures/sacct")
+	os.Args = append([]string{os.Args[0]}, fmt.Sprintf("--storage.data.path=%s", dataDir))
+	os.Args = append(os.Args, fmt.Sprintf("--storage.data.backup.path=%s", backupDataDir))
+	setCLIArgs()
 	a, _ := NewBatchJobStatsServer()
 
 	// Start Main
@@ -49,5 +59,125 @@ func TestBatchStatsServerMain(t *testing.T) {
 		if i == 9 {
 			t.Errorf("Could not start exporter after %d attempts", i)
 		}
+	}
+
+	// Check data dir exists
+	if _, err := os.Stat(dataDir); err != nil {
+		t.Errorf("Data directory does not exist")
+	}
+	if _, err := os.Stat(backupDataDir); err != nil {
+		t.Errorf("Backup data directory does not exist")
+	}
+}
+
+func TestBatchStatsServerMainRetentionMalformedDuration(t *testing.T) {
+	tmpDir := t.TempDir()
+	dataDir := filepath.Join(tmpDir, "data")
+
+	// Remove test related args
+	os.Args = append([]string{os.Args[0]}, fmt.Sprintf("--storage.data.path=%s", dataDir))
+	os.Args = append(os.Args, "--storage.data.retention.period=3l")
+	setCLIArgs()
+	a, _ := NewBatchJobStatsServer()
+
+	// Start Main
+	if err := a.Main(); err == nil {
+		t.Errorf("Expected CLI arg parsing error")
+	}
+}
+
+func TestBatchStatsServerMainUpdateIntMalformedDuration(t *testing.T) {
+	tmpDir := t.TempDir()
+	dataDir := filepath.Join(tmpDir, "data")
+
+	// Remove test related args
+	os.Args = append([]string{os.Args[0]}, fmt.Sprintf("--storage.data.path=%s", dataDir))
+	os.Args = append(os.Args, "--storage.data.update.interval=3l")
+	setCLIArgs()
+	a, _ := NewBatchJobStatsServer()
+
+	// Start Main
+	if err := a.Main(); err == nil {
+		t.Errorf("Expected CLI arg parsing error")
+	}
+}
+
+func TestBatchStatsServerMainBackupIntMalformedDuration(t *testing.T) {
+	tmpDir := t.TempDir()
+	dataDir := filepath.Join(tmpDir, "data")
+
+	// Remove test related args
+	os.Args = append([]string{os.Args[0]}, fmt.Sprintf("--storage.data.path=%s", dataDir))
+	os.Args = append(os.Args, "--storage.data.backup.interval=3l")
+	setCLIArgs()
+	a, _ := NewBatchJobStatsServer()
+
+	// Start Main
+	if err := a.Main(); err == nil {
+		t.Errorf("Expected CLI arg parsing error")
+	}
+}
+
+func TestBatchStatsServerJobCutoffIntMalformedDuration(t *testing.T) {
+	tmpDir := t.TempDir()
+	dataDir := filepath.Join(tmpDir, "data")
+
+	// Remove test related args
+	os.Args = append([]string{os.Args[0]}, fmt.Sprintf("--storage.data.path=%s", dataDir))
+	os.Args = append(os.Args, "--storage.data.job.duration.cutoff=3l")
+	setCLIArgs()
+	a, _ := NewBatchJobStatsServer()
+
+	// Start Main
+	if err := a.Main(); err == nil {
+		t.Errorf("Expected CLI arg parsing error")
+	}
+}
+
+func TestBatchStatsServerMalformedLastUpdateTime(t *testing.T) {
+	tmpDir := t.TempDir()
+	dataDir := filepath.Join(tmpDir, "data")
+
+	// Remove test related args
+	os.Args = append([]string{os.Args[0]}, fmt.Sprintf("--storage.data.path=%s", dataDir))
+	os.Args = append(os.Args, "--storage.data.update.from=12-10-2008")
+	setCLIArgs()
+	a, _ := NewBatchJobStatsServer()
+
+	// Start Main
+	if err := a.Main(); err == nil {
+		t.Errorf("Expected CLI arg parsing error")
+	}
+}
+
+func TestBatchStatsServerTSDBCLIArgs(t *testing.T) {
+	tmpDir := t.TempDir()
+	dataDir := filepath.Join(tmpDir, "data")
+
+	// Remove test related args
+	os.Args = append([]string{os.Args[0]}, fmt.Sprintf("--storage.data.path=%s", dataDir))
+	os.Args = append(os.Args, "--tsdb.data.clean")
+	setCLIArgs()
+	a, _ := NewBatchJobStatsServer()
+
+	// Start Main
+	if err := a.Main(); err == nil {
+		t.Errorf("Expected TSDB web url CLI arg error")
+	}
+}
+
+func TestBatchStatsServerGrafanaCLIArgs(t *testing.T) {
+	tmpDir := t.TempDir()
+	dataDir := filepath.Join(tmpDir, "data")
+
+	// Remove test related args
+	os.Args = append([]string{os.Args[0]}, fmt.Sprintf("--storage.data.path=%s", dataDir))
+	os.Args = append(os.Args, "--web.admin-users.sync.from.grafana")
+	setCLIArgs()
+	a, _ := NewBatchJobStatsServer()
+
+	// Start Main
+	if err := a.Main(); err == nil {
+		t.Errorf("Expected Grafana web url CLI arg error")
 	}
 }

@@ -1,6 +1,11 @@
 package main
 
-import "github.com/mahendrapaipuri/batchjob_monitor/pkg/collector"
+import (
+	"fmt"
+	"os"
+
+	"github.com/mahendrapaipuri/batchjob_monitor/pkg/collector"
+)
 
 // Main entry point for `batchjob_exporter` app
 func main() {
@@ -11,5 +16,8 @@ func main() {
 	}
 
 	// Main entrypoint of the app
-	batchJobExporterApp.Main()
+	if err := batchJobExporterApp.Main(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 }
