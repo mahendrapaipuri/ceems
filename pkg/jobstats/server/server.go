@@ -24,21 +24,6 @@ import (
 	"github.com/prometheus/exporter-toolkit/web"
 )
 
-// Grafana teams API response
-type grafanaTeamsReponse struct {
-	OrgID      int      `json:"orgId"`
-	TeamID     int      `json:"teamId"`
-	TeamUID    string   `json:"teamUID"`
-	UserID     int      `json:"userId"`
-	AuthModule string   `json:"auth_module"`
-	Email      string   `json:"email"`
-	Name       string   `json:"name"`
-	Login      string   `json:"login"`
-	AvatarURL  string   `json:"avatarUrl"`
-	Labels     []string `json:"labels"`
-	Permission int      `json:"permission"`
-}
-
 // Server config struct
 type Config struct {
 	Logger             log.Logger
@@ -73,7 +58,7 @@ type JobstatsServer struct {
 	adminUsers     []string
 	grafana        *GrafanaConfig
 	Accounts       func(string, string, log.Logger) ([]base.Account, error)
-	Jobs           func(Query, log.Logger) ([]base.BatchJob, error)
+	Jobs           func(Query, log.Logger) ([]base.JobStats, error)
 	HealthCheck    func(log.Logger) bool
 }
 
@@ -266,7 +251,7 @@ func (s *JobstatsServer) accounts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get all user accounts
-	accounts, err := s.Accounts(base.JobstatsDBTable, dashboardUser, s.logger)
+	accounts, err := s.Accounts(base.JobStatsDBTable, dashboardUser, s.logger)
 	if err != nil {
 		level.Error(s.logger).Log("msg", "Failed to fetch accounts", "user", dashboardUser, "err", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -307,7 +292,7 @@ func (s *JobstatsServer) jobsErrorResponse(errorType string, errorString string,
 			ErrorType: errorType,
 			Error:     errorString,
 		},
-		Data: []base.BatchJob{},
+		Data: []base.JobStats{},
 	}
 	if err := json.NewEncoder(w).Encode(&response); err != nil {
 		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
@@ -337,7 +322,7 @@ func (s *JobstatsServer) jobs(w http.ResponseWriter, r *http.Request) {
 
 	// Initialise query builder
 	q := Query{}
-	q.query(fmt.Sprintf("SELECT * FROM %s", base.JobstatsDBTable))
+	q.query(fmt.Sprintf("SELECT * FROM %s", base.JobStatsDBTable))
 
 	// Add dummy condition at the beginning
 	q.query(" WHERE id > 0")
@@ -501,7 +486,7 @@ func fetchAccounts(dbTable string, user string, logger log.Logger) ([]base.Accou
 func fetchJobs(
 	query Query,
 	logger log.Logger,
-) ([]base.BatchJob, error) {
+) ([]base.JobStats, error) {
 	var numJobs int
 	// Get query string and params
 	queryString, queryParams := query.get()
@@ -517,7 +502,7 @@ func fetchJobs(
 	}
 	defer countStmt.Close()
 
-	queryStmt, err := dbConn.Prepare(strings.Replace(queryString, "*", strings.Join(base.BatchJobFieldNames, ","), 1))
+	queryStmt, err := dbConn.Prepare(strings.Replace(queryString, "*", strings.Join(base.JobStatsFieldNames, ","), 1))
 	if err != nil {
 		level.Error(logger).Log(
 			"msg", "Failed to prepare query SQL statement for jobs query", "query", queryString,
@@ -550,73 +535,59 @@ func fetchJobs(
 	}
 
 	// Loop through rows, using Scan to assign column data to struct fields.
-	var jobs = make([]base.BatchJob, numJobs)
+	var jobs = make([]base.JobStats, numJobs)
 	rowIdx := 0
 	for rows.Next() {
-		var jobid, jobuuid,
-			partition, qos, account,
-			group, gid, user, uid,
-			submit, start, end,
-			submitTs, startTs, endTs,
-			elapsed, elapsedraw, exitcode,
-			state, nnodes, ncpus, nodelist,
-			nodelistExp, jobName, workDir string
+		var j base.JobStats
 		if err := rows.Scan(
-			&jobid,
-			&jobuuid,
-			&partition,
-			&qos,
-			&account,
-			&group,
-			&gid,
-			&user,
-			&uid,
-			&submit,
-			&start,
-			&end,
-			&submitTs,
-			&startTs,
-			&endTs,
-			&elapsed,
-			&elapsedraw,
-			&exitcode,
-			&state,
-			&nnodes,
-			&ncpus,
-			&nodelist,
-			&nodelistExp,
-			&jobName,
-			&workDir,
+			&j.Jobid,
+			&j.Jobuuid,
+			&j.Partition,
+			&j.QoS,
+			&j.Account,
+			&j.Grp,
+			&j.Gid,
+			&j.Usr,
+			&j.Uid,
+			&j.Submit,
+			&j.Start,
+			&j.End,
+			&j.SubmitTS,
+			&j.StartTS,
+			&j.EndTS,
+			&j.Elapsed,
+			&j.ElapsedRaw,
+			&j.Exitcode,
+			&j.State,
+			&j.Nnodes,
+			&j.Ncpus,
+			&j.Mem,
+			&j.Ngpus,
+			&j.Nodelist,
+			&j.NodelistExp,
+			&j.JobName,
+			&j.WorkDir,
+			&j.CPUBilling,
+			&j.GPUBilling,
+			&j.MiscBilling,
+			&j.AveCPUUsage,
+			&j.AveCPUMemUsage,
+			&j.TotalCPUEnergyUsage,
+			&j.TotalCPUEmissions,
+			&j.AveGPUUsage,
+			&j.AveGPUMemUsage,
+			&j.TotalGPUEnergyUsage,
+			&j.TotalGPUEmissions,
+			&j.Comment,
+			&j.Ignore,
 		); err != nil {
-			level.Error(logger).Log("msg", "Could not scan row returned by jobs query", "user", user, "err", err)
+			level.Error(logger).Log("msg", "Could not scan row returned by jobs query", "user", j.Usr, "err", err)
 		}
-		jobs[rowIdx] = base.BatchJob{
-			Jobid:       jobid,
-			Jobuuid:     jobuuid,
-			Partition:   partition,
-			QoS:         qos,
-			Account:     account,
-			Grp:         group,
-			Gid:         gid,
-			Usr:         user,
-			Uid:         uid,
-			Submit:      submit,
-			Start:       start,
-			End:         end,
-			SubmitTS:    submitTs,
-			StartTS:     startTs,
-			EndTS:       endTs,
-			Elapsed:     elapsed,
-			ElapsedRaw:  elapsedraw,
-			Exitcode:    exitcode,
-			State:       state,
-			Nnodes:      nnodes,
-			Ncpus:       ncpus,
-			Nodelist:    nodelist,
-			NodelistExp: nodelistExp,
-			JobName:     jobName,
-			WorkDir:     workDir,
+		// If the job is marked as ignore, do not return in response
+		if j.Ignore == 1 {
+			continue
 		}
+		jobs[rowIdx] = j
 		rowIdx++
 	}
 	level.Debug(logger).Log(
@@ -665,7 +636,7 @@ func FetchAdminsFromGrafana(url string, client *http.Client, logger log.Logger) 
 	}
 
 	// Unpack into data
-	var data []grafanaTeamsReponse
+	var data []base.GrafanaTeamsReponse
 	err = json.Unmarshal(body, &data)
 	if err != nil {
 		level.Error(logger).

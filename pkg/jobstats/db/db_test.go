@@ -15,14 +15,14 @@ import (
 
 type mockScheduler struct{}
 
-var mockJobs = []base.BatchJob{{Jobid: "10000"}, {Jobid: "10001"}}
+var mockJobs = []base.JobStats{{Jobid: 10000}, {Jobid: 10001}}
 
 func newMockScheduler(logger log.Logger) (*schedulers.BatchScheduler, error) {
 	return &schedulers.BatchScheduler{Scheduler: &mockScheduler{}}, nil
 }
 
 // GetJobs implements collection jobs between start and end times
-func (m *mockScheduler) Fetch(start time.Time, end time.Time) ([]base.BatchJob, error) {
+func (m *mockScheduler) Fetch(start time.Time, end time.Time) ([]base.JobStats, error) {
 	return mockJobs, nil
 }
 
@@ -233,7 +233,7 @@ func TestJobStatsDBBackup(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to create DB connection to backup DB: %s", err)
 	}
-	rows, _ := db.Query(fmt.Sprintf("SELECT * FROM %s;", base.JobstatsDBTable))
+	rows, _ := db.Query(fmt.Sprintf("SELECT * FROM %s;", base.JobStatsDBTable))
 	for rows.Next() {
 		numRows += 1
 	}
@@ -276,7 +276,7 @@ func TestJobStatsDBBackup(t *testing.T) {
 
 func TestJobStatsDeleteOldJobs(t *testing.T) {
 	tmpDir := t.TempDir()
-	jobId := "1111"
+	jobId := 1111
 	c := prepareMockConfig(tmpDir)
 
 	// Make new jobstats DB
@@ -286,9 +286,9 @@ func TestJobStatsDeleteOldJobs(t *testing.T) {
 	}
 
 	// Add new row that should be deleted
-	jobs := []base.BatchJob{
+	jobs := []base.JobStats{
 		{
-			Jobid: jobId,
+			Jobid: int64(jobId),
 			Submit: time.Now().
 				Add(time.Duration(-j.storage.retentionPeriod*24*2) * time.Hour).
 				Format(base.DatetimeLayout),
@@ -310,7 +310,7 @@ func TestJobStatsDeleteOldJobs(t *testing.T) {
 
 	// Query for deleted job
 	result, err := j.db.Prepare(
-		fmt.Sprintf("SELECT COUNT(Jobid) FROM %s WHERE Jobid = ?;", base.JobstatsDBTable),
+		fmt.Sprintf("SELECT COUNT(Jobid) FROM %s WHERE Jobid = ?;", base.JobStatsDBTable),
 	)
 	if err != nil {
 		t.Errorf("Failed to prepare SQL statement")

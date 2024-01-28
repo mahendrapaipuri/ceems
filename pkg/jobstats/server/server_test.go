@@ -31,8 +31,8 @@ func getMockAccounts(dbTable string, user string, logger log.Logger) ([]base.Acc
 func getMockJobs(
 	query Query,
 	logger log.Logger,
-) ([]base.BatchJob, error) {
-	return []base.BatchJob{{Jobid: "1000", Usr: "user"}, {Jobid: "10001", Usr: "user"}}, nil
+) ([]base.JobStats, error) {
+	return []base.JobStats{{Jobid: 1000, Usr: "user"}, {Jobid: 10001, Usr: "user"}}, nil
 }
 
 func getMockAdminUsers(url string, client *http.Client, logger log.Logger) ([]string, error) {
@@ -156,7 +156,7 @@ func TestJobsHandlerNoUserHeader(t *testing.T) {
 	if response.ErrorType != "user_error" {
 		t.Errorf("expected user_error type got %v", response.ErrorType)
 	}
-	if !reflect.DeepEqual(response.Data, []base.BatchJob{}) {
+	if !reflect.DeepEqual(response.Data, []base.JobStats{}) {
 		t.Errorf("expected empty data got %v", response.Data)
 	}
 }
@@ -268,7 +268,7 @@ func TestJobsHandlerWithMalformedQueryParams(t *testing.T) {
 	if response.ErrorType != "data_error" {
 		t.Errorf("expected data_error type got %v", response.ErrorType)
 	}
-	if !reflect.DeepEqual(response.Data, []base.BatchJob{}) {
+	if !reflect.DeepEqual(response.Data, []base.JobStats{}) {
 		t.Errorf("expected empty data got %v", response.Data)
 	}
 }
@@ -308,7 +308,7 @@ func TestJobsHandlerWithQueryWindowExceeded(t *testing.T) {
 	if response.Error != "Maximum query window exceeded" {
 		t.Errorf("expected Maximum time window exceeded got %v", response.Error)
 	}
-	if !reflect.DeepEqual(response.Data, []base.BatchJob{}) {
+	if !reflect.DeepEqual(response.Data, []base.JobStats{}) {
 		t.Errorf("expected empty data got %v", response.Data)
 	}
 }

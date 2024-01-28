@@ -50,6 +50,6 @@ func NewMockScheduler(logger log.Logger) (schedulers.BatchJobFetcher, error) {
 // Add the logic here to get jobs from batch scheduler and return slice of BatchJob structs
 // When making BatchJob stucts, ensure to format the datetime using base.DatetimeLayout
 // Also ensure to set StartTS and EndTS fields to start and end times in unix milliseconds epoch
-func (s *mockScheduler) Fetch(start time.Time, end time.Time) ([]base.BatchJob, error) {
-	return []base.BatchJob{{Jobid: "1000"}, {Jobid: "1100"}}, nil
+func (s *mockScheduler) Fetch(start time.Time, end time.Time) ([]base.JobStats, error) {
+	return []base.JobStats{{Jobid: 1000}, {Jobid: 1100}}, nil
 }
