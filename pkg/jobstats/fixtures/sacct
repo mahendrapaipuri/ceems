@@ -1,14 +1,14 @@
 #!/bin/bash
 
 echo """JobID|Partition|QoS|Account|Group|GID|User|UID|Submit|Start|End|Elapsed|ElapsedRaw|ExitCode|State|NNodes|Ncpus|NodeList|JobName|WorkDir
-1479763|part1|qos1|acc1|grp1|1001|usr1|1001|2022-02-21T14:37:02+0100|2022-02-21T14:37:07+0100|2022-02-21T15:26:29+0100|00:49:22|3000|0:0|CANCELLED by 1001|1|8|compute-0|test_script1|/home/usr1
-1481508|part1|qos1|acc2|grp2|1002|usr2|1002|2023-02-21T15:48:20+0100|2023-02-21T15:49:06+0100|2023-02-21T15:57:23+0100|00:08:17|4500|0:0|CANCELLED by 1002|2|16|compute-[0-2]|test_script2|/home/usr2
-1481510|part1|qos1|acc3|grp3|1003|usr3|1003|2023-02-21T15:48:20+0100|2023-02-21T15:49:06+0100|2023-02-21T15:57:23+0100|00:00:17|789|0:0|CANCELLED by 1003|2|16|compute-[0-2]|test_script2|/home/usr3
-147973|part1|qos1|acc3|grp3|1003|usr3|1003|2023-02-21T14:37:02+0100|2023-02-21T14:37:07+0100|2023-02-21T15:26:29+0100|00:49:22|3000|0:0|CANCELLED by 1003|1|8|compute-0|test_script1|/home/usr3
-14508|part1|qos1|acc4|grp4|1004|usr4|1004|2023-02-21T15:48:20+0100|2023-02-21T15:49:06+0100|2023-02-21T15:57:23+0100|00:08:17|4500|0:0|CANCELLED by 1004|2|16|compute-[0-2]|test_script2|/home/usr4
-147973|part1|qos1|acc1|gr1|1001|usr1|1001|2023-12-21T15:48:20+0100|2023-12-21T15:49:06+0100|2023-12-21T15:57:23+0100|00:00:17|567|0:0|CANCELLED by 1001|2|16|compute-[0-2]|test_script2|/home/usr1
-1479763|part1|qos1|acc1|grp8|1008|usr8|1008|2023-02-21T14:37:02+0100|2023-02-21T14:37:07+0100|2023-02-21T15:26:29+0100|00:49:22|3000|0:0|CANCELLED by 1008|1|8|compute-0|test_script1|/home/usr8
-11508|part1|qos1|acc1|grp15|1015|usr15|1015|2023-02-21T15:48:20+0100|2023-02-21T15:49:06+0100|2023-02-21T15:57:23+0100|00:08:17|4500|0:0|CANCELLED by 1015|2|16|compute-[0-2]|test_script2|/home/usr15
-81510|part1|qos1|acc1|grp15|1015|usr15|1015|2023-02-21T15:48:20+0100|2023-02-21T15:49:06+0100|2023-02-21T15:57:23+0100|00:00:17|3533|0:0|CANCELLED by 1015|2|16|compute-[0-2]|test_script2|/home/usr23
-1009248|part1|qos1|testacc|grp15|1015|testusr|1015|2023-02-21T15:48:20+0100|2023-02-21T15:49:06+0100|2023-02-21T15:57:23+0100|00:00:17|17|0:0|CANCELLED by 1015|2|16|compute-[0-2]|test_script2|/home/usr23
+1479763|part1|qos1|acc1|grp1|1001|usr1|1001|2022-02-21T14:37:02+0100|2022-02-21T14:37:07+0100|2022-02-21T15:26:29+0100|00:49:22|3000|0:0|CANCELLED by 1001|billing=80,cpu=8,energy=1439089,gres/gpu=8,mem=320G,node=1|compute-0|test_script1|/home/usr1
+1481508|part1|qos1|acc2|grp2|1002|usr2|1002|2023-02-21T15:48:20+0100|2023-02-21T15:49:06+0100|2023-02-21T15:57:23+0100|00:08:17|4500|0:0|CANCELLED by 1002|billing=160,cpu=16,energy=1439089,gres/gpu=8,mem=320G,node=2|compute-[0-2]|test_script2|/home/usr2
+1481510|part1|qos1|acc3|grp3|1003|usr3|1003|2023-02-21T15:48:20+0100|2023-02-21T15:49:06+0100|2023-02-21T15:57:23+0100|00:00:17|789|0:0|CANCELLED by 1003|billing=160,cpu=16,energy=1439089,gres/gpu=8,mem=320G,node=2|compute-[0-2]|test_script2|/home/usr3
+147973|part1|qos1|acc3|grp3|1003|usr3|1003|2023-02-21T14:37:02+0100|2023-02-21T14:37:07+0100|2023-02-21T15:26:29+0100|00:49:22|3000|0:0|CANCELLED by 1003|billing=80,cpu=8,energy=1439089,gres/gpu=8,mem=320G,node=1|compute-0|test_script1|/home/usr3
+14508|part1|qos1|acc4|grp4|1004|usr4|1004|2023-02-21T15:48:20+0100|2023-02-21T15:49:06+0100|2023-02-21T15:57:23+0100|00:08:17|4500|0:0|CANCELLED by 1004|billing=160,cpu=16,energy=1439089,gres/gpu=8,mem=320G,node=2|compute-[0-2]|test_script2|/home/usr4
+147973|part1|qos1|acc1|gr1|1001|usr1|1001|2023-12-21T15:48:20+0100|2023-12-21T15:49:06+0100|2023-12-21T15:57:23+0100|00:00:17|567|0:0|CANCELLED by 1001|billing=160,cpu=16,energy=1439089,gres/gpu=8,mem=320G,node=2|compute-[0-2]|test_script2|/home/usr1
+1479763|part1|qos1|acc1|grp8|1008|usr8|1008|2023-02-21T14:37:02+0100|2023-02-21T14:37:07+0100|2023-02-21T15:26:29+0100|00:49:22|3000|0:0|CANCELLED by 1008|billing=80,cpu=8,energy=1439089,gres/gpu=8,mem=320G,node=1|compute-0|test_script1|/home/usr8
+11508|part1|qos1|acc1|grp15|1015|usr15|1015|2023-02-21T15:48:20+0100|2023-02-21T15:49:06+0100|2023-02-21T15:57:23+0100|00:08:17|4500|0:0|CANCELLED by 1015|billing=160,cpu=16,energy=1439089,gres/gpu=8,mem=320G,node=2|compute-[0-2]|test_script2|/home/usr15
+81510|part1|qos1|acc1|grp15|1015|usr15|1015|2023-02-21T15:48:20+0100|2023-02-21T15:49:06+0100|2023-02-21T15:57:23+0100|00:00:17|3533|0:0|CANCELLED by 1015|billing=160,cpu=16,energy=1439089,gres/gpu=8,mem=320G,node=2|compute-[0-2]|test_script2|/home/usr23
+1009248|part1|qos1|testacc|grp15|1015|testusr|1015|2023-02-21T15:48:20+0100|2023-02-21T15:49:06+0100|2023-02-21T15:57:23+0100|00:00:17|17|0:0|CANCELLED by 1015|billing=160,cpu=16,energy=1439089,gres/gpu=8,mem=320G,node=2|compute-[0-2]|test_script2|/home/usr23
 """

@@ -34,11 +34,22 @@ var (
 		"slurm.sacct.path",
 		"Absolute path to sacct executable. If empty sacct on PATH will be used.",
 	).Default("").String()
+	sacctFields = []string{
+		"jobidraw", "partition", "qos", "account", "group", "gid", "user", "uid",
+		"submit", "start", "end", "elapsed", "elapsedraw", "exitcode", "state",
+		"alloctres", "nodelist", "jobname", "workdir",
+	}
+	sacctFieldMap = make(map[string]int, len(sacctFields))
 )
 
 func init() {
 	// Register batch scheduler
 	RegisterBatch(slurmBatchScheduler, NewSlurmScheduler)
+
+	// Convert slice to map with index as value
+	for idx, field := range sacctFields {
+		sacctFieldMap[field] = idx
+	}
 }
 
 // Run basic checks like checking path of executable etc
@@ -123,7 +134,7 @@ func NewSlurmScheduler(logger log.Logger) (BatchJobFetcher, error) {
 }
 
 // Get jobs from slurm
-func (s *slurmScheduler) Fetch(start time.Time, end time.Time) ([]base.BatchJob, error) {
+func (s *slurmScheduler) Fetch(start time.Time, end time.Time) ([]base.JobStats, error) {
 	startTime := start.Format(base.DatetimeLayout)
 	endTime := end.Format(base.DatetimeLayout)
 
@@ -131,7 +142,7 @@ func (s *slurmScheduler) Fetch(start time.Time, end time.Time) ([]base.BatchJob,
 	sacctOutput, err := runSacctCmd(s.execMode, startTime, endTime, s.logger)
 	if err != nil {
 		level.Error(s.logger).Log("msg", "Failed to execute SLURM sacct command", "err", err)
-		return []base.BatchJob{}, err
+		return []base.JobStats{}, err
 	}
 
 	// Parse sacct output and create BatchJob structs slice
@@ -145,7 +156,7 @@ func runSacctCmd(execMode string, startTime string, endTime string, logger log.L
 	// Use jobIDRaw that outputs the array jobs as regular job IDs instead of id_array format
 	args := []string{
 		"-D", "-X", "--allusers", "--parsable2",
-		"--format", "jobidraw,partition,qos,account,group,gid,user,uid,submit,start,end,elapsed,elapsedraw,exitcode,state,allocnodes,alloccpus,nodelist,jobname,workdir",
+		"--format", strings.Join(sacctFields, ","),
 		"--state", "CANCELLED,COMPLETED,FAILED,NODE_FAIL,PREEMPTED,TIMEOUT",
 		"--starttime", startTime,
 		"--endtime", endTime,
@@ -165,24 +176,25 @@ func runSacctCmd(execMode string, startTime string, endTime string, logger log.L
 }
 
 // Parse sacct command output and return batchjob slice
-func parseSacctCmdOutput(sacctOutput string, logger log.Logger) ([]base.BatchJob, int) {
+func parseSacctCmdOutput(sacctOutput string, logger log.Logger) ([]base.JobStats, int) {
 	// Strip first line
 	sacctOutputLines := strings.Split(string(sacctOutput), "\n")[1:]
 
 	var numJobs int = 0
-	var jobs = make([]base.BatchJob, len(sacctOutputLines))
+	var jobs = make([]base.JobStats, len(sacctOutputLines))
 
 	wg := &sync.WaitGroup{}
 	wg.Add(len(sacctOutputLines))
 
 	for iline, line := range sacctOutputLines {
 		go func(i int, l string) {
-			var jobStat base.BatchJob
+			var err error
+			var jobStat base.JobStats
 			components := strings.Split(l, "|")
-			jobid := components[0]
+			jobid := components[sacctFieldMap["jobidraw"]]
 
 			// Ignore if we cannot get all components
-			if len(components) < 20 {
+			if len(components) < len(sacctFields) {
 				wg.Done()
 				return
 			}
@@ -194,18 +206,59 @@ func parseSacctCmdOutput(sacctOutput string, logger log.Logger) ([]base.BatchJob
 			}
 
 			// Ignore jobs that never ran
-			if components[17] == "None assigned" {
+			if components[sacctFieldMap["nodelist"]] == "None assigned" {
 				wg.Done()
 				return
+			}
+
+			// Attempt to convert strings to int and ignore any errors in conversion
+			var jobidInt, gidInt, uidInt, elapsedrawInt int64
+			if jobidInt, err = strconv.ParseInt(jobid, 10, 64); err != nil {
+				wg.Done()
+				return
+			}
+			gidInt, _ = strconv.ParseInt(components[sacctFieldMap["gid"]], 10, 64)
+			uidInt, _ = strconv.ParseInt(components[sacctFieldMap["uid"]], 10, 64)
+			elapsedrawInt, _ = strconv.ParseInt(components[sacctFieldMap["elapsedraw"]], 10, 64)
+
+			// Parse alloctres to get billing, nnodes, ncpus, ngpus and mem
+			var billing int64
+			var nnodes, ncpus, ngpus int
+			var mem string
+			for _, elem := range strings.Split(components[sacctFieldMap["alloctres"]], ",") {
+				var tresKV = strings.Split(elem, "=")
+				if tresKV[0] == "billing" {
+					billing, _ = strconv.ParseInt(tresKV[1], 10, 64)
+				}
+				if tresKV[0] == "node" {
+					nnodes, _ = strconv.Atoi(tresKV[1])
+				}
+				if tresKV[0] == "cpu" {
+					ncpus, _ = strconv.Atoi(tresKV[1])
+				}
+				if tresKV[0] == "gres/gpu" {
+					ngpus, _ = strconv.Atoi(tresKV[1])
+				}
+				if tresKV[0] == "mem" {
+					mem = tresKV[1]
+				}
+			}
+
+			// Attribute billing to CPUBilling if ngpus is 0 or attribute to GPUBilling
+			var cpuBilling, gpuBilling int64
+			if ngpus == 0 {
+				cpuBilling = billing
+			} else {
+				gpuBilling = billing
 			}
 
 			// Generate UUID from jobID, user, account, nodelist(lowercase)
 			jobUuid, err := helpers.GetUuidFromString(
 				[]string{
-					strings.TrimSpace(components[0]),
-					strings.TrimSpace(components[6]),
-					strings.ToLower(strings.TrimSpace(components[3])),
-					strings.ToLower(strings.TrimSpace(components[17])),
+					strings.TrimSpace(components[sacctFieldMap["jobidraw"]]),
+					strings.TrimSpace(components[sacctFieldMap["user"]]),
+					strings.ToLower(strings.TrimSpace(components[sacctFieldMap["account"]])),
+					strings.ToLower(strings.TrimSpace(components[sacctFieldMap["nodelist"]])),
 				},
 			)
 			if err != nil {
@@ -215,36 +268,40 @@ func parseSacctCmdOutput(sacctOutput string, logger log.Logger) ([]base.BatchJob
 			}
 
 			// Expand nodelist range expressions
-			allNodes := jobstats_helper.NodelistParser(components[17])
+			allNodes := jobstats_helper.NodelistParser(components[sacctFieldMap["nodelist"]])
 			nodelistExp := strings.Join(allNodes, "|")
 
 			// Make jobStats struct for each job and put it in jobs slice
-			jobStat = base.BatchJob{
-				Jobid:       components[0],
+			jobStat = base.JobStats{
+				Jobid:       jobidInt,
 				Jobuuid:     jobUuid,
-				Partition:   components[1],
-				QoS:         components[2],
-				Account:     components[3],
-				Grp:         components[4],
-				Gid:         components[5],
-				Usr:         components[6],
-				Uid:         components[7],
-				Submit:      components[8],
-				Start:       components[9],
-				End:         components[10],
-				SubmitTS:    strconv.FormatInt(helper.TimeToTimestamp(slurmTimeFormat, components[8]), 10),
-				StartTS:     strconv.FormatInt(helper.TimeToTimestamp(slurmTimeFormat, components[9]), 10),
-				EndTS:       strconv.FormatInt(helper.TimeToTimestamp(slurmTimeFormat, components[10]), 10),
-				Elapsed:     components[11],
-				ElapsedRaw:  components[12],
-				Exitcode:    components[13],
-				State:       components[14],
-				Nnodes:      components[15],
-				Ncpus:       components[16],
-				Nodelist:    components[17],
+				Partition:   components[sacctFieldMap["partition"]],
+				QoS:         components[sacctFieldMap["qos"]],
+				Account:     components[sacctFieldMap["account"]],
+				Grp:         components[sacctFieldMap["group"]],
+				Gid:         gidInt,
+				Usr:         components[sacctFieldMap["user"]],
+				Uid:         uidInt,
+				Submit:      components[sacctFieldMap["submit"]],
+				Start:       components[sacctFieldMap["start"]],
+				End:         components[sacctFieldMap["end"]],
+				SubmitTS:    helper.TimeToTimestamp(slurmTimeFormat, components[8]),
+				StartTS:     helper.TimeToTimestamp(slurmTimeFormat, components[9]),
+				EndTS:       helper.TimeToTimestamp(slurmTimeFormat, components[10]),
+				Elapsed:     components[sacctFieldMap["elapsed"]],
+				ElapsedRaw:  elapsedrawInt,
+				Exitcode:    components[sacctFieldMap["exitcode"]],
+				State:       components[sacctFieldMap["state"]],
+				Nnodes:      nnodes,
+				Ncpus:       ncpus,
+				Mem:         mem,
+				Ngpus:       ngpus,
+				Nodelist:    components[sacctFieldMap["nodelist"]],
 				NodelistExp: nodelistExp,
-				JobName:     components[18],
-				WorkDir:     components[19],
+				JobName:     components[sacctFieldMap["jobname"]],
+				WorkDir:     components[sacctFieldMap["workdir"]],
+				CPUBilling:  cpuBilling,
+				GPUBilling:  gpuBilling,
 			}
 			jobLock.Lock()
 			jobs[i] = jobStat

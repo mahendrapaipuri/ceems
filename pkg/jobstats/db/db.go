@@ -156,7 +156,7 @@ setup:
 	}
 
 	// Setup DB
-	db, dbConn, err := setupDB(c.JobstatsDBPath, base.JobstatsDBTable, c.Logger)
+	db, dbConn, err := setupDB(c.JobstatsDBPath, base.JobStatsDBTable, c.Logger)
 	if err != nil {
 		level.Error(c.Logger).Log("msg", "DB setup failed", "err", err)
 		return nil, err
@@ -322,7 +322,7 @@ func (j *jobStatsDB) deleteOldJobs(tx *sql.Tx) error {
 
 	deleteRowQuery := fmt.Sprintf(
 		"DELETE FROM %s WHERE Start <= date('now', '-%d day')",
-		base.JobstatsDBTable,
+		base.JobStatsDBTable,
 		int(j.storage.retentionPeriod.Hours()/24),
 	)
 	_, err := tx.Exec(deleteRowQuery)
@@ -341,12 +341,12 @@ func (j *jobStatsDB) deleteOldJobs(tx *sql.Tx) error {
 func (j *jobStatsDB) prepareInsertStatement(tx *sql.Tx) (*sql.Stmt, error) {
 	placeHolderString := fmt.Sprintf(
 		"(%s)",
-		strings.Join(strings.Split(strings.Repeat("?", len(base.BatchJobFieldNames)), ""), ","),
+		strings.Join(strings.Split(strings.Repeat("?", len(base.JobStatsFieldNames)), ""), ","),
 	)
-	fieldNamesString := strings.Join(base.BatchJobFieldNames, ",")
+	fieldNamesString := strings.Join(base.JobStatsFieldNames, ",")
 	insertStatement := fmt.Sprintf(
 		"INSERT OR REPLACE INTO %s(%s) VALUES %s",
-		base.JobstatsDBTable,
+		base.JobStatsDBTable,
 		fieldNamesString,
 		placeHolderString,
 	)
@@ -358,12 +358,12 @@ func (j *jobStatsDB) prepareInsertStatement(tx *sql.Tx) (*sql.Stmt, error) {
 }
 
 // Insert job stat into DB
-func (j *jobStatsDB) insertJobs(statement *sql.Stmt, jobStats []base.BatchJob) []string {
+func (j *jobStatsDB) insertJobs(statement *sql.Stmt, jobStats []base.JobStats) []string {
 	var ignoredJobs []string
 	var err error
 	for _, jobStat := range jobStats {
 		// Empty job
-		if jobStat == (base.BatchJob{}) {
+		if jobStat == (base.JobStats{}) {
 			continue
 		}
 
@@ -372,13 +372,13 @@ func (j *jobStatsDB) insertJobs(statement *sql.Stmt, jobStats []base.BatchJob) [
 		// EndTS will be zero as we cannot convert unknown time into time stamp.
 		// Check if we EndTS is not zero before ignoring job. If it is zero, it means
 		// it must be RUNNING job
-		if elapsedTime, err := strconv.Atoi(jobStat.ElapsedRaw); err == nil &&
-			elapsedTime < int(j.storage.cutoffPeriod.Seconds()) && jobStat.EndTS != "0" {
+		var ignore = 0
+		if jobStat.ElapsedRaw < int64(j.storage.cutoffPeriod.Seconds()) && jobStat.EndTS != 0 {
 			ignoredJobs = append(
 				ignoredJobs,
-				jobStat.Jobid,
+				strconv.FormatInt(jobStat.Jobid, 10),
 			)
-			continue
+			ignore = 1
 		}
 
 		// level.Debug(j.logger).Log("msg", "Inserting job", "jobid", jobStat.Jobid)
@@ -404,10 +404,25 @@ func (j *jobStatsDB) insertJobs(statement *sql.Stmt, jobStats []base.BatchJob) [
 			jobStat.State,
 			jobStat.Nnodes,
 			jobStat.Ncpus,
+			jobStat.Mem,
+			jobStat.Ngpus,
 			jobStat.Nodelist,
 			jobStat.NodelistExp,
 			jobStat.JobName,
 			jobStat.WorkDir,
+			jobStat.CPUBilling,
+			jobStat.GPUBilling,
+			jobStat.MiscBilling,
+			jobStat.AveCPUUsage,
+			jobStat.AveCPUMemUsage,
+			jobStat.TotalCPUEnergyUsage,
+			jobStat.TotalCPUEmissions,
+			jobStat.AveGPUUsage,
+			jobStat.AveGPUMemUsage,
+			jobStat.TotalGPUEnergyUsage,
+			jobStat.TotalGPUEmissions,
+			jobStat.Comment,
+			ignore,
 		)
 		if err != nil {
 			level.Error(j.logger).

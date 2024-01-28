@@ -25,6 +25,19 @@ func GetStructFieldName(Struct interface{}) []string {
 	return fields
 }
 
+// Get a map of field name to field tag
+func GetStructFieldNameAndTag(Struct interface{}, tag string) map[string]string {
+	var fields = make(map[string]string)
+
+	v := reflect.ValueOf(Struct)
+	typeOfS := v.Type()
+
+	for i := 0; i < v.NumField(); i++ {
+		fields[typeOfS.Field(i).Name] = typeOfS.Field(i).Tag.Get(tag)
+	}
+	return fields
+}
+
 // Get all values in a given struct
 func GetStructFieldValue(Struct interface{}) []interface{} {
 	v := reflect.ValueOf(Struct)
