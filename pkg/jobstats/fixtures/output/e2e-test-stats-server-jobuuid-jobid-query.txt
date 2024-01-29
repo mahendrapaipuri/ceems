@@ -1,1 +1,1 @@
-{"status":"success","errorType":"","error":"","warnings":null,"data":[]}
+{"status":"success","data":[]}
