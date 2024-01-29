@@ -18,7 +18,7 @@ func setupServer() *JobstatsServer {
 	logger := log.NewNopLogger()
 	server, _, _ := NewJobstatsServer(&Config{Logger: logger})
 	server.maxQueryPeriod = time.Duration(time.Hour * 168)
-	server.grafana = &GrafanaConfig{sync: false, Admins: getMockAdminUsers}
+	server.grafana = &GrafanaConfig{available: false, Admins: getMockAdminUsers}
 	server.Accounts = getMockAccounts
 	server.Jobs = getMockJobs
 	return server
@@ -42,7 +42,7 @@ func getMockAdminUsers(url string, client *http.Client, logger log.Logger) ([]st
 // Test admin users sync
 func TestAdminUsersSync(t *testing.T) {
 	server := setupServer()
-	server.grafana.sync = true
+	server.grafana.available = true
 	server.grafana.teamMembersEndpoint, _ = url.Parse("http://localhost:9090")
 	// Create request
 	req := httptest.NewRequest(http.MethodGet, "/api/accounts", nil)

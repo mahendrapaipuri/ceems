@@ -32,7 +32,6 @@ type Config struct {
 	WebConfigFile      string
 	DBConfig           db.Config
 	MaxQueryPeriod     time.Duration
-	SyncAdminUsers     bool
 	AdminUsers         []string
 	GrafanaURL         *url.URL
 	GrafanaAdminTeamID string
@@ -41,7 +40,7 @@ type Config struct {
 
 // Grafana config struct
 type GrafanaConfig struct {
-	sync                bool
+	available           bool
 	teamMembersEndpoint *url.URL
 	client              *http.Client
 	lastAdminsUpdate    time.Time
@@ -88,6 +87,23 @@ var dbConn *sql.DB
 
 // Create new Jobstats server
 func NewJobstatsServer(c *Config) (*JobstatsServer, func(), error) {
+	// Make grafanaConfig
+	var grafanaConfig *GrafanaConfig
+	if c.GrafanaURL != nil && c.GrafanaAdminTeamID != "" {
+		// We already check if Grafana is reachable in CLI checks.
+		// So we can set available to true here
+		grafanaConfig = &GrafanaConfig{
+			available:           true,
+			client:              c.HTTPClient,
+			Admins:              FetchAdminsFromGrafana,
+			teamMembersEndpoint: c.GrafanaURL.JoinPath(fmt.Sprintf("/api/teams/%s/members", c.GrafanaAdminTeamID)),
+		}
+	} else {
+		grafanaConfig = &GrafanaConfig{
+			available: false,
+		}
+	}
+
 	router := mux.NewRouter()
 	server := &JobstatsServer{
 		logger: c.Logger,
@@ -105,20 +121,10 @@ func NewJobstatsServer(c *Config) (*JobstatsServer, func(), error) {
 		dbConfig:       c.DBConfig,
 		maxQueryPeriod: c.MaxQueryPeriod,
 		adminUsers:     c.AdminUsers,
-		grafana: &GrafanaConfig{
-			sync:   c.SyncAdminUsers,
-			client: c.HTTPClient,
-			Admins: FetchAdminsFromGrafana,
-		},
-		Accounts:    fetchAccounts,
-		Jobs:        fetchJobs,
-		HealthCheck: getDBStatus,
-	}
-
-	// Add teamMembersEndpoint only when sync is true. If sync is false c.GrafanaURL will
-	// be a nil pointer most probably
-	if server.grafana.sync {
-		server.grafana.teamMembersEndpoint = c.GrafanaURL.JoinPath(fmt.Sprintf("/api/teams/%s/members", c.GrafanaAdminTeamID))
+		grafana:        grafanaConfig,
+		Accounts:       fetchAccounts,
+		Jobs:           fetchJobs,
+		HealthCheck:    getDBStatus,
 	}
 
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -189,7 +195,7 @@ func (s *JobstatsServer) updateAdminUsers() {
 // Get current user from the header
 func (s *JobstatsServer) getUser(r *http.Request) (string, string) {
 	// First update admin users
-	if s.grafana.sync {
+	if s.grafana.available {
 		s.updateAdminUsers()
 	}
 
@@ -309,7 +315,7 @@ func (s *JobstatsServer) jobs(w http.ResponseWriter, r *http.Request) {
 
 	// Initialise utility vars
 	checkQueryWindow := true                           // Check query window size
-	defaultQueryWindow := time.Duration(2) * time.Hour // Two hours
+	defaultQueryWindow := time.Duration(2 * time.Hour) // Two hours
 
 	// Get current logged user and dashboard user from headers
 	loggedUser, dashboardUser := s.getUser(r)
