@@ -1,1 +1,1 @@
-{"status":"success","errorType":"","error":"","warnings":null,"data":[{"id":"acc1"}]}
+{"status":"success","data":[{"id":"acc1"}]}
