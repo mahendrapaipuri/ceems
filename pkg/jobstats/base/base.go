@@ -77,6 +77,11 @@ type JobStats struct {
 	Ignore              int     `json:"-" sqlitetype:"integer"`
 }
 
+// Account stats struct
+// type AccountStats struct {
+
+// }
+
 // Account struct
 type Account struct {
 	ID string `json:"id"`
@@ -85,10 +90,10 @@ type Account struct {
 // Common API response model
 type Response struct {
 	Status    string    `json:"status"`
-	Data      []Account `json:"data"`
-	ErrorType string    `json:"errorType"`
-	Error     string    `json:"error"`
-	Warnings  []string  `json:"warnings"`
+	Data      []Account `json:"data,omitempty"`
+	ErrorType string    `json:"errorType,omitempty"`
+	Error     string    `json:"error,omitempty"`
+	Warnings  []string  `json:"warnings,omitempty"`
 }
 
 // /api/account response struct
@@ -116,5 +121,5 @@ var DatetimeLayout = fmt.Sprintf("%sT%s", time.DateOnly, time.TimeOnly)
 var (
 	JobStatsDBTable     = "jobstats"
 	UserStatsDBTable    = "userstats"
-	ProjectStatsDBTable = "projectstats"
+	AccountStatsDBTable = "accountstats"
 )
