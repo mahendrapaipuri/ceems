@@ -38,7 +38,7 @@ func writeTimeStampToFile(filePath string, timeStamp time.Time, logger log.Logge
 func createTable(dbTableName string, db *sql.DB, logger log.Logger) error {
 	fieldLines := []string{}
 	for field, fieldType := range base.JobStatsDBTableMap {
-		fieldLines = append(fieldLines, fmt.Sprintf("		\"%s\" %s,", field, strings.ToUpper(fieldType)))
+		fieldLines = append(fieldLines, fmt.Sprintf("		\"%s\" %s,", field, fieldType))
 	}
 	fieldLines[len(fieldLines)-1] = strings.Split(fieldLines[len(fieldLines)-1], ",")[0]
 	createBatchJobStatSQL := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (

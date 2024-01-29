@@ -10,6 +10,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/batchjob_monitor/pkg/jobstats/base"
 	"github.com/mahendrapaipuri/batchjob_monitor/pkg/jobstats/schedulers"
+	"github.com/mahendrapaipuri/batchjob_monitor/pkg/jobstats/tsdb"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -54,6 +55,7 @@ func prepareMockConfig(tmpDir string) *Config {
 		LastUpdateTimeString:    "2023-12-20",
 		RetentionPeriod:         7,
 		BatchScheduler:          newMockScheduler,
+		TSDB:                    &tsdb.TSDB{},
 	}
 }
 

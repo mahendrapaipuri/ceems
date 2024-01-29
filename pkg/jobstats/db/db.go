@@ -3,8 +3,6 @@ package db
 import (
 	"database/sql"
 	"fmt"
-	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -15,24 +13,10 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/batchjob_monitor/pkg/jobstats/base"
 	"github.com/mahendrapaipuri/batchjob_monitor/pkg/jobstats/schedulers"
+	"github.com/mahendrapaipuri/batchjob_monitor/pkg/jobstats/tsdb"
 	"github.com/mattn/go-sqlite3"
 	"github.com/rotationalio/ensign/pkg/utils/sqlite"
 )
-
-// Unique job labels to identify time series that needed to be deleted
-type tsdbLabels struct {
-	id      string
-	user    string
-	account string
-}
-
-// TSDB related config
-type tsdbConfig struct {
-	url                  *url.URL
-	cleanUp              bool
-	deleteSeriesEndpoint *url.URL
-	client               *http.Client
-}
 
 // DB config
 type Config struct {
@@ -42,12 +26,10 @@ type Config struct {
 	JobCutoffPeriod         time.Duration
 	RetentionPeriod         time.Duration
 	SkipDeleteOldJobs       bool
-	TSDBCleanUp             bool
-	TSDBURL                 *url.URL
-	HTTPClient              *http.Client
 	LastUpdateTimeString    string
 	LastUpdateTimeStampFile string
 	BatchScheduler          func(log.Logger) (*schedulers.BatchScheduler, error)
+	TSDB                    *tsdb.TSDB
 }
 
 // Storage
@@ -67,7 +49,7 @@ type jobStatsDB struct {
 	db        *sql.DB
 	dbConn    *sqlite.Conn
 	scheduler *schedulers.BatchScheduler
-	tsdb      *tsdbConfig
+	tsdb      *tsdb.TSDB
 	storage   *storageConfig
 }
 
@@ -102,14 +84,6 @@ func (s *storageConfig) String() string {
 			"lastUpdateTime: %s, lastUpdateTimeFile: %s}",
 		s.dbPath, s.retentionPeriod, s.cutoffPeriod, s.lastUpdateTime,
 		s.lastUpdateTimeFile,
-	)
-}
-
-// Stringer receiver for tsdbConfig
-func (t *tsdbConfig) String() string {
-	return fmt.Sprintf(
-		"tsdbConfig{url: %s, cleanUp: %t, deleteSeriesEndpoint: %s}",
-		t.url.Redacted(), t.cleanUp, t.deleteSeriesEndpoint.Redacted(),
 	)
 }
 
@@ -187,29 +161,12 @@ setup:
 
 	// Emit debug logs
 	level.Debug(c.Logger).Log("msg", "Storage config", "cfg", storageConfig)
-
-	// tsdb config
-	var tsdbCfg *tsdbConfig
-	if c.TSDBCleanUp {
-		tsdbCfg = &tsdbConfig{
-			url:                  c.TSDBURL,
-			cleanUp:              c.TSDBCleanUp,
-			client:               c.HTTPClient,
-			deleteSeriesEndpoint: c.TSDBURL.JoinPath("/api/v1/admin/tsdb/delete_series"),
-		}
-	} else {
-		tsdbCfg = &tsdbConfig{
-			cleanUp: c.TSDBCleanUp,
-		}
-	}
-	// Emit debug logs
-	level.Debug(c.Logger).Log("msg", "TSDB config", "cfg", tsdbCfg)
 	return &jobStatsDB{
 		logger:    c.Logger,
 		db:        db,
 		dbConn:    dbConn,
 		scheduler: scheduler,
-		tsdb:      tsdbCfg,
+		tsdb:      c.TSDB,
 		storage:   storageConfig,
 	}, nil
 }
@@ -266,6 +223,12 @@ func (j *jobStatsDB) getJobStats(startTime, endTime time.Time) error {
 		return err
 	}
 
+	// Update jobs struct with job level metrics from TSDB
+	if j.tsdb.Available() {
+		level.Debug(j.logger).Log("msg", "Fetching job metrics from TSDB")
+		jobs = j.fetchMetricsFromTSDB(endTime, jobs)
+	}
+
 	// Begin transcation
 	tx, err := j.db.Begin()
 	if err != nil {
@@ -298,7 +261,7 @@ func (j *jobStatsDB) getJobStats(startTime, endTime time.Time) error {
 	}
 
 	// Finally make API requests to TSDB to delete timeseries of ignored jobs
-	if j.tsdb.cleanUp {
+	if j.tsdb.Available() {
 		level.Debug(j.logger).Log("msg", "Cleaning up time series of ignored jobs in TSDB")
 		if err = j.deleteTimeSeries(startTime, endTime, ignoredJobs); err != nil {
 			level.Error(j.logger).Log("msg", "Failed to clean up time series in TSDB", "err", err)
@@ -311,6 +274,82 @@ func (j *jobStatsDB) getJobStats(startTime, endTime time.Time) error {
 	j.storage.lastUpdateTime = endTime
 	writeTimeStampToFile(j.storage.lastUpdateTimeFile, j.storage.lastUpdateTime, j.logger)
 	return nil
+}
+
+// Fetch job metrics from TSDB and update JobStat struct for each job
+func (j *jobStatsDB) fetchMetricsFromTSDB(queryTime time.Time, jobs []base.JobStats) []base.JobStats {
+	var minStartTime = queryTime.UnixMilli()
+	var allJobIds string
+
+	// Loop over all jobs and find earliest start time of a job
+	for _, job := range jobs {
+		allJobIds = fmt.Sprintf("%d|", job.Jobid)
+		if minStartTime > job.StartTS {
+			minStartTime = job.StartTS
+		}
+	}
+	allJobIds = strings.TrimRight(allJobIds, "|")
+
+	// Get max window from minStartTime to queryTime
+	maxDuration := time.Duration((queryTime.UnixMilli() - minStartTime) * int64(time.Millisecond))
+
+	// Get metrics from TSDB
+	cpuMetrics, err := j.tsdb.CPUMetrics(queryTime, maxDuration, allJobIds)
+	if err != nil {
+		level.Warn(j.logger).Log("msg", "Errors in fetching CPU job metrics from TSDB", "err", err)
+	}
+	gpuMetrics, err := j.tsdb.GPUMetrics(queryTime, maxDuration, allJobIds)
+	if err != nil {
+		level.Warn(j.logger).Log("msg", "Errors in fetching GPU job metrics from TSDB", "err", err)
+	}
+
+	// Finally update jobs
+	for _, job := range jobs {
+		// Update with CPU metrics
+		if cpuMetrics.AvgCPUUsage != nil {
+			if v, exists := cpuMetrics.AvgCPUUsage[job.Jobid]; exists {
+				job.AveCPUUsage = v
+			}
+		}
+		if cpuMetrics.AvgCPUMemUsage != nil {
+			if v, exists := cpuMetrics.AvgCPUMemUsage[job.Jobid]; exists {
+				job.AveCPUMemUsage = v
+			}
+		}
+		if cpuMetrics.TotalCPUEnergyUsage != nil {
+			if v, exists := cpuMetrics.TotalCPUEnergyUsage[job.Jobid]; exists {
+				job.TotalCPUEnergyUsage = v
+			}
+		}
+		if cpuMetrics.TotalCPUEmissions != nil {
+			if v, exists := cpuMetrics.TotalCPUEmissions[job.Jobid]; exists {
+				job.TotalCPUEmissions = v
+			}
+		}
+
+		// Update with GPU metrics
+		if gpuMetrics.AvgGPUUsage != nil {
+			if v, exists := gpuMetrics.AvgGPUUsage[job.Jobid]; exists {
+				job.AveCPUUsage = v
+			}
+		}
+		if gpuMetrics.AvgGPUMemUsage != nil {
+			if v, exists := gpuMetrics.AvgGPUMemUsage[job.Jobid]; exists {
+				job.AveCPUMemUsage = v
+			}
+		}
+		if gpuMetrics.TotalGPUEnergyUsage != nil {
+			if v, exists := gpuMetrics.TotalGPUEnergyUsage[job.Jobid]; exists {
+				job.TotalCPUEnergyUsage = v
+			}
+		}
+		if gpuMetrics.TotalGPUEmissions != nil {
+			if v, exists := gpuMetrics.TotalGPUEmissions[job.Jobid]; exists {
+				job.TotalCPUEmissions = v
+			}
+		}
+	}
+	return jobs
 }
 
 // Delete old entries in DB
@@ -435,10 +474,6 @@ func (j *jobStatsDB) insertJobs(statement *sql.Stmt, jobStats []base.JobStats) [
 
 // Delete time series data of ignored jobs
 func (j *jobStatsDB) deleteTimeSeries(startTime time.Time, endTime time.Time, jobs []string) error {
-	// Join them with | as delimiter. We will use regex match to match all series
-	// with the label jobid=~"$jobids"
-	allJobIds := strings.Join(jobs, "|")
-
 	/*
 		We should give start and end query params as well. If not, TSDB has to look over
 		"all" time blocks (potentially 1000s or more) and try to find the series.
@@ -459,28 +494,13 @@ func (j *jobStatsDB) deleteTimeSeries(startTime time.Time, endTime time.Time, jo
 
 	// Matcher must be of format "{job=~"<regex>"}"
 	// Ref: https://ganeshvernekar.com/blog/prometheus-tsdb-queries/
+	//
+	// Join them with | as delimiter. We will use regex match to match all series
+	// with the label jobid=~"$jobids"
+	allJobIds := strings.Join(jobs, "|")
 	matcher := fmt.Sprintf("{jobid=~\"%s\"}", allJobIds)
-
-	// Add form data to request
-	// TSDB expects time stamps in UTC zone
-	values := url.Values{
-		"match[]": []string{matcher},
-		"start":   []string{start.UTC().Format(time.RFC3339Nano)},
-		"end":     []string{end.UTC().Format(time.RFC3339Nano)},
-	}
-
-	// Create a new POST request
-	req, err := http.NewRequest(http.MethodPost, j.tsdb.deleteSeriesEndpoint.String(), strings.NewReader(values.Encode()))
-	if err != nil {
-		return err
-	}
-
-	// Add necessary headers
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-
-	// Make request
-	_, err = j.tsdb.client.Do(req)
-	return err
+	// Make a API request to delete data of ignored jobs
+	return j.tsdb.Delete(start, end, matcher)
 }
 
 // Backup executes the sqlite3 backup strategy
