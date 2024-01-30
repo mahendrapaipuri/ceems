@@ -2,7 +2,6 @@ package tsdb
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -24,7 +23,7 @@ func TestNewTSDBWithURL(t *testing.T) {
 	// Start test server
 	expected := "dummy data"
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, expected)
+		w.Write([]byte(expected))
 	}))
 	defer server.Close()
 

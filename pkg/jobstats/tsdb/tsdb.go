@@ -200,7 +200,6 @@ func (t *TSDB) ScrapeInterval() {
 	} else {
 		t.scrapeInterval = defaultScrapeInterval
 	}
-	return
 }
 
 // Rate interval setter
@@ -221,6 +220,7 @@ func (t *TSDB) queryString(query string, jobs string, maxDuration time.Duration)
 func (t *TSDB) CPUMetrics(queryTime time.Time, maxDuration time.Duration, jobs string) (CPUMetrics, error) {
 	var cpuMetrics CPUMetrics
 	var err error
+	var errs error
 
 	// Get scrape and rate intervals
 	t.RateInterval()
@@ -228,33 +228,34 @@ func (t *TSDB) CPUMetrics(queryTime time.Time, maxDuration time.Duration, jobs s
 	// Avg CPU usage query
 	cpuUsageQuery := t.queryString(avgCpuUsageQuery, jobs, maxDuration)
 	if cpuMetrics.AvgCPUUsage, err = t.Query(cpuUsageQuery, queryTime); err != nil {
-		err = errors.Join(fmt.Errorf("failed to query avg CPU usage: %s", err))
+		errs = errors.Join(fmt.Errorf("failed to query avg CPU usage: %s", err), errs)
 	}
 
 	// Avg CPU mem query
 	cpuMemQuery := t.queryString(avgCpuMemUsageQuery, jobs, maxDuration)
 	if cpuMetrics.AvgCPUMemUsage, err = t.Query(cpuMemQuery, queryTime); err != nil {
-		err = errors.Join(fmt.Errorf("failed to query avg CPU mem usage: %s", err))
+		errs = errors.Join(fmt.Errorf("failed to query avg CPU mem usage: %s", err), errs)
 	}
 
 	// Avg CPU usage query
 	cpuEnergyQuery := t.queryString(totalCpuEnergyUsageQuery, jobs, maxDuration)
 	if cpuMetrics.TotalCPUEnergyUsage, err = t.Query(cpuEnergyQuery, queryTime); err != nil {
-		err = errors.Join(fmt.Errorf("failed to query total CPU energy usage: %s", err))
+		errs = errors.Join(fmt.Errorf("failed to query total CPU energy usage: %s", err), errs)
 	}
 
 	// Avg CPU usage query
 	cpuEmissionsQuery := t.queryString(totalCpuEmissionsUsageQuery, jobs, maxDuration)
 	if cpuMetrics.TotalCPUEmissions, err = t.Query(cpuEmissionsQuery, queryTime); err != nil {
-		err = errors.Join(fmt.Errorf("failed to query total CPU emissions: %s", err))
+		errs = errors.Join(fmt.Errorf("failed to query total CPU emissions: %s", err), errs)
 	}
-	return cpuMetrics, err
+	return cpuMetrics, errs
 }
 
 // Get GPU metrics of jobs
 func (t *TSDB) GPUMetrics(queryTime time.Time, maxDuration time.Duration, jobs string) (GPUMetrics, error) {
 	var gpuMetrics GPUMetrics
 	var err error
+	var errs error
 
 	// Get rate interval
 	t.RateInterval()
@@ -262,27 +263,27 @@ func (t *TSDB) GPUMetrics(queryTime time.Time, maxDuration time.Duration, jobs s
 	// Avg GPU usage query
 	gpuUsageQuery := t.queryString(avgGpuUsageQuery, jobs, maxDuration)
 	if gpuMetrics.AvgGPUUsage, err = t.Query(gpuUsageQuery, queryTime); err != nil {
-		err = errors.Join(fmt.Errorf("failed to query avg GPU usage: %s", err))
+		errs = errors.Join(fmt.Errorf("failed to query avg GPU usage: %s", err), errs)
 	}
 
 	// Avg GPU mem query
 	gpuMemQuery := t.queryString(avgGpuMemUsageQuery, jobs, maxDuration)
 	if gpuMetrics.AvgGPUMemUsage, err = t.Query(gpuMemQuery, queryTime); err != nil {
-		err = errors.Join(fmt.Errorf("failed to query avg GPU mem usage: %s", err))
+		errs = errors.Join(fmt.Errorf("failed to query avg GPU mem usage: %s", err), errs)
 	}
 
 	// Avg GPU usage query
 	gpuEnergyQuery := t.queryString(totalGpuEnergyUsageQuery, jobs, maxDuration)
 	if gpuMetrics.TotalGPUEnergyUsage, err = t.Query(gpuEnergyQuery, queryTime); err != nil {
-		err = errors.Join(fmt.Errorf("failed to query total GPU energy usage: %s", err))
+		errs = errors.Join(fmt.Errorf("failed to query total GPU energy usage: %s", err), errs)
 	}
 
 	// Avg GPU usage query
 	gpuEmissionsQuery := t.queryString(totalGpuEmissionsUsageQuery, jobs, maxDuration)
 	if gpuMetrics.TotalGPUEmissions, err = t.Query(gpuEmissionsQuery, queryTime); err != nil {
-		err = errors.Join(fmt.Errorf("failed to query total GPU emissions: %s", err))
+		errs = errors.Join(fmt.Errorf("failed to query total GPU emissions: %s", err), errs)
 	}
-	return gpuMetrics, err
+	return gpuMetrics, errs
 }
 
 // Get average CPU utilisation of jobs
@@ -379,6 +380,8 @@ func (t *TSDB) Delete(startTime time.Time, endTime time.Time, matcher string) er
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
 	// Make request
-	_, err = t.Client.Do(req)
+	if _, err = t.Client.Do(req); err != nil {
+		return err
+	}
 	return nil
 }

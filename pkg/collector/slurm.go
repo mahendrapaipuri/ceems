@@ -659,7 +659,7 @@ func (c *slurmCollector) getCgroupsV1Metrics(name string) (CgroupMetric, error) 
 	metric := CgroupMetric{name: name, batch: slurmCollectorSubsystem, hostname: c.hostname}
 	metric.err = false
 	level.Debug(c.logger).Log("msg", "Loading cgroup v1", "path", name)
-	ctrl, err := cgroup1.Load(cgroup1.StaticPath(name), cgroup1.WithHiearchy(subsystem))
+	ctrl, err := cgroup1.Load(cgroup1.StaticPath(name), cgroup1.WithHierarchy(subsystem))
 	if err != nil {
 		level.Error(c.logger).Log("msg", "Failed to load cgroups", "path", name, "err", err)
 		metric.err = true
