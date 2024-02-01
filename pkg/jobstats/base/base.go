@@ -40,9 +40,9 @@ type JobStats struct {
 	Partition           string  `json:"partition" sqlitetype:"text"`
 	QoS                 string  `json:"qos" sqlitetype:"text"`
 	Account             string  `json:"account" sqlitetype:"text"`
-	Grp                 string  `json:"group" sqlitetype:"text"`
+	Grp                 string  `json:"grp" sqlitetype:"text"`
 	Gid                 int64   `json:"gid" sqlitetype:"integer"`
-	Usr                 string  `json:"user" sqlitetype:"text"`
+	Usr                 string  `json:"usr" sqlitetype:"text"`
 	Uid                 int64   `json:"uid" sqlitetype:"integer"`
 	Submit              string  `json:"submit" sqlitetype:"text"`
 	Start               string  `json:"start" sqlitetype:"text"`
@@ -78,9 +78,38 @@ type JobStats struct {
 }
 
 // Account stats struct
-// type AccountStats struct {
+type AccountStats struct {
+	Name                string  `json:"name" sqlitetype:"text unique"`
+	NumJobs             int64   `json:"num_jobs" sqlitetype:"integer"`
+	CPUBilling          int64   `json:"cpu_billing" sqlitetype:"integer"`
+	GPUBilling          int64   `json:"gpu_billing" sqlitetype:"integer"`
+	MiscBilling         int64   `json:"misc_billing" sqlitetype:"integer"`
+	AveCPUUsage         float64 `json:"avg_cpu_usage" sqlitetype:"real"`
+	AveCPUMemUsage      float64 `json:"avg_cpu_mem_usage" sqlitetype:"real"`
+	TotalCPUEnergyUsage float64 `json:"total_cpu_energy_usage" sqlitetype:"real"`
+	TotalCPUEmissions   float64 `json:"total_cpu_emissions" sqlitetype:"real"`
+	AveGPUUsage         float64 `json:"avg_gpu_usage" sqlitetype:"real"`
+	AveGPUMemUsage      float64 `json:"avg_gpu_mem_usage" sqlitetype:"real"`
+	TotalGPUEnergyUsage float64 `json:"total_gpu_energy_usage" sqlitetype:"real"`
+	TotalGPUEmissions   float64 `json:"total_gpu_emissions" sqlitetype:"real"`
+}
 
-// }
+// User stats struct
+type UserStats struct {
+	Name                string  `json:"name" sqlitetype:"text unique"`
+	NumJobs             int64   `json:"num_jobs" sqlitetype:"integer"`
+	CPUBilling          int64   `json:"cpu_billing" sqlitetype:"integer"`
+	GPUBilling          int64   `json:"gpu_billing" sqlitetype:"integer"`
+	MiscBilling         int64   `json:"misc_billing" sqlitetype:"integer"`
+	AveCPUUsage         float64 `json:"avg_cpu_usage" sqlitetype:"real"`
+	AveCPUMemUsage      float64 `json:"avg_cpu_mem_usage" sqlitetype:"real"`
+	TotalCPUEnergyUsage float64 `json:"total_cpu_energy_usage" sqlitetype:"real"`
+	TotalCPUEmissions   float64 `json:"total_cpu_emissions" sqlitetype:"real"`
+	AveGPUUsage         float64 `json:"avg_gpu_usage" sqlitetype:"real"`
+	AveGPUMemUsage      float64 `json:"avg_gpu_mem_usage" sqlitetype:"real"`
+	TotalGPUEnergyUsage float64 `json:"total_gpu_energy_usage" sqlitetype:"real"`
+	TotalGPUEmissions   float64 `json:"total_gpu_emissions" sqlitetype:"real"`
+}
 
 // Account struct
 type Account struct {
@@ -89,37 +118,40 @@ type Account struct {
 
 // Common API response model
 type Response struct {
-	Status    string    `json:"status"`
-	Data      []Account `json:"data,omitempty"`
-	ErrorType string    `json:"errorType,omitempty"`
-	Error     string    `json:"error,omitempty"`
-	Warnings  []string  `json:"warnings,omitempty"`
+	Status    string   `json:"status"`
+	ErrorType string   `json:"errorType,omitempty"`
+	Error     string   `json:"error,omitempty"`
+	Warnings  []string `json:"warnings,omitempty"`
 }
 
-// /api/account response struct
+// /api/accounts response struct
 type AccountsResponse struct {
 	Response
-	Data []Account `json:"data"`
+	Data []Account `json:"data,omitempty"`
 }
 
 // /api/jobs response struct
 type JobsResponse struct {
 	Response
-	Data []JobStats `json:"data"`
+	Data []JobStats `json:"data,omitempty"`
 }
-
-// Slice of all field names of JobStats struct
-var JobStatsFieldNames = helper.GetStructFieldName(JobStats{})
-
-// Map of field names to DB column type
-var JobStatsDBTableMap = helper.GetStructFieldNameAndTag(JobStats{}, "sqlitetype")
-
-// Layout of datetime to be used in the package
-var DatetimeLayout = fmt.Sprintf("%sT%s", time.DateOnly, time.TimeOnly)
 
 // DB table names
 var (
-	JobStatsDBTable     = "jobstats"
-	UserStatsDBTable    = "userstats"
-	AccountStatsDBTable = "accountstats"
+	JobStatsDBTableName     = "jobstats"
+	UserStatsDBTableName    = "userstats"
+	AccountStatsDBTableName = "accountstats"
 )
+
+// Slice of all field names of JobStats struct
+var JobStatsDBColNames = helper.GetStructFieldTagValues(JobStats{}, "json")
+var AccountStatsDBColNames = helper.GetStructFieldTagValues(AccountStats{}, "json")
+var UserStatsDBColNames = helper.GetStructFieldTagValues(UserStats{}, "json")
+
+// Map of field names to DB column type
+var JobStatsDBTableMap = helper.GetStructFieldTagMap(JobStats{}, "json", "sqlitetype")
+var AccountStatsDBTableMap = helper.GetStructFieldTagMap(AccountStats{}, "json", "sqlitetype")
+var UserStatsDBTableMap = helper.GetStructFieldTagMap(UserStats{}, "json", "sqlitetype")
+
+// Layout of datetime to be used in the package
+var DatetimeLayout = fmt.Sprintf("%sT%s", time.DateOnly, time.TimeOnly)

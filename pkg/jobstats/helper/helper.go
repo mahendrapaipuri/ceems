@@ -13,7 +13,7 @@ var (
 )
 
 // Get all fields in a given struct
-func GetStructFieldName(Struct interface{}) []string {
+func GetStructFieldNames(Struct interface{}) []string {
 	var fields []string
 
 	v := reflect.ValueOf(Struct)
@@ -25,21 +25,8 @@ func GetStructFieldName(Struct interface{}) []string {
 	return fields
 }
 
-// Get a map of field name to field tag
-func GetStructFieldNameAndTag(Struct interface{}, tag string) map[string]string {
-	var fields = make(map[string]string)
-
-	v := reflect.ValueOf(Struct)
-	typeOfS := v.Type()
-
-	for i := 0; i < v.NumField(); i++ {
-		fields[typeOfS.Field(i).Name] = typeOfS.Field(i).Tag.Get(tag)
-	}
-	return fields
-}
-
 // Get all values in a given struct
-func GetStructFieldValue(Struct interface{}) []interface{} {
+func GetStructFieldValues(Struct interface{}) []interface{} {
 	v := reflect.ValueOf(Struct)
 	values := make([]interface{}, v.NumField())
 
@@ -48,6 +35,39 @@ func GetStructFieldValue(Struct interface{}) []interface{} {
 		values = append(values, f.Interface())
 	}
 	return values
+}
+
+// Get tag value of field. If tag value is "-", return lower case value of field name
+func getTagValue(field reflect.StructField, tag string) string {
+	if field.Tag.Get(tag) == "-" {
+		return strings.ToLower(field.Name)
+	} else {
+		return field.Tag.Get(tag)
+	}
+}
+
+// Get all tag names in a given struct for a given tag
+func GetStructFieldTagValues(Struct interface{}, tag string) []string {
+	v := reflect.ValueOf(Struct)
+	typeOfS := v.Type()
+
+	var values []string
+	for i := 0; i < v.NumField(); i++ {
+		values = append(values, getTagValue(typeOfS.Field(i), tag))
+	}
+	return values
+}
+
+// Get a map of tags using keyTag as map key and valueTag as map value
+func GetStructFieldTagMap(Struct interface{}, keyTag string, valueTag string) map[string]string {
+	v := reflect.ValueOf(Struct)
+	typeOfS := v.Type()
+
+	var fields = make(map[string]string)
+	for i := 0; i < v.NumField(); i++ {
+		fields[getTagValue(typeOfS.Field(i), keyTag)] = getTagValue(typeOfS.Field(i), valueTag)
+	}
+	return fields
 }
 
 // Replace delimiter in nodelist
