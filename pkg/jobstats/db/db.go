@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-kit/log"
@@ -43,6 +44,16 @@ type storageConfig struct {
 	skipDeleteOldJobs  bool
 }
 
+// Stringer receiver for storageConfig
+func (s *storageConfig) String() string {
+	return fmt.Sprintf(
+		"storageConfig{dbPath: %s, retentionPeriod: %s, cutoffPeriod: %s, "+
+			"lastUpdateTime: %s, lastUpdateTimeFile: %s}",
+		s.dbPath, s.retentionPeriod, s.cutoffPeriod, s.lastUpdateTime,
+		s.lastUpdateTimeFile,
+	)
+}
+
 // job stats DB struct
 type jobStatsDB struct {
 	logger    log.Logger
@@ -61,30 +72,77 @@ const (
 )
 
 var (
-	// Ref: https://stackoverflow.com/questions/1711631/improve-insert-per-second-performance-of-sqlite
-	// Ref: https://gitlab.com/gnufred/logslate/-/blob/8eda5cedc9a28da3793dcf73480d618c95cc322c/playground/sqlite3.go
-	// Ref: https://github.com/mattn/go-sqlite3/issues/1145#issuecomment-1519012055
-	defaultOpts = map[string]string{
-		"_busy_timeout": "5000",
-		"_journal_mode": "MEMORY",
-		"_synchronous":  "0",
-	}
-	// defaultOpts = map[string]string{}
-	indexStatements = []string{
-		`CREATE INDEX IF NOT EXISTS i1 ON %s (Usr,Account,Start);`,
-		`CREATE INDEX IF NOT EXISTS i2 ON %s (Usr,Jobuuid);`,
-		`CREATE UNIQUE INDEX IF NOT EXISTS i3 ON %s (Jobid,Start);`, // To ensure we dont insert duplicated rows
-	}
+	prepareStatements = make(map[string]string, 3)
 )
 
-// Stringer receiver for storageConfig
-func (s *storageConfig) String() string {
-	return fmt.Sprintf(
-		"storageConfig{dbPath: %s, retentionPeriod: %s, cutoffPeriod: %s, "+
-			"lastUpdateTime: %s, lastUpdateTimeFile: %s}",
-		s.dbPath, s.retentionPeriod, s.cutoffPeriod, s.lastUpdateTime,
-		s.lastUpdateTimeFile,
+// Init func to set prepareStatements
+func init() {
+	// JobStats insert statement
+	placeholder := fmt.Sprintf(
+		"(%s)",
+		strings.Join(strings.Split(strings.Repeat("?", len(base.JobsDBColNames)), ""), ","),
 	)
+	dbColNames := strings.Join(base.JobsDBColNames, ",")
+	prepareStatements[base.JobsDBTableName] = fmt.Sprintf(
+		"INSERT OR REPLACE INTO %s (%s) VALUES %s",
+		base.JobsDBTableName,
+		dbColNames,
+		placeholder,
+	)
+
+	// Usage update statement
+	var placeholders []string
+	for _, col := range base.UsageDBColNames {
+		if strings.HasPrefix(col, "num") {
+			placeholders = append(placeholders, fmt.Sprintf("  %[1]s = %[1]s + 1", col))
+		} else if strings.HasPrefix(col, "avg") {
+			placeholders = append(placeholders, fmt.Sprintf("  %[1]s = (%[1]s * num_jobs + ?) / (num_jobs + 1)", col))
+		} else if strings.HasPrefix(col, "total") {
+			placeholders = append(placeholders, fmt.Sprintf("  %[1]s = (%[1]s + ?)", col))
+		} else if col == "comment" {
+			placeholders = append(placeholders, fmt.Sprintf("  %[1]s = ?", col))
+		} else {
+			continue
+		}
+	}
+
+	// AccountStats update statement
+	accountsStmt := fmt.Sprintf(
+		"INSERT INTO %s (%s) VALUES %s %s",
+		base.UsageDBTableName,
+		strings.Join(base.UsageDBColNames, ","),
+		fmt.Sprintf(
+			"(?,?,?,?,1,%s)",
+			strings.Join(strings.Split(strings.Repeat("?", len(base.UsageDBColNames)-5), ""), ","),
+		),
+		"ON CONFLICT(account,usr,partition,qos) DO UPDATE SET",
+	)
+	prepareStatements[base.UsageDBTableName] = strings.Join(
+		[]string{
+			accountsStmt,
+			strings.Join(placeholders, ",\n"),
+		},
+		"\n",
+	)
+
+	// // UserStats update statement
+	// usersStmt := fmt.Sprintf(
+	// 	"INSERT INTO %s (%s) VALUES %s %s",
+	// 	base.UsersDBTableName,
+	// 	strings.Join(base.UsersDBColNames, ","),
+	// 	fmt.Sprintf(
+	// 		"(?,1,%s)",
+	// 		strings.Join(strings.Split(strings.Repeat("?", len(base.UsersDBColNames)-2), ""), ","),
+	// 	),
+	// 	"ON CONFLICT(name) DO UPDATE SET",
+	// )
+	// prepareStatements[base.UsersDBTableName] = strings.Join(
+	// 	[]string{
+	// 		usersStmt,
+	// 		strings.Join(placeholders, ",\n"),
+	// 	},
+	// 	"\n",
+	// )
 }
 
 // Make new JobStatsDB struct
@@ -129,8 +187,8 @@ setup:
 		return nil, err
 	}
 
-	// Setup DB
-	db, dbConn, err := setupDB(c.JobstatsDBPath, base.JobStatsDBTable, c.Logger)
+	// Setup DB(s)
+	db, dbConn, err := setupDB(c.JobstatsDBPath, c.Logger)
 	if err != nil {
 		level.Error(c.Logger).Log("msg", "DB setup failed", "err", err)
 		return nil, err
@@ -232,32 +290,39 @@ func (j *jobStatsDB) getJobStats(startTime, endTime time.Time) error {
 	// Begin transcation
 	tx, err := j.db.Begin()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to begin SQL transcation: %s", err)
 	}
 
 	// Delete older entries and free up DB pages
-	level.Debug(j.logger).Log("msg", "Cleaning up old jobs")
-	if err = j.deleteOldJobs(tx); err != nil {
-		level.Error(j.logger).Log("msg", "Failed to clean up old job entries", "err", err)
-	} else {
-		level.Debug(j.logger).Log("msg", "Cleaned up old jobs in DB")
+	// In testing we want to skip this
+	if !j.storage.skipDeleteOldJobs {
+		level.Debug(j.logger).Log("msg", "Cleaning up old jobs")
+		if err = j.deleteOldJobs(tx); err != nil {
+			level.Error(j.logger).Log("msg", "Failed to clean up old job entries", "err", err)
+		} else {
+			level.Debug(j.logger).Log("msg", "Cleaned up old jobs in DB")
+		}
 	}
 
 	// Make prepare statement and defer closing statement
-	stmt, err := j.prepareInsertStatement(tx)
+	level.Debug(j.logger).Log("msg", "Preparing SQL statements")
+	stmtMap, err := j.prepareStatements(tx)
 	if err != nil {
 		return err
 	}
-	defer stmt.Close()
+	for _, stmt := range stmtMap {
+		defer stmt.Close()
+	}
+	level.Debug(j.logger).Log("msg", "Finished preparing SQL statements")
 
 	// Insert data into DB
-	level.Debug(j.logger).Log("msg", "Inserting new jobs into DB")
-	ignoredJobs := j.insertJobs(stmt, jobs)
-	level.Debug(j.logger).Log("msg", "Finished inserting new jobs into DB")
+	level.Debug(j.logger).Log("msg", "Executing SQL statements")
+	ignoredJobs := j.execStatements(stmtMap, jobs)
+	level.Debug(j.logger).Log("msg", "Finished executing SQL statements")
 
 	// Commit changes
 	if err = tx.Commit(); err != nil {
-		return err
+		return fmt.Errorf("failed to commit SQL transcation: %s", err)
 	}
 
 	// Finally make API requests to TSDB to delete timeseries of ignored jobs
@@ -277,7 +342,7 @@ func (j *jobStatsDB) getJobStats(startTime, endTime time.Time) error {
 }
 
 // Fetch job metrics from TSDB and update JobStat struct for each job
-func (j *jobStatsDB) fetchMetricsFromTSDB(queryTime time.Time, jobs []base.JobStats) []base.JobStats {
+func (j *jobStatsDB) fetchMetricsFromTSDB(queryTime time.Time, jobs []base.Job) []base.Job {
 	var minStartTime = queryTime.UnixMilli()
 	var allJobIds string
 
@@ -293,15 +358,31 @@ func (j *jobStatsDB) fetchMetricsFromTSDB(queryTime time.Time, jobs []base.JobSt
 	// Get max window from minStartTime to queryTime
 	maxDuration := time.Duration((queryTime.UnixMilli() - minStartTime) * int64(time.Millisecond))
 
+	// Start a wait group
+	var wg sync.WaitGroup
+	var cpuMetrics tsdb.CPUMetrics
+	var gpuMetrics tsdb.GPUMetrics
+	var err error
+
 	// Get metrics from TSDB
-	cpuMetrics, err := j.tsdb.CPUMetrics(queryTime, maxDuration, allJobIds)
-	if err != nil {
-		level.Warn(j.logger).Log("msg", "Errors in fetching CPU job metrics from TSDB", "err", err)
-	}
-	gpuMetrics, err := j.tsdb.GPUMetrics(queryTime, maxDuration, allJobIds)
-	if err != nil {
-		level.Warn(j.logger).Log("msg", "Errors in fetching GPU job metrics from TSDB", "err", err)
-	}
+	wg.Add(1)
+	go func() {
+		if cpuMetrics, err = j.tsdb.CPUMetrics(queryTime, maxDuration, allJobIds); err != nil {
+			level.Warn(j.logger).Log("msg", "Errors in fetching CPU job metrics from TSDB", "err", err)
+		}
+		wg.Done()
+	}()
+
+	wg.Add(1)
+	go func() {
+		if gpuMetrics, err = j.tsdb.GPUMetrics(queryTime, maxDuration, allJobIds); err != nil {
+			level.Warn(j.logger).Log("msg", "Errors in fetching GPU job metrics from TSDB", "err", err)
+		}
+		wg.Done()
+	}()
+
+	// Wait for go routines
+	wg.Wait()
 
 	// Finally update jobs
 	for _, job := range jobs {
@@ -354,18 +435,12 @@ func (j *jobStatsDB) fetchMetricsFromTSDB(queryTime time.Time, jobs []base.JobSt
 
 // Delete old entries in DB
 func (j *jobStatsDB) deleteOldJobs(tx *sql.Tx) error {
-	// In testing we want to skip this
-	if j.storage.skipDeleteOldJobs {
-		return nil
-	}
-
 	deleteRowQuery := fmt.Sprintf(
 		"DELETE FROM %s WHERE Start <= date('now', '-%d day')",
-		base.JobStatsDBTable,
+		base.JobsDBTableName,
 		int(j.storage.retentionPeriod.Hours()/24),
 	)
-	_, err := tx.Exec(deleteRowQuery)
-	if err != nil {
+	if _, err := tx.Exec(deleteRowQuery); err != nil {
 		return err
 	}
 
@@ -376,33 +451,27 @@ func (j *jobStatsDB) deleteOldJobs(tx *sql.Tx) error {
 	return nil
 }
 
-// Make and return prepare statement for inserting entries
-func (j *jobStatsDB) prepareInsertStatement(tx *sql.Tx) (*sql.Stmt, error) {
-	placeHolderString := fmt.Sprintf(
-		"(%s)",
-		strings.Join(strings.Split(strings.Repeat("?", len(base.JobStatsFieldNames)), ""), ","),
-	)
-	fieldNamesString := strings.Join(base.JobStatsFieldNames, ",")
-	insertStatement := fmt.Sprintf(
-		"INSERT OR REPLACE INTO %s(%s) VALUES %s",
-		base.JobStatsDBTable,
-		fieldNamesString,
-		placeHolderString,
-	)
-	stmt, err := tx.Prepare(insertStatement)
-	if err != nil {
-		return nil, err
+// Make and return a map of prepare statements for inserting entries into different
+// DB tables. The key of map is DB table name and value will be pointer to statement
+func (j *jobStatsDB) prepareStatements(tx *sql.Tx) (map[string]*sql.Stmt, error) {
+	var stmts = make(map[string]*sql.Stmt, len(prepareStatements))
+	var err error
+	for dbTable, stmt := range prepareStatements {
+		stmts[dbTable], err = tx.Prepare(stmt)
+		if err != nil {
+			return nil, fmt.Errorf("failed to prepare statement for table %s: %s", dbTable, err)
+		}
 	}
-	return stmt, nil
+	return stmts, nil
 }
 
 // Insert job stat into DB
-func (j *jobStatsDB) insertJobs(statement *sql.Stmt, jobStats []base.JobStats) []string {
+func (j *jobStatsDB) execStatements(statements map[string]*sql.Stmt, jobs []base.Job) []string {
 	var ignoredJobs []string
 	var err error
-	for _, jobStat := range jobStats {
+	for _, job := range jobs {
 		// Empty job
-		if jobStat == (base.JobStats{}) {
+		if job == (base.Job{}) {
 			continue
 		}
 
@@ -412,61 +481,149 @@ func (j *jobStatsDB) insertJobs(statement *sql.Stmt, jobStats []base.JobStats) [
 		// Check if we EndTS is not zero before ignoring job. If it is zero, it means
 		// it must be RUNNING job
 		var ignore = 0
-		if jobStat.ElapsedRaw < int64(j.storage.cutoffPeriod.Seconds()) && jobStat.EndTS != 0 {
+		if job.ElapsedRaw < int64(j.storage.cutoffPeriod.Seconds()) && job.EndTS != 0 {
 			ignoredJobs = append(
 				ignoredJobs,
-				strconv.FormatInt(jobStat.Jobid, 10),
+				strconv.FormatInt(job.Jobid, 10),
 			)
 			ignore = 1
 		}
 
-		// level.Debug(j.logger).Log("msg", "Inserting job", "jobid", jobStat.Jobid)
-		_, err = statement.Exec(
-			jobStat.Jobid,
-			jobStat.Jobuuid,
-			jobStat.Partition,
-			jobStat.QoS,
-			jobStat.Account,
-			jobStat.Grp,
-			jobStat.Gid,
-			jobStat.Usr,
-			jobStat.Uid,
-			jobStat.Submit,
-			jobStat.Start,
-			jobStat.End,
-			jobStat.SubmitTS,
-			jobStat.StartTS,
-			jobStat.EndTS,
-			jobStat.Elapsed,
-			jobStat.ElapsedRaw,
-			jobStat.Exitcode,
-			jobStat.State,
-			jobStat.Nnodes,
-			jobStat.Ncpus,
-			jobStat.Mem,
-			jobStat.Ngpus,
-			jobStat.Nodelist,
-			jobStat.NodelistExp,
-			jobStat.JobName,
-			jobStat.WorkDir,
-			jobStat.CPUBilling,
-			jobStat.GPUBilling,
-			jobStat.MiscBilling,
-			jobStat.AveCPUUsage,
-			jobStat.AveCPUMemUsage,
-			jobStat.TotalCPUEnergyUsage,
-			jobStat.TotalCPUEmissions,
-			jobStat.AveGPUUsage,
-			jobStat.AveGPUMemUsage,
-			jobStat.TotalGPUEnergyUsage,
-			jobStat.TotalGPUEmissions,
-			jobStat.Comment,
+		// level.Debug(j.logger).Log("msg", "Inserting job", "jobid", job.Jobid)
+		if _, err = statements[base.JobsDBTableName].Exec(
+			job.Jobid,
+			job.Jobuuid,
+			job.Partition,
+			job.QoS,
+			job.Account,
+			job.Grp,
+			job.Gid,
+			job.Usr,
+			job.Uid,
+			job.Submit,
+			job.Start,
+			job.End,
+			job.SubmitTS,
+			job.StartTS,
+			job.EndTS,
+			job.Elapsed,
+			job.ElapsedRaw,
+			job.Exitcode,
+			job.State,
+			job.Nnodes,
+			job.Ncpus,
+			job.Mem,
+			job.Ngpus,
+			job.Nodelist,
+			job.NodelistExp,
+			job.JobName,
+			job.WorkDir,
+			job.TotalCPUBilling,
+			job.TotalGPUBilling,
+			job.TotalMiscBilling,
+			job.AveCPUUsage,
+			job.AveCPUMemUsage,
+			job.TotalCPUEnergyUsage,
+			job.TotalCPUEmissions,
+			job.AveGPUUsage,
+			job.AveGPUMemUsage,
+			job.TotalGPUEnergyUsage,
+			job.TotalGPUEmissions,
+			job.TotalIOWriteHot,
+			job.TotalIOReadHot,
+			job.TotalIOWriteCold,
+			job.TotalIOReadCold,
+			job.AvgICTrafficIn,
+			job.AvgICTrafficOut,
+			job.Comment,
 			ignore,
-		)
-		if err != nil {
+		); err != nil {
 			level.Error(j.logger).
-				Log("msg", "Failed to insert job in DB", "jobid", jobStat.Jobid, "err", err)
+				Log("msg", "Failed to insert job in DB", "jobid", job.Jobid, "err", err)
 		}
+
+		// If job.EndTS is zero, it means a running job. We shouldnt update accounts
+		// and users stats of running jobs. They should be updated **ONLY** for finished jobs
+		if job.EndTS == 0 {
+			continue
+		}
+
+		// Update Usage table
+		if _, err = statements[base.UsageDBTableName].Exec(
+			job.Account,
+			job.Usr,
+			job.Partition,
+			job.QoS,
+			job.TotalCPUBilling,
+			job.TotalGPUBilling,
+			job.TotalMiscBilling,
+			job.AveCPUUsage,
+			job.AveCPUMemUsage,
+			job.TotalCPUEnergyUsage,
+			job.TotalCPUEmissions,
+			job.AveGPUUsage,
+			job.AveGPUMemUsage,
+			job.TotalGPUEnergyUsage,
+			job.TotalGPUEmissions,
+			job.TotalIOWriteHot,
+			job.TotalIOReadHot,
+			job.TotalIOWriteCold,
+			job.TotalIOReadCold,
+			job.AvgICTrafficIn,
+			job.AvgICTrafficOut,
+			job.Comment,
+			job.TotalCPUBilling,
+			job.TotalGPUBilling,
+			job.TotalMiscBilling,
+			job.AveCPUUsage,
+			job.AveCPUMemUsage,
+			job.TotalCPUEnergyUsage,
+			job.TotalCPUEmissions,
+			job.AveGPUUsage,
+			job.AveGPUMemUsage,
+			job.TotalGPUEnergyUsage,
+			job.TotalGPUEmissions,
+			job.TotalIOWriteHot,
+			job.TotalIOReadHot,
+			job.TotalIOWriteCold,
+			job.TotalIOReadCold,
+			job.AvgICTrafficIn,
+			job.AvgICTrafficOut,
+			job.Comment,
+		); err != nil {
+			level.Error(j.logger).
+				Log("msg", "Failed to update usage table in DB", "jobid", job.Jobid, "err", err)
+		}
+
+		// // Update UserStats table
+		// if _, err = statements[base.UsersDBTableName].Exec(
+		// 	job.Usr,
+		// 	job.CPUBilling,
+		// 	job.GPUBilling,
+		// 	job.MiscBilling,
+		// 	job.AveCPUUsage,
+		// 	job.AveCPUMemUsage,
+		// 	job.TotalCPUEnergyUsage,
+		// 	job.TotalCPUEmissions,
+		// 	job.AveGPUUsage,
+		// 	job.AveGPUMemUsage,
+		// 	job.TotalGPUEnergyUsage,
+		// 	job.TotalGPUEmissions,
+		// 	job.CPUBilling,
+		// 	job.GPUBilling,
+		// 	job.MiscBilling,
+		// 	job.AveCPUUsage,
+		// 	job.AveCPUMemUsage,
+		// 	job.TotalCPUEnergyUsage,
+		// 	job.TotalCPUEmissions,
+		// 	job.AveGPUUsage,
+		// 	job.AveGPUMemUsage,
+		// 	job.TotalGPUEnergyUsage,
+		// 	job.TotalGPUEmissions,
+		// ); err != nil {
+		// 	level.Error(j.logger).
+		// 		Log("msg", "Failed to update users table in DB", "jobid", job.Jobid, "err", err)
+		// }
 	}
 	level.Debug(j.logger).Log("jobs_ignored", len(ignoredJobs))
 	return ignoredJobs
@@ -492,7 +649,7 @@ func (j *jobStatsDB) deleteTimeSeries(startTime time.Time, endTime time.Time, jo
 	start := startTime.Add(-j.storage.cutoffPeriod)
 	end := endTime
 
-	// Matcher must be of format "{job=~"<regex>"}"
+	// Matcher must be of format "{jobid=~"<regex>"}"
 	// Ref: https://ganeshvernekar.com/blog/prometheus-tsdb-queries/
 	//
 	// Join them with | as delimiter. We will use regex match to match all series
@@ -547,7 +704,8 @@ func (j *jobStatsDB) backup(backupDBPath string) error {
 			return err
 		}
 
-		level.Debug(j.logger).Log("msg", "DB backup step", "remaining", backup.Remaining(), "page_count", backup.PageCount())
+		level.Debug(j.logger).
+			Log("msg", "DB backup step", "remaining", backup.Remaining(), "page_count", backup.PageCount())
 
 		// This sleep allows other transactions to write during backups.
 		time.Sleep(stepSleep)
@@ -574,7 +732,10 @@ func (j *jobStatsDB) createBackup() error {
 
 	// Attempt to create DB backup
 	// Make a unique backup file name using current time
-	backupDBFile := filepath.Join(j.storage.dbBackupPath, fmt.Sprintf("jobstats-%s.bak.db", time.Now().Format("200601021504")))
+	backupDBFile := filepath.Join(
+		j.storage.dbBackupPath,
+		fmt.Sprintf("%s-%s.bak.db", base.BatchJobStatsServerAppName, time.Now().Format("200601021504")),
+	)
 	if err := j.backup(backupDBFile); err != nil {
 		return err
 	}

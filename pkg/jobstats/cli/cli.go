@@ -2,10 +2,7 @@ package cli
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
-	"net/http"
-	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -20,6 +17,7 @@ import (
 	batchjob_runtime "github.com/mahendrapaipuri/batchjob_monitor/internal/runtime"
 	"github.com/mahendrapaipuri/batchjob_monitor/pkg/jobstats/base"
 	"github.com/mahendrapaipuri/batchjob_monitor/pkg/jobstats/db"
+	"github.com/mahendrapaipuri/batchjob_monitor/pkg/jobstats/grafana"
 	"github.com/mahendrapaipuri/batchjob_monitor/pkg/jobstats/schedulers"
 	"github.com/mahendrapaipuri/batchjob_monitor/pkg/jobstats/server"
 	"github.com/mahendrapaipuri/batchjob_monitor/pkg/jobstats/tsdb"
@@ -62,10 +60,6 @@ func (b *BatchJobStatsServer) Main() error {
 			"web.admin-users",
 			"Comma separated list of admin users (example: \"admin1,admin2\").",
 		).Default("").String()
-		// syncAdminUsers = b.App.Flag(
-		// 	"web.admin-users.sync.from.grafana",
-		// 	"Synchronize admin users from Grafana (default is false). Admin users feteched from Grafana will be merged with users set in --web.admin-users.",
-		// ).Default("false").Bool()
 		grafanaWebUrl = b.App.Flag(
 			"grafana.web.url",
 			"Grafana URL for fetching admin users list from a service account.",
@@ -118,6 +112,10 @@ func (b *BatchJobStatsServer) Main() error {
 		skipDeleteOldJobs = b.App.Flag(
 			"storage.data.skip.delete.old.jobs",
 			"Skip deleting old jobs. Used only in testing. (default is false)",
+		).Hidden().Default("false").Bool()
+		disableChecks = b.App.Flag(
+			"test.disable.checks",
+			"Disable sanity checks. Used only in testing. (default is false)",
 		).Hidden().Default("false").Bool()
 		maxProcs = b.App.Flag(
 			"runtime.gomaxprocs", "The target number of CPUs Go will run on (GOMAXPROCS)",
@@ -181,48 +179,14 @@ func (b *BatchJobStatsServer) Main() error {
 		}
 	}
 
-	// Check if Grafana admin teams ID and URL are provided
-	var grafanaClient *http.Client
-	var grafanaURL *url.URL
-	if *grafanaWebUrl != "" && *grafanaAdminTeamID != "" {
-		// // Check if Grafana URL and Teams ID are present
-		// if *grafanaWebUrl == "" || *grafanaAdminTeamID == "" {
-		// 	return fmt.Errorf("--web.admin-users.sync.from.grafana is set to true but --grafana.web.url and/or --grafana.teams.admin.id is not provided.")
-		// }
-
-		// Check if API Token is provided
-		if os.Getenv("GRAFANA_API_TOKEN") == "" {
-			return fmt.Errorf("GRAFANA_API_TOKEN environment variable not set")
-		}
-
-		// Parse Grafana web Url
-		if grafanaURL, err = url.Parse(*grafanaWebUrl); err != nil {
-			return fmt.Errorf("Failed to parse --grafana.web.url %s", err)
-		}
-
-		// If skip verify is set to true for TSDB add it to client
-		if *grafanaWebSkipTLSVerify {
-			tr := &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-			}
-			grafanaClient = &http.Client{Transport: tr, Timeout: time.Duration(30 * time.Second)}
-		} else {
-			grafanaClient = &http.Client{Timeout: time.Duration(30 * time.Second)}
-		}
-
-		// Create a new GET request to reach out to Grafana teams API
-		req, err := http.NewRequest(http.MethodGet, grafanaURL.String(), nil)
-		if err != nil {
-			return fmt.Errorf("failed to create a HTTP request to Grafana: %s", err)
-		}
-
-		// Check if Grafana is reachable
-		if _, err = grafanaClient.Do(req); err != nil {
-			return fmt.Errorf(
-				"Grafana at %s is unreachable: %s",
-				grafanaURL.Redacted(),
-				err,
-			)
+	// Make a new Grafana instance
+	grafana, err := grafana.NewGrafana(*grafanaWebUrl, *grafanaWebSkipTLSVerify)
+	if err != nil {
+		return fmt.Errorf("failed to create Grafana: %s", err)
+	}
+	if grafana.Available() {
+		if err := grafana.Ping(); err != nil {
+			return fmt.Errorf("Grafana at %s is unreachable: %s", grafana.URL.Redacted(), err)
 		}
 	}
 
@@ -268,7 +232,7 @@ func (b *BatchJobStatsServer) Main() error {
 	runtime.GOMAXPROCS(*maxProcs)
 	level.Debug(logger).Log("msg", "Go MAXPROCS", "procs", runtime.GOMAXPROCS(0))
 
-	jobstatDBPath := filepath.Join(absDataPath, "jobstats.db")
+	jobstatDBPath := filepath.Join(absDataPath, fmt.Sprintf("%s.db", base.BatchJobStatsServerAppName))
 	jobsLastTimeStampFile := filepath.Join(absDataPath, "lastjobsupdatetime")
 
 	// Get slice of admin users
@@ -280,8 +244,9 @@ func (b *BatchJobStatsServer) Main() error {
 	}
 
 	// Emit a log line that backup interval of less than 1 day is not possible
-	if time.Duration(backupInterval) < time.Duration(24*time.Hour) {
-		level.Warn(logger).Log("msg", "Back up interval of less than 1 day is not supported. Setting back up interval to 1 day.", "arg", *backupIntervalString)
+	if time.Duration(backupInterval) < time.Duration(24*time.Hour) && !*disableChecks {
+		level.Warn(logger).
+			Log("msg", "Back up interval of less than 1 day is not supported. Setting back up interval to 1 day.", "arg", *backupIntervalString)
 		backupInterval, _ = model.ParseDuration("1d")
 	}
 
@@ -312,9 +277,8 @@ func (b *BatchJobStatsServer) Main() error {
 		DBConfig:           *dbConfig,
 		MaxQueryPeriod:     time.Duration(maxQuery),
 		AdminUsers:         adminUsersList,
-		GrafanaURL:         grafanaURL,
+		Grafana:            grafana,
 		GrafanaAdminTeamID: *grafanaAdminTeamID,
-		HTTPClient:         grafanaClient,
 	}
 
 	// Create server instance
