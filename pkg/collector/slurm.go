@@ -271,7 +271,19 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 		jobGpuFlag: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_gpu_index_flag"),
 			"Indicates running job on GPU, 1=job running",
-			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid", "index", "hindex", "uuid", "UUID"}, nil,
+			[]string{
+				"batch",
+				"hostname",
+				"jobid",
+				"jobuser",
+				"jobaccount",
+				"jobuuid",
+				"index",
+				"hindex",
+				"uuid",
+				"UUID",
+			},
+			nil,
 		),
 		collectError: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "collect_error"),

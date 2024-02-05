@@ -29,7 +29,10 @@ const jumpBackSeconds = 3.0
 const cpuCollectorSubsystem = "cpu"
 
 var (
-	jumpBackDebugMessage = fmt.Sprintf("CPU Idle counter jumped backwards more than %f seconds, possible hotplug event, resetting CPU stats", jumpBackSeconds)
+	jumpBackDebugMessage = fmt.Sprintf(
+		"CPU Idle counter jumped backwards more than %f seconds, possible hotplug event, resetting CPU stats",
+		jumpBackSeconds,
+	)
 )
 
 func init() {

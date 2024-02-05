@@ -6,9 +6,9 @@ import (
 
 var (
 	// The path of the proc filesystem.
-	sysPath      = BatchJobExporterApp.Flag("path.sysfs", "sysfs mountpoint.").Default("/sys").String()
-	procfsPath   = BatchJobExporterApp.Flag("path.procfs", "procfs mountpoint.").Default("/proc").String()
-	cgroupfsPath = BatchJobExporterApp.Flag("path.cgroupfs", "cgroupfs mountpoint.").
+	sysPath      = BatchJobExporterApp.Flag("path.sysfs", "sysfs mountpoint.").Hidden().Default("/sys").String()
+	procfsPath   = BatchJobExporterApp.Flag("path.procfs", "procfs mountpoint.").Hidden().Default("/proc").String()
+	cgroupfsPath = BatchJobExporterApp.Flag("path.cgroupfs", "cgroupfs mountpoint.").Hidden().
 			Default("/sys/fs/cgroup").
 			String()
 )
