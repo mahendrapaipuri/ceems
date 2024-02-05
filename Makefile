@@ -126,6 +126,12 @@ test-e2e: build pkg/collector/fixtures/sys/.unpacked pkg/collector/fixtures/proc
 	./scripts/e2e-test.sh -s stats-jobuuid-jobid-query
 	./scripts/e2e-test.sh -s stats-admin-query
 	./scripts/e2e-test.sh -s stats-admin-query-all
+	./scripts/e2e-test.sh -s stats-admin-denied-query
+	./scripts/e2e-test.sh -s stats-current-usage-query
+	./scripts/e2e-test.sh -s stats-global-usage-query
+	./scripts/e2e-test.sh -s stats-current-usage-admin-query
+	./scripts/e2e-test.sh -s stats-global-usage-admin-query
+	./scripts/e2e-test.sh -s stats-current-usage-admin-denied-query
 endif
 
 ifeq ($(CGO_BUILD), 0)
@@ -148,6 +154,12 @@ test-e2e-update: build pkg/collector/fixtures/sys/.unpacked pkg/collector/fixtur
 	./scripts/e2e-test.sh -s stats-jobuuid-jobid-query -u || true
 	./scripts/e2e-test.sh -s stats-admin-query -u || true
 	./scripts/e2e-test.sh -s stats-admin-query-all -u || true
+	./scripts/e2e-test.sh -s stats-admin-denied-query -u || true
+	./scripts/e2e-test.sh -s stats-current-usage-query -u || true
+	./scripts/e2e-test.sh -s stats-global-usage-query -u || true
+	./scripts/e2e-test.sh -s stats-current-usage-admin-query -u || true
+	./scripts/e2e-test.sh -s stats-global-usage-admin-query -u || true
+	./scripts/e2e-test.sh -s stats-current-usage-admin-denied-query -u || true
 endif
 
 .PHONY: skip-test-e2e

@@ -105,12 +105,36 @@ then
     fixture='pkg/jobstats/fixtures/output/e2e-test-stats-server-jobuuid-jobid-query.txt'
   elif [ "${scenario}" = "stats-admin-query" ]
   then
-    desc="/api/jobs end point test for admin query"
+    desc="/api/jobs/admin end point test for admin query"
     fixture='pkg/jobstats/fixtures/output/e2e-test-stats-server-admin-query.txt'
   elif [ "${scenario}" = "stats-admin-query-all" ]
   then
-    desc="/api/jobs end point test for admin query for all jobs"
+    desc="/api/jobs/admin end point test for admin query for all jobs"
     fixture='pkg/jobstats/fixtures/output/e2e-test-stats-server-admin-query-all.txt'
+  elif [ "${scenario}" = "stats-admin-denied-query" ]
+  then
+    desc="/api/jobs/admin end point test for denied request"
+    fixture='pkg/jobstats/fixtures/output/e2e-test-stats-server-admin--denied-query.txt'
+  elif [ "${scenario}" = "stats-current-usage-query" ]
+  then
+    desc="/api/usage/current end point test"
+    fixture='pkg/jobstats/fixtures/output/e2e-test-stats-server-current-usage-query.txt'
+  elif [ "${scenario}" = "stats-global-usage-query" ]
+  then
+    desc="/api/usage/global end point test"
+    fixture='pkg/jobstats/fixtures/output/e2e-test-stats-server-global-usage-query.txt'
+  elif [ "${scenario}" = "stats-current-usage-admin-query" ]
+  then
+    desc="/api/usage/current/admin end point test"
+    fixture='pkg/jobstats/fixtures/output/e2e-test-stats-server-current-usage-admin-query.txt'
+  elif [ "${scenario}" = "stats-global-usage-admin-query" ]
+  then
+    desc="/api/usage/global/admin end point test"
+    fixture='pkg/jobstats/fixtures/output/e2e-test-stats-server-global-usage-admin-query.txt'
+  elif [ "${scenario}" = "stats-current-usage-admin-denied-query" ]
+  then
+    desc="/api/usage/current/admin end point test"
+    fixture='pkg/jobstats/fixtures/output/e2e-test-stats-server-current-usage-admin-denied-query.txt'
   fi
 
   logfile="${tmpdir}/batchjob_stats_server.log"
@@ -150,7 +174,7 @@ trap finish EXIT
 get() {
   if command -v curl > /dev/null 2>&1
   then
-    curl -s -f "$@"
+    curl -s "$@"
   elif command -v wget > /dev/null 2>&1
   then
     wget -O - "$@"
@@ -291,7 +315,10 @@ then
     --slurm.sacct.path="pkg/jobstats/fixtures/sacct" \
     --batch.scheduler.slurm \
     --storage.data.path="${tmpdir}" \
+    --storage.data.backup.path="${tmpdir}" \
+    --storage.data.backup.interval="2s" \
     --storage.data.skip.delete.old.jobs \
+    --test.disable.checks \
     --web.listen-address="127.0.0.1:${port}" \
     --web.admin-users="grafana" \
     --log.level="debug" > "${logfile}" 2>&1 &
@@ -309,7 +336,7 @@ then
     get -H "X-Grafana-User: usr2" "127.0.0.1:${port}/api/jobs?jobuuid=3e821675-0fec-9519-635e-ff219cdaa6e5&account=acc2" > "${fixture_output}"
   elif [ "${scenario}" = "stats-jobid-query" ]
   then
-    get -H "X-Grafana-User: usr8" "127.0.0.1:${port}/api/jobs?jobid=1479763&account=acc1&from=1676934000&to=1677020400" > "${fixture_output}"
+    get -H "X-Grafana-User: usr8" "127.0.0.1:${port}/api/jobs?jobid=1479765&account=acc1&from=1676934000&to=1677020400" > "${fixture_output}"
   elif [ "${scenario}" = "stats-jobuuid-jobid-query" ]
   then
     get -H "X-Grafana-User: usr15" "127.0.0.1:${port}/api/jobs?jobuuid=6311b9ce-d741-d5ba-a27a-9c22eb21254c&jobid=11508&jobid=81510&account=acc1" > "${fixture_output}"
@@ -318,7 +345,25 @@ then
     get -H "X-Grafana-User: grafana" -H "X-Dashboard-User: usr3" "127.0.0.1:${port}/api/jobs?account=acc3&from=1676934000&to=1677538800" > "${fixture_output}"
   elif [ "${scenario}" = "stats-admin-query-all" ]
   then
-    get -H "X-Grafana-User: grafana" -H "X-Dashboard-User: all" "127.0.0.1:${port}/api/jobs?from=1676934000&to=1677538800" > "${fixture_output}"
+    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/jobs/admin?from=1676934000&to=1677538800" > "${fixture_output}"
+  elif [ "${scenario}" = "stats-admin-denied-query" ]
+  then
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/jobs/admin" > "${fixture_output}"
+  elif [ "${scenario}" = "stats-current-usage-query" ]
+  then
+    get -H "X-Grafana-User: usr3" "127.0.0.1:${port}/api/usage/current?from=1676934000&to=1677538800" > "${fixture_output}"
+  elif [ "${scenario}" = "stats-global-usage-query" ]
+  then
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/usage/global" > "${fixture_output}"
+  elif [ "${scenario}" = "stats-current-usage-admin-query" ]
+  then
+    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/usage/current/admin?user=usr3&from=1676934000&to=1677538800" > "${fixture_output}"
+  elif [ "${scenario}" = "stats-global-usage-admin-query" ]
+  then
+    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/usage/global/admin?user=usr1" > "${fixture_output}"
+  elif [ "${scenario}" = "stats-current-usage-admin-denied-query" ]
+  then
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/usage/global/admin?user=usr2" > "${fixture_output}"
   fi
 fi
 

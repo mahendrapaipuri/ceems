@@ -213,7 +213,14 @@ func (t *TSDB) RateInterval() {
 
 // Return formatted query string after replacing placeholders
 func (t *TSDB) queryString(query string, jobs string, maxDuration time.Duration) string {
-	return fmt.Sprintf(strings.TrimLeft(query, "\n"), jobs, t.rateInterval, maxDuration, t.scrapeInterval, t.scrapeInterval.Milliseconds())
+	return fmt.Sprintf(
+		strings.TrimLeft(query, "\n"),
+		jobs,
+		t.rateInterval,
+		maxDuration,
+		t.scrapeInterval,
+		t.scrapeInterval.Milliseconds(),
+	)
 }
 
 // Get CPU metrics of jobs
