@@ -5,12 +5,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	_ "net/http/pprof"
 	"net/url"
-	"os"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -20,6 +17,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/mahendrapaipuri/batchjob_monitor/pkg/jobstats/base"
 	"github.com/mahendrapaipuri/batchjob_monitor/pkg/jobstats/db"
+	"github.com/mahendrapaipuri/batchjob_monitor/pkg/jobstats/grafana"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/prometheus/exporter-toolkit/web"
 )
@@ -33,18 +31,8 @@ type Config struct {
 	DBConfig           db.Config
 	MaxQueryPeriod     time.Duration
 	AdminUsers         []string
-	GrafanaURL         *url.URL
+	Grafana            *grafana.Grafana
 	GrafanaAdminTeamID string
-	HTTPClient         *http.Client
-}
-
-// Grafana config struct
-type GrafanaConfig struct {
-	available           bool
-	teamMembersEndpoint *url.URL
-	client              *http.Client
-	lastAdminsUpdate    time.Time
-	Admins              func(string, *http.Client, log.Logger) ([]string, error)
 }
 
 // Job Stats Server struct
@@ -52,58 +40,58 @@ type JobstatsServer struct {
 	logger         log.Logger
 	server         *http.Server
 	webConfig      *web.FlagConfig
+	db             *sql.DB
 	dbConfig       db.Config
 	maxQueryPeriod time.Duration
-	adminUsers     []string
-	grafana        *GrafanaConfig
-	Accounts       func(string, string, log.Logger) ([]base.Account, error)
-	Jobs           func(Query, log.Logger) ([]base.JobStats, error)
-	HealthCheck    func(log.Logger) bool
+	Querier        func(*sql.DB, Query, string, log.Logger) (interface{}, error)
+	HealthCheck    func(*sql.DB, log.Logger) bool
 }
 
-// Query builder struct
-type Query struct {
-	builder strings.Builder
-	params  []string
+// Common API response model
+type Response struct {
+	Status    string      `json:"status"`
+	Data      interface{} `json:"data,omitempty"`
+	ErrorType errorType   `json:"errorType,omitempty"`
+	Error     string      `json:"error,omitempty"`
+	Warnings  []string    `json:"warnings,omitempty"`
 }
 
-// Add query to builder
-func (q *Query) query(s string) {
-	q.builder.WriteString(s)
+var (
+	aggJobDBCols       = make([]string, len(base.UsageDBColNames)+1)
+	defaultQueryWindow = time.Duration(2 * time.Hour) // Two hours
+)
+
+// Make accountSummary DB col names by using aggregate SQL functions
+func init() {
+	// Add primary field manually as it is ignored in UsageDBColNames
+	aggJobDBCols[0] = "id"
+
+	// Use SQL aggregate functions in query
+	for i := 0; i < len(base.UsageDBColNames); i++ {
+		col := base.UsageDBColNames[i]
+		if strings.HasPrefix(col, "avg") {
+			aggJobDBCols[i+1] = fmt.Sprintf("AVG(%[1]s) AS %[1]s", col)
+		} else if strings.HasPrefix(col, "total") {
+			aggJobDBCols[i+1] = fmt.Sprintf("SUM(%[1]s) AS %[1]s", col)
+		} else if strings.HasPrefix(col, "num") {
+			aggJobDBCols[i+1] = "COUNT(id) AS num_jobs"
+		} else {
+			aggJobDBCols[i+1] = col
+		}
+	}
 }
 
-// Add parameter and its placeholder
-func (q *Query) param(val []string) {
-	q.builder.WriteString(fmt.Sprintf("(%s)", strings.Join(strings.Split(strings.Repeat("?", len(val)), ""), ",")))
-	q.params = append(q.params, val...)
+// Ping DB for connection test
+func getDBStatus(dbConn *sql.DB, logger log.Logger) bool {
+	if err := dbConn.Ping(); err != nil {
+		level.Error(logger).Log("msg", "DB Ping failed", "err", err)
+		return false
+	}
+	return true
 }
-
-// Get current query string and its parameters
-func (q *Query) get() (string, []string) {
-	return q.builder.String(), q.params
-}
-
-var dbConn *sql.DB
 
 // Create new Jobstats server
 func NewJobstatsServer(c *Config) (*JobstatsServer, func(), error) {
-	// Make grafanaConfig
-	var grafanaConfig *GrafanaConfig
-	if c.GrafanaURL != nil && c.GrafanaAdminTeamID != "" {
-		// We already check if Grafana is reachable in CLI checks.
-		// So we can set available to true here
-		grafanaConfig = &GrafanaConfig{
-			available:           true,
-			client:              c.HTTPClient,
-			Admins:              FetchAdminsFromGrafana,
-			teamMembersEndpoint: c.GrafanaURL.JoinPath(fmt.Sprintf("/api/teams/%s/members", c.GrafanaAdminTeamID)),
-		}
-	} else {
-		grafanaConfig = &GrafanaConfig{
-			available: false,
-		}
-	}
-
 	router := mux.NewRouter()
 	server := &JobstatsServer{
 		logger: c.Logger,
@@ -120,10 +108,7 @@ func NewJobstatsServer(c *Config) (*JobstatsServer, func(), error) {
 		},
 		dbConfig:       c.DBConfig,
 		maxQueryPeriod: c.MaxQueryPeriod,
-		adminUsers:     c.AdminUsers,
-		grafana:        grafanaConfig,
-		Accounts:       fetchAccounts,
-		Jobs:           fetchJobs,
+		Querier:        querier,
 		HealthCheck:    getDBStatus,
 	}
 
@@ -136,6 +121,8 @@ func NewJobstatsServer(c *Config) (*JobstatsServer, func(), error) {
 			<h1>Job Stats</h1>
 			<p><a href="./api/jobs">Jobs</a></p>
 			<p><a href="./api/accounts">Accounts</a></p>
+			<p><a href="./api/usage/current">Current Usage</a></p>
+			<p><a href="./api/usage/global">Total Usage</a></p>
 			</body>
 			</html>`))
 	})
@@ -143,14 +130,29 @@ func NewJobstatsServer(c *Config) (*JobstatsServer, func(), error) {
 	// Allow only GET methods
 	router.HandleFunc("/api/health", server.health).Methods("GET")
 	router.HandleFunc("/api/accounts", server.accounts).Methods("GET")
-	router.HandleFunc("/api/jobs", server.jobs).Methods("GET")
+	router.HandleFunc(fmt.Sprintf("/api/%s", base.JobsEndpoint), server.jobs).Methods("GET")
+	router.HandleFunc(fmt.Sprintf("/api/%s/admin", base.JobsEndpoint), server.jobsAdmin).Methods("GET")
+	router.HandleFunc(fmt.Sprintf("/api/%s/{query:(?:current|global)}", base.UsageEndpoint), server.usage).
+		Methods("GET")
+	router.HandleFunc(fmt.Sprintf("/api/%s/{query:(?:current|global)}/admin", base.UsageEndpoint), server.usageAdmin).
+		Methods("GET")
 
 	// pprof debug end points
 	router.PathPrefix("/debug/").Handler(http.DefaultServeMux)
 
+	// Add a middleware that verifies headers and pass them in requests
+	// The middleware will fetch admin users from Grafana periodically to update list
+	amw := authenticationMiddleware{
+		logger:             c.Logger,
+		adminUsers:         c.AdminUsers,
+		grafana:            c.Grafana,
+		grafanaAdminTeamID: c.GrafanaAdminTeamID,
+	}
+	router.Use(amw.Middleware)
+
 	// Open DB connection
 	var err error
-	if dbConn, err = sql.Open("sqlite3", c.DBConfig.JobstatsDBPath); err != nil {
+	if server.db, err = sql.Open("sqlite3", c.DBConfig.JobstatsDBPath); err != nil {
 		return nil, func() {}, err
 	}
 	return server, func() {}, nil
@@ -168,6 +170,13 @@ func (s *JobstatsServer) Start() error {
 
 // Shutdown server
 func (s *JobstatsServer) Shutdown(ctx context.Context) error {
+	// Close DB connection
+	if err := s.db.Close(); err != nil {
+		level.Error(s.logger).Log("msg", "Failed to close DB connection", "err", err)
+		return err
+	}
+
+	// Shutdown the server
 	if err := s.server.Shutdown(ctx); err != nil {
 		level.Error(s.logger).Log("msg", "Failed to shutdown HTTP server", "err", err)
 		return err
@@ -175,53 +184,9 @@ func (s *JobstatsServer) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-// Update admin users from Grafana teams
-func (s *JobstatsServer) updateAdminUsers() {
-	if s.grafana.lastAdminsUpdate.IsZero() || time.Since(s.grafana.lastAdminsUpdate) > time.Duration(time.Hour) {
-		adminUsers, err := s.grafana.Admins(s.grafana.teamMembersEndpoint.String(), s.grafana.client, s.logger)
-		if err != nil {
-			return
-		}
-
-		// Get list of all usernames and add them to admin users
-		s.adminUsers = append(s.adminUsers, adminUsers...)
-		level.Debug(s.logger).Log("msg", "Admin users updated from Grafana teams API", "admins", strings.Join(s.adminUsers, ","))
-
-		// Update the lastAdminsUpdate time
-		s.grafana.lastAdminsUpdate = time.Now()
-	}
-}
-
 // Get current user from the header
 func (s *JobstatsServer) getUser(r *http.Request) (string, string) {
-	// First update admin users
-	if s.grafana.available {
-		s.updateAdminUsers()
-	}
-
-	// Check if username header is available
-	loggedUser := r.Header.Get("X-Grafana-User")
-	if loggedUser == "" {
-		level.Warn(s.logger).Log("msg", "Header X-Grafana-User not found")
-		return loggedUser, loggedUser
-	}
-
-	// If current user is in list of admin users, get "actual" user from
-	// X-Dashboard-User header. For normal users, this header will be exactly same
-	// as their username.
-	// For admin users who can look at dashboard of "any" user this will be the
-	// username of the "impersonated" user and we take it into account
-	// Besides, X-Dashboard-User can have a special user "all" that will return jobs
-	// of all users
-	if slices.Contains(s.adminUsers, loggedUser) {
-		if dashboardUser := r.Header.Get("X-Dashboard-User"); dashboardUser != "" {
-			level.Info(s.logger).Log(
-				"msg", "Admin user accessing dashboards", "loggedUser", loggedUser, "dashboardUser", dashboardUser,
-			)
-			return loggedUser, dashboardUser
-		}
-	}
-	return loggedUser, loggedUser
+	return r.Header.Get(loggedUserHeader), r.Header.Get(dashboardUserHeader)
 }
 
 // Set response headers
@@ -230,144 +195,44 @@ func (s *JobstatsServer) setHeaders(w http.ResponseWriter) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 }
 
-// GET /api/accounts
-// Get all accounts of a user
-func (s *JobstatsServer) accounts(w http.ResponseWriter, r *http.Request) {
-	var response base.AccountsResponse
-	s.setHeaders(w)
-
-	// Get current user from header
-	loggedUser, dashboardUser := s.getUser(r)
-	// If no user found, return empty response
-	if loggedUser == "" {
-		w.WriteHeader(http.StatusUnauthorized)
-		response = base.AccountsResponse{
-			Response: base.Response{
-				Status:    "error",
-				ErrorType: "user_error",
-				Error:     "No user identified",
-			},
-			Data: []base.Account{},
-		}
-		if err := json.NewEncoder(w).Encode(&response); err != nil {
-			level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
-			w.Write([]byte("KO"))
-		}
-		return
-	}
-
-	// Get all user accounts
-	accounts, err := s.Accounts(base.JobStatsDBTable, dashboardUser, s.logger)
-	if err != nil {
-		level.Error(s.logger).Log("msg", "Failed to fetch accounts", "user", dashboardUser, "err", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		response = base.AccountsResponse{
-			Response: base.Response{
-				Status:    "error",
-				ErrorType: "data_error",
-				Error:     "Failed to fetch user accounts",
-			},
-			Data: []base.Account{},
-		}
-		if err = json.NewEncoder(w).Encode(&response); err != nil {
-			level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
-			w.Write([]byte("KO"))
-		}
-		return
-	}
-
-	// Write response
-	w.WriteHeader(http.StatusOK)
-	response = base.AccountsResponse{
-		Response: base.Response{
-			Status: "success",
-		},
-		Data: accounts,
-	}
-	if err = json.NewEncoder(w).Encode(&response); err != nil {
-		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
+// Check status of server
+func (s *JobstatsServer) health(w http.ResponseWriter, r *http.Request) {
+	if !s.HealthCheck(s.db, s.logger) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.WriteHeader(http.StatusServiceUnavailable)
 		w.Write([]byte("KO"))
+	} else {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
 	}
 }
 
-// Return error response for jobs with setting errorString and errorType in response
-func (s *JobstatsServer) jobsErrorResponse(errorType string, errorString string, w http.ResponseWriter) {
-	response := base.JobsResponse{
-		Response: base.Response{
-			Status:    "error",
-			ErrorType: errorType,
-			Error:     errorString,
-		},
-		Data: []base.JobStats{},
-	}
-	if err := json.NewEncoder(w).Encode(&response); err != nil {
-		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
-		w.Write([]byte("KO"))
-	}
-}
-
-// GET /api/jobs
-// Get jobs of a user based on query params
-func (s *JobstatsServer) jobs(w http.ResponseWriter, r *http.Request) {
-	var fromTime, toTime time.Time
-	var response base.JobsResponse
-	s.setHeaders(w)
-
-	// Initialise utility vars
-	checkQueryWindow := true                           // Check query window size
-	defaultQueryWindow := time.Duration(2 * time.Hour) // Two hours
-
-	// Get current logged user and dashboard user from headers
-	loggedUser, dashboardUser := s.getUser(r)
-	// If no user found, return empty response
-	if loggedUser == "" {
-		w.WriteHeader(http.StatusUnauthorized)
-		s.jobsErrorResponse("user_error", "No user identified", w)
-		return
-	}
-
-	// Initialise query builder
-	q := Query{}
-	q.query(fmt.Sprintf("SELECT * FROM %s", base.JobStatsDBTable))
-
-	// Add dummy condition at the beginning
-	q.query(" WHERE id > 0")
-
-	// Check if logged user is in admin users and if we are quering for "all" jobs
-	// If that is not the case, add user condition in query
-	if !slices.Contains(s.adminUsers, loggedUser) || dashboardUser != "all" {
-		q.query(" AND Usr IN ")
-		q.param([]string{dashboardUser})
-	}
-
+// Fetch account, partition and QoS query params and add them to query
+func (s *JobstatsServer) getCommonQueryParams(q *Query, URLValues url.Values) Query {
 	// Get account query parameters if any
-	if accounts := r.URL.Query()["account"]; len(accounts) > 0 {
-		q.query(" AND Account IN ")
+	if accounts := URLValues["account"]; len(accounts) > 0 {
+		q.query(" AND account IN ")
 		q.param(accounts)
 	}
 
-	// Check if jobuuid present in query params and add them
-	// If any of jobuuid or jobid query params are present
-	// do not check query window as we are fetching a specific job(s)
-	if jobuuids := r.URL.Query()["jobuuid"]; len(jobuuids) > 0 {
-		q.query(" AND Jobuuid IN ")
-		q.param(jobuuids)
-		checkQueryWindow = false
+	// Get partition query parameters if any
+	if partitions := URLValues["partition"]; len(partitions) > 0 {
+		q.query(" AND partition IN ")
+		q.param(partitions)
 	}
 
-	// Similarly check for jobid
-	if jobids := r.URL.Query()["jobid"]; len(jobids) > 0 {
-		q.query(" AND Jobid IN ")
-		q.param(jobids)
-		checkQueryWindow = false
+	// Get qos query parameters if any
+	if qoss := URLValues["qos"]; len(qoss) > 0 {
+		q.query(" AND qos IN ")
+		q.param(qoss)
 	}
+	return *q
+}
 
-	// If we dont have to specific query window skip next section of code as it becomes
-	// irrelevant
-	if !checkQueryWindow {
-		goto queryJobs
-	}
-
+// Get from and to time stamps from query vars and cast them into proper format
+func (s *JobstatsServer) getQueryWindow(r *http.Request) (map[string]string, error) {
+	var fromTime, toTime time.Time
 	// Get to and from query parameters and do checks on them
 	if f := r.URL.Query().Get("from"); f == "" {
 		// If from is not present in query params, use a default query window of 1 week
@@ -376,9 +241,7 @@ func (s *JobstatsServer) jobs(w http.ResponseWriter, r *http.Request) {
 		// Return error response if from is not a timestamp
 		if ts, err := strconv.Atoi(f); err != nil {
 			level.Error(s.logger).Log("msg", "Failed to parse from timestamp", "from", f, "err", err)
-			w.WriteHeader(http.StatusBadRequest)
-			s.jobsErrorResponse("data_error", "Malformed 'from' timestamp", w)
-			return
+			return nil, fmt.Errorf("Malformed 'from' timestamp")
 		} else {
 			fromTime = time.Unix(int64(ts), 0)
 		}
@@ -390,9 +253,7 @@ func (s *JobstatsServer) jobs(w http.ResponseWriter, r *http.Request) {
 		// Return error response if to is not a timestamp
 		if ts, err := strconv.Atoi(t); err != nil {
 			level.Error(s.logger).Log("msg", "Failed to parse to timestamp", "to", t, "err", err)
-			w.WriteHeader(http.StatusBadRequest)
-			s.jobsErrorResponse("data_error", "Malformed 'to' timestamp", w)
-			return
+			return nil, fmt.Errorf("Malformed 'to' timestamp")
 		} else {
 			toTime = time.Unix(int64(ts), 0)
 		}
@@ -408,35 +269,91 @@ func (s *JobstatsServer) jobs(w http.ResponseWriter, r *http.Request) {
 			"from", fromTime.Format(time.DateTime), "to", toTime.Format(time.DateTime),
 			"queryWindow", toTime.Sub(fromTime).String(),
 		)
-		w.WriteHeader(http.StatusBadRequest)
-		s.jobsErrorResponse("data_error", "Maximum query window exceeded", w)
+		return nil, fmt.Errorf("Maximum query window exceeded")
+	}
+	return map[string]string{
+		"from": fromTime.Format(base.DatetimeLayout),
+		"to":   toTime.Format(base.DatetimeLayout),
+	}, nil
+}
+
+// Get jobs of users
+func (s *JobstatsServer) jobsQuerier(queriedUsers []string, loggedUser string, w http.ResponseWriter, r *http.Request) {
+	var queryWindowTS map[string]string
+	var err error
+
+	// Set headers
+	s.setHeaders(w)
+
+	// Initialise utility vars
+	checkQueryWindow := true // Check query window size
+
+	// Initialise query builder
+	q := Query{}
+	q.query(fmt.Sprintf("SELECT %s FROM %s", strings.Join(base.JobsDBColNames, ","), base.JobsDBTableName))
+
+	// Query for only unignored jobs
+	q.query(" WHERE ignore = 0 ")
+
+	// Add condition to query only for current dashboardUser
+	if len(queriedUsers) > 0 {
+		q.query(" AND usr IN ")
+		q.param(queriedUsers)
+	}
+
+	// Add common query parameters
+	q = s.getCommonQueryParams(&q, r.URL.Query())
+
+	// Check if jobuuid present in query params and add them
+	// If any of jobuuid or jobid query params are present
+	// do not check query window as we are fetching a specific job(s)
+	if jobuuids := r.URL.Query()["jobuuid"]; len(jobuuids) > 0 {
+		q.query(" AND jobuuid IN ")
+		q.param(jobuuids)
+		checkQueryWindow = false
+	}
+
+	// Similarly check for jobid
+	if jobids := r.URL.Query()["jobid"]; len(jobids) > 0 {
+		q.query(" AND jobid IN ")
+		q.param(jobids)
+		checkQueryWindow = false
+	}
+
+	// If we dont have to specific query window skip next section of code as it becomes
+	// irrelevant
+	if !checkQueryWindow {
+		goto queryJobs
+	}
+
+	// Get query window time stamps
+	queryWindowTS, err = s.getQueryWindow(r)
+	if err != nil {
+		errorResponse(w, &apiError{errorBadData, err}, s.logger, nil)
 		return
 	}
 
 	// Add from and to to query only when checkQueryWindow is true
-	q.query(" AND End BETWEEN ")
-	q.param([]string{fromTime.Format(base.DatetimeLayout)})
+	q.query(" AND end BETWEEN ")
+	q.param([]string{queryWindowTS["from"]})
 	q.query(" AND ")
-	q.param([]string{toTime.Format(base.DatetimeLayout)})
+	q.param([]string{queryWindowTS["to"]})
 
 queryJobs:
 
 	// Get all user jobs in the given time window
-	jobs, err := s.Jobs(q, s.logger)
+	jobs, err := s.Querier(s.db, q, base.JobsEndpoint, s.logger)
 	if err != nil {
 		level.Error(s.logger).Log("msg", "Failed to fetch jobs", "loggedUser", loggedUser, "err", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		s.jobsErrorResponse("data_error", "Failed to fetch user jobs", w)
+		errorResponse(w, &apiError{errorInternal, err}, s.logger, nil)
 		return
 	}
 
 	// Write response
 	w.WriteHeader(http.StatusOK)
-	response = base.JobsResponse{
-		Response: base.Response{
-			Status: "success",
-		},
-		Data: jobs,
+	response := Response{
+		Status: "success",
+		Data:   jobs,
 	}
 	if err = json.NewEncoder(w).Encode(&response); err != nil {
 		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
@@ -444,218 +361,220 @@ queryJobs:
 	}
 }
 
-// Check status of server
-func (s *JobstatsServer) health(w http.ResponseWriter, r *http.Request) {
-	if !s.HealthCheck(s.logger) {
-		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.WriteHeader(http.StatusServiceUnavailable)
+// GET /api/jobs/admin
+// Get any job of any user
+func (s *JobstatsServer) jobsAdmin(w http.ResponseWriter, r *http.Request) {
+	// Get current logged user and dashboard user from headers
+	loggedUser, _ := s.getUser(r)
+
+	// Query for jobs and write response
+	s.jobsQuerier(r.URL.Query()["user"], loggedUser, w, r)
+}
+
+// GET /api/jobs
+// Get job of dashboard user
+func (s *JobstatsServer) jobs(w http.ResponseWriter, r *http.Request) {
+	// Get current logged user and dashboard user from headers
+	loggedUser, dashboardUser := s.getUser(r)
+
+	// Query for jobs and write response
+	s.jobsQuerier([]string{dashboardUser}, loggedUser, w, r)
+}
+
+// GET /api/accounts
+// Get accounts list of user
+func (s *JobstatsServer) accounts(w http.ResponseWriter, r *http.Request) {
+	// Set headers
+	s.setHeaders(w)
+
+	// Get current user from header
+	_, dashboardUser := s.getUser(r)
+
+	// Make wuery
+	q := Query{}
+	q.query(fmt.Sprintf("SELECT DISTINCT account FROM %s", base.JobsDBTableName))
+	q.query(" WHERE usr IN ")
+	q.param([]string{dashboardUser})
+
+	// Make query and check for accounts returned in usage
+	accounts, err := s.Querier(s.db, q, "accounts", s.logger)
+	if err != nil {
+		level.Error(s.logger).Log("msg", "Failed to fetch accounts", "user", dashboardUser, "err", err)
+		errorResponse(w, &apiError{errorInternal, err}, s.logger, nil)
+		return
+	}
+
+	// Write response
+	w.WriteHeader(http.StatusOK)
+	accountsResponse := Response{
+		Status: "success",
+		Data:   accounts.([]base.Account),
+	}
+	if err = json.NewEncoder(w).Encode(&accountsResponse); err != nil {
+		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
 		w.Write([]byte("KO"))
-	} else {
-		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
 	}
 }
 
-// Get user accounts using SQL query
-func fetchAccounts(dbTable string, user string, logger log.Logger) ([]base.Account, error) {
-	// Prepare statement
-	stmt, err := dbConn.Prepare(fmt.Sprintf("SELECT DISTINCT Account FROM %s WHERE Usr = ?", dbTable))
-	if err != nil {
-		level.Error(logger).Log("msg", "Failed to prepare SQL statement for accounts query", "user", user, "err", err)
-		return nil, err
-	}
+// Make sub query for fetching accounts of users
+func (s *JobstatsServer) accountsSubQuery(users []string) Query {
+	// Make a sub query that will fetch accounts of users
+	qSub := Query{}
+	qSub.query(fmt.Sprintf("SELECT DISTINCT account FROM %s", base.UsageDBTableName))
 
-	defer stmt.Close()
-	rows, err := stmt.Query(user)
-	if err != nil {
-		level.Error(logger).Log("msg", "Failed to execute SQL statement for accounts query", "user", user, "err", err)
-		return nil, err
+	// Add conditions to sub query
+	if len(users) > 0 {
+		qSub.query(" WHERE usr IN ")
+		qSub.param(users)
 	}
-
-	// Loop through rows, using Scan to assign column data to struct fields.
-	var accounts []base.Account
-	var accountNames []string
-	for rows.Next() {
-		var account string
-		if err := rows.Scan(&account); err != nil {
-			level.Error(logger).Log("msg", "Could not scan rows returned by accounts query", "user", user, "err", err)
-		}
-		accounts = append(accounts, base.Account{ID: account})
-		accountNames = append(accountNames, account)
-	}
-	level.Debug(logger).Log("msg", "Accounts found for user", "user", user, "accounts", strings.Join(accountNames, ","))
-	return accounts, nil
+	return qSub
 }
 
-// Get user jobs within a given time window
-func fetchJobs(
-	query Query,
-	logger log.Logger,
-) ([]base.JobStats, error) {
-	var numJobs int
-	// Get query string and params
-	queryString, queryParams := query.get()
+// GET /api/usage/current
+// Get current usage statistics
+func (s *JobstatsServer) currentUsage(users []string, w http.ResponseWriter, r *http.Request) {
+	// Get sub query for accounts
+	qSub := s.accountsSubQuery(users)
 
-	// Prepare SQL statements
-	countStmt, err := dbConn.Prepare(strings.Replace(queryString, "*", "COUNT(*)", 1))
+	// Make query
+	q := Query{}
+	q.query(fmt.Sprintf("SELECT %s FROM %s", strings.Join(aggJobDBCols, ","), base.JobsDBTableName))
+
+	// First select all accounts that user is part of using subquery
+	q.query(" WHERE account IN ")
+	q.subQuery(qSub)
+
+	// Add common query parameters
+	q = s.getCommonQueryParams(&q, r.URL.Query())
+
+	// Get query window time stamps
+	queryWindowTS, err := s.getQueryWindow(r)
 	if err != nil {
-		level.Error(logger).Log(
-			"msg", "Failed to prepare count SQL statement for jobs query", "query", queryString,
-			"queryParams", strings.Join(queryParams, ","), "err", err,
-		)
-		return nil, err
+		errorResponse(w, &apiError{errorBadData, err}, s.logger, nil)
+		return
 	}
-	defer countStmt.Close()
 
-	queryStmt, err := dbConn.Prepare(strings.Replace(queryString, "*", strings.Join(base.JobStatsFieldNames, ","), 1))
+	// Add from and to to query only when checkQueryWindow is true
+	q.query(" AND end BETWEEN ")
+	q.param([]string{queryWindowTS["from"]})
+	q.query(" AND ")
+	q.param([]string{queryWindowTS["to"]})
+
+	// Finally add GROUP BY clause
+	groupByCols := []string{"account"}
+	if groupby := r.URL.Query()["groupby"]; len(groupby) > 0 {
+		groupByCols = append(groupByCols, groupby...)
+	}
+	q.query(fmt.Sprintf(" GROUP BY %s", strings.Join(groupByCols, ",")))
+
+	// Make query and check for returned number of rows
+	usage, err := s.Querier(s.db, q, base.UsageResourceName, s.logger)
 	if err != nil {
-		level.Error(logger).Log(
-			"msg", "Failed to prepare query SQL statement for jobs query", "query", queryString,
-			"queryParams", strings.Join(queryParams, ","), "err", err,
-		)
-		return nil, err
-	}
-	defer queryStmt.Close()
-
-	// queryParams has to be an inteface. Do casting here
-	qParams := make([]interface{}, len(queryParams))
-	for i, v := range queryParams {
-		qParams[i] = v
+		level.Error(s.logger).
+			Log("msg", "Failed to fetch current usage statistics", "users", strings.Join(users, ","), "err", err)
+		errorResponse(w, &apiError{errorInternal, err}, s.logger, nil)
+		return
 	}
 
-	// First make a query to get number of rows that will be returned by query
-	if err = countStmt.QueryRow(qParams...).Scan(&numJobs); err != nil {
-		level.Error(logger).Log("msg", "Failed to get number of jobs",
-			"query", queryString, "queryParams", strings.Join(queryParams, ","), "err", err,
-		)
-		return nil, err
+	// Write response
+	w.WriteHeader(http.StatusOK)
+	accountsResponse := Response{
+		Status: "success",
+		Data:   usage.([]base.Usage),
 	}
-
-	rows, err := queryStmt.Query(qParams...)
-	if err != nil {
-		level.Error(logger).Log("msg", "Failed to get jobs",
-			"query", queryString, "queryParams", strings.Join(queryParams, ","), "err", err,
-		)
-		return nil, err
+	if err = json.NewEncoder(w).Encode(&accountsResponse); err != nil {
+		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
+		w.Write([]byte("KO"))
 	}
-
-	// Loop through rows, using Scan to assign column data to struct fields.
-	var jobs = make([]base.JobStats, numJobs)
-	rowIdx := 0
-	for rows.Next() {
-		var j base.JobStats
-		if err := rows.Scan(
-			&j.Jobid,
-			&j.Jobuuid,
-			&j.Partition,
-			&j.QoS,
-			&j.Account,
-			&j.Grp,
-			&j.Gid,
-			&j.Usr,
-			&j.Uid,
-			&j.Submit,
-			&j.Start,
-			&j.End,
-			&j.SubmitTS,
-			&j.StartTS,
-			&j.EndTS,
-			&j.Elapsed,
-			&j.ElapsedRaw,
-			&j.Exitcode,
-			&j.State,
-			&j.Nnodes,
-			&j.Ncpus,
-			&j.Mem,
-			&j.Ngpus,
-			&j.Nodelist,
-			&j.NodelistExp,
-			&j.JobName,
-			&j.WorkDir,
-			&j.CPUBilling,
-			&j.GPUBilling,
-			&j.MiscBilling,
-			&j.AveCPUUsage,
-			&j.AveCPUMemUsage,
-			&j.TotalCPUEnergyUsage,
-			&j.TotalCPUEmissions,
-			&j.AveGPUUsage,
-			&j.AveGPUMemUsage,
-			&j.TotalGPUEnergyUsage,
-			&j.TotalGPUEmissions,
-			&j.Comment,
-			&j.Ignore,
-		); err != nil {
-			level.Error(logger).Log("msg", "Could not scan row returned by jobs query", "user", j.Usr, "err", err)
-		}
-		// If the job is marked as ignore, do not return in response
-		if j.Ignore == 1 {
-			continue
-		}
-		jobs[rowIdx] = j
-		rowIdx++
-	}
-	level.Debug(logger).Log(
-		"msg", "Jobs found for user", "numjobs", len(jobs), "query", queryString,
-		"queryParams", strings.Join(queryParams, ","),
-	)
-	return jobs, nil
 }
 
-// Ping DB for connection test
-func getDBStatus(logger log.Logger) bool {
-	if err := dbConn.Ping(); err != nil {
-		level.Error(logger).Log("msg", "DB Ping failed", "err", err)
-		return false
+// GET /api/usage/global
+// Get global usage statistics
+func (s *JobstatsServer) globalUsage(users []string, w http.ResponseWriter, r *http.Request) {
+	// Get sub query for accounts
+	qSub := s.accountsSubQuery(users)
+
+	// Make query
+	q := Query{}
+	q.query(fmt.Sprintf("SELECT %s FROM %s", strings.Join(base.UsageDBColNames, ","), base.UsageDBTableName))
+
+	// First select all accounts that user is part of using subquery
+	q.query(" WHERE account IN ")
+	q.subQuery(qSub)
+
+	// Add common query parameters
+	q = s.getCommonQueryParams(&q, r.URL.Query())
+
+	// Make query and check for returned number of rows
+	usage, err := s.Querier(s.db, q, base.UsageResourceName, s.logger)
+	if err != nil {
+		level.Error(s.logger).
+			Log("msg", "Failed to fetch global usage statistics", "users", strings.Join(users, ","), "err", err)
+		errorResponse(w, &apiError{errorInternal, err}, s.logger, nil)
+		return
 	}
-	return true
+
+	// Write response
+	w.WriteHeader(http.StatusOK)
+	accountsResponse := Response{
+		Status: "success",
+		Data:   usage.([]base.Usage),
+	}
+	if err = json.NewEncoder(w).Encode(&accountsResponse); err != nil {
+		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
+		w.Write([]byte("KO"))
+	}
 }
 
-// Fetch Admin users from Grafana Teams via API call
-func FetchAdminsFromGrafana(url string, client *http.Client, logger log.Logger) ([]string, error) {
-	// Create a new POST request
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		level.Error(logger).
-			Log("msg", "Failed to create a HTTP request for Grafana teams API", "err", err)
+// GET /api/usage
+// Get current/global usage statistics
+func (s *JobstatsServer) usage(w http.ResponseWriter, r *http.Request) {
+	// Set headers
+	s.setHeaders(w)
+
+	// Get current user from header
+	_, dashboardUser := s.getUser(r)
+
+	// Get path parameter type
+	var queryType string
+	var exists bool
+	if queryType, exists = mux.Vars(r)["query"]; !exists {
+		errorResponse(w, &apiError{errorBadData, invalidRequestError}, s.logger, nil)
+		return
 	}
 
-	// Add token to auth header
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", os.Getenv("GRAFANA_API_TOKEN")))
-
-	// Add necessary headers
-	req.Header.Add("Content-Type", "application/json")
-
-	// Make request
-	resp, err := client.Do(req)
-	if err != nil {
-		level.Error(logger).Log("msg", "Failed to make HTTP request for Grafana teams API", "err", err)
-		return nil, err
+	// handle current usage query
+	if queryType == "current" {
+		s.currentUsage([]string{dashboardUser}, w, r)
 	}
 
-	// Read response body
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		level.Error(logger).Log("msg", "Failed to read HTTP response body for Grafana teams API", "err", err)
-		return nil, err
+	// handle global usage query
+	if queryType == "global" {
+		s.globalUsage([]string{dashboardUser}, w, r)
+	}
+}
+
+// GET /api/usage/admin
+// Get current/global usage statistics of any user
+func (s *JobstatsServer) usageAdmin(w http.ResponseWriter, r *http.Request) {
+	// Set headers
+	s.setHeaders(w)
+
+	// Get path parameter type
+	var queryType string
+	var exists bool
+	if queryType, exists = mux.Vars(r)["query"]; !exists {
+		errorResponse(w, &apiError{errorBadData, invalidRequestError}, s.logger, nil)
+		return
 	}
 
-	// Unpack into data
-	var data []base.GrafanaTeamsReponse
-	err = json.Unmarshal(body, &data)
-	if err != nil {
-		level.Error(logger).
-			Log("msg", "Failed to unmarshal HTTP response body for Grafana teams API", "err", err)
-		return nil, err
+	// handle current usage query
+	if queryType == "current" {
+		s.currentUsage(r.URL.Query()["user"], w, r)
 	}
 
-	// Get list of all usernames and add them to admin users
-	var adminUsers []string
-	for _, user := range data {
-		if user.Login != "" {
-			adminUsers = append(adminUsers, user.Login)
-		}
+	// handle global usage query
+	if queryType == "global" {
+		s.globalUsage(r.URL.Query()["user"], w, r)
 	}
-	return adminUsers, nil
 }
