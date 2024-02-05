@@ -16,21 +16,21 @@ import (
 
 type mockScheduler struct{}
 
-var mockJobs = []base.JobStats{{Jobid: 10000}, {Jobid: 10001}}
+var mockJobs = []base.Job{{Jobid: 10000}, {Jobid: 10001}}
 
 func newMockScheduler(logger log.Logger) (*schedulers.BatchScheduler, error) {
 	return &schedulers.BatchScheduler{Scheduler: &mockScheduler{}}, nil
 }
 
 // GetJobs implements collection jobs between start and end times
-func (m *mockScheduler) Fetch(start time.Time, end time.Time) ([]base.JobStats, error) {
+func (m *mockScheduler) Fetch(start time.Time, end time.Time) ([]base.Job, error) {
 	return mockJobs, nil
 }
 
 func prepareMockConfig(tmpDir string) *Config {
 	dataDir := filepath.Join(tmpDir, "data")
 	dataBackupDir := filepath.Join(tmpDir, "data-backup")
-	jobstatDBPath := filepath.Join(dataDir, "jobstats.db")
+	jobstatDBPath := filepath.Join(dataDir, "stats.db")
 	lastJobsUpdateTimeFile := filepath.Join(dataDir, "update")
 
 	// Create data directory
@@ -61,11 +61,11 @@ func prepareMockConfig(tmpDir string) *Config {
 
 func populateDBWithMockData(j *jobStatsDB) {
 	tx, _ := j.db.Begin()
-	stmt, err := j.prepareInsertStatement(tx)
+	stmtMap, err := j.prepareStatements(tx)
 	if err != nil {
 		fmt.Println(err)
 	}
-	j.insertJobs(stmt, mockJobs)
+	j.execStatements(stmtMap, mockJobs)
 	tx.Commit()
 }
 
@@ -235,7 +235,7 @@ func TestJobStatsDBBackup(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to create DB connection to backup DB: %s", err)
 	}
-	rows, _ := db.Query(fmt.Sprintf("SELECT * FROM %s;", base.JobStatsDBTable))
+	rows, _ := db.Query(fmt.Sprintf("SELECT * FROM %s;", base.JobsDBTableName))
 	for rows.Next() {
 		numRows += 1
 	}
@@ -288,7 +288,7 @@ func TestJobStatsDeleteOldJobs(t *testing.T) {
 	}
 
 	// Add new row that should be deleted
-	jobs := []base.JobStats{
+	jobs := []base.Job{
 		{
 			Jobid: int64(jobId),
 			Submit: time.Now().
@@ -297,11 +297,11 @@ func TestJobStatsDeleteOldJobs(t *testing.T) {
 		},
 	}
 	tx, _ := j.db.Begin()
-	stmt, err := j.prepareInsertStatement(tx)
+	stmtMap, err := j.prepareStatements(tx)
 	if err != nil {
 		t.Errorf("Failed to prepare SQL statements")
 	}
-	j.insertJobs(stmt, jobs)
+	j.execStatements(stmtMap, jobs)
 
 	// Now clean up DB for old jobs
 	err = j.deleteOldJobs(tx)
@@ -312,7 +312,7 @@ func TestJobStatsDeleteOldJobs(t *testing.T) {
 
 	// Query for deleted job
 	result, err := j.db.Prepare(
-		fmt.Sprintf("SELECT COUNT(Jobid) FROM %s WHERE Jobid = ?;", base.JobStatsDBTable),
+		fmt.Sprintf("SELECT COUNT(Jobid) FROM %s WHERE Jobid = ?;", base.JobsDBTableName),
 	)
 	if err != nil {
 		t.Errorf("Failed to prepare SQL statement")

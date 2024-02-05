@@ -17,7 +17,10 @@ func setCLIArgs() {
 }
 
 func queryServer(address string) error {
-	resp, err := http.Get(fmt.Sprintf("http://%s/api/health", address))
+	client := &http.Client{}
+	req, _ := http.NewRequest("GET", fmt.Sprintf("http://%s/api/health", address), nil)
+	req.Header.Set("X-Grafana-User", "usr1")
+	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}

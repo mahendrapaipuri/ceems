@@ -11,7 +11,6 @@ import (
 
 func TestJobStatsDBPreparation(t *testing.T) {
 	tmpDir := t.TempDir()
-	jobstatDBTable := "jobstats"
 	jobstatDBPath := filepath.Join(tmpDir, "jobstats.db")
 	s := &storageConfig{
 		dbPath: jobstatDBPath,
@@ -22,7 +21,7 @@ func TestJobStatsDBPreparation(t *testing.T) {
 	}
 
 	// Test setupDB function
-	_, _, err := setupDB(jobstatDBPath, jobstatDBTable, j.logger)
+	_, _, err := setupDB(jobstatDBPath, j.logger)
 	if err != nil {
 		t.Errorf("Failed to prepare DB due to %s", err)
 	}
@@ -31,7 +30,7 @@ func TestJobStatsDBPreparation(t *testing.T) {
 	}
 
 	// Call setupDB again. This should return with db conn
-	_, _, err = setupDB(jobstatDBPath, jobstatDBTable, j.logger)
+	_, _, err = setupDB(jobstatDBPath, j.logger)
 	if err != nil {
 		t.Errorf("Failed to return DB connection on already prepared DB due to %s", err)
 	}

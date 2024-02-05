@@ -17,141 +17,122 @@ var BatchJobStatsServerApp = *kingpin.New(
 	"API server for batch job statistics of users.",
 )
 
-// Grafana teams API response
-type GrafanaTeamsReponse struct {
-	OrgID      int      `json:"orgId"`
-	TeamID     int      `json:"teamId"`
-	TeamUID    string   `json:"teamUID"`
-	UserID     int      `json:"userId"`
-	AuthModule string   `json:"auth_module"`
-	Email      string   `json:"email"`
-	Name       string   `json:"name"`
-	Login      string   `json:"login"`
-	AvatarURL  string   `json:"avatarUrl"`
-	Labels     []string `json:"labels"`
-	Permission int      `json:"permission"`
-}
-
 // Models
 // Batch job struct
-type JobStats struct {
-	Jobid               int64   `json:"jobid" sqlitetype:"integer"`
-	Jobuuid             string  `json:"jobuuid" sqlitetype:"text"`
-	Partition           string  `json:"partition" sqlitetype:"text"`
-	QoS                 string  `json:"qos" sqlitetype:"text"`
-	Account             string  `json:"account" sqlitetype:"text"`
-	Grp                 string  `json:"grp" sqlitetype:"text"`
-	Gid                 int64   `json:"gid" sqlitetype:"integer"`
-	Usr                 string  `json:"usr" sqlitetype:"text"`
-	Uid                 int64   `json:"uid" sqlitetype:"integer"`
-	Submit              string  `json:"submit" sqlitetype:"text"`
-	Start               string  `json:"start" sqlitetype:"text"`
-	End                 string  `json:"end" sqlitetype:"text"`
-	SubmitTS            int64   `json:"submit_ts" sqlitetype:"integer"`
-	StartTS             int64   `json:"start_ts" sqlitetype:"integer"`
-	EndTS               int64   `json:"end_ts" sqlitetype:"integer"`
-	Elapsed             string  `json:"elapsed" sqlitetype:"text"`
-	ElapsedRaw          int64   `json:"elapsed_raw" sqlitetype:"integer"`
-	Exitcode            string  `json:"exitcode" sqlitetype:"text"`
-	State               string  `json:"state" sqlitetype:"text"`
-	Nnodes              int     `json:"nnodes" sqlitetype:"integer"`
-	Ncpus               int     `json:"ncpus" sqlitetype:"integer"`
-	Mem                 string  `json:"mem" sqlitetype:"text"`
-	Ngpus               int     `json:"ngpus" sqlitetype:"integer"`
-	Nodelist            string  `json:"nodelist" sqlitetype:"text"`
-	NodelistExp         string  `json:"nodelist_exp" sqlitetype:"text"`
-	JobName             string  `json:"jobname" sqlitetype:"text"`
-	WorkDir             string  `json:"workdir" sqlitetype:"text"`
-	CPUBilling          int64   `json:"cpu_billing" sqlitetype:"integer"`
-	GPUBilling          int64   `json:"gpu_billing" sqlitetype:"integer"`
-	MiscBilling         int64   `json:"misc_billing" sqlitetype:"integer"`
-	AveCPUUsage         float64 `json:"avg_cpu_usage" sqlitetype:"real"`
-	AveCPUMemUsage      float64 `json:"avg_cpu_mem_usage" sqlitetype:"real"`
-	TotalCPUEnergyUsage float64 `json:"total_cpu_energy_usage" sqlitetype:"real"`
-	TotalCPUEmissions   float64 `json:"total_cpu_emissions" sqlitetype:"real"`
-	AveGPUUsage         float64 `json:"avg_gpu_usage" sqlitetype:"real"`
-	AveGPUMemUsage      float64 `json:"avg_gpu_mem_usage" sqlitetype:"real"`
-	TotalGPUEnergyUsage float64 `json:"total_gpu_energy_usage" sqlitetype:"real"`
-	TotalGPUEmissions   float64 `json:"total_gpu_emissions" sqlitetype:"real"`
-	Comment             string  `json:"comment" sqlitetype:"blob"`
-	Ignore              int     `json:"-" sqlitetype:"integer"`
+type Job struct {
+	ID                  int64   `json:"-"                          sql:"id"                         sqlitetype:"integer not null primary key"`
+	Jobid               int64   `json:"jobid"                      sql:"jobid"                      sqlitetype:"integer"`
+	Jobuuid             string  `json:"jobuuid"                    sql:"jobuuid"                    sqlitetype:"text"`
+	Partition           string  `json:"partition"                  sql:"partition"                  sqlitetype:"text"`
+	QoS                 string  `json:"qos"                        sql:"qos"                        sqlitetype:"text"`
+	Account             string  `json:"account"                    sql:"account"                    sqlitetype:"text"`
+	Grp                 string  `json:"grp"                        sql:"grp"                        sqlitetype:"text"`
+	Gid                 int64   `json:"gid"                        sql:"gid"                        sqlitetype:"integer"`
+	Usr                 string  `json:"usr"                        sql:"usr"                        sqlitetype:"text"`
+	Uid                 int64   `json:"uid"                        sql:"uid"                        sqlitetype:"integer"`
+	Submit              string  `json:"submit"                     sql:"submit"                     sqlitetype:"text"`
+	Start               string  `json:"start"                      sql:"start"                      sqlitetype:"text"`
+	End                 string  `json:"end"                        sql:"end"                        sqlitetype:"text"`
+	SubmitTS            int64   `json:"submit_ts"                  sql:"submit_ts"                  sqlitetype:"integer"`
+	StartTS             int64   `json:"start_ts"                   sql:"start_ts"                   sqlitetype:"integer"`
+	EndTS               int64   `json:"end_ts"                     sql:"end_ts"                     sqlitetype:"integer"`
+	Elapsed             string  `json:"elapsed"                    sql:"elapsed"                    sqlitetype:"text"`
+	ElapsedRaw          int64   `json:"elapsed_raw"                sql:"elapsed_raw"                sqlitetype:"integer"`
+	Exitcode            string  `json:"exitcode"                   sql:"exitcode"                   sqlitetype:"text"`
+	State               string  `json:"state"                      sql:"state"                      sqlitetype:"text"`
+	Nnodes              int     `json:"nnodes"                     sql:"nnodes"                     sqlitetype:"integer"`
+	Ncpus               int     `json:"ncpus"                      sql:"ncpus"                      sqlitetype:"integer"`
+	Mem                 string  `json:"mem"                        sql:"mem"                        sqlitetype:"text"`
+	Ngpus               int     `json:"ngpus"                      sql:"ngpus"                      sqlitetype:"integer"`
+	Nodelist            string  `json:"nodelist"                   sql:"nodelist"                   sqlitetype:"text"`
+	NodelistExp         string  `json:"nodelist_exp"               sql:"nodelist_exp"               sqlitetype:"text"`
+	JobName             string  `json:"jobname"                    sql:"jobname"                    sqlitetype:"text"`
+	WorkDir             string  `json:"workdir"                    sql:"workdir"                    sqlitetype:"text"`
+	TotalCPUBilling     int64   `json:"total_cpu_billing"          sql:"total_cpu_billing"          sqlitetype:"integer"`
+	TotalGPUBilling     int64   `json:"total_gpu_billing"          sql:"total_gpu_billing"          sqlitetype:"integer"`
+	TotalMiscBilling    int64   `json:"total_misc_billing"         sql:"total_misc_billing"         sqlitetype:"integer"`
+	AveCPUUsage         float64 `json:"avg_cpu_usage"              sql:"avg_cpu_usage"              sqlitetype:"real"`
+	AveCPUMemUsage      float64 `json:"avg_cpu_mem_usage"          sql:"avg_cpu_mem_usage"          sqlitetype:"real"`
+	TotalCPUEnergyUsage float64 `json:"total_cpu_energy_usage_kwh" sql:"total_cpu_energy_usage_kwh" sqlitetype:"real"`
+	TotalCPUEmissions   float64 `json:"total_cpu_emissions_gms"    sql:"total_cpu_emissions_gms"    sqlitetype:"real"`
+	AveGPUUsage         float64 `json:"avg_gpu_usage"              sql:"avg_gpu_usage"              sqlitetype:"real"`
+	AveGPUMemUsage      float64 `json:"avg_gpu_mem_usage"          sql:"avg_gpu_mem_usage"          sqlitetype:"real"`
+	TotalGPUEnergyUsage float64 `json:"total_gpu_energy_usage_kwh" sql:"total_gpu_energy_usage_kwh" sqlitetype:"real"`
+	TotalGPUEmissions   float64 `json:"total_gpu_emissions_gms"    sql:"total_gpu_emissions_gms"    sqlitetype:"real"`
+	TotalIOWriteHot     float64 `json:"total_io_write_hot_gb"      sql:"total_io_write_hot_gb"      sqlitetype:"real"`
+	TotalIOReadHot      float64 `json:"total_io_read_hot_gb"       sql:"total_io_read_hot_gb"       sqlitetype:"real"`
+	TotalIOWriteCold    float64 `json:"total_io_write_cold_gb"     sql:"total_io_write_cold_gb"     sqlitetype:"real"`
+	TotalIOReadCold     float64 `json:"total_io_read_cold_gb"      sql:"total_io_read_cold_gb"      sqlitetype:"real"`
+	AvgICTrafficIn      float64 `json:"avg_ic_traffic_in_gb"       sql:"avg_ic_traffic_in_gb"       sqlitetype:"real"`
+	AvgICTrafficOut     float64 `json:"avg_ic_traffic_out_gb"      sql:"avg_ic_traffic_out_gb"      sqlitetype:"real"`
+	Comment             string  `json:"comment"                    sql:"comment"                    sqlitetype:"blob"`
+	Ignore              int     `json:"-"                          sql:"ignore"                     sqlitetype:"integer"`
 }
 
-// Account stats struct
-type AccountStats struct {
-	Name                string  `json:"name" sqlitetype:"text unique"`
-	NumJobs             int64   `json:"num_jobs" sqlitetype:"integer"`
-	CPUBilling          int64   `json:"cpu_billing" sqlitetype:"integer"`
-	GPUBilling          int64   `json:"gpu_billing" sqlitetype:"integer"`
-	MiscBilling         int64   `json:"misc_billing" sqlitetype:"integer"`
-	AveCPUUsage         float64 `json:"avg_cpu_usage" sqlitetype:"real"`
-	AveCPUMemUsage      float64 `json:"avg_cpu_mem_usage" sqlitetype:"real"`
-	TotalCPUEnergyUsage float64 `json:"total_cpu_energy_usage" sqlitetype:"real"`
-	TotalCPUEmissions   float64 `json:"total_cpu_emissions" sqlitetype:"real"`
-	AveGPUUsage         float64 `json:"avg_gpu_usage" sqlitetype:"real"`
-	AveGPUMemUsage      float64 `json:"avg_gpu_mem_usage" sqlitetype:"real"`
-	TotalGPUEnergyUsage float64 `json:"total_gpu_energy_usage" sqlitetype:"real"`
-	TotalGPUEmissions   float64 `json:"total_gpu_emissions" sqlitetype:"real"`
-}
-
-// User stats struct
-type UserStats struct {
-	Name                string  `json:"name" sqlitetype:"text unique"`
-	NumJobs             int64   `json:"num_jobs" sqlitetype:"integer"`
-	CPUBilling          int64   `json:"cpu_billing" sqlitetype:"integer"`
-	GPUBilling          int64   `json:"gpu_billing" sqlitetype:"integer"`
-	MiscBilling         int64   `json:"misc_billing" sqlitetype:"integer"`
-	AveCPUUsage         float64 `json:"avg_cpu_usage" sqlitetype:"real"`
-	AveCPUMemUsage      float64 `json:"avg_cpu_mem_usage" sqlitetype:"real"`
-	TotalCPUEnergyUsage float64 `json:"total_cpu_energy_usage" sqlitetype:"real"`
-	TotalCPUEmissions   float64 `json:"total_cpu_emissions" sqlitetype:"real"`
-	AveGPUUsage         float64 `json:"avg_gpu_usage" sqlitetype:"real"`
-	AveGPUMemUsage      float64 `json:"avg_gpu_mem_usage" sqlitetype:"real"`
-	TotalGPUEnergyUsage float64 `json:"total_gpu_energy_usage" sqlitetype:"real"`
-	TotalGPUEmissions   float64 `json:"total_gpu_emissions" sqlitetype:"real"`
+// Usage struct
+type Usage struct {
+	ID                  int64   `json:"-"                          sql:"id"                         sqlitetype:"integer not null primary key"`
+	Account             string  `json:"account"                    sql:"account"                    sqlitetype:"text"`
+	Usr                 string  `json:"usr"                        sql:"usr"                        sqlitetype:"text"`
+	Partition           string  `json:"partition"                  sql:"partition"                  sqlitetype:"text"`
+	QoS                 string  `json:"qos"                        sql:"qos"                        sqlitetype:"text"`
+	NumJobs             int64   `json:"num_jobs"                   sql:"num_jobs"                   sqlitetype:"integer"`
+	TotalCPUBilling     int64   `json:"total_cpu_billing"          sql:"total_cpu_billing"          sqlitetype:"integer"`
+	TotalGPUBilling     int64   `json:"total_gpu_billing"          sql:"total_gpu_billing"          sqlitetype:"integer"`
+	TotalMiscBilling    int64   `json:"total_misc_billing"         sql:"total_misc_billing"         sqlitetype:"integer"`
+	AveCPUUsage         float64 `json:"avg_cpu_usage"              sql:"avg_cpu_usage"              sqlitetype:"real"`
+	AveCPUMemUsage      float64 `json:"avg_cpu_mem_usage"          sql:"avg_cpu_mem_usage"          sqlitetype:"real"`
+	TotalCPUEnergyUsage float64 `json:"total_cpu_energy_usage_kwh" sql:"total_cpu_energy_usage_kwh" sqlitetype:"real"`
+	TotalCPUEmissions   float64 `json:"total_cpu_emissions_gms"    sql:"total_cpu_emissions_gms"    sqlitetype:"real"`
+	AveGPUUsage         float64 `json:"avg_gpu_usage"              sql:"avg_gpu_usage"              sqlitetype:"real"`
+	AveGPUMemUsage      float64 `json:"avg_gpu_mem_usage"          sql:"avg_gpu_mem_usage"          sqlitetype:"real"`
+	TotalGPUEnergyUsage float64 `json:"total_gpu_energy_usage_kwh" sql:"total_gpu_energy_usage_kwh" sqlitetype:"real"`
+	TotalGPUEmissions   float64 `json:"total_gpu_emissions_gms"    sql:"total_gpu_emissions_gms"    sqlitetype:"real"`
+	TotalIOWriteHot     float64 `json:"total_io_write_hot_gb"      sql:"total_io_write_hot_gb"      sqlitetype:"real"`
+	TotalIOReadHot      float64 `json:"total_io_read_hot_gb"       sql:"total_io_read_hot_gb"       sqlitetype:"real"`
+	TotalIOWriteCold    float64 `json:"total_io_write_cold_gb"     sql:"total_io_write_cold_gb"     sqlitetype:"real"`
+	TotalIOReadCold     float64 `json:"total_io_read_cold_gb"      sql:"total_io_read_cold_gb"      sqlitetype:"real"`
+	AvgICTrafficIn      float64 `json:"avg_ic_traffic_in_gb"       sql:"avg_ic_traffic_in_gb"       sqlitetype:"real"`
+	AvgICTrafficOut     float64 `json:"avg_ic_traffic_out_gb"      sql:"avg_ic_traffic_out_gb"      sqlitetype:"real"`
+	Comment             string  `json:"comment"                    sql:"comment"                    sqlitetype:"blob"`
 }
 
 // Account struct
 type Account struct {
-	ID string `json:"id"`
+	Name string `json:"name,omitempty" sql:"account" sqlitetype:"text"`
 }
 
-// Common API response model
-type Response struct {
-	Status    string   `json:"status"`
-	ErrorType string   `json:"errorType,omitempty"`
-	Error     string   `json:"error,omitempty"`
-	Warnings  []string `json:"warnings,omitempty"`
-}
-
-// /api/accounts response struct
-type AccountsResponse struct {
-	Response
-	Data []Account `json:"data,omitempty"`
-}
-
-// /api/jobs response struct
-type JobsResponse struct {
-	Response
-	Data []JobStats `json:"data,omitempty"`
-}
+// Resources names
+var (
+	JobsResourceName    = "jobs"
+	UsageResourceName   = "usage"
+	AccountResourceName = "accounts"
+)
 
 // DB table names
 var (
-	JobStatsDBTableName     = "jobstats"
-	UserStatsDBTableName    = "userstats"
-	AccountStatsDBTableName = "accountstats"
+	JobsDBTableName  = JobsResourceName
+	UsageDBTableName = UsageResourceName
+)
+
+// Endpoints
+var (
+	JobsEndpoint     = JobsResourceName
+	UsageEndpoint    = UsageResourceName
+	AccountsEndpoint = AccountResourceName
 )
 
 // Slice of all field names of JobStats struct
-var JobStatsDBColNames = helper.GetStructFieldTagValues(JobStats{}, "json")
-var AccountStatsDBColNames = helper.GetStructFieldTagValues(AccountStats{}, "json")
-var UserStatsDBColNames = helper.GetStructFieldTagValues(UserStats{}, "json")
+var (
+	JobsDBColNames  = helper.GetStructFieldTagValues(Job{}, "sql")
+	UsageDBColNames = helper.GetStructFieldTagValues(Usage{}, "sql")
+)
 
 // Map of field names to DB column type
-var JobStatsDBTableMap = helper.GetStructFieldTagMap(JobStats{}, "json", "sqlitetype")
-var AccountStatsDBTableMap = helper.GetStructFieldTagMap(AccountStats{}, "json", "sqlitetype")
-var UserStatsDBTableMap = helper.GetStructFieldTagMap(UserStats{}, "json", "sqlitetype")
+var (
+	JobsDBTableMap  = helper.GetStructFieldTagMap(Job{}, "sql", "sqlitetype")
+	UsageDBTableMap = helper.GetStructFieldTagMap(Usage{}, "sql", "sqlitetype")
+)
 
 // Layout of datetime to be used in the package
 var DatetimeLayout = fmt.Sprintf("%sT%s", time.DateOnly, time.TimeOnly)
