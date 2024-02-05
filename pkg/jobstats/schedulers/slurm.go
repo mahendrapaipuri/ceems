@@ -33,7 +33,7 @@ var (
 	sacctPath       = base.BatchJobStatsServerApp.Flag(
 		"slurm.sacct.path",
 		"Absolute path to sacct executable. If empty sacct on PATH will be used.",
-	).Default("").String()
+	).Hidden().Default("").String()
 	sacctFields = []string{
 		"jobidraw", "partition", "qos", "account", "group", "gid", "user", "uid",
 		"submit", "start", "end", "elapsed", "elapsedraw", "exitcode", "state",
@@ -134,7 +134,7 @@ func NewSlurmScheduler(logger log.Logger) (BatchJobFetcher, error) {
 }
 
 // Get jobs from slurm
-func (s *slurmScheduler) Fetch(start time.Time, end time.Time) ([]base.JobStats, error) {
+func (s *slurmScheduler) Fetch(start time.Time, end time.Time) ([]base.Job, error) {
 	startTime := start.Format(base.DatetimeLayout)
 	endTime := end.Format(base.DatetimeLayout)
 
@@ -142,7 +142,7 @@ func (s *slurmScheduler) Fetch(start time.Time, end time.Time) ([]base.JobStats,
 	sacctOutput, err := runSacctCmd(s.execMode, startTime, endTime, s.logger)
 	if err != nil {
 		level.Error(s.logger).Log("msg", "Failed to execute SLURM sacct command", "err", err)
-		return []base.JobStats{}, err
+		return []base.Job{}, err
 	}
 
 	// Parse sacct output and create BatchJob structs slice
@@ -176,12 +176,12 @@ func runSacctCmd(execMode string, startTime string, endTime string, logger log.L
 }
 
 // Parse sacct command output and return batchjob slice
-func parseSacctCmdOutput(sacctOutput string, logger log.Logger) ([]base.JobStats, int) {
+func parseSacctCmdOutput(sacctOutput string, logger log.Logger) ([]base.Job, int) {
 	// Strip first line
 	sacctOutputLines := strings.Split(string(sacctOutput), "\n")[1:]
 
 	var numJobs int = 0
-	var jobs = make([]base.JobStats, len(sacctOutputLines))
+	var jobs = make([]base.Job, len(sacctOutputLines))
 
 	wg := &sync.WaitGroup{}
 	wg.Add(len(sacctOutputLines))
@@ -189,7 +189,7 @@ func parseSacctCmdOutput(sacctOutput string, logger log.Logger) ([]base.JobStats
 	for iline, line := range sacctOutputLines {
 		go func(i int, l string) {
 			var err error
-			var jobStat base.JobStats
+			var jobStat base.Job
 			components := strings.Split(l, "|")
 			jobid := components[sacctFieldMap["jobidraw"]]
 
@@ -272,36 +272,36 @@ func parseSacctCmdOutput(sacctOutput string, logger log.Logger) ([]base.JobStats
 			nodelistExp := strings.Join(allNodes, "|")
 
 			// Make jobStats struct for each job and put it in jobs slice
-			jobStat = base.JobStats{
-				Jobid:       jobidInt,
-				Jobuuid:     jobUuid,
-				Partition:   components[sacctFieldMap["partition"]],
-				QoS:         components[sacctFieldMap["qos"]],
-				Account:     components[sacctFieldMap["account"]],
-				Grp:         components[sacctFieldMap["group"]],
-				Gid:         gidInt,
-				Usr:         components[sacctFieldMap["user"]],
-				Uid:         uidInt,
-				Submit:      components[sacctFieldMap["submit"]],
-				Start:       components[sacctFieldMap["start"]],
-				End:         components[sacctFieldMap["end"]],
-				SubmitTS:    helper.TimeToTimestamp(slurmTimeFormat, components[8]),
-				StartTS:     helper.TimeToTimestamp(slurmTimeFormat, components[9]),
-				EndTS:       helper.TimeToTimestamp(slurmTimeFormat, components[10]),
-				Elapsed:     components[sacctFieldMap["elapsed"]],
-				ElapsedRaw:  elapsedrawInt,
-				Exitcode:    components[sacctFieldMap["exitcode"]],
-				State:       components[sacctFieldMap["state"]],
-				Nnodes:      nnodes,
-				Ncpus:       ncpus,
-				Mem:         mem,
-				Ngpus:       ngpus,
-				Nodelist:    components[sacctFieldMap["nodelist"]],
-				NodelistExp: nodelistExp,
-				JobName:     components[sacctFieldMap["jobname"]],
-				WorkDir:     components[sacctFieldMap["workdir"]],
-				CPUBilling:  cpuBilling,
-				GPUBilling:  gpuBilling,
+			jobStat = base.Job{
+				Jobid:           jobidInt,
+				Jobuuid:         jobUuid,
+				Partition:       components[sacctFieldMap["partition"]],
+				QoS:             components[sacctFieldMap["qos"]],
+				Account:         components[sacctFieldMap["account"]],
+				Grp:             components[sacctFieldMap["group"]],
+				Gid:             gidInt,
+				Usr:             components[sacctFieldMap["user"]],
+				Uid:             uidInt,
+				Submit:          components[sacctFieldMap["submit"]],
+				Start:           components[sacctFieldMap["start"]],
+				End:             components[sacctFieldMap["end"]],
+				SubmitTS:        helper.TimeToTimestamp(slurmTimeFormat, components[8]),
+				StartTS:         helper.TimeToTimestamp(slurmTimeFormat, components[9]),
+				EndTS:           helper.TimeToTimestamp(slurmTimeFormat, components[10]),
+				Elapsed:         components[sacctFieldMap["elapsed"]],
+				ElapsedRaw:      elapsedrawInt,
+				Exitcode:        components[sacctFieldMap["exitcode"]],
+				State:           components[sacctFieldMap["state"]],
+				Nnodes:          nnodes,
+				Ncpus:           ncpus,
+				Mem:             mem,
+				Ngpus:           ngpus,
+				Nodelist:        components[sacctFieldMap["nodelist"]],
+				NodelistExp:     nodelistExp,
+				JobName:         components[sacctFieldMap["jobname"]],
+				WorkDir:         components[sacctFieldMap["workdir"]],
+				TotalCPUBilling: cpuBilling,
+				TotalGPUBilling: gpuBilling,
 			}
 			jobLock.Lock()
 			jobs[i] = jobStat
