@@ -13,7 +13,7 @@ import (
 // BatchJobFetcher is the interface batch scheduler has to implement.
 type BatchJobFetcher interface {
 	// Fetch BatchJobs between start and end times
-	Fetch(start time.Time, end time.Time) ([]base.JobStats, error)
+	Fetch(start time.Time, end time.Time) ([]base.Job, error)
 }
 
 // BatchScheduler implements the interface to collect
@@ -77,6 +77,6 @@ func NewBatchScheduler(logger log.Logger) (*BatchScheduler, error) {
 }
 
 // Fetch implements collection jobs between start and end times
-func (b BatchScheduler) Fetch(start time.Time, end time.Time) ([]base.JobStats, error) {
+func (b BatchScheduler) Fetch(start time.Time, end time.Time) ([]base.Job, error) {
 	return b.Scheduler.Fetch(start, end)
 }
