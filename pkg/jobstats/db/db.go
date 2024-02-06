@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/go-kit/log"
@@ -30,6 +29,7 @@ type Config struct {
 	LastUpdateTimeString    string
 	LastUpdateTimeStampFile string
 	BatchScheduler          func(log.Logger) (*schedulers.BatchScheduler, error)
+	Updater                 func(log.Logger) (*schedulers.JobUpdater, error)
 	TSDB                    *tsdb.TSDB
 }
 
@@ -60,6 +60,7 @@ type jobStatsDB struct {
 	db        *sql.DB
 	dbConn    *sqlite.Conn
 	scheduler *schedulers.BatchScheduler
+	updater   *schedulers.JobUpdater
 	tsdb      *tsdb.TSDB
 	storage   *storageConfig
 }
@@ -124,25 +125,6 @@ func init() {
 		},
 		"\n",
 	)
-
-	// // UserStats update statement
-	// usersStmt := fmt.Sprintf(
-	// 	"INSERT INTO %s (%s) VALUES %s %s",
-	// 	base.UsersDBTableName,
-	// 	strings.Join(base.UsersDBColNames, ","),
-	// 	fmt.Sprintf(
-	// 		"(?,1,%s)",
-	// 		strings.Join(strings.Split(strings.Repeat("?", len(base.UsersDBColNames)-2), ""), ","),
-	// 	),
-	// 	"ON CONFLICT(name) DO UPDATE SET",
-	// )
-	// prepareStatements[base.UsersDBTableName] = strings.Join(
-	// 	[]string{
-	// 		usersStmt,
-	// 		strings.Join(placeholders, ",\n"),
-	// 	},
-	// 	"\n",
-	// )
 }
 
 // Make new JobStatsDB struct
@@ -187,6 +169,13 @@ setup:
 		return nil, err
 	}
 
+	// Setup updater struct that updates jobs
+	updater, err := c.Updater(c.Logger)
+	if err != nil {
+		level.Error(c.Logger).Log("msg", "Metric updater setup failed", "err", err)
+		return nil, err
+	}
+
 	// Setup DB(s)
 	db, dbConn, err := setupDB(c.JobstatsDBPath, c.Logger)
 	if err != nil {
@@ -224,6 +213,7 @@ setup:
 		db:        db,
 		dbConn:    dbConn,
 		scheduler: scheduler,
+		updater:   updater,
 		tsdb:      c.TSDB,
 		storage:   storageConfig,
 	}, nil
@@ -282,10 +272,7 @@ func (j *jobStatsDB) getJobStats(startTime, endTime time.Time) error {
 	}
 
 	// Update jobs struct with job level metrics from TSDB
-	if j.tsdb.Available() {
-		level.Debug(j.logger).Log("msg", "Fetching job metrics from TSDB")
-		jobs = j.fetchMetricsFromTSDB(endTime, jobs)
-	}
+	jobs = j.updater.Update(endTime, jobs)
 
 	// Begin transcation
 	tx, err := j.db.Begin()
@@ -339,98 +326,6 @@ func (j *jobStatsDB) getJobStats(startTime, endTime time.Time) error {
 	j.storage.lastUpdateTime = endTime
 	writeTimeStampToFile(j.storage.lastUpdateTimeFile, j.storage.lastUpdateTime, j.logger)
 	return nil
-}
-
-// Fetch job metrics from TSDB and update JobStat struct for each job
-func (j *jobStatsDB) fetchMetricsFromTSDB(queryTime time.Time, jobs []base.Job) []base.Job {
-	var minStartTime = queryTime.UnixMilli()
-	var allJobIds string
-
-	// Loop over all jobs and find earliest start time of a job
-	for _, job := range jobs {
-		allJobIds = fmt.Sprintf("%d|", job.Jobid)
-		if minStartTime > job.StartTS {
-			minStartTime = job.StartTS
-		}
-	}
-	allJobIds = strings.TrimRight(allJobIds, "|")
-
-	// Get max window from minStartTime to queryTime
-	maxDuration := time.Duration((queryTime.UnixMilli() - minStartTime) * int64(time.Millisecond))
-
-	// Start a wait group
-	var wg sync.WaitGroup
-	var cpuMetrics tsdb.CPUMetrics
-	var gpuMetrics tsdb.GPUMetrics
-	var err error
-
-	// Get metrics from TSDB
-	wg.Add(1)
-	go func() {
-		if cpuMetrics, err = j.tsdb.CPUMetrics(queryTime, maxDuration, allJobIds); err != nil {
-			level.Warn(j.logger).Log("msg", "Errors in fetching CPU job metrics from TSDB", "err", err)
-		}
-		wg.Done()
-	}()
-
-	wg.Add(1)
-	go func() {
-		if gpuMetrics, err = j.tsdb.GPUMetrics(queryTime, maxDuration, allJobIds); err != nil {
-			level.Warn(j.logger).Log("msg", "Errors in fetching GPU job metrics from TSDB", "err", err)
-		}
-		wg.Done()
-	}()
-
-	// Wait for go routines
-	wg.Wait()
-
-	// Finally update jobs
-	for _, job := range jobs {
-		// Update with CPU metrics
-		if cpuMetrics.AvgCPUUsage != nil {
-			if v, exists := cpuMetrics.AvgCPUUsage[job.Jobid]; exists {
-				job.AveCPUUsage = v
-			}
-		}
-		if cpuMetrics.AvgCPUMemUsage != nil {
-			if v, exists := cpuMetrics.AvgCPUMemUsage[job.Jobid]; exists {
-				job.AveCPUMemUsage = v
-			}
-		}
-		if cpuMetrics.TotalCPUEnergyUsage != nil {
-			if v, exists := cpuMetrics.TotalCPUEnergyUsage[job.Jobid]; exists {
-				job.TotalCPUEnergyUsage = v
-			}
-		}
-		if cpuMetrics.TotalCPUEmissions != nil {
-			if v, exists := cpuMetrics.TotalCPUEmissions[job.Jobid]; exists {
-				job.TotalCPUEmissions = v
-			}
-		}
-
-		// Update with GPU metrics
-		if gpuMetrics.AvgGPUUsage != nil {
-			if v, exists := gpuMetrics.AvgGPUUsage[job.Jobid]; exists {
-				job.AveCPUUsage = v
-			}
-		}
-		if gpuMetrics.AvgGPUMemUsage != nil {
-			if v, exists := gpuMetrics.AvgGPUMemUsage[job.Jobid]; exists {
-				job.AveCPUMemUsage = v
-			}
-		}
-		if gpuMetrics.TotalGPUEnergyUsage != nil {
-			if v, exists := gpuMetrics.TotalGPUEnergyUsage[job.Jobid]; exists {
-				job.TotalCPUEnergyUsage = v
-			}
-		}
-		if gpuMetrics.TotalGPUEmissions != nil {
-			if v, exists := gpuMetrics.TotalGPUEmissions[job.Jobid]; exists {
-				job.TotalCPUEmissions = v
-			}
-		}
-	}
-	return jobs
 }
 
 // Delete old entries in DB
@@ -594,36 +489,6 @@ func (j *jobStatsDB) execStatements(statements map[string]*sql.Stmt, jobs []base
 			level.Error(j.logger).
 				Log("msg", "Failed to update usage table in DB", "jobid", job.Jobid, "err", err)
 		}
-
-		// // Update UserStats table
-		// if _, err = statements[base.UsersDBTableName].Exec(
-		// 	job.Usr,
-		// 	job.CPUBilling,
-		// 	job.GPUBilling,
-		// 	job.MiscBilling,
-		// 	job.AveCPUUsage,
-		// 	job.AveCPUMemUsage,
-		// 	job.TotalCPUEnergyUsage,
-		// 	job.TotalCPUEmissions,
-		// 	job.AveGPUUsage,
-		// 	job.AveGPUMemUsage,
-		// 	job.TotalGPUEnergyUsage,
-		// 	job.TotalGPUEmissions,
-		// 	job.CPUBilling,
-		// 	job.GPUBilling,
-		// 	job.MiscBilling,
-		// 	job.AveCPUUsage,
-		// 	job.AveCPUMemUsage,
-		// 	job.TotalCPUEnergyUsage,
-		// 	job.TotalCPUEmissions,
-		// 	job.AveGPUUsage,
-		// 	job.AveGPUMemUsage,
-		// 	job.TotalGPUEnergyUsage,
-		// 	job.TotalGPUEmissions,
-		// ); err != nil {
-		// 	level.Error(j.logger).
-		// 		Log("msg", "Failed to update users table in DB", "jobid", job.Jobid, "err", err)
-		// }
 	}
 	level.Debug(j.logger).Log("jobs_ignored", len(ignoredJobs))
 	return ignoredJobs
@@ -730,15 +595,19 @@ func (j *jobStatsDB) createBackup() error {
 	}
 	level.Debug(j.logger).Log("msg", "DB vacuumed")
 
-	// Attempt to create DB backup
+	// Attempt to create in-place DB backup
 	// Make a unique backup file name using current time
-	backupDBFile := filepath.Join(
-		j.storage.dbBackupPath,
-		fmt.Sprintf("%s-%s.bak.db", base.BatchJobStatsServerAppName, time.Now().Format("200601021504")),
-	)
-	if err := j.backup(backupDBFile); err != nil {
+	backupDBFileName := fmt.Sprintf("%s-%s.bak.db", base.BatchJobStatsServerAppName, time.Now().Format("200601021504"))
+	backupDBFilePath := filepath.Join(filepath.Dir(j.storage.dbPath), backupDBFileName)
+	if err := j.backup(backupDBFilePath); err != nil {
 		return err
 	}
-	level.Info(j.logger).Log("msg", "DB backed up", "file", backupDBFile)
+
+	// If back is successful, move it to dbBackupPath
+	err := os.Rename(backupDBFilePath, filepath.Join(j.storage.dbBackupPath, backupDBFileName))
+	if err != nil {
+		return fmt.Errorf("failed to move backup DB file: %s", err)
+	}
+	level.Info(j.logger).Log("msg", "DB backed up", "file", backupDBFileName)
 	return nil
 }

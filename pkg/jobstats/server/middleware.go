@@ -22,17 +22,16 @@ const (
 
 // Define our struct
 type authenticationMiddleware struct {
-	logger             log.Logger
-	adminUsers         []string
-	grafana            *grafana.Grafana
-	grafanaAdminTeamID string
-	lastAdminsUpdate   time.Time
+	logger           log.Logger
+	adminUsers       []string
+	grafana          *grafana.Grafana
+	lastAdminsUpdate time.Time
 }
 
 // Update admin users from Grafana teams
 func (amw *authenticationMiddleware) updateAdminUsers() {
 	if amw.lastAdminsUpdate.IsZero() || time.Since(amw.lastAdminsUpdate) > time.Duration(time.Hour) {
-		adminUsers, err := amw.grafana.TeamMembers(amw.grafanaAdminTeamID)
+		adminUsers, err := amw.grafana.AdminTeamMembers()
 		if err != nil {
 			level.Warn(amw.logger).Log("msg", "Failed to sync admin users from Grafana Teams", "err", err)
 			return

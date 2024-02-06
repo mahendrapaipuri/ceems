@@ -7,10 +7,13 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/go-kit/log"
+	"github.com/mahendrapaipuri/batchjob_monitor/pkg/jobstats/base"
 )
 
 func TestNewTSDBWithNoURL(t *testing.T) {
-	tsdb, err := NewTSDB("", false)
+	tsdb, err := NewTSDB(log.NewNopLogger())
 	if err != nil {
 		t.Errorf("Failed to create TSDB instance")
 	}
@@ -27,7 +30,15 @@ func TestNewTSDBWithURL(t *testing.T) {
 	}))
 	defer server.Close()
 
-	tsdb, err := NewTSDB(server.URL, false)
+	if _, err := base.BatchJobStatsServerApp.Parse(
+		[]string{
+			"--tsdb.web.url", server.URL,
+		},
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	tsdb, err := NewTSDB(log.NewNopLogger())
 	if err != nil {
 		t.Errorf("Failed to create TSDB instance")
 	}
@@ -56,7 +67,23 @@ func TestTSDBConfigSuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	tsdb, err := NewTSDB(server.URL, false)
+	if _, err := base.BatchJobStatsServerApp.Parse(
+		[]string{
+			"--tsdb.web.url", server.URL,
+		},
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := base.BatchJobStatsServerApp.Parse(
+		[]string{
+			"--tsdb.web.url", server.URL,
+		},
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	tsdb, err := NewTSDB(log.NewNopLogger())
 	if err != nil {
 		t.Errorf("Failed to create TSDB instance")
 	}
@@ -95,7 +122,15 @@ func TestTSDBConfigFail(t *testing.T) {
 	}))
 	defer server.Close()
 
-	tsdb, err := NewTSDB(server.URL, false)
+	if _, err := base.BatchJobStatsServerApp.Parse(
+		[]string{
+			"--tsdb.web.url", server.URL,
+		},
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	tsdb, err := NewTSDB(log.NewNopLogger())
 	if err != nil {
 		t.Errorf("Failed to create TSDB instance")
 	}
@@ -147,7 +182,15 @@ func TestTSDBQuerySuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	tsdb, err := NewTSDB(server.URL, false)
+	if _, err := base.BatchJobStatsServerApp.Parse(
+		[]string{
+			"--tsdb.web.url", server.URL,
+		},
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	tsdb, err := NewTSDB(log.NewNopLogger())
 	if err != nil {
 		t.Errorf("Failed to create TSDB instance")
 	}
@@ -176,7 +219,15 @@ func TestTSDBQueryFail(t *testing.T) {
 	}))
 	defer server.Close()
 
-	tsdb, err := NewTSDB(server.URL, false)
+	if _, err := base.BatchJobStatsServerApp.Parse(
+		[]string{
+			"--tsdb.web.url", server.URL,
+		},
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	tsdb, err := NewTSDB(log.NewNopLogger())
 	if err != nil {
 		t.Errorf("Failed to create TSDB instance")
 	}

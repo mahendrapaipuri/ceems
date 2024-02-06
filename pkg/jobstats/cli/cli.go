@@ -60,18 +60,6 @@ func (b *BatchJobStatsServer) Main() error {
 			"web.admin-users",
 			"Comma separated list of admin users (example: \"admin1,admin2\").",
 		).Default("").String()
-		grafanaWebUrl = b.App.Flag(
-			"grafana.web.url",
-			"Grafana URL for fetching admin users list from a service account.",
-		).Default("").String()
-		grafanaWebSkipTLSVerify = b.App.Flag(
-			"grafana.web.skip-tls-verify",
-			"Whether to skip TLS verification when using self signed certificates (default is false).",
-		).Default("false").Bool()
-		grafanaAdminTeamID = b.App.Flag(
-			"grafana.teams.admin.id",
-			"Grafana admins team ID. An API token must be set via GRAFANA_API_TOKEN environment variable.",
-		).Default("").String()
 		dataPath = b.App.Flag(
 			"storage.data.path",
 			"Base path for data storage.",
@@ -101,14 +89,6 @@ func (b *BatchJobStatsServer) Main() error {
 			"storage.data.job.duration.cutoff",
 			"Jobs with wall time less than this period will be ignored. Units Supported: y, w, d, h, m, s, ms.",
 		).Default("5m").String()
-		tsdbWebUrl = b.App.Flag(
-			"tsdb.web.url",
-			"TSDB URL (Prometheus/Victoria Metrics). If basic auth is enabled consider providing this URL using environment variable TSDB_WEBURL.",
-		).Default(os.Getenv("TSDB_WEBURL")).String()
-		tsdbWebSkipTLSVerify = b.App.Flag(
-			"tsdb.web.skip-tls-verify",
-			"Whether to skip TLS verification when using self signed certificates (default is false).",
-		).Default("false").Bool()
 		skipDeleteOldJobs = b.App.Flag(
 			"storage.data.skip.delete.old.jobs",
 			"Skip deleting old jobs. Used only in testing. (default is false)",
@@ -168,28 +148,6 @@ func (b *BatchJobStatsServer) Main() error {
 		return fmt.Errorf("failed to parse --storage.data.update.from flag: %s", err)
 	}
 
-	// Make a new TSDB instance and if it is available check if it is reachable
-	tsdb, err := tsdb.NewTSDB(*tsdbWebUrl, *tsdbWebSkipTLSVerify)
-	if err != nil {
-		return fmt.Errorf("failed to create TSDB: %s", err)
-	}
-	if tsdb.Available() {
-		if err := tsdb.Ping(); err != nil {
-			return fmt.Errorf("TSDB at %s is unreachable: %s", tsdb.URL.Redacted(), err)
-		}
-	}
-
-	// Make a new Grafana instance
-	grafana, err := grafana.NewGrafana(*grafanaWebUrl, *grafanaWebSkipTLSVerify)
-	if err != nil {
-		return fmt.Errorf("failed to create Grafana: %s", err)
-	}
-	if grafana.Available() {
-		if err := grafana.Ping(); err != nil {
-			return fmt.Errorf("Grafana at %s is unreachable: %s", grafana.URL.Redacted(), err)
-		}
-	}
-
 	// If dataPath/dataBackupPath is empty, use current directory
 	if *dataPath == "" {
 		*dataPath = "data"
@@ -232,6 +190,28 @@ func (b *BatchJobStatsServer) Main() error {
 	runtime.GOMAXPROCS(*maxProcs)
 	level.Debug(logger).Log("msg", "Go MAXPROCS", "procs", runtime.GOMAXPROCS(0))
 
+	// Make a new TSDB instance and if it is available check if it is reachable
+	tsdb, err := tsdb.NewTSDB(logger)
+	if err != nil {
+		return fmt.Errorf("failed to create TSDB: %s", err)
+	}
+	if tsdb.Available() {
+		if err := tsdb.Ping(); err != nil {
+			return fmt.Errorf("TSDB at %s is unreachable: %s", tsdb.URL.Redacted(), err)
+		}
+	}
+
+	// Make a new Grafana instance
+	grafana, err := grafana.NewGrafana(logger)
+	if err != nil {
+		return fmt.Errorf("failed to create Grafana: %s", err)
+	}
+	if grafana.Available() {
+		if err := grafana.Ping(); err != nil {
+			return fmt.Errorf("Grafana at %s is unreachable: %s", grafana.URL.Redacted(), err)
+		}
+	}
+
 	jobstatDBPath := filepath.Join(absDataPath, fmt.Sprintf("%s.db", base.BatchJobStatsServerAppName))
 	jobsLastTimeStampFile := filepath.Join(absDataPath, "lastjobsupdatetime")
 
@@ -265,20 +245,20 @@ func (b *BatchJobStatsServer) Main() error {
 		LastUpdateTimeString:    *lastUpdateTime,
 		LastUpdateTimeStampFile: jobsLastTimeStampFile,
 		BatchScheduler:          schedulers.NewBatchScheduler,
+		Updater:                 schedulers.NewJobUpdater,
 		TSDB:                    tsdb,
 	}
 
 	// Make server config
 	serverConfig := &server.Config{
-		Logger:             logger,
-		Address:            *webListenAddresses,
-		WebSystemdSocket:   *systemdSocket,
-		WebConfigFile:      *webConfigFile,
-		DBConfig:           *dbConfig,
-		MaxQueryPeriod:     time.Duration(maxQuery),
-		AdminUsers:         adminUsersList,
-		Grafana:            grafana,
-		GrafanaAdminTeamID: *grafanaAdminTeamID,
+		Logger:           logger,
+		Address:          *webListenAddresses,
+		WebSystemdSocket: *systemdSocket,
+		WebConfigFile:    *webConfigFile,
+		DBConfig:         *dbConfig,
+		MaxQueryPeriod:   time.Duration(maxQuery),
+		AdminUsers:       adminUsersList,
+		Grafana:          grafana,
 	}
 
 	// Create server instance

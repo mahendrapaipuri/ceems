@@ -3,37 +3,26 @@ package tsdb
 import (
 	"crypto/tls"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
+	"github.com/mahendrapaipuri/batchjob_monitor/pkg/jobstats/base"
+	"github.com/mahendrapaipuri/batchjob_monitor/pkg/jobstats/schedulers"
 	"github.com/prometheus/common/model"
 	"gopkg.in/yaml.v2"
 )
 
 // metric type
 type metric map[int64]float64
-
-// CPU metrics
-type CPUMetrics struct {
-	AvgCPUUsage         metric
-	AvgCPUMemUsage      metric
-	TotalCPUEnergyUsage metric
-	TotalCPUEmissions   metric
-}
-
-// GPU metrics
-type GPUMetrics struct {
-	AvgGPUUsage         metric
-	AvgGPUMemUsage      metric
-	TotalGPUEnergyUsage metric
-	TotalGPUEmissions   metric
-}
 
 // TSDB response
 type Response struct {
@@ -52,6 +41,7 @@ type TSDB struct {
 	QueryEndpoint      *url.URL
 	QueryRangeEndpoint *url.URL
 	ConfigEndpoint     *url.URL
+	logger             log.Logger
 	globalConfig       map[interface{}]interface{}
 	scrapeInterval     time.Duration
 	rateInterval       time.Duration
@@ -64,10 +54,38 @@ const (
 	defaultScrapeInterval = time.Duration(time.Minute)
 )
 
+// TSDB related CLI args
+var (
+	tsdbWebUrl = base.BatchJobStatsServerApp.Flag(
+		"tsdb.web.url",
+		"TSDB URL (Prometheus/Victoria Metrics). If basic auth is enabled consider providing this URL using environment variable TSDB_WEBURL.",
+	).Default(os.Getenv("TSDB_WEBURL")).String()
+	tsdbWebSkipTLSVerify = base.BatchJobStatsServerApp.Flag(
+		"tsdb.web.skip-tls-verify",
+		"Whether to skip TLS verification when using self signed certificates (default is false).",
+	).Default("false").Bool()
+	metricLock = sync.RWMutex{}
+)
+
+// Register TSDB updater
+func init() {
+	schedulers.RegisterUpdater("tsdb", false, NewTSDBUpdater)
+}
+
+// Factory to create a new updater interface
+func NewTSDBUpdater(logger log.Logger) (schedulers.Updater, error) {
+	tsdb, err := NewTSDB(logger)
+	if err != nil {
+		return nil, err
+	}
+	return tsdb, nil
+}
+
 // Return a new instance of TSDB struct
-func NewTSDB(webURL string, skipTLSVerify bool) (*TSDB, error) {
+func NewTSDB(logger log.Logger) (*TSDB, error) {
 	// If webURL is empty return empty struct with available set to false
-	if webURL == "" {
+	if *tsdbWebUrl == "" {
+		level.Warn(logger).Log("msg", "TSDB web URL not found")
 		return &TSDB{
 			available: false,
 		}, nil
@@ -76,13 +94,13 @@ func NewTSDB(webURL string, skipTLSVerify bool) (*TSDB, error) {
 	var tsdbClient *http.Client
 	var tsdbURL *url.URL
 	var err error
-	tsdbURL, err = url.Parse(webURL)
+	tsdbURL, err = url.Parse(*tsdbWebUrl)
 	if err != nil {
 		return nil, err
 	}
 
 	// If skip verify is set to true for TSDB add it to client
-	if skipTLSVerify {
+	if *tsdbWebSkipTLSVerify {
 		tr := &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}
@@ -97,6 +115,7 @@ func NewTSDB(webURL string, skipTLSVerify bool) (*TSDB, error) {
 		QueryEndpoint:      tsdbURL.JoinPath("/api/v1/query"),
 		QueryRangeEndpoint: tsdbURL.JoinPath("/api/v1/query_range"),
 		ConfigEndpoint:     tsdbURL.JoinPath("/api/v1/status/config"),
+		logger:             logger,
 		available:          true,
 	}, nil
 }
@@ -223,74 +242,112 @@ func (t *TSDB) queryString(query string, jobs string, maxDuration time.Duration)
 	)
 }
 
-// Get CPU metrics of jobs
-func (t *TSDB) CPUMetrics(queryTime time.Time, maxDuration time.Duration, jobs string) (CPUMetrics, error) {
-	var cpuMetrics CPUMetrics
+// Get aggregate metrics of all jobs
+func (t *TSDB) FetchAggMetrics(queryTime time.Time, maxDuration time.Duration, jobs string) map[string]metric {
+	var aggMetrics = make(map[string]metric, len(aggMetricQueries))
 	var err error
-	var errs error
 
 	// Get scrape and rate intervals
 	t.RateInterval()
 
-	// Avg CPU usage query
-	cpuUsageQuery := t.queryString(avgCpuUsageQuery, jobs, maxDuration)
-	if cpuMetrics.AvgCPUUsage, err = t.Query(cpuUsageQuery, queryTime); err != nil {
-		errs = errors.Join(fmt.Errorf("failed to query avg CPU usage: %s", err), errs)
-	}
+	// Start a wait group
+	var wg sync.WaitGroup
+	wg.Add(len(aggMetricQueries))
 
-	// Avg CPU mem query
-	cpuMemQuery := t.queryString(avgCpuMemUsageQuery, jobs, maxDuration)
-	if cpuMetrics.AvgCPUMemUsage, err = t.Query(cpuMemQuery, queryTime); err != nil {
-		errs = errors.Join(fmt.Errorf("failed to query avg CPU mem usage: %s", err), errs)
+	// Loop over aggMetricQueries map and make queries
+	for name, query := range aggMetricQueries {
+		go func(n string, q string) {
+			var aggMetric metric
+			tsdbQuery := t.queryString(q, jobs, maxDuration)
+			if aggMetric, err = t.Query(tsdbQuery, queryTime); err != nil {
+				level.Error(t.logger).Log("msg", "Failed to fetch metrics from TSDB", "metric", n, "err", err)
+			} else {
+				metricLock.Lock()
+				aggMetrics[n] = aggMetric
+				metricLock.Unlock()
+			}
+			wg.Done()
+		}(name, query)
 	}
-
-	// Avg CPU usage query
-	cpuEnergyQuery := t.queryString(totalCpuEnergyUsageQuery, jobs, maxDuration)
-	if cpuMetrics.TotalCPUEnergyUsage, err = t.Query(cpuEnergyQuery, queryTime); err != nil {
-		errs = errors.Join(fmt.Errorf("failed to query total CPU energy usage: %s", err), errs)
-	}
-
-	// Avg CPU usage query
-	cpuEmissionsQuery := t.queryString(totalCpuEmissionsUsageQuery, jobs, maxDuration)
-	if cpuMetrics.TotalCPUEmissions, err = t.Query(cpuEmissionsQuery, queryTime); err != nil {
-		errs = errors.Join(fmt.Errorf("failed to query total CPU emissions: %s", err), errs)
-	}
-	return cpuMetrics, errs
+	// Wait for all go routines
+	wg.Wait()
+	return aggMetrics
 }
 
-// Get GPU metrics of jobs
-func (t *TSDB) GPUMetrics(queryTime time.Time, maxDuration time.Duration, jobs string) (GPUMetrics, error) {
-	var gpuMetrics GPUMetrics
-	var err error
-	var errs error
-
-	// Get rate interval
-	t.RateInterval()
-
-	// Avg GPU usage query
-	gpuUsageQuery := t.queryString(avgGpuUsageQuery, jobs, maxDuration)
-	if gpuMetrics.AvgGPUUsage, err = t.Query(gpuUsageQuery, queryTime); err != nil {
-		errs = errors.Join(fmt.Errorf("failed to query avg GPU usage: %s", err), errs)
+// Fetch job metrics from TSDB and update JobStat struct for each job
+func (t *TSDB) Update(queryTime time.Time, jobs []base.Job) []base.Job {
+	// Check if TSDB is available
+	if !t.Available() {
+		return jobs
 	}
+	var minStartTime = queryTime.UnixMilli()
+	var allJobIds = make([]string, len(jobs))
 
-	// Avg GPU mem query
-	gpuMemQuery := t.queryString(avgGpuMemUsageQuery, jobs, maxDuration)
-	if gpuMetrics.AvgGPUMemUsage, err = t.Query(gpuMemQuery, queryTime); err != nil {
-		errs = errors.Join(fmt.Errorf("failed to query avg GPU mem usage: %s", err), errs)
+	// Loop over all jobs and find earliest start time of a job
+	for i := 0; i < len(jobs); i++ {
+		allJobIds[i] = fmt.Sprintf("%d", jobs[i].Jobid)
+		if jobs[i].StartTS > 0 && minStartTime > jobs[i].StartTS {
+			minStartTime = jobs[i].StartTS
+		}
 	}
+	allJobIdsExp := strings.Join(allJobIds, "|")
 
-	// Avg GPU usage query
-	gpuEnergyQuery := t.queryString(totalGpuEnergyUsageQuery, jobs, maxDuration)
-	if gpuMetrics.TotalGPUEnergyUsage, err = t.Query(gpuEnergyQuery, queryTime); err != nil {
-		errs = errors.Join(fmt.Errorf("failed to query total GPU energy usage: %s", err), errs)
-	}
+	// Get max window from minStartTime to queryTime
+	maxDuration := time.Duration((queryTime.UnixMilli() - minStartTime) * int64(time.Millisecond)).Truncate(time.Minute)
 
-	// Avg GPU usage query
-	gpuEmissionsQuery := t.queryString(totalGpuEmissionsUsageQuery, jobs, maxDuration)
-	if gpuMetrics.TotalGPUEmissions, err = t.Query(gpuEmissionsQuery, queryTime); err != nil {
-		errs = errors.Join(fmt.Errorf("failed to query total GPU emissions: %s", err), errs)
+	// Get all aggregate metrics
+	aggMetrics := t.FetchAggMetrics(queryTime, maxDuration, allJobIdsExp)
+
+	// Update all jobs
+	// NOTE: We can improve this by using reflect package by naming queries
+	// after field names. That will allow us to dynamically look up struct
+	// field using query name and set the properties.
+	for _, job := range jobs {
+		// Update with CPU metrics
+		if metric, mExists := aggMetrics["cpuUsage"]; mExists {
+			if value, exists := metric[job.Jobid]; exists {
+				job.AveCPUUsage = value
+			}
+		}
+		if metric, mExists := aggMetrics["cpuMemUsage"]; mExists {
+			if value, exists := metric[job.Jobid]; exists {
+				job.AveCPUMemUsage = value
+			}
+		}
+		if metric, mExists := aggMetrics["cpuEnergyUsage"]; mExists {
+			if value, exists := metric[job.Jobid]; exists {
+				job.TotalCPUEnergyUsage = value
+			}
+		}
+		if metric, mExists := aggMetrics["cpuEmissions"]; mExists {
+			if value, exists := metric[job.Jobid]; exists {
+				job.TotalCPUEmissions = value
+			}
+		}
+
+		// Update with GPU metrics
+		if metric, mExists := aggMetrics["gpuUsage"]; mExists {
+			if value, exists := metric[job.Jobid]; exists {
+				job.AveGPUUsage = value
+			}
+		}
+		if metric, mExists := aggMetrics["gpuMemUsage"]; mExists {
+			if value, exists := metric[job.Jobid]; exists {
+				job.AveGPUMemUsage = value
+			}
+		}
+		if metric, mExists := aggMetrics["gpuEnergyUsage"]; mExists {
+			if value, exists := metric[job.Jobid]; exists {
+				job.TotalGPUEnergyUsage = value
+			}
+		}
+		if metric, mExists := aggMetrics["gpuEmissions"]; mExists {
+			if value, exists := metric[job.Jobid]; exists {
+				job.TotalGPUEmissions = value
+			}
+		}
 	}
-	return gpuMetrics, errs
+	return jobs
 }
 
 // Get average CPU utilisation of jobs
@@ -329,9 +386,14 @@ func (t *TSDB) Query(query string, queryTime time.Time) (map[int64]float64, erro
 		return nil, err
 	}
 
+	// Check if Status is error
+	if data.Status == "error" {
+		return nil, fmt.Errorf("error response from TSDB: %v", data)
+	}
+
 	// Check if Data exists on response
 	if data.Data == nil {
-		return nil, fmt.Errorf("TSDB response returned no data")
+		return nil, fmt.Errorf("TSDB response returned no data: %v", data)
 	}
 
 	// Parse data

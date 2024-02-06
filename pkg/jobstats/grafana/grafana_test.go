@@ -6,10 +6,13 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"testing"
+
+	"github.com/go-kit/log"
+	"github.com/mahendrapaipuri/batchjob_monitor/pkg/jobstats/base"
 )
 
 func TestNewGrafanaWithNoURL(t *testing.T) {
-	grafana, err := NewGrafana("", false)
+	grafana, err := NewGrafana(log.NewNopLogger())
 	if err != nil {
 		t.Errorf("Failed to create Grafana instance")
 	}
@@ -27,7 +30,15 @@ func TestNewGrafanaWithURL(t *testing.T) {
 	}))
 	defer server.Close()
 
-	grafana, err := NewGrafana(server.URL, false)
+	if _, err := base.BatchJobStatsServerApp.Parse(
+		[]string{
+			"--grafana.web.url", server.URL,
+		},
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	grafana, err := NewGrafana(log.NewNopLogger())
 	if err != nil {
 		t.Errorf("Failed to create Grafana instance")
 	}
@@ -54,7 +65,15 @@ func TestGrafanaTeamMembersQuerySuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	grafana, err := NewGrafana(server.URL, false)
+	if _, err := base.BatchJobStatsServerApp.Parse(
+		[]string{
+			"--grafana.web.url", server.URL,
+		},
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	grafana, err := NewGrafana(log.NewNopLogger())
 	if err != nil {
 		t.Errorf("Failed to create Grafana instance")
 	}
@@ -84,7 +103,15 @@ func TestGrafanaTeamMembersQueryFailNoTeamID(t *testing.T) {
 	}))
 	defer server.Close()
 
-	grafana, err := NewGrafana(server.URL, false)
+	if _, err := base.BatchJobStatsServerApp.Parse(
+		[]string{
+			"--grafana.web.url", server.URL,
+		},
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	grafana, err := NewGrafana(log.NewNopLogger())
 	if err != nil {
 		t.Errorf("Failed to create Grafana instance")
 	}
@@ -109,7 +136,15 @@ func TestGrafanaTeamMembersQueryFailNoToken(t *testing.T) {
 	}))
 	defer server.Close()
 
-	grafana, err := NewGrafana(server.URL, false)
+	if _, err := base.BatchJobStatsServerApp.Parse(
+		[]string{
+			"--grafana.web.url", server.URL,
+		},
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	grafana, err := NewGrafana(log.NewNopLogger())
 	if err != nil {
 		t.Errorf("Failed to create Grafana instance")
 	}

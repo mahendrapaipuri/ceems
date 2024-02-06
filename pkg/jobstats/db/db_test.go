@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 
@@ -14,17 +15,38 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-type mockScheduler struct{}
+type mockScheduler struct {
+	logger log.Logger
+}
 
 var mockJobs = []base.Job{{Jobid: 10000}, {Jobid: 10001}}
 
 func newMockScheduler(logger log.Logger) (*schedulers.BatchScheduler, error) {
-	return &schedulers.BatchScheduler{Scheduler: &mockScheduler{}}, nil
+	return &schedulers.BatchScheduler{Scheduler: &mockScheduler{logger: logger}}, nil
 }
 
 // GetJobs implements collection jobs between start and end times
 func (m *mockScheduler) Fetch(start time.Time, end time.Time) ([]base.Job, error) {
 	return mockJobs, nil
+}
+
+type mockUpdater struct {
+	logger log.Logger
+}
+
+var mockUpdatedJobs = []base.Job{{Jobid: 10000, Jobuuid: "foo"}, {Jobid: 10001, Jobuuid: "bar"}}
+
+func newMockUpdater(logger log.Logger) (*schedulers.JobUpdater, error) {
+	return &schedulers.JobUpdater{
+		Names:    []string{"mock"},
+		Updaters: []schedulers.Updater{&mockUpdater{logger: logger}},
+		Logger:   logger,
+	}, nil
+}
+
+// GetJobs implements collection jobs between start and end times
+func (m *mockUpdater) Update(queryTime time.Time, jobs []base.Job) []base.Job {
+	return mockUpdatedJobs
 }
 
 func prepareMockConfig(tmpDir string) *Config {
@@ -52,10 +74,11 @@ func prepareMockConfig(tmpDir string) *Config {
 		JobstatsDBPath:          jobstatDBPath,
 		JobstatsDBBackupPath:    dataBackupDir,
 		LastUpdateTimeStampFile: lastJobsUpdateTimeFile,
-		LastUpdateTimeString:    "2023-12-20",
-		RetentionPeriod:         7,
+		LastUpdateTimeString:    time.Now().Format("2006-01-02"),
+		RetentionPeriod:         time.Duration(24 * time.Hour),
 		BatchScheduler:          newMockScheduler,
 		TSDB:                    &tsdb.TSDB{},
+		Updater:                 newMockUpdater,
 	}
 }
 
@@ -74,6 +97,7 @@ func TestNewJobStatsDB(t *testing.T) {
 	c := prepareMockConfig(tmpDir)
 
 	// Make new jobstats DB
+	c.LastUpdateTimeString = "2023-12-20"
 	_, err := NewJobStatsDB(c)
 	if err != nil {
 		t.Errorf("Failed to create new jobstatsDB struct due to %s", err)
@@ -156,6 +180,48 @@ func TestNewJobStatsDB(t *testing.T) {
 			err,
 		)
 	}
+}
+
+func TestJobStatsDBEntries(t *testing.T) {
+	tmpDir := t.TempDir()
+	c := prepareMockConfig(tmpDir)
+
+	// Make new jobstats DB
+	j, err := NewJobStatsDB(c)
+	if err != nil {
+		t.Errorf("Failed to create new jobstatsDB struct due to %s", err)
+	}
+
+	// Try to insert data. It should fail
+	err = j.Collect()
+	if err != nil {
+		t.Errorf("Failed to collect jobs data: %s", err)
+	}
+
+	// Make query
+	rows, err := j.db.Query("SELECT jobid,jobuuid FROM jobs")
+	if err != nil {
+		t.Errorf("Failed to make DB query")
+	}
+	defer rows.Close()
+
+	var jobs []base.Job
+	fmt.Println(rows.Columns())
+	for rows.Next() {
+		var job base.Job
+
+		err = rows.Scan(&job.Jobid, &job.Jobuuid)
+		if err != nil {
+			t.Errorf("Failed to scan row")
+		}
+		jobs = append(jobs, job)
+	}
+
+	if !reflect.DeepEqual(jobs, mockUpdatedJobs) {
+		t.Errorf("expected %#v, \n got %#v", mockUpdatedJobs, jobs)
+	}
+	// Close DB
+	j.Stop()
 }
 
 func TestJobStatsDBLock(t *testing.T) {
