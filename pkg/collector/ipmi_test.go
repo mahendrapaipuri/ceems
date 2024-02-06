@@ -41,7 +41,7 @@ Power Measurement                    : Disable
 
 func TestIpmiMetrics(t *testing.T) {
 	c := impiCollector{logger: log.NewNopLogger()}
-	value, err := c.getPowerReadings([]byte(ipmidcmiStdout))
+	value, err := c.parseIPMIOutput([]byte(ipmidcmiStdout))
 	if err != nil {
 		t.Errorf("failed to parse IPMI DCMI output: %v", err)
 	}
@@ -52,7 +52,7 @@ func TestIpmiMetrics(t *testing.T) {
 
 func TestIpmiMetricsAlt(t *testing.T) {
 	c := impiCollector{logger: log.NewNopLogger()}
-	value, err := c.getPowerReadings([]byte(ipmidcmiStdoutAlt))
+	value, err := c.parseIPMIOutput([]byte(ipmidcmiStdoutAlt))
 	if err != nil {
 		t.Errorf("failed to parse IPMI DCMI output: %v", err)
 	}
@@ -63,7 +63,7 @@ func TestIpmiMetricsAlt(t *testing.T) {
 
 func TestIpmiMetricsDisactive(t *testing.T) {
 	c := impiCollector{logger: log.NewNopLogger()}
-	value, _ := c.getPowerReadings([]byte(ipmidcmiStdoutDisactive))
+	value, _ := c.parseIPMIOutput([]byte(ipmidcmiStdoutDisactive))
 	if value != nil {
 		t.Errorf("Expected nil output. Got %v", value)
 	}
