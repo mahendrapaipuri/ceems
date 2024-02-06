@@ -404,7 +404,7 @@ func (t *TSDB) Query(query string, queryTime time.Time) (map[int64]float64, erro
 			// Check if metric exists on result. If it does, check for jobid and value
 			var jobid, value string
 			if metric, exists := result.(map[string]interface{})["metric"]; exists {
-				if jid, exists := metric.(map[string]interface{})["jobid"]; exists {
+				if jid, exists := metric.(map[string]interface{})["batchjobid"]; exists {
 					jobid = jid.(string)
 				}
 				if val, exists := result.(map[string]interface{})["value"]; exists {

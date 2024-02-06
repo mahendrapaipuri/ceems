@@ -158,7 +158,7 @@ func TestTSDBQuerySuccess(t *testing.T) {
 			"result": []interface{}{
 				map[string]interface{}{
 					"metric": map[string]string{
-						"jobid": "1",
+						"batchjobid": "1",
 					},
 					"value": []interface{}{
 						12345, "1.1",
@@ -166,7 +166,7 @@ func TestTSDBQuerySuccess(t *testing.T) {
 				},
 				map[string]interface{}{
 					"metric": map[string]string{
-						"jobid": "2",
+						"batchjobid": "2",
 					},
 					"value": []interface{}{
 						12345, "2.2",

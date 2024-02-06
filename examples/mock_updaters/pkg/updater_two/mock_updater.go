@@ -1,4 +1,4 @@
-package updater
+package updater_two
 
 import (
 	"time"

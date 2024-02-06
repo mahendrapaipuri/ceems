@@ -514,13 +514,13 @@ func (j *jobStatsDB) deleteTimeSeries(startTime time.Time, endTime time.Time, jo
 	start := startTime.Add(-j.storage.cutoffPeriod)
 	end := endTime
 
-	// Matcher must be of format "{jobid=~"<regex>"}"
+	// Matcher must be of format "{batchjobid=~"<regex>"}"
 	// Ref: https://ganeshvernekar.com/blog/prometheus-tsdb-queries/
 	//
 	// Join them with | as delimiter. We will use regex match to match all series
-	// with the label jobid=~"$jobids"
+	// with the label batchjobid=~"$jobids"
 	allJobIds := strings.Join(jobs, "|")
-	matcher := fmt.Sprintf("{jobid=~\"%s\"}", allJobIds)
+	matcher := fmt.Sprintf("{batchjobid=~\"%s\"}", allJobIds)
 	// Make a API request to delete data of ignored jobs
 	return j.tsdb.Delete(start, end, matcher)
 }
