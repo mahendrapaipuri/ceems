@@ -71,31 +71,59 @@ with contents as "$SLURM_JOB_USER $SLURM_JOB_ACCOUNT $SLURM_JOB_NODELIST" in the
 	).Hidden().Default("").String()
 )
 
+// SLURM cgroup names patterns
+/*
+	For v2 possibilities are /system.slice/slurmstepd.scope/job_211
+							/system.slice/slurmstepd.scope/job_211/step_interactive
+							/system.slice/slurmstepd.scope/job_211/step_extern/user/task_0
+*/
+var (
+	slurmPatterns = map[string]*regexp.Regexp{
+		"v1": regexp.MustCompile(
+			"^/slurm/uid_(?P<uid>[0-9]+)/job_(?P<jobid>[0-9]+)(/step_(?P<setpid>[^/]+)(/task_(?P<taskid>[[0-9]+))?)?$",
+		),
+		"v2": regexp.MustCompile(
+			"^/system.slice/slurmstepd.scope/job_(?P<jobid>[0-9]+)(/step_(?P<stepid>[^/]+)(/user/task_(?P<taskid>[[0-9]+))?)?$",
+		),
+	}
+)
+
+// Job properties struct
+type JobProps struct {
+	jobID          string
+	jobUUID        string
+	jobUser        string
+	jobAccount     string
+	jobNodelist    string
+	jobGPUOrdinals []string
+}
+
+// Cgroup metric struct
 type CgroupMetric struct {
-	name            string
-	cpuUser         float64
-	cpuSystem       float64
-	cpuTotal        float64
-	cpus            int
-	cpuPressure     float64
-	memoryRSS       float64
-	memoryCache     float64
-	memoryUsed      float64
-	memoryTotal     float64
-	memoryFailCount float64
-	memswUsed       float64
-	memswTotal      float64
-	memswFailCount  float64
-	memoryPressure  float64
-	userslice       bool
-	batch           string
-	hostname        string
-	jobuser         string
-	jobaccount      string
-	jobid           string
-	jobuuid         string
-	jobGpuOrdinals  []string
-	err             bool
+	name                string
+	cpuUser             float64
+	cpuSystem           float64
+	cpuTotal            float64
+	cpus                int
+	cpuPressure         float64
+	memoryRSS           float64
+	memoryCache         float64
+	memoryUsed          float64
+	memoryTotal         float64
+	memoryFailCount     float64
+	memswUsed           float64
+	memswTotal          float64
+	memswFailCount      float64
+	memoryPressure      float64
+	userslice           bool
+	batch               string
+	hostname            string
+	batchjobuser        string
+	batchjobaccount     string
+	batchjobid          string
+	batchjobuuid        string
+	batchjobgpuordinals []string
+	err                 bool
 }
 
 type slurmCollector struct {
@@ -120,6 +148,7 @@ type slurmCollector struct {
 	jobMemoryPressure  *prometheus.Desc
 	jobGpuFlag         *prometheus.Desc
 	collectError       *prometheus.Desc
+	jobPropsCache      sync.Map
 	logger             log.Logger
 }
 
@@ -187,85 +216,85 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 		jobCpuUser: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_cpu_user_seconds"),
 			"Total job CPU user seconds",
-			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid"},
+			[]string{"batch", "hostname", "batchjobid", "batchjobuser", "batchjobaccount", "batchjobuuid"},
 			nil,
 		),
 		jobCpuSystem: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_cpu_system_seconds"),
 			"Total job CPU system seconds",
-			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid"},
+			[]string{"batch", "hostname", "batchjobid", "batchjobuser", "batchjobaccount", "batchjobuuid"},
 			nil,
 		),
 		// cpuTotal: prometheus.NewDesc(
 		// 	prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_cpu_total_seconds"),
 		// 	"Total job CPU total seconds",
-		// 	[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid"},
+		// 	[]string{"batch", "hostname", "batchjobid", "batchjobuser", "batchjobaccount", "batchjobuuid"},
 		// 	nil,
 		// ),
 		jobCpus: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_cpus"),
 			"Total number of job CPUs",
-			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid"},
+			[]string{"batch", "hostname", "batchjobid", "batchjobuser", "batchjobaccount", "batchjobuuid"},
 			nil,
 		),
 		jobCpuPressure: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_cpu_psi_seconds"),
 			"Total CPU PSI in seconds",
-			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid"},
+			[]string{"batch", "hostname", "batchjobid", "batchjobuser", "batchjobaccount", "batchjobuuid"},
 			nil,
 		),
 		jobMemoryRSS: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_memory_rss_bytes"),
 			"Memory RSS used in bytes",
-			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid"},
+			[]string{"batch", "hostname", "batchjobid", "batchjobuser", "batchjobaccount", "batchjobuuid"},
 			nil,
 		),
 		jobMemoryCache: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_memory_cache_bytes"),
 			"Memory cache used in bytes",
-			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid"},
+			[]string{"batch", "hostname", "batchjobid", "batchjobuser", "batchjobaccount", "batchjobuuid"},
 			nil,
 		),
 		jobMemoryUsed: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_memory_used_bytes"),
 			"Memory used in bytes",
-			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid"},
+			[]string{"batch", "hostname", "batchjobid", "batchjobuser", "batchjobaccount", "batchjobuuid"},
 			nil,
 		),
 		jobMemoryTotal: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_memory_total_bytes"),
 			"Memory total in bytes",
-			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid"},
+			[]string{"batch", "hostname", "batchjobid", "batchjobuser", "batchjobaccount", "batchjobuuid"},
 			nil,
 		),
 		jobMemoryFailCount: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_memory_fail_count"),
 			"Memory fail count",
-			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid"},
+			[]string{"batch", "hostname", "batchjobid", "batchjobuser", "batchjobaccount", "batchjobuuid"},
 			nil,
 		),
 		jobMemswUsed: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_memsw_used_bytes"),
 			"Swap used in bytes",
-			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid"},
+			[]string{"batch", "hostname", "batchjobid", "batchjobuser", "batchjobaccount", "batchjobuuid"},
 			nil,
 		),
 		jobMemswTotal: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_memsw_total_bytes"),
 			"Swap total in bytes",
-			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid"},
+			[]string{"batch", "hostname", "batchjobid", "batchjobuser", "batchjobaccount", "batchjobuuid"},
 			nil,
 		),
 		jobMemswFailCount: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_memsw_fail_count"),
 			"Swap fail count",
-			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid"},
+			[]string{"batch", "hostname", "batchjobid", "batchjobuser", "batchjobaccount", "batchjobuuid"},
 			nil,
 		),
 		jobMemoryPressure: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_memory_psi_seconds"),
 			"Total memory PSI in seconds",
-			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid"},
+			[]string{"batch", "hostname", "batchjobid", "batchjobuser", "batchjobaccount", "batchjobuuid"},
 			nil,
 		),
 		jobGpuFlag: prometheus.NewDesc(
@@ -274,10 +303,10 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 			[]string{
 				"batch",
 				"hostname",
-				"jobid",
-				"jobuser",
-				"jobaccount",
-				"jobuuid",
+				"batchjobid",
+				"batchjobuser",
+				"batchjobaccount",
+				"batchjobuuid",
 				"index",
 				"hindex",
 				"uuid",
@@ -288,7 +317,7 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 		collectError: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "collect_error"),
 			"Indicates collection error, 0=no error, 1=error",
-			[]string{"batch", "hostname", "jobid", "jobuser", "jobaccount", "jobuuid"},
+			[]string{"batch", "hostname", "batchjobid", "batchjobuser", "batchjobaccount", "batchjobuuid"},
 			nil,
 		),
 		logger: logger,
@@ -315,9 +344,9 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 		if m.err {
 			ch <- prometheus.MustNewConstMetric(c.collectError, prometheus.GaugeValue, 1, m.name)
 		}
-		ch <- prometheus.MustNewConstMetric(c.jobCpuUser, prometheus.GaugeValue, m.cpuUser, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid)
-		ch <- prometheus.MustNewConstMetric(c.jobCpuSystem, prometheus.GaugeValue, m.cpuSystem, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid)
-		// ch <- prometheus.MustNewConstMetric(c.cpuTotal, prometheus.GaugeValue, m.cpuTotal, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid)
+		ch <- prometheus.MustNewConstMetric(c.jobCpuUser, prometheus.GaugeValue, m.cpuUser, m.batch, m.hostname, m.batchjobid, m.batchjobuser, m.batchjobaccount, m.batchjobuuid)
+		ch <- prometheus.MustNewConstMetric(c.jobCpuSystem, prometheus.GaugeValue, m.cpuSystem, m.batch, m.hostname, m.batchjobid, m.batchjobuser, m.batchjobaccount, m.batchjobuuid)
+		// ch <- prometheus.MustNewConstMetric(c.cpuTotal, prometheus.GaugeValue, m.cpuTotal, m.batch, m.hostname, m.batchjobid, m.batchjobuser, m.batchjobaccount, m.batchjobuuid)
 		cpus := m.cpus
 		if cpus == 0 {
 			dir := filepath.Dir(n)
@@ -326,23 +355,23 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 				cpus = metrics[filepath.Dir(dir)].cpus
 			}
 		}
-		ch <- prometheus.MustNewConstMetric(c.jobCpus, prometheus.GaugeValue, float64(cpus), m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid)
-		ch <- prometheus.MustNewConstMetric(c.jobMemoryRSS, prometheus.GaugeValue, m.memoryRSS, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid)
-		ch <- prometheus.MustNewConstMetric(c.jobMemoryCache, prometheus.GaugeValue, m.memoryCache, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid)
-		ch <- prometheus.MustNewConstMetric(c.jobMemoryUsed, prometheus.GaugeValue, m.memoryUsed, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid)
-		ch <- prometheus.MustNewConstMetric(c.jobMemoryTotal, prometheus.GaugeValue, m.memoryTotal, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid)
-		ch <- prometheus.MustNewConstMetric(c.jobMemoryFailCount, prometheus.GaugeValue, m.memoryFailCount, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid)
+		ch <- prometheus.MustNewConstMetric(c.jobCpus, prometheus.GaugeValue, float64(cpus), m.batch, m.hostname, m.batchjobid, m.batchjobuser, m.batchjobaccount, m.batchjobuuid)
+		ch <- prometheus.MustNewConstMetric(c.jobMemoryRSS, prometheus.GaugeValue, m.memoryRSS, m.batch, m.hostname, m.batchjobid, m.batchjobuser, m.batchjobaccount, m.batchjobuuid)
+		ch <- prometheus.MustNewConstMetric(c.jobMemoryCache, prometheus.GaugeValue, m.memoryCache, m.batch, m.hostname, m.batchjobid, m.batchjobuser, m.batchjobaccount, m.batchjobuuid)
+		ch <- prometheus.MustNewConstMetric(c.jobMemoryUsed, prometheus.GaugeValue, m.memoryUsed, m.batch, m.hostname, m.batchjobid, m.batchjobuser, m.batchjobaccount, m.batchjobuuid)
+		ch <- prometheus.MustNewConstMetric(c.jobMemoryTotal, prometheus.GaugeValue, m.memoryTotal, m.batch, m.hostname, m.batchjobid, m.batchjobuser, m.batchjobaccount, m.batchjobuuid)
+		ch <- prometheus.MustNewConstMetric(c.jobMemoryFailCount, prometheus.GaugeValue, m.memoryFailCount, m.batch, m.hostname, m.batchjobid, m.batchjobuser, m.batchjobaccount, m.batchjobuuid)
 		if *collectSwapMemoryStats {
-			ch <- prometheus.MustNewConstMetric(c.jobMemswUsed, prometheus.GaugeValue, m.memswUsed, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid)
-			ch <- prometheus.MustNewConstMetric(c.jobMemswTotal, prometheus.GaugeValue, m.memswTotal, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid)
-			ch <- prometheus.MustNewConstMetric(c.jobMemswFailCount, prometheus.GaugeValue, m.memswFailCount, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid)
+			ch <- prometheus.MustNewConstMetric(c.jobMemswUsed, prometheus.GaugeValue, m.memswUsed, m.batch, m.hostname, m.batchjobid, m.batchjobuser, m.batchjobaccount, m.batchjobuuid)
+			ch <- prometheus.MustNewConstMetric(c.jobMemswTotal, prometheus.GaugeValue, m.memswTotal, m.batch, m.hostname, m.batchjobid, m.batchjobuser, m.batchjobaccount, m.batchjobuuid)
+			ch <- prometheus.MustNewConstMetric(c.jobMemswFailCount, prometheus.GaugeValue, m.memswFailCount, m.batch, m.hostname, m.batchjobid, m.batchjobuser, m.batchjobaccount, m.batchjobuuid)
 		}
 		if *collectPSIStats {
-			ch <- prometheus.MustNewConstMetric(c.jobCpuPressure, prometheus.GaugeValue, m.cpuPressure, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid)
-			ch <- prometheus.MustNewConstMetric(c.jobMemoryPressure, prometheus.GaugeValue, m.memoryPressure, m.batch, m.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid)
+			ch <- prometheus.MustNewConstMetric(c.jobCpuPressure, prometheus.GaugeValue, m.cpuPressure, m.batch, m.hostname, m.batchjobid, m.batchjobuser, m.batchjobaccount, m.batchjobuuid)
+			ch <- prometheus.MustNewConstMetric(c.jobMemoryPressure, prometheus.GaugeValue, m.memoryPressure, m.batch, m.hostname, m.batchjobid, m.batchjobuser, m.batchjobaccount, m.batchjobuuid)
 		}
 		if len(c.gpuDevs) > 0 {
-			for _, gpuOrdinal := range m.jobGpuOrdinals {
+			for _, gpuOrdinal := range m.batchjobgpuordinals {
 				var uuid string
 				// Check the int index of devices where gpuOrdinal == dev.index
 				for _, dev := range c.gpuDevs {
@@ -351,7 +380,7 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 						break
 					}
 				}
-				ch <- prometheus.MustNewConstMetric(c.jobGpuFlag, prometheus.GaugeValue, float64(1), m.batch, c.hostname, m.jobid, m.jobuser, m.jobaccount, m.jobuuid, gpuOrdinal, fmt.Sprintf("%s-gpu-%s", m.hostname, gpuOrdinal), uuid, uuid)
+				ch <- prometheus.MustNewConstMetric(c.jobGpuFlag, prometheus.GaugeValue, float64(1), m.batch, c.hostname, m.batchjobid, m.batchjobuser, m.batchjobaccount, m.batchjobuuid, gpuOrdinal, fmt.Sprintf("%s-gpu-%s", m.hostname, gpuOrdinal), uuid, uuid)
 			}
 		}
 	}
@@ -365,7 +394,8 @@ func (c *slurmCollector) getJobsMetrics() (map[string]CgroupMetric, error) {
 
 	level.Debug(c.logger).Log("msg", "Loading cgroup", "path", c.slurmCgroupsPath)
 
-	err := filepath.WalkDir(c.slurmCgroupsPath, func(p string, info fs.DirEntry, err error) error {
+	// Walk through all cgroups and get cgroup paths
+	if err := filepath.WalkDir(c.slurmCgroupsPath, func(p string, info fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -380,12 +410,31 @@ func (c *slurmCollector) getJobsMetrics() (map[string]CgroupMetric, error) {
 			names = append(names, "/"+rel)
 		}
 		return nil
-	})
-	if err != nil {
+	}); err != nil {
 		level.Error(c.logger).
 			Log("msg", "Error walking cgroup subsystem", "path", c.slurmCgroupsPath, "err", err)
 		return metrics, nil
 	}
+
+	// Get currently active jobs and set them in activeJobs state variable
+	var activeJobIDs []string
+	for _, name := range names {
+		if matches := findNamedMatches(slurmPatterns[c.cgroups], name); matches["jobid"] != "" {
+			jobid := matches["jobid"]
+			activeJobIDs = append(activeJobIDs, jobid)
+			c.jobPropsCache.LoadOrStore(jobid, JobProps{})
+		}
+	}
+
+	// Remove all jobs from activeJobs which are not in activeJobIDs. These are generally
+	// finished jobs
+	c.jobPropsCache.Range(func(jobid, jobProps interface{}) bool {
+		if !slices.Contains(activeJobIDs, jobid.(string)) {
+			c.jobPropsCache.Delete(jobid)
+			level.Debug(c.logger).Log("msg", "Removed job from jobPropsCache", "jobid", jobid)
+		}
+		return true
+	})
 
 	wg := &sync.WaitGroup{}
 	wg.Add(len(names))
@@ -394,7 +443,7 @@ func (c *slurmCollector) getJobsMetrics() (map[string]CgroupMetric, error) {
 			metric, _ := c.getMetrics(n)
 			if !metric.err {
 				metricLock.Lock()
-				metrics[metric.jobid] = metric
+				metrics[metric.batchjobid] = metric
 				metricLock.Unlock()
 			}
 			wg.Done()
@@ -472,32 +521,25 @@ func (c *slurmCollector) getCPUs(name string) ([]string, error) {
 	return cpus, nil
 }
 
-// Get different properties of Job
-func (c *slurmCollector) getJobProperties(metric *CgroupMetric, pids []uint64) {
-	jobid := metric.jobid
-	var jobUuid string
-	var jobUser string = ""
-	var jobAccount string = ""
-	var jobNodelist string = ""
-	var gpuJobId string = ""
-	var jobGpuOrdinals []string
-	var err error
+// Read prolog generated run time files to get job properties
+func (c *slurmCollector) readJobPropsFromProlog(jobid string, jobProps *JobProps) JobProps {
+	var gpuJobId string
 
-	// First try to read files that might be created by SLURM prolog scripts
-	var slurmJobInfo = fmt.Sprintf("%s/%s", *jobStatPath, jobid)
+	// Read SLURM job properties
+	var slurmJobInfo = filepath.Join(*jobStatPath, jobid)
 	if _, err := os.Stat(slurmJobInfo); err == nil {
 		content, err := os.ReadFile(slurmJobInfo)
 		if err != nil {
 			level.Error(c.logger).
-				Log("msg", "Failed to get metadata for job", "jobid", jobid, "err", err)
+				Log("msg", "Failed to get job properties from prolog generated files", "file", slurmJobInfo, "err", err)
 		} else {
-			fmt.Sscanf(string(content), "%s %s %s", &jobUser, &jobAccount, &jobNodelist)
+			fmt.Sscanf(string(content), "%s %s %s", &jobProps.jobUser, &jobProps.jobAccount, &jobProps.jobNodelist)
 		}
 	}
 
 	// If there are no GPUs this loop will be skipped anyways
 	// NOTE: In go loop over map is not reproducible. The order is undefined and thus
-	// we might end up with a situation where jobGpuOrdinals will [1 2] or [2 1] if
+	// we might end up with a situation where jobGPUOrdinals will [1 2] or [2 1] if
 	// current Job has two GPUs. This will fail unit tests as order in Slice is important
 	// in Go
 	//
@@ -524,146 +566,196 @@ func (c *slurmCollector) getJobProperties(metric *CgroupMetric, pids []uint64) {
 			}
 			fmt.Sscanf(string(content), "%s", &gpuJobId)
 			if gpuJobId == jobid {
-				jobGpuOrdinals = append(jobGpuOrdinals, dev.index)
+				jobProps.jobGPUOrdinals = append(jobProps.jobGPUOrdinals, dev.index)
 			}
 		}
+	}
+	return *jobProps
+}
+
+// Read job properties from env vars
+func (c *slurmCollector) readJobPropsFromEnviron(jobid string, pids []uint64, jobProps *JobProps) JobProps {
+	var jobUser string
+	var jobAccount string
+	var jobNodelist string
+	var jobGPUOrdinals []string
+
+	// Attempt to get UID, Account, Nodelist from /proc file system by looking into
+	// environ for the process that has same SLURM_JOB_ID
+	//
+	// Instantiate a new Proc FS
+	procFS, err := procfs.NewFS(*procfsPath)
+	if err != nil {
+		level.Error(c.logger).Log("msg", "Unable to open procfs", "path", *procfsPath, "err", err)
+		return *jobProps
+	}
+
+	// Get all procs from current proc fs if passed pids slice is nil
+	if pids == nil {
+		allProcs, err := procFS.AllProcs()
+		if err != nil {
+			level.Error(c.logger).Log("msg", "Failed to read /proc", "err", err)
+			return *jobProps
+		}
+		pids = make([]uint64, len(allProcs))
+		for idx, proc := range allProcs {
+			pids[idx] = uint64(proc.PID)
+		}
+	}
+
+	// Env var that we will search
+	jobIDEnv := fmt.Sprintf("SLURM_JOB_ID=%s", jobid)
+
+	// Initialize a waitgroup for all go routines that we will spawn later
+	wg := &sync.WaitGroup{}
+	wg.Add(len(pids))
+
+	// Iterate through all procs and look for SLURM_JOB_ID env entry
+	for _, pid := range pids {
+		go func(p int) {
+			// Read process environment variables
+			// NOTE: This needs CAP_SYS_PTRACE and CAP_DAC_READ_SEARCH caps
+			// on the current process
+			proc, err := procFS.Proc(p)
+			if err != nil {
+				wg.Done()
+				return
+			}
+			environments, err := proc.Environ()
+
+			// Skip if we cannot read file or job ID env var is not found
+			if err != nil || !slices.Contains(environments, jobIDEnv) {
+				wg.Done()
+				return
+			}
+
+			// When env var entry found, get all necessary env vars
+			// NOTE: This is not really concurrent safe. Multiple go routines might
+			// overwrite the variables. But I think we can live with it as for a gievn
+			// job cgroup these env vars should be identical in all procs
+			for _, env := range environments {
+				if strings.Contains(env, "SLURM_JOB_USER") {
+					jobUser = strings.Split(env, "=")[1]
+				}
+				if strings.Contains(env, "SLURM_JOB_ACCOUNT") {
+					jobAccount = strings.Split(env, "=")[1]
+				}
+				if strings.Contains(env, "SLURM_JOB_NODELIST") {
+					jobNodelist = strings.Split(env, "=")[1]
+				}
+				if strings.Contains(env, "SLURM_STEP_GPUS") || strings.Contains(env, "SLURM_JOB_GPUS") {
+					jobGPUOrdinals = strings.Split(strings.Split(env, "=")[1], ",")
+				}
+			}
+
+			// Mark routine as done
+			wg.Done()
+
+		}(int(pid))
+	}
+	// Wait for all go routines to finish
+	wg.Wait()
+
+	// Set jobProps fields
+	jobProps.jobUser = jobUser
+	jobProps.jobAccount = jobAccount
+	jobProps.jobNodelist = jobNodelist
+	jobProps.jobGPUOrdinals = jobGPUOrdinals
+	return *jobProps
+}
+
+// Check if job properties are set
+func (c *slurmCollector) emptyJobProps(jobProps JobProps) bool {
+	return jobProps.jobUser == "" || jobProps.jobAccount == "" || jobProps.jobNodelist == "" || (len(jobProps.jobGPUOrdinals) == 0 && len(c.gpuDevs) > 0)
+}
+
+// Get different properties of Job
+func (c *slurmCollector) getJobProperties(name string, metric *CgroupMetric, pids []uint64) {
+	var jobProps JobProps
+	var jobid string
+	var err error
+
+	// Get jobid first
+	if matches := findNamedMatches(slurmPatterns[c.cgroups], name); matches["jobid"] != "" {
+		jobid = matches["jobid"]
+	} else {
+		// If no job ID found, skip rest as we cannot get properties of an unknown job
+		level.Warn(c.logger).Log("msg", "Unable to get job ID for cgroup", "path", name)
+		return
+	}
+	metric.batchjobid = jobid
+
+	// Attempt to get props from jobPropsCache state variable
+	if value, ok := c.jobPropsCache.Load(jobid); ok {
+		jobProps = value.(JobProps)
+	}
+	level.Debug(c.logger).Log(
+		"msg", "Job properties from jobPropsCache", "jobid", jobid,
+		"job_user", jobProps.jobUser, "job_account", jobProps.jobAccount,
+		"job_nodelist", jobProps.jobNodelist,
+	)
+
+	// First try to read files that might be created by SLURM prolog scripts
+	if c.emptyJobProps(jobProps) {
+		jobProps = c.readJobPropsFromProlog(jobid, &jobProps)
+		level.Debug(c.logger).Log(
+			"msg", "Updated job properties from prolog generated files", "jobid", jobid,
+			"job_user", jobProps.jobUser, "job_account", jobProps.jobAccount,
+			"job_nodelist", jobProps.jobNodelist,
+			"job_gpus", strings.Join(jobProps.jobGPUOrdinals, ","),
+		)
 	}
 
 	// If we fail to get any of the job properties or if there are atleast one GPU devices
 	// and if we fail to get gpu ordinals for that job, try to get these properties
 	// by looking into environment variables
-	if jobUser == "" || jobAccount == "" || jobNodelist == "" || (len(jobGpuOrdinals) == 0 && len(c.gpuDevs) > 0) {
-		// Attempt to get UID, Account, Nodelist from /proc file system by looking into
-		// environ for the process that has same SLURM_JOB_ID
-		//
-		// Instantiate a new Proc FS
-		procFS, err := procfs.NewFS(*procfsPath)
-		if err != nil {
-			level.Error(c.logger).Log("msg", "Unable to open procfs", "path", *procfsPath)
-			goto outside
-		}
-
-		// Get all procs from current proc fs if passed pids slice is nil
-		if pids == nil {
-			allProcs, err := procFS.AllProcs()
-			if err != nil {
-				level.Error(c.logger).Log("msg", "Failed to read /proc", "err", err)
-				goto outside
-			}
-			pids = make([]uint64, len(allProcs))
-			for idx, proc := range allProcs {
-				pids[idx] = uint64(proc.PID)
-			}
-		}
-
-		// Env var that we will search
-		jobIDEnv := fmt.Sprintf("SLURM_JOB_ID=%s", jobid)
-
-		// Initialize a waitgroup for all go routines that we will spawn later
-		wg := &sync.WaitGroup{}
-		wg.Add(len(pids))
-
-		// Iterate through all procs and look for SLURM_JOB_ID env entry
-		for _, pid := range pids {
-			go func(p int) {
-				// Read process environment variables
-				// NOTE: This needs CAP_SYS_PTRACE and CAP_DAC_READ_SEARCH caps
-				// on the current process
-				proc, err := procFS.Proc(p)
-				if err != nil {
-					wg.Done()
-					return
-				}
-				environments, err := proc.Environ()
-
-				// Skip if we cannot read file or job ID env var is not found
-				if err != nil || !slices.Contains(environments, jobIDEnv) {
-					wg.Done()
-					return
-				}
-
-				// When env var entry found, get all necessary env vars
-				for _, env := range environments {
-					if strings.Contains(env, "SLURM_JOB_USER") {
-						jobUser = strings.Split(env, "=")[1]
-					}
-					if strings.Contains(env, "SLURM_JOB_ACCOUNT") {
-						jobAccount = strings.Split(env, "=")[1]
-					}
-					if strings.Contains(env, "SLURM_JOB_NODELIST") {
-						jobNodelist = strings.Split(env, "=")[1]
-					}
-					if strings.Contains(env, "SLURM_STEP_GPUS") || strings.Contains(env, "SLURM_JOB_GPUS") {
-						jobGpuOrdinals = strings.Split(strings.Split(env, "=")[1], ",")
-					}
-				}
-
-				// Mark routine as done
-				wg.Done()
-
-			}(int(pid))
-		}
-		// Wait for all go routines to finish
-		wg.Wait()
+	if c.emptyJobProps(jobProps) {
+		jobProps = c.readJobPropsFromEnviron(jobid, pids, &jobProps)
+		level.Debug(c.logger).Log(
+			"msg", "Updated job properties from environ", "jobid", jobid,
+			"job_user", jobProps.jobUser, "job_account", jobProps.jobAccount,
+			"job_nodelist", jobProps.jobNodelist,
+			"job_gpus", strings.Join(jobProps.jobGPUOrdinals, ","),
+		)
 	}
 
-outside:
 	// Emit a warning if we could not get all job properties
-	if jobUser == "" && jobAccount == "" && jobNodelist == "" {
+	if jobProps.jobUser == "" && jobProps.jobAccount == "" && jobProps.jobNodelist == "" {
 		level.Warn(c.logger).Log(
-			"msg", "Failed to get job properties", "jobid", jobid, "jobuser",
-			jobUser, "jobaccount", jobAccount, "jobnodelist", jobNodelist,
+			"msg", "Failed to get job properties", "jobid", jobid, "job_user",
+			jobProps.jobUser, "job_account", jobProps.jobAccount,
+			"job_nodelist", jobProps.jobNodelist,
+			"job_gpus", strings.Join(jobProps.jobGPUOrdinals, ","),
 		)
 	}
 	// Emit warning when there are GPUs but no job to GPU map found
-	if len(c.gpuDevs) > 0 && len(jobGpuOrdinals) == 0 {
+	if len(c.gpuDevs) > 0 && len(jobProps.jobGPUOrdinals) == 0 {
 		level.Warn(c.logger).
-			Log("msg", "Failed to get GPU ordinals for job", "jobid", "jobuser", jobid)
+			Log("msg", "Failed to get GPU ordinals for job", "jobid", jobid, "job_user", jobProps.jobUser)
 	}
 
 	// Get UUID using job properties
-	if *useJobIdHash {
-		jobUuid, err = helpers.GetUuidFromString(
+	if *useJobIdHash && jobProps.jobUUID == "" {
+		jobProps.jobUUID, err = helpers.GetUuidFromString(
 			[]string{
 				strings.TrimSpace(jobid),
-				strings.TrimSpace(jobUser),
-				strings.ToLower(strings.TrimSpace(jobAccount)),
-				strings.ToLower(strings.TrimSpace(jobNodelist)),
+				strings.TrimSpace(jobProps.jobUser),
+				strings.ToLower(strings.TrimSpace(jobProps.jobAccount)),
+				strings.ToLower(strings.TrimSpace(jobProps.jobNodelist)),
 			},
 		)
 		if err != nil {
 			level.Error(c.logger).
-				Log("msg", "Failed to generate UUID for job", "jobid", "jobuser", jobid, "err", err)
-			jobUuid = jobid
+				Log("msg", "Failed to generate UUID for job", "jobid", "job_user", jobid, "err", err)
 		}
 	}
-	metric.jobuser = jobUser
-	metric.jobuuid = jobUuid
-	metric.jobaccount = jobAccount
-	metric.jobGpuOrdinals = jobGpuOrdinals
-}
+	metric.batchjobuser = jobProps.jobUser
+	metric.batchjobuuid = jobProps.jobUUID
+	metric.batchjobaccount = jobProps.jobAccount
+	metric.batchjobgpuordinals = jobProps.jobGPUOrdinals
 
-// Get job details from cgroups v1
-func (c *slurmCollector) getInfoV1(name string, metric *CgroupMetric) {
-	// var err error
-	pathBase := filepath.Base(name)
-	userSlicePattern := regexp.MustCompile("^user-([0-9]+).slice$")
-	userSliceMatch := userSlicePattern.FindStringSubmatch(pathBase)
-	if len(userSliceMatch) == 2 {
-		metric.userslice = true
-	}
-
-	// Get job ID, step and task
-	slurmPattern := regexp.MustCompile(
-		"^/slurm/uid_([0-9]+)/job_([0-9]+)(/step_([^/]+)(/task_([[0-9]+))?)?$",
-	)
-	slurmMatch := slurmPattern.FindStringSubmatch(name)
-	level.Debug(c.logger).
-		Log("msg", "Got for match", "name", name, "len(slurmMatch)", len(slurmMatch), "slurmMatch", fmt.Sprintf("%v", slurmMatch))
-	if len(slurmMatch) >= 3 {
-		metric.jobid = slurmMatch[2]
-		return
-	}
+	// Finally add jobProps to jobPropsCache
+	c.jobPropsCache.Swap(jobid, jobProps)
 }
 
 // Get metrics from cgroups v1
@@ -730,29 +822,11 @@ func (c *slurmCollector) getCgroupsV1Metrics(name string) (CgroupMetric, error) 
 	}
 
 	// Get cgroup info
-	c.getInfoV1(name, &metric)
+	// c.getInfoV1(name, &metric)
 
 	// Get job Info
-	c.getJobProperties(&metric, nil)
+	c.getJobProperties(name, &metric, nil)
 	return metric, nil
-}
-
-// Get Job info for cgroups v2
-func (c *slurmCollector) getInfoV2(name string, metric *CgroupMetric) {
-	// possibilities are /system.slice/slurmstepd.scope/job_211
-	//                   /system.slice/slurmstepd.scope/job_211/step_interactive
-	//                   /system.slice/slurmstepd.scope/job_211/step_extern/user/task_0
-	// we dont get userslice
-	metric.userslice = false
-	slurmPattern := regexp.MustCompile(
-		"^/system.slice/slurmstepd.scope/job_([0-9]+)(/step_([^/]+)(/user/task_([[0-9]+))?)?$",
-	)
-	slurmMatch := slurmPattern.FindStringSubmatch(name)
-	level.Debug(c.logger).
-		Log("msg", "Got for match", "name", name, "len(slurmMatch)", len(slurmMatch), "slurmMatch", fmt.Sprintf("%v", slurmMatch))
-	if len(slurmMatch) == 6 {
-		metric.jobid = slurmMatch[1]
-	}
 }
 
 // Get Job metrics from cgroups v2
@@ -824,7 +898,7 @@ func (c *slurmCollector) getCgroupsV2Metrics(name string) (CgroupMetric, error) 
 	}
 
 	// Get cgroup Info
-	c.getInfoV2(name, &metric)
+	// c.getInfoV2(name, &metric)
 
 	// Get job Info
 	cgroupProcPids, err := ctrl.Procs(true)
@@ -833,6 +907,6 @@ func (c *slurmCollector) getCgroupsV2Metrics(name string) (CgroupMetric, error) 
 	}
 
 	// Get job Info
-	c.getJobProperties(&metric, cgroupProcPids)
+	c.getJobProperties(name, &metric, cgroupProcPids)
 	return metric, nil
 }
