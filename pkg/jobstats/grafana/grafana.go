@@ -9,6 +9,10 @@ import (
 	"net/url"
 	"os"
 	"time"
+
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
+	"github.com/mahendrapaipuri/batchjob_monitor/pkg/jobstats/base"
 )
 
 // Grafana teams API response
@@ -28,16 +32,34 @@ type GrafanaTeamsReponse struct {
 
 // Grafana struct
 type Grafana struct {
+	logger              log.Logger
 	URL                 *url.URL
 	Client              *http.Client
 	TeamMembersEndpoint string
 	available           bool
 }
 
+// Grafana related CLI agrs
+var (
+	grafanaWebUrl = base.BatchJobStatsServerApp.Flag(
+		"grafana.web.url",
+		"Grafana URL for fetching admin users list from a service account.",
+	).Default("").String()
+	grafanaWebSkipTLSVerify = base.BatchJobStatsServerApp.Flag(
+		"grafana.web.skip-tls-verify",
+		"Whether to skip TLS verification when using self signed certificates (default is false).",
+	).Default("false").Bool()
+	grafanaAdminTeamID = base.BatchJobStatsServerApp.Flag(
+		"grafana.teams.admin.id",
+		"Grafana admins team ID. An API token must be set via GRAFANA_API_TOKEN environment variable.",
+	).Default("").String()
+)
+
 // Return a new instance of Grafana struct
-func NewGrafana(webURL string, skipTLSVerify bool) (*Grafana, error) {
+func NewGrafana(logger log.Logger) (*Grafana, error) {
 	// If webURL is empty return empty struct with available set to false
-	if webURL == "" {
+	if *grafanaWebUrl == "" {
+		level.Warn(logger).Log("msg", "Grafana web URL not found")
 		return &Grafana{
 			available: false,
 		}, nil
@@ -47,12 +69,12 @@ func NewGrafana(webURL string, skipTLSVerify bool) (*Grafana, error) {
 	var grafanaURL *url.URL
 	var grafanaClient *http.Client
 	var err error
-	if grafanaURL, err = url.Parse(webURL); err != nil {
+	if grafanaURL, err = url.Parse(*grafanaWebUrl); err != nil {
 		return nil, err
 	}
 
 	// If skip verify is set to true for TSDB add it to client
-	if skipTLSVerify {
+	if *grafanaWebSkipTLSVerify {
 		tr := &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}
@@ -64,6 +86,7 @@ func NewGrafana(webURL string, skipTLSVerify bool) (*Grafana, error) {
 		URL:                 grafanaURL,
 		Client:              grafanaClient,
 		TeamMembersEndpoint: "/api/teams/%s/members",
+		logger:              logger,
 		available:           true,
 	}, nil
 }
@@ -139,11 +162,16 @@ func (g *Grafana) TeamMembers(teamID string) ([]string, error) {
 	}
 
 	// Get list of all usernames and add them to admin users
-	var adminUsers []string
+	var teamMembers []string
 	for _, user := range data {
 		if user.Login != "" {
-			adminUsers = append(adminUsers, user.Login)
+			teamMembers = append(teamMembers, user.Login)
 		}
 	}
-	return adminUsers, nil
+	return teamMembers, nil
+}
+
+// Fetch Admin Team members
+func (g *Grafana) AdminTeamMembers() ([]string, error) {
+	return g.TeamMembers(*grafanaAdminTeamID)
 }

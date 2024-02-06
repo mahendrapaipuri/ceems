@@ -24,15 +24,14 @@ import (
 
 // Server config struct
 type Config struct {
-	Logger             log.Logger
-	Address            string
-	WebSystemdSocket   bool
-	WebConfigFile      string
-	DBConfig           db.Config
-	MaxQueryPeriod     time.Duration
-	AdminUsers         []string
-	Grafana            *grafana.Grafana
-	GrafanaAdminTeamID string
+	Logger           log.Logger
+	Address          string
+	WebSystemdSocket bool
+	WebConfigFile    string
+	DBConfig         db.Config
+	MaxQueryPeriod   time.Duration
+	AdminUsers       []string
+	Grafana          *grafana.Grafana
 }
 
 // Job Stats Server struct
@@ -143,10 +142,9 @@ func NewJobstatsServer(c *Config) (*JobstatsServer, func(), error) {
 	// Add a middleware that verifies headers and pass them in requests
 	// The middleware will fetch admin users from Grafana periodically to update list
 	amw := authenticationMiddleware{
-		logger:             c.Logger,
-		adminUsers:         c.AdminUsers,
-		grafana:            c.Grafana,
-		grafanaAdminTeamID: c.GrafanaAdminTeamID,
+		logger:     c.Logger,
+		adminUsers: c.AdminUsers,
+		grafana:    c.Grafana,
 	}
 	router.Use(amw.Middleware)
 

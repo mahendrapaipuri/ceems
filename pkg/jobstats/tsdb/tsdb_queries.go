@@ -135,3 +135,15 @@ sum_over_time(
 	)[%[3]s:%[4]s]
 )`
 )
+
+// TSDB queries to get aggregate metrics of jobs
+var aggMetricQueries = map[string]string{
+	"cpuUsage":       avgCpuUsageQuery,
+	"cpuMemUsage":    avgCpuMemUsageQuery,
+	"cpuEnergyUsage": totalCpuEnergyUsageQuery,
+	"cpuEmissions":   totalCpuEmissionsUsageQuery,
+	"gpuUsage":       avgGpuUsageQuery,
+	"gpuMemUsage":    avgGpuMemUsageQuery,
+	"gpuEnergyUsage": totalGpuEnergyUsageQuery,
+	"gpuEmissions":   totalGpuEmissionsUsageQuery,
+}
