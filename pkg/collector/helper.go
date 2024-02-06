@@ -35,6 +35,17 @@ func fileExists(filename string) bool {
 	return !info.IsDir()
 }
 
+// Find named matches in regex groups and return a map
+func findNamedMatches(regex *regexp.Regexp, str string) map[string]string {
+	match := regex.FindStringSubmatch(str)
+
+	results := map[string]string{}
+	for i, name := range match {
+		results[regex.SubexpNames()[i]] = name
+	}
+	return results
+}
+
 // SanitizeMetricName sanitize the given metric name by replacing invalid characters by underscores.
 //
 // OpenMetrics and the Prometheus exposition format require the metric name
