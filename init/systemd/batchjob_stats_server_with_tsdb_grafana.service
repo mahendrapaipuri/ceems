@@ -1,15 +1,20 @@
 [Unit]
-Description=Batchjob Stats API server
+Description=Batchjob Stats API server with TSDB and Grafana Integration
 After=network-online.target
 
 [Service]
 Type=simple
 
-# Assuming batchjob-stats is normal system user without any additional privileges
+# This config assumes that batchjob-stats user has privileges to get jobs of all users
+# from SLURM.
 User=batchjob-stats
 Group=batchjob-stats
 
 # Assuming /nfs/data is a different file system which is fault tolerant.
+# --tsdb.web.skip-tls-verify and --grafana.web.skip-tls-verify are to skip TLS verification. 
+# Use it ONLY when internal TLS certificates are used to configure TSDB and Grafana
+# Admin users from Grafana Team will be merged with the ones configured via CLI flag (adm1, adm2)
+# periodically
 ExecStart=/usr/local/bin/batchjob_stats_server \
     --batch.scheduler.slurm \
     --storage.data.path="/var/lib/batchjob_stats" \
@@ -17,6 +22,12 @@ ExecStart=/usr/local/bin/batchjob_stats_server \
     --storage.data.update.interval="30m" \
     --storage.data.backup.interval="7d" \
     --storage.data.retention.period="1y" \
+    --tsdb.web.url="https://tsdb.example.com:9090" \
+    --tsdb.web.skip-tls-verify \
+    --job.updater.tsdb \
+    --grafana.web.url="https://grafana.example.com:3000" \
+    --grafana.web.skip-tls-verify \
+    --grafana.teams.admin.id="0" \
     --web.listen-address="localhost:9020" \
     --web.admin-users="adm1,adm2" \
     --log.level="debug"
@@ -25,9 +36,6 @@ SyslogIdentifier=batchjob_stats_server
 Restart=always
 RestartSec=1
 StartLimitInterval=0
-
-AmbientCapabilities=CAP_SETUID CAP_SETGID
-BoundingCapabilities=CAP_SETUID CAP_SETGID
 
 ProtectHome=read-only
 ReadWritePaths=/var/lib/batchjob_stats /nfs/data/backup/batchjob_stats
