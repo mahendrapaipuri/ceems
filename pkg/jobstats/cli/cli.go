@@ -67,7 +67,7 @@ func (b *BatchJobStatsServer) Main() error {
 		retentionPeriodString = b.App.Flag(
 			"storage.data.retention.period",
 			"How long to retain job data. Units Supported: y, w, d, h, m, s, ms.",
-		).Default("1y").String()
+		).Default("30d").String()
 		lastUpdateTime = b.App.Flag(
 			"storage.data.update.from",
 			"Job data from this day will be gathered. Format Supported: YYYY-MM-DD.",
@@ -86,9 +86,9 @@ func (b *BatchJobStatsServer) Main() error {
 			"Job data DB will be backed up at this interval. Minimum interval is 1 day. Units Supported: y, w, d, h, m, s, ms.",
 		).Default("1d").String()
 		jobDurationCutoffString = b.App.Flag(
-			"storage.data.job.duration.cutoff",
+			"storage.data.job.cutoff.duration",
 			"Jobs with wall time less than this period will be ignored. Units Supported: y, w, d, h, m, s, ms.",
-		).Default("5m").String()
+		).Default("0s").String()
 		skipDeleteOldJobs = b.App.Flag(
 			"storage.data.skip.delete.old.jobs",
 			"Skip deleting old jobs. Used only in testing. (default is false)",
