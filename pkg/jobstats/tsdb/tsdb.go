@@ -449,8 +449,13 @@ func (t *TSDB) Delete(startTime time.Time, endTime time.Time, matcher string) er
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
 	// Make request
-	if _, err = t.Client.Do(req); err != nil {
+	if resp, err := t.Client.Do(req); err != nil {
 		return err
+	} else {
+		// Check status code which is supposed to be 204
+		if resp.StatusCode != 204 {
+			return fmt.Errorf("expected 204 after deletion of time series received %d", resp.StatusCode)
+		}
 	}
 	return nil
 }

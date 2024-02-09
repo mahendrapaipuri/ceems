@@ -496,6 +496,13 @@ func (j *jobStatsDB) execStatements(statements map[string]*sql.Stmt, jobs []base
 
 // Delete time series data of ignored jobs
 func (j *jobStatsDB) deleteTimeSeries(startTime time.Time, endTime time.Time, jobs []string) error {
+	// Check if there are any jobs to ignore. If there aren't return immediately
+	// We shouldnt make a API request to delete with empty jobs slice as TSDB will
+	// match all jobs during that period with jobid=~"" matcher
+	if len(jobs) == 0 {
+		return nil
+	}
+
 	/*
 		We should give start and end query params as well. If not, TSDB has to look over
 		"all" time blocks (potentially 1000s or more) and try to find the series.
