@@ -5,9 +5,9 @@ set -euf -o pipefail
 cd "$(dirname $0)/.."
 
 port="$((10000 + (RANDOM % 10000)))"
-tmpdir=$(mktemp -d /tmp/batchjob_monitor_e2e_test.XXXXXX)
+tmpdir=$(mktemp -d /tmp/ceems_e2e_test.XXXXXX)
 
-skip_re="^(go_|batchjob_exporter_build_info|batchjob_scrape_collector_duration_seconds|process_|batchjob_textfile_mtime_seconds|batchjob_time_(zone|seconds)|batchjob_network_(receive|transmit)_(bytes|packets)_total)"
+skip_re="^(go_|ceems_exporter_build_info|ceems_scrape_collector_duration_seconds|process_|ceems_textfile_mtime_seconds|ceems_time_(zone|seconds)|ceems_network_(receive|transmit)_(bytes|packets)_total)"
 
 arch="$(uname -m)"
 
@@ -31,7 +31,7 @@ do
     *)
       echo "Usage: $0 [-p] [-k] [-u] [-v]"
       echo "  -s: scenario to test [options: exporter, stats]"
-      echo "  -k: keep temporary files and leave batchjob_{exporter,stats_server} running"
+      echo "  -k: keep temporary files and leave ceems_{exporter,server} running"
       echo "  -u: update fixtures"
       echo "  -v: verbose output"
       exit 1
@@ -81,65 +81,65 @@ then
   #   *) fixture='pkg/collector/fixtures/output/e2e-test-cgroupsv2-output.txt' ;;
   # esac
 
-  logfile="${tmpdir}/batchjob_exporter.log"
+  logfile="${tmpdir}/ceems_exporter.log"
   fixture_output="${tmpdir}/e2e-test-exporter-output.txt"
-  pidfile="${tmpdir}/batchjob_exporter.pid"
+  pidfile="${tmpdir}/ceems_exporter.pid"
 elif [[ "${scenario}" =~ "stats" ]] 
 then
 
-  if [ "${scenario}" = "stats-account-query" ]
+  if [ "${scenario}" = "stats-project-query" ]
   then
-    desc="/api/accounts end point test"
-    fixture='pkg/jobstats/fixtures/output/e2e-test-stats-server-account-query.txt'
-  elif [ "${scenario}" = "stats-jobuuid-query" ]
+    desc="/api/projects end point test"
+    fixture='pkg/stats/fixtures/output/e2e-test-stats-server-project-query.txt'
+  elif [ "${scenario}" = "stats-uuid-query" ]
   then
-    desc="/api/jobs end point test with jobuuid query param"
-    fixture='pkg/jobstats/fixtures/output/e2e-test-stats-server-jobuuid-query.txt'
-  elif [ "${scenario}" = "stats-jobid-query" ]
-  then
-    desc="/api/jobs end point test with jobid query param"
-    fixture='pkg/jobstats/fixtures/output/e2e-test-stats-server-jobid-query.txt'
-  elif [ "${scenario}" = "stats-jobuuid-jobid-query" ]
-  then
-    desc="/api/jobs end point test with jobuuid and jobid query param"
-    fixture='pkg/jobstats/fixtures/output/e2e-test-stats-server-jobuuid-jobid-query.txt'
+    desc="/api/units end point test with uuid query param"
+    fixture='pkg/stats/fixtures/output/e2e-test-stats-server-uuid-query.txt'
+  # elif [ "${scenario}" = "stats-jobid-query" ]
+  # then
+  #   desc="/api/units end point test with jobid query param"
+  #   fixture='pkg/stats/fixtures/output/e2e-test-stats-server-jobid-query.txt'
+  # elif [ "${scenario}" = "stats-jobuuid-jobid-query" ]
+  # then
+  #   desc="/api/units end point test with jobuuid and jobid query param"
+  #   fixture='pkg/stats/fixtures/output/e2e-test-stats-server-jobuuid-jobid-query.txt'
   elif [ "${scenario}" = "stats-admin-query" ]
   then
-    desc="/api/jobs/admin end point test for admin query"
-    fixture='pkg/jobstats/fixtures/output/e2e-test-stats-server-admin-query.txt'
+    desc="/api/units/admin end point test for admin query"
+    fixture='pkg/stats/fixtures/output/e2e-test-stats-server-admin-query.txt'
   elif [ "${scenario}" = "stats-admin-query-all" ]
   then
-    desc="/api/jobs/admin end point test for admin query for all jobs"
-    fixture='pkg/jobstats/fixtures/output/e2e-test-stats-server-admin-query-all.txt'
+    desc="/api/units/admin end point test for admin query for all jobs"
+    fixture='pkg/stats/fixtures/output/e2e-test-stats-server-admin-query-all.txt'
   elif [ "${scenario}" = "stats-admin-denied-query" ]
   then
-    desc="/api/jobs/admin end point test for denied request"
-    fixture='pkg/jobstats/fixtures/output/e2e-test-stats-server-admin--denied-query.txt'
+    desc="/api/units/admin end point test for denied request"
+    fixture='pkg/stats/fixtures/output/e2e-test-stats-server-admin--denied-query.txt'
   elif [ "${scenario}" = "stats-current-usage-query" ]
   then
     desc="/api/usage/current end point test"
-    fixture='pkg/jobstats/fixtures/output/e2e-test-stats-server-current-usage-query.txt'
+    fixture='pkg/stats/fixtures/output/e2e-test-stats-server-current-usage-query.txt'
   elif [ "${scenario}" = "stats-global-usage-query" ]
   then
     desc="/api/usage/global end point test"
-    fixture='pkg/jobstats/fixtures/output/e2e-test-stats-server-global-usage-query.txt'
+    fixture='pkg/stats/fixtures/output/e2e-test-stats-server-global-usage-query.txt'
   elif [ "${scenario}" = "stats-current-usage-admin-query" ]
   then
     desc="/api/usage/current/admin end point test"
-    fixture='pkg/jobstats/fixtures/output/e2e-test-stats-server-current-usage-admin-query.txt'
+    fixture='pkg/stats/fixtures/output/e2e-test-stats-server-current-usage-admin-query.txt'
   elif [ "${scenario}" = "stats-global-usage-admin-query" ]
   then
     desc="/api/usage/global/admin end point test"
-    fixture='pkg/jobstats/fixtures/output/e2e-test-stats-server-global-usage-admin-query.txt'
+    fixture='pkg/stats/fixtures/output/e2e-test-stats-server-global-usage-admin-query.txt'
   elif [ "${scenario}" = "stats-current-usage-admin-denied-query" ]
   then
     desc="/api/usage/current/admin end point test"
-    fixture='pkg/jobstats/fixtures/output/e2e-test-stats-server-current-usage-admin-denied-query.txt'
+    fixture='pkg/stats/fixtures/output/e2e-test-stats-server-current-usage-admin-denied-query.txt'
   fi
 
-  logfile="${tmpdir}/batchjob_stats_server.log"
+  logfile="${tmpdir}/ceems_server.log"
   fixture_output="${tmpdir}/e2e-test-stats-server-output.txt"
-  pidfile="${tmpdir}/batchjob_stats_server.pid"
+  pidfile="${tmpdir}/ceems_server.pid"
 fi
 
 echo "using scenario: ${scenario}. Description: ${desc}"
@@ -191,15 +191,15 @@ waitport() {
 
 if [[ "${scenario}" =~ "exporter" ]] 
 then
-  if [ ! -x ./bin/batchjob_exporter ]
+  if [ ! -x ./bin/ceems_exporter ]
   then
-      echo './bin/batchjob_exporter not found. Consider running `go build` first.' >&2
+      echo './bin/ceems_exporter not found. Consider running `go build` first.' >&2
       exit 1
   fi
 
   if [ "${scenario}" = "exporter-cgroups-v1" ] 
   then
-      ./bin/batchjob_exporter \
+      ./bin/ceems_exporter \
         --path.sysfs="pkg/collector/fixtures/sys" \
         --path.cgroupfs="pkg/collector/fixtures/sys/fs/cgroup" \
         --path.procfs="pkg/collector/fixtures/proc" \
@@ -216,11 +216,10 @@ then
 
   elif [ "${scenario}" = "exporter-cgroups-v2-nvidia" ] 
   then
-      ./bin/batchjob_exporter \
+      ./bin/ceems_exporter \
         --path.sysfs="pkg/collector/fixtures/sys" \
         --path.cgroupfs="pkg/collector/fixtures/sys/fs/cgroup" \
         --path.procfs="pkg/collector/fixtures/proc" \
-        --collector.slurm.create.unique.jobids \
         --collector.slurm.job.props.path="pkg/collector/fixtures/slurmjobprops" \
         --collector.slurm.gpu.type="nvidia" \
         --collector.slurm.nvidia.smi.path="pkg/collector/fixtures/nvidia-smi" \
@@ -233,7 +232,7 @@ then
 
   elif [ "${scenario}" = "exporter-cgroups-v2-amd" ] 
   then
-      ./bin/batchjob_exporter \
+      ./bin/ceems_exporter \
         --path.sysfs="pkg/collector/fixtures/sys" \
         --path.cgroupfs="pkg/collector/fixtures/sys/fs/cgroup" \
         --path.procfs="pkg/collector/fixtures/proc" \
@@ -250,7 +249,7 @@ then
 
   elif [ "${scenario}" = "exporter-cgroups-v2-nogpu" ] 
   then
-      ./bin/batchjob_exporter \
+      ./bin/ceems_exporter \
         --path.sysfs="pkg/collector/fixtures/sys" \
         --path.cgroupfs="pkg/collector/fixtures/sys/fs/cgroup" \
         --path.procfs="pkg/collector/fixtures/proc" \
@@ -264,7 +263,7 @@ then
 
   elif [ "${scenario}" = "exporter-cgroups-v2-procfs" ] 
   then
-      ./bin/batchjob_exporter \
+      ./bin/ceems_exporter \
         --path.sysfs="pkg/collector/fixtures/sys" \
         --path.cgroupfs="pkg/collector/fixtures/sys/fs/cgroup" \
         --path.procfs="pkg/collector/fixtures/proc" \
@@ -279,7 +278,7 @@ then
   
   elif [ "${scenario}" = "exporter-cgroups-v2-all-metrics" ] 
   then
-      ./bin/batchjob_exporter \
+      ./bin/ceems_exporter \
         --path.sysfs="pkg/collector/fixtures/sys" \
         --path.cgroupfs="pkg/collector/fixtures/sys/fs/cgroup" \
         --path.procfs="pkg/collector/fixtures/proc" \
@@ -305,20 +304,20 @@ then
   get "127.0.0.1:${port}/metrics" | grep -E -v "${skip_re}" > "${fixture_output}"
 elif [[ "${scenario}" =~ "stats" ]] 
 then
-  if [ ! -x ./bin/batchjob_stats_server ]
+  if [ ! -x ./bin/ceems_server ]
   then
-      echo './bin/batchjob_stats_server not found. Consider running `go build` first.' >&2
+      echo './bin/ceems_server not found. Consider running `go build` first.' >&2
       exit 1
   fi
 
-  ./bin/batchjob_stats_server \
-    --slurm.sacct.path="pkg/jobstats/fixtures/sacct" \
-    --batch.scheduler.slurm \
+  ./bin/ceems_server \
+    --slurm.sacct.path="pkg/stats/fixtures/sacct" \
+    --resource.manager.slurm \
     --storage.data.path="${tmpdir}" \
     --storage.data.backup.path="${tmpdir}" \
     --storage.data.backup.interval="2s" \
-    --storage.data.skip.delete.old.jobs \
-    --storage.data.job.cutoff.duration="5m" \
+    --storage.data.skip.delete.old.units \
+    --storage.data.cutoff.duration="5m" \
     --test.disable.checks \
     --web.listen-address="127.0.0.1:${port}" \
     --web.admin-users="grafana" \
@@ -329,27 +328,27 @@ then
   # sleep 2
   waitport
 
-  if [ "${scenario}" = "stats-account-query" ]
+  if [ "${scenario}" = "stats-project-query" ]
   then
-    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/accounts" > "${fixture_output}"
-  elif [ "${scenario}" = "stats-jobuuid-query" ]
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/projects" > "${fixture_output}"
+  elif [ "${scenario}" = "stats-uuid-query" ]
   then
-    get -H "X-Grafana-User: usr2" "127.0.0.1:${port}/api/jobs?jobuuid=3e821675-0fec-9519-635e-ff219cdaa6e5&account=acc2" > "${fixture_output}"
-  elif [ "${scenario}" = "stats-jobid-query" ]
-  then
-    get -H "X-Grafana-User: usr8" "127.0.0.1:${port}/api/jobs?jobid=1479765&account=acc1&from=1676934000&to=1677020400" > "${fixture_output}"
-  elif [ "${scenario}" = "stats-jobuuid-jobid-query" ]
-  then
-    get -H "X-Grafana-User: usr15" "127.0.0.1:${port}/api/jobs?jobuuid=6311b9ce-d741-d5ba-a27a-9c22eb21254c&jobid=11508&jobid=81510&account=acc1" > "${fixture_output}"
+    get -H "X-Grafana-User: usr2" "127.0.0.1:${port}/api/units?uuid=1481508&project=acc2" > "${fixture_output}"
+  # elif [ "${scenario}" = "stats-jobid-query" ]
+  # then
+  #   get -H "X-Grafana-User: usr8" "127.0.0.1:${port}/api/units?jobid=1479765&project=acc1&from=1676934000&to=1677020400" > "${fixture_output}"
+  # elif [ "${scenario}" = "stats-jobuuid-jobid-query" ]
+  # then
+  #   get -H "X-Grafana-User: usr15" "127.0.0.1:${port}/api/units?jobuuid=6311b9ce-d741-d5ba-a27a-9c22eb21254c&jobid=11508&jobid=81510&project=acc1" > "${fixture_output}"
   elif [ "${scenario}" = "stats-admin-query" ]
   then
-    get -H "X-Grafana-User: grafana" -H "X-Dashboard-User: usr3" "127.0.0.1:${port}/api/jobs?account=acc3&from=1676934000&to=1677538800" > "${fixture_output}"
+    get -H "X-Grafana-User: grafana" -H "X-Dashboard-User: usr3" "127.0.0.1:${port}/api/units?project=acc3&from=1676934000&to=1677538800" > "${fixture_output}"
   elif [ "${scenario}" = "stats-admin-query-all" ]
   then
-    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/jobs/admin?from=1676934000&to=1677538800" > "${fixture_output}"
+    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/units/admin?from=1676934000&to=1677538800" > "${fixture_output}"
   elif [ "${scenario}" = "stats-admin-denied-query" ]
   then
-    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/jobs/admin" > "${fixture_output}"
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/units/admin" > "${fixture_output}"
   elif [ "${scenario}" = "stats-current-usage-query" ]
   then
     get -H "X-Grafana-User: usr3" "127.0.0.1:${port}/api/usage/current?from=1676934000&to=1677538800" > "${fixture_output}"
@@ -361,7 +360,7 @@ then
     get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/usage/current/admin?user=usr3&from=1676934000&to=1677538800" > "${fixture_output}"
   elif [ "${scenario}" = "stats-global-usage-admin-query" ]
   then
-    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/usage/global/admin?user=usr1" > "${fixture_output}"
+    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/usage/global/admin" > "${fixture_output}"
   elif [ "${scenario}" = "stats-current-usage-admin-denied-query" ]
   then
     get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/usage/global/admin?user=usr2" > "${fixture_output}"

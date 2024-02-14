@@ -13,7 +13,7 @@ import (
 var expectedEnergyMetrics = []float64{258218293244, 130570505826}
 
 func TestRaplMetrics(t *testing.T) {
-	if _, err := BatchJobExporterApp.Parse([]string{"--path.sysfs", "fixtures/sys"}); err != nil {
+	if _, err := CEEMSExporterApp.Parse([]string{"--path.sysfs", "fixtures/sys"}); err != nil {
 		t.Fatal(err)
 	}
 	fs, err := sysfs.NewFS(*sysPath)

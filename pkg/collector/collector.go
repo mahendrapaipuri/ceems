@@ -1,4 +1,3 @@
-// Package collector includes all individual collectors to gather and export SLURM job metrics.
 package collector
 
 import (
@@ -14,18 +13,18 @@ import (
 )
 
 // Namespace defines the common namespace to be used by all metrics.
-const Namespace = "batchjob"
+const Namespace = "ceems"
 
 var (
 	scrapeDurationDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(Namespace, "scrape", "collector_duration_seconds"),
-		"batchjob_exporter: Duration of a collector scrape.",
+		fmt.Sprintf("%s: Duration of a collector scrape.", CEEMSExporterAppName),
 		[]string{"collector"},
 		nil,
 	)
 	scrapeSuccessDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(Namespace, "scrape", "collector_success"),
-		"batchjob_exporter: Whether a collector succeeded.",
+		fmt.Sprintf("%s: Whether a collector succeeded.", CEEMSExporterAppName),
 		[]string{"collector"},
 		nil,
 	)
@@ -60,7 +59,7 @@ func RegisterCollector(
 	flagHelp := fmt.Sprintf("Enable the %s collector (default: %s).", collector, helpDefaultState)
 	defaultValue := fmt.Sprintf("%v", isDefaultEnabled)
 
-	flag := BatchJobExporterApp.Flag(flagName, flagHelp).
+	flag := CEEMSExporterApp.Flag(flagName, flagHelp).
 		Default(defaultValue).
 		Action(collectorFlagAction(collector)).
 		Bool()
@@ -69,8 +68,8 @@ func RegisterCollector(
 	factories[collector] = factory
 }
 
-// JobCollector implements the prometheus.Collector interface.
-type JobCollector struct {
+// ResourceCollector implements the prometheus.Collector interface.
+type CEEMSCollector struct {
 	Collectors map[string]Collector
 	logger     log.Logger
 }
@@ -97,8 +96,8 @@ func collectorFlagAction(collector string) func(ctx *kingpin.ParseContext) error
 	}
 }
 
-// NewJobCollector creates a new JobCollector.
-func NewJobCollector(logger log.Logger, filters ...string) (*JobCollector, error) {
+// NewCEEMSCollector creates a new CEEMSCollector.
+func NewCEEMSCollector(logger log.Logger, filters ...string) (*CEEMSCollector, error) {
 	f := make(map[string]bool)
 	for _, filter := range filters {
 		enabled, exist := collectorState[filter]
@@ -128,17 +127,17 @@ func NewJobCollector(logger log.Logger, filters ...string) (*JobCollector, error
 			initiatedCollectors[key] = collector
 		}
 	}
-	return &JobCollector{Collectors: collectors, logger: logger}, nil
+	return &CEEMSCollector{Collectors: collectors, logger: logger}, nil
 }
 
 // Describe implements the prometheus.Collector interface.
-func (n JobCollector) Describe(ch chan<- *prometheus.Desc) {
+func (n CEEMSCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- scrapeDurationDesc
 	ch <- scrapeSuccessDesc
 }
 
 // Collect implements the prometheus.Collector interface.
-func (n JobCollector) Collect(ch chan<- prometheus.Metric) {
+func (n CEEMSCollector) Collect(ch chan<- prometheus.Metric) {
 	wg := sync.WaitGroup{}
 	wg.Add(len(n.Collectors))
 	for name, c := range n.Collectors {

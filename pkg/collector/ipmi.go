@@ -14,7 +14,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/mahendrapaipuri/batchjob_monitor/internal/helpers"
+	"github.com/mahendrapaipuri/ceems/internal/osexec"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -39,7 +39,7 @@ type impiCollector struct {
 // Power Measurement                    : Active
 
 var (
-	ipmiDcmiCmd = BatchJobExporterApp.Flag(
+	ipmiDcmiCmd = CEEMSExporterApp.Flag(
 		"collector.ipmi.dcmi.cmd",
 		"IPMI DCMI command to get system power statistics. Use full path to executables.",
 	).Default("/usr/sbin/ipmi-dcmi --get-system-power-statistics").String()
@@ -87,7 +87,7 @@ func NewIPMICollector(logger log.Logger) (Collector, error) {
 	cmdSlice := strings.Split(*ipmiDcmiCmd, " ")
 
 	// Verify if running ipmiDcmiCmd works
-	if _, err := helpers.Execute(cmdSlice[0], cmdSlice[1:], nil, logger); err == nil {
+	if _, err := osexec.Execute(cmdSlice[0], cmdSlice[1:], nil, logger); err == nil {
 		execMode = "native"
 		goto outside
 	}
@@ -95,7 +95,7 @@ func NewIPMICollector(logger log.Logger) (Collector, error) {
 	// If ipmiDcmiCmd failed to run and if sudo is not already present in command,
 	// add sudo to command and execute. If current user has sudo rights it will be a success
 	if cmdSlice[0] != "sudo" {
-		if _, err := helpers.ExecuteWithTimeout("sudo", cmdSlice, 2, nil, logger); err == nil {
+		if _, err := osexec.ExecuteWithTimeout("sudo", cmdSlice, 2, nil, logger); err == nil {
 			execMode = "sudo"
 			goto outside
 		}
@@ -103,7 +103,7 @@ func NewIPMICollector(logger log.Logger) (Collector, error) {
 
 	// As last attempt, run the command as root user by forking subprocess
 	// as root. If there is setuid cap on the process, it will be a success
-	if _, err := helpers.ExecuteAs(cmdSlice[0], cmdSlice[1:], 0, 0, nil, logger); err == nil {
+	if _, err := osexec.ExecuteAs(cmdSlice[0], cmdSlice[1:], 0, 0, nil, logger); err == nil {
 		execMode = "cap"
 		goto outside
 	}
@@ -207,11 +207,11 @@ func (c *impiCollector) executeIPMICmd() ([]byte, error) {
 	// Execute ipmi-dcmi command
 	cmdSlice := strings.Split(*ipmiDcmiCmd, " ")
 	if c.execMode == "cap" {
-		stdOut, err = helpers.ExecuteAs(cmdSlice[0], cmdSlice[1:], 0, 0, nil, c.logger)
+		stdOut, err = osexec.ExecuteAs(cmdSlice[0], cmdSlice[1:], 0, 0, nil, c.logger)
 	} else if c.execMode == "sudo" {
-		stdOut, err = helpers.ExecuteWithTimeout("sudo", cmdSlice, 1, nil, c.logger)
+		stdOut, err = osexec.ExecuteWithTimeout("sudo", cmdSlice, 1, nil, c.logger)
 	} else if c.execMode == "native" {
-		stdOut, err = helpers.Execute(cmdSlice[0], cmdSlice[1:], nil, c.logger)
+		stdOut, err = osexec.Execute(cmdSlice[0], cmdSlice[1:], nil, c.logger)
 	} else {
 		err = fmt.Errorf("Current process do not have permissions to execute %s", *ipmiDcmiCmd)
 	}

@@ -13,7 +13,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/mahendrapaipuri/batchjob_monitor/pkg/emissions"
+	"github.com/mahendrapaipuri/ceems/pkg/emissions"
 )
 
 const emissionsCollectorSubsystem = "emissions"
@@ -30,7 +30,7 @@ type emissionsCollector struct {
 var (
 	emissionsLock     = sync.RWMutex{}
 	countryCodeAlpha3 string
-	countryCodeAlpha2 = BatchJobExporterApp.Flag(
+	countryCodeAlpha2 = CEEMSExporterApp.Flag(
 		"collector.emissions.country.code",
 		"ISO 3166-1 alpha-2 Country code.",
 	).Default("FR").String()

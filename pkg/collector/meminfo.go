@@ -25,7 +25,7 @@ type meminfoCollector struct {
 	hostname string
 }
 
-var meminfoAllStatistics = BatchJobExporterApp.Flag(
+var meminfoAllStatistics = CEEMSExporterApp.Flag(
 	"collector.meminfo.all.stats",
 	"Enable collecting all meminfo stats (default is disabled).",
 ).Default("false").Bool()

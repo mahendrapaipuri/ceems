@@ -53,7 +53,7 @@ jobs:
           destination: /build
 workflows:
   version: 2
-  batchjob_monitor:
+  ceems:
     jobs:
       - test-arm:
           filters:

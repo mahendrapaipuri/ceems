@@ -24,7 +24,7 @@ func mockGPUDevices() map[int]Device {
 }
 
 func TestCgroupsV2SlurmJobMetrics(t *testing.T) {
-	if _, err := BatchJobExporterApp.Parse(
+	if _, err := CEEMSExporterApp.Parse(
 		[]string{
 			"--path.cgroupfs", "fixtures/sys/fs/cgroup",
 			"--collector.slurm.create.unique.jobids",
@@ -44,29 +44,27 @@ func TestCgroupsV2SlurmJobMetrics(t *testing.T) {
 	}
 	metrics, err := c.getJobsMetrics()
 	expectedSlurmMetrics = CgroupMetric{
-		name:                "/system.slice/slurmstepd.scope/job_1009248",
-		cpuUser:             60375.292848,
-		cpuSystem:           115.777502,
-		cpuTotal:            60491.070351,
-		cpus:                2,
-		cpuPressure:         0,
-		memoryRSS:           4.098592768e+09,
-		memoryCache:         0,
-		memoryUsed:          4.111491072e+09,
-		memoryTotal:         4.294967296e+09,
-		memoryFailCount:     0,
-		memswUsed:           0,
-		memswTotal:          123456,
-		memswFailCount:      0,
-		memoryPressure:      0,
-		userslice:           false,
-		batchjobuser:        "testusr",
-		batchjobaccount:     "testacc",
-		batchjobid:          "1009248",
-		batchjobuuid:        "0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",
-		batchjobgpuordinals: []string{"2", "3"},
-		batch:               "slurm",
-		err:                 false,
+		name:            "/system.slice/slurmstepd.scope/job_1009248",
+		cpuUser:         60375.292848,
+		cpuSystem:       115.777502,
+		cpuTotal:        60491.070351,
+		cpus:            2,
+		cpuPressure:     0,
+		memoryRSS:       4.098592768e+09,
+		memoryCache:     0,
+		memoryUsed:      4.111491072e+09,
+		memoryTotal:     4.294967296e+09,
+		memoryFailCount: 0,
+		memswUsed:       0,
+		memswTotal:      123456,
+		memswFailCount:  0,
+		memoryPressure:  0,
+		jobuser:         "testusr",
+		jobaccount:      "testacc",
+		jobid:           "1009248",
+		jobuuid:         "0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",
+		jobgpuordinals:  []string{"2", "3"},
+		err:             false,
 	}
 	if err != nil {
 		t.Fatalf("Cannot fetch data from getJobsMetrics function: %v ", err)
@@ -77,7 +75,7 @@ func TestCgroupsV2SlurmJobMetrics(t *testing.T) {
 }
 
 func TestCgroupsV2SlurmJobMetricsWithProcFs(t *testing.T) {
-	if _, err := BatchJobExporterApp.Parse(
+	if _, err := CEEMSExporterApp.Parse(
 		[]string{
 			"--path.cgroupfs", "fixtures/sys/fs/cgroup",
 			"--collector.slurm.create.unique.jobids",
@@ -96,29 +94,27 @@ func TestCgroupsV2SlurmJobMetricsWithProcFs(t *testing.T) {
 	}
 	metrics, err := c.getJobsMetrics()
 	expectedSlurmMetrics = CgroupMetric{
-		name:                "/system.slice/slurmstepd.scope/job_1009248",
-		cpuUser:             60375.292848,
-		cpuSystem:           115.777502,
-		cpuTotal:            60491.070351,
-		cpus:                2,
-		cpuPressure:         0,
-		memoryRSS:           4.098592768e+09,
-		memoryCache:         0,
-		memoryUsed:          4.111491072e+09,
-		memoryTotal:         4.294967296e+09,
-		memoryFailCount:     0,
-		memswUsed:           0,
-		memswTotal:          123456,
-		memswFailCount:      0,
-		memoryPressure:      0,
-		userslice:           false,
-		batchjobuser:        "testusr",
-		batchjobaccount:     "testacc",
-		batchjobid:          "1009248",
-		batchjobuuid:        "0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",
-		batchjobgpuordinals: []string{"2", "3"},
-		batch:               "slurm",
-		err:                 false,
+		name:            "/system.slice/slurmstepd.scope/job_1009248",
+		cpuUser:         60375.292848,
+		cpuSystem:       115.777502,
+		cpuTotal:        60491.070351,
+		cpus:            2,
+		cpuPressure:     0,
+		memoryRSS:       4.098592768e+09,
+		memoryCache:     0,
+		memoryUsed:      4.111491072e+09,
+		memoryTotal:     4.294967296e+09,
+		memoryFailCount: 0,
+		memswUsed:       0,
+		memswTotal:      123456,
+		memswFailCount:  0,
+		memoryPressure:  0,
+		jobuser:         "testusr",
+		jobaccount:      "testacc",
+		jobid:           "1009248",
+		jobuuid:         "0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",
+		jobgpuordinals:  []string{"2", "3"},
+		err:             false,
 	}
 	if err != nil {
 		t.Fatalf("Cannot fetch data from getJobsMetrics function: %v ", err)
@@ -129,7 +125,7 @@ func TestCgroupsV2SlurmJobMetricsWithProcFs(t *testing.T) {
 }
 
 func TestCgroupsV2SlurmJobMetricsNoJobProps(t *testing.T) {
-	if _, err := BatchJobExporterApp.Parse(
+	if _, err := CEEMSExporterApp.Parse(
 		[]string{
 			"--path.cgroupfs", "fixtures/sys/fs/cgroup",
 			"--collector.slurm.create.unique.jobids",
@@ -161,12 +157,10 @@ func TestCgroupsV2SlurmJobMetricsNoJobProps(t *testing.T) {
 		memswTotal:      1.8446744073709552e+19,
 		memswFailCount:  0,
 		memoryPressure:  0,
-		userslice:       false,
-		batchjobuser:    "",
-		batchjobaccount: "",
-		batchjobid:      "1009248",
-		batchjobuuid:    "a0523e93-a037-c2b1-8b34-410c9996399c",
-		batch:           "slurm",
+		jobuser:         "",
+		jobaccount:      "",
+		jobid:           "1009248",
+		jobuuid:         "a0523e93-a037-c2b1-8b34-410c9996399c",
 		err:             false,
 	}
 	if err != nil {
@@ -178,7 +172,7 @@ func TestCgroupsV2SlurmJobMetricsNoJobProps(t *testing.T) {
 }
 
 func TestCgroupsV1SlurmJobMetrics(t *testing.T) {
-	if _, err := BatchJobExporterApp.Parse(
+	if _, err := CEEMSExporterApp.Parse(
 		[]string{
 			"--path.cgroupfs", "fixtures/sys/fs/cgroup",
 			"--path.procfs", "fixtures/proc",
@@ -197,29 +191,27 @@ func TestCgroupsV1SlurmJobMetrics(t *testing.T) {
 	}
 	metrics, err := c.getJobsMetrics()
 	expectedSlurmMetrics = CgroupMetric{
-		name:                "/slurm/uid_1000/job_1009248",
-		cpuUser:             0.39,
-		cpuSystem:           0.45,
-		cpuTotal:            1.012410966,
-		cpus:                0,
-		cpuPressure:         0,
-		memoryRSS:           1.0407936e+07,
-		memoryCache:         2.1086208e+07,
-		memoryUsed:          4.0194048e+07,
-		memoryTotal:         2.01362030592e+11,
-		memoryFailCount:     0,
-		memswUsed:           4.032512e+07,
-		memswTotal:          9.223372036854772e+18,
-		memswFailCount:      0,
-		memoryPressure:      0,
-		userslice:           false,
-		batchjobuser:        "testusr",
-		batchjobaccount:     "testacc",
-		batchjobid:          "1009248",
-		batchjobuuid:        "0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",
-		batchjobgpuordinals: []string{"2", "3"},
-		batch:               "slurm",
-		err:                 false,
+		name:            "/slurm/uid_1000/job_1009248",
+		cpuUser:         0.39,
+		cpuSystem:       0.45,
+		cpuTotal:        1.012410966,
+		cpus:            0,
+		cpuPressure:     0,
+		memoryRSS:       1.0407936e+07,
+		memoryCache:     2.1086208e+07,
+		memoryUsed:      4.0194048e+07,
+		memoryTotal:     2.01362030592e+11,
+		memoryFailCount: 0,
+		memswUsed:       4.032512e+07,
+		memswTotal:      9.223372036854772e+18,
+		memswFailCount:  0,
+		memoryPressure:  0,
+		jobuser:         "testusr",
+		jobaccount:      "testacc",
+		jobid:           "1009248",
+		jobuuid:         "0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",
+		jobgpuordinals:  []string{"2", "3"},
+		err:             false,
 	}
 	if err != nil {
 		t.Fatalf("Cannot fetch data from getJobsMetrics function: %v ", err)

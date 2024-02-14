@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/go-kit/log"
-	"github.com/mahendrapaipuri/batchjob_monitor/pkg/emissions"
+	"github.com/mahendrapaipuri/ceems/pkg/emissions"
 )
 
 var (
@@ -15,7 +15,7 @@ var (
 )
 
 func TestISO2ToISO3Convertion(t *testing.T) {
-	if _, err := BatchJobExporterApp.Parse(
+	if _, err := CEEMSExporterApp.Parse(
 		[]string{
 			"--collector.emissions.country.code", "FR",
 		},

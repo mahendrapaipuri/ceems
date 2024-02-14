@@ -11,7 +11,7 @@ import (
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	batchjob_runtime "github.com/mahendrapaipuri/batchjob_monitor/internal/runtime"
+	internal_runtime "github.com/mahendrapaipuri/ceems/internal/runtime"
 	"github.com/prometheus/client_golang/prometheus"
 	promcollectors "github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/common/promlog"
@@ -21,19 +21,19 @@ import (
 	"github.com/prometheus/exporter-toolkit/web/kingpinflag"
 )
 
-// BatchJobExporter represents the `batchjob_exporter` cli.
-type BatchJobExporter struct {
+// CEEMSExporter represents the `ceems_exporter` cli.
+type CEEMSExporter struct {
 	appName string
 	App     kingpin.Application
 }
 
-// Name of batchjob_exporter kingpin app
-const BatchJobExporterAppName = "batchjob_exporter"
+// Name of CEEMS exporter kingpin app
+const CEEMSExporterAppName = "ceems_exporter"
 
-// `batchjob_exporter` CLI app
-var BatchJobExporterApp = *kingpin.New(
-	BatchJobExporterAppName,
-	"Prometheus Exporter to export batch job metrics.",
+// `ceems_exporter` CLI app
+var CEEMSExporterApp = *kingpin.New(
+	CEEMSExporterAppName,
+	"Prometheus Exporter to export compute (job, VM, pod) resource usage metrics.",
 )
 
 // Current hostname
@@ -42,16 +42,16 @@ var hostname string
 // Empty hostname flag (Used only for testing)
 var emptyHostnameLabel *bool
 
-// Create a new BatchJobExporter struct
-func NewBatchJobExporter() (*BatchJobExporter, error) {
-	return &BatchJobExporter{
-		appName: BatchJobExporterAppName,
-		App:     BatchJobExporterApp,
+// Create a new CEEMSExporter struct
+func NewCEEMSExporter() (*CEEMSExporter, error) {
+	return &CEEMSExporter{
+		appName: CEEMSExporterAppName,
+		App:     CEEMSExporterApp,
 	}, nil
 }
 
 // Create a new handler for exporting metrics
-func (b *BatchJobExporter) newHandler(includeExporterMetrics bool, maxRequests int, logger log.Logger) *handler {
+func (b *CEEMSExporter) newHandler(includeExporterMetrics bool, maxRequests int, logger log.Logger) *handler {
 	h := &handler{
 		exporterMetricsRegistry: prometheus.NewRegistry(),
 		includeExporterMetrics:  includeExporterMetrics,
@@ -72,8 +72,8 @@ func (b *BatchJobExporter) newHandler(includeExporterMetrics bool, maxRequests i
 	return h
 }
 
-// Main is the entry point of the `batchjob_exporter` command
-func (b *BatchJobExporter) Main() error {
+// Main is the entry point of the `ceems_exporter` command
+func (b *CEEMSExporter) Main() error {
 	var (
 		metricsPath = b.App.Flag(
 			"web.telemetry-path",
@@ -121,8 +121,8 @@ func (b *BatchJobExporter) Main() error {
 	}
 	level.Info(logger).Log("msg", fmt.Sprintf("Starting %s", b.appName), "version", version.Info())
 	level.Info(logger).Log("msg", "Build context", "build_context", version.BuildContext())
-	level.Info(logger).Log("fd_limits", batchjob_runtime.Uname())
-	level.Info(logger).Log("fd_limits", batchjob_runtime.FdLimits())
+	level.Info(logger).Log("fd_limits", internal_runtime.Uname())
+	level.Info(logger).Log("fd_limits", internal_runtime.FdLimits())
 
 	if user, err := user.Current(); err == nil && user.Uid == "0" {
 		level.Warn(logger).
