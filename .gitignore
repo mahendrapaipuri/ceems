@@ -53,8 +53,8 @@ data-backup
 *.tar.gz
 
 # Ignore binares
-ceems_exporter
-ceems_server
+/ceems_exporter
+/ceems_server
 
 # Ignore extracted folder
 ceems-*
