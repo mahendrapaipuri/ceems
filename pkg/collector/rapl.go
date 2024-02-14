@@ -31,7 +31,7 @@ func init() {
 }
 
 var (
-	raplZoneLabel = BatchJobExporterApp.Flag(
+	raplZoneLabel = CEEMSExporterApp.Flag(
 		"collector.rapl.enable-zone-label",
 		"Enables RAPL zone labels (default: disabled)",
 	).Default("false").Bool()

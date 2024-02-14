@@ -35,18 +35,18 @@ else
 	test-docker := test-docker
 endif
 
-# Use CGO for batchjob_stats_* and GO for batchjob_exporter.
+# Use CGO for stats and GO for ceems_exporter.
 ifeq ($(CGO_BUILD), 1)
 	PROMU_CONF ?= .promu-cgo.yml
-	pkgs := ./pkg/jobstats/base ./pkg/jobstats/cli \
-			./pkg/jobstats/db ./pkg/jobstats/helper \
-			./pkg/jobstats/schedulers ./pkg/jobstats/server \
-			./cmd/batchjob_stats_server
+	pkgs := ./pkg/stats/cli \
+			./pkg/stats/db ./pkg/stats/helper \
+			./pkg/stats/resource ./pkg/stats/updater \
+			./pkg/stats/http ./cmd/ceems_server
 	checkmetrics := skip-checkmetrics
 	checkrules := skip-checkrules
 else
 	PROMU_CONF ?= .promu-go.yml
-	pkgs := ./pkg/collector ./pkg/emissions ./cmd/batchjob_exporter
+	pkgs := ./pkg/collector ./pkg/emissions ./pkg/tsdb ./pkg/grafana ./cmd/ceems_exporter
 	checkmetrics := checkmetrics
 	checkrules := checkrules
 endif
@@ -120,10 +120,8 @@ else
 .PHONY: test-e2e
 test-e2e: build pkg/collector/fixtures/sys/.unpacked pkg/collector/fixtures/proc/.unpacked
 	@echo ">> running end-to-end tests"
-	./scripts/e2e-test.sh -s stats-account-query
-	./scripts/e2e-test.sh -s stats-jobuuid-query
-	./scripts/e2e-test.sh -s stats-jobid-query
-	./scripts/e2e-test.sh -s stats-jobuuid-jobid-query
+	./scripts/e2e-test.sh -s stats-project-query
+	./scripts/e2e-test.sh -s stats-uuid-query
 	./scripts/e2e-test.sh -s stats-admin-query
 	./scripts/e2e-test.sh -s stats-admin-query-all
 	./scripts/e2e-test.sh -s stats-admin-denied-query
@@ -148,10 +146,8 @@ else
 .PHONY: test-e2e-update
 test-e2e-update: build pkg/collector/fixtures/sys/.unpacked pkg/collector/fixtures/proc/.unpacked
 	@echo ">> updating end-to-end tests outputs"
-	./scripts/e2e-test.sh -s stats-account-query -u || true
-	./scripts/e2e-test.sh -s stats-jobuuid-query -u || true
-	./scripts/e2e-test.sh -s stats-jobid-query -u || true
-	./scripts/e2e-test.sh -s stats-jobuuid-jobid-query -u || true
+	./scripts/e2e-test.sh -s stats-project-query -u || true
+	./scripts/e2e-test.sh -s stats-uuid-query -u || true
 	./scripts/e2e-test.sh -s stats-admin-query -u || true
 	./scripts/e2e-test.sh -s stats-admin-query-all -u || true
 	./scripts/e2e-test.sh -s stats-admin-denied-query -u || true

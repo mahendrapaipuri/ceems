@@ -12,11 +12,11 @@ import (
 	"github.com/go-kit/log"
 )
 
-const mockBatchJobExporterAppName = "mockApp"
+const mockCEEMSExporterAppName = "mockApp"
 
-var mockBatchJobExporterApp = *kingpin.New(
-	mockBatchJobExporterAppName,
-	"Prometheus Exporter to export batch job metrics.",
+var mockCEEMSExporterApp = *kingpin.New(
+	mockCEEMSExporterAppName,
+	"Prometheus Exporter to export compute metrics.",
 )
 
 func queryExporter(address string) error {
@@ -37,10 +37,10 @@ func queryExporter(address string) error {
 	return nil
 }
 
-func TestBatchJobExporterAppHandler(t *testing.T) {
-	a := BatchJobExporter{
-		appName: mockBatchJobExporterAppName,
-		App:     mockBatchJobExporterApp,
+func TestCEEMSExporterAppHandler(t *testing.T) {
+	a := CEEMSExporter{
+		appName: mockCEEMSExporterAppName,
+		App:     mockCEEMSExporterApp,
 	}
 
 	// Create handler
@@ -50,12 +50,12 @@ func TestBatchJobExporterAppHandler(t *testing.T) {
 	}
 }
 
-func TestBatchJobExporterMain(t *testing.T) {
+func TestCEEMSExporterMain(t *testing.T) {
 	// Remove test related args and add a dummy arg
 	os.Args = append([]string{os.Args[0]}, "--web.max-requests=2")
-	a := BatchJobExporter{
-		appName: mockBatchJobExporterAppName,
-		App:     mockBatchJobExporterApp,
+	a := CEEMSExporter{
+		appName: mockCEEMSExporterAppName,
+		App:     mockCEEMSExporterApp,
 	}
 
 	// Start Main

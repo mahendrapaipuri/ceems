@@ -1,95 +1,98 @@
-# HELP batchjob_cpu_count Number of CPUs.
-# TYPE batchjob_cpu_count gauge
-batchjob_cpu_count{hostname=""} 8
-# HELP batchjob_cpu_seconds_total Seconds the CPUs spent in each mode.
-# TYPE batchjob_cpu_seconds_total counter
-batchjob_cpu_seconds_total{hostname="",mode="idle"} 89790.04
-batchjob_cpu_seconds_total{hostname="",mode="iowait"} 35.52
-batchjob_cpu_seconds_total{hostname="",mode="irq"} 0.02
-batchjob_cpu_seconds_total{hostname="",mode="nice"} 6.12
-batchjob_cpu_seconds_total{hostname="",mode="softirq"} 39.44
-batchjob_cpu_seconds_total{hostname="",mode="steal"} 0
-batchjob_cpu_seconds_total{hostname="",mode="system"} 1119.22
-batchjob_cpu_seconds_total{hostname="",mode="user"} 3018.54
-# HELP batchjob_exporter_build_info A metric with a constant '1' value labeled by version, revision, branch, goversion from which batchjob_exporter was built, and the goos and goarch for the build.
-# TYPE batchjob_exporter_build_info gauge
-# HELP batchjob_ipmi_dcmi_current_watts_total Current Power consumption in watts
-# TYPE batchjob_ipmi_dcmi_current_watts_total counter
-batchjob_ipmi_dcmi_current_watts_total{hostname=""} 332
-# HELP batchjob_ipmi_dcmi_max_watts_total Maximum Power consumption in watts
-# TYPE batchjob_ipmi_dcmi_max_watts_total counter
-batchjob_ipmi_dcmi_max_watts_total{hostname=""} 504
-# HELP batchjob_ipmi_dcmi_min_watts_total Minimum Power consumption in watts
-# TYPE batchjob_ipmi_dcmi_min_watts_total counter
-batchjob_ipmi_dcmi_min_watts_total{hostname=""} 68
-# HELP batchjob_meminfo_MemAvailable_bytes Memory information field MemAvailable_bytes.
-# TYPE batchjob_meminfo_MemAvailable_bytes gauge
-batchjob_meminfo_MemAvailable_bytes{hostname=""} 0
-# HELP batchjob_meminfo_MemFree_bytes Memory information field MemFree_bytes.
-# TYPE batchjob_meminfo_MemFree_bytes gauge
-batchjob_meminfo_MemFree_bytes{hostname=""} 4.50891776e+08
-# HELP batchjob_meminfo_MemTotal_bytes Memory information field MemTotal_bytes.
-# TYPE batchjob_meminfo_MemTotal_bytes gauge
-batchjob_meminfo_MemTotal_bytes{hostname=""} 1.6042172416e+10
-# HELP batchjob_rapl_package_joules_total Current RAPL package value in joules
-# TYPE batchjob_rapl_package_joules_total counter
-batchjob_rapl_package_joules_total{hostname="",index="0",path="pkg/collector/fixtures/sys/class/powercap/intel-rapl:0"} 258218.293244
-batchjob_rapl_package_joules_total{hostname="",index="1",path="pkg/collector/fixtures/sys/class/powercap/intel-rapl:1"} 130570.505826
-# HELP batchjob_scrape_collector_duration_seconds batchjob_exporter: Duration of a collector scrape.
-# TYPE batchjob_scrape_collector_duration_seconds gauge
-# HELP batchjob_scrape_collector_success batchjob_exporter: Whether a collector succeeded.
-# TYPE batchjob_scrape_collector_success gauge
-batchjob_scrape_collector_success{collector="cpu"} 1
-batchjob_scrape_collector_success{collector="ipmi_dcmi"} 1
-batchjob_scrape_collector_success{collector="meminfo"} 1
-batchjob_scrape_collector_success{collector="rapl"} 1
-batchjob_scrape_collector_success{collector="slurm"} 1
-# HELP batchjob_slurm_job_cpu_system_seconds Total job CPU system seconds
-# TYPE batchjob_slurm_job_cpu_system_seconds gauge
-batchjob_slurm_job_cpu_system_seconds{batch="slurm",batchjobaccount="testacc",batchjobid="1009248",batchjobuser="testusr",batchjobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",hostname=""} 115.777502
-batchjob_slurm_job_cpu_system_seconds{batch="slurm",batchjobaccount="testacc2",batchjobid="1009249",batchjobuser="testusr2",batchjobuuid="018ce2fe-b3f9-632a-7507-0e01c2687de5",hostname=""} 115.777502
-batchjob_slurm_job_cpu_system_seconds{batch="slurm",batchjobaccount="testacc3",batchjobid="1009250",batchjobuser="testusr2",batchjobuuid="77caf800-acd0-1fd2-7211-644e46814fc1",hostname=""} 115.777502
-# HELP batchjob_slurm_job_cpu_user_seconds Total job CPU user seconds
-# TYPE batchjob_slurm_job_cpu_user_seconds gauge
-batchjob_slurm_job_cpu_user_seconds{batch="slurm",batchjobaccount="testacc",batchjobid="1009248",batchjobuser="testusr",batchjobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",hostname=""} 60375.292848
-batchjob_slurm_job_cpu_user_seconds{batch="slurm",batchjobaccount="testacc2",batchjobid="1009249",batchjobuser="testusr2",batchjobuuid="018ce2fe-b3f9-632a-7507-0e01c2687de5",hostname=""} 60375.292848
-batchjob_slurm_job_cpu_user_seconds{batch="slurm",batchjobaccount="testacc3",batchjobid="1009250",batchjobuser="testusr2",batchjobuuid="77caf800-acd0-1fd2-7211-644e46814fc1",hostname=""} 60375.292848
-# HELP batchjob_slurm_job_cpus Total number of job CPUs
-# TYPE batchjob_slurm_job_cpus gauge
-batchjob_slurm_job_cpus{batch="slurm",batchjobaccount="testacc",batchjobid="1009248",batchjobuser="testusr",batchjobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",hostname=""} 2
-batchjob_slurm_job_cpus{batch="slurm",batchjobaccount="testacc2",batchjobid="1009249",batchjobuser="testusr2",batchjobuuid="018ce2fe-b3f9-632a-7507-0e01c2687de5",hostname=""} 2
-batchjob_slurm_job_cpus{batch="slurm",batchjobaccount="testacc3",batchjobid="1009250",batchjobuser="testusr2",batchjobuuid="77caf800-acd0-1fd2-7211-644e46814fc1",hostname=""} 2
-# HELP batchjob_slurm_job_gpu_index_flag Indicates running job on GPU, 1=job running
-# TYPE batchjob_slurm_job_gpu_index_flag gauge
-batchjob_slurm_job_gpu_index_flag{UUID="20170000800c",batch="slurm",batchjobaccount="testacc2",batchjobid="1009249",batchjobuser="testusr2",batchjobuuid="018ce2fe-b3f9-632a-7507-0e01c2687de5",hindex="-gpu-0",hostname="",index="0",uuid="20170000800c"} 1
-batchjob_slurm_job_gpu_index_flag{UUID="20170003580c",batch="slurm",batchjobaccount="testacc3",batchjobid="1009250",batchjobuser="testusr2",batchjobuuid="77caf800-acd0-1fd2-7211-644e46814fc1",hindex="-gpu-1",hostname="",index="1",uuid="20170003580c"} 1
-batchjob_slurm_job_gpu_index_flag{UUID="20170005280c",batch="slurm",batchjobaccount="testacc",batchjobid="1009248",batchjobuser="testusr",batchjobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",hindex="-gpu-3",hostname="",index="3",uuid="20170005280c"} 1
-batchjob_slurm_job_gpu_index_flag{UUID="20180003050c",batch="slurm",batchjobaccount="testacc",batchjobid="1009248",batchjobuser="testusr",batchjobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",hindex="-gpu-2",hostname="",index="2",uuid="20180003050c"} 1
-# HELP batchjob_slurm_job_memory_cache_bytes Memory cache used in bytes
-# TYPE batchjob_slurm_job_memory_cache_bytes gauge
-batchjob_slurm_job_memory_cache_bytes{batch="slurm",batchjobaccount="testacc",batchjobid="1009248",batchjobuser="testusr",batchjobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",hostname=""} 0
-batchjob_slurm_job_memory_cache_bytes{batch="slurm",batchjobaccount="testacc2",batchjobid="1009249",batchjobuser="testusr2",batchjobuuid="018ce2fe-b3f9-632a-7507-0e01c2687de5",hostname=""} 0
-batchjob_slurm_job_memory_cache_bytes{batch="slurm",batchjobaccount="testacc3",batchjobid="1009250",batchjobuser="testusr2",batchjobuuid="77caf800-acd0-1fd2-7211-644e46814fc1",hostname=""} 0
-# HELP batchjob_slurm_job_memory_fail_count Memory fail count
-# TYPE batchjob_slurm_job_memory_fail_count gauge
-batchjob_slurm_job_memory_fail_count{batch="slurm",batchjobaccount="testacc",batchjobid="1009248",batchjobuser="testusr",batchjobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",hostname=""} 0
-batchjob_slurm_job_memory_fail_count{batch="slurm",batchjobaccount="testacc2",batchjobid="1009249",batchjobuser="testusr2",batchjobuuid="018ce2fe-b3f9-632a-7507-0e01c2687de5",hostname=""} 0
-batchjob_slurm_job_memory_fail_count{batch="slurm",batchjobaccount="testacc3",batchjobid="1009250",batchjobuser="testusr2",batchjobuuid="77caf800-acd0-1fd2-7211-644e46814fc1",hostname=""} 0
-# HELP batchjob_slurm_job_memory_rss_bytes Memory RSS used in bytes
-# TYPE batchjob_slurm_job_memory_rss_bytes gauge
-batchjob_slurm_job_memory_rss_bytes{batch="slurm",batchjobaccount="testacc",batchjobid="1009248",batchjobuser="testusr",batchjobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",hostname=""} 4.098592768e+09
-batchjob_slurm_job_memory_rss_bytes{batch="slurm",batchjobaccount="testacc2",batchjobid="1009249",batchjobuser="testusr2",batchjobuuid="018ce2fe-b3f9-632a-7507-0e01c2687de5",hostname=""} 4.098592768e+09
-batchjob_slurm_job_memory_rss_bytes{batch="slurm",batchjobaccount="testacc3",batchjobid="1009250",batchjobuser="testusr2",batchjobuuid="77caf800-acd0-1fd2-7211-644e46814fc1",hostname=""} 4.098592768e+09
-# HELP batchjob_slurm_job_memory_total_bytes Memory total in bytes
-# TYPE batchjob_slurm_job_memory_total_bytes gauge
-batchjob_slurm_job_memory_total_bytes{batch="slurm",batchjobaccount="testacc",batchjobid="1009248",batchjobuser="testusr",batchjobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",hostname=""} 4.294967296e+09
-batchjob_slurm_job_memory_total_bytes{batch="slurm",batchjobaccount="testacc2",batchjobid="1009249",batchjobuser="testusr2",batchjobuuid="018ce2fe-b3f9-632a-7507-0e01c2687de5",hostname=""} 4.294967296e+09
-batchjob_slurm_job_memory_total_bytes{batch="slurm",batchjobaccount="testacc3",batchjobid="1009250",batchjobuser="testusr2",batchjobuuid="77caf800-acd0-1fd2-7211-644e46814fc1",hostname=""} 4.294967296e+09
-# HELP batchjob_slurm_job_memory_used_bytes Memory used in bytes
-# TYPE batchjob_slurm_job_memory_used_bytes gauge
-batchjob_slurm_job_memory_used_bytes{batch="slurm",batchjobaccount="testacc",batchjobid="1009248",batchjobuser="testusr",batchjobuuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",hostname=""} 4.111491072e+09
-batchjob_slurm_job_memory_used_bytes{batch="slurm",batchjobaccount="testacc2",batchjobid="1009249",batchjobuser="testusr2",batchjobuuid="018ce2fe-b3f9-632a-7507-0e01c2687de5",hostname=""} 4.111491072e+09
-batchjob_slurm_job_memory_used_bytes{batch="slurm",batchjobaccount="testacc3",batchjobid="1009250",batchjobuser="testusr2",batchjobuuid="77caf800-acd0-1fd2-7211-644e46814fc1",hostname=""} 4.111491072e+09
+# HELP ceems_cpu_count Number of CPUs.
+# TYPE ceems_cpu_count gauge
+ceems_cpu_count{hostname=""} 8
+# HELP ceems_cpu_seconds_total Seconds the CPUs spent in each mode.
+# TYPE ceems_cpu_seconds_total counter
+ceems_cpu_seconds_total{hostname="",mode="idle"} 89790.04
+ceems_cpu_seconds_total{hostname="",mode="iowait"} 35.52
+ceems_cpu_seconds_total{hostname="",mode="irq"} 0.02
+ceems_cpu_seconds_total{hostname="",mode="nice"} 6.12
+ceems_cpu_seconds_total{hostname="",mode="softirq"} 39.44
+ceems_cpu_seconds_total{hostname="",mode="steal"} 0
+ceems_cpu_seconds_total{hostname="",mode="system"} 1119.22
+ceems_cpu_seconds_total{hostname="",mode="user"} 3018.54
+# HELP ceems_exporter_build_info A metric with a constant '1' value labeled by version, revision, branch, goversion from which ceems_exporter was built, and the goos and goarch for the build.
+# TYPE ceems_exporter_build_info gauge
+# HELP ceems_ipmi_dcmi_current_watts_total Current Power consumption in watts
+# TYPE ceems_ipmi_dcmi_current_watts_total counter
+ceems_ipmi_dcmi_current_watts_total{hostname=""} 332
+# HELP ceems_ipmi_dcmi_max_watts_total Maximum Power consumption in watts
+# TYPE ceems_ipmi_dcmi_max_watts_total counter
+ceems_ipmi_dcmi_max_watts_total{hostname=""} 504
+# HELP ceems_ipmi_dcmi_min_watts_total Minimum Power consumption in watts
+# TYPE ceems_ipmi_dcmi_min_watts_total counter
+ceems_ipmi_dcmi_min_watts_total{hostname=""} 68
+# HELP ceems_meminfo_MemAvailable_bytes Memory information field MemAvailable_bytes.
+# TYPE ceems_meminfo_MemAvailable_bytes gauge
+ceems_meminfo_MemAvailable_bytes{hostname=""} 0
+# HELP ceems_meminfo_MemFree_bytes Memory information field MemFree_bytes.
+# TYPE ceems_meminfo_MemFree_bytes gauge
+ceems_meminfo_MemFree_bytes{hostname=""} 4.50891776e+08
+# HELP ceems_meminfo_MemTotal_bytes Memory information field MemTotal_bytes.
+# TYPE ceems_meminfo_MemTotal_bytes gauge
+ceems_meminfo_MemTotal_bytes{hostname=""} 1.6042172416e+10
+# HELP ceems_rapl_package_joules_total Current RAPL package value in joules
+# TYPE ceems_rapl_package_joules_total counter
+ceems_rapl_package_joules_total{hostname="",index="0",path="pkg/collector/fixtures/sys/class/powercap/intel-rapl:0"} 258218.293244
+ceems_rapl_package_joules_total{hostname="",index="1",path="pkg/collector/fixtures/sys/class/powercap/intel-rapl:1"} 130570.505826
+# HELP ceems_scrape_collector_duration_seconds ceems_exporter: Duration of a collector scrape.
+# TYPE ceems_scrape_collector_duration_seconds gauge
+# HELP ceems_scrape_collector_success ceems_exporter: Whether a collector succeeded.
+# TYPE ceems_scrape_collector_success gauge
+ceems_scrape_collector_success{collector="cpu"} 1
+ceems_scrape_collector_success{collector="ipmi_dcmi"} 1
+ceems_scrape_collector_success{collector="meminfo"} 1
+ceems_scrape_collector_success{collector="rapl"} 1
+ceems_scrape_collector_success{collector="slurm"} 1
+# HELP ceems_slurm_job_cpu_system_seconds Total job CPU system seconds
+# TYPE ceems_slurm_job_cpu_system_seconds gauge
+ceems_slurm_job_cpu_system_seconds{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 115.777502
+ceems_slurm_job_cpu_system_seconds{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 115.777502
+ceems_slurm_job_cpu_system_seconds{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 115.777502
+# HELP ceems_slurm_job_cpu_user_seconds Total job CPU user seconds
+# TYPE ceems_slurm_job_cpu_user_seconds gauge
+ceems_slurm_job_cpu_user_seconds{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 60375.292848
+ceems_slurm_job_cpu_user_seconds{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 60375.292848
+ceems_slurm_job_cpu_user_seconds{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 60375.292848
+# HELP ceems_slurm_job_cpus Total number of job CPUs
+# TYPE ceems_slurm_job_cpus gauge
+ceems_slurm_job_cpus{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 2
+ceems_slurm_job_cpus{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 2
+ceems_slurm_job_cpus{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 2
+# HELP ceems_slurm_job_gpu_index_flag Indicates running job on GPU, 1=job running
+# TYPE ceems_slurm_job_gpu_index_flag gauge
+ceems_slurm_job_gpu_index_flag{account="testacc",gpuuuid="20170005280c",hindex="-gpu-3",hostname="",index="3",manager="slurm",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 1
+ceems_slurm_job_gpu_index_flag{account="testacc",gpuuuid="20180003050c",hindex="-gpu-2",hostname="",index="2",manager="slurm",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 1
+ceems_slurm_job_gpu_index_flag{account="testacc2",gpuuuid="20170000800c",hindex="-gpu-0",hostname="",index="0",manager="slurm",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 1
+ceems_slurm_job_gpu_index_flag{account="testacc3",gpuuuid="20170003580c",hindex="-gpu-1",hostname="",index="1",manager="slurm",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 1
+# HELP ceems_slurm_job_memory_cache_bytes Memory cache used in bytes
+# TYPE ceems_slurm_job_memory_cache_bytes gauge
+ceems_slurm_job_memory_cache_bytes{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 0
+ceems_slurm_job_memory_cache_bytes{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 0
+ceems_slurm_job_memory_cache_bytes{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 0
+# HELP ceems_slurm_job_memory_fail_count Memory fail count
+# TYPE ceems_slurm_job_memory_fail_count gauge
+ceems_slurm_job_memory_fail_count{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 0
+ceems_slurm_job_memory_fail_count{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 0
+ceems_slurm_job_memory_fail_count{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 0
+# HELP ceems_slurm_job_memory_rss_bytes Memory RSS used in bytes
+# TYPE ceems_slurm_job_memory_rss_bytes gauge
+ceems_slurm_job_memory_rss_bytes{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 4.098592768e+09
+ceems_slurm_job_memory_rss_bytes{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 4.098592768e+09
+ceems_slurm_job_memory_rss_bytes{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 4.098592768e+09
+# HELP ceems_slurm_job_memory_total_bytes Memory total in bytes
+# TYPE ceems_slurm_job_memory_total_bytes gauge
+ceems_slurm_job_memory_total_bytes{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 4.294967296e+09
+ceems_slurm_job_memory_total_bytes{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 4.294967296e+09
+ceems_slurm_job_memory_total_bytes{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 4.294967296e+09
+# HELP ceems_slurm_job_memory_used_bytes Memory used in bytes
+# TYPE ceems_slurm_job_memory_used_bytes gauge
+ceems_slurm_job_memory_used_bytes{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 4.111491072e+09
+ceems_slurm_job_memory_used_bytes{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 4.111491072e+09
+ceems_slurm_job_memory_used_bytes{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 4.111491072e+09
+# HELP ceems_slurm_jobs Total number of jobs
+# TYPE ceems_slurm_jobs gauge
+ceems_slurm_jobs{hostname="",manager="slurm"} 3
 # HELP go_gc_duration_seconds A summary of the pause duration of garbage collection cycles.
 # TYPE go_gc_duration_seconds summary
 # HELP go_goroutines Number of goroutines that currently exist.

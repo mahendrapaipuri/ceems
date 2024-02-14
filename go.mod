@@ -1,4 +1,4 @@
-module github.com/mahendrapaipuri/batchjob_monitor
+module github.com/mahendrapaipuri/ceems
 
 go 1.21
 

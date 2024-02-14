@@ -11,7 +11,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/mahendrapaipuri/batchjob_monitor/internal/helpers"
+	"github.com/mahendrapaipuri/ceems/internal/osexec"
 )
 
 type Device struct {
@@ -173,7 +173,7 @@ func GetNvidiaGPUDevices(nvidiaSmiPath string, logger log.Logger) (map[int]Devic
 
 	// Execute nvidia-smi command to get available GPUs
 	args := []string{"--query-gpu=index,name,uuid", "--format=csv"}
-	nvidiaSmiOutput, err := helpers.Execute(nvidiaSmiCmd, args, nil, logger)
+	nvidiaSmiOutput, err := osexec.Execute(nvidiaSmiCmd, args, nil, logger)
 	if err != nil {
 		level.Error(logger).
 			Log("msg", "nvidia-smi command to get list of devices failed", "err", err)
@@ -237,7 +237,7 @@ func GetAMDGPUDevices(rocmSmiPath string, logger log.Logger) (map[int]Device, er
 
 	// Execute nvidia-smi command to get available GPUs
 	args := []string{"--showproductname", "--showserial", "--csv"}
-	rocmSmiOutput, err := helpers.Execute(rocmSmiCmd, args, nil, logger)
+	rocmSmiOutput, err := osexec.Execute(rocmSmiCmd, args, nil, logger)
 	if err != nil {
 		level.Error(logger).
 			Log("msg", "rocm-smi command to get list of devices failed", "err", err)

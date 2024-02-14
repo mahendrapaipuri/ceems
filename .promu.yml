@@ -6,10 +6,10 @@ repository:
     path: github.com/mahendrapaipuri/batchjob_monitor
 build:
     binaries:
-        - name: batchjob_exporter
-          path: ./cmd/batchjob_exporter
-        - name: batchjob_stats_server
-          path: ./cmd/batchjob_stats_server
+        - name: ceems_exporter
+          path: ./cmd/ceems_exporter
+        - name: ceems_server
+          path: ./cmd/ceems_server
     flags: -a -tags 'netgo osusergo static_build'
     ldflags: |
         -X github.com/prometheus/common/version.Version={{.Version}}

@@ -7,7 +7,7 @@ import (
 )
 
 func TestDefaultSysPath(t *testing.T) {
-	if _, err := BatchJobExporterApp.Parse([]string{"--path.sysfs", "/sys"}); err != nil {
+	if _, err := CEEMSExporterApp.Parse([]string{"--path.sysfs", "/sys"}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -21,7 +21,7 @@ func TestDefaultSysPath(t *testing.T) {
 }
 
 func TestCustomSysPath(t *testing.T) {
-	if _, err := BatchJobExporterApp.Parse([]string{"--path.sysfs", "./../some/./place/"}); err != nil {
+	if _, err := CEEMSExporterApp.Parse([]string{"--path.sysfs", "./../some/./place/"}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -35,7 +35,7 @@ func TestCustomSysPath(t *testing.T) {
 }
 
 func TestDefaultCgroupPath(t *testing.T) {
-	if _, err := BatchJobExporterApp.Parse([]string{"--path.cgroupfs", "/sys/fs/cgroup"}); err != nil {
+	if _, err := CEEMSExporterApp.Parse([]string{"--path.cgroupfs", "/sys/fs/cgroup"}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -49,7 +49,7 @@ func TestDefaultCgroupPath(t *testing.T) {
 }
 
 func TestCustomCgroupPath(t *testing.T) {
-	if _, err := BatchJobExporterApp.Parse([]string{"--path.cgroupfs", "./../some/./place/"}); err != nil {
+	if _, err := CEEMSExporterApp.Parse([]string{"--path.cgroupfs", "./../some/./place/"}); err != nil {
 		t.Fatal(err)
 	}
 

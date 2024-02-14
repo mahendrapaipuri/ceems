@@ -1,17 +1,17 @@
 [Unit]
-Description=Batchjob Exporter Using Capabilities and Without Prolog and Epilog Scripts
+Description=CEEMS Exporter Using Capabilities and Without Prolog and Epilog Scripts
 After=network-online.target
 
 [Service]
 Type=simple
-User=batchjob-exp
-Group=batchjob-exp
-ExecStart=/usr/local/bin/batchjob_exporter \
+User=ceems
+Group=ceems
+ExecStart=/usr/local/bin/ceems_exporter \
     --collector.slurm.gpu.type="nvidia" \
     --collector.ipmi.dcmi.cmd="sudo /usr/sbin/ipmi-dcmi --get-system-power-statistics" \
     --log.level="debug"
 
-SyslogIdentifier=batchjob_exporter
+SyslogIdentifier=ceems_exporter
 Restart=always
 RestartSec=1
 StartLimitInterval=0

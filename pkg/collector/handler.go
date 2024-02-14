@@ -53,7 +53,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // (in which case it will log all the collectors enabled via command-line
 // flags).
 func (h *handler) innerHandler(filters ...string) (http.Handler, error) {
-	nc, err := NewJobCollector(h.logger, filters...)
+	nc, err := NewCEEMSCollector(h.logger, filters...)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't create collector: %s", err)
 	}
@@ -73,9 +73,9 @@ func (h *handler) innerHandler(filters ...string) (http.Handler, error) {
 	}
 
 	r := prometheus.NewRegistry()
-	r.MustRegister(version.NewCollector("batchjob_exporter"))
+	r.MustRegister(version.NewCollector(CEEMSExporterAppName))
 	if err := r.Register(nc); err != nil {
-		return nil, fmt.Errorf("couldn't register batch job collector: %s", err)
+		return nil, fmt.Errorf("couldn't register compute resource collector: %s", err)
 	}
 
 	var handler http.Handler
