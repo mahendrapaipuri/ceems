@@ -20,7 +20,7 @@ const (
 func TestBatchjobStatsExecutable(t *testing.T) {
 	fmt.Println(binary)
 	if _, err := os.Stat(binary); err != nil {
-		t.Errorf("ceems_server binary not available, try to run `make build` first: %s", err)
+		t.Skipf("ceems_server binary not available, try to run `make build` first: %s", err)
 	}
 	tmpDir := t.TempDir()
 	tmpSacctPath := tmpDir + "/sacct"

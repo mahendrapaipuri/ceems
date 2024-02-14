@@ -23,7 +23,7 @@ const (
 
 func TestFileDescriptorLeak(t *testing.T) {
 	if _, err := os.Stat(binary); err != nil {
-		t.Errorf("ceems_exporter binary not available, try to run `make build` first: %s", err)
+		t.Skipf("ceems_exporter binary not available, try to run `make build` first: %s", err)
 	}
 	fs, err := procfs.NewDefaultFS()
 	if err != nil {
