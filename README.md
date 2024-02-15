@@ -201,9 +201,10 @@ the power usage of the node. The default value is set to FreeIPMI one as
 `--collector.ipmi.dcmi.cmd="/usr/bin/ipmi-dcmi --get-system-power-statistics"`. 
 
 The exporter is capable of parsing FreeIPMI, IPMITool and IPMIUtil outputs.
-If your IPMI implementation does not return an output like above, you can write your 
-own wrapper that parses your IPMI implementation's output and returns output in above 
-format. 
+If your IPMI implementation does not return an output in 
+[one of these formats](https://github.com/mahendrapaipuri/ceems/blob/96190ca346333e073d2ad636695efd61c292b7f5/pkg/collector/ipmi.go#L31-L89), 
+you can write your own wrapper that parses your IPMI implementation's output and 
+returns output in one of above formats. 
 
 Generally `ipmi` related commands are available for only `root`. Admins can add a sudoers 
 entry to let the user that runs the `ceems_exporter` to execute only necessary 
