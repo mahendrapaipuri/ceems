@@ -49,16 +49,16 @@ then
     cgroups_mode="legacy"
     desc="Cgroups V1"
     fixture='pkg/collector/fixtures/output/e2e-test-cgroupsv1-output.txt'
-  elif [ "${scenario}" = "exporter-cgroups-v2-nvidia" ]
+  elif [ "${scenario}" = "exporter-cgroups-v2-nvidia-ipmiutil" ]
   then
     cgroups_mode="unified"
-    desc="Cgroups V2"
-    fixture='pkg/collector/fixtures/output/e2e-test-cgroupsv2-nvidia-output.txt'
-   elif [ "${scenario}" = "exporter-cgroups-v2-amd" ]
+    desc="Cgroups V2 with nVIDIA GPU and ipmiutil"
+    fixture='pkg/collector/fixtures/output/e2e-test-cgroupsv2-nvidia-ipmiutil-output.txt'
+   elif [ "${scenario}" = "exporter-cgroups-v2-amd-ipmitool" ]
   then
     cgroups_mode="unified"
-    desc="Cgroups V2"
-    fixture='pkg/collector/fixtures/output/e2e-test-cgroupsv2-amd-output.txt'
+    desc="Cgroups V2 with AMD GPU and ipmitool"
+    fixture='pkg/collector/fixtures/output/e2e-test-cgroupsv2-amd-ipmitool-output.txt'
   elif [ "${scenario}" = "exporter-cgroups-v2-nogpu" ]
   then
     cgroups_mode="unified"
@@ -214,7 +214,7 @@ then
         --web.listen-address "127.0.0.1:${port}" \
         --log.level="debug" > "${logfile}" 2>&1 &
 
-  elif [ "${scenario}" = "exporter-cgroups-v2-nvidia" ] 
+  elif [ "${scenario}" = "exporter-cgroups-v2-nvidia-ipmiutil" ] 
   then
       ./bin/ceems_exporter \
         --path.sysfs="pkg/collector/fixtures/sys" \
@@ -225,12 +225,12 @@ then
         --collector.slurm.nvidia.smi.path="pkg/collector/fixtures/nvidia-smi" \
         --collector.slurm.force.cgroups.version="v2" \
         --collector.slurm.gpu.job.map.path="pkg/collector/fixtures/gpujobmap" \
-        --collector.ipmi.dcmi.cmd="pkg/collector/fixtures/ipmi-dcmi-wrapper.sh" \
+        --collector.ipmi.dcmi.cmd="pkg/collector/fixtures/ipmiutil-wrapper.sh" \
         --collector.empty.hostname.label \
         --web.listen-address "127.0.0.1:${port}" \
         --log.level="debug" > "${logfile}" 2>&1 &
 
-  elif [ "${scenario}" = "exporter-cgroups-v2-amd" ] 
+  elif [ "${scenario}" = "exporter-cgroups-v2-amd-ipmitool" ] 
   then
       ./bin/ceems_exporter \
         --path.sysfs="pkg/collector/fixtures/sys" \
@@ -242,7 +242,7 @@ then
         --collector.slurm.rocm.smi.path="pkg/collector/fixtures/rocm-smi" \
         --collector.slurm.force.cgroups.version="v2" \
         --collector.slurm.gpu.job.map.path="pkg/collector/fixtures/gpujobmap" \
-        --collector.ipmi.dcmi.cmd="pkg/collector/fixtures/ipmi-dcmi-wrapper.sh" \
+        --collector.ipmi.dcmi.cmd="pkg/collector/fixtures/ipmitool-wrapper.sh" \
         --collector.empty.hostname.label \
         --web.listen-address "127.0.0.1:${port}" \
         --log.level="debug" > "${logfile}" 2>&1 &

@@ -196,18 +196,11 @@ always favoured to running the exporter as `root`.
 ### IPMI collector
 
 There are several IPMI implementation available like FreeIPMI, IPMITool, IPMIUtil, 
-OpenIPMI, _etc._ Current exporter allows to configure the IPMI command that will report 
+ _etc._ Current exporter allows to configure the IPMI command that will report 
 the power usage of the node. The default value is set to FreeIPMI one as 
-`--collector.ipmi.dcmi.cmd="/usr/bin/ipmi-dcmi --get-system-power-statistics"`. The 
-output of the command expects following lines:
+`--collector.ipmi.dcmi.cmd="/usr/bin/ipmi-dcmi --get-system-power-statistics"`. 
 
-```
-Current Power                        : 332 Watts
-Minimum Power over sampling duration : 68 watts
-Maximum Power over sampling duration : 504 watts
-Power Measurement                    : Active
-```
-
+The exporter is capable of parsing FreeIPMI, IPMITool and IPMIUtil outputs.
 If your IPMI implementation does not return an output like above, you can write your 
 own wrapper that parses your IPMI implementation's output and returns output in above 
 format. 
