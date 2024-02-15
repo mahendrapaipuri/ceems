@@ -91,22 +91,27 @@ func (t *tsdbUpdater) Update(queryTime time.Time, units []types.Unit) []types.Un
 		return units
 	}
 	var minStartTime = queryTime.UnixMilli()
-	var allUnitIds = make([]string, len(units))
+	var allUnitUUIDs = make([]string, len(units))
 
 	// Loop over all units and find earliest start time of a unit
 	for i := 0; i < len(units); i++ {
-		allUnitIds[i] = units[i].UUID
+		// If unit is empty struct ignore
+		if units[i].UUID == "" {
+			continue
+		}
+
+		allUnitUUIDs[i] = units[i].UUID
 		if units[i].StartTS > 0 && minStartTime > units[i].StartTS {
 			minStartTime = units[i].StartTS
 		}
 	}
-	allUnitIdsExp := strings.Join(allUnitIds, "|")
+	allUnitUUIDsRegExp := strings.Join(allUnitUUIDs, "|")
 
 	// Get max window from minStartTime to queryTime
 	maxDuration := time.Duration((queryTime.UnixMilli() - minStartTime) * int64(time.Millisecond)).Truncate(time.Minute)
 
 	// Get all aggregate metrics
-	aggMetrics := t.fetchAggMetrics(queryTime, maxDuration, allUnitIdsExp)
+	aggMetrics := t.fetchAggMetrics(queryTime, maxDuration, allUnitUUIDsRegExp)
 
 	// Update all units
 	// NOTE: We can improve this by using reflect package by naming queries

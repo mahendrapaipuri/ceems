@@ -502,11 +502,11 @@ func (s *statsDB) execStatements(statements map[string]*sql.Stmt, units []types.
 }
 
 // Delete time series data of ignored units
-func (s *statsDB) deleteTimeSeries(startTime time.Time, endTime time.Time, units []string) error {
+func (s *statsDB) deleteTimeSeries(startTime time.Time, endTime time.Time, unitUUIDs []string) error {
 	// Check if there are any units to ignore. If there aren't return immediately
 	// We shouldnt make a API request to delete with empty units slice as TSDB will
 	// match all units during that period with uuid=~"" matcher
-	if len(units) == 0 {
+	if len(unitUUIDs) == 0 {
 		return nil
 	}
 
@@ -533,7 +533,7 @@ func (s *statsDB) deleteTimeSeries(startTime time.Time, endTime time.Time, units
 	//
 	// Join them with | as delimiter. We will use regex match to match all series
 	// with the label uuid=~"$unitids"
-	allUUIDs := strings.Join(units, "|")
+	allUUIDs := strings.Join(unitUUIDs, "|")
 	matcher := fmt.Sprintf("{uuid=~\"%s\"}", allUUIDs)
 	// Make a API request to delete data of ignored units
 	return s.tsdb.Delete(start, end, matcher)
