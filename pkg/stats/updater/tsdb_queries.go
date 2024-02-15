@@ -26,7 +26,7 @@ avg_over_time(
 	totalCpuEnergyUsageQuery = `
 sum_over_time(
 	sum by (uuid) (
-		ceems_ipmi_dcmi_current_watts_total * %[5]d / 3.6e9
+		ceems_ipmi_dcmi_current_watts * %[5]d / 3.6e9
 		* on (instance) group_right ()
 		(
 			rate(ceems_slurm_job_cpu_user_seconds{uuid=~"%[1]s"}[%[2]s])
@@ -43,7 +43,7 @@ sum_over_time(
 	sum by (uuid) (
 	label_replace(
 		label_replace(
-				ceems_ipmi_dcmi_current_watts_total * %[5]d / 3.6e9
+				ceems_ipmi_dcmi_current_watts * %[5]d / 3.6e9
 			* on (instance) group_right ()
 				(
 					rate(ceems_slurm_job_cpu_user_seconds{uuid=~"%[1]s"}[%[2]s])
