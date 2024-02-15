@@ -62,11 +62,13 @@ func TestTSDBConfigSuccess(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to create TSDB instance")
 	}
+
+	// Check if Ping is working
 	if !tsdb.Available() {
 		t.Errorf("Expected TSDB to available")
 	}
 
-	// Check if Ping is working
+	// Check global config
 	var globalConfig map[interface{}]interface{}
 	if globalConfig, err = tsdb.GlobalConfig(); err != nil {
 		t.Errorf("Could not get TSDB config: %s", err)
@@ -77,6 +79,12 @@ func TestTSDBConfigSuccess(t *testing.T) {
 		if v.(string) != "15s" {
 			t.Errorf("expected scrape_interval 15s got %s", v.(string))
 		}
+	}
+
+	// Check scrape interval
+	scrapeInterval := tsdb.ScrapeInterval()
+	if scrapeInterval != time.Duration(15*time.Second) {
+		t.Errorf("expected scrape_interval 15s got %s", scrapeInterval)
 	}
 
 	// Check rate interval
@@ -109,6 +117,11 @@ func TestTSDBConfigFail(t *testing.T) {
 	// Check if config is working
 	if _, err := tsdb.Config(); err == nil {
 		t.Errorf("Expected TSDB config error")
+	}
+
+	scrapeInterval := tsdb.ScrapeInterval()
+	if scrapeInterval != time.Duration(defaultScrapeInterval) {
+		t.Errorf("Expected default scrape interval, got %s", scrapeInterval)
 	}
 
 	rateInterval := tsdb.RateInterval()
