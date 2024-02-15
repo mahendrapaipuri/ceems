@@ -179,13 +179,17 @@ func (t *TSDB) ScrapeInterval() time.Duration {
 		return t.scrapeInterval
 	}
 
+	// Set scrapeInterval cache value to default and we will override it if found
+	// from config
+	t.lastConfigUpdate = time.Now()
+	t.scrapeInterval = defaultScrapeInterval
+
 	// Get config
 	var globalConfig map[interface{}]interface{}
 	var err error
 	if globalConfig, err = t.GlobalConfig(); err != nil {
 		return defaultScrapeInterval
 	}
-	t.lastConfigUpdate = time.Now()
 
 	// Parse duration string
 	if v, exists := globalConfig["scrape_interval"]; exists {
@@ -193,6 +197,7 @@ func (t *TSDB) ScrapeInterval() time.Duration {
 		if err != nil {
 			return defaultScrapeInterval
 		}
+		t.scrapeInterval = time.Duration(scrapeInterval)
 		return time.Duration(scrapeInterval)
 	}
 	return defaultScrapeInterval
