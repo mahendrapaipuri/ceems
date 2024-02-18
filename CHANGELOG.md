@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.0-rc.4 / 2024-02-18
+
+- [BUGFIX] Misc bugfixes [#40](https://github.com/mahendrapaipuri/ceems/pull/40) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE]Support different IPMI implementations [#39](https://github.com/mahendrapaipuri/ceems/pull/39) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [REFACTOR] Rename pkg to ceems [#38](https://github.com/mahendrapaipuri/ceems/pull/38) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Cache job props for SLURM collector [#37](https://github.com/mahendrapaipuri/ceems/pull/37) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Extend DB schema to add new fields [#36](https://github.com/mahendrapaipuri/ceems/pull/36) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Backup DB at configured interval [#35](https://github.com/mahendrapaipuri/ceems/pull/35) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+
 ## 0.1.0-rc.3 / 2024-01-22
 
 - [REFACTOR] refactor: Remove support for job steps [#34](https://github.com/mahendrapaipuri/ceems/pull/34) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
