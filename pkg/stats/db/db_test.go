@@ -21,7 +21,7 @@ type mockFetcher struct {
 	logger log.Logger
 }
 
-var mockUnits = []types.Unit{{UUID: "10000"}, {UUID: "10001"}}
+var mockUnits = []types.Unit{{UUID: "10000"}, {UUID: "10001"}, {UUID: "10002"}}
 
 func newMockManager(logger log.Logger) (*resource.Manager, error) {
 	return &resource.Manager{Fetcher: &mockFetcher{logger: logger}}, nil
@@ -47,7 +47,7 @@ func newMockUpdater(logger log.Logger) (*updater.UnitUpdater, error) {
 }
 
 // GetUnits implements collection units between start and end times
-func (m *mockUpdater) Update(queryTime time.Time, units []types.Unit) []types.Unit {
+func (m *mockUpdater) Update(startTime time.Time, endTime time.Time, units []types.Unit) []types.Unit {
 	return mockUpdatedUnits
 }
 
@@ -305,8 +305,8 @@ func TestJobStatsDBBackup(t *testing.T) {
 	for rows.Next() {
 		numRows += 1
 	}
-	if numRows != 2 {
-		t.Errorf("Backup DB check failed. Expected rows 2 , Got %d.", numRows)
+	if numRows != 3 {
+		t.Errorf("Backup DB check failed. Expected rows 3 , Got %d.", numRows)
 	}
 }
 
@@ -344,7 +344,7 @@ func TestJobStatsDBBackup(t *testing.T) {
 
 func TestJobStatsDeleteOldUnits(t *testing.T) {
 	tmpDir := t.TempDir()
-	unitId := "1111"
+	unitID := "1111"
 	c := prepareMockConfig(tmpDir)
 
 	// Make new stats DB
@@ -356,7 +356,7 @@ func TestJobStatsDeleteOldUnits(t *testing.T) {
 	// Add new row that should be deleted
 	units := []types.Unit{
 		{
-			UUID: unitId,
+			UUID: unitID,
 			Submit: time.Now().
 				Add(time.Duration(-s.storage.retentionPeriod*24*2) * time.Hour).
 				Format(base.DatetimeLayout),
@@ -384,7 +384,7 @@ func TestJobStatsDeleteOldUnits(t *testing.T) {
 		t.Errorf("Failed to prepare SQL statement")
 	}
 	var numRows string
-	err = result.QueryRow(unitId).Scan(&numRows)
+	err = result.QueryRow(unitID).Scan(&numRows)
 	if err != nil {
 		t.Errorf("Failed to get query result due to %s.", err)
 	}
