@@ -1,3 +1,5 @@
+// Package base defines the names and variables that have global scope
+// throughout which can be used in other subpackages
 package base
 
 import (
@@ -9,10 +11,10 @@ import (
 	"github.com/mahendrapaipuri/ceems/pkg/stats/types"
 )
 
-// Name of ceems server kingpin app
+// CEEMSServerAppName is kingpin app name
 const CEEMSServerAppName = "ceems_server"
 
-// `ceems_server` CLI app
+// CEEMSServerApp is kinpin app
 var CEEMSServerApp = *kingpin.New(
 	CEEMSServerAppName,
 	"API server for reporting usage statistics for batchjobs/VMs/Pods.",
@@ -50,14 +52,11 @@ var (
 	UsageDBTableColTypeMap = structset.GetStructFieldTagMap(types.Usage{}, "sql", "sqlitetype")
 )
 
-// Layout of datetime to be used in the package
+// DatetimeLayout to be used in the package
 var DatetimeLayout = fmt.Sprintf("%sT%s", time.DateOnly, time.TimeOnly)
 
 // CLI args with global scope
 var (
-	TSDBWebURL           string
-	TSDBWebSkipTLSVerify bool
-
 	GrafanaWebURL           string
 	GrafanaWebSkipTLSVerify bool
 	GrafanaAdminTeamID      string

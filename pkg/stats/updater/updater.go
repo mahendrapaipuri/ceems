@@ -1,3 +1,8 @@
+// Package updater will provide an interface to update the unit stucts before
+// inserting into DB
+//
+// Users can implement their own logic to mutate units struct to manipulate each
+// unit struct
 package updater
 
 import (
@@ -10,9 +15,9 @@ import (
 	"github.com/mahendrapaipuri/ceems/pkg/stats/types"
 )
 
-// Unit updater interface
+// Updater interface
 type Updater interface {
-	Update(queryTime time.Time, units []types.Unit) []types.Unit
+	Update(startTime time.Time, endTime time.Time, units []types.Unit) []types.Unit
 }
 
 // UnitUpdater implements the interface to update
@@ -30,7 +35,7 @@ var (
 	updaterState        = make(map[string]*bool)
 )
 
-// Register updater
+// RegisterUpdater registers updater struct into factories
 func RegisterUpdater(name string, isDefaultEnabled bool, factory func(logger log.Logger) (Updater, error)) {
 	var helpDefaultState string
 	if isDefaultEnabled {
@@ -75,7 +80,7 @@ func NewUnitUpdater(logger log.Logger) (*UnitUpdater, error) {
 }
 
 // Update implements updating units using registered updaters
-func (u UnitUpdater) Update(queryTime time.Time, units []types.Unit) []types.Unit {
+func (u UnitUpdater) Update(startTime time.Time, endTime time.Time, units []types.Unit) []types.Unit {
 	// If there are no registered updaters, return
 	if len(u.Updaters) == 0 {
 		return units
@@ -83,7 +88,7 @@ func (u UnitUpdater) Update(queryTime time.Time, units []types.Unit) []types.Uni
 
 	// Iterate through all updaters in reverse
 	for i := len(u.Updaters) - 1; i >= 0; i-- {
-		units = u.Updaters[i].Update(queryTime, units)
+		units = u.Updaters[i].Update(startTime, endTime, units)
 		level.Info(u.Logger).Log("msg", "Updater", "name", u.Names[i])
 	}
 	return units

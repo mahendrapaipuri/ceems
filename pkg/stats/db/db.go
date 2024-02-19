@@ -1,3 +1,5 @@
+// Package db creates DB tables, call resource manager interfaces and
+// populates the DB with compute units
 package db
 
 import (
@@ -19,12 +21,11 @@ import (
 	"github.com/rotationalio/ensign/pkg/utils/sqlite"
 )
 
-// DB config
+// Config makes a DB config from CLI args
 type Config struct {
 	Logger               log.Logger
 	DataPath             string
 	DataBackupPath       string
-	CutoffPeriod         time.Duration
 	RetentionPeriod      time.Duration
 	SkipDeleteOldUnits   bool
 	LastUpdateTimeString string
@@ -61,7 +62,6 @@ type statsDB struct {
 	dbConn  *sqlite.Conn
 	manager *resource.Manager
 	updater *updater.UnitUpdater
-	tsdb    *tsdb.TSDB
 	storage *storageConfig
 }
 
@@ -131,7 +131,7 @@ func init() {
 	)
 }
 
-// Make new statsDB struct
+// NewStatsDB returns a new instance of statsDB struct
 func NewStatsDB(c *Config) (*statsDB, error) {
 	var lastUpdateTime time.Time
 	var err error
@@ -208,7 +208,6 @@ setup:
 		dbPath:             dbPath,
 		dbBackupPath:       c.DataBackupPath,
 		retentionPeriod:    c.RetentionPeriod,
-		cutoffPeriod:       c.CutoffPeriod,
 		lastUpdateTime:     lastUpdateTime,
 		lastUpdateTimeFile: lastUpdateTimeStampFile,
 		skipDeleteOldUnits: c.SkipDeleteOldUnits,
@@ -222,7 +221,6 @@ setup:
 		dbConn:  dbConn,
 		manager: manager,
 		updater: updater,
-		tsdb:    c.TSDB,
 		storage: storageConfig,
 	}, nil
 }
@@ -280,7 +278,7 @@ func (s *statsDB) getJobStats(startTime, endTime time.Time) error {
 	}
 
 	// Update units struct with unit level metrics from TSDB
-	units = s.updater.Update(endTime, units)
+	units = s.updater.Update(startTime, endTime, units)
 
 	// Begin transcation
 	tx, err := s.db.Begin()
@@ -312,22 +310,12 @@ func (s *statsDB) getJobStats(startTime, endTime time.Time) error {
 
 	// Insert data into DB
 	level.Debug(s.logger).Log("msg", "Executing SQL statements")
-	ignoredUnits := s.execStatements(stmtMap, units)
+	s.execStatements(stmtMap, units)
 	level.Debug(s.logger).Log("msg", "Finished executing SQL statements")
 
 	// Commit changes
 	if err = tx.Commit(); err != nil {
 		return fmt.Errorf("failed to commit SQL transcation: %s", err)
-	}
-
-	// Finally make API requests to TSDB to delete timeseries of ignored units
-	if s.tsdb.Available() {
-		level.Debug(s.logger).Log("msg", "Cleaning up time series of ignored units in TSDB")
-		if err = s.deleteTimeSeries(startTime, endTime, ignoredUnits); err != nil {
-			level.Error(s.logger).Log("msg", "Failed to clean up time series in TSDB", "err", err)
-		} else {
-			level.Debug(s.logger).Log("msg", "Cleaned up time series in TSDB")
-		}
 	}
 
 	// Write endTime to file to keep track upon successful insertion of data
@@ -369,27 +357,13 @@ func (s *statsDB) prepareStatements(tx *sql.Tx) (map[string]*sql.Stmt, error) {
 }
 
 // Insert unit stat into DB
-func (s *statsDB) execStatements(statements map[string]*sql.Stmt, units []types.Unit) []string {
-	var ignoredUnits []string
+func (s *statsDB) execStatements(statements map[string]*sql.Stmt, units []types.Unit) {
+	var ignore = 0
 	var err error
 	for _, unit := range units {
 		// Empty unit
 		if unit == (types.Unit{}) {
 			continue
-		}
-
-		// Ignore units that ran for less than cutoffPeriod seconds and check if
-		// unit has end time stamp. If we decide to populate DB with running units,
-		// EndTS will be zero as we cannot convert unknown time into time stamp.
-		// Check if we EndTS is not zero before ignoring unit. If it is zero, it means
-		// it must be RUNNING unit
-		var ignore = 0
-		if unit.ElapsedRaw < int64(s.storage.cutoffPeriod.Seconds()) && unit.EndTS != 0 {
-			ignoredUnits = append(
-				ignoredUnits,
-				unit.UUID,
-			)
-			ignore = 1
 		}
 
 		// level.Debug(s.logger).Log("msg", "Inserting unit", "id", unit.Jobid)
@@ -497,46 +471,6 @@ func (s *statsDB) execStatements(statements map[string]*sql.Stmt, units []types.
 				Log("msg", "Failed to update usage table in DB", "id", unit.UUID, "err", err)
 		}
 	}
-	level.Debug(s.logger).Log("units_ignored", len(ignoredUnits))
-	return ignoredUnits
-}
-
-// Delete time series data of ignored units
-func (s *statsDB) deleteTimeSeries(startTime time.Time, endTime time.Time, unitUUIDs []string) error {
-	// Check if there are any units to ignore. If there aren't return immediately
-	// We shouldnt make a API request to delete with empty units slice as TSDB will
-	// match all units during that period with uuid=~"" matcher
-	if len(unitUUIDs) == 0 {
-		return nil
-	}
-
-	/*
-		We should give start and end query params as well. If not, TSDB has to look over
-		"all" time blocks (potentially 1000s or more) and try to find the series.
-		The thing is the time series data of these "ignored" units should be head block
-		as they have started and finished very "recently".
-
-		Imagine we are updating units data for every 15 min and we would like to ignore units
-		that have wall time less than 10 min. If we are updating units from, say 10h-10h-15,
-		the units that have been ignored cannot start earlier than 9h50 to have finished within
-		10h-10h15 window. So, all these time series must be in the head block of TSDB and
-		we should provide start and end query params corresponding to
-		9h50 (lastupdatetime - ignored unit duration) and current time, respectively. This
-		will help TSDB to narrow the search to head block and hence deletion of time series
-		will be easy as they are potentially not yet persisted to disk.
-	*/
-	start := startTime.Add(-s.storage.cutoffPeriod)
-	end := endTime
-
-	// Matcher must be of format "{uuid=~"<regex>"}"
-	// Ref: https://ganeshvernekar.com/blog/prometheus-tsdb-queries/
-	//
-	// Join them with | as delimiter. We will use regex match to match all series
-	// with the label uuid=~"$unitids"
-	allUUIDs := strings.Join(unitUUIDs, "|")
-	matcher := fmt.Sprintf("{uuid=~\"%s\"}", allUUIDs)
-	// Make a API request to delete data of ignored units
-	return s.tsdb.Delete(start, end, matcher)
 }
 
 // Backup executes the sqlite3 backup strategy
