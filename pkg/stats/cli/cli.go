@@ -21,7 +21,6 @@ import (
 	"github.com/mahendrapaipuri/ceems/pkg/stats/http"
 	"github.com/mahendrapaipuri/ceems/pkg/stats/resource"
 	"github.com/mahendrapaipuri/ceems/pkg/stats/updater"
-	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/common/promlog"
 	"github.com/prometheus/common/promlog/flag"
@@ -88,20 +87,6 @@ func (b *CEEMSServer) Main() error {
 			"storage.data.backup.interval",
 			"Job data DB will be backed up at this interval. Minimum interval is 1 day. Units Supported: y, w, d, h, m, s, ms.",
 		).Default("1d").String()
-		cutoffDurationString = b.App.Flag(
-			"storage.data.cutoff.duration",
-			"Compute units (Batch jobs, VMs, Pods) with wall time less than this period will be ignored. By default none will be ignored. Units Supported: y, w, d, h, m, s, ms.",
-		).Default("0s").String()
-
-		// TSDB related CLI args
-		tsdbWebURL = b.App.Flag(
-			"tsdb.web.url",
-			"TSDB URL (Prometheus/Victoria Metrics). If basic auth is enabled consider providing this URL using environment variable TSDB_WEBURL.",
-		).Default(os.Getenv("TSDB_WEBURL")).String()
-		tsdbWebSkipTLSVerify = b.App.Flag(
-			"tsdb.web.skip-tls-verify",
-			"Whether to skip TLS verification when using self signed certificates (default is false).",
-		).Default("false").Bool()
 
 		// Grafana related CLI args
 		grafanaWebURL = b.App.Flag(
@@ -163,10 +148,6 @@ func (b *CEEMSServer) Main() error {
 	if err != nil {
 		return fmt.Errorf("failed to parse --storage.data.backup.interval flag: %s", err)
 	}
-	cutoffDuration, err := model.ParseDuration(*cutoffDurationString)
-	if err != nil {
-		return fmt.Errorf("failed to parse --storage.data.duration.cutoff flag: %s", err)
-	}
 	maxQuery, err := model.ParseDuration(*maxQueryString)
 	if err != nil {
 		return fmt.Errorf("failed to parse --web.max.query.period flag: %s", err)
@@ -219,19 +200,6 @@ func (b *CEEMSServer) Main() error {
 	runtime.GOMAXPROCS(*maxProcs)
 	level.Debug(logger).Log("msg", "Go MAXPROCS", "procs", runtime.GOMAXPROCS(0))
 
-	// Make a new TSDB instance and if it is available check if it is reachable
-	base.TSDBWebURL = *tsdbWebURL
-	base.TSDBWebSkipTLSVerify = *tsdbWebSkipTLSVerify
-	tsdb, err := tsdb.NewTSDB(*tsdbWebURL, *tsdbWebSkipTLSVerify, logger)
-	if err != nil {
-		return fmt.Errorf("failed to create TSDB: %s", err)
-	}
-	if tsdb.Available() {
-		if err := tsdb.Ping(); err != nil {
-			return fmt.Errorf("TSDB at %s is unreachable: %s", tsdb.URL.Redacted(), err)
-		}
-	}
-
 	// Make a new Grafana instance
 	base.GrafanaWebURL = *grafanaWebURL
 	base.GrafanaWebSkipTLSVerify = *grafanaWebSkipTLSVerify
@@ -270,13 +238,11 @@ func (b *CEEMSServer) Main() error {
 		Logger:               logger,
 		DataPath:             absDataPath,
 		DataBackupPath:       absDataBackupPath,
-		CutoffPeriod:         time.Duration(cutoffDuration),
 		RetentionPeriod:      time.Duration(retentionPeriod),
 		SkipDeleteOldUnits:   *skipDeleteOldUnits,
 		LastUpdateTimeString: *lastUpdateTime,
 		ResourceManager:      resource.NewManager,
 		Updater:              updater.NewUnitUpdater,
-		TSDB:                 tsdb,
 	}
 
 	// Make server config
