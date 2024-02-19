@@ -1,7 +1,7 @@
 package updater
 
 const (
-	avgCpuUsageQuery = `
+	avgCPUUsageQuery = `
 avg_over_time(
 	avg by (uuid) (
 		(
@@ -14,7 +14,7 @@ avg_over_time(
 	)[%[3]s:]
 ) * 100`
 
-	avgCpuMemUsageQuery = `
+	avgCPUMemUsageQuery = `
 avg_over_time(
 	avg by (uuid) (
 		ceems_slurm_job_memory_used_bytes{uuid=~"%[1]s"}
@@ -23,7 +23,7 @@ avg_over_time(
 	)[%[3]s:]
 ) * 100`
 
-	totalCpuEnergyUsageQuery = `
+	totalCPUEnergyUsageQuery = `
 sum_over_time(
 	sum by (uuid) (
 		ceems_ipmi_dcmi_current_watts * %[5]d / 3.6e9
@@ -38,7 +38,7 @@ sum_over_time(
 	)[%[3]s:%[4]s]
 )`
 
-	totalCpuEmissionsUsageQuery = `
+	totalCPUEmissionsUsageQuery = `
 sum_over_time(
 	sum by (uuid) (
 	label_replace(
@@ -73,7 +73,7 @@ sum_over_time(
 	)[%[3]s:%[4]s]
 )`
 
-	avgGpuUsageQuery = `
+	avgGPUUsageQuery = `
 avg_over_time(
 	avg by (uuid) (
 		DCGM_FI_DEV_GPU_UTIL
@@ -82,7 +82,7 @@ avg_over_time(
 	)[%[3]s:%[4]s]
 )`
 
-	avgGpuMemUsageQuery = `
+	avgGPUMemUsageQuery = `
 avg_over_time(
 	avg by (uuid) (
 		DCGM_FI_DEV_MEM_COPY_UTIL
@@ -91,7 +91,7 @@ avg_over_time(
 	)[%[3]s:%[4]s]
 )`
 
-	totalGpuEnergyUsageQuery = `
+	totalGPUEnergyUsageQuery = `
 sum_over_time(
 	sum by (uuid) (
 		DCGM_FI_DEV_POWER_USAGE * %[5]d / 3.6e9
@@ -100,7 +100,7 @@ sum_over_time(
 	)[%[3]s:%[4]s]
 )`
 
-	totalGpuEmissionsUsageQuery = `
+	totalGPUEmissionsUsageQuery = `
 sum_over_time(
 	sum by (uuid) (
 		label_replace(
@@ -126,12 +126,12 @@ sum_over_time(
 
 // TSDB queries to get aggregate metrics of jobs
 var aggMetricQueries = map[string]string{
-	"cpuUsage":       avgCpuUsageQuery,
-	"cpuMemUsage":    avgCpuMemUsageQuery,
-	"cpuEnergyUsage": totalCpuEnergyUsageQuery,
-	"cpuEmissions":   totalCpuEmissionsUsageQuery,
-	"gpuUsage":       avgGpuUsageQuery,
-	"gpuMemUsage":    avgGpuMemUsageQuery,
-	"gpuEnergyUsage": totalGpuEnergyUsageQuery,
-	"gpuEmissions":   totalGpuEmissionsUsageQuery,
+	"cpuUsage":       avgCPUUsageQuery,
+	"cpuMemUsage":    avgCPUMemUsageQuery,
+	"cpuEnergyUsage": totalCPUEnergyUsageQuery,
+	"cpuEmissions":   totalCPUEmissionsUsageQuery,
+	"gpuUsage":       avgGPUUsageQuery,
+	"gpuMemUsage":    avgGPUMemUsageQuery,
+	"gpuEnergyUsage": totalGPUEnergyUsageQuery,
+	"gpuEmissions":   totalGPUEmissionsUsageQuery,
 }
