@@ -27,7 +27,7 @@ RestartSec=1
 StartLimitInterval=0
 
 AmbientCapabilities=CAP_SETUID CAP_SETGID
-BoundingCapabilities=CAP_SETUID CAP_SETGID
+CapabilityBoundingSet=CAP_SETUID CAP_SETGID
 
 ProtectHome=read-only
 ReadWritePaths=/var/lib/ceems /nfs/data/backup/ceems
