@@ -4,6 +4,7 @@ package db
 
 import (
 	"database/sql"
+	"embed"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -20,6 +21,12 @@ import (
 	"github.com/mattn/go-sqlite3"
 	"github.com/rotationalio/ensign/pkg/utils/sqlite"
 )
+
+// Directory containing DB migrations
+const migrationsDir = "migrations"
+
+//go:embed migrations/*.sql
+var MigrationsFS embed.FS
 
 // Config makes a DB config from CLI args
 type Config struct {
@@ -117,10 +124,7 @@ func init() {
 			"(1,%s)",
 			strings.Join(strings.Split(strings.Repeat("?", len(base.UsageDBTableColNames)-1), ""), ","),
 		),
-		fmt.Sprintf(
-			"ON CONFLICT(%s) DO UPDATE SET",
-			strings.Join(sqlIndexMap[base.UsageDBTableName]["uq_project_usr"], ","),
-		),
+		"ON CONFLICT(usr,project) DO UPDATE SET", // Index is defined in 000006_create_usr_project_uq_idx_usage.up.sql
 	)
 	prepareStatements[base.UsageDBTableName] = strings.Join(
 		[]string{
@@ -184,10 +188,21 @@ setup:
 		return nil, err
 	}
 
-	// Setup DB(s)
+	// Setup DB
 	db, dbConn, err := setupDB(dbPath, c.Logger)
 	if err != nil {
 		level.Error(c.Logger).Log("msg", "DB setup failed", "err", err)
+		return nil, err
+	}
+
+	// Setup Migrator
+	migrator, err := NewMigrator(MigrationsFS, migrationsDir, c.Logger)
+	if err != nil {
+		return nil, err
+	}
+
+	// Perform DB migrations
+	if err = migrator.ApplyMigrations(db); err != nil {
 		return nil, err
 	}
 
