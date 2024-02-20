@@ -14,7 +14,7 @@ import (
 	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
 )
 
-func TestTSDBUpdate(t *testing.T) {
+func mockTSDBServer() *httptest.Server {
 	// Start test server
 	expected := tsdb.Response{
 		Status: "success",
@@ -45,6 +45,12 @@ func TestTSDBUpdate(t *testing.T) {
 			w.Write([]byte("KO"))
 		}
 	}))
+	return server
+}
+
+func TestTSDBUpdate(t *testing.T) {
+	// Start test server
+	server := mockTSDBServer()
 	defer server.Close()
 
 	if _, err := base.CEEMSServerApp.Parse(
@@ -100,6 +106,67 @@ func TestTSDBUpdate(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to create TSDB updater instance")
 	}
+
+	updatedUnits := tsdb.Update(time.Now(), time.Now(), units)
+	if !reflect.DeepEqual(updatedUnits, expectedUnits) {
+		t.Errorf("expected %#v \n got %#v", expectedUnits, updatedUnits)
+	}
+}
+
+func TestTSDBUpdateNoUnits(t *testing.T) {
+	// Start test server
+	server := mockTSDBServer()
+	defer server.Close()
+
+	if _, err := base.CEEMSServerApp.Parse(
+		[]string{
+			"--tsdb.web.url", server.URL,
+			"--tsdb.data.cutoff.duration", "2m",
+		},
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	units := []models.Unit{}
+	expectedUnits := []models.Unit{}
+
+	tsdb, err := NewTSDBUpdater(log.NewNopLogger())
+	if err != nil {
+		t.Errorf("Failed to create TSDB updater instance")
+	}
+
+	updatedUnits := tsdb.Update(time.Now(), time.Now(), units)
+	if !reflect.DeepEqual(updatedUnits, expectedUnits) {
+		t.Errorf("expected %#v \n got %#v", expectedUnits, updatedUnits)
+	}
+}
+
+func TestTSDBUpdateNoTSDB(t *testing.T) {
+	// Start test server
+	server := mockTSDBServer()
+
+	if _, err := base.CEEMSServerApp.Parse(
+		[]string{
+			"--tsdb.web.url", server.URL,
+			"--tsdb.data.cutoff.duration", "2m",
+		},
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	units := []models.Unit{
+		{UUID: "1", EndTS: int64(10000), ElapsedRaw: int64(3000)},
+		{UUID: "2", EndTS: int64(10000), ElapsedRaw: int64(3000)},
+		{UUID: "3", EndTS: int64(10000), ElapsedRaw: int64(30)},
+	}
+	expectedUnits := units
+
+	tsdb, err := NewTSDBUpdater(log.NewNopLogger())
+	if err != nil {
+		t.Errorf("Failed to create TSDB updater instance")
+	}
+	// Stop TSDB server
+	server.Close()
 
 	updatedUnits := tsdb.Update(time.Now(), time.Now(), units)
 	if !reflect.DeepEqual(updatedUnits, expectedUnits) {

@@ -97,6 +97,11 @@ func (t *tsdbUpdater) fetchAggMetrics(
 	rateInterval := t.RateInterval()
 	scrapeInterval := t.ScrapeInterval()
 
+	// If maxDuration is less than rateInterval bail
+	if maxDuration < rateInterval {
+		return aggMetrics
+	}
+
 	// Loop over aggMetricQueries map and make queries
 	for name, query := range aggMetricQueries {
 		go func(n string, q string) {
@@ -120,8 +125,8 @@ func (t *tsdbUpdater) fetchAggMetrics(
 
 // Fetch unit metrics from TSDB and update UnitStat struct for each unit
 func (t *tsdbUpdater) Update(startTime time.Time, endTime time.Time, units []models.Unit) []models.Unit {
-	// Check if TSDB is available
-	if !t.Available() {
+	// Bail if TSDB is unavailable or there are no units to update
+	if !t.Available() || len(units) == 0 {
 		return units
 	}
 	var minStartTime = endTime.UnixMilli()
