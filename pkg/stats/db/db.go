@@ -13,8 +13,8 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/pkg/stats/base"
+	"github.com/mahendrapaipuri/ceems/pkg/stats/models"
 	"github.com/mahendrapaipuri/ceems/pkg/stats/resource"
-	"github.com/mahendrapaipuri/ceems/pkg/stats/types"
 	"github.com/mahendrapaipuri/ceems/pkg/stats/updater"
 	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
 	"github.com/mattn/go-sqlite3"
@@ -101,7 +101,7 @@ func init() {
 			placeholders = append(placeholders, fmt.Sprintf("  %[1]s = (%[1]s * num_units + ?) / (num_units + 1)", col))
 		} else if strings.HasPrefix(col, "total") {
 			placeholders = append(placeholders, fmt.Sprintf("  %[1]s = (%[1]s + ?)", col))
-		} else if col == "comment" {
+		} else if col == "tags" {
 			placeholders = append(placeholders, fmt.Sprintf("  %[1]s = ?", col))
 		} else {
 			continue
@@ -119,7 +119,7 @@ func init() {
 		),
 		fmt.Sprintf(
 			"ON CONFLICT(%s) DO UPDATE SET",
-			strings.Join(sqlIndexMap[base.UsageDBTableName]["uq_project_usr_partition_qos_app_vm"], ","),
+			strings.Join(sqlIndexMap[base.UsageDBTableName]["uq_project_usr"], ","),
 		),
 	)
 	prepareStatements[base.UsageDBTableName] = strings.Join(
@@ -290,7 +290,7 @@ func (s *statsDB) getJobStats(startTime, endTime time.Time) error {
 	// In testing we want to skip this
 	if !s.storage.skipDeleteOldUnits {
 		level.Debug(s.logger).Log("msg", "Cleaning up old units")
-		if err = s.deleteOldUnits(tx); err != nil {
+		if err = s.purgeExpiredUnits(tx); err != nil {
 			level.Error(s.logger).Log("msg", "Failed to clean up old unit entries", "err", err)
 		} else {
 			level.Debug(s.logger).Log("msg", "Cleaned up old units in DB")
@@ -325,7 +325,7 @@ func (s *statsDB) getJobStats(startTime, endTime time.Time) error {
 }
 
 // Delete old entries in DB
-func (s *statsDB) deleteOldUnits(tx *sql.Tx) error {
+func (s *statsDB) purgeExpiredUnits(tx *sql.Tx) error {
 	deleteRowQuery := fmt.Sprintf(
 		"DELETE FROM %s WHERE Start <= date('now', '-%d day')",
 		base.UnitsDBTableName,
@@ -357,25 +357,22 @@ func (s *statsDB) prepareStatements(tx *sql.Tx) (map[string]*sql.Stmt, error) {
 }
 
 // Insert unit stat into DB
-func (s *statsDB) execStatements(statements map[string]*sql.Stmt, units []types.Unit) {
+func (s *statsDB) execStatements(statements map[string]*sql.Stmt, units []models.Unit) {
 	var ignore = 0
 	var err error
 	for _, unit := range units {
 		// Empty unit
-		if unit == (types.Unit{}) {
+		if unit.UUID == "" {
 			continue
 		}
 
 		// level.Debug(s.logger).Log("msg", "Inserting unit", "id", unit.Jobid)
 		if _, err = statements[base.UnitsDBTableName].Exec(
 			unit.UUID,
-			unit.Partition,
-			unit.QoS,
+			unit.Name,
 			unit.Project,
 			unit.Grp,
-			unit.Gid,
 			unit.Usr,
-			unit.Uid,
 			unit.Submit,
 			unit.Start,
 			unit.End,
@@ -386,14 +383,7 @@ func (s *statsDB) execStatements(statements map[string]*sql.Stmt, units []types.
 			unit.ElapsedRaw,
 			unit.Exitcode,
 			unit.State,
-			unit.AllocNodes,
-			unit.AllocCPUs,
-			unit.AllocMem,
-			unit.AllocGPUs,
-			unit.Nodelist,
-			unit.NodelistExp,
-			unit.Name,
-			unit.WorkDir,
+			unit.Allocation,
 			unit.TotalCPUBilling,
 			unit.TotalGPUBilling,
 			unit.TotalMiscBilling,
@@ -411,7 +401,7 @@ func (s *statsDB) execStatements(statements map[string]*sql.Stmt, units []types.
 			unit.TotalIOReadCold,
 			unit.TotalIngress,
 			unit.TotalOutgress,
-			unit.Comment,
+			unit.Tags,
 			ignore,
 		); err != nil {
 			level.Error(s.logger).
@@ -428,8 +418,6 @@ func (s *statsDB) execStatements(statements map[string]*sql.Stmt, units []types.
 		if _, err = statements[base.UsageDBTableName].Exec(
 			unit.Project,
 			unit.Usr,
-			unit.Partition,
-			unit.QoS,
 			unit.TotalCPUBilling,
 			unit.TotalGPUBilling,
 			unit.TotalMiscBilling,
@@ -447,7 +435,6 @@ func (s *statsDB) execStatements(statements map[string]*sql.Stmt, units []types.
 			unit.TotalIOReadCold,
 			unit.TotalIngress,
 			unit.TotalOutgress,
-			unit.Comment,
 			unit.TotalCPUBilling,
 			unit.TotalGPUBilling,
 			unit.TotalMiscBilling,
@@ -465,7 +452,6 @@ func (s *statsDB) execStatements(statements map[string]*sql.Stmt, units []types.
 			unit.TotalIOReadCold,
 			unit.TotalIngress,
 			unit.TotalOutgress,
-			unit.Comment,
 		); err != nil {
 			level.Error(s.logger).
 				Log("msg", "Failed to update usage table in DB", "id", unit.UUID, "err", err)

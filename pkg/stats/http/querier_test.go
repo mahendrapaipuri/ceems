@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/ceems/pkg/stats/base"
-	"github.com/mahendrapaipuri/ceems/pkg/stats/types"
+	"github.com/mahendrapaipuri/ceems/pkg/stats/models"
 )
 
 func setupTestDB(d string) *sql.DB {
@@ -24,15 +24,10 @@ BEGIN TRANSACTION;
 CREATE TABLE units (
 	"id" integer not null primary key,
 	"uuid" text,
-	"partition" text,
-	"qos" text,
-	"app" text,
-	"vm" text,
+	"name" text,
 	"project" text,
 	"grp" text,
-	"gid" integer,
 	"usr" text,
-	"uid" integer,
 	"submit" text,
 	"start" text,
 	"end" text,
@@ -43,14 +38,9 @@ CREATE TABLE units (
 	"elapsed_raw" integer,
 	"exitcode" text,
 	"state" text,
-	"alloc_nodes" integer,
 	"alloc_cpus" integer,
 	"alloc_mem" text,
 	"alloc_gpus" integer,
-	"nodelist" text,
-	"nodelist_exp" text,
-	"name" text,
-	"workdir" text,
 	"total_cpu_billing" integer,
 	"total_gpu_billing" integer,
 	"total_misc_billing" integer,
@@ -68,28 +58,24 @@ CREATE TABLE units (
 	"total_io_read_cold_gb" real,
 	"total_ingress_in_gb" real,
 	"total_outgress_in_gb" real,
-	"comment" blob,
+	"tags" text default '{}',
 	"ignore" integer
 );
-INSERT INTO units VALUES(1,'1479763','part1','qos1','','','acc1','grp1',1001,'usr1',1001,'2022-02-21T14:37:02+0100','2022-02-21T14:37:07+0100','2022-02-21T15:26:29+0100',1645450622000,1645450627000,1645453589000,'00:49:22',3000,'0:0','CANCELLED by 1001',1,8,'320G',8,'compute-0','compute-0','test_script1','/home/usr1',0,80,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,'',0);
-INSERT INTO units VALUES(2,'1481508','part1','qos1','','','acc2','grp2',1002,'usr2',1002,'2023-02-21T15:48:20+0100','2023-02-21T15:49:06+0100','2023-02-21T15:57:23+0100',1676990900000,1676990946000,1676991443000,'00:08:17',4500,'0:0','CANCELLED by 1002',2,16,'320G',8,'compute-[0-2]','compute-0|compute-1|compute-2','test_script2','/home/usr2',0,160,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,'',0);
-INSERT INTO units VALUES(3,'1481510','part1','qos1','','','acc3','grp3',1003,'usr3',1003,'2023-02-21T15:48:20+0100','2023-02-21T15:49:06+0100','2023-02-21T15:57:23+0100',1676990900000,1676990946000,1676991443000,'00:00:17',789,'0:0','CANCELLED by 1003',2,16,'320G',8,'compute-[0-2]','compute-0|compute-1|compute-2','test_script2','/home/usr3',0,160,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,'',0);
-INSERT INTO units VALUES(4,'147975','part1','qos1','','','acc3','grp3',1003,'usr3',1003,'2023-02-21T14:37:02+0100','2023-02-21T14:37:07+0100','2023-02-21T15:26:29+0100',1676986622000,1676986627000,1676989589000,'00:49:22',3000,'0:0','CANCELLED by 1003',1,8,'320G',8,'compute-0','compute-0','test_script1','/home/usr3',0,80,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,'',0);
-INSERT INTO units VALUES(5,'14508','part1','qos1','','','acc4','grp4',1004,'usr4',1004,'2023-02-21T15:48:20+0100','2023-02-21T15:49:06+0100','2023-02-21T15:57:23+0100',1676990900000,1676990946000,1676991443000,'00:08:17',4500,'0:0','CANCELLED by 1004',2,16,'320G',8,'compute-[0-2]','compute-0|compute-1|compute-2','test_script2','/home/usr4',0,160,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,'',0);
-INSERT INTO units VALUES(6,'147973','part1','qos1','','','acc2','gr1',1002,'usr1',1001,'2023-12-21T15:48:20+0100','2023-12-21T15:49:06+0100','2023-12-21T15:57:23+0100',1703170100000,1703170146000,1703170643000,'00:00:17',567,'0:0','CANCELLED by 1001',2,16,'320G',8,'compute-[0-2]','compute-0|compute-1|compute-2','test_script2','/home/usr1',0,160,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,'',0);
-INSERT INTO units VALUES(7,'1479765','part1','qos1','','','acc1','grp8',1008,'usr8',1008,'2023-02-21T14:37:02+0100','2023-02-21T14:37:07+0100','2023-02-21T15:26:29+0100',1676986622000,1676986627000,1676989589000,'00:49:22',3000,'0:0','CANCELLED by 1008',1,8,'320G',8,'compute-0','compute-0','test_script1','/home/usr8',0,80,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,'',0);
-INSERT INTO units VALUES(8,'11508','part1','qos1','','','acc1','grp15',1015,'usr15',1015,'2023-02-21T15:48:20+0100','2023-02-21T15:49:06+0100','2023-02-21T15:57:23+0100',1676990900000,1676990946000,1676991443000,'00:08:17',4500,'0:0','CANCELLED by 1015',2,16,'320G',8,'compute-[0-2]','compute-0|compute-1|compute-2','test_script2','/home/usr15',0,160,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,'',0);
-INSERT INTO units VALUES(9,'81510','part1','qos1','','','acc1','grp15',1015,'usr15',1015,'2023-02-21T15:48:20+0100','2023-02-21T15:49:06+0100','2023-02-21T15:57:23+0100',1676990900000,1676990946000,1676991443000,'00:00:17',3533,'0:0','CANCELLED by 1015',2,16,'320G',8,'compute-[0-2]','compute-0|compute-1|compute-2','test_script2','/home/usr23',0,160,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,'',0);
-INSERT INTO units VALUES(10,'1009248','part1','qos1','','','testacc','grp15',1015,'testusr',1015,'2023-02-21T15:48:20+0100','2023-02-21T15:49:06+0100','2023-02-21T15:57:23+0100',1676990900000,1676990946000,1676991443000,'00:00:17',17,'0:0','CANCELLED by 1015',2,16,'320G',8,'compute-[0-2]','compute-0|compute-1|compute-2','test_script2','/home/usr23',0,160,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,'',0);
+INSERT INTO units VALUES(1,'1479763','test_script1','acc1','grp1','usr1','2022-02-21T14:37:02+0100','2022-02-21T14:37:07+0100','2022-02-21T15:26:29+0100',1645450622000,1645450627000,1645453589000,'00:49:22',3000,'0:0','CANCELLED by 1001',8,'320G',8,0,80,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,'{"allocnodes":1,"gid":1001,"nodelist":"compute-0","nodelistexp":"compute-0","partition":"part1","qos":"qos1","uid":1001,"workdir":"/home/usr1"}',0);
+INSERT INTO units VALUES(2,'1481508','test_script2','acc2','grp2','usr2','2023-02-21T15:48:20+0100','2023-02-21T15:49:06+0100','2023-02-21T15:57:23+0100',1676990900000,1676990946000,1676991443000,'00:08:17',4500,'0:0','CANCELLED by 1002',16,'320G',8,0,160,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,'{"allocnodes":2,"gid":1002,"nodelist":"compute-[0-2]","nodelistexp":"compute-0|compute-1|compute-2","partition":"part1","qos":"qos1","uid":1002,"workdir":"/home/usr2"}',0);
+INSERT INTO units VALUES(3,'1481510','test_script2','acc3','grp3','usr3','2023-02-21T15:48:20+0100','2023-02-21T15:49:06+0100','2023-02-21T15:57:23+0100',1676990900000,1676990946000,1676991443000,'00:00:17',789,'0:0','CANCELLED by 1003',16,'320G',8,0,160,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,'{"allocnodes":2,"gid":1003,"nodelist":"compute-[0-2]","nodelistexp":"compute-0|compute-1|compute-2","partition":"part1","qos":"qos1","uid":1003,"workdir":"/home/usr3"}',0);
+INSERT INTO units VALUES(4,'147975','test_script1','acc3','grp3','usr3','2023-02-21T14:37:02+0100','2023-02-21T14:37:07+0100','2023-02-21T15:26:29+0100',1676986622000,1676986627000,1676989589000,'00:49:22',3000,'0:0','CANCELLED by 1003',8,'320G',8,0,80,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,'{"allocnodes":1,"gid":1003,"nodelist":"compute-0","nodelistexp":"compute-0","partition":"part1","qos":"qos1","uid":1003,"workdir":"/home/usr3"}',0);
+INSERT INTO units VALUES(5,'14508','test_script2','acc4','grp4','usr4','2023-02-21T15:48:20+0100','2023-02-21T15:49:06+0100','2023-02-21T15:57:23+0100',1676990900000,1676990946000,1676991443000,'00:08:17',4500,'0:0','CANCELLED by 1004',16,'320G',8,0,160,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,'{"allocnodes":2,"gid":1004,"nodelist":"compute-[0-2]","nodelistexp":"compute-0|compute-1|compute-2","partition":"part1","qos":"qos1","uid":1004,"workdir":"/home/usr4"}',0);
+INSERT INTO units VALUES(6,'147973','test_script2','acc2','gr1','usr1','2023-12-21T15:48:20+0100','2023-12-21T15:49:06+0100','2023-12-21T15:57:23+0100',1703170100000,1703170146000,1703170643000,'00:00:17',567,'0:0','CANCELLED by 1001',16,'320G',8,0,160,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,'{"allocnodes":2,"gid":1002,"nodelist":"compute-[0-2]","nodelistexp":"compute-0|compute-1|compute-2","partition":"part1","qos":"qos1","uid":1001,"workdir":"/home/usr1"}',0);
+INSERT INTO units VALUES(7,'1479765','test_script1','acc1','grp8','usr8','2023-02-21T14:37:02+0100','2023-02-21T14:37:07+0100','2023-02-21T15:26:29+0100',1676986622000,1676986627000,1676989589000,'00:49:22',3000,'0:0','CANCELLED by 1008',8,'320G',8,0,80,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,'{"allocnodes":1,"gid":1008,"nodelist":"compute-0","nodelistexp":"compute-0","partition":"part1","qos":"qos1","uid":1008,"workdir":"/home/usr8"}',0);
+INSERT INTO units VALUES(8,'11508','test_script2','acc1','grp15','usr15','2023-02-21T15:48:20+0100','2023-02-21T15:49:06+0100','2023-02-21T15:57:23+0100',1676990900000,1676990946000,1676991443000,'00:08:17',4500,'0:0','CANCELLED by 1015',16,'320G',8,0,160,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,'{"allocnodes":2,"gid":1015,"nodelist":"compute-[0-2]","nodelistexp":"compute-0|compute-1|compute-2","partition":"part1","qos":"qos1","uid":1015,"workdir":"/home/usr15"}',0);
+INSERT INTO units VALUES(9,'81510','test_script2','acc1','grp15','usr15','2023-02-21T15:48:20+0100','2023-02-21T15:49:06+0100','2023-02-21T15:57:23+0100',1676990900000,1676990946000,1676991443000,'00:00:17',3533,'0:0','CANCELLED by 1015',16,'320G',8,0,160,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,'{"allocnodes":2,"gid":1015,"nodelist":"compute-[0-2]","nodelistexp":"compute-0|compute-1|compute-2","partition":"part1","qos":"qos1","uid":1015,"workdir":"/home/usr23"}',0);
+INSERT INTO units VALUES(10,'1009248','test_script2','testacc','grp15','testusr','2023-02-21T15:48:20+0100','2023-02-21T15:49:06+0100','2023-02-21T15:57:23+0100',1676990900000,1676990946000,1676991443000,'00:00:17',17,'0:0','CANCELLED by 1015',16,'320G',8,0,160,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,'{"allocnodes":2,"gid":1015,"nodelist":"compute-[0-2]","nodelistexp":"compute-0|compute-1|compute-2","partition":"part1","qos":"qos1","uid":1015,"workdir":"/home/usr23"}',0);
 CREATE TABLE usage (
 	"id" integer not null primary key,
 	"num_units" integer,
 	"project" text,
 	"usr" text,
-	"partition" text,
-	"qos" text,
-	"app" text,
-	"vm" text,
 	"total_cpu_billing" integer,
 	"total_gpu_billing" integer,
 	"total_misc_billing" integer,
@@ -106,22 +92,22 @@ CREATE TABLE usage (
 	"total_io_write_cold_gb" real,
 	"total_io_read_cold_gb" real,
 	"total_ingress_in_gb" real,
-	"total_outgress_in_gb" real,
-	"comment" blob
+	"total_outgress_in_gb" real
 );
-INSERT INTO usage VALUES(1,1,'acc1','usr1','part1','qos1','','',0,80,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,'');
-INSERT INTO usage VALUES(2,1,'acc2','usr2','part1','qos1','','',0,160,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,'');
-INSERT INTO usage VALUES(3,2,'acc3','usr3','part1','qos1','','',0,240,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,'');
-INSERT INTO usage VALUES(4,1,'acc4','usr4','part1','qos1','','',0,160,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,'');
-INSERT INTO usage VALUES(5,1,'acc2','usr1','part1','qos1','','',0,160,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,'');
-INSERT INTO usage VALUES(6,1,'acc1','usr8','part1','qos1','','',0,80,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,'');
-INSERT INTO usage VALUES(7,2,'acc1','usr15','part1','qos1','','',0,320,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,'');
-INSERT INTO usage VALUES(8,1,'testacc','testusr','part1','qos1','','',0,160,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,'');
+INSERT INTO usage VALUES(1,1,'acc1','usr1',0,80,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0);
+INSERT INTO usage VALUES(2,1,'acc2','usr2',0,160,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0);
+INSERT INTO usage VALUES(3,2,'acc3','usr3',0,240,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0);
+INSERT INTO usage VALUES(4,1,'acc4','usr4',0,160,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0);
+INSERT INTO usage VALUES(5,1,'acc2','usr1',0,160,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0);
+INSERT INTO usage VALUES(6,1,'acc1','usr8',0,80,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0);
+INSERT INTO usage VALUES(7,2,'acc1','usr15',0,320,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0);
+INSERT INTO usage VALUES(8,1,'testacc','testusr',0,160,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0);
 CREATE INDEX idx_usr_project_start ON units (usr,project,start);
 CREATE INDEX idx_usr_uuid ON units (usr,uuid);
 CREATE UNIQUE INDEX uq_uuid_start ON units (uuid,start);
-CREATE UNIQUE INDEX uq_project_usr_partition_qos_app_vm ON usage (project,usr,partition,qos,app,vm);
-COMMIT;`
+CREATE UNIQUE INDEX uq_project ON usage (project,usr);
+COMMIT;
+	`
 	_, err = db.Exec(stmts)
 	if err != nil {
 		fmt.Printf("failed to insert mock data into DB")
@@ -137,110 +123,74 @@ func TestJobsQuerier(t *testing.T) {
 	q := Query{}
 	q.query(fmt.Sprintf("SELECT * FROM %s WHERE ignore = 0 AND usr in ('usr1')", base.UnitsDBTableName))
 
-	expectedUnits := []types.Unit{
+	expectedUnits := []models.Unit{
 		{
-			ID:                  6,
-			UUID:                "147973",
-			Partition:           "part1",
-			QoS:                 "qos1",
-			Project:             "acc2",
-			Grp:                 "gr1",
-			Gid:                 1002,
-			Usr:                 "usr1",
-			Uid:                 1001,
-			Submit:              "2023-12-21T15:48:20+0100",
-			Start:               "2023-12-21T15:49:06+0100",
-			End:                 "2023-12-21T15:57:23+0100",
-			SubmitTS:            1703170100000,
-			StartTS:             1703170146000,
-			EndTS:               1703170643000,
-			Elapsed:             "00:00:17",
-			ElapsedRaw:          567,
-			Exitcode:            "0:0",
-			State:               "CANCELLED by 1001",
-			AllocNodes:          2,
-			AllocCPUs:           16,
-			AllocMem:            "320G",
-			AllocGPUs:           8,
-			Nodelist:            "compute-[0-2]",
-			NodelistExp:         "compute-0|compute-1|compute-2",
-			Name:                "test_script2",
-			WorkDir:             "/home/usr1",
-			TotalCPUBilling:     0,
-			TotalGPUBilling:     160,
-			TotalMiscBilling:    0,
-			AveCPUUsage:         0,
-			AveCPUMemUsage:      0,
-			TotalCPUEnergyUsage: 0,
-			TotalCPUEmissions:   0,
-			AveGPUUsage:         0,
-			AveGPUMemUsage:      0,
-			TotalGPUEnergyUsage: 0,
-			TotalGPUEmissions:   0,
-			TotalIOWriteHot:     0,
-			TotalIOReadHot:      0,
-			TotalIOWriteCold:    0,
-			TotalIOReadCold:     0,
-			TotalIngress:        0,
-			TotalOutgress:       0,
-			Comment:             "",
-			Ignore:              0,
+			ID:              6,
+			UUID:            "147973",
+			Name:            "test_script2",
+			Project:         "acc2",
+			Grp:             "gr1",
+			Usr:             "usr1",
+			Submit:          "2023-12-21T15:48:20+0100",
+			Start:           "2023-12-21T15:49:06+0100",
+			End:             "2023-12-21T15:57:23+0100",
+			SubmitTS:        1703170100000,
+			StartTS:         1703170146000,
+			EndTS:           1703170643000,
+			Elapsed:         "00:00:17",
+			ElapsedRaw:      567,
+			Exitcode:        "0:0",
+			State:           "CANCELLED by 1001",
+			TotalGPUBilling: int64(160),
+			Tags: models.Tag{
+				"allocnodes":  int64(2),
+				"gid":         int64(1002),
+				"nodelist":    "compute-[0-2]",
+				"nodelistexp": "compute-0|compute-1|compute-2",
+				"partition":   "part1",
+				"qos":         "qos1",
+				"uid":         int64(1001),
+				"workdir":     "/home/usr1",
+			},
+			Ignore: 0,
 		},
 		{
-			ID:                  1,
-			UUID:                "1479763",
-			Partition:           "part1",
-			QoS:                 "qos1",
-			Project:             "acc1",
-			Grp:                 "grp1",
-			Gid:                 1001,
-			Usr:                 "usr1",
-			Uid:                 1001,
-			Submit:              "2022-02-21T14:37:02+0100",
-			Start:               "2022-02-21T14:37:07+0100",
-			End:                 "2022-02-21T15:26:29+0100",
-			SubmitTS:            1645450622000,
-			StartTS:             1645450627000,
-			EndTS:               1645453589000,
-			Elapsed:             "00:49:22",
-			ElapsedRaw:          3000,
-			Exitcode:            "0:0",
-			State:               "CANCELLED by 1001",
-			AllocNodes:          1,
-			AllocCPUs:           8,
-			AllocMem:            "320G",
-			AllocGPUs:           8,
-			Nodelist:            "compute-0",
-			NodelistExp:         "compute-0",
-			Name:                "test_script1",
-			WorkDir:             "/home/usr1",
-			TotalCPUBilling:     0,
-			TotalGPUBilling:     80,
-			TotalMiscBilling:    0,
-			AveCPUUsage:         0,
-			AveCPUMemUsage:      0,
-			TotalCPUEnergyUsage: 0,
-			TotalCPUEmissions:   0,
-			AveGPUUsage:         0,
-			AveGPUMemUsage:      0,
-			TotalGPUEnergyUsage: 0,
-			TotalGPUEmissions:   0,
-			TotalIOWriteHot:     0,
-			TotalIOReadHot:      0,
-			TotalIOWriteCold:    0,
-			TotalIOReadCold:     0,
-			TotalIngress:        0,
-			TotalOutgress:       0,
-			Comment:             "",
-			Ignore:              0,
+			ID:              1,
+			UUID:            "1479763",
+			Name:            "test_script1",
+			Project:         "acc1",
+			Grp:             "grp1",
+			Usr:             "usr1",
+			Submit:          "2022-02-21T14:37:02+0100",
+			Start:           "2022-02-21T14:37:07+0100",
+			End:             "2022-02-21T15:26:29+0100",
+			SubmitTS:        1645450622000,
+			StartTS:         1645450627000,
+			EndTS:           1645453589000,
+			Elapsed:         "00:49:22",
+			ElapsedRaw:      3000,
+			Exitcode:        "0:0",
+			State:           "CANCELLED by 1001",
+			TotalGPUBilling: int64(80),
+			Tags: models.Tag{
+				"allocnodes":  int64(1),
+				"gid":         int64(1001),
+				"nodelist":    "compute-0",
+				"nodelistexp": "compute-0",
+				"partition":   "part1",
+				"qos":         "qos1",
+				"uid":         int64(1001),
+				"workdir":     "/home/usr1",
+			},
+			Ignore: 0,
 		},
 	}
-	units, err := querier(db, q, base.UnitsEndpoint, logger)
+	units, err := querier(db, q, unitsResourceName, logger)
 	if err != nil {
 		t.Errorf("failed to query for units: %s", err)
 	}
-	if !reflect.DeepEqual(expectedUnits, units.([]types.Unit)) {
-		t.Errorf("expected units %#v \n, got %#v", expectedUnits, units)
+	if !reflect.DeepEqual(expectedUnits, units.([]models.Unit)) {
+		t.Errorf("expected units %#v \n, got %#v", expectedUnits, units.([]models.Unit))
 	}
 }
 
@@ -252,13 +202,11 @@ func TestUsageQuerier(t *testing.T) {
 	q := Query{}
 	q.query(fmt.Sprintf("SELECT * FROM %s WHERE usr IN ('usr15')", base.UsageDBTableName))
 
-	expectedUsageStats := []types.Usage{
+	expectedUsageStats := []models.Usage{
 		{
 			ID:                  7,
 			Project:             "acc1",
 			Usr:                 "usr15",
-			Partition:           "part1",
-			QoS:                 "qos1",
 			NumUnits:            2,
 			TotalCPUBilling:     0,
 			TotalGPUBilling:     320,
@@ -277,14 +225,13 @@ func TestUsageQuerier(t *testing.T) {
 			TotalIOReadCold:     0,
 			TotalIngress:        0,
 			TotalOutgress:       0,
-			Comment:             "",
 		},
 	}
-	usageStats, err := querier(db, q, base.UsageResourceName, logger)
+	usageStats, err := querier(db, q, usageResourceName, logger)
 	if err != nil {
 		t.Errorf("failed to query for usage: %s", err)
 	}
-	if !reflect.DeepEqual(expectedUsageStats, usageStats.([]types.Usage)) {
+	if !reflect.DeepEqual(expectedUsageStats, usageStats.([]models.Usage)) {
 		t.Errorf("expected usage %#v \n, got %#v", expectedUsageStats, usageStats)
 	}
 }

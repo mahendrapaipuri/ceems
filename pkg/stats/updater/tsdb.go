@@ -10,7 +10,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/pkg/stats/base"
-	"github.com/mahendrapaipuri/ceems/pkg/stats/types"
+	"github.com/mahendrapaipuri/ceems/pkg/stats/models"
 	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
 	"github.com/prometheus/common/model"
 )
@@ -119,7 +119,7 @@ func (t *tsdbUpdater) fetchAggMetrics(
 }
 
 // Fetch unit metrics from TSDB and update UnitStat struct for each unit
-func (t *tsdbUpdater) Update(startTime time.Time, endTime time.Time, units []types.Unit) []types.Unit {
+func (t *tsdbUpdater) Update(startTime time.Time, endTime time.Time, units []models.Unit) []models.Unit {
 	// Check if TSDB is available
 	if !t.Available() {
 		return units

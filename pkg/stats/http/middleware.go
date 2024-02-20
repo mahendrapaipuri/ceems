@@ -74,7 +74,7 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 				Log("msg", "Grafana user Header not found. Denying authentication")
 
 			// Write an error and stop the handler chain
-			errorResponse(w, &apiError{errorUnauthorized, noUserError}, amw.logger, nil)
+			errorResponse(w, &apiError{errorUnauthorized, errNoUser}, amw.logger, nil)
 			return
 		}
 		level.Info(amw.logger).Log("loggedUser", loggedUser, "url", r.URL)
@@ -105,7 +105,7 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 				level.Error(amw.logger).Log("msg", "Unprivileged user accessing admin endpoint", "user", loggedUser, "url", r.URL)
 
 				// Write an error and stop the handler chain
-				errorResponse(w, &apiError{errorUnauthorized, noAdminPrivError}, amw.logger, nil)
+				errorResponse(w, &apiError{errorUnauthorized, errNoPrivs}, amw.logger, nil)
 				return
 			}
 			r.Header.Set(dashboardUserHeader, loggedUser)

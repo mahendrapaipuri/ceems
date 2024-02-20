@@ -15,7 +15,7 @@ import (
 	internal_osexec "github.com/mahendrapaipuri/ceems/internal/osexec"
 	"github.com/mahendrapaipuri/ceems/pkg/stats/base"
 	"github.com/mahendrapaipuri/ceems/pkg/stats/helper"
-	"github.com/mahendrapaipuri/ceems/pkg/stats/types"
+	"github.com/mahendrapaipuri/ceems/pkg/stats/models"
 )
 
 type slurmScheduler struct {
@@ -26,8 +26,8 @@ type slurmScheduler struct {
 const slurmBatchScheduler = "slurm"
 
 var (
-	slurmUserUid    int
-	slurmUserGid    int
+	slurmUserUID    int
+	slurmUserGID    int
 	slurmTimeFormat = fmt.Sprintf("%s-0700", base.DatetimeLayout)
 	jobLock         = sync.RWMutex{}
 	sacctPath       = base.CEEMSServerApp.Flag(
@@ -88,19 +88,19 @@ func preflightChecks(logger log.Logger) (string, error) {
 		goto sudomode
 	}
 
-	slurmUserUid, err = strconv.Atoi(slurmUser.Uid)
+	slurmUserUID, err = strconv.Atoi(slurmUser.Uid)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to convert slurm user uid to int", "uid", slurmUserUid, "err", err)
+		level.Error(logger).Log("msg", "Failed to convert slurm user uid to int", "uid", slurmUserUID, "err", err)
 		goto sudomode
 	}
 
-	slurmUserGid, err = strconv.Atoi(slurmUser.Gid)
+	slurmUserGID, err = strconv.Atoi(slurmUser.Gid)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to convert slurm user gid to int", "gid", slurmUserGid, "err", err)
+		level.Error(logger).Log("msg", "Failed to convert slurm user gid to int", "gid", slurmUserGID, "err", err)
 		goto sudomode
 	}
 
-	if _, err := internal_osexec.ExecuteAs(*sacctPath, []string{"--help"}, slurmUserUid, slurmUserGid, nil, logger); err == nil {
+	if _, err := internal_osexec.ExecuteAs(*sacctPath, []string{"--help"}, slurmUserUID, slurmUserGID, nil, logger); err == nil {
 		execMode = "cap"
 		level.Debug(logger).Log("msg", "Linux capabilities will be used to execute sacct as slurm user")
 		return execMode, nil
@@ -134,7 +134,7 @@ func NewSlurmScheduler(logger log.Logger) (Fetcher, error) {
 }
 
 // Get jobs from slurm
-func (s *slurmScheduler) Fetch(start time.Time, end time.Time) ([]types.Unit, error) {
+func (s *slurmScheduler) Fetch(start time.Time, end time.Time) ([]models.Unit, error) {
 	startTime := start.Format(base.DatetimeLayout)
 	endTime := end.Format(base.DatetimeLayout)
 
@@ -142,7 +142,7 @@ func (s *slurmScheduler) Fetch(start time.Time, end time.Time) ([]types.Unit, er
 	sacctOutput, err := runSacctCmd(s.execMode, startTime, endTime, s.logger)
 	if err != nil {
 		level.Error(s.logger).Log("msg", "Failed to execute SLURM sacct command", "err", err)
-		return []types.Unit{}, err
+		return []models.Unit{}, err
 	}
 
 	// Parse sacct output and create BatchJob structs slice
@@ -167,7 +167,7 @@ func runSacctCmd(execMode string, startTime string, endTime string, logger log.L
 
 	// Run command as slurm user
 	if execMode == "cap" {
-		return internal_osexec.ExecuteAs(*sacctPath, args, slurmUserUid, slurmUserGid, env, logger)
+		return internal_osexec.ExecuteAs(*sacctPath, args, slurmUserUID, slurmUserGID, env, logger)
 	} else if execMode == "sudo" {
 		args = append([]string{*sacctPath}, args...)
 		return internal_osexec.Execute("sudo", args, env, logger)
@@ -176,19 +176,19 @@ func runSacctCmd(execMode string, startTime string, endTime string, logger log.L
 }
 
 // Parse sacct command output and return batchjob slice
-func parseSacctCmdOutput(sacctOutput string, logger log.Logger) ([]types.Unit, int) {
+func parseSacctCmdOutput(sacctOutput string, logger log.Logger) ([]models.Unit, int) {
 	// Strip first line
 	sacctOutputLines := strings.Split(string(sacctOutput), "\n")[1:]
 
-	var numJobs int = 0
-	var jobs = make([]types.Unit, len(sacctOutputLines))
+	var numJobs = 0
+	var jobs = make([]models.Unit, len(sacctOutputLines))
 
 	wg := &sync.WaitGroup{}
 	wg.Add(len(sacctOutputLines))
 
 	for iline, line := range sacctOutputLines {
 		go func(i int, l string) {
-			var jobStat types.Unit
+			var jobStat models.Unit
 			components := strings.Split(l, "|")
 			jobid := components[sacctFieldMap["jobidraw"]]
 
@@ -217,8 +217,7 @@ func parseSacctCmdOutput(sacctOutput string, logger log.Logger) ([]types.Unit, i
 			elapsedrawInt, _ = strconv.ParseInt(components[sacctFieldMap["elapsedraw"]], 10, 64)
 
 			// Parse alloctres to get billing, nnodes, ncpus, ngpus and mem
-			var billing int64
-			var nnodes, ncpus, ngpus int
+			var billing, nnodes, ncpus, ngpus int64
 			var mem string
 			for _, elem := range strings.Split(components[sacctFieldMap["alloctres"]], ",") {
 				var tresKV = strings.Split(elem, "=")
@@ -226,13 +225,13 @@ func parseSacctCmdOutput(sacctOutput string, logger log.Logger) ([]types.Unit, i
 					billing, _ = strconv.ParseInt(tresKV[1], 10, 64)
 				}
 				if tresKV[0] == "node" {
-					nnodes, _ = strconv.Atoi(tresKV[1])
+					nnodes, _ = strconv.ParseInt(tresKV[1], 10, 64)
 				}
 				if tresKV[0] == "cpu" {
-					ncpus, _ = strconv.Atoi(tresKV[1])
+					ncpus, _ = strconv.ParseInt(tresKV[1], 10, 64)
 				}
 				if tresKV[0] == "gres/gpu" {
-					ngpus, _ = strconv.Atoi(tresKV[1])
+					ngpus, _ = strconv.ParseInt(tresKV[1], 10, 64)
 				}
 				if tresKV[0] == "mem" {
 					mem = tresKV[1]
@@ -247,35 +246,36 @@ func parseSacctCmdOutput(sacctOutput string, logger log.Logger) ([]types.Unit, i
 				gpuBilling = billing
 			}
 
-			// Generate UUID from jobID, user, account, nodelist(lowercase)
-			// jobUuid, err := internal_helper.GetUUIDFromString(
-			// 	[]string{
-			// 		strings.TrimSpace(components[sacctFieldMap["jobidraw"]]),
-			// 		strings.TrimSpace(components[sacctFieldMap["user"]]),
-			// 		strings.ToLower(strings.TrimSpace(components[sacctFieldMap["account"]])),
-			// 		strings.ToLower(strings.TrimSpace(components[sacctFieldMap["nodelist"]])),
-			// 	},
-			// )
-			// if err != nil {
-			// 	level.Error(logger).
-			// 		Log("msg", "Failed to generate UUID for job", "jobid", jobid, "err", err)
-			// 	jobUuid = jobid
-			// }
-
 			// Expand nodelist range expressions
 			allNodes := helper.NodelistParser(components[sacctFieldMap["nodelist"]])
 			nodelistExp := strings.Join(allNodes, "|")
 
+			// Allocation
+			allocation := models.Allocation{
+				"nodes": nnodes,
+				"cpus":  ncpus,
+				"mem":   mem,
+				"gpus":  ngpus,
+			}
+
+			// Tags
+			tags := models.Tag{
+				"uid":         uidInt,
+				"gid":         gidInt,
+				"partition":   components[sacctFieldMap["partition"]],
+				"qos":         components[sacctFieldMap["qos"]],
+				"nodelist":    components[sacctFieldMap["nodelist"]],
+				"nodelistexp": nodelistExp,
+				"workdir":     components[sacctFieldMap["workdir"]],
+			}
+
 			// Make jobStats struct for each job and put it in jobs slice
-			jobStat = types.Unit{
+			jobStat = models.Unit{
 				UUID:            jobid,
-				Partition:       components[sacctFieldMap["partition"]],
-				QoS:             components[sacctFieldMap["qos"]],
+				Name:            components[sacctFieldMap["jobname"]],
 				Project:         components[sacctFieldMap["account"]],
 				Grp:             components[sacctFieldMap["group"]],
-				Gid:             gidInt,
 				Usr:             components[sacctFieldMap["user"]],
-				Uid:             uidInt,
 				Submit:          components[sacctFieldMap["submit"]],
 				Start:           components[sacctFieldMap["start"]],
 				End:             components[sacctFieldMap["end"]],
@@ -286,16 +286,10 @@ func parseSacctCmdOutput(sacctOutput string, logger log.Logger) ([]types.Unit, i
 				ElapsedRaw:      elapsedrawInt,
 				Exitcode:        components[sacctFieldMap["exitcode"]],
 				State:           components[sacctFieldMap["state"]],
-				AllocNodes:      nnodes,
-				AllocCPUs:       ncpus,
-				AllocMem:        mem,
-				AllocGPUs:       ngpus,
-				Nodelist:        components[sacctFieldMap["nodelist"]],
-				NodelistExp:     nodelistExp,
-				Name:            components[sacctFieldMap["jobname"]],
-				WorkDir:         components[sacctFieldMap["workdir"]],
+				Allocation:      allocation,
 				TotalCPUBilling: cpuBilling,
 				TotalGPUBilling: gpuBilling,
+				Tags:            tags,
 			}
 			jobLock.Lock()
 			jobs[i] = jobStat

@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/ceems/pkg/stats/base"
-	"github.com/mahendrapaipuri/ceems/pkg/stats/types"
+	"github.com/mahendrapaipuri/ceems/pkg/stats/models"
 	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
 )
 
@@ -56,12 +56,12 @@ func TestTSDBUpdate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	units := []types.Unit{
+	units := []models.Unit{
 		{UUID: "1", EndTS: int64(10000), ElapsedRaw: int64(3000)},
 		{UUID: "2", EndTS: int64(10000), ElapsedRaw: int64(3000)},
 		{UUID: "3", EndTS: int64(10000), ElapsedRaw: int64(30)},
 	}
-	expectedUnits := []types.Unit{
+	expectedUnits := []models.Unit{
 		{
 			UUID:                "1",
 			EndTS:               int64(10000),

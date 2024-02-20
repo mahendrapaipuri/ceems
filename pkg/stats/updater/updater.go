@@ -12,12 +12,12 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/pkg/stats/base"
-	"github.com/mahendrapaipuri/ceems/pkg/stats/types"
+	"github.com/mahendrapaipuri/ceems/pkg/stats/models"
 )
 
 // Updater interface
 type Updater interface {
-	Update(startTime time.Time, endTime time.Time, units []types.Unit) []types.Unit
+	Update(startTime time.Time, endTime time.Time, units []models.Unit) []models.Unit
 }
 
 // UnitUpdater implements the interface to update
@@ -80,7 +80,7 @@ func NewUnitUpdater(logger log.Logger) (*UnitUpdater, error) {
 }
 
 // Update implements updating units using registered updaters
-func (u UnitUpdater) Update(startTime time.Time, endTime time.Time, units []types.Unit) []types.Unit {
+func (u UnitUpdater) Update(startTime time.Time, endTime time.Time, units []models.Unit) []models.Unit {
 	// If there are no registered updaters, return
 	if len(u.Updaters) == 0 {
 		return units

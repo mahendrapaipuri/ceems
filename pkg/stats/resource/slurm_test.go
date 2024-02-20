@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/go-kit/log"
-	"github.com/mahendrapaipuri/ceems/pkg/stats/types"
+	"github.com/mahendrapaipuri/ceems/pkg/stats/models"
 )
 
 var (
@@ -14,16 +14,14 @@ var (
 1481508|part1|qos1|acc1|grp|1000|usr|1000|2023-02-21T15:48:20+0100|2023-02-21T15:49:06+0100|2023-02-21T15:57:23+0100|00:08:17|4920|0:0|CANCELLED by 302137|billing=1,cpu=2,mem=4G,node=1|compute-[0-2]|test_script2|/home/usr
 1481510|part1|qos1|acc1|grp|1000|usr|1000|2023-02-21T15:48:20+0100|2023-02-21T15:49:06+0100|2023-02-21T15:57:23+0100|00:00:17|17|0:0|CANCELLED by 302137|billing=10,cpu=2,energy=15346,gres/gpu=1,mem=4G,node=1|compute-[0-2]|test_script2|/home/usr`
 	logger            = log.NewNopLogger()
-	expectedBatchJobs = []types.Unit{
+	expectedBatchJobs = []models.Unit{
 		{
+			ID:              0,
 			UUID:            "1479763",
-			Partition:       "part1",
-			QoS:             "qos1",
+			Name:            "test_script1",
 			Project:         "acc1",
 			Grp:             "grp",
-			Gid:             1000,
 			Usr:             "usr",
-			Uid:             1000,
 			Submit:          "2023-02-21T14:37:02+0100",
 			Start:           "2023-02-21T14:37:07+0100",
 			End:             "2023-02-21T15:26:29+0100",
@@ -34,25 +32,26 @@ var (
 			ElapsedRaw:      3000,
 			Exitcode:        "0:0",
 			State:           "CANCELLED by 302137",
-			AllocNodes:      2,
-			AllocCPUs:       160,
-			AllocGPUs:       8,
-			AllocMem:        "320G",
-			Nodelist:        "compute-0",
-			NodelistExp:     "compute-0",
-			Name:            "test_script1",
-			WorkDir:         "/home/usr",
+			Allocation:      models.Generic{"cpus": int64(160), "gpus": int64(8), "mem": "320G", "nodes": int64(2)},
 			TotalGPUBilling: 80,
+			Tags: models.Generic{
+				"gid":         int64(1000),
+				"nodelist":    "compute-0",
+				"nodelistexp": "compute-0",
+				"partition":   "part1",
+				"qos":         "qos1",
+				"uid":         int64(1000),
+				"workdir":     "/home/usr",
+			},
+			Ignore: 0,
 		},
 		{
+			ID:              0,
 			UUID:            "1481508",
-			Partition:       "part1",
-			QoS:             "qos1",
+			Name:            "test_script2",
 			Project:         "acc1",
 			Grp:             "grp",
-			Gid:             1000,
 			Usr:             "usr",
-			Uid:             1000,
 			Submit:          "2023-02-21T15:48:20+0100",
 			Start:           "2023-02-21T15:49:06+0100",
 			End:             "2023-02-21T15:57:23+0100",
@@ -63,24 +62,26 @@ var (
 			ElapsedRaw:      4920,
 			Exitcode:        "0:0",
 			State:           "CANCELLED by 302137",
-			AllocNodes:      1,
-			AllocCPUs:       2,
-			AllocMem:        "4G",
-			Nodelist:        "compute-[0-2]",
-			NodelistExp:     "compute-0|compute-1|compute-2",
-			Name:            "test_script2",
-			WorkDir:         "/home/usr",
+			Allocation:      models.Generic{"cpus": int64(2), "gpus": int64(0), "mem": "4G", "nodes": int64(1)},
 			TotalCPUBilling: 1,
+			Tags: models.Generic{
+				"gid":         int64(1000),
+				"nodelist":    "compute-[0-2]",
+				"nodelistexp": "compute-0|compute-1|compute-2",
+				"partition":   "part1",
+				"qos":         "qos1",
+				"uid":         int64(1000),
+				"workdir":     "/home/usr",
+			},
+			Ignore: 0,
 		},
 		{
+			ID:              0,
 			UUID:            "1481510",
-			Partition:       "part1",
-			QoS:             "qos1",
+			Name:            "test_script2",
 			Project:         "acc1",
 			Grp:             "grp",
-			Gid:             1000,
 			Usr:             "usr",
-			Uid:             1000,
 			Submit:          "2023-02-21T15:48:20+0100",
 			Start:           "2023-02-21T15:49:06+0100",
 			End:             "2023-02-21T15:57:23+0100",
@@ -91,15 +92,18 @@ var (
 			ElapsedRaw:      17,
 			Exitcode:        "0:0",
 			State:           "CANCELLED by 302137",
-			AllocNodes:      1,
-			AllocCPUs:       2,
-			AllocGPUs:       1,
-			AllocMem:        "4G",
-			Nodelist:        "compute-[0-2]",
-			NodelistExp:     "compute-0|compute-1|compute-2",
-			Name:            "test_script2",
-			WorkDir:         "/home/usr",
+			Allocation:      models.Generic{"cpus": int64(2), "gpus": int64(1), "mem": "4G", "nodes": int64(1)},
 			TotalGPUBilling: 10,
+			Tags: models.Generic{
+				"gid":         int64(1000),
+				"nodelist":    "compute-[0-2]",
+				"nodelistexp": "compute-0|compute-1|compute-2",
+				"partition":   "part1",
+				"qos":         "qos1",
+				"uid":         int64(1000),
+				"workdir":     "/home/usr",
+			},
+			Ignore: 0,
 		},
 	}
 )
