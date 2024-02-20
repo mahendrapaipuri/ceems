@@ -6,8 +6,8 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/pkg/stats/base"
+	"github.com/mahendrapaipuri/ceems/pkg/stats/models"
 	"github.com/mahendrapaipuri/ceems/pkg/stats/resource"
-	"github.com/mahendrapaipuri/ceems/pkg/stats/types"
 )
 
 type mockManager struct {
@@ -50,6 +50,6 @@ func NewMockManager(logger log.Logger) (resource.Fetcher, error) {
 //
 // When making Unit stucts, ensure to format the datetime using base.DatetimeLayout
 // Also ensure to set StartTS and EndTS fields to start and end times in unix milliseconds epoch
-func (s *mockManager) Fetch(start time.Time, end time.Time) ([]types.Unit, error) {
-	return []types.Unit{{UUID: "1000"}, {UUID: "1100"}}, nil
+func (s *mockManager) Fetch(start time.Time, end time.Time) ([]models.Unit, error) {
+	return []models.Unit{{UUID: "1000"}, {UUID: "1100"}}, nil
 }
