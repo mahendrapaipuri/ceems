@@ -9,8 +9,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/internal/structset"
-	"github.com/mahendrapaipuri/ceems/pkg/stats/base"
-	"github.com/mahendrapaipuri/ceems/pkg/stats/types"
+	"github.com/mahendrapaipuri/ceems/pkg/stats/models"
 )
 
 var (
@@ -51,8 +50,8 @@ func (q *Query) get() (string, []string) {
 // We dont want panics due to insufficient allocation. We should look into improving
 // this for future
 func scanUsage(numRows int, rows *sql.Rows) interface{} {
-	var usageRows []types.Usage
-	var usage types.Usage
+	var usageRows []models.Usage
+	var usage models.Usage
 	for rows.Next() {
 		if err := structset.ScanRow(rows, &usage); err != nil {
 			continue
@@ -64,8 +63,8 @@ func scanUsage(numRows int, rows *sql.Rows) interface{} {
 
 // Scan account rows
 func scanProjects(numRows int, rows *sql.Rows) interface{} {
-	var accounts = make([]types.Project, numRows)
-	var account types.Project
+	var accounts = make([]models.Project, numRows)
+	var account models.Project
 	rowIdx := 0
 	for rows.Next() {
 		if err := structset.ScanRow(rows, &account); err != nil {
@@ -79,8 +78,8 @@ func scanProjects(numRows int, rows *sql.Rows) interface{} {
 
 // Scan unit rows
 func scanUnits(numRows int, rows *sql.Rows) interface{} {
-	var units = make([]types.Unit, numRows)
-	var unit types.Unit
+	var units = make([]models.Unit, numRows)
+	var unit models.Unit
 	rowIdx := 0
 	for rows.Next() {
 		if err := structset.ScanRow(rows, &unit); err != nil {
@@ -154,7 +153,7 @@ func querier(dbConn *sql.DB, query Query, model string, logger log.Logger) (inte
 		}
 	}
 	// It should be incremented by 1 as index starts from 0
-	if model == base.UsageResourceName {
+	if model == usageResourceName {
 		numRows = irow + 1
 	}
 
@@ -168,25 +167,25 @@ func querier(dbConn *sql.DB, query Query, model string, logger log.Logger) (inte
 	defer rows.Close()
 
 	// Loop through rows, using Scan to assign column data to struct fields.
-	if model == base.UnitsResourceName {
+	if model == unitsResourceName {
 		var units = scanUnits(numRows, rows)
 		level.Debug(logger).Log(
-			"msg", "Units found", "numRows", numRows, "query", queryString,
-			"queryParams", strings.Join(queryParams, ","),
+			"msg", "Units", "query", queryString, "queryParams", strings.Join(queryParams, ","),
+			"num_rows", numRows,
 		)
 		return units, nil
-	} else if model == base.UsageResourceName {
+	} else if model == usageResourceName {
 		var usageStats = scanUsage(numRows, rows)
 		level.Debug(logger).Log(
-			"msg", "Usage stats found", "numRows", numRows, "query", queryString,
-			"queryParams", strings.Join(queryParams, ","),
+			"msg", "Usage stats", "query", queryString,
+			"queryParams", strings.Join(queryParams, ","), "num_rows", numRows,
 		)
 		return usageStats, nil
 	} else if model == "projects" {
 		var accounts = scanProjects(numRows, rows)
 		level.Debug(logger).Log(
-			"msg", "Projects found", "numRows", numRows, "query", queryString,
-			"queryParams", strings.Join(queryParams, ","),
+			"msg", "Projects", "query", queryString,
+			"queryParams", strings.Join(queryParams, ","), "num_rows", numRows,
 		)
 		return accounts, nil
 	}

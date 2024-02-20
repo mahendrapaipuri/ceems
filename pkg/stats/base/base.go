@@ -8,7 +8,7 @@ import (
 
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/mahendrapaipuri/ceems/internal/structset"
-	"github.com/mahendrapaipuri/ceems/pkg/stats/types"
+	"github.com/mahendrapaipuri/ceems/pkg/stats/models"
 )
 
 // CEEMSServerAppName is kingpin app name
@@ -20,36 +20,22 @@ var CEEMSServerApp = *kingpin.New(
 	"API server for reporting usage statistics for batchjobs/VMs/Pods.",
 )
 
-// API Resources names
-var (
-	UnitsResourceName    = "units"
-	UsageResourceName    = "usage"
-	ProjectsResourceName = "projects"
-)
-
-// Endpoints
-var (
-	UnitsEndpoint    = UnitsResourceName
-	UsageEndpoint    = UsageResourceName
-	ProjectsEndpoint = ProjectsResourceName
-)
-
 // DB table names
 var (
-	UnitsDBTableName = UnitsResourceName
-	UsageDBTableName = UsageResourceName
+	UnitsDBTableName = models.Unit{}.TableName()
+	UsageDBTableName = models.Usage{}.TableName()
 )
 
 // Slice of all field names of Unit struct
 var (
-	UnitsDBTableColNames = structset.GetStructFieldTagValues(types.Unit{}, "sql")
-	UsageDBTableColNames = structset.GetStructFieldTagValues(types.Usage{}, "sql")
+	UnitsDBTableColNames = models.Unit{}.TagNames("sql")
+	UsageDBTableColNames = models.Usage{}.TagNames("sql")
 )
 
 // Map of field names to DB column type
 var (
-	UnitsDBTableColTypeMap = structset.GetStructFieldTagMap(types.Unit{}, "sql", "sqlitetype")
-	UsageDBTableColTypeMap = structset.GetStructFieldTagMap(types.Usage{}, "sql", "sqlitetype")
+	UnitsDBTableColTypeMap = structset.GetStructFieldTagMap(models.Unit{}, "sql", "sqlitetype")
+	UsageDBTableColTypeMap = structset.GetStructFieldTagMap(models.Usage{}, "sql", "sqlitetype")
 )
 
 // DatetimeLayout to be used in the package

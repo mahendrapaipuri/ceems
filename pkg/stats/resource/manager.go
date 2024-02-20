@@ -1,3 +1,5 @@
+// Package resource defines the interface that each resource manager needs to
+// implement to get compute units
 package resource
 
 import (
@@ -8,13 +10,13 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/pkg/stats/base"
-	"github.com/mahendrapaipuri/ceems/pkg/stats/types"
+	"github.com/mahendrapaipuri/ceems/pkg/stats/models"
 )
 
 // Fetcher is the interface resource manager has to implement.
 type Fetcher interface {
 	// Fetch compute units between start and end times
-	Fetch(start time.Time, end time.Time) ([]types.Unit, error)
+	Fetch(start time.Time, end time.Time) ([]models.Unit, error)
 }
 
 // Manager implements the interface to collect
@@ -29,7 +31,7 @@ var (
 	managerState = make(map[string]*bool)
 )
 
-// Register resource manager
+// RegisterManager registers the resource manager into factory
 func RegisterManager(
 	manager string,
 	factory func(logger log.Logger) (Fetcher, error),
@@ -53,7 +55,7 @@ func RegisterManager(
 	factories[manager] = factory
 }
 
-// NewManagers creates a new Managers
+// NewManager creates a new Manager struct instance
 func NewManager(logger log.Logger) (*Manager, error) {
 	var fetcher Fetcher
 	var err error
@@ -72,12 +74,12 @@ func NewManager(logger log.Logger) (*Manager, error) {
 		}
 	}
 	return nil, fmt.Errorf(
-		"No resource manager enabled. Please choose one of [%s] using flag --manager.manager.<name>",
+		"no resource manager enabled. Please choose one of [%s] using flag --manager.manager.<name>",
 		strings.Join(factoryKeys, ", "),
 	)
 }
 
 // Fetch implements collection jobs between start and end times
-func (b Manager) Fetch(start time.Time, end time.Time) ([]types.Unit, error) {
+func (b Manager) Fetch(start time.Time, end time.Time) ([]models.Unit, error) {
 	return b.Fetcher.Fetch(start, end)
 }

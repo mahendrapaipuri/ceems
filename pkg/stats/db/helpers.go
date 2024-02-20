@@ -31,7 +31,7 @@ var (
 			"uq_uuid_start":         []string{"uuid", "start"}, // To ensure we dont insert duplicated rows
 		},
 		base.UsageDBTableName: {
-			"uq_project_usr_partition_qos_app_vm": []string{"project", "usr", "partition", "qos"},
+			"uq_project_usr": []string{"project", "usr"},
 		},
 	}
 )

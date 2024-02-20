@@ -10,8 +10,8 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/ceems/pkg/stats/base"
+	"github.com/mahendrapaipuri/ceems/pkg/stats/models"
 	"github.com/mahendrapaipuri/ceems/pkg/stats/resource"
-	"github.com/mahendrapaipuri/ceems/pkg/stats/types"
 	"github.com/mahendrapaipuri/ceems/pkg/stats/updater"
 	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
 	_ "github.com/mattn/go-sqlite3"
@@ -21,14 +21,14 @@ type mockFetcher struct {
 	logger log.Logger
 }
 
-var mockUnits = []types.Unit{{UUID: "10000"}, {UUID: "10001"}, {UUID: "10002"}}
+var mockUnits = []models.Unit{{UUID: "10000"}, {UUID: "10001"}, {UUID: "10002"}}
 
 func newMockManager(logger log.Logger) (*resource.Manager, error) {
 	return &resource.Manager{Fetcher: &mockFetcher{logger: logger}}, nil
 }
 
 // GetUnits implements collection units between start and end times
-func (m *mockFetcher) Fetch(start time.Time, end time.Time) ([]types.Unit, error) {
+func (m *mockFetcher) Fetch(start time.Time, end time.Time) ([]models.Unit, error) {
 	return mockUnits, nil
 }
 
@@ -36,7 +36,7 @@ type mockUpdater struct {
 	logger log.Logger
 }
 
-var mockUpdatedUnits = []types.Unit{{UUID: "10000", Usr: "foo"}, {UUID: "10001", Usr: "bar"}}
+var mockUpdatedUnits = []models.Unit{{UUID: "10000", Usr: "foo"}, {UUID: "10001", Usr: "bar"}}
 
 func newMockUpdater(logger log.Logger) (*updater.UnitUpdater, error) {
 	return &updater.UnitUpdater{
@@ -47,7 +47,7 @@ func newMockUpdater(logger log.Logger) (*updater.UnitUpdater, error) {
 }
 
 // GetUnits implements collection units between start and end times
-func (m *mockUpdater) Update(startTime time.Time, endTime time.Time, units []types.Unit) []types.Unit {
+func (m *mockUpdater) Update(startTime time.Time, endTime time.Time, units []models.Unit) []models.Unit {
 	return mockUpdatedUnits
 }
 
@@ -206,9 +206,9 @@ func TestJobStatsDBEntries(t *testing.T) {
 	}
 	defer rows.Close()
 
-	var units []types.Unit
+	var units []models.Unit
 	for rows.Next() {
-		var unit types.Unit
+		var unit models.Unit
 
 		err = rows.Scan(&unit.UUID, &unit.Usr)
 		if err != nil {
@@ -354,7 +354,7 @@ func TestJobStatsDeleteOldUnits(t *testing.T) {
 	}
 
 	// Add new row that should be deleted
-	units := []types.Unit{
+	units := []models.Unit{
 		{
 			UUID: unitID,
 			Submit: time.Now().
@@ -370,7 +370,7 @@ func TestJobStatsDeleteOldUnits(t *testing.T) {
 	s.execStatements(stmtMap, units)
 
 	// Now clean up DB for old units
-	err = s.deleteOldUnits(tx)
+	err = s.purgeExpiredUnits(tx)
 	if err != nil {
 		t.Errorf("Failed to delete old entries in DB")
 	}

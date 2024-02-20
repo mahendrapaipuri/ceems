@@ -46,9 +46,9 @@ const (
 
 // Custom errors
 var (
-	noUserError         = errors.New("no user identified")
-	noAdminPrivError    = errors.New("current user does not have admin privileges")
-	invalidRequestError = errors.New("invalid request")
+	errNoUser         = errors.New("no user identified")
+	errNoPrivs        = errors.New("current user does not have admin privileges")
+	errInvalidRequest = errors.New("invalid request")
 )
 
 // Return error response for by setting errorString and errorType in response

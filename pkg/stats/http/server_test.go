@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/mahendrapaipuri/ceems/pkg/stats/types"
+	"github.com/mahendrapaipuri/ceems/pkg/stats/models"
 )
 
 func setupServer() *CEEMSServer {
@@ -25,11 +25,11 @@ func setupServer() *CEEMSServer {
 
 func mockQuerier(db *sql.DB, q Query, model string, logger log.Logger) (interface{}, error) {
 	if model == "units" {
-		return []types.Unit{{UUID: "1000", Usr: "user"}, {UUID: "10001", Usr: "user"}}, nil
+		return []models.Unit{{UUID: "1000", Usr: "user"}, {UUID: "10001", Usr: "user"}}, nil
 	} else if model == "usage" {
-		return []types.Usage{{Project: "foo"}, {Project: "bar"}}, nil
+		return []models.Usage{{Project: "foo"}, {Project: "bar"}}, nil
 	} else if model == "projects" {
-		return []types.Project{{Name: "foo"}, {Name: "bar"}}, nil
+		return []models.Project{{Name: "foo"}, {Name: "bar"}}, nil
 	}
 	return nil, fmt.Errorf("unknown model")
 }
@@ -37,13 +37,13 @@ func mockQuerier(db *sql.DB, q Query, model string, logger log.Logger) (interfac
 func getMockUnits(
 	query Query,
 	logger log.Logger,
-) ([]types.Unit, error) {
-	return []types.Unit{{UUID: "1000", Usr: "user"}, {UUID: "10001", Usr: "user"}}, nil
+) ([]models.Unit, error) {
+	return []models.Unit{{UUID: "1000", Usr: "user"}, {UUID: "10001", Usr: "user"}}, nil
 }
 
-func getMockAdminUsers(url string, client *http.Client, logger log.Logger) ([]string, error) {
-	return []string{"adm1", "adm2"}, nil
-}
+// func getMockAdminUsers(url string, client *http.Client, logger log.Logger) ([]string, error) {
+// 	return []string{"adm1", "adm2"}, nil
+// }
 
 // // Test /api/projects when no user header found
 // func TestAccountsHandlerNoUserHeader(t *testing.T) {
@@ -104,9 +104,9 @@ func TestAccountsHandler(t *testing.T) {
 	// Unmarshal byte into structs.
 	var response Response
 	json.Unmarshal(data, &response)
-	var projectData []types.Project
+	var projectData []models.Project
 	for _, name := range response.Data.([]interface{}) {
-		projectData = append(projectData, types.Project{Name: name.(map[string]interface{})["name"].(string)})
+		projectData = append(projectData, models.Project{Name: name.(map[string]interface{})["name"].(string)})
 	}
 
 	if response.Status != "success" {
@@ -296,7 +296,7 @@ func TestUnitsHandlerWithQueryWindowExceeded(t *testing.T) {
 	if response.Status != "error" {
 		t.Errorf("expected error status got %v", response.Status)
 	}
-	if response.Error != "Maximum query window exceeded" {
+	if response.Error != "maximum query window exceeded" {
 		t.Errorf("expected Maximum time window exceeded got %v", response.Error)
 	}
 	if response.Data != nil {
