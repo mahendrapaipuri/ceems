@@ -48,7 +48,7 @@ func mockTSDBServer() *httptest.Server {
 	return server
 }
 
-func TestTSDBUpdate(t *testing.T) {
+func TestTSDBUpdateSuccess(t *testing.T) {
 	// Start test server
 	server := mockTSDBServer()
 	defer server.Close()
@@ -62,15 +62,34 @@ func TestTSDBUpdate(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// Current time
+	currTime := time.Now()
+
 	units := []models.Unit{
-		{UUID: "1", EndTS: int64(10000), ElapsedRaw: int64(3000)},
-		{UUID: "2", EndTS: int64(10000), ElapsedRaw: int64(3000)},
-		{UUID: "3", EndTS: int64(10000), ElapsedRaw: int64(30)},
+		{
+			UUID:       "1",
+			StartTS:    currTime.Add(-3000 * time.Second).UnixMilli(),
+			EndTS:      currTime.UnixMilli(),
+			ElapsedRaw: int64(3000),
+		},
+		{
+			UUID:       "2",
+			StartTS:    currTime.Add(-3000 * time.Second).UnixMilli(),
+			EndTS:      currTime.UnixMilli(),
+			ElapsedRaw: int64(3000),
+		},
+		{
+			UUID:       "3",
+			StartTS:    currTime.Add(-30 * time.Second).UnixMilli(),
+			EndTS:      currTime.UnixMilli(),
+			ElapsedRaw: int64(30),
+		},
 	}
 	expectedUnits := []models.Unit{
 		{
 			UUID:                "1",
-			EndTS:               int64(10000),
+			StartTS:             currTime.Add(-3000 * time.Second).UnixMilli(),
+			EndTS:               currTime.UnixMilli(),
 			ElapsedRaw:          int64(3000),
 			AveCPUUsage:         1.1,
 			AveCPUMemUsage:      1.1,
@@ -83,7 +102,8 @@ func TestTSDBUpdate(t *testing.T) {
 		},
 		{
 			UUID:                "2",
-			EndTS:               int64(10000),
+			StartTS:             currTime.Add(-3000 * time.Second).UnixMilli(),
+			EndTS:               currTime.UnixMilli(),
 			ElapsedRaw:          int64(3000),
 			AveCPUUsage:         2.2,
 			AveCPUMemUsage:      2.2,
@@ -96,7 +116,8 @@ func TestTSDBUpdate(t *testing.T) {
 		},
 		{
 			UUID:       "3",
-			EndTS:      int64(10000),
+			StartTS:    currTime.Add(-30 * time.Second).UnixMilli(),
+			EndTS:      currTime.UnixMilli(),
 			ElapsedRaw: int64(30),
 			Ignore:     1,
 		},
@@ -113,7 +134,57 @@ func TestTSDBUpdate(t *testing.T) {
 	}
 }
 
-func TestTSDBUpdateNoUnits(t *testing.T) {
+func TestTSDBUpdateFailMaxDuration(t *testing.T) {
+	// Start test server
+	server := mockTSDBServer()
+	defer server.Close()
+
+	if _, err := base.CEEMSServerApp.Parse(
+		[]string{
+			"--tsdb.web.url", server.URL,
+			"--tsdb.data.cutoff.duration", "2m",
+		},
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	// Current time
+	currTime := time.Now()
+
+	units := []models.Unit{
+		{
+			UUID:       "1",
+			StartTS:    currTime.Add(-3 * time.Second).UnixMilli(),
+			EndTS:      currTime.UnixMilli(),
+			ElapsedRaw: int64(3000),
+		},
+		{
+			UUID:       "2",
+			StartTS:    currTime.Add(-3 * time.Second).UnixMilli(),
+			EndTS:      currTime.UnixMilli(),
+			ElapsedRaw: int64(3000),
+		},
+		{
+			UUID:       "3",
+			StartTS:    currTime.Add(-3 * time.Second).UnixMilli(),
+			EndTS:      currTime.UnixMilli(),
+			ElapsedRaw: int64(30),
+		},
+	}
+	expectedUnits := units
+
+	tsdb, err := NewTSDBUpdater(log.NewNopLogger())
+	if err != nil {
+		t.Errorf("Failed to create TSDB updater instance")
+	}
+
+	updatedUnits := tsdb.Update(time.Now(), time.Now(), units)
+	if !reflect.DeepEqual(updatedUnits, expectedUnits) {
+		t.Errorf("expected %#v \n got %#v", expectedUnits, updatedUnits)
+	}
+}
+
+func TestTSDBUpdateFailNoUnits(t *testing.T) {
 	// Start test server
 	server := mockTSDBServer()
 	defer server.Close()
@@ -141,7 +212,7 @@ func TestTSDBUpdateNoUnits(t *testing.T) {
 	}
 }
 
-func TestTSDBUpdateNoTSDB(t *testing.T) {
+func TestTSDBUpdateFailNoTSDB(t *testing.T) {
 	// Start test server
 	server := mockTSDBServer()
 
