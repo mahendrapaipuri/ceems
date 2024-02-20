@@ -18,8 +18,8 @@ import (
 	// If there are multiple third party updaters and if the order of execution is
 	// important, ensure to import them in the reverse order to the desired order
 	// of execution
-	_ "github.com/mahendrapaipuri/ceems/examples/mock_updater/pkg/updater_one"
-	_ "github.com/mahendrapaipuri/ceems/examples/mock_updater/pkg/updater_two"
+	_ "github.com/mahendrapaipuri/ceems/examples/mock_updater/pkg/updaterone"
+	_ "github.com/mahendrapaipuri/ceems/examples/mock_updater/pkg/updatertwo"
 	"github.com/mahendrapaipuri/ceems/pkg/stats/cli"
 )
 
