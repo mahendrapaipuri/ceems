@@ -1,3 +1,4 @@
+// Package runtime implements the utility functions to fetch runtime info of current host
 // Nicked from https://github.com/prometheus/prometheus/blob/main/util/runtime
 package runtime
 

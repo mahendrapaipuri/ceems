@@ -27,10 +27,10 @@ type CEEMSExporter struct {
 	App     kingpin.Application
 }
 
-// Name of CEEMS exporter kingpin app
+// CEEMSExporterAppName is kingpin app name
 const CEEMSExporterAppName = "ceems_exporter"
 
-// `ceems_exporter` CLI app
+// CEEMSExporterApp is kingpin CLI app
 var CEEMSExporterApp = *kingpin.New(
 	CEEMSExporterAppName,
 	"Prometheus Exporter to export compute (job, VM, pod) resource usage metrics.",
@@ -42,7 +42,7 @@ var hostname string
 // Empty hostname flag (Used only for testing)
 var emptyHostnameLabel *bool
 
-// Create a new CEEMSExporter struct
+// NewCEEMSExporter returns a new CEEMSExporter instance
 func NewCEEMSExporter() (*CEEMSExporter, error) {
 	return &CEEMSExporter{
 		appName: CEEMSExporterAppName,

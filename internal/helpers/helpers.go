@@ -1,3 +1,4 @@
+// Package helpers implements general utility helper functions
 package helpers
 
 import (
@@ -7,7 +8,7 @@ import (
 	"github.com/zeebo/xxh3"
 )
 
-// Get a UUID5 for given slice of strings
+// GetUUIDFromString returns a UUID5 for given slice of strings
 func GetUUIDFromString(stringSlice []string) (string, error) {
 	s := strings.Join(stringSlice[:], ",")
 	h := xxh3.HashString128(s).Bytes()

@@ -1,3 +1,4 @@
+// Package structset implements helper functions that involves structs
 package structset
 
 import (
@@ -13,7 +14,7 @@ var (
 	fieldIndexesCache sync.Map
 )
 
-// Get all fields in a given struct
+// GetStructFieldNames returns all fields in a given struct
 func GetStructFieldNames(Struct interface{}) []string {
 	var fields []string
 
@@ -26,7 +27,7 @@ func GetStructFieldNames(Struct interface{}) []string {
 	return fields
 }
 
-// Get all values in a given struct
+// GetStructFieldValues returns all values in a given struct
 func GetStructFieldValues(Struct interface{}) []interface{} {
 	v := reflect.ValueOf(Struct)
 	values := make([]interface{}, v.NumField())
@@ -47,7 +48,7 @@ func getTagValue(field reflect.StructField, tag string) string {
 	}
 }
 
-// Get all tag names in a given struct for a given tag
+// GetStructFieldTagValues returns all tag names in a given struct for a given tag
 // Note: id tag which is auto increment column in DB will not be returned
 func GetStructFieldTagValues(Struct interface{}, tag string) []string {
 	v := reflect.ValueOf(Struct)
@@ -62,7 +63,7 @@ func GetStructFieldTagValues(Struct interface{}, tag string) []string {
 	return values
 }
 
-// Get a map of tags using keyTag as map key and valueTag as map value
+// GetStructFieldTagMap returns a map of tags using keyTag as map key and valueTag as map value
 func GetStructFieldTagMap(Struct interface{}, keyTag string, valueTag string) map[string]string {
 	v := reflect.ValueOf(Struct)
 	typeOfS := v.Type()

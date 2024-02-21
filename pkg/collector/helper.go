@@ -61,7 +61,7 @@ func SanitizeMetricName(metricName string) string {
 	return metricNameRegex.ReplaceAllString(metricName, "_")
 }
 
-// Load cgroups v2 metrics from a given path
+// LoadCgroupsV2Metrics returns cgroup metrics from a given path
 func LoadCgroupsV2Metrics(
 	name string,
 	cgroupfsPath string,
@@ -100,13 +100,14 @@ func LoadCgroupsV2Metrics(
 	return data, nil
 }
 
+// GetGPUDevices returns GPU devices
 func GetGPUDevices(gpuType string, logger log.Logger) (map[int]Device, error) {
 	if gpuType == "nvidia" {
 		return GetNvidiaGPUDevices(*nvidiaSmiPath, logger)
 	} else if gpuType == "amd" {
 		return GetAMDGPUDevices(*rocmSmiPath, logger)
 	}
-	return nil, fmt.Errorf("Unknown GPU Type %s. Only nVIDIA and AMD GPU devices are supported", gpuType)
+	return nil, fmt.Errorf("unknown GPU Type %s. Only nVIDIA and AMD GPU devices are supported", gpuType)
 }
 
 // Parse nvidia-smi output and return GPU Devices map
@@ -130,23 +131,23 @@ func parseNvidiaSmiOutput(cmdOutput string, logger log.Logger) map[int]Device {
 		// Get device index, name and UUID
 		devIndx := strings.TrimSpace(devDetails[0])
 		devName := strings.TrimSpace(devDetails[1])
-		devUuid := strings.TrimSpace(devDetails[2])
+		devUUID := strings.TrimSpace(devDetails[2])
 
 		// Check if device is in MiG mode
 		isMig := false
-		if strings.HasPrefix(devUuid, "MIG") {
+		if strings.HasPrefix(devUUID, "MIG") {
 			isMig = true
 		}
 		level.Debug(logger).
-			Log("msg", "Found nVIDIA GPU", "name", devName, "UUID", devUuid, "isMig:", isMig)
+			Log("msg", "Found nVIDIA GPU", "name", devName, "UUID", devUUID, "isMig:", isMig)
 
-		gpuDevices[devIndxInt] = Device{index: devIndx, name: devName, uuid: devUuid, isMig: isMig}
+		gpuDevices[devIndxInt] = Device{index: devIndx, name: devName, uuid: devUUID, isMig: isMig}
 		devIndxInt++
 	}
 	return gpuDevices
 }
 
-// Get all physical or MIG devices using nvidia-smi command
+// GetNvidiaGPUDevices returns all physical or MIG devices using nvidia-smi command
 // Example output:
 // bash-4.4$ nvidia-smi --query-gpu=name,uuid --format=csv
 // name, uuid
@@ -201,21 +202,21 @@ func parseAmdSmioutput(cmdOutput string, logger log.Logger) map[int]Device {
 
 		// Get device index, name and UUID
 		devIndx := strings.TrimPrefix(devDetails[0], "card")
-		devUuid := strings.TrimSpace(devDetails[1])
+		devUUID := strings.TrimSpace(devDetails[1])
 		devName := strings.TrimSpace(devDetails[2])
 
 		// Set isMig to false as it does not apply for AMD GPUs
 		isMig := false
 		level.Debug(logger).
-			Log("msg", "Found AMD GPU", "name", devName, "UUID", devUuid)
+			Log("msg", "Found AMD GPU", "name", devName, "UUID", devUUID)
 
-		gpuDevices[devIndxInt] = Device{index: devIndx, name: devName, uuid: devUuid, isMig: isMig}
+		gpuDevices[devIndxInt] = Device{index: devIndx, name: devName, uuid: devUUID, isMig: isMig}
 		devIndxInt++
 	}
 	return gpuDevices
 }
 
-// Get all GPU devices using rocm-smi command
+// GetAMDGPUDevices returns all GPU devices using rocm-smi command
 // Example output:
 // bash-4.4$ rocm-smi --showproductname --showserial --csv
 // device,Serial Number,Card series,Card model,Card vendor,Card SKU

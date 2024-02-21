@@ -1,3 +1,4 @@
+// Package osexec implements subprocess execution functions
 package osexec
 
 import (
@@ -39,7 +40,7 @@ func Execute(cmd string, args []string, env []string, logger log.Logger) ([]byte
 	return out, err
 }
 
-// Execute command as a given UID and GID and return stdout/stderr
+// ExecuteAs executes a command as a given UID and GID and return stdout/stderr
 func ExecuteAs(cmd string, args []string, uid int, gid int, env []string, logger log.Logger) ([]byte, error) {
 	level.Debug(logger).
 		Log("msg", "Executing as user", "command", cmd, "args", strings.Join(args, " "), "uid", uid, "gid", gid)
@@ -63,7 +64,7 @@ func ExecuteAs(cmd string, args []string, uid int, gid int, env []string, logger
 	return out, err
 }
 
-// Execute command with timeout and return stdout/stderr
+// ExecuteWithTimeout exwecutes a command with timeout and return stdout/stderr
 func ExecuteWithTimeout(cmd string, args []string, timeout int, env []string, logger log.Logger) ([]byte, error) {
 	level.Debug(logger).
 		Log("msg", "Executing with timeout", "command", cmd, "args", strings.Join(args, " "), "timeout", timeout)
@@ -101,7 +102,7 @@ func ExecuteWithTimeout(cmd string, args []string, timeout int, env []string, lo
 	return out, err
 }
 
-// Execute command with timeout as a given UID and GID and return stdout/stderr
+// ExecuteAsWithTimeout executes a command with timeout as a given UID and GID and return stdout/stderr
 func ExecuteAsWithTimeout(
 	cmd string,
 	args []string,

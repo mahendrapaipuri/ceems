@@ -1,3 +1,4 @@
+// Package collector implements different collectors of the exporter
 package collector
 
 import (
@@ -68,7 +69,7 @@ func RegisterCollector(
 	factories[collector] = factory
 }
 
-// ResourceCollector implements the prometheus.Collector interface.
+// CEEMSCollector implements the prometheus.Collector interface.
 type CEEMSCollector struct {
 	Collectors map[string]Collector
 	logger     log.Logger

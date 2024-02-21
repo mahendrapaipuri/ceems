@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	opendatasoftAPIBaseUrl = "https://reseaux-energies-rte.opendatasoft.com"
+	opendatasoftAPIBaseURL = "https://reseaux-energies-rte.opendatasoft.com"
 	opendatasoftAPIPath    = `%s/api/explore/v2.1/catalog/datasets/eco2mix-national-tr/records?%s`
 	rteEmissionsProvider   = "rte"
 )
@@ -110,7 +110,7 @@ func makeRTEAPIRequest(ctx context.Context, logger log.Logger) (float64, error) 
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
-		fmt.Sprintf(opendatasoftAPIPath, opendatasoftAPIBaseUrl, queryString), nil,
+		fmt.Sprintf(opendatasoftAPIPath, opendatasoftAPIBaseURL, queryString), nil,
 	)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create HTTP request for RTE provider", "err", err)
@@ -147,5 +147,5 @@ func makeRTEAPIRequest(ctx context.Context, logger log.Logger) (float64, error) 
 	if len(fields) >= 1 {
 		return float64(fields[0].TauxCo2), nil
 	}
-	return float64(-1), fmt.Errorf("Empty response received from RTE server: %v", fields)
+	return float64(-1), fmt.Errorf("empty response received from RTE server: %v", fields)
 }

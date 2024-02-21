@@ -39,7 +39,7 @@ var (
 		"collector.slurm.psi.metrics",
 		"Enables collection of PSI metrics (default: disabled)",
 	).Default("false").Bool()
-	useJobIdHash = CEEMSExporterApp.Flag(
+	useJobIDHash = CEEMSExporterApp.Flag(
 		"collector.slurm.create.unique.jobids",
 		`Enables calculation of a unique hash based job UUID (default: disabled). 
 UUID is calculated based on SLURM_JOBID, SLURM_JOB_USER, SLURM_JOB_ACCOUNT, SLURM_JOB_NODELIST.`,
@@ -88,9 +88,8 @@ var (
 	}
 )
 
-// Job properties struct
+// JobProps contains SLURM job properties
 type JobProps struct {
-	jobID          string
 	jobUUID        string
 	jobUser        string
 	jobAccount     string
@@ -98,7 +97,7 @@ type JobProps struct {
 	jobGPUOrdinals []string
 }
 
-// Cgroup metric struct
+// CgroupMetric contains metrics returned by cgroup
 type CgroupMetric struct {
 	name            string
 	cpuUser         float64
@@ -132,10 +131,10 @@ type slurmCollector struct {
 	gpuDevs            map[int]Device
 	hostMemTotal       float64
 	numJobs            *prometheus.Desc
-	jobCpuUser         *prometheus.Desc
-	jobCpuSystem       *prometheus.Desc
-	jobCpus            *prometheus.Desc
-	jobCpuPressure     *prometheus.Desc
+	jobCPUUser         *prometheus.Desc
+	jobCPUSystem       *prometheus.Desc
+	jobCPUs            *prometheus.Desc
+	jobCPUPressure     *prometheus.Desc
 	jobMemoryRSS       *prometheus.Desc
 	jobMemoryCache     *prometheus.Desc
 	jobMemoryUsed      *prometheus.Desc
@@ -219,13 +218,13 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 			[]string{"manager", "hostname"},
 			nil,
 		),
-		jobCpuUser: prometheus.NewDesc(
+		jobCPUUser: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_cpu_user_seconds"),
 			"Total job CPU user seconds",
 			[]string{"manager", "hostname", "user", "project", "uuid"},
 			nil,
 		),
-		jobCpuSystem: prometheus.NewDesc(
+		jobCPUSystem: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_cpu_system_seconds"),
 			"Total job CPU system seconds",
 			[]string{"manager", "hostname", "user", "project", "uuid"},
@@ -237,13 +236,13 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 		// 	[]string{"manager", "hostname", "user", "project", "uuid"},
 		// 	nil,
 		// ),
-		jobCpus: prometheus.NewDesc(
+		jobCPUs: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_cpus"),
 			"Total number of job CPUs",
 			[]string{"manager", "hostname", "user", "project", "uuid"},
 			nil,
 		),
-		jobCpuPressure: prometheus.NewDesc(
+		jobCPUPressure: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_cpu_psi_seconds"),
 			"Total CPU PSI in seconds",
 			[]string{"manager", "hostname", "user", "project", "uuid"},
@@ -353,8 +352,8 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 		if m.err {
 			ch <- prometheus.MustNewConstMetric(c.collectError, prometheus.GaugeValue, 1, m.name)
 		}
-		ch <- prometheus.MustNewConstMetric(c.jobCpuUser, prometheus.GaugeValue, m.cpuUser, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
-		ch <- prometheus.MustNewConstMetric(c.jobCpuSystem, prometheus.GaugeValue, m.cpuSystem, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
+		ch <- prometheus.MustNewConstMetric(c.jobCPUUser, prometheus.GaugeValue, m.cpuUser, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
+		ch <- prometheus.MustNewConstMetric(c.jobCPUSystem, prometheus.GaugeValue, m.cpuSystem, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
 		// ch <- prometheus.MustNewConstMetric(c.cpuTotal, prometheus.GaugeValue, m.cpuTotal, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
 		cpus := m.cpus
 		if cpus == 0 {
@@ -364,7 +363,7 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 				cpus = metrics[filepath.Dir(dir)].cpus
 			}
 		}
-		ch <- prometheus.MustNewConstMetric(c.jobCpus, prometheus.GaugeValue, float64(cpus), c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
+		ch <- prometheus.MustNewConstMetric(c.jobCPUs, prometheus.GaugeValue, float64(cpus), c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
 		ch <- prometheus.MustNewConstMetric(c.jobMemoryRSS, prometheus.GaugeValue, m.memoryRSS, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
 		ch <- prometheus.MustNewConstMetric(c.jobMemoryCache, prometheus.GaugeValue, m.memoryCache, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
 		ch <- prometheus.MustNewConstMetric(c.jobMemoryUsed, prometheus.GaugeValue, m.memoryUsed, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
@@ -376,7 +375,7 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 			ch <- prometheus.MustNewConstMetric(c.jobMemswFailCount, prometheus.GaugeValue, m.memswFailCount, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
 		}
 		if *collectPSIStats {
-			ch <- prometheus.MustNewConstMetric(c.jobCpuPressure, prometheus.GaugeValue, m.cpuPressure, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
+			ch <- prometheus.MustNewConstMetric(c.jobCPUPressure, prometheus.GaugeValue, m.cpuPressure, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
 			ch <- prometheus.MustNewConstMetric(c.jobMemoryPressure, prometheus.GaugeValue, m.memoryPressure, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
 		}
 		if len(c.gpuDevs) > 0 {
@@ -415,7 +414,7 @@ func (c *slurmCollector) getJobsMetrics() (map[string]CgroupMetric, error) {
 				return nil
 			}
 			rel, _ := filepath.Rel(c.cgroupsRootPath, p)
-			level.Debug(c.logger).Log("msg", "Get cgroup Name", "name", p, "rel", rel)
+			level.Debug(c.logger).Log("msg", "cgroup path", "path", p, "rel", rel)
 			names = append(names, "/"+rel)
 		}
 		return nil
@@ -472,7 +471,7 @@ func (c *slurmCollector) getMetrics(name string) (CgroupMetric, error) {
 }
 
 // Parse cpuset.cpus file to return a list of CPUs in the cgroup
-func (c *slurmCollector) parseCpuSet(cpuset string) ([]string, error) {
+func (c *slurmCollector) parseCPUSet(cpuset string) ([]string, error) {
 	var cpus []string
 	var start, end int
 	var err error
@@ -522,7 +521,7 @@ func (c *slurmCollector) getCPUs(name string) ([]string, error) {
 		level.Error(c.logger).Log("msg", "Error reading cpuset", "cpuset", cpusPath, "err", err)
 		return nil, err
 	}
-	cpus, err := c.parseCpuSet(strings.TrimSuffix(string(cpusData), "\n"))
+	cpus, err := c.parseCPUSet(strings.TrimSuffix(string(cpusData), "\n"))
 	if err != nil {
 		level.Error(c.logger).Log("msg", "Error parsing cpu set", "cpuset", cpusPath, "err", err)
 		return nil, err
@@ -532,7 +531,7 @@ func (c *slurmCollector) getCPUs(name string) ([]string, error) {
 
 // Read prolog generated run time files to get job properties
 func (c *slurmCollector) readJobPropsFromProlog(jobid string, jobProps *JobProps) JobProps {
-	var gpuJobId string
+	var gpuJobID string
 
 	// Read SLURM job properties
 	var slurmJobInfo = filepath.Join(*jobStatPath, jobid)
@@ -573,8 +572,8 @@ func (c *slurmCollector) readJobPropsFromProlog(jobid string, jobProps *JobProps
 				)
 				continue
 			}
-			fmt.Sscanf(string(content), "%s", &gpuJobId)
-			if gpuJobId == jobid {
+			fmt.Sscanf(string(content), "%s", &gpuJobID)
+			if gpuJobID == jobid {
 				jobProps.jobGPUOrdinals = append(jobProps.jobGPUOrdinals, dev.index)
 			}
 		}
@@ -745,7 +744,7 @@ func (c *slurmCollector) getJobProperties(name string, metric *CgroupMetric, pid
 	}
 
 	// Compute a UUID using job properties if asked. If not set UUID to job ID
-	if *useJobIdHash && jobProps.jobUUID == "" {
+	if *useJobIDHash && jobProps.jobUUID == "" {
 		jobProps.jobUUID, err = helpers.GetUUIDFromString(
 			[]string{
 				strings.TrimSpace(jobid),

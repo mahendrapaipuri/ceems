@@ -6,7 +6,6 @@ package collector
 import (
 	"context"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/go-kit/log"
@@ -28,8 +27,6 @@ type emissionsCollector struct {
 }
 
 var (
-	emissionsLock     = sync.RWMutex{}
-	countryCodeAlpha3 string
 	countryCodeAlpha2 = CEEMSExporterApp.Flag(
 		"collector.emissions.country.code",
 		"ISO 3166-1 alpha-2 Country code.",

@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	eMapAPIBaseUrl         = "https://api-access.electricitymaps.com"
-	eMapAPIBaseUrlPath     = `%s/free-tier/carbon-intensity/latest?%s`
+	eMapAPIBaseURL         = "https://api-access.electricitymaps.com"
+	eMapAPIBaseURLPath     = `%s/free-tier/carbon-intensity/latest?%s`
 	eMapsEmissionsProvider = "emaps"
 )
 
@@ -46,7 +46,7 @@ func NewEMapsProvider(ctx context.Context, logger log.Logger) (Provider, error) 
 		level.Info(logger).Log("msg", "Emission factor from Electricity Maps will be reported.")
 		eMapsAPIToken = token
 	} else {
-		return nil, fmt.Errorf("No API token found for Electricity Maps data.")
+		return nil, fmt.Errorf("api token missing for Electricity Maps")
 	}
 	return &emapsProvider{
 		logger:             logger,
@@ -106,7 +106,7 @@ func makeEMapsAPIRequest(apiToken string, ctx context.Context, logger log.Logger
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
-		fmt.Sprintf(eMapAPIBaseUrlPath, eMapAPIBaseUrl, queryString), nil,
+		fmt.Sprintf(eMapAPIBaseURLPath, eMapAPIBaseURL, queryString), nil,
 	)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create HTTP request for Electricity Maps provider", "err", err)

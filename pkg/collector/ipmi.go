@@ -273,7 +273,7 @@ func (c *impiCollector) executeIPMICmd() ([]byte, error) {
 	} else if c.execMode == "native" {
 		stdOut, err = osexec.Execute(cmdSlice[0], cmdSlice[1:], nil, c.logger)
 	} else {
-		err = fmt.Errorf("Current process do not have permissions to execute %s", *ipmiDcmiCmd)
+		err = fmt.Errorf("current process do not have permissions to execute %s", *ipmiDcmiCmd)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute IPMI command: %s", err)

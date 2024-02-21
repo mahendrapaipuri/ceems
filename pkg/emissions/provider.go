@@ -1,3 +1,4 @@
+// Package emissions implements clients to fetch emission factors from different sources
 package emissions
 
 import (
@@ -33,7 +34,7 @@ func init() {
 	}
 }
 
-// Register emission factor provider
+// RegisterProvider registers a emission factor provider
 func RegisterProvider(
 	provider string,
 	providerName string,
