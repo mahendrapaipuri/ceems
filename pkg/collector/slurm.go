@@ -114,6 +114,8 @@ type CgroupMetric struct {
 	memswTotal      float64
 	memswFailCount  float64
 	memoryPressure  float64
+	rdmaHCAHandles  map[string]float64
+	rdmaHCAObjects  map[string]float64
 	jobuser         string
 	jobaccount      string
 	jobid           string
@@ -144,6 +146,8 @@ type slurmCollector struct {
 	jobMemswTotal      *prometheus.Desc
 	jobMemswFailCount  *prometheus.Desc
 	jobMemoryPressure  *prometheus.Desc
+	jobRDMAHCAHandles  *prometheus.Desc
+	jobRDMAHCAObjects  *prometheus.Desc
 	jobGpuFlag         *prometheus.Desc
 	collectError       *prometheus.Desc
 	jobPropsCache      sync.Map
@@ -302,6 +306,18 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 			[]string{"manager", "hostname", "user", "project", "uuid"},
 			nil,
 		),
+		jobRDMAHCAHandles: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_rdma_hca_handles"),
+			"Current number of RDMA HCA handles",
+			[]string{"manager", "hostname", "user", "project", "uuid", "device"},
+			nil,
+		),
+		jobRDMAHCAObjects: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_rdma_hca_objects"),
+			"Current number of RDMA HCA objects",
+			[]string{"manager", "hostname", "user", "project", "uuid", "device"},
+			nil,
+		),
 		jobGpuFlag: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_gpu_index_flag"),
 			"Indicates running job on GPU, 1=job running",
@@ -332,6 +348,7 @@ func subsystem() ([]cgroup1.Subsystem, error) {
 	s := []cgroup1.Subsystem{
 		cgroup1.NewCpuacct(*cgroupfsPath),
 		cgroup1.NewMemory(*cgroupfsPath),
+		cgroup1.NewRdma(*cgroupfsPath),
 	}
 	return s, nil
 }
@@ -352,6 +369,8 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 		if m.err {
 			ch <- prometheus.MustNewConstMetric(c.collectError, prometheus.GaugeValue, 1, m.name)
 		}
+
+		// CPU stats
 		ch <- prometheus.MustNewConstMetric(c.jobCPUUser, prometheus.GaugeValue, m.cpuUser, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
 		ch <- prometheus.MustNewConstMetric(c.jobCPUSystem, prometheus.GaugeValue, m.cpuSystem, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
 		// ch <- prometheus.MustNewConstMetric(c.cpuTotal, prometheus.GaugeValue, m.cpuTotal, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
@@ -364,11 +383,15 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 			}
 		}
 		ch <- prometheus.MustNewConstMetric(c.jobCPUs, prometheus.GaugeValue, float64(cpus), c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
+
+		// Memory stats
 		ch <- prometheus.MustNewConstMetric(c.jobMemoryRSS, prometheus.GaugeValue, m.memoryRSS, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
 		ch <- prometheus.MustNewConstMetric(c.jobMemoryCache, prometheus.GaugeValue, m.memoryCache, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
 		ch <- prometheus.MustNewConstMetric(c.jobMemoryUsed, prometheus.GaugeValue, m.memoryUsed, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
 		ch <- prometheus.MustNewConstMetric(c.jobMemoryTotal, prometheus.GaugeValue, m.memoryTotal, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
 		ch <- prometheus.MustNewConstMetric(c.jobMemoryFailCount, prometheus.GaugeValue, m.memoryFailCount, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
+
+		// PSI stats. Push them only if they are available
 		if *collectSwapMemoryStats {
 			ch <- prometheus.MustNewConstMetric(c.jobMemswUsed, prometheus.GaugeValue, m.memswUsed, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
 			ch <- prometheus.MustNewConstMetric(c.jobMemswTotal, prometheus.GaugeValue, m.memswTotal, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
@@ -378,6 +401,20 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 			ch <- prometheus.MustNewConstMetric(c.jobCPUPressure, prometheus.GaugeValue, m.cpuPressure, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
 			ch <- prometheus.MustNewConstMetric(c.jobMemoryPressure, prometheus.GaugeValue, m.memoryPressure, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
 		}
+
+		// RDMA stats
+		for device, handles := range m.rdmaHCAHandles {
+			if handles > 0 {
+				ch <- prometheus.MustNewConstMetric(c.jobRDMAHCAHandles, prometheus.GaugeValue, handles, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid, device)
+			}
+		}
+		for device, objects := range m.rdmaHCAHandles {
+			if objects > 0 {
+				ch <- prometheus.MustNewConstMetric(c.jobRDMAHCAObjects, prometheus.GaugeValue, objects, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid, device)
+			}
+		}
+
+		// GPU job mapping
 		if len(c.gpuDevs) > 0 {
 			for _, gpuOrdinal := range m.jobgpuordinals {
 				var uuid string
@@ -513,9 +550,11 @@ func (c *slurmCollector) getCPUs(name string) ([]string, error) {
 	} else {
 		cpusPath = fmt.Sprintf("%s/cpuset%s/cpuset.cpus", *cgroupfsPath, name)
 	}
+
 	if !fileExists(cpusPath) {
-		return nil, nil
+		return nil, fmt.Errorf("cpuset file %s not found", cpusPath)
 	}
+
 	cpusData, err := os.ReadFile(cpusPath)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "Error reading cpuset", "cpuset", cpusPath, "err", err)
@@ -523,7 +562,7 @@ func (c *slurmCollector) getCPUs(name string) ([]string, error) {
 	}
 	cpus, err := c.parseCPUSet(strings.TrimSuffix(string(cpusData), "\n"))
 	if err != nil {
-		level.Error(c.logger).Log("msg", "Error parsing cpu set", "cpuset", cpusPath, "err", err)
+		level.Error(c.logger).Log("msg", "Error parsing cpuset", "cpuset", cpusPath, "err", err)
 		return nil, err
 	}
 	return cpus, nil
@@ -833,6 +872,16 @@ func (c *slurmCollector) getCgroupsV1Metrics(name string) (CgroupMetric, error) 
 		}
 	}
 
+	// Get RDMA metrics if available
+	if stats.Rdma != nil {
+		metric.rdmaHCAHandles = make(map[string]float64)
+		metric.rdmaHCAObjects = make(map[string]float64)
+		for _, device := range stats.Rdma.Current {
+			metric.rdmaHCAHandles[device.Device] = float64(device.HcaHandles)
+			metric.rdmaHCAObjects[device.Device] = float64(device.HcaObjects)
+		}
+	}
+
 	// Get job Info
 	c.getJobProperties(name, &metric, nil)
 	return metric, nil
@@ -904,6 +953,16 @@ func (c *slurmCollector) getCgroupsV2Metrics(name string) (CgroupMetric, error) 
 	// Get memory events
 	if stats.MemoryEvents != nil {
 		metric.memoryFailCount = float64(stats.MemoryEvents.Oom)
+	}
+
+	// Get RDMA stats
+	if stats.Rdma != nil {
+		metric.rdmaHCAHandles = make(map[string]float64)
+		metric.rdmaHCAObjects = make(map[string]float64)
+		for _, device := range stats.Rdma.Current {
+			metric.rdmaHCAHandles[device.Device] = float64(device.HcaHandles)
+			metric.rdmaHCAObjects[device.Device] = float64(device.HcaObjects)
+		}
 	}
 
 	// Get job Info
