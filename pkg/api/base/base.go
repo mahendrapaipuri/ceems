@@ -8,7 +8,7 @@ import (
 
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/mahendrapaipuri/ceems/internal/structset"
-	"github.com/mahendrapaipuri/ceems/pkg/stats/models"
+	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 )
 
 // CEEMSServerAppName is kingpin app name

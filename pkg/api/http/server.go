@@ -17,10 +17,10 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/gorilla/mux"
+	"github.com/mahendrapaipuri/ceems/pkg/api/base"
+	"github.com/mahendrapaipuri/ceems/pkg/api/db"
+	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/mahendrapaipuri/ceems/pkg/grafana"
-	"github.com/mahendrapaipuri/ceems/pkg/stats/base"
-	"github.com/mahendrapaipuri/ceems/pkg/stats/db"
-	"github.com/mahendrapaipuri/ceems/pkg/stats/models"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/prometheus/exporter-toolkit/web"
 )

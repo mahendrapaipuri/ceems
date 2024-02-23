@@ -24,7 +24,7 @@ func TestBatchjobStatsExecutable(t *testing.T) {
 	tmpDir := t.TempDir()
 	tmpSacctPath := tmpDir + "/sacct"
 
-	sacctPath, err := filepath.Abs("../../pkg/stats/fixtures/sacct")
+	sacctPath, err := filepath.Abs("../../pkg/api/fixtures/sacct")
 	if err != nil {
 		t.Error(err)
 	}

@@ -13,9 +13,9 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	internal_osexec "github.com/mahendrapaipuri/ceems/internal/osexec"
-	"github.com/mahendrapaipuri/ceems/pkg/stats/base"
-	"github.com/mahendrapaipuri/ceems/pkg/stats/helper"
-	"github.com/mahendrapaipuri/ceems/pkg/stats/models"
+	"github.com/mahendrapaipuri/ceems/pkg/api/base"
+	"github.com/mahendrapaipuri/ceems/pkg/api/helper"
+	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 )
 
 type slurmScheduler struct {

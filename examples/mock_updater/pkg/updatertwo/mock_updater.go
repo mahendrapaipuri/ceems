@@ -6,9 +6,9 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/mahendrapaipuri/ceems/pkg/stats/base"
-	"github.com/mahendrapaipuri/ceems/pkg/stats/models"
-	"github.com/mahendrapaipuri/ceems/pkg/stats/updater"
+	"github.com/mahendrapaipuri/ceems/pkg/api/base"
+	"github.com/mahendrapaipuri/ceems/pkg/api/models"
+	"github.com/mahendrapaipuri/ceems/pkg/api/updater"
 )
 
 type mockUpdater struct {

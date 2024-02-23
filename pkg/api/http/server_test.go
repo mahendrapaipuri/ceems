@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/mahendrapaipuri/ceems/pkg/stats/models"
+	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 )
 
 func setupServer() *CEEMSServer {

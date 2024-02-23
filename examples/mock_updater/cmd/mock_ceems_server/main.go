@@ -20,7 +20,7 @@ import (
 	// of execution
 	_ "github.com/mahendrapaipuri/ceems/examples/mock_updater/pkg/updaterone"
 	_ "github.com/mahendrapaipuri/ceems/examples/mock_updater/pkg/updatertwo"
-	"github.com/mahendrapaipuri/ceems/pkg/stats/cli"
+	"github.com/mahendrapaipuri/ceems/pkg/api/cli"
 )
 
 // Main entry point for `usagestats` app
