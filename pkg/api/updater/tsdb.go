@@ -34,6 +34,10 @@ var (
 		"tsdb.data.cutoff.duration",
 		"Compute units (Batch jobs, VMs, Pods) with wall time less than this period will be ignored. By default none will be ignored. Units Supported: y, w, d, h, m, s, ms.",
 	).Default("0s").String()
+	purgeDataTS = base.CEEMSServerApp.Flag(
+		"tsdb.data.purge.ts",
+		"Ignored compute units (Batch jobs, VMs, Pods) will be purged from the TSDB. Admin API must be enabled in TSDB.",
+	).Default("false").Bool()
 	metricLock = sync.RWMutex{}
 	cutoff     = time.Duration(0 * time.Second)
 )
@@ -217,9 +221,11 @@ func (t *tsdbUpdater) Update(startTime time.Time, endTime time.Time, units []mod
 	}
 
 	// Finally delete time series corresponding to ignoredUnits
-	if err := t.deleteTimeSeries(startTime, endTime, ignoredUnits); err != nil {
-		level.Error(t.Logger).
-			Log("msg", "Failed delete ignored units' time series in TSDB", "err", err)
+	if *purgeDataTS {
+		if err := t.deleteTimeSeries(startTime, endTime, ignoredUnits); err != nil {
+			level.Error(t.Logger).
+				Log("msg", "Failed delete ignored units' time series in TSDB", "err", err)
+		}
 	}
 	return units
 }
