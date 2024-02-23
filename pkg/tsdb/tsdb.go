@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -100,16 +101,13 @@ func (t *TSDB) Available() bool {
 
 // Ping attempts to ping TSDB
 func (t *TSDB) Ping() error {
-	// Create a new GET request to reach out to TSDB
-	req, err := http.NewRequest(http.MethodGet, t.URL.String(), nil)
+	var d net.Dialer
+	// Check if TSDB is reachable
+	conn, err := d.Dial("tcp", t.URL.Host)
 	if err != nil {
 		return err
 	}
-
-	// Check if TSDB is reachable
-	if _, err = t.Client.Do(req); err != nil {
-		return err
-	}
+	defer conn.Close()
 	return nil
 }
 
@@ -212,6 +210,11 @@ func (t *TSDB) Query(query string, queryTime time.Time) (Metric, error) {
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
+	}
+
+	// Check response code
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("query returned status: %d", resp.StatusCode)
 	}
 
 	// Unpack into data
