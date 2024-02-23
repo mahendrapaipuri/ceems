@@ -10,33 +10,33 @@ import (
 )
 
 var (
-	binary, _ = filepath.Abs("../../bin/ceems_server")
+	binary, _ = filepath.Abs("../../bin/ceems_lb")
 )
 
 const (
-	address = "localhost:19020"
+	address = "localhost:19030"
 )
 
-func TestBatchjobStatsExecutable(t *testing.T) {
+func TestCEEMSLBExecutable(t *testing.T) {
 	if _, err := os.Stat(binary); err != nil {
-		t.Skipf("ceems_server binary not available, try to run `make build` first: %s", err)
+		t.Skipf("ceems_lb binary not available, try to run `make build` first: %s", err)
 	}
-	tmpDir := t.TempDir()
-	tmpSacctPath := tmpDir + "/sacct"
 
-	sacctPath, err := filepath.Abs("../../pkg/stats/fixtures/sacct")
+	tmpDir := t.TempDir()
+	tmpConfigPath := tmpDir + "/config.yaml"
+
+	configPath, err := filepath.Abs("../../configs/lb_config.yml")
 	if err != nil {
 		t.Error(err)
 	}
-	err = os.Link(sacctPath, tmpSacctPath)
+	err = os.Link(configPath, tmpConfigPath)
 	if err != nil {
 		t.Error(err)
 	}
 
 	usagestats := exec.Command(
 		binary, "--path.data", tmpDir,
-		"--slurm.sacct.path", tmpSacctPath,
-		"--resource.manager.slurm",
+		"--config.path", tmpConfigPath,
 		"--web.listen-address", address,
 	)
 	if err := runCommandAndTests(usagestats); err != nil {

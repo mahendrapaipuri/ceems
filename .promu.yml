@@ -10,6 +10,8 @@ build:
           path: ./cmd/ceems_exporter
         - name: ceems_server
           path: ./cmd/ceems_server
+        - name: ceems_lb
+          path: ./cmd/ceems_lb
     flags: -a -tags 'netgo osusergo static_build'
     ldflags: |
         -X github.com/prometheus/common/version.Version={{.Version}}

@@ -30,8 +30,8 @@ do
       ;;
     *)
       echo "Usage: $0 [-p] [-k] [-u] [-v]"
-      echo "  -s: scenario to test [options: exporter, stats]"
-      echo "  -k: keep temporary files and leave ceems_{exporter,server} running"
+      echo "  -s: scenario to test [options: exporter, stats, lb]"
+      echo "  -k: keep temporary files and leave ceems_{exporter,server,lb} running"
       echo "  -u: update fixtures"
       echo "  -v: verbose output"
       exit 1
@@ -76,11 +76,6 @@ then
     fixture='pkg/collector/fixtures/output/e2e-test-cgroupsv2-all-metrics-output.txt'
   fi
 
-  # case "${cgroups_mode}" in
-  #   legacy|hybrid) fixture='pkg/collector/fixtures/output/e2e-test-cgroupsv1-output.txt' ;;
-  #   *) fixture='pkg/collector/fixtures/output/e2e-test-cgroupsv2-output.txt' ;;
-  # esac
-
   logfile="${tmpdir}/ceems_exporter.log"
   fixture_output="${tmpdir}/e2e-test-exporter-output.txt"
   pidfile="${tmpdir}/ceems_exporter.pid"
@@ -95,14 +90,6 @@ then
   then
     desc="/api/units end point test with uuid query param"
     fixture='pkg/stats/fixtures/output/e2e-test-stats-server-uuid-query.txt'
-  # elif [ "${scenario}" = "stats-jobid-query" ]
-  # then
-  #   desc="/api/units end point test with jobid query param"
-  #   fixture='pkg/stats/fixtures/output/e2e-test-stats-server-jobid-query.txt'
-  # elif [ "${scenario}" = "stats-jobuuid-jobid-query" ]
-  # then
-  #   desc="/api/units end point test with jobuuid and jobid query param"
-  #   fixture='pkg/stats/fixtures/output/e2e-test-stats-server-jobuuid-jobid-query.txt'
   elif [ "${scenario}" = "stats-admin-query" ]
   then
     desc="/api/units/admin end point test for admin query"
@@ -140,6 +127,15 @@ then
   logfile="${tmpdir}/ceems_server.log"
   fixture_output="${tmpdir}/e2e-test-stats-server-output.txt"
   pidfile="${tmpdir}/ceems_server.pid"
+elif [[ "${scenario}" =~ "lb" ]] 
+then
+
+  desc="basic e2e load balancer test"
+  fixture='pkg/lb/fixtures/output/e2e-test-lb-server.txt'
+
+  logfile="${tmpdir}/ceems_lb.log"
+  fixture_output="${tmpdir}/e2e-test-lb-output.txt"
+  pidfile="${tmpdir}/ceems_lb.pid"
 fi
 
 echo "using scenario: ${scenario}. Description: ${desc}"
@@ -161,10 +157,13 @@ EOF
 
   if [ ${keep} -eq 0 ]
   then
-    kill -9 "$(cat ${pidfile})"
-    # This silences the "Killed" message
-    set +e
-    wait "$(cat ${pidfile})" > /dev/null 2>&1
+    for pid in "$(cat ${pidfile})"
+    do
+        kill -9 $pid
+        # This silences the "Killed" message
+        set +e
+        wait $pid > /dev/null 2>&1
+    done
     rm -rf "${tmpdir}"
   fi
 }
@@ -185,7 +184,7 @@ get() {
 }
 
 waitport() {
-  timeout 5 bash -c "while ! curl -s -f "http://localhost:${port}" > /dev/null; do sleep 0.1; done";
+  timeout 5 bash -c "while ! curl -s -f "http://localhost:${1}" > /dev/null; do sleep 0.1; done";
   sleep 1
 }
 
@@ -299,7 +298,7 @@ then
   echo $! > "${pidfile}"
 
   # sleep 1
-  waitport
+  waitport "${port}"
 
   get "127.0.0.1:${port}/metrics" | grep -E -v "${skip_re}" > "${fixture_output}"
 elif [[ "${scenario}" =~ "stats" ]] 
@@ -326,7 +325,7 @@ then
   echo $! > "${pidfile}"
 
   # sleep 2
-  waitport
+  waitport "${port}"
 
   if [ "${scenario}" = "stats-project-query" ]
   then
@@ -334,12 +333,6 @@ then
   elif [ "${scenario}" = "stats-uuid-query" ]
   then
     get -H "X-Grafana-User: usr2" "127.0.0.1:${port}/api/units?uuid=1481508&project=acc2" > "${fixture_output}"
-  # elif [ "${scenario}" = "stats-jobid-query" ]
-  # then
-  #   get -H "X-Grafana-User: usr8" "127.0.0.1:${port}/api/units?jobid=1479765&project=acc1&from=1676934000&to=1677020400" > "${fixture_output}"
-  # elif [ "${scenario}" = "stats-jobuuid-jobid-query" ]
-  # then
-  #   get -H "X-Grafana-User: usr15" "127.0.0.1:${port}/api/units?jobuuid=6311b9ce-d741-d5ba-a27a-9c22eb21254c&jobid=11508&jobid=81510&project=acc1" > "${fixture_output}"
   elif [ "${scenario}" = "stats-admin-query" ]
   then
     get -H "X-Grafana-User: grafana" -H "X-Dashboard-User: usr3" "127.0.0.1:${port}/api/units?project=acc3&from=1676934000&to=1677538800" > "${fixture_output}"
@@ -365,6 +358,35 @@ then
   then
     get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/usage/global/admin?user=usr2" > "${fixture_output}"
   fi
+
+elif [[ "${scenario}" =~ "lb" ]] 
+then
+  if [ ! -x ./bin/ceems_lb ]
+  then
+      echo './bin/ceems_lb not found. Consider running `go build` first.' >&2
+      exit 1
+  fi
+
+  export PATH="${GOBIN:-}:${PATH}"
+  prometheus \
+    --config.file pkg/lb/fixtures/prometheus.yml \
+    --storage.tsdb.path "${tmpdir}" \
+    --log.level="debug" >> "${logfile}" 2>&1 &
+  PROMETHEUS_PID=$!
+
+  waitport "9090"
+
+  ./bin/ceems_lb \
+    --config.file pkg/lb/fixtures/config.yml \
+    --web.listen-address="127.0.0.1:${port}" \
+    --log.level="debug" >> "${logfile}" 2>&1 &
+  LB_PID=$!
+
+  echo "${PROMETHEUS_PID} ${LB_PID}" > "${pidfile}"
+
+  waitport "${port}"
+
+  get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/v1/status/config" > "${fixture_output}"
 fi
 
 diff -u \

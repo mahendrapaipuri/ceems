@@ -1,3 +1,4 @@
+// Package tsdb implements TSDB client
 package tsdb
 
 import (
@@ -17,10 +18,10 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// metric type
+// Metric defines TSDB metrics
 type Metric map[string]float64
 
-// TSDB response
+// Response is the TSDB response model
 type Response struct {
 	Status    string      `json:"status"`
 	Data      interface{} `json:"data,omitempty"`
@@ -48,7 +49,7 @@ const (
 	defaultScrapeInterval = time.Duration(time.Minute)
 )
 
-// Return a new instance of TSDB struct
+// NewTSDB returns a new instance of TSDB
 func NewTSDB(webURL string, webSkipTLSVerify bool, logger log.Logger) (*TSDB, error) {
 	// If webURL is empty return empty struct with available set to false
 	if webURL == "" {
@@ -87,17 +88,17 @@ func NewTSDB(webURL string, webSkipTLSVerify bool, logger log.Logger) (*TSDB, er
 	}, nil
 }
 
-// Stringer receiver for tsdbConfig
+// String implements stringer method for TSDB
 func (t *TSDB) String() string {
 	return fmt.Sprintf("TSDB{URL: %s, available: %t}", t.URL.Redacted(), t.available)
 }
 
-// Return true if TSDB is available
+// Available returns true if TSDB is alive
 func (t *TSDB) Available() bool {
 	return t.available
 }
 
-// Check if TSDB is reachable
+// Ping attempts to ping TSDB
 func (t *TSDB) Ping() error {
 	// Create a new GET request to reach out to TSDB
 	req, err := http.NewRequest(http.MethodGet, t.URL.String(), nil)
@@ -112,43 +113,17 @@ func (t *TSDB) Ping() error {
 	return nil
 }
 
-// TSDB config
+// Config returns TSDB config
 func (t *TSDB) Config() (map[interface{}]interface{}, error) {
-	// Create a new GET request to reach out to TSDB
-	req, err := http.NewRequest(http.MethodGet, t.ConfigEndpoint.String(), nil)
+	// Make a API request to TSDB
+	data, err := Request(t.ConfigEndpoint.String(), t.Client)
 	if err != nil {
 		return nil, err
-	}
-
-	// Add necessary headers
-	req.Header.Add("Content-Type", "application/json")
-
-	// Check if TSDB is reachable
-	resp, err := t.Client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	// Read response body
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	// Unpack into data
-	var data Response
-	if err = json.Unmarshal(body, &data); err != nil {
-		return nil, err
-	}
-
-	// if Data field is nil return err
-	if data.Data == nil {
-		return nil, fmt.Errorf("TSDB returned no config")
 	}
 
 	// Parse full config data and then extract only global config
 	var fullConfig map[interface{}]interface{}
-	configData := data.Data.(map[string]interface{})
+	configData := data.(map[string]interface{})
 	if v, exists := configData["yaml"]; exists && v.(string) != "" {
 		if err = yaml.Unmarshal([]byte(v.(string)), &fullConfig); err != nil {
 			return nil, err
@@ -157,7 +132,7 @@ func (t *TSDB) Config() (map[interface{}]interface{}, error) {
 	return fullConfig, nil
 }
 
-// TSDB global config
+// GlobalConfig returns global config section of TSDB
 func (t *TSDB) GlobalConfig() (map[interface{}]interface{}, error) {
 	// Get config
 	fullConfig, err := t.Config()
@@ -172,7 +147,7 @@ func (t *TSDB) GlobalConfig() (map[interface{}]interface{}, error) {
 	return nil, fmt.Errorf("global config not found in TSDB config")
 }
 
-// Scrape interval setter
+// ScrapeInterval returns scrape interval of TSDB
 func (t *TSDB) ScrapeInterval() time.Duration {
 	// Check if lastConfigUpdate time is more than 3 hrs
 	if time.Since(t.lastConfigUpdate) < time.Duration(3*time.Hour) {
@@ -203,13 +178,13 @@ func (t *TSDB) ScrapeInterval() time.Duration {
 	return defaultScrapeInterval
 }
 
-// Rate interval setter
+// RateInterval returns rate interval of TSDB
 func (t *TSDB) RateInterval() time.Duration {
 	// Grafana recommends atleast 4 times of scrape interval to estimate rate
 	return 4 * t.ScrapeInterval()
 }
 
-// Make a query to TSDB at a given queryTime
+// Query makes a TSDB query
 func (t *TSDB) Query(query string, queryTime time.Time) (Metric, error) {
 	// Add form data to request
 	// TSDB expects time stamps in UTC zone
