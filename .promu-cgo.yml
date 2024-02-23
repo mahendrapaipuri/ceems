@@ -9,6 +9,8 @@ build:
     binaries:
         - name: ceems_server
           path: ./cmd/ceems_server
+        - name: ceems_lb
+          path: ./cmd/ceems_lb
     tags:
       all: [osusergo, netgo, static_build]
     flags: -a

@@ -8,7 +8,7 @@ DOCKER_ARCHS ?= amd64 armv7 arm64 ppc64le s390x
 
 include Makefile.common
 
-PROMTOOL_VERSION ?= 2.30.0
+PROMTOOL_VERSION ?= 2.50.0
 PROMTOOL_URL     ?= https://github.com/prometheus/prometheus/releases/download/v$(PROMTOOL_VERSION)/prometheus-$(PROMTOOL_VERSION).$(GO_BUILD_PLATFORM).tar.gz
 PROMTOOL         ?= $(FIRST_GOPATH)/bin/promtool
 
@@ -41,7 +41,10 @@ ifeq ($(CGO_BUILD), 1)
 	pkgs := ./pkg/stats/cli \
 			./pkg/stats/db ./pkg/stats/helper \
 			./pkg/stats/resource ./pkg/stats/updater \
-			./pkg/stats/http ./cmd/ceems_server
+			./pkg/stats/http ./cmd/ceems_server \
+			./pkg/lb/backend ./pkg/lb/cli \
+			./pkg/lb/frontend ./pkg/lb/serverpool \
+			./cmd/ceems_lb
 	checkmetrics := skip-checkmetrics
 	checkrules := skip-checkrules
 else
@@ -130,6 +133,7 @@ test-e2e: build pkg/collector/fixtures/sys/.unpacked pkg/collector/fixtures/proc
 	./scripts/e2e-test.sh -s stats-current-usage-admin-query
 	./scripts/e2e-test.sh -s stats-global-usage-admin-query
 	./scripts/e2e-test.sh -s stats-current-usage-admin-denied-query
+	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-basic-test
 endif
 
 ifeq ($(CGO_BUILD), 0)
@@ -156,6 +160,7 @@ test-e2e-update: build pkg/collector/fixtures/sys/.unpacked pkg/collector/fixtur
 	./scripts/e2e-test.sh -s stats-current-usage-admin-query -u || true
 	./scripts/e2e-test.sh -s stats-global-usage-admin-query -u || true
 	./scripts/e2e-test.sh -s stats-current-usage-admin-denied-query -u || true
+	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-basic-test -u || true
 endif
 
 .PHONY: skip-test-e2e
@@ -195,3 +200,4 @@ promtool: $(PROMTOOL)
 $(PROMTOOL):
 	mkdir -p $(FIRST_GOPATH)/bin
 	curl -fsS -L $(PROMTOOL_URL) | tar -xvzf - -C $(FIRST_GOPATH)/bin --strip 1 "prometheus-$(PROMTOOL_VERSION).$(GO_BUILD_PLATFORM)/promtool" 
+	curl -fsS -L $(PROMTOOL_URL) | tar -xvzf - -C $(FIRST_GOPATH)/bin --strip 1 "prometheus-$(PROMTOOL_VERSION).$(GO_BUILD_PLATFORM)/prometheus" 
