@@ -124,9 +124,9 @@ then
     fixture='pkg/stats/fixtures/output/e2e-test-stats-server-current-usage-admin-denied-query.txt'
   fi
 
-  logfile="${tmpdir}/ceems_server.log"
+  logfile="${tmpdir}/ceems_api_server.log"
   fixture_output="${tmpdir}/e2e-test-stats-server-output.txt"
-  pidfile="${tmpdir}/ceems_server.pid"
+  pidfile="${tmpdir}/ceems_api_server.pid"
 elif [[ "${scenario}" =~ "lb" ]] 
 then
 
@@ -303,13 +303,13 @@ then
   get "127.0.0.1:${port}/metrics" | grep -E -v "${skip_re}" > "${fixture_output}"
 elif [[ "${scenario}" =~ "stats" ]] 
 then
-  if [ ! -x ./bin/ceems_server ]
+  if [ ! -x ./bin/ceems_api_server ]
   then
-      echo './bin/ceems_server not found. Consider running `go build` first.' >&2
+      echo './bin/ceems_api_server not found. Consider running `go build` first.' >&2
       exit 1
   fi
 
-  ./bin/ceems_server \
+  ./bin/ceems_api_server \
     --slurm.sacct.path="pkg/stats/fixtures/sacct" \
     --resource.manager.slurm \
     --storage.data.path="${tmpdir}" \

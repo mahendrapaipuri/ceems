@@ -41,7 +41,7 @@ ifeq ($(CGO_BUILD), 1)
 	pkgs := ./pkg/stats/cli \
 			./pkg/stats/db ./pkg/stats/helper \
 			./pkg/stats/resource ./pkg/stats/updater \
-			./pkg/stats/http ./cmd/ceems_server \
+			./pkg/stats/http ./cmd/ceems_api_server \
 			./pkg/lb/backend ./pkg/lb/cli \
 			./pkg/lb/frontend ./pkg/lb/serverpool \
 			./cmd/ceems_lb

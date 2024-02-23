@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	binary, _ = filepath.Abs("../../bin/ceems_server")
+	binary, _ = filepath.Abs("../../bin/ceems_api_server")
 )
 
 const (
@@ -19,7 +19,7 @@ const (
 
 func TestBatchjobStatsExecutable(t *testing.T) {
 	if _, err := os.Stat(binary); err != nil {
-		t.Skipf("ceems_server binary not available, try to run `make build` first: %s", err)
+		t.Skipf("ceems_api_server binary not available, try to run `make build` first: %s", err)
 	}
 	tmpDir := t.TempDir()
 	tmpSacctPath := tmpDir + "/sacct"
