@@ -44,7 +44,7 @@ func TestCgroupsV2SlurmJobMetrics(t *testing.T) {
 	}
 	metrics, err := c.getJobsMetrics()
 	expectedSlurmMetrics = CgroupMetric{
-		name:            "/system.slice/slurmstepd.scope/job_1009248",
+		name:            "/system.slice/slurmstepd.scope/job_1009249",
 		cpuUser:         60375.292848,
 		cpuSystem:       115.777502,
 		cpuTotal:        60491.070351,
@@ -59,18 +59,20 @@ func TestCgroupsV2SlurmJobMetrics(t *testing.T) {
 		memswTotal:      123456,
 		memswFailCount:  0,
 		memoryPressure:  0,
-		jobuser:         "testusr",
-		jobaccount:      "testacc",
-		jobid:           "1009248",
-		jobuuid:         "0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",
-		jobgpuordinals:  []string{"2", "3"},
+		rdmaHCAHandles:  map[string]float64{"hfi1_0": 479, "hfi1_1": 1479, "hfi1_2": 2479},
+		rdmaHCAObjects:  map[string]float64{"hfi1_0": 340, "hfi1_1": 1340, "hfi1_2": 2340},
+		jobuser:         "testusr2",
+		jobaccount:      "testacc2",
+		jobid:           "1009249",
+		jobuuid:         "018ce2fe-b3f9-632a-7507-0e01c2687de5",
+		jobgpuordinals:  []string{"0"},
 		err:             false,
 	}
 	if err != nil {
 		t.Fatalf("Cannot fetch data from getJobsMetrics function: %v ", err)
 	}
-	if !reflect.DeepEqual(metrics["1009248"], expectedSlurmMetrics) {
-		t.Fatalf("Expected metrics data is %+v: \nGot %+v", expectedSlurmMetrics, metrics["1009248"])
+	if !reflect.DeepEqual(metrics["1009249"], expectedSlurmMetrics) {
+		t.Fatalf("Expected metrics data is %#v: \nGot %#v", expectedSlurmMetrics, metrics["1009249"])
 	}
 }
 
@@ -109,6 +111,8 @@ func TestCgroupsV2SlurmJobMetricsWithProcFs(t *testing.T) {
 		memswTotal:      123456,
 		memswFailCount:  0,
 		memoryPressure:  0,
+		rdmaHCAHandles:  make(map[string]float64),
+		rdmaHCAObjects:  make(map[string]float64),
 		jobuser:         "testusr",
 		jobaccount:      "testacc",
 		jobid:           "1009248",
@@ -157,6 +161,8 @@ func TestCgroupsV2SlurmJobMetricsNoJobProps(t *testing.T) {
 		memswTotal:      1.8446744073709552e+19,
 		memswFailCount:  0,
 		memoryPressure:  0,
+		rdmaHCAHandles:  make(map[string]float64),
+		rdmaHCAObjects:  make(map[string]float64),
 		jobuser:         "",
 		jobaccount:      "",
 		jobid:           "1009248",
@@ -206,6 +212,8 @@ func TestCgroupsV1SlurmJobMetrics(t *testing.T) {
 		memswTotal:      9.223372036854772e+18,
 		memswFailCount:  0,
 		memoryPressure:  0,
+		rdmaHCAHandles:  map[string]float64{"hfi1_0": 479, "hfi1_1": 1479, "hfi1_2": 2479},
+		rdmaHCAObjects:  map[string]float64{"hfi1_0": 340, "hfi1_1": 1340, "hfi1_2": 2340},
 		jobuser:         "testusr",
 		jobaccount:      "testacc",
 		jobid:           "1009248",
@@ -217,6 +225,6 @@ func TestCgroupsV1SlurmJobMetrics(t *testing.T) {
 		t.Fatalf("Cannot fetch data from getJobsMetrics function: %v ", err)
 	}
 	if !reflect.DeepEqual(metrics["1009248"], expectedSlurmMetrics) {
-		t.Fatalf("Expected metrics data is %+v: \nGot %+v", expectedSlurmMetrics, metrics["1009248"])
+		t.Fatalf("Expected metrics data is %#v: \nGot %#v", expectedSlurmMetrics, metrics["1009248"])
 	}
 }

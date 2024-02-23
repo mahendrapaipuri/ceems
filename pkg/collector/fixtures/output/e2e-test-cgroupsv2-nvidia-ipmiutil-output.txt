@@ -93,6 +93,18 @@ ceems_slurm_job_memory_total_bytes{hostname="",manager="slurm",project="testacc3
 ceems_slurm_job_memory_used_bytes{hostname="",manager="slurm",project="testacc",user="testusr",uuid="1009248"} 4.111491072e+09
 ceems_slurm_job_memory_used_bytes{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="1009249"} 4.111491072e+09
 ceems_slurm_job_memory_used_bytes{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="1009250"} 4.111491072e+09
+# HELP ceems_slurm_job_rdma_hca_handles Current number of RDMA HCA handles
+# TYPE ceems_slurm_job_rdma_hca_handles gauge
+ceems_slurm_job_rdma_hca_handles{device="hfi1_0",hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="1009249"} 479
+ceems_slurm_job_rdma_hca_handles{device="hfi1_0",hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="1009250"} 289
+ceems_slurm_job_rdma_hca_handles{device="hfi1_1",hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="1009249"} 1479
+ceems_slurm_job_rdma_hca_handles{device="hfi1_2",hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="1009249"} 2479
+# HELP ceems_slurm_job_rdma_hca_objects Current number of RDMA HCA objects
+# TYPE ceems_slurm_job_rdma_hca_objects gauge
+ceems_slurm_job_rdma_hca_objects{device="hfi1_0",hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="1009249"} 479
+ceems_slurm_job_rdma_hca_objects{device="hfi1_0",hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="1009250"} 289
+ceems_slurm_job_rdma_hca_objects{device="hfi1_1",hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="1009249"} 1479
+ceems_slurm_job_rdma_hca_objects{device="hfi1_2",hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="1009249"} 2479
 # HELP ceems_slurm_jobs Total number of jobs
 # TYPE ceems_slurm_jobs gauge
 ceems_slurm_jobs{hostname="",manager="slurm"} 3

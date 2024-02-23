@@ -2543,6 +2543,101 @@ Lines: 5
 9870
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/rdma
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/rdma/slurm
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/rdma/slurm/uid_1000
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/rdma/slurm/uid_1000/cgroup.clone_children
+Lines: 0
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/rdma/slurm/uid_1000/cgroup.procs
+Lines: 0
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/rdma/slurm/uid_1000/cgroup.sane_behavior
+Lines: 0
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/rdma/slurm/uid_1000/job_1009248
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/rdma/slurm/uid_1000/job_1009248/cgroup.clone_children
+Lines: 0
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/rdma/slurm/uid_1000/job_1009248/cgroup.procs
+Lines: 0
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/rdma/slurm/uid_1000/job_1009248/notify_on_release
+Lines: 0
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/rdma/slurm/uid_1000/job_1009248/rdma.current
+Lines: 3
+hfi1_0 hca_handle=479 hca_object=340
+hfi1_1 hca_handle=1479 hca_object=1340
+hfi1_2 hca_handle=2479 hca_object=2340EOF
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/rdma/slurm/uid_1000/job_1009248/rdma.max
+Lines: 3
+hfi1_0 hca_handle=max hca_object=max
+hfi1_1 hca_handle=max hca_object=max
+hfi1_2 hca_handle=max hca_object=maxEOF
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/rdma/slurm/uid_1000/job_1009248/tasks
+Lines: 0
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/rdma/slurm/uid_1000/job_1009249
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/rdma/slurm/uid_1000/job_1009249/cgroup.clone_children
+Lines: 0
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/rdma/slurm/uid_1000/job_1009249/cgroup.procs
+Lines: 0
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/rdma/slurm/uid_1000/job_1009249/notify_on_release
+Lines: 0
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/rdma/slurm/uid_1000/job_1009249/rdma.current
+Lines: 1
+hfi1_0 hca_handle=289 hca_object=1000EOF
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/rdma/slurm/uid_1000/job_1009249/rdma.max
+Lines: 1
+hfi1_0 hca_handle=max hca_object=maxEOF
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/rdma/slurm/uid_1000/job_1009249/tasks
+Lines: 0
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/rdma/slurm/uid_1000/notify_on_release
+Lines: 0
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/rdma/slurm/uid_1000/release_agent
+Lines: 0
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/rdma/slurm/uid_1000/tasks
+Lines: 0
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Directory: sys/fs/cgroup/system.slice
 Mode: 775
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -6303,6 +6398,20 @@ Lines: 1
 max
 Mode: 640
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009249/rdma.current
+Lines: 3
+hfi1_0 hca_handle=479 hca_object=340
+hfi1_1 hca_handle=1479 hca_object=1340
+hfi1_2 hca_handle=2479 hca_object=2340EOF
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009249/rdma.max
+Lines: 3
+hfi1_0 hca_handle=max hca_object=max
+hfi1_1 hca_handle=max hca_object=max
+hfi1_2 hca_handle=max hca_object=maxEOF
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Directory: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009249/step_3
 Mode: 775
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -9684,6 +9793,16 @@ Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009250/memory.swap.max
 Lines: 1
 max
 Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009250/rdma.current
+Lines: 1
+hfi1_0 hca_handle=289 hca_object=1000EOF
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009250/rdma.max
+Lines: 1
+hfi1_0 hca_handle=max hca_object=maxEOF
+Mode: 664
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Directory: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009250/step_3
 Mode: 775
