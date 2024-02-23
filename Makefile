@@ -141,7 +141,7 @@ ifeq ($(CGO_BUILD), 0)
 test-e2e-update: build pkg/collector/fixtures/sys/.unpacked pkg/collector/fixtures/proc/.unpacked
 	@echo ">> updating end-to-end tests outputs"
 	./scripts/e2e-test.sh -s exporter-cgroups-v1 -u || true
-	./scripts/e2e-test.sh -s exporter-cgroups-v2-nvidia-ipmitutil -u || true
+	./scripts/e2e-test.sh -s exporter-cgroups-v2-nvidia-ipmiutil -u || true
 	./scripts/e2e-test.sh -s exporter-cgroups-v2-amd-ipmitool -u || true
 	./scripts/e2e-test.sh -s exporter-cgroups-v2-nogpu -u || true
 	./scripts/e2e-test.sh -s exporter-cgroups-v2-procfs -u || true
