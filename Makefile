@@ -35,13 +35,13 @@ else
 	test-docker := test-docker
 endif
 
-# Use CGO for stats and GO for ceems_exporter.
+# Use CGO for api and GO for ceems_exporter.
 ifeq ($(CGO_BUILD), 1)
 	PROMU_CONF ?= .promu-cgo.yml
-	pkgs := ./pkg/stats/cli \
-			./pkg/stats/db ./pkg/stats/helper \
-			./pkg/stats/resource ./pkg/stats/updater \
-			./pkg/stats/http ./cmd/ceems_api_server \
+	pkgs := ./pkg/api/cli \
+			./pkg/api/db ./pkg/api/helper \
+			./pkg/api/resource ./pkg/api/updater \
+			./pkg/api/http ./cmd/ceems_api_server \
 			./pkg/lb/backend ./pkg/lb/cli \
 			./pkg/lb/frontend ./pkg/lb/serverpool \
 			./cmd/ceems_lb
@@ -123,16 +123,16 @@ else
 .PHONY: test-e2e
 test-e2e: build pkg/collector/fixtures/sys/.unpacked pkg/collector/fixtures/proc/.unpacked
 	@echo ">> running end-to-end tests"
-	./scripts/e2e-test.sh -s stats-project-query
-	./scripts/e2e-test.sh -s stats-uuid-query
-	./scripts/e2e-test.sh -s stats-admin-query
-	./scripts/e2e-test.sh -s stats-admin-query-all
-	./scripts/e2e-test.sh -s stats-admin-denied-query
-	./scripts/e2e-test.sh -s stats-current-usage-query
-	./scripts/e2e-test.sh -s stats-global-usage-query
-	./scripts/e2e-test.sh -s stats-current-usage-admin-query
-	./scripts/e2e-test.sh -s stats-global-usage-admin-query
-	./scripts/e2e-test.sh -s stats-current-usage-admin-denied-query
+	./scripts/e2e-test.sh -s api-project-query
+	./scripts/e2e-test.sh -s api-uuid-query
+	./scripts/e2e-test.sh -s api-admin-query
+	./scripts/e2e-test.sh -s api-admin-query-all
+	./scripts/e2e-test.sh -s api-admin-denied-query
+	./scripts/e2e-test.sh -s api-current-usage-query
+	./scripts/e2e-test.sh -s api-global-usage-query
+	./scripts/e2e-test.sh -s api-current-usage-admin-query
+	./scripts/e2e-test.sh -s api-global-usage-admin-query
+	./scripts/e2e-test.sh -s api-current-usage-admin-denied-query
 	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-basic-test
 endif
 
@@ -150,16 +150,16 @@ else
 .PHONY: test-e2e-update
 test-e2e-update: build pkg/collector/fixtures/sys/.unpacked pkg/collector/fixtures/proc/.unpacked
 	@echo ">> updating end-to-end tests outputs"
-	./scripts/e2e-test.sh -s stats-project-query -u || true
-	./scripts/e2e-test.sh -s stats-uuid-query -u || true
-	./scripts/e2e-test.sh -s stats-admin-query -u || true
-	./scripts/e2e-test.sh -s stats-admin-query-all -u || true
-	./scripts/e2e-test.sh -s stats-admin-denied-query -u || true
-	./scripts/e2e-test.sh -s stats-current-usage-query -u || true
-	./scripts/e2e-test.sh -s stats-global-usage-query -u || true
-	./scripts/e2e-test.sh -s stats-current-usage-admin-query -u || true
-	./scripts/e2e-test.sh -s stats-global-usage-admin-query -u || true
-	./scripts/e2e-test.sh -s stats-current-usage-admin-denied-query -u || true
+	./scripts/e2e-test.sh -s api-project-query -u || true
+	./scripts/e2e-test.sh -s api-uuid-query -u || true
+	./scripts/e2e-test.sh -s api-admin-query -u || true
+	./scripts/e2e-test.sh -s api-admin-query-all -u || true
+	./scripts/e2e-test.sh -s api-admin-denied-query -u || true
+	./scripts/e2e-test.sh -s api-current-usage-query -u || true
+	./scripts/e2e-test.sh -s api-global-usage-query -u || true
+	./scripts/e2e-test.sh -s api-current-usage-admin-query -u || true
+	./scripts/e2e-test.sh -s api-global-usage-admin-query -u || true
+	./scripts/e2e-test.sh -s api-current-usage-admin-denied-query -u || true
 	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-basic-test -u || true
 endif
 

@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/go-kit/log"
-	"github.com/mahendrapaipuri/ceems/pkg/stats/models"
+	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 )
 
 var (

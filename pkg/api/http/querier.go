@@ -9,7 +9,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/internal/structset"
-	"github.com/mahendrapaipuri/ceems/pkg/stats/models"
+	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 )
 
 var (

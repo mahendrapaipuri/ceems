@@ -30,7 +30,7 @@ do
       ;;
     *)
       echo "Usage: $0 [-p] [-k] [-u] [-v]"
-      echo "  -s: scenario to test [options: exporter, stats, lb]"
+      echo "  -s: scenario to test [options: exporter, api, lb]"
       echo "  -k: keep temporary files and leave ceems_{exporter,server,lb} running"
       echo "  -u: update fixtures"
       echo "  -v: verbose output"
@@ -79,53 +79,53 @@ then
   logfile="${tmpdir}/ceems_exporter.log"
   fixture_output="${tmpdir}/e2e-test-exporter-output.txt"
   pidfile="${tmpdir}/ceems_exporter.pid"
-elif [[ "${scenario}" =~ "stats" ]] 
+elif [[ "${scenario}" =~ "api" ]] 
 then
 
-  if [ "${scenario}" = "stats-project-query" ]
+  if [ "${scenario}" = "api-project-query" ]
   then
     desc="/api/projects end point test"
-    fixture='pkg/stats/fixtures/output/e2e-test-stats-server-project-query.txt'
-  elif [ "${scenario}" = "stats-uuid-query" ]
+    fixture='pkg/api/fixtures/output/e2e-test-api-server-project-query.txt'
+  elif [ "${scenario}" = "api-uuid-query" ]
   then
     desc="/api/units end point test with uuid query param"
-    fixture='pkg/stats/fixtures/output/e2e-test-stats-server-uuid-query.txt'
-  elif [ "${scenario}" = "stats-admin-query" ]
+    fixture='pkg/api/fixtures/output/e2e-test-api-server-uuid-query.txt'
+  elif [ "${scenario}" = "api-admin-query" ]
   then
     desc="/api/units/admin end point test for admin query"
-    fixture='pkg/stats/fixtures/output/e2e-test-stats-server-admin-query.txt'
-  elif [ "${scenario}" = "stats-admin-query-all" ]
+    fixture='pkg/api/fixtures/output/e2e-test-api-server-admin-query.txt'
+  elif [ "${scenario}" = "api-admin-query-all" ]
   then
     desc="/api/units/admin end point test for admin query for all jobs"
-    fixture='pkg/stats/fixtures/output/e2e-test-stats-server-admin-query-all.txt'
-  elif [ "${scenario}" = "stats-admin-denied-query" ]
+    fixture='pkg/api/fixtures/output/e2e-test-api-server-admin-query-all.txt'
+  elif [ "${scenario}" = "api-admin-denied-query" ]
   then
     desc="/api/units/admin end point test for denied request"
-    fixture='pkg/stats/fixtures/output/e2e-test-stats-server-admin--denied-query.txt'
-  elif [ "${scenario}" = "stats-current-usage-query" ]
+    fixture='pkg/api/fixtures/output/e2e-test-api-server-admin--denied-query.txt'
+  elif [ "${scenario}" = "api-current-usage-query" ]
   then
     desc="/api/usage/current end point test"
-    fixture='pkg/stats/fixtures/output/e2e-test-stats-server-current-usage-query.txt'
-  elif [ "${scenario}" = "stats-global-usage-query" ]
+    fixture='pkg/api/fixtures/output/e2e-test-api-server-current-usage-query.txt'
+  elif [ "${scenario}" = "api-global-usage-query" ]
   then
     desc="/api/usage/global end point test"
-    fixture='pkg/stats/fixtures/output/e2e-test-stats-server-global-usage-query.txt'
-  elif [ "${scenario}" = "stats-current-usage-admin-query" ]
+    fixture='pkg/api/fixtures/output/e2e-test-api-server-global-usage-query.txt'
+  elif [ "${scenario}" = "api-current-usage-admin-query" ]
   then
     desc="/api/usage/current/admin end point test"
-    fixture='pkg/stats/fixtures/output/e2e-test-stats-server-current-usage-admin-query.txt'
-  elif [ "${scenario}" = "stats-global-usage-admin-query" ]
+    fixture='pkg/api/fixtures/output/e2e-test-api-server-current-usage-admin-query.txt'
+  elif [ "${scenario}" = "api-global-usage-admin-query" ]
   then
     desc="/api/usage/global/admin end point test"
-    fixture='pkg/stats/fixtures/output/e2e-test-stats-server-global-usage-admin-query.txt'
-  elif [ "${scenario}" = "stats-current-usage-admin-denied-query" ]
+    fixture='pkg/api/fixtures/output/e2e-test-api-server-global-usage-admin-query.txt'
+  elif [ "${scenario}" = "api-current-usage-admin-denied-query" ]
   then
     desc="/api/usage/current/admin end point test"
-    fixture='pkg/stats/fixtures/output/e2e-test-stats-server-current-usage-admin-denied-query.txt'
+    fixture='pkg/api/fixtures/output/e2e-test-api-server-current-usage-admin-denied-query.txt'
   fi
 
   logfile="${tmpdir}/ceems_api_server.log"
-  fixture_output="${tmpdir}/e2e-test-stats-server-output.txt"
+  fixture_output="${tmpdir}/e2e-test-api-server-output.txt"
   pidfile="${tmpdir}/ceems_api_server.pid"
 elif [[ "${scenario}" =~ "lb" ]] 
 then
@@ -301,7 +301,7 @@ then
   waitport "${port}"
 
   get "127.0.0.1:${port}/metrics" | grep -E -v "${skip_re}" > "${fixture_output}"
-elif [[ "${scenario}" =~ "stats" ]] 
+elif [[ "${scenario}" =~ "api" ]] 
 then
   if [ ! -x ./bin/ceems_api_server ]
   then
@@ -310,7 +310,7 @@ then
   fi
 
   ./bin/ceems_api_server \
-    --slurm.sacct.path="pkg/stats/fixtures/sacct" \
+    --slurm.sacct.path="pkg/api/fixtures/sacct" \
     --resource.manager.slurm \
     --storage.data.path="${tmpdir}" \
     --storage.data.backup.path="${tmpdir}" \
@@ -327,34 +327,34 @@ then
   # sleep 2
   waitport "${port}"
 
-  if [ "${scenario}" = "stats-project-query" ]
+  if [ "${scenario}" = "api-project-query" ]
   then
     get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/projects" > "${fixture_output}"
-  elif [ "${scenario}" = "stats-uuid-query" ]
+  elif [ "${scenario}" = "api-uuid-query" ]
   then
     get -H "X-Grafana-User: usr2" "127.0.0.1:${port}/api/units?uuid=1481508&project=acc2" > "${fixture_output}"
-  elif [ "${scenario}" = "stats-admin-query" ]
+  elif [ "${scenario}" = "api-admin-query" ]
   then
     get -H "X-Grafana-User: grafana" -H "X-Dashboard-User: usr3" "127.0.0.1:${port}/api/units?project=acc3&from=1676934000&to=1677538800" > "${fixture_output}"
-  elif [ "${scenario}" = "stats-admin-query-all" ]
+  elif [ "${scenario}" = "api-admin-query-all" ]
   then
     get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/units/admin?from=1676934000&to=1677538800" > "${fixture_output}"
-  elif [ "${scenario}" = "stats-admin-denied-query" ]
+  elif [ "${scenario}" = "api-admin-denied-query" ]
   then
     get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/units/admin" > "${fixture_output}"
-  elif [ "${scenario}" = "stats-current-usage-query" ]
+  elif [ "${scenario}" = "api-current-usage-query" ]
   then
     get -H "X-Grafana-User: usr3" "127.0.0.1:${port}/api/usage/current?from=1676934000&to=1677538800" > "${fixture_output}"
-  elif [ "${scenario}" = "stats-global-usage-query" ]
+  elif [ "${scenario}" = "api-global-usage-query" ]
   then
     get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/usage/global" > "${fixture_output}"
-  elif [ "${scenario}" = "stats-current-usage-admin-query" ]
+  elif [ "${scenario}" = "api-current-usage-admin-query" ]
   then
     get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/usage/current/admin?user=usr3&from=1676934000&to=1677538800" > "${fixture_output}"
-  elif [ "${scenario}" = "stats-global-usage-admin-query" ]
+  elif [ "${scenario}" = "api-global-usage-admin-query" ]
   then
     get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/usage/global/admin" > "${fixture_output}"
-  elif [ "${scenario}" = "stats-current-usage-admin-denied-query" ]
+  elif [ "${scenario}" = "api-current-usage-admin-denied-query" ]
   then
     get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/usage/global/admin?user=usr2" > "${fixture_output}"
   fi

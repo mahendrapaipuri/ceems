@@ -7,7 +7,7 @@ import (
 	"os"
 
 	_ "github.com/mahendrapaipuri/ceems/examples/mock_resource_manager/pkg/resource"
-	"github.com/mahendrapaipuri/ceems/pkg/stats/cli"
+	"github.com/mahendrapaipuri/ceems/pkg/api/cli"
 )
 
 // Main entry point for `usagestats` app

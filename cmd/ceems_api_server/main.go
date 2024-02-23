@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/mahendrapaipuri/ceems/pkg/stats/cli"
+	"github.com/mahendrapaipuri/ceems/pkg/api/cli"
 )
 
 // Main entry point for `ceems` app
