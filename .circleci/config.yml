@@ -26,8 +26,8 @@ jobs:
     steps:
       - checkout
       - run: uname -a
-      - run: make test-e2e
-      - run: CGO_BUILD=1 make test-e2e
+      - run: make
+      - run: CGO_BUILD=1 make
   build:
     machine:
       image: ubuntu-2204:current
