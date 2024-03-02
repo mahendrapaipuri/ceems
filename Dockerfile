@@ -5,8 +5,10 @@ LABEL maintainer="Mahendra Paipuri <mahendra.paipuri@gmail.com>"
 
 ARG ARCH="amd64"
 ARG OS="linux"
-COPY .build/${OS}-${ARCH}/batchjob_exporter /bin/batchjob_exporter
+COPY .build/${OS}-${ARCH}/ceems_exporter /bin/ceems_exporter
+COPY .build/${OS}-${ARCH}/ceems_api_server /bin/ceems_api_server
+COPY .build/${OS}-${ARCH}/ceems_lb /bin/ceems_lb
+COPY LICENSE /LICENSE
 
-EXPOSE      9010
 USER        nobody
-ENTRYPOINT  [ "/bin/batchjob_exporter" ]
+WORKDIR     /bin
