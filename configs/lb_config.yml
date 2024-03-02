@@ -1,5 +1,5 @@
 strategy: resource-based
-db_path: data/ceems_server.db
+db_path: data/ceems_api_server.db
 backends:
   - url: "http://localhost:9090"
     skip_tls_verify: true

@@ -11,7 +11,8 @@
 Compute Energy & Emissions Monitoring Stack (CEEMS) contains a Prometheus exporter to 
 export metrics of compute instance units and a REST API server which is meant to be used
 as JSON datasource in Grafana that exposes the metadata and aggregated metrics of each 
-compute unit.
+compute unit. Optionally, it includes a TSDB load balancer that supports basic load 
+balancing functionality based on retention periods of two or more TSDBs. 
 
 "Compute Unit" in the current context has a wider scope. It can be a batch job in HPC, 
 a VM in cloud, a pod in k8s, _etc_. The main objective of the repository is to quantify 
@@ -82,10 +83,10 @@ current exporter only exposes the GPU index to compute unit mapping. These two m
 can be used together using PromQL to show the metrics of GPU metrics of a given compute 
 unit.
 
-## End product
+## Current stack objective
 
 Using this stack with Prometheus and Grafana will enable users to have access to time 
-series data of their compute units be it a batch job, a VM or a pod. The users will 
+series metrics of their compute units be it a batch job, a VM or a pod. The users will 
 also able to have information on total energy consumed and total emissions generated 
 by their individual workloads, by their project/namespace. 
 
@@ -101,13 +102,15 @@ This monorepo contains following apps that can be used with Grafana and Promethe
 metrics, RAPL energy, IPMI power consumption, emission factor and GPU to compute unit
 mapping.
 
-- `ceems_server`: This is a simple REST API server that exposes projects and compute units 
+- `ceems_api_server`: This is a simple REST API server that exposes projects and compute units 
 information of users by querying a SQLite3 DB. 
 This server can be used as 
 [JSON API DataSource](https://grafana.github.io/grafana-json-datasource/installation/) or 
 [Infinity DataSource](https://grafana.com/grafana/plugins/yesoreyeram-infinity-datasource/)
 in Grafana to construct dashboards for users. The DB contain aggregate metrics of each 
 compute unit along with aggregate metrics of each project.
+
+- `ceems_lb`: This is a basic load balancer meant to work with TSDB instances.
 
 Currently, only SLURM is supported as a resource manager. In future support for Openstack 
 and Kubernetes will be added. 
@@ -121,7 +124,7 @@ Pre-compiled binaries of the apps can be downloaded from the
 
 ### Build
 
-As the `ceems_server` uses SQLite3 as DB backend, we are dependent on CGO for 
+As the `ceems_api_server` uses SQLite3 as DB backend, we are dependent on CGO for 
 compiling that app. On the other hand, `ceems_exporter` is a pure GO application. 
 Thus, in order to build from sources, users need to execute two build commands
 
@@ -135,9 +138,9 @@ that builds `ceems_exporter` binary and
 CGO_BUILD=1 make build
 ```
 
-which builds `ceems_server` app.
+which builds `ceems_api_server` and `ceems_lb` apps.
 
-Both of them will be placed in `bin` folder in the root of the repository
+All the applications will be placed in `bin` folder in the root of the repository
 
 ### Running tests
 
@@ -148,7 +151,7 @@ make tests
 CGO_BUILD=1 make tests
 ```
 
-## Configuration
+## CEEMS Exporter
 
 Currently, the exporter supports only SLURM resource manager. 
 `ceems_exporter` provides following collectors:
@@ -254,12 +257,42 @@ These metrics are mainly used to estimate the proportion of CPU and memory usage
 individual compute units and to estimate the energy consumption of compute unit 
 based on these proportions.
 
-## API server
+## CEEMS API server
 
-As discussed in the introduction, `ceems_server` 
+As discussed in the introduction, `ceems_api_server` 
 exposes usage and compute unit details of users _via_ API end points. This data will be 
 gathered from the underlying resource manager at a configured interval of time and 
-keep it in a local DB. 
+keep it in a local DB.
+
+## CEEMS Load Balancer
+
+Taking Prometheus TSDB as an example, Prometheus advises to use local file system to store 
+the data. This ensure performance and data integrity. However, storing data on local 
+disk is not fault tolerant unless data is replicated elsewhere. There are cloud native 
+projects like [Thanos](https://thanos.io/), [Cortex](https://cortexmetrics.io/) to 
+address this issue. This load balancer is meant 
+to provide the basic functionality proposed by Thanos, Cortex, _etc_.
+
+The core idea is to replicate the Prometheus data using 
+[Prometheus' remote write](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#remote_write) 
+functionality onto a remote storage which 
+is fault tolerant and have higher storage capacity but with a degraded query performance. 
+In this scenario, we have two TSDBs with following characteristics:
+
+- TSDB using local disk: faster query performance with limited storage space
+- TSDB using remote storage: slower query performance with bigger storage space
+
+TSDB using local disk ("hot" instance) will have shorter retention period and the 
+one using remote storage ("cold" instance)
+can have longer retention. CEEMS load balancer is capable of introspecting the query and
+then routing the request to either "hot" or "cold" instances of TSDB.
+
+Besides CEEMS load balancer is capable of providing basic access control policies of 
+TSDB if the DB of CEEMS API server is provided. It means when a user makes a TSDB query 
+for a given compute unit identified by a `uuid`, CEEMS load balancer will check if the 
+user owns that compute unit by check with the DB and decide to proxy the request to 
+TSDB or not. This is very handy as Grafana does not impose any access control on datasources
+and current load balancer can provide such functionality.
 
 <!-- In the case of SLURM, the app executes `sacct` command to get 
 info on jobs. However, `sacct` command needs to be executed as either `root` or `slurm` 
@@ -286,11 +319,11 @@ using different methods like `setuid` sticky bit. -->
 ## Linux capabilities
 
 Linux capabilities can be assigned to either file or process. For instance, capabilities 
-on the `ceems_exporter` and `ceems_server` binaries can be set as follows:
+on the `ceems_exporter` and `ceems_api_server` binaries can be set as follows:
 
 ```
 sudo setcap cap_sys_ptrace,cap_dac_read_search,cap_setuid,cap_setgid+ep /full/path/to/ceems_exporter
-sudo setcap cap_setuid,cap_setgid+ep /full/path/to/ceems_server
+sudo setcap cap_setuid,cap_setgid+ep /full/path/to/ceems_api_server
 ```
 
 This will assign all the capabilities that are necessary to run `ceems_exporter` 
@@ -460,12 +493,12 @@ file capabilities or process capabilities, the flags `--collector.slurm.job.prop
 and `--collector.slurm.gpu.job.map.path` can be omitted and there is no need to 
 set up prolog and epilog scripts.
 
-### `ceems_server`
+### `ceems_api_server`
 
 The stats server can be started as follows:
 
 ```
-/path/to/ceems_server \
+/path/to/ceems_api_server \
     --resource.manager.slurm \
     --storage.data.path="/var/lib/ceems" \
     --log.level="debug"
@@ -473,13 +506,13 @@ The stats server can be started as follows:
 
 Data files like SQLite3 DB created for the server will be placed in 
 `/var/lib/ceems` directory. Note that if this directory does exist, 
-`ceems_server` will attempt to create one if it has enough privileges. If it 
+`ceems_api_server` will attempt to create one if it has enough privileges. If it 
 fails to create, error will be shown up.
 
 <!-- To execute `sacct` command as `slurm` user, command becomes following:
 
 ```
-/path/to/ceems_server \
+/path/to/ceems_api_server \
     --slurm.sacct.path="/usr/local/bin/sacct" \
     --slurm.sacct.run.as.slurmuser \
     --path.data="/var/lib/ceems" \
@@ -490,7 +523,7 @@ Note that this approach needs capabilities assigned to process. On the other han
 we want to use `sudo` approach to execute `sacct` command, the command becomes:
 
 ```
-/path/to/ceems_server \
+/path/to/ceems_api_server \
     --slurm.sacct.path="/usr/local/bin/sacct" \
     --slurm.sacct.run.with.sudo \
     --path.data="/var/lib/ceems" \
@@ -498,21 +531,55 @@ we want to use `sudo` approach to execute `sacct` command, the command becomes:
 ```
 
 This requires an entry into sudoers file that permits the user starting 
-`ceems_server` to execute `sudo sacct` without password. -->
+`ceems_api_server` to execute `sudo sacct` without password. -->
 
-`ceems_server` updates the local DB with job information regularly. The frequency 
+`ceems_api_server` updates the local DB with job information regularly. The frequency 
 of this update and period for which the data will be retained can be configured
 too. For instance, the following command will update the DB for every 30 min and 
 keeps the data for the past one year.
 
 ```
-/path/to/ceems_server \
+/path/to/ceems_api_server \
     --resource.manager.slurm \
     --storage.path.data="/var/lib/ceems" \
     --storage.data.update.interval="30m" \
     --storage.data.retention.period="1y" \
     --log.level="debug"
 ```
+
+### `ceems_lb`
+
+A basic config file used by `ceems_lb` is as follows:
+
+```
+strategy: resource-based
+db_path: data/ceems_api_server.db
+backends:
+  - url: "http://localhost:9090"
+    skip_tls_verify: true
+  - url: "http://localhost:9091"
+    skip_tls_verify: true
+```
+
+- Keyword `strategy` can take either `round-robin`, `least-connection` and `resource-based` 
+as values. Using `resource-based` stragety, the queries are proxied to backend TSDB 
+instances based on the data available with each instance as 
+[described in CEEMS load balancer](#ceems-load-balancer).
+- Keyword `db_path` takes the path to CEEMS API server DB file. This file is optional and
+if provided, it offers basic access control
+- Keyword `backends` take a list of TSDB backends.
+
+The load balancer can be started as follows:
+
+```
+/path/to/cemms_lb \
+    --config.file=config.yml \
+    --log.level="debug"
+```
+
+This will start a load balancer at port `9030` by default. In Grafana we need to 
+configure this load balancer as Prometheus data source URL as requests are proxied by
+the load balancer.
 
 ## TLS and basic auth
 
@@ -522,7 +589,8 @@ basic auth, users need to use `--web-config-file` CLI flag as follows
 
 ```
 ceems_exporter --web-config-file=web-config.yaml
-ceems_server --web-config-file=web-config.yaml
+ceems_api_server --web-config-file=web-config.yaml
+ceems_lb --web-config-file=web-config.yaml
 ```
 
 A sample `web-config.yaml` file can be fetched from 
