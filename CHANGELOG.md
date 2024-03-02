@@ -1,9 +1,17 @@
 # Changelog
 
+## 0.1.0-rc.5 / 2024-03-02
+
+- [FEATURE] feat: Support RDMA stats in exporter [#45](https://github.com/mahendrapaipuri/ceems/pull/45) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [MAINT] Rename stats pkg to api [#44](https://github.com/mahendrapaipuri/ceems/pull/44) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] TSDB Load Balancer [#43](https://github.com/mahendrapaipuri/ceems/pull/43) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] DB migrations support [#42](https://github.com/mahendrapaipuri/ceems/pull/42) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [MAINT] Refactor DB schema [#41](https://github.com/mahendrapaipuri/ceems/pull/41) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+
 ## 0.1.0-rc.4 / 2024-02-18
 
 - [BUGFIX] Misc bugfixes [#40](https://github.com/mahendrapaipuri/ceems/pull/40) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
-- [FEATURE]Support different IPMI implementations [#39](https://github.com/mahendrapaipuri/ceems/pull/39) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Support different IPMI implementations [#39](https://github.com/mahendrapaipuri/ceems/pull/39) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
 - [REFACTOR] Rename pkg to ceems [#38](https://github.com/mahendrapaipuri/ceems/pull/38) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
 - [FEATURE] Cache job props for SLURM collector [#37](https://github.com/mahendrapaipuri/ceems/pull/37) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
 - [FEATURE] Extend DB schema to add new fields [#36](https://github.com/mahendrapaipuri/ceems/pull/36) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
