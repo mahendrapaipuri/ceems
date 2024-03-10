@@ -42,7 +42,7 @@ func init() {
 // Get ISO3 code from ISO2 country code
 func convertISO2ToISO3(countryCodeISO2 string) string {
 	for _, country := range countryCodesMap {
-		if country.Alpha2Code == *countryCodeAlpha2 {
+		if country.Alpha2Code == countryCodeISO2 {
 			return country.Alpha3Code
 		}
 	}

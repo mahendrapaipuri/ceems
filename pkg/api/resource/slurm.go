@@ -146,7 +146,7 @@ func (s *slurmScheduler) Fetch(start time.Time, end time.Time) ([]models.Unit, e
 	}
 
 	// Parse sacct output and create BatchJob structs slice
-	jobs, numJobs := parseSacctCmdOutput(string(sacctOutput), s.logger)
+	jobs, numJobs := parseSacctCmdOutput(string(sacctOutput))
 	level.Info(s.logger).Log("msg", "Slurm jobs fetched", "start", startTime, "end", endTime, "njobs", numJobs)
 	return jobs, nil
 }
@@ -176,7 +176,7 @@ func runSacctCmd(execMode string, startTime string, endTime string, logger log.L
 }
 
 // Parse sacct command output and return batchjob slice
-func parseSacctCmdOutput(sacctOutput string, logger log.Logger) ([]models.Unit, int) {
+func parseSacctCmdOutput(sacctOutput string) ([]models.Unit, int) {
 	// Strip first line
 	sacctOutputLines := strings.Split(string(sacctOutput), "\n")[1:]
 

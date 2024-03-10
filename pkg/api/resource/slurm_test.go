@@ -4,7 +4,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 )
 
@@ -13,7 +12,6 @@ var (
 1479763|part1|qos1|acc1|grp|1000|usr|1000|2023-02-21T14:37:02+0100|2023-02-21T14:37:07+0100|2023-02-21T15:26:29+0100|00:49:22|3000|0:0|CANCELLED by 302137|billing=80,cpu=160,energy=1439089,gres/gpu=8,mem=320G,node=2|compute-0|test_script1|/home/usr
 1481508|part1|qos1|acc1|grp|1000|usr|1000|2023-02-21T15:48:20+0100|2023-02-21T15:49:06+0100|2023-02-21T15:57:23+0100|00:08:17|4920|0:0|CANCELLED by 302137|billing=1,cpu=2,mem=4G,node=1|compute-[0-2]|test_script2|/home/usr
 1481510|part1|qos1|acc1|grp|1000|usr|1000|2023-02-21T15:48:20+0100|2023-02-21T15:49:06+0100|2023-02-21T15:57:23+0100|00:00:17|17|0:0|CANCELLED by 302137|billing=10,cpu=2,energy=15346,gres/gpu=1,mem=4G,node=1|compute-[0-2]|test_script2|/home/usr`
-	logger            = log.NewNopLogger()
 	expectedBatchJobs = []models.Unit{
 		{
 			ID:              0,
@@ -109,7 +107,7 @@ var (
 )
 
 func TestParseSacctCmdOutput(t *testing.T) {
-	batchJobs, numJobs := parseSacctCmdOutput(sacctCmdOutput, logger)
+	batchJobs, numJobs := parseSacctCmdOutput(sacctCmdOutput)
 	if !reflect.DeepEqual(batchJobs, expectedBatchJobs) {
 		t.Errorf("Expected batch jobs %#v. \n\nGot %#v", expectedBatchJobs, batchJobs)
 	}

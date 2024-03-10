@@ -49,7 +49,7 @@ func (q *Query) get() (string, []string) {
 // Ignore numRows as getting correct number of rows is bit fragile at the moment.
 // We dont want panics due to insufficient allocation. We should look into improving
 // this for future
-func scanUsage(numRows int, rows *sql.Rows) interface{} {
+func scanUsage(rows *sql.Rows) interface{} {
 	var usageRows []models.Usage
 	var usage models.Usage
 	for rows.Next() {
@@ -62,16 +62,14 @@ func scanUsage(numRows int, rows *sql.Rows) interface{} {
 }
 
 // Scan account rows
-func scanProjects(numRows int, rows *sql.Rows) interface{} {
-	var accounts = make([]models.Project, numRows)
+func scanProjects(rows *sql.Rows) interface{} {
+	var accounts []models.Project
 	var account models.Project
-	rowIdx := 0
 	for rows.Next() {
 		if err := structset.ScanRow(rows, &account); err != nil {
 			continue
 		}
-		accounts[rowIdx] = account
-		rowIdx++
+		accounts = append(accounts, account)
 	}
 	return accounts
 }
@@ -175,14 +173,14 @@ func querier(dbConn *sql.DB, query Query, model string, logger log.Logger) (inte
 		)
 		return units, nil
 	} else if model == usageResourceName {
-		var usageStats = scanUsage(numRows, rows)
+		var usageStats = scanUsage(rows)
 		level.Debug(logger).Log(
 			"msg", "Usage stats", "query", queryString,
 			"queryParams", strings.Join(queryParams, ","), "num_rows", numRows,
 		)
 		return usageStats, nil
 	} else if model == "projects" {
-		var accounts = scanProjects(numRows, rows)
+		var accounts = scanProjects(rows)
 		level.Debug(logger).Log(
 			"msg", "Projects", "query", queryString,
 			"queryParams", strings.Join(queryParams, ","), "num_rows", numRows,

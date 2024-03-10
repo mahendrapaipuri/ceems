@@ -35,8 +35,8 @@ func mockQuerier(db *sql.DB, q Query, model string, logger log.Logger) (interfac
 }
 
 func getMockUnits(
-	query Query,
-	logger log.Logger,
+	_ Query,
+	_ log.Logger,
 ) ([]models.Unit, error) {
 	return []models.Unit{{UUID: "1000", Usr: "user"}, {UUID: "10001", Usr: "user"}}, nil
 }

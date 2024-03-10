@@ -12,7 +12,7 @@ import (
 )
 
 // CEEMSServerAppName is kingpin app name
-const CEEMSServerAppName = "ceems_server"
+const CEEMSServerAppName = "ceems_api_server"
 
 // CEEMSServerApp is kinpin app
 var CEEMSServerApp = *kingpin.New(

@@ -512,7 +512,7 @@ func (s *statsDB) backup(backupDBPath string) error {
 		// Backing up a smaller number of pages per step is the most effective way of
 		// doing online backups and also allow write transactions to make progress.
 		if isDone, err = backup.Step(pagesPerStep); err != nil {
-			if finishErr := backup.Finish(); err != nil {
+			if finishErr := backup.Finish(); finishErr != nil {
 				return fmt.Errorf("errors: %s, %s", err, finishErr)
 			}
 			return err
