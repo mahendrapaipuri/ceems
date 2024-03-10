@@ -3,6 +3,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httputil"
@@ -133,7 +134,9 @@ func (lb *CEEMSLoadBalancer) Main() error {
 	for _, backend := range config.Backends {
 		webURL, err := url.Parse(backend.URL)
 		if err != nil {
-			level.Error(logger).Log("msg", "Could not parse backend TSDB server URL", "url", webURL, "err", err)
+			// If we dont unwrap original error, the URL string will be printed to log which 
+			// might contain sensitive passwords
+			level.Error(logger).Log("msg", "Could not parse backend TSDB server URL", "err", errors.Unwrap(err))
 			continue
 		}
 

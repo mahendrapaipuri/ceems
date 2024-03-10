@@ -4,6 +4,7 @@ package tsdb
 import (
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -63,9 +64,10 @@ func NewTSDB(webURL string, webSkipTLSVerify bool, logger log.Logger) (*TSDB, er
 	var tsdbClient *http.Client
 	var tsdbURL *url.URL
 	var err error
+	// Unwrap original error to avoid leaking sensitive passwords in output
 	tsdbURL, err = url.Parse(webURL)
 	if err != nil {
-		return nil, err
+		return nil, errors.Unwrap(err)
 	}
 
 	// If skip verify is set to true for TSDB add it to client

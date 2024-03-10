@@ -1,10 +1,13 @@
+// Package grafana implements Grafana client
 package grafana
 
 import (
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -14,7 +17,7 @@ import (
 	"github.com/go-kit/log/level"
 )
 
-// Grafana teams API response
+// GrafanaTeamsReponse is the API response struct from Grafana
 type GrafanaTeamsReponse struct {
 	OrgID      int      `json:"orgId"`
 	TeamID     int      `json:"teamId"`
@@ -38,7 +41,7 @@ type Grafana struct {
 	available           bool
 }
 
-// Return a new instance of Grafana struct
+// NewGrafana return a new instance of Grafana struct
 func NewGrafana(webURL string, webSkipTLSVerify bool, logger log.Logger) (*Grafana, error) {
 	// If webURL is empty return empty struct with available set to false
 	if webURL == "" {
@@ -53,7 +56,7 @@ func NewGrafana(webURL string, webSkipTLSVerify bool, logger log.Logger) (*Grafa
 	var grafanaClient *http.Client
 	var err error
 	if grafanaURL, err = url.Parse(webURL); err != nil {
-		return nil, err
+		return nil, errors.Unwrap(err)
 	}
 
 	// If skip verify is set to true for TSDB add it to client
@@ -74,32 +77,39 @@ func NewGrafana(webURL string, webSkipTLSVerify bool, logger log.Logger) (*Grafa
 	}, nil
 }
 
-// Stringer receiver for Grafana struct
+// String receiver for Grafana struct
 func (g *Grafana) String() string {
 	return fmt.Sprintf("Grafana{URL: %s, available: %t}", g.URL.Redacted(), g.available)
 }
 
-// Return true if Grafana is available
+// Available returns true if Grafana is available
 func (g *Grafana) Available() bool {
 	return g.available
 }
 
-// Check if Grafana is reachable
+// Ping attempts to ping Grafana
 func (g *Grafana) Ping() error {
-	// Create a new GET request to reach out to Grafana
-	req, err := http.NewRequest(http.MethodGet, g.URL.String(), nil)
+	var d net.Dialer
+	// Check if Grafana host is reachable
+	conn, err := d.Dial("tcp", g.URL.Host)
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
+	// // Create a new GET request to reach out to Grafana
+	// req, err := http.NewRequest(http.MethodGet, g.URL.String(), nil)
+	// if err != nil {
+	// 	return err
+	// }
 
-	// Check if Grafana is reachable
-	if _, err = g.Client.Do(req); err != nil {
-		return err
-	}
+	// // Check if Grafana is reachable
+	// if _, err = g.Client.Do(req); err != nil {
+	// 	return err
+	// }
 	return nil
 }
 
-// Fetch team members from a Grafana team
+// TeamMembers fetches team members from a Grafana team
 func (g *Grafana) TeamMembers(teamID string) ([]string, error) {
 	// Sanity checks
 	// Check if adminTeamID is not an empty string

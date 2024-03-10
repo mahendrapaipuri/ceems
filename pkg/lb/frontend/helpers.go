@@ -123,7 +123,7 @@ func healthCheck(ctx context.Context, manager serverpool.Manager, logger log.Log
 				status = "down"
 			}
 		}
-		level.Debug(logger).Log("msg", "Health check", "url", backend.URL().String(), "status", status)
+		level.Debug(logger).Log("msg", "Health check", "url", backend.URL().Redacted(), "status", status)
 	}
 }
 
@@ -132,7 +132,7 @@ func isAlive(ctx context.Context, aliveChannel chan bool, u *url.URL, logger log
 	var d net.Dialer
 	conn, err := d.DialContext(ctx, "tcp", u.Host)
 	if err != nil {
-		level.Debug(logger).Log("msg", "Backend unreachable", "backend", u.String(), "err", err)
+		level.Debug(logger).Log("msg", "Backend unreachable", "backend", u.Redacted(), "err", err)
 		aliveChannel <- false
 		return
 	}
