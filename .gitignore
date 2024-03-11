@@ -21,9 +21,9 @@ vendor/
 # Go workspace file
 go.work
 
-# Ignore fixtures
-pkg/collector/fixtures/sys
-pkg/collector/fixtures/proc
+# Ignore testdata
+pkg/collector/testdata/sys
+pkg/collector/testdata/proc
 
 # Ignore scripts
 run.sh

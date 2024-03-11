@@ -1,4 +1,3 @@
 strategy: resource-based
 backends:
   - url: "http://localhost:9090"
-    skip_tls_verify: true

@@ -26,10 +26,10 @@ func mockGPUDevices() map[int]Device {
 func TestCgroupsV2SlurmJobMetrics(t *testing.T) {
 	if _, err := CEEMSExporterApp.Parse(
 		[]string{
-			"--path.cgroupfs", "fixtures/sys/fs/cgroup",
+			"--path.cgroupfs", "testdata/sys/fs/cgroup",
 			"--collector.slurm.create.unique.jobids",
-			"--collector.slurm.job.props.path", "fixtures/slurmjobprops",
-			"--collector.slurm.gpu.job.map.path", "fixtures/gpujobmap",
+			"--collector.slurm.job.props.path", "testdata/slurmjobprops",
+			"--collector.slurm.gpu.job.map.path", "testdata/gpujobmap",
 		},
 	); err != nil {
 		t.Fatal(err)
@@ -79,9 +79,9 @@ func TestCgroupsV2SlurmJobMetrics(t *testing.T) {
 func TestCgroupsV2SlurmJobMetricsWithProcFs(t *testing.T) {
 	if _, err := CEEMSExporterApp.Parse(
 		[]string{
-			"--path.cgroupfs", "fixtures/sys/fs/cgroup",
+			"--path.cgroupfs", "testdata/sys/fs/cgroup",
 			"--collector.slurm.create.unique.jobids",
-			"--path.procfs", "fixtures/proc",
+			"--path.procfs", "testdata/proc",
 		},
 	); err != nil {
 		t.Fatal(err)
@@ -131,7 +131,7 @@ func TestCgroupsV2SlurmJobMetricsWithProcFs(t *testing.T) {
 func TestCgroupsV2SlurmJobMetricsNoJobProps(t *testing.T) {
 	if _, err := CEEMSExporterApp.Parse(
 		[]string{
-			"--path.cgroupfs", "fixtures/sys/fs/cgroup",
+			"--path.cgroupfs", "testdata/sys/fs/cgroup",
 			"--collector.slurm.create.unique.jobids",
 		},
 	); err != nil {
@@ -180,10 +180,10 @@ func TestCgroupsV2SlurmJobMetricsNoJobProps(t *testing.T) {
 func TestCgroupsV1SlurmJobMetrics(t *testing.T) {
 	if _, err := CEEMSExporterApp.Parse(
 		[]string{
-			"--path.cgroupfs", "fixtures/sys/fs/cgroup",
-			"--path.procfs", "fixtures/proc",
+			"--path.cgroupfs", "testdata/sys/fs/cgroup",
+			"--path.procfs", "testdata/proc",
 			"--collector.slurm.create.unique.jobids",
-			"--collector.slurm.job.props.path", "fixtures/slurmjobprops",
+			"--collector.slurm.job.props.path", "testdata/slurmjobprops",
 		},
 	); err != nil {
 		t.Fatal(err)
