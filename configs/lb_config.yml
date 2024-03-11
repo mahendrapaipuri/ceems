@@ -1,7 +1,11 @@
 strategy: resource-based
 db_path: data/ceems_api_server.db
+# TLS is not supported for backends. CEEMS LB supports TLS and TLS terminates
+# at the LB and requests are proxied to backends on HTTP. 
+#
+# LB and backend servers are meant to be in the same DMZ so that we do not need
+# to encrypt communications. Backends however support basic auth and they can 
+# be configured in URL with usual syntax.
 backends:
-  - url: "http://localhost:9090"
-    skip_tls_verify: true
-  - url: "http://localhost:9091"
-    skip_tls_verify: true
+  - url: "http://alice:password@localhost:9090"
+  - url: "http://alice:password@localhost:9091"

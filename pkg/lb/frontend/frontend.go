@@ -97,10 +97,12 @@ func (lb *loadBalancer) Start() error {
 
 // Shutdown server
 func (lb *loadBalancer) Shutdown(ctx context.Context) error {
-	// Close DB connection
-	if err := lb.db.Close(); err != nil {
-		level.Error(lb.logger).Log("msg", "Failed to close DB connection", "err", err)
-		return err
+	// Close DB connection only if DB file is provided
+	if lb.db != nil {
+		if err := lb.db.Close(); err != nil {
+			level.Error(lb.logger).Log("msg", "Failed to close DB connection", "err", err)
+			return err
+		}
 	}
 
 	// Shutdown the server

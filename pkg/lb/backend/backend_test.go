@@ -30,7 +30,7 @@ func TestTSDBConfigSuccess(t *testing.T) {
 	defer server.Close()
 
 	url, _ := url.Parse(server.URL)
-	b := NewTSDBServer(url, false, httputil.NewSingleHostReverseProxy(url))
+	b := NewTSDBServer(url, httputil.NewSingleHostReverseProxy(url))
 
 	if b.URL().String() != server.URL {
 		t.Errorf("expected URL %s, got %s", server.URL, b.URL().String())
@@ -59,7 +59,7 @@ func TestTSDBConfigSuccessWithTwoRetentions(t *testing.T) {
 	defer server.Close()
 
 	url, _ := url.Parse(server.URL)
-	b := NewTSDBServer(url, false, httputil.NewSingleHostReverseProxy(url))
+	b := NewTSDBServer(url, httputil.NewSingleHostReverseProxy(url))
 
 	if b.URL().String() != server.URL {
 		t.Errorf("expected URL %s, got %s", server.URL, b.URL().String())
@@ -83,7 +83,7 @@ func TestTSDBConfigFail(t *testing.T) {
 	defer server.Close()
 
 	url, _ := url.Parse(server.URL)
-	b := NewTSDBServer(url, false, httputil.NewSingleHostReverseProxy(url))
+	b := NewTSDBServer(url, httputil.NewSingleHostReverseProxy(url))
 
 	if b.URL().String() != server.URL {
 		t.Errorf("expected URL %s, got %s", server.URL, b.URL().String())
@@ -98,7 +98,7 @@ func TestTSDBConfigFail(t *testing.T) {
 
 func TestTSDBBackendAlive(t *testing.T) {
 	url, _ := url.Parse(testURL)
-	b := NewTSDBServer(url, false, httputil.NewSingleHostReverseProxy(url))
+	b := NewTSDBServer(url, httputil.NewSingleHostReverseProxy(url))
 	b.SetAlive(b.IsAlive())
 
 	if !b.IsAlive() {

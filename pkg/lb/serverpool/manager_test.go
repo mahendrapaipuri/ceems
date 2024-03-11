@@ -25,7 +25,7 @@ func TestNewManager(t *testing.T) {
 	for _, strategy := range []string{"round-robin", "least-connection", "resource-based"} {
 		m, _ := NewManager(strategy)
 		url, _ := url.Parse("http://localhost:3333")
-		b := backend.NewTSDBServer(url, false, httputil.NewSingleHostReverseProxy(url))
+		b := backend.NewTSDBServer(url, httputil.NewSingleHostReverseProxy(url))
 		m.Add(b)
 
 		if m.Size() != 1 {

@@ -134,14 +134,14 @@ func (lb *CEEMSLoadBalancer) Main() error {
 	for _, backend := range config.Backends {
 		webURL, err := url.Parse(backend.URL)
 		if err != nil {
-			// If we dont unwrap original error, the URL string will be printed to log which 
+			// If we dont unwrap original error, the URL string will be printed to log which
 			// might contain sensitive passwords
 			level.Error(logger).Log("msg", "Could not parse backend TSDB server URL", "err", errors.Unwrap(err))
 			continue
 		}
 
 		rp := httputil.NewSingleHostReverseProxy(webURL)
-		backendServer := tsdb.NewTSDBServer(webURL, backend.SkipTLSVerify, rp)
+		backendServer := tsdb.NewTSDBServer(webURL, rp)
 		rp.ErrorHandler = func(writer http.ResponseWriter, request *http.Request, err error) {
 			level.Error(logger).Log("msg", "Failed to handle the request", "host", webURL.Host, "err", err)
 			backendServer.SetAlive(false)
