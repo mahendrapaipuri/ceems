@@ -13,8 +13,7 @@ func TestGetConfigSuccess(t *testing.T) {
 		Strategy: "round-robin",
 		Backends: []Backend{
 			{
-				URL:           "http://localhost:9090",
-				SkipTLSVerify: false,
+				URL: "http://localhost:9090",
 			},
 		},
 	}

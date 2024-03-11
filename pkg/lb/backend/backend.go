@@ -2,7 +2,8 @@
 package backend
 
 import (
-	"crypto/tls"
+	"encoding/base64"
+	"fmt"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -32,22 +33,16 @@ type tsdbServer struct {
 	connections     int
 	retentionPeriod time.Duration
 	reverseProxy    *httputil.ReverseProxy
+	basicAuthHeader string
 }
 
 // NewTSDBServer returns an instance of backend TSDB server
-func NewTSDBServer(webURL *url.URL, skipTLSVerify bool, p *httputil.ReverseProxy) TSDBServer {
+func NewTSDBServer(webURL *url.URL, p *httputil.ReverseProxy) TSDBServer {
 	var tsdbClient *http.Client
 	var retentionPeriod time.Duration
 
-	// Skip TLS verification
-	if skipTLSVerify {
-		tr := &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		}
-		tsdbClient = &http.Client{Transport: tr, Timeout: time.Duration(2 * time.Second)}
-	} else {
-		tsdbClient = &http.Client{Timeout: time.Duration(2 * time.Second)}
-	}
+	// Create a client
+	tsdbClient = &http.Client{Timeout: time.Duration(2 * time.Second)}
 
 	// Make a API request to TSDB
 	if data, err := tsdb.Request(webURL.JoinPath("api/v1/status/runtimeinfo").String(), tsdbClient); err == nil {
@@ -65,11 +60,22 @@ func NewTSDBServer(webURL *url.URL, skipTLSVerify bool, p *httputil.ReverseProxy
 			}
 		}
 	}
+
+	// Retrieve basic auth username and password if exists
+	var basicAuthHeader string
+	username := webURL.User.Username()
+	password, exists := webURL.User.Password()
+	if exists {
+		auth := fmt.Sprintf("%s:%s", username, password)
+		base64Auth := base64.StdEncoding.EncodeToString([]byte(auth))
+		basicAuthHeader = fmt.Sprintf("Basic %s", base64Auth)
+	}
 	return &tsdbServer{
 		url:             webURL,
 		alive:           true,
 		retentionPeriod: retentionPeriod,
 		reverseProxy:    p,
+		basicAuthHeader: basicAuthHeader,
 	}
 }
 
@@ -113,6 +119,15 @@ func (b *tsdbServer) Serve(w http.ResponseWriter, r *http.Request) {
 		b.connections--
 		b.mux.Unlock()
 	}()
+
+	// Request header at this point will contain basic auth header of LB
+	// If backend server has basic auth as well, we need to swap it to the
+	// one from backend server
+	if b.basicAuthHeader != "" {
+		// Check if basic Auth header already exists and remove it
+		r.Header.Del("Authorization")
+		r.Header.Add("Authorization", b.basicAuthHeader)
+	}
 
 	b.mux.Lock()
 	b.connections++

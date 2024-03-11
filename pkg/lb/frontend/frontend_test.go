@@ -75,7 +75,7 @@ func TestNewFrontend(t *testing.T) {
 	}
 
 	rp1 := httputil.NewSingleHostReverseProxy(backend1URL)
-	backend1 := backend.NewTSDBServer(backend1URL, false, rp1)
+	backend1 := backend.NewTSDBServer(backend1URL, rp1)
 
 	// Start manager
 	manager, err := serverpool.NewManager("resource-based")
@@ -176,7 +176,7 @@ func TestNewFrontendUUIDCheck(t *testing.T) {
 	}
 
 	rp1 := httputil.NewSingleHostReverseProxy(backend1URL)
-	backend1 := backend.NewTSDBServer(backend1URL, false, rp1)
+	backend1 := backend.NewTSDBServer(backend1URL, rp1)
 
 	// Start manager
 	manager, err := serverpool.NewManager("resource-based")

@@ -31,7 +31,7 @@ func TestUnAvailableBackends(t *testing.T) {
 		backendURLs[i] = backendURL
 
 		rp := httputil.NewSingleHostReverseProxy(backendURL)
-		backend := backend.NewTSDBServer(backendURL, false, rp)
+		backend := backend.NewTSDBServer(backendURL, rp)
 		backends[i] = backend
 		manager.Add(backend)
 	}
@@ -80,7 +80,7 @@ func TestLeastConnectionLB(t *testing.T) {
 		backendURLs[i] = backendURL
 
 		rp := httputil.NewSingleHostReverseProxy(backendURL)
-		backend := backend.NewTSDBServer(backendURL, false, rp)
+		backend := backend.NewTSDBServer(backendURL, rp)
 		backends[i] = backend
 		manager.Add(backend)
 	}

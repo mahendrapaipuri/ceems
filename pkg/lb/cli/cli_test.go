@@ -51,8 +51,7 @@ func TestCEEMSLBMainSuccess(t *testing.T) {
 		Strategy: "round-robin",
 		Backends: []Backend{
 			{
-				URL:           server.URL,
-				SkipTLSVerify: false,
+				URL: server.URL,
 			},
 		},
 	}

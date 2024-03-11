@@ -9,8 +9,7 @@ import (
 
 // Backend defines backend server
 type Backend struct {
-	URL           string `yaml:"url"`
-	SkipTLSVerify bool   `yaml:"skip_tls_verify"`
+	URL string `yaml:"url"`
 }
 
 // Config defines the backend servers config
