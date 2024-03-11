@@ -12,7 +12,7 @@ import (
 
 func setCLIArgs() {
 	os.Args = append(os.Args, "--resource.manager.slurm")
-	os.Args = append(os.Args, "--slurm.sacct.path=../fixtures/sacct")
+	os.Args = append(os.Args, "--slurm.sacct.path=../testdata/sacct")
 	os.Args = append(os.Args, "--log.level=error")
 }
 

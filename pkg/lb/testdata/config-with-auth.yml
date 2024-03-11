@@ -1,0 +1,3 @@
+strategy: resource-based
+backends:
+  - url: "http://prometheus:password@localhost:9090"

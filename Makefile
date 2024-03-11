@@ -62,7 +62,7 @@ endif
 
 PROMU := $(FIRST_GOPATH)/bin/promu --config $(PROMU_CONF)
 
-e2e-out = pkg/collector/fixtures/output
+e2e-out = pkg/collector/testdata/output
 
 # 64bit -> 32bit mapping for cross-checking. At least for amd64/386, the 64bit CPU can execute 32bit code but not the other way around, so we don't support cross-testing upwards.
 cross-test = skip-test-32bit
@@ -85,12 +85,12 @@ $(eval $(call goarch_pair,mips64el,mipsel))
 all:: vet common-all $(cross-test) $(test-docker) $(checkmetrics) $(checkrules) $(test-e2e)
 
 .PHONY: test
-test: pkg/collector/fixtures/sys/.unpacked pkg/collector/fixtures/proc/.unpacked
+test: pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked
 	@echo ">> running tests"
 	$(GO) test -short $(test-flags) $(pkgs)
 
 .PHONY: test-32bit
-test-32bit: pkg/collector/fixtures/sys/.unpacked 
+test-32bit: pkg/collector/testdata/sys/.unpacked 
 	@echo ">> running tests in 32-bit mode"
 	@env GOARCH=$(GOARCH_CROSS) $(GO) test $(pkgs)
 
@@ -99,19 +99,19 @@ skip-test-32bit:
 	@echo ">> SKIP running tests in 32-bit mode: not supported on $(GOHOSTOS)/$(GOHOSTARCH)"
 
 %/.unpacked: %.ttar
-	@echo ">> extracting fixtures"
+	@echo ">> extracting testdata"
 	if [ -d $(dir $@) ] ; then rm -rf $(dir $@) ; fi
 	./scripts/ttar -C $(dir $*) -x -f $*.ttar
 	touch $@
 
-update_fixtures:
-	rm -vf pkg/collector/fixtures/sys/.unpacked pkg/collector/fixtures/proc/.unpacked
-	./scripts/ttar -C pkg/collector/fixtures -c -f pkg/collector/fixtures/sys.ttar sys
-	./scripts/ttar -C pkg/collector/fixtures -c -f pkg/collector/fixtures/proc.ttar proc
+update_testdata:
+	rm -vf pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked
+	./scripts/ttar -C pkg/collector/testdata -c -f pkg/collector/testdata/sys.ttar sys
+	./scripts/ttar -C pkg/collector/testdata -c -f pkg/collector/testdata/proc.ttar proc
 
 ifeq ($(CGO_BUILD), 0)
 .PHONY: test-e2e
-test-e2e: build pkg/collector/fixtures/sys/.unpacked pkg/collector/fixtures/proc/.unpacked
+test-e2e: build pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked
 	@echo ">> running end-to-end tests"
 	./scripts/e2e-test.sh -s exporter-cgroups-v1
 	./scripts/e2e-test.sh -s exporter-cgroups-v2-nvidia-ipmiutil
@@ -121,7 +121,7 @@ test-e2e: build pkg/collector/fixtures/sys/.unpacked pkg/collector/fixtures/proc
 	./scripts/e2e-test.sh -s exporter-cgroups-v2-all-metrics
 else
 .PHONY: test-e2e
-test-e2e: build pkg/collector/fixtures/sys/.unpacked pkg/collector/fixtures/proc/.unpacked
+test-e2e: build pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked
 	@echo ">> running end-to-end tests"
 	./scripts/e2e-test.sh -s api-project-query
 	./scripts/e2e-test.sh -s api-uuid-query
@@ -133,12 +133,13 @@ test-e2e: build pkg/collector/fixtures/sys/.unpacked pkg/collector/fixtures/proc
 	./scripts/e2e-test.sh -s api-current-usage-admin-query
 	./scripts/e2e-test.sh -s api-global-usage-admin-query
 	./scripts/e2e-test.sh -s api-current-usage-admin-denied-query
-	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-basic-test
+	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb
+	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-auth
 endif
 
 ifeq ($(CGO_BUILD), 0)
 .PHONY: test-e2e-update
-test-e2e-update: build pkg/collector/fixtures/sys/.unpacked pkg/collector/fixtures/proc/.unpacked
+test-e2e-update: build pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked
 	@echo ">> updating end-to-end tests outputs"
 	./scripts/e2e-test.sh -s exporter-cgroups-v1 -u || true
 	./scripts/e2e-test.sh -s exporter-cgroups-v2-nvidia-ipmiutil -u || true
@@ -148,7 +149,7 @@ test-e2e-update: build pkg/collector/fixtures/sys/.unpacked pkg/collector/fixtur
 	./scripts/e2e-test.sh -s exporter-cgroups-v2-all-metrics -u || true
 else
 .PHONY: test-e2e-update
-test-e2e-update: build pkg/collector/fixtures/sys/.unpacked pkg/collector/fixtures/proc/.unpacked
+test-e2e-update: build pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked
 	@echo ">> updating end-to-end tests outputs"
 	./scripts/e2e-test.sh -s api-project-query -u || true
 	./scripts/e2e-test.sh -s api-uuid-query -u || true
@@ -160,7 +161,8 @@ test-e2e-update: build pkg/collector/fixtures/sys/.unpacked pkg/collector/fixtur
 	./scripts/e2e-test.sh -s api-current-usage-admin-query -u || true
 	./scripts/e2e-test.sh -s api-global-usage-admin-query -u || true
 	./scripts/e2e-test.sh -s api-current-usage-admin-denied-query -u || true
-	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-basic-test -u || true
+	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb -u || true
+	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-auth -u || true
 endif
 
 .PHONY: skip-test-e2e
