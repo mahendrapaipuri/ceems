@@ -556,13 +556,11 @@ strategy: resource-based
 db_path: data/ceems_api_server.db
 backends:
   - url: "http://localhost:9090"
-    skip_tls_verify: true
   - url: "http://localhost:9091"
-    skip_tls_verify: true
 ```
 
 - Keyword `strategy` can take either `round-robin`, `least-connection` and `resource-based` 
-as values. Using `resource-based` stragety, the queries are proxied to backend TSDB 
+as values. Using `resource-based` strategy, the queries are proxied to backend TSDB 
 instances based on the data available with each instance as 
 [described in CEEMS load balancer](#ceems-load-balancer).
 - Keyword `db_path` takes the path to CEEMS API server DB file. This file is optional and
