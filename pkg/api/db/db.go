@@ -86,30 +86,64 @@ var (
 
 // Init func to set prepareStatements
 func init() {
-	// DB insert statement
-	placeholder := fmt.Sprintf(
-		"(%s)",
-		strings.Join(strings.Split(strings.Repeat("?", len(base.UnitsDBTableColNames)), ""), ","),
-	)
-	dbColNames := strings.Join(base.UnitsDBTableColNames, ",")
-	prepareStatements[base.UnitsDBTableName] = fmt.Sprintf(
-		"INSERT OR REPLACE INTO %s (%s) VALUES %s",
+	// Unit update statement placeholders
+	var unitTablePlaceholders []string
+	for _, col := range base.UnitsDBTableColNames {
+		if strings.HasPrefix(col, "num") {
+			unitTablePlaceholders = append(unitTablePlaceholders, fmt.Sprintf("  %[1]s = %[1]s + ?", col))
+		} else if strings.HasPrefix(col, "avg") {
+			unitTablePlaceholders = append(unitTablePlaceholders, fmt.Sprintf("  %[1]s = (%[1]s * num_intervals + ?) / (num_intervals + 1)", col))
+		} else if strings.HasPrefix(col, "total") {
+			unitTablePlaceholders = append(unitTablePlaceholders, fmt.Sprintf("  %[1]s = (%[1]s + ?)", col))
+		} else {
+			continue
+		}
+	}
+
+	// Unit update statement
+	unitStmt := fmt.Sprintf(
+		"INSERT INTO %s (%s) VALUES %s %s",
 		base.UnitsDBTableName,
-		dbColNames,
-		placeholder,
+		strings.Join(base.UnitsDBTableColNames, ","),
+		fmt.Sprintf(
+			"(%s)",
+			strings.Join(strings.Split(strings.Repeat("?", len(base.UnitsDBTableColNames)), ""), ","),
+		),
+		"ON CONFLICT(uuid,started_at) DO UPDATE SET", // Index is defined in 000001_create_unit_table.up.sql
 	)
 
+	prepareStatements[base.UnitsDBTableName] = strings.Join(
+		[]string{
+			unitStmt,
+			strings.Join(unitTablePlaceholders, ",\n"),
+		},
+		"\n",
+	)
+
+	// // DB insert statement
+	// placeholder := fmt.Sprintf(
+	// 	"(%s)",
+	// 	strings.Join(strings.Split(strings.Repeat("?", len(base.UnitsDBTableColNames)), ""), ","),
+	// )
+	// dbColNames := strings.Join(base.UnitsDBTableColNames, ",")
+	// prepareStatements[base.UnitsDBTableName] = fmt.Sprintf(
+	// 	"INSERT OR REPLACE INTO %s (%s) VALUES %s",
+	// 	base.UnitsDBTableName,
+	// 	dbColNames,
+	// 	placeholder,
+	// )
+
 	// Usage update statement
-	var placeholders []string
+	var usageTablePlaceholders []string
 	for _, col := range base.UsageDBTableColNames {
 		if strings.HasPrefix(col, "num") {
-			placeholders = append(placeholders, fmt.Sprintf("  %[1]s = %[1]s + 1", col))
+			usageTablePlaceholders = append(usageTablePlaceholders, fmt.Sprintf("  %[1]s = %[1]s + ?", col))
 		} else if strings.HasPrefix(col, "avg") {
-			placeholders = append(placeholders, fmt.Sprintf("  %[1]s = (%[1]s * num_units + ?) / (num_units + 1)", col))
+			usageTablePlaceholders = append(usageTablePlaceholders, fmt.Sprintf("  %[1]s = (%[1]s * num_units + ?) / (num_units + 1)", col))
 		} else if strings.HasPrefix(col, "total") {
-			placeholders = append(placeholders, fmt.Sprintf("  %[1]s = (%[1]s + ?)", col))
+			usageTablePlaceholders = append(usageTablePlaceholders, fmt.Sprintf("  %[1]s = (%[1]s + ?)", col))
 		} else if col == "tags" {
-			placeholders = append(placeholders, fmt.Sprintf("  %[1]s = ?", col))
+			usageTablePlaceholders = append(usageTablePlaceholders, fmt.Sprintf("  %[1]s = ?", col))
 		} else {
 			continue
 		}
@@ -121,15 +155,15 @@ func init() {
 		base.UsageDBTableName,
 		strings.Join(base.UsageDBTableColNames, ","),
 		fmt.Sprintf(
-			"(1,%s)",
-			strings.Join(strings.Split(strings.Repeat("?", len(base.UsageDBTableColNames)-1), ""), ","),
+			"(%s)",
+			strings.Join(strings.Split(strings.Repeat("?", len(base.UsageDBTableColNames)), ""), ","),
 		),
-		"ON CONFLICT(usr,project) DO UPDATE SET", // Index is defined in 000006_create_usr_project_uq_idx_usage.up.sql
+		"ON CONFLICT(usr,project) DO UPDATE SET", // Index is defined in 000002_create_usage_table.up.sql
 	)
 	prepareStatements[base.UsageDBTableName] = strings.Join(
 		[]string{
 			usageStmt,
-			strings.Join(placeholders, ",\n"),
+			strings.Join(usageTablePlaceholders, ",\n"),
 		},
 		"\n",
 	)
@@ -342,7 +376,7 @@ func (s *statsDB) getJobStats(startTime, endTime time.Time) error {
 // Delete old entries in DB
 func (s *statsDB) purgeExpiredUnits(tx *sql.Tx) error {
 	deleteRowQuery := fmt.Sprintf(
-		"DELETE FROM %s WHERE Start <= date('now', '-%d day')",
+		"DELETE FROM %s WHERE started_at <= date('now', '-%d day')",
 		base.UnitsDBTableName,
 		int(s.storage.retentionPeriod.Hours()/24),
 	)
@@ -388,15 +422,13 @@ func (s *statsDB) execStatements(statements map[string]*sql.Stmt, units []models
 			unit.Project,
 			unit.Grp,
 			unit.Usr,
-			unit.Submit,
-			unit.Start,
-			unit.End,
-			unit.SubmitTS,
-			unit.StartTS,
-			unit.EndTS,
-			unit.Elapsed,
+			unit.CreatedAt,
+			unit.StartedAt,
+			unit.EndedAt,
+			unit.CreatedAtTS,
+			unit.StartedAtTS,
+			unit.EndedAtTS,
 			unit.ElapsedRaw,
-			unit.Exitcode,
 			unit.State,
 			unit.Allocation,
 			unit.TotalCPUBilling,
@@ -418,6 +450,25 @@ func (s *statsDB) execStatements(statements map[string]*sql.Stmt, units []models
 			unit.TotalOutgress,
 			unit.Tags,
 			ignore,
+			1, // NumIntervals
+			unit.TotalCPUBilling,
+			unit.TotalGPUBilling,
+			unit.TotalMiscBilling,
+			unit.AveCPUUsage,
+			unit.AveCPUMemUsage,
+			unit.TotalCPUEnergyUsage,
+			unit.TotalCPUEmissions,
+			unit.AveGPUUsage,
+			unit.AveGPUMemUsage,
+			unit.TotalGPUEnergyUsage,
+			unit.TotalGPUEmissions,
+			unit.TotalIOWriteHot,
+			unit.TotalIOReadHot,
+			unit.TotalIOWriteCold,
+			unit.TotalIOReadCold,
+			unit.TotalIngress,
+			unit.TotalOutgress,
+			1, // NumIntervals
 		); err != nil {
 			level.Error(s.logger).
 				Log("msg", "Failed to insert unit in DB", "id", unit.UUID, "err", err)
@@ -425,12 +476,14 @@ func (s *statsDB) execStatements(statements map[string]*sql.Stmt, units []models
 
 		// If unit.EndTS is zero, it means a running unit. We shouldnt update stats
 		// of running units. They should be updated **ONLY** for finished units
-		if unit.EndTS == 0 {
-			continue
+		unitIncr := 1
+		if unit.EndedAtTS == 0 {
+			unitIncr = 0
 		}
 
 		// Update Usage table
 		if _, err = statements[base.UsageDBTableName].Exec(
+			unitIncr,
 			unit.Project,
 			unit.Usr,
 			unit.TotalCPUBilling,
@@ -450,6 +503,7 @@ func (s *statsDB) execStatements(statements map[string]*sql.Stmt, units []models
 			unit.TotalIOReadCold,
 			unit.TotalIngress,
 			unit.TotalOutgress,
+			unitIncr,
 			unit.TotalCPUBilling,
 			unit.TotalGPUBilling,
 			unit.TotalMiscBilling,

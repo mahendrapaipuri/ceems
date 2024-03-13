@@ -146,7 +146,7 @@ func (s *slurmScheduler) Fetch(start time.Time, end time.Time) ([]models.Unit, e
 	}
 
 	// Parse sacct output and create BatchJob structs slice
-	jobs, numJobs := parseSacctCmdOutput(string(sacctOutput))
+	jobs, numJobs := parseSacctCmdOutput(string(sacctOutput), start, end)
 	level.Info(s.logger).Log("msg", "Slurm jobs fetched", "start", startTime, "end", endTime, "njobs", numJobs)
 	return jobs, nil
 }
@@ -157,7 +157,7 @@ func runSacctCmd(execMode string, startTime string, endTime string, logger log.L
 	args := []string{
 		"-D", "-X", "--allusers", "--parsable2",
 		"--format", strings.Join(sacctFields, ","),
-		"--state", "CANCELLED,COMPLETED,FAILED,NODE_FAIL,PREEMPTED,TIMEOUT",
+		"--state", "RUNNING,CANCELLED,COMPLETED,FAILED,NODE_FAIL,PREEMPTED,TIMEOUT",
 		"--starttime", startTime,
 		"--endtime", endTime,
 	}
@@ -176,9 +176,13 @@ func runSacctCmd(execMode string, startTime string, endTime string, logger log.L
 }
 
 // Parse sacct command output and return batchjob slice
-func parseSacctCmdOutput(sacctOutput string) ([]models.Unit, int) {
+func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]models.Unit, int) {
 	// Strip first line
 	sacctOutputLines := strings.Split(string(sacctOutput), "\n")[1:]
+
+	// Update period
+	intStartTS := start.Local().UnixMilli()
+	intEndTS := end.Local().UnixMilli()
 
 	var numJobs = 0
 	var jobs = make([]models.Unit, len(sacctOutputLines))
@@ -216,6 +220,11 @@ func parseSacctCmdOutput(sacctOutput string) ([]models.Unit, int) {
 			uidInt, _ = strconv.ParseInt(components[sacctFieldMap["uid"]], 10, 64)
 			elapsedrawInt, _ = strconv.ParseInt(components[sacctFieldMap["elapsedraw"]], 10, 64)
 
+			// Get job submit, start and end times
+			jobSubmitTS := helper.TimeToTimestamp(slurmTimeFormat, components[8])
+			jobStartTS := helper.TimeToTimestamp(slurmTimeFormat, components[9])
+			jobEndTS := helper.TimeToTimestamp(slurmTimeFormat, components[10])
+
 			// Parse alloctres to get billing, nnodes, ncpus, ngpus and mem
 			var billing, nnodes, ncpus, ngpus int64
 			var mem string
@@ -238,12 +247,50 @@ func parseSacctCmdOutput(sacctOutput string) ([]models.Unit, int) {
 				}
 			}
 
+			// Assume job's elapsed time during this interval overlaps with interval's
+			// boundaries
+			startMark := intStartTS
+			endMark := intEndTS
+
+			// If job has not started between interval's start and end time,
+			// elapsedTime should be zero. This can happen when job is in pending state
+			// after submission
+			if jobStartTS > intEndTS {
+				endMark = startMark
+				goto elapsed
+			}
+
+			// If job has already finished in the past we need to get boundaries from
+			// job's start and end time. This case should not arrive in production as
+			// there is no reason SLURM gives us the jobs that have finished in the past
+			// that do not overlap with interval boundaries
+			if jobEndTS < intStartTS {
+				startMark = jobStartTS
+				endMark = jobEndTS
+				goto elapsed
+			}
+
+			// If job has started **after** start of interval, we should mark job's start
+			// time as start of elapsed time
+			if jobStartTS > intStartTS {
+				startMark = jobStartTS
+			}
+			// If job has ended before end of interval, we should mark job's end time
+			// as elapsed end time.
+			if jobEndTS > 0 && jobEndTS < intEndTS {
+				endMark = jobEndTS
+			}
+
+		elapsed:
+			// Get elapsed time of job in this interval in seconds
+			elapsedTime := (endMark - startMark) / 1000
+
 			// Attribute billing to CPUBilling if ngpus is 0 or attribute to GPUBilling
 			var cpuBilling, gpuBilling int64
 			if ngpus == 0 {
-				cpuBilling = billing
+				cpuBilling = billing * elapsedTime
 			} else {
-				gpuBilling = billing
+				gpuBilling = billing * elapsedTime
 			}
 
 			// Expand nodelist range expressions
@@ -264,6 +311,7 @@ func parseSacctCmdOutput(sacctOutput string) ([]models.Unit, int) {
 				"gid":         gidInt,
 				"partition":   components[sacctFieldMap["partition"]],
 				"qos":         components[sacctFieldMap["qos"]],
+				"exit_code":   components[sacctFieldMap["exitcode"]],
 				"nodelist":    components[sacctFieldMap["nodelist"]],
 				"nodelistexp": nodelistExp,
 				"workdir":     components[sacctFieldMap["workdir"]],
@@ -276,15 +324,13 @@ func parseSacctCmdOutput(sacctOutput string) ([]models.Unit, int) {
 				Project:         components[sacctFieldMap["account"]],
 				Grp:             components[sacctFieldMap["group"]],
 				Usr:             components[sacctFieldMap["user"]],
-				Submit:          components[sacctFieldMap["submit"]],
-				Start:           components[sacctFieldMap["start"]],
-				End:             components[sacctFieldMap["end"]],
-				SubmitTS:        helper.TimeToTimestamp(slurmTimeFormat, components[8]),
-				StartTS:         helper.TimeToTimestamp(slurmTimeFormat, components[9]),
-				EndTS:           helper.TimeToTimestamp(slurmTimeFormat, components[10]),
-				Elapsed:         components[sacctFieldMap["elapsed"]],
+				CreatedAt:       components[sacctFieldMap["submit"]],
+				StartedAt:       components[sacctFieldMap["start"]],
+				EndedAt:         components[sacctFieldMap["end"]],
+				CreatedAtTS:     jobSubmitTS,
+				StartedAtTS:     jobStartTS,
+				EndedAtTS:       jobEndTS,
 				ElapsedRaw:      elapsedrawInt,
-				Exitcode:        components[sacctFieldMap["exitcode"]],
 				State:           components[sacctFieldMap["state"]],
 				Allocation:      allocation,
 				TotalCPUBilling: cpuBilling,

@@ -223,18 +223,6 @@ func (s *CEEMSServer) getCommonQueryParams(q *Query, URLValues url.Values) Query
 		q.query(" AND project IN ")
 		q.param(projects)
 	}
-
-	// Get partition query parameters if any
-	if partitions := URLValues["partition"]; len(partitions) > 0 {
-		q.query(" AND partition IN ")
-		q.param(partitions)
-	}
-
-	// Get qos query parameters if any
-	if qoss := URLValues["qos"]; len(qoss) > 0 {
-		q.query(" AND qos IN ")
-		q.param(qoss)
-	}
 	return *q
 }
 
@@ -342,7 +330,7 @@ func (s *CEEMSServer) unitsQuerier(
 	}
 
 	// Add from and to to query only when checkQueryWindow is true
-	q.query(" AND end BETWEEN ")
+	q.query(" AND ended_at BETWEEN ")
 	q.param([]string{queryWindowTS["from"]})
 	q.query(" AND ")
 	q.param([]string{queryWindowTS["to"]})
@@ -460,7 +448,7 @@ func (s *CEEMSServer) currentUsage(users []string, w http.ResponseWriter, r *htt
 	}
 
 	// Add from and to to query only when checkQueryWindow is true
-	q.query(" AND end BETWEEN ")
+	q.query(" AND ended_at BETWEEN ")
 	q.param([]string{queryWindowTS["from"]})
 	q.query(" AND ")
 	q.param([]string{queryWindowTS["to"]})

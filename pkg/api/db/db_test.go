@@ -357,7 +357,7 @@ func TestJobStatsDeleteOldUnits(t *testing.T) {
 	units := []models.Unit{
 		{
 			UUID: unitID,
-			Submit: time.Now().
+			CreatedAt: time.Now().
 				Add(time.Duration(-s.storage.retentionPeriod*24*2) * time.Hour).
 				Format(base.DatetimeLayout),
 		},
