@@ -264,7 +264,7 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 			// job's start and end time. This case should not arrive in production as
 			// there is no reason SLURM gives us the jobs that have finished in the past
 			// that do not overlap with interval boundaries
-			if jobEndTS < intStartTS {
+			if jobEndTS > 0 && jobEndTS < intStartTS {
 				startMark = jobStartTS
 				endMark = jobEndTS
 				goto elapsed
@@ -284,6 +284,7 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 		elapsed:
 			// Get elapsed time of job in this interval in seconds
 			elapsedTime := (endMark - startMark) / 1000
+			fmt.Println(startMark, endMark, jobStartTS, jobEndTS, intStartTS, intEndTS, elapsedTime)
 
 			// Attribute billing to CPUBilling if ngpus is 0 or attribute to GPUBilling
 			var cpuBilling, gpuBilling int64

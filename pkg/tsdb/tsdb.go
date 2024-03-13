@@ -214,11 +214,6 @@ func (t *TSDB) Query(query string, queryTime time.Time) (Metric, error) {
 		return nil, err
 	}
 
-	// Check response code
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("query returned status: %d", resp.StatusCode)
-	}
-
 	// Unpack into data
 	var data Response
 	if err = json.Unmarshal(body, &data); err != nil {
@@ -233,6 +228,11 @@ func (t *TSDB) Query(query string, queryTime time.Time) (Metric, error) {
 	// Check if Data exists on response
 	if data.Data == nil {
 		return nil, fmt.Errorf("TSDB response returned no data: %v", data)
+	}
+
+	// Check response code
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("query returned status: %d", resp.StatusCode)
 	}
 
 	// Parse data
