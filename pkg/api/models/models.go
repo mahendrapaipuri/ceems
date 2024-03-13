@@ -16,15 +16,13 @@ type Unit struct {
 	Project             string     `json:"project"                    sql:"project"                    sqlitetype:"text"`              // Account in batch systems, Tenant in Openstack, Namespace in k8s
 	Grp                 string     `json:"grp"                        sql:"grp"                        sqlitetype:"text"`              // User group
 	Usr                 string     `json:"usr"                        sql:"usr"                        sqlitetype:"text"`              // Username
-	Submit              string     `json:"submit"                     sql:"submit"                     sqlitetype:"text"`              // Submission time
-	Start               string     `json:"start"                      sql:"start"                      sqlitetype:"text"`              // Start time
-	End                 string     `json:"end"                        sql:"end"                        sqlitetype:"text"`              // End time
-	SubmitTS            int64      `json:"submit_ts"                  sql:"submit_ts"                  sqlitetype:"integer"`           // Submission timestamp
-	StartTS             int64      `json:"start_ts"                   sql:"start_ts"                   sqlitetype:"integer"`           // Start timestamp
-	EndTS               int64      `json:"end_ts"                     sql:"end_ts"                     sqlitetype:"integer"`           // End timestamp
-	Elapsed             string     `json:"elapsed"                    sql:"elapsed"                    sqlitetype:"text"`              // Total elapsed time
+	CreatedAt           string     `json:"created_at"                 sql:"created_at"                 sqlitetype:"text"`              // Creation time
+	StartedAt           string     `json:"started_at"                 sql:"started_at"                 sqlitetype:"text"`              // Start time
+	EndedAt             string     `json:"ended_at"                   sql:"ended_at"                   sqlitetype:"text"`              // End time
+	CreatedAtTS         int64      `json:"created_at_ts"              sql:"created_at_ts"              sqlitetype:"integer"`           // Creation timestamp
+	StartedAtTS         int64      `json:"started_at_ts"              sql:"started_at_ts"              sqlitetype:"integer"`           // Start timestamp
+	EndedAtTS           int64      `json:"ended_at_ts"                sql:"ended_at_ts"                sqlitetype:"integer"`           // End timestamp
 	ElapsedRaw          int64      `json:"elapsed_raw"                sql:"elapsed_raw"                sqlitetype:"integer"`           // Total elapsed time in seconds
-	Exitcode            string     `json:"exitcode"                   sql:"exitcode"                   sqlitetype:"text"`              // Exit code of unit
 	State               string     `json:"state"                      sql:"state"                      sqlitetype:"text"`              // Current state of unit
 	Allocation          Allocation `json:"allocation"                 sql:"allocation"                 sqlitetype:"text default '{}'"` // Allocation map of unit. Only string and int64 values are supported in map
 	TotalCPUBilling     int64      `json:"total_cpu_billing"          sql:"total_cpu_billing"          sqlitetype:"integer"`           // Total CPU billing for unit
@@ -46,6 +44,7 @@ type Unit struct {
 	TotalOutgress       float64    `json:"total_outgress_in_gb"       sql:"total_outgress_in_gb"       sqlitetype:"real"`              // Total outgress traffic in GB of unit
 	Tags                Tag        `json:"tags"                       sql:"tags"                       sqlitetype:"text default '{}'"` // A map to store generic info. String and int64 are valid value types of map
 	Ignore              int        `json:"-"                          sql:"ignore"                     sqlitetype:"integer"`           // Whether to ignore unit
+	NumIntervals        int        `json:"-"                          sql:"num_intervals"              sqlitetype:"integer"`           // Number of update intervals. This is used internally to update aggregate metrics
 }
 
 // TableName returns the table which units are stored into.
