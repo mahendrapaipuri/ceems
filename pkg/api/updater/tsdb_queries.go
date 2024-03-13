@@ -26,7 +26,7 @@ avg_over_time(
 	totalCPUEnergyUsageQuery = `
 sum_over_time(
 	sum by (uuid) (
-		ceems_ipmi_dcmi_current_watts * %[5]d / 3.6e9
+		instance:ceems_ipmi_dcmi_avg_watts:cpu * %[5]d / 3.6e9
 		* on (instance) group_right ()
 		(
 			rate(ceems_slurm_job_cpu_user_seconds{uuid=~"%[1]s"}[%[2]s])
@@ -43,7 +43,7 @@ sum_over_time(
 	sum by (uuid) (
 	label_replace(
 		label_replace(
-				ceems_ipmi_dcmi_current_watts * %[5]d / 3.6e9
+				instance:ceems_ipmi_dcmi_avg_watts:cpu * %[5]d / 3.6e9
 			* on (instance) group_right ()
 				(
 					rate(ceems_slurm_job_cpu_user_seconds{uuid=~"%[1]s"}[%[2]s])
@@ -94,7 +94,7 @@ avg_over_time(
 	totalGPUEnergyUsageQuery = `
 sum_over_time(
 	sum by (uuid) (
-		DCGM_FI_DEV_POWER_USAGE * %[5]d / 3.6e9
+		instance:DCGM_FI_DEV_POWER_USAGE:gpu * %[5]d / 3.6e9
 		* on (gpuuuid) group_right()
 		ceems_slurm_job_gpu_index_flag{uuid=~"%[1]s"}
 	)[%[3]s:%[4]s]
@@ -104,7 +104,7 @@ sum_over_time(
 sum_over_time(
 	sum by (uuid) (
 		label_replace(
-			DCGM_FI_DEV_POWER_USAGE * %[5]d / 3.6e+09
+			instance:DCGM_FI_DEV_POWER_USAGE:gpu * %[5]d / 3.6e+09
 			* on (gpuuuid) group_right ()
 			ceems_slurm_job_gpu_index_flag{uuid=~"%[1]s"},
 			"common_label",

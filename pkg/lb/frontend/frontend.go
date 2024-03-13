@@ -178,12 +178,19 @@ func (lb *loadBalancer) userUnits(r *http.Request) bool {
 // Serve serves the request using a backend TSDB server from the pool
 func (lb *loadBalancer) Serve(w http.ResponseWriter, r *http.Request) {
 	var queryPeriod time.Duration
+	var body []byte
+	var err error
 
 	// Make a new request and add newReader to that request body
 	newReq := r.Clone(r.Context())
 
+	// If request has no body go to proxy directly
+	if r.Body == nil {
+		goto proxy
+	}
+
 	// If failed to read body, skip verification and go to request proxy
-	body, err := io.ReadAll(r.Body)
+	body, err = io.ReadAll(r.Body)
 	if err != nil {
 		level.Error(lb.logger).Log("msg", "Failed to read request body", "err", err)
 		goto proxy

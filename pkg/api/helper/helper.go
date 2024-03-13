@@ -1,3 +1,4 @@
+// Package helper provides utility functions across sub packages
 package helper
 
 import (
@@ -21,7 +22,7 @@ func replaceNodelistDelimiter(nodelistExp string) string {
 	// We need the rejoin the resulting slice to get node ranges together
 	var nodelistExpSlice = strings.Split(nodelistExp, ",")
 	var nodelist []string
-	var idxEnd int = 0
+	var idxEnd = 0
 	for idx, nodeexp := range nodelistExpSlice {
 		// If string contains only "[", it was split in the range as well
 		if strings.Contains(nodeexp, "[") && !strings.Contains(nodeexp, "]") {
@@ -93,15 +94,24 @@ func expandNodelist(nodelistExp string) []string {
 	return nodeNames
 }
 
-// Expand SLURM NODELIST into slice of nodenames
+// NodelistParser expands SLURM NODELIST into slice of nodenames
 func NodelistParser(nodelistExp string) []string {
 	return expandNodelist(replaceNodelistDelimiter(nodelistExp))
 }
 
-// Converts a date in a given layout to unix timestamp of the date
+// TimeToTimestamp converts a date in a given layout to unix timestamp of the date
 func TimeToTimestamp(layout string, date string) int64 {
 	if t, err := time.Parse(layout, date); err == nil {
 		return int64(t.Local().UnixMilli())
 	}
 	return 0
+}
+
+// ChunkBy splits the slice into chunks of given size
+func ChunkBy[T any](items []T, chunkSize int) (chunks [][]T) {
+	var _chunks = make([][]T, 0, (len(items)/chunkSize)+1)
+	for chunkSize < len(items) {
+		items, _chunks = items[chunkSize:], append(_chunks, items[0:chunkSize:chunkSize])
+	}
+	return append(_chunks, items)
 }

@@ -67,29 +67,29 @@ func TestTSDBUpdateSuccess(t *testing.T) {
 
 	units := []models.Unit{
 		{
-			UUID:       "1",
-			StartTS:    currTime.Add(-3000 * time.Second).UnixMilli(),
-			EndTS:      currTime.UnixMilli(),
-			ElapsedRaw: int64(3000),
+			UUID:        "1",
+			StartedAtTS: currTime.Add(-3000 * time.Second).UnixMilli(),
+			EndedAtTS:   currTime.UnixMilli(),
+			ElapsedRaw:  int64(3000),
 		},
 		{
-			UUID:       "2",
-			StartTS:    currTime.Add(-3000 * time.Second).UnixMilli(),
-			EndTS:      currTime.UnixMilli(),
-			ElapsedRaw: int64(3000),
+			UUID:        "2",
+			StartedAtTS: currTime.Add(-3000 * time.Second).UnixMilli(),
+			EndedAtTS:   currTime.UnixMilli(),
+			ElapsedRaw:  int64(3000),
 		},
 		{
-			UUID:       "3",
-			StartTS:    currTime.Add(-30 * time.Second).UnixMilli(),
-			EndTS:      currTime.UnixMilli(),
-			ElapsedRaw: int64(30),
+			UUID:        "3",
+			StartedAtTS: currTime.Add(-30 * time.Second).UnixMilli(),
+			EndedAtTS:   currTime.UnixMilli(),
+			ElapsedRaw:  int64(30),
 		},
 	}
 	expectedUnits := []models.Unit{
 		{
 			UUID:                "1",
-			StartTS:             currTime.Add(-3000 * time.Second).UnixMilli(),
-			EndTS:               currTime.UnixMilli(),
+			StartedAtTS:         currTime.Add(-3000 * time.Second).UnixMilli(),
+			EndedAtTS:           currTime.UnixMilli(),
 			ElapsedRaw:          int64(3000),
 			AveCPUUsage:         1.1,
 			AveCPUMemUsage:      1.1,
@@ -102,8 +102,8 @@ func TestTSDBUpdateSuccess(t *testing.T) {
 		},
 		{
 			UUID:                "2",
-			StartTS:             currTime.Add(-3000 * time.Second).UnixMilli(),
-			EndTS:               currTime.UnixMilli(),
+			StartedAtTS:         currTime.Add(-3000 * time.Second).UnixMilli(),
+			EndedAtTS:           currTime.UnixMilli(),
 			ElapsedRaw:          int64(3000),
 			AveCPUUsage:         2.2,
 			AveCPUMemUsage:      2.2,
@@ -115,11 +115,11 @@ func TestTSDBUpdateSuccess(t *testing.T) {
 			TotalGPUEmissions:   2.2,
 		},
 		{
-			UUID:       "3",
-			StartTS:    currTime.Add(-30 * time.Second).UnixMilli(),
-			EndTS:      currTime.UnixMilli(),
-			ElapsedRaw: int64(30),
-			Ignore:     1,
+			UUID:        "3",
+			StartedAtTS: currTime.Add(-30 * time.Second).UnixMilli(),
+			EndedAtTS:   currTime.UnixMilli(),
+			ElapsedRaw:  int64(30),
+			Ignore:      1,
 		},
 	}
 
@@ -128,7 +128,7 @@ func TestTSDBUpdateSuccess(t *testing.T) {
 		t.Errorf("Failed to create TSDB updater instance")
 	}
 
-	updatedUnits := tsdb.Update(time.Now(), time.Now(), units)
+	updatedUnits := tsdb.Update(time.Now().Add(-5*time.Minute), time.Now(), units)
 	if !reflect.DeepEqual(updatedUnits, expectedUnits) {
 		t.Errorf("expected %#v \n got %#v", expectedUnits, updatedUnits)
 	}
@@ -153,22 +153,22 @@ func TestTSDBUpdateFailMaxDuration(t *testing.T) {
 
 	units := []models.Unit{
 		{
-			UUID:       "1",
-			StartTS:    currTime.Add(-3 * time.Second).UnixMilli(),
-			EndTS:      currTime.UnixMilli(),
-			ElapsedRaw: int64(3000),
+			UUID:        "1",
+			StartedAtTS: currTime.Add(-3 * time.Second).UnixMilli(),
+			EndedAtTS:   currTime.UnixMilli(),
+			ElapsedRaw:  int64(3000),
 		},
 		{
-			UUID:       "2",
-			StartTS:    currTime.Add(-3 * time.Second).UnixMilli(),
-			EndTS:      currTime.UnixMilli(),
-			ElapsedRaw: int64(3000),
+			UUID:        "2",
+			StartedAtTS: currTime.Add(-3 * time.Second).UnixMilli(),
+			EndedAtTS:   currTime.UnixMilli(),
+			ElapsedRaw:  int64(3000),
 		},
 		{
-			UUID:       "3",
-			StartTS:    currTime.Add(-3 * time.Second).UnixMilli(),
-			EndTS:      currTime.UnixMilli(),
-			ElapsedRaw: int64(30),
+			UUID:        "3",
+			StartedAtTS: currTime.Add(-3 * time.Second).UnixMilli(),
+			EndedAtTS:   currTime.UnixMilli(),
+			ElapsedRaw:  int64(30),
 		},
 	}
 	expectedUnits := units
@@ -178,7 +178,7 @@ func TestTSDBUpdateFailMaxDuration(t *testing.T) {
 		t.Errorf("Failed to create TSDB updater instance")
 	}
 
-	updatedUnits := tsdb.Update(time.Now(), time.Now(), units)
+	updatedUnits := tsdb.Update(time.Now().Add(-5*time.Minute), time.Now(), units)
 	if !reflect.DeepEqual(updatedUnits, expectedUnits) {
 		t.Errorf("expected %#v \n got %#v", expectedUnits, updatedUnits)
 	}
@@ -206,7 +206,7 @@ func TestTSDBUpdateFailNoUnits(t *testing.T) {
 		t.Errorf("Failed to create TSDB updater instance")
 	}
 
-	updatedUnits := tsdb.Update(time.Now(), time.Now(), units)
+	updatedUnits := tsdb.Update(time.Now().Add(-5*time.Minute), time.Now(), units)
 	if !reflect.DeepEqual(updatedUnits, expectedUnits) {
 		t.Errorf("expected %#v \n got %#v", expectedUnits, updatedUnits)
 	}
@@ -226,9 +226,9 @@ func TestTSDBUpdateFailNoTSDB(t *testing.T) {
 	}
 
 	units := []models.Unit{
-		{UUID: "1", EndTS: int64(10000), ElapsedRaw: int64(3000)},
-		{UUID: "2", EndTS: int64(10000), ElapsedRaw: int64(3000)},
-		{UUID: "3", EndTS: int64(10000), ElapsedRaw: int64(30)},
+		{UUID: "1", EndedAtTS: int64(10000), ElapsedRaw: int64(3000)},
+		{UUID: "2", EndedAtTS: int64(10000), ElapsedRaw: int64(3000)},
+		{UUID: "3", EndedAtTS: int64(10000), ElapsedRaw: int64(30)},
 	}
 	expectedUnits := units
 
@@ -239,7 +239,7 @@ func TestTSDBUpdateFailNoTSDB(t *testing.T) {
 	// Stop TSDB server
 	server.Close()
 
-	updatedUnits := tsdb.Update(time.Now(), time.Now(), units)
+	updatedUnits := tsdb.Update(time.Now().Add(-5*time.Minute), time.Now(), units)
 	if !reflect.DeepEqual(updatedUnits, expectedUnits) {
 		t.Errorf("expected %#v \n got %#v", expectedUnits, updatedUnits)
 	}

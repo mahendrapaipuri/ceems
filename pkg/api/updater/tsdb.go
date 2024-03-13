@@ -2,6 +2,7 @@ package updater
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"strings"
 	"sync"
@@ -10,9 +11,15 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
+	"github.com/mahendrapaipuri/ceems/pkg/api/helper"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
 	"github.com/prometheus/common/model"
+)
+
+// Size of each chunk of UUIDs to make request to TSDB
+const (
+	chunkSize = 1000
 )
 
 // Embed TSDB struct into our TSDBUpdater struct
@@ -71,7 +78,7 @@ func NewTSDBUpdater(logger log.Logger) (Updater, error) {
 func (t *tsdbUpdater) queryString(
 	query string,
 	uuids string,
-	maxDuration time.Duration,
+	duration time.Duration,
 	scrapeInterval time.Duration,
 	rateInterval time.Duration,
 ) string {
@@ -79,7 +86,7 @@ func (t *tsdbUpdater) queryString(
 		strings.TrimLeft(query, "\n"),
 		uuids,
 		rateInterval,
-		maxDuration,
+		duration,
 		scrapeInterval,
 		scrapeInterval.Milliseconds(),
 	)
@@ -88,32 +95,43 @@ func (t *tsdbUpdater) queryString(
 // Get time averaged value of each metric identified by label uuid
 func (t *tsdbUpdater) fetchAggMetrics(
 	queryTime time.Time,
-	maxDuration time.Duration,
+	duration time.Duration,
 	uuids string,
 ) map[string]tsdb.Metric {
 	var aggMetrics = make(map[string]tsdb.Metric, len(aggMetricQueries))
-
-	// Start a wait group
-	var wg sync.WaitGroup
-	wg.Add(len(aggMetricQueries))
 
 	// Get rate and scrape intervals
 	rateInterval := t.RateInterval()
 	scrapeInterval := t.ScrapeInterval()
 
-	// If maxDuration is less than rateInterval bail
-	if maxDuration < rateInterval {
+	// If duration is less than rateInterval bail
+	if duration < rateInterval {
 		return aggMetrics
 	}
+
+	// If duration is more than or equal to 1 day, double scrape and rate intervals
+	// to reduce number of data points Prometheus has to process
+	if duration >= time.Duration(24*time.Hour) {
+		scrapeInterval = 2 * scrapeInterval
+		rateInterval = 2 * rateInterval
+	}
+
+	// Start a wait group
+	var wg sync.WaitGroup
+	wg.Add(len(aggMetricQueries))
 
 	// Loop over aggMetricQueries map and make queries
 	for name, query := range aggMetricQueries {
 		go func(n string, q string) {
 			var aggMetric tsdb.Metric
 			var err error
-			tsdbQuery := t.queryString(q, uuids, maxDuration, scrapeInterval, rateInterval)
+			tsdbQuery := t.queryString(q, uuids, duration, scrapeInterval, rateInterval)
 			if aggMetric, err = t.Query(tsdbQuery, queryTime); err != nil {
-				level.Error(t.Logger).Log("msg", "Failed to fetch metrics from TSDB", "metric", n, "err", err)
+				level.Error(t.Logger).Log(
+					"msg", "Failed to fetch metrics from TSDB", "metric", n, "duration",
+					duration, "scrape_int", scrapeInterval, "rate_int", rateInterval,
+					"err", err,
+				)
 			} else {
 				metricLock.Lock()
 				aggMetrics[n] = aggMetric
@@ -122,6 +140,7 @@ func (t *tsdbUpdater) fetchAggMetrics(
 			wg.Done()
 		}(name, query)
 	}
+
 	// Wait for all go routines
 	wg.Wait()
 	return aggMetrics
@@ -133,29 +152,51 @@ func (t *tsdbUpdater) Update(startTime time.Time, endTime time.Time, units []mod
 	if !t.Available() || len(units) == 0 {
 		return units
 	}
-	var minStartTime = endTime.UnixMilli()
+
+	// We compute aggregate metrics only for this interval duration and
+	// while updating DB we either sum or calculate cumulative average based
+	// metric type
+	duration := endTime.Sub(startTime).Truncate(time.Minute)
+
 	var allUnitUUIDs = make([]string, len(units))
-	var ignoredUnits []string
 
 	// Loop over all units and find earliest start time of a unit
+	j := 0
 	for i := 0; i < len(units); i++ {
 		// If unit is empty struct ignore
 		if units[i].UUID == "" {
 			continue
 		}
-
-		allUnitUUIDs[i] = units[i].UUID
-		if units[i].StartTS > 0 && minStartTime > units[i].StartTS {
-			minStartTime = units[i].StartTS
-		}
+		allUnitUUIDs[j] = units[i].UUID
+		j++
 	}
-	allUnitUUIDsRegExp := strings.Join(allUnitUUIDs, "|")
 
-	// Get max window from minStartTime to endTime
-	maxDuration := time.Duration((endTime.UnixMilli() - minStartTime) * int64(time.Millisecond)).Truncate(time.Minute)
+	// Chunk UUIDs into slices of 1000 so that we make TSDB requests for each 1000 units
+	// This is to safeguard against OOM errors due to a very large number of units
+	// that can spread across big time interval
+	uuidChunks := helper.ChunkBy(allUnitUUIDs[:j], chunkSize)
 
-	// Get all aggregate metrics
-	aggMetrics := t.fetchAggMetrics(endTime, maxDuration, allUnitUUIDsRegExp)
+	// Start a wait group
+	var wg sync.WaitGroup
+	wg.Add(len(uuidChunks))
+
+	var aggMetrics = make(map[string]tsdb.Metric)
+
+	// Loop over each chunk
+	for _, chunkUUIDs := range uuidChunks {
+		chunkUUIDsRegExp := strings.Join(chunkUUIDs, "|")
+		go func(uuids string) {
+			// Get all aggregate metrics
+			maps.Copy(aggMetrics, t.fetchAggMetrics(endTime, duration, uuids))
+			wg.Done()
+		}(chunkUUIDsRegExp)
+	}
+
+	// Wait for all go routines
+	wg.Wait()
+
+	// Initialize ignored units slice
+	var ignoredUnits []string
 
 	// Update all units
 	// NOTE: We can improve this by using reflect package by naming queries
@@ -167,7 +208,7 @@ func (t *tsdbUpdater) Update(startTime time.Time, endTime time.Time, units []mod
 		// EndTS will be zero as we cannot convert unknown time into time stamp.
 		// Check if we EndTS is not zero before ignoring unit. If it is zero, it means
 		// it must be RUNNING unit
-		if units[i].ElapsedRaw < int64(cutoff.Seconds()) && units[i].EndTS != 0 {
+		if units[i].ElapsedRaw < int64(cutoff.Seconds()) && units[i].EndedAtTS != 0 {
 			ignoredUnits = append(
 				ignoredUnits,
 				units[i].UUID,
