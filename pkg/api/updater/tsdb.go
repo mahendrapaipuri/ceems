@@ -176,24 +176,23 @@ func (t *tsdbUpdater) Update(startTime time.Time, endTime time.Time, units []mod
 	// that can spread across big time interval
 	uuidChunks := helper.ChunkBy(allUnitUUIDs[:j], chunkSize)
 
-	// Start a wait group
-	var wg sync.WaitGroup
-	wg.Add(len(uuidChunks))
-
 	var aggMetrics = make(map[string]tsdb.Metric)
 
 	// Loop over each chunk
 	for _, chunkUUIDs := range uuidChunks {
-		chunkUUIDsRegExp := strings.Join(chunkUUIDs, "|")
-		go func(uuids string) {
-			// Get all aggregate metrics
-			maps.Copy(aggMetrics, t.fetchAggMetrics(endTime, duration, uuids))
-			wg.Done()
-		}(chunkUUIDsRegExp)
-	}
+		// Get aggregate metrics of present chunk
+		chunkAggMetrics := t.fetchAggMetrics(endTime, duration, strings.Join(chunkUUIDs, "|"))
 
-	// Wait for all go routines
-	wg.Wait()
+		// Merge metrics map of each metric type. Metric map has uuid as key and hence
+		// merging is safe as UUID is "unique" during the given update interval
+		for name, metrics := range chunkAggMetrics {
+			// If inner map has not been initialized yet, do it
+			if aggMetrics[name] == nil {
+				aggMetrics[name] = make(tsdb.Metric)
+			}
+			maps.Copy(aggMetrics[name], metrics)
+		}
+	}
 
 	// Initialize ignored units slice
 	var ignoredUnits []string
