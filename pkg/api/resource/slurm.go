@@ -330,6 +330,7 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 				CreatedAtTS:     jobSubmitTS,
 				StartedAtTS:     jobStartTS,
 				EndedAtTS:       jobEndTS,
+				Elapsed:         components[sacctFieldMap["elapsed"]],
 				ElapsedRaw:      elapsedrawInt,
 				State:           components[sacctFieldMap["state"]],
 				Allocation:      allocation,

@@ -127,6 +127,7 @@ test-e2e: build pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc
 	./scripts/e2e-test.sh -s api-uuid-query
 	./scripts/e2e-test.sh -s api-admin-query
 	./scripts/e2e-test.sh -s api-admin-query-all
+	./scripts/e2e-test.sh -s api-admin-query-all-selected-fields
 	./scripts/e2e-test.sh -s api-admin-denied-query
 	./scripts/e2e-test.sh -s api-current-usage-query
 	./scripts/e2e-test.sh -s api-global-usage-query
@@ -155,6 +156,7 @@ test-e2e-update: build pkg/collector/testdata/sys/.unpacked pkg/collector/testda
 	./scripts/e2e-test.sh -s api-uuid-query -u || true
 	./scripts/e2e-test.sh -s api-admin-query -u || true
 	./scripts/e2e-test.sh -s api-admin-query-all -u || true
+	./scripts/e2e-test.sh -s api-admin-query-all-selected-fields -u || true
 	./scripts/e2e-test.sh -s api-admin-denied-query -u || true
 	./scripts/e2e-test.sh -s api-current-usage-query -u || true
 	./scripts/e2e-test.sh -s api-global-usage-query -u || true
