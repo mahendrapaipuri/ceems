@@ -98,6 +98,10 @@ then
   then
     desc="/api/units/admin end point test for admin query for all jobs"
     fixture='pkg/api/testdata/output/e2e-test-api-server-admin-query-all.txt'
+  elif [ "${scenario}" = "api-admin-query-all-selected-fields" ]
+  then
+    desc="/api/units/admin end point test for admin query for all jobs with selected fields"
+    fixture='pkg/api/testdata/output/e2e-test-api-server-admin-query-all-selected-fields.txt'
   elif [ "${scenario}" = "api-admin-denied-query" ]
   then
     desc="/api/units/admin end point test for denied request"
@@ -346,6 +350,9 @@ then
   elif [ "${scenario}" = "api-admin-query-all" ]
   then
     get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/units/admin?from=1676934000&to=1677538800" > "${fixture_output}"
+  elif [ "${scenario}" = "api-admin-query-all-selected-fields" ]
+  then
+    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/units/admin?from=1676934000&to=1677538800&field=uuid&field=started_at&field=ended_at&field=foo" > "${fixture_output}"
   elif [ "${scenario}" = "api-admin-denied-query" ]
   then
     get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/units/admin" > "${fixture_output}"

@@ -10,6 +10,7 @@ import (
 	_ "net/http/pprof"
 	"net/url"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -291,9 +292,24 @@ func (s *CEEMSServer) unitsQuerier(
 	// Initialise utility vars
 	checkQueryWindow := true // Check query window size
 
+	// Get fields query parameters if any
+	var reqFields string
+	if fields := r.URL.Query()["field"]; len(fields) > 0 {
+		// Check if fields are valid field names
+		var validFields []string
+		for _, f := range fields {
+			if slices.Contains(base.UnitsDBTableColNames, f) {
+				validFields = append(validFields, f)
+			}
+		}
+		reqFields = strings.Join(validFields, ",")
+	} else {
+		reqFields = strings.Join(base.UnitsDBTableColNames, ",")
+	}
+
 	// Initialise query builder
 	q := Query{}
-	q.query(fmt.Sprintf("SELECT %s FROM %s", strings.Join(base.UnitsDBTableColNames, ","), base.UnitsDBTableName))
+	q.query(fmt.Sprintf("SELECT %s FROM %s", reqFields, base.UnitsDBTableName))
 
 	// Query for only unignored units
 	q.query(" WHERE ignore = 0 ")

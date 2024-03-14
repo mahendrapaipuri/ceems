@@ -428,6 +428,7 @@ func (s *statsDB) execStatements(statements map[string]*sql.Stmt, units []models
 			unit.CreatedAtTS,
 			unit.StartedAtTS,
 			unit.EndedAtTS,
+			unit.Elapsed,
 			unit.ElapsedRaw,
 			unit.State,
 			unit.Allocation,
