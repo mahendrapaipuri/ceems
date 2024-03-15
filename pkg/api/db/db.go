@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -95,6 +96,9 @@ func init() {
 			unitTablePlaceholders = append(unitTablePlaceholders, fmt.Sprintf("  %[1]s = (%[1]s * num_intervals + ?) / (num_intervals + 1)", col))
 		} else if strings.HasPrefix(col, "total") {
 			unitTablePlaceholders = append(unitTablePlaceholders, fmt.Sprintf("  %[1]s = (%[1]s + ?)", col))
+		// We will need to update end time, elapsed time and state as they change with time
+		} else if slices.Contains([]string{"ended_at", "ended_at_ts", "elapsed", "elapsed_raw", "state", "tags"}, col) {
+			unitTablePlaceholders = append(unitTablePlaceholders, fmt.Sprintf("  %[1]s = ?", col))
 		} else {
 			continue
 		}
@@ -119,19 +123,6 @@ func init() {
 		},
 		"\n",
 	)
-
-	// // DB insert statement
-	// placeholder := fmt.Sprintf(
-	// 	"(%s)",
-	// 	strings.Join(strings.Split(strings.Repeat("?", len(base.UnitsDBTableColNames)), ""), ","),
-	// )
-	// dbColNames := strings.Join(base.UnitsDBTableColNames, ",")
-	// prepareStatements[base.UnitsDBTableName] = fmt.Sprintf(
-	// 	"INSERT OR REPLACE INTO %s (%s) VALUES %s",
-	// 	base.UnitsDBTableName,
-	// 	dbColNames,
-	// 	placeholder,
-	// )
 
 	// Usage update statement
 	var usageTablePlaceholders []string
@@ -452,6 +443,11 @@ func (s *statsDB) execStatements(statements map[string]*sql.Stmt, units []models
 			unit.Tags,
 			ignore,
 			1, // NumIntervals
+			unit.EndedAt,
+			unit.EndedAtTS,
+			unit.Elapsed,
+			unit.ElapsedRaw,
+			unit.State,
 			unit.TotalCPUBilling,
 			unit.TotalGPUBilling,
 			unit.TotalMiscBilling,
@@ -469,6 +465,7 @@ func (s *statsDB) execStatements(statements map[string]*sql.Stmt, units []models
 			unit.TotalIOReadCold,
 			unit.TotalIngress,
 			unit.TotalOutgress,
+			unit.Tags,
 			1, // NumIntervals
 		); err != nil {
 			level.Error(s.logger).
