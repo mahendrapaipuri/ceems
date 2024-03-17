@@ -8,12 +8,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/backend"
 )
 
 func TestRoundRobinIteration(t *testing.T) {
 	d := time.Duration(0 * time.Second)
-	manager, err := NewManager("round-robin")
+	manager, err := NewManager("round-robin", log.NewNopLogger())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,7 +30,7 @@ func TestRoundRobinIteration(t *testing.T) {
 		backendURLs[i] = backendURL
 
 		rp := httputil.NewSingleHostReverseProxy(backendURL)
-		backend := backend.NewTSDBServer(backendURL, rp)
+		backend := backend.NewTSDBServer(backendURL, rp, log.NewNopLogger())
 		backends[i] = backend
 		manager.Add(backend)
 	}

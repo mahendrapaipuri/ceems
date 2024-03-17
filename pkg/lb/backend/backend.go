@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
 	"github.com/prometheus/common/model"
 )
@@ -20,6 +22,7 @@ type TSDBServer interface {
 	SetAlive(bool)
 	IsAlive() bool
 	URL() *url.URL
+	String() string
 	ActiveConnections() int
 	RetentionPeriod() time.Duration
 	Serve(http.ResponseWriter, *http.Request)
@@ -37,7 +40,7 @@ type tsdbServer struct {
 }
 
 // NewTSDBServer returns an instance of backend TSDB server
-func NewTSDBServer(webURL *url.URL, p *httputil.ReverseProxy) TSDBServer {
+func NewTSDBServer(webURL *url.URL, p *httputil.ReverseProxy, logger log.Logger) TSDBServer {
 	var tsdbClient *http.Client
 	var retentionPeriod time.Duration
 
@@ -56,6 +59,8 @@ func NewTSDBServer(webURL *url.URL, p *httputil.ReverseProxy) TSDBServer {
 						continue
 					}
 					retentionPeriod = time.Duration(period)
+					level.Debug(logger).
+						Log("msg", "Retention period", "backend", webURL.Redacted(), "period", retentionPeriod)
 				}
 			}
 		}
@@ -69,6 +74,7 @@ func NewTSDBServer(webURL *url.URL, p *httputil.ReverseProxy) TSDBServer {
 		auth := fmt.Sprintf("%s:%s", username, password)
 		base64Auth := base64.StdEncoding.EncodeToString([]byte(auth))
 		basicAuthHeader = fmt.Sprintf("Basic %s", base64Auth)
+		level.Debug(logger).Log("msg", "Basic auth configured for backend", "backend", webURL.Redacted())
 	}
 	return &tsdbServer{
 		url:             webURL,
@@ -77,6 +83,14 @@ func NewTSDBServer(webURL *url.URL, p *httputil.ReverseProxy) TSDBServer {
 		reverseProxy:    p,
 		basicAuthHeader: basicAuthHeader,
 	}
+}
+
+// String returns name/web URL backend TSDB server
+func (b *tsdbServer) String() string {
+	if b.url != nil {
+		return b.url.Redacted()
+	}
+	return "No backend found"
 }
 
 // Returns the retention period of backend TSDB server

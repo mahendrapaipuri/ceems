@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -56,7 +57,10 @@ const (
 
 var (
 	// Regex that will match job's UUIDs
-	regexpUUID = regexp.MustCompile("(?:.*)uuid=[~]{0,1}\"(?P<uuid>.*)\"(?:.*)")
+	// Dont use greedy matching to avoid capturing gpuuuid label
+	// Use strict UUID allowable character set. They can be only letters, digits and hypen (-)
+	// Playground: https://goplay.tools/snippet/kq_r_1SOgnG
+	regexpUUID = regexp.MustCompile("(?:.+?)[^gpu]uuid=[~]{0,1}\"(?P<uuid>[a-zA-Z0-9-|]+)\"(?:.*)")
 )
 
 // NewLoadBalancer returns a new instance of load balancer
@@ -130,15 +134,15 @@ func (lb *loadBalancer) userUnits(r *http.Request) bool {
 	}
 
 	// Check if user is quering their own job by looking to DB
-	var jobUUIDs []string
+	var uuids []string
 	if val := r.FormValue("query"); val != "" {
 		matches := regexpUUID.FindAllStringSubmatch(val, -1)
 		for _, match := range matches {
 			if len(match) > 1 {
 				for _, uuid := range strings.Split(match[1], "|") {
 					// Ignore empty strings
-					if strings.TrimSpace(uuid) != "" {
-						jobUUIDs = append(jobUUIDs, uuid)
+					if strings.TrimSpace(uuid) != "" && !slices.Contains(uuids, uuid) {
+						uuids = append(uuids, uuid)
 					}
 				}
 			}
@@ -147,29 +151,74 @@ func (lb *loadBalancer) userUnits(r *http.Request) bool {
 		return true
 	}
 
-	// If jobUUIDs is empty return
-	if len(jobUUIDs) == 0 {
+	// If uuids is empty return
+	if len(uuids) == 0 {
+		return true
+	}
+	level.Debug(lb.logger).
+		Log("msg", "UUIDs in query", "user", user, "queried_uuids", strings.Join(uuids, ","))
+
+	// First get a list of projects that user is part of
+	rows, err := lb.db.Query("SELECT DISTINCT project FROM usage WHERE usr = ?", user)
+	if err != nil {
+		level.Warn(lb.logger).
+			Log("msg", "Failed to get user projects. Allowing query", "user", user, "queried_uuids", strings.Join(uuids, ","), "err", err)
 		return true
 	}
 
-	// Make a query. If query fails, return true
-	rows, err := lb.db.Query("SELECT uuid FROM units WHERE usr = ? AND uuid IN (?)", user, strings.Join(jobUUIDs, ","))
+	// Scan project rows
+	var projects []string
+	var project string
+	for rows.Next() {
+		if err := rows.Scan(&project); err != nil {
+			continue
+		}
+		projects = append(projects, project)
+	}
+
+	// If no projects found, return. This should not be the case and if it happens
+	// something is wrong. Spit a warning log
+	if len(projects) == 0 {
+		level.Warn(lb.logger).
+			Log("msg", "No user projects found. Allowing query", "user", user,
+				"queried_uuids", strings.Join(uuids, ","), "err", err,
+			)
+		return true
+	}
+
+	// Make a query and query args. Query args must be converted to slice of interfaces
+	// and it is sql driver's responsibility to cast them to proper types
+	query := fmt.Sprintf(
+		"SELECT uuid FROM units WHERE project IN (%s) AND uuid IN (%s)",
+		strings.Join(strings.Split(strings.Repeat("?", len(projects)), ""), ","),
+		strings.Join(strings.Split(strings.Repeat("?", len(uuids)), ""), ","),
+	)
+	queryData := islice(append(projects, uuids...))
+
+	// Make query. If query fails for any reason, we allow request to avoid false negatives
+	rows, err = lb.db.Query(query, queryData...)
 	if err != nil {
+		level.Warn(lb.logger).
+			Log("msg", "Failed to query the uuid check. Allowing query", "user", user,
+				"queried_uuids", strings.Join(uuids, ","), "found_projects", strings.Join(projects, ","), "err", err,
+			)
 		return true
 	}
 	defer rows.Close()
 
 	// Get number of rows returned by query
-	jobCount := 0
+	uuidCount := 0
 	for rows.Next() {
-		jobCount++
+		uuidCount++
 	}
 
 	// If returned number of UUIDs is not same as queried UUIDs, user is attempting
 	// to query for jobs of other user
-	if jobCount != len(jobUUIDs) {
+	if uuidCount != len(uuids) {
 		level.Debug(lb.logger).
-			Log("msg", "Forbiding query", "user", user, "queried_jobs", len(jobUUIDs), "user_jobs", jobCount)
+			Log("msg", "Forbiding query", "user", user, "queried_uuids", len(uuids),
+				"found_projects", strings.Join(projects, ","), "project_uuids", uuidCount,
+			)
 		return false
 	}
 	return true

@@ -96,7 +96,7 @@ func init() {
 			unitTablePlaceholders = append(unitTablePlaceholders, fmt.Sprintf("  %[1]s = (%[1]s * num_intervals + ?) / (num_intervals + 1)", col))
 		} else if strings.HasPrefix(col, "total") {
 			unitTablePlaceholders = append(unitTablePlaceholders, fmt.Sprintf("  %[1]s = (%[1]s + ?)", col))
-		// We will need to update end time, elapsed time and state as they change with time
+			// We will need to update end time, elapsed time and state as they change with time
 		} else if slices.Contains([]string{"ended_at", "ended_at_ts", "elapsed", "elapsed_raw", "state", "tags"}, col) {
 			unitTablePlaceholders = append(unitTablePlaceholders, fmt.Sprintf("  %[1]s = ?", col))
 		} else {
