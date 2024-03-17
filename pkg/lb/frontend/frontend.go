@@ -162,7 +162,9 @@ func (lb *loadBalancer) userUnits(r *http.Request) bool {
 	rows, err := lb.db.Query("SELECT DISTINCT project FROM usage WHERE usr = ?", user)
 	if err != nil {
 		level.Warn(lb.logger).
-			Log("msg", "Failed to get user projects. Allowing query", "user", user, "queried_uuids", strings.Join(uuids, ","), "err", err)
+			Log("msg", "Failed to get user projects. Allowing query", "user", user, 
+			"queried_uuids", strings.Join(uuids, ","), "err", err,
+		)
 		return true
 	}
 
@@ -200,7 +202,8 @@ func (lb *loadBalancer) userUnits(r *http.Request) bool {
 	if err != nil {
 		level.Warn(lb.logger).
 			Log("msg", "Failed to query the uuid check. Allowing query", "user", user,
-				"queried_uuids", strings.Join(uuids, ","), "found_projects", strings.Join(projects, ","), "err", err,
+				"user_projects", strings.Join(projects, ","), "queried_uuids", strings.Join(uuids, ","),
+				"err", err,
 			)
 		return true
 	}
@@ -216,8 +219,8 @@ func (lb *loadBalancer) userUnits(r *http.Request) bool {
 	// to query for jobs of other user
 	if uuidCount != len(uuids) {
 		level.Debug(lb.logger).
-			Log("msg", "Forbiding query", "user", user, "queried_uuids", len(uuids),
-				"found_projects", strings.Join(projects, ","), "project_uuids", uuidCount,
+			Log("msg", "Forbiding query", "user", user, "user_projects", strings.Join(projects, ","), 
+			"queried_uuids", len(uuids), "found_uuids", uuidCount,
 			)
 		return false
 	}
