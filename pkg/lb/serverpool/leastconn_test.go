@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/backend"
 )
 
@@ -15,7 +16,7 @@ func TestUnAvailableBackends(t *testing.T) {
 	d := time.Duration(0 * time.Second)
 
 	// Start manager
-	manager, err := NewManager("least-connection")
+	manager, err := NewManager("least-connection", log.NewNopLogger())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,7 +32,7 @@ func TestUnAvailableBackends(t *testing.T) {
 		backendURLs[i] = backendURL
 
 		rp := httputil.NewSingleHostReverseProxy(backendURL)
-		backend := backend.NewTSDBServer(backendURL, rp)
+		backend := backend.NewTSDBServer(backendURL, rp, log.NewNopLogger())
 		backends[i] = backend
 		manager.Add(backend)
 	}
@@ -62,7 +63,7 @@ func TestLeastConnectionLB(t *testing.T) {
 	d := time.Duration(0 * time.Second)
 
 	// Start manager
-	manager, err := NewManager("least-connection")
+	manager, err := NewManager("least-connection", log.NewNopLogger())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +81,7 @@ func TestLeastConnectionLB(t *testing.T) {
 		backendURLs[i] = backendURL
 
 		rp := httputil.NewSingleHostReverseProxy(backendURL)
-		backend := backend.NewTSDBServer(backendURL, rp)
+		backend := backend.NewTSDBServer(backendURL, rp, log.NewNopLogger())
 		backends[i] = backend
 		manager.Add(backend)
 	}

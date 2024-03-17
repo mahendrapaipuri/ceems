@@ -52,15 +52,27 @@ BEGIN TRANSACTION;
 CREATE TABLE units (
 	"id" integer not null primary key,
 	"uuid" text,
+	"project" text,
 	"usr" text
 );
-INSERT INTO units VALUES(1,'1479763','usr1');
-INSERT INTO units VALUES(2,'1481508','usr2');
+INSERT INTO units VALUES(1,'1479763', 'prj1', 'usr1');
+INSERT INTO units VALUES(2,'1481508', 'prj1', 'usr2');
+INSERT INTO units VALUES(3,'1479765', 'prj2', 'usr2');
+INSERT INTO units VALUES(4,'1481510', 'prj3', 'usr3');
+CREATE TABLE usage (
+	"id" integer not null primary key,
+	"project" text,
+	"usr" text
+);
+INSERT INTO usage VALUES(1, 'prj1', 'usr1');
+INSERT INTO usage VALUES(2, 'prj1', 'usr2');
+INSERT INTO usage VALUES(3, 'prj2', 'usr2');
+INSERT INTO usage VALUES(4, 'prj3', 'usr3');
 COMMIT;
 	`
 	_, err = db.Exec(stmts)
 	if err != nil {
-		fmt.Printf("failed to insert mock data into DB")
+		fmt.Printf("failed to insert mock data into DB: %s", err)
 	}
 	return db, dbPath
 }
@@ -75,10 +87,10 @@ func TestNewFrontend(t *testing.T) {
 	}
 
 	rp1 := httputil.NewSingleHostReverseProxy(backend1URL)
-	backend1 := backend.NewTSDBServer(backend1URL, rp1)
+	backend1 := backend.NewTSDBServer(backend1URL, rp1, log.NewNopLogger())
 
 	// Start manager
-	manager, err := serverpool.NewManager("resource-based")
+	manager, err := serverpool.NewManager("resource-based", log.NewNopLogger())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +117,7 @@ func TestNewFrontend(t *testing.T) {
 	}{
 		{
 			name:     "pass with query",
-			req:      "/test?query=foo{uuid=\"123|345\"}",
+			req:      "/test?query=foo{uuid=\"1479765|1481510\"}",
 			header:   true,
 			code:     200,
 			response: true,
@@ -176,10 +188,10 @@ func TestNewFrontendUUIDCheck(t *testing.T) {
 	}
 
 	rp1 := httputil.NewSingleHostReverseProxy(backend1URL)
-	backend1 := backend.NewTSDBServer(backend1URL, rp1)
+	backend1 := backend.NewTSDBServer(backend1URL, rp1, log.NewNopLogger())
 
 	// Start manager
-	manager, err := serverpool.NewManager("resource-based")
+	manager, err := serverpool.NewManager("resource-based", log.NewNopLogger())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,14 +213,22 @@ func TestNewFrontendUUIDCheck(t *testing.T) {
 	tests := []struct {
 		name   string
 		req    string
+		user   string
 		header bool
 		code   int
 	}{
 		{
 			name:   "forbid due to mismatch uuid",
-			req:    "/test?query=foo{uuid=~\"123|345\"}",
+			req:    "/test?query=foo{uuid=~\"1479765|1481510\"}",
+			user:   "usr1",
 			header: true,
 			code:   400,
+		},
+		{
+			name:   "pass due to missing project",
+			req:    "/test?query=foo{uuid=~\"123|345\"}",
+			header: false,
+			code:   200,
 		},
 		{
 			name:   "pass due to missing header",
@@ -219,6 +239,21 @@ func TestNewFrontendUUIDCheck(t *testing.T) {
 		{
 			name:   "pass due to correct uuid",
 			req:    "/test?query=foo{uuid=\"1479763\"}",
+			user:   "usr1",
+			header: true,
+			code:   200,
+		},
+		{
+			name:   "pass due to correct uuid with gpuuuid in query",
+			req:    "/test?query=foo{uuid=\"1479763\",gpuuuid=\"GPU-01234\"}",
+			user:   "usr1",
+			header: true,
+			code:   200,
+		},
+		{
+			name:   "pass due to uuid from same project",
+			req:    "/test?query=foo{uuid=\"1481508\"}",
+			user:   "usr1",
 			header: true,
 			code:   200,
 		},
@@ -226,6 +261,14 @@ func TestNewFrontendUUIDCheck(t *testing.T) {
 			name:   "pass due to no uuid",
 			req:    "/test?query=foo{uuid=\"\"}",
 			header: true,
+			user:   "usr3",
+			code:   200,
+		},
+		{
+			name:   "pass due to no uuid and non-empty gpuuuid",
+			req:    "/test?query=foo{uuid=\"\",gpuuuid=\"GPU-01234\"}",
+			header: true,
+			user:   "usr2",
 			code:   200,
 		},
 	}
@@ -233,7 +276,7 @@ func TestNewFrontendUUIDCheck(t *testing.T) {
 	for _, test := range tests {
 		request := httptest.NewRequest("GET", test.req, nil)
 		if test.header {
-			request.Header.Set("X-Grafana-User", "usr1")
+			request.Header.Set("X-Grafana-User", test.user)
 		}
 		responseRecorder := httptest.NewRecorder()
 

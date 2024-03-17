@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/backend"
 	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
 )
@@ -37,7 +38,7 @@ func dummyTSDBServer(retention string) *httptest.Server {
 
 func TestResourceBasedLB(t *testing.T) {
 	// Create a manager
-	manager, err := NewManager("resource-based")
+	manager, err := NewManager("resource-based", log.NewNopLogger())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +59,7 @@ func TestResourceBasedLB(t *testing.T) {
 		backendURLs[i] = backendURL
 
 		rp := httputil.NewSingleHostReverseProxy(backendURL)
-		backend := backend.NewTSDBServer(backendURL, rp)
+		backend := backend.NewTSDBServer(backendURL, rp, log.NewNopLogger())
 		manager.Add(backend)
 		backends[i] = backend
 	}

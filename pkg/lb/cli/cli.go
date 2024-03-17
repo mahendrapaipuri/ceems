@@ -107,7 +107,7 @@ func (lb *CEEMSLoadBalancer) Main() error {
 	defer stop()
 
 	// Create a pool of backend TSDB servers
-	manager, err := serverpool.NewManager(config.Strategy)
+	manager, err := serverpool.NewManager(config.Strategy, logger)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create backend TSDB server pool", "err", err)
 		return err
@@ -141,7 +141,7 @@ func (lb *CEEMSLoadBalancer) Main() error {
 		}
 
 		rp := httputil.NewSingleHostReverseProxy(webURL)
-		backendServer := tsdb.NewTSDBServer(webURL, rp)
+		backendServer := tsdb.NewTSDBServer(webURL, rp, logger)
 		rp.ErrorHandler = func(writer http.ResponseWriter, request *http.Request, err error) {
 			level.Error(logger).Log("msg", "Failed to handle the request", "host", webURL.Host, "err", err)
 			backendServer.SetAlive(false)

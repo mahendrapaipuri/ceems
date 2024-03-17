@@ -4,6 +4,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/backend"
 )
 
@@ -12,6 +14,7 @@ type roundRobin struct {
 	backends []backend.TSDBServer
 	mux      sync.RWMutex
 	current  int
+	logger   log.Logger
 }
 
 // Rotate returns the backend server to be used for next request
@@ -27,6 +30,7 @@ func (s *roundRobin) Target(d time.Duration) backend.TSDBServer {
 	for i := 0; i < s.Size(); i++ {
 		nextPeer := s.Rotate()
 		if nextPeer.IsAlive() {
+			level.Debug(s.logger).Log("msg", "Round Robin strategy", "selected_backend", nextPeer.String())
 			return nextPeer
 		}
 	}

@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"reflect"
 	"strconv"
 	"time"
 
@@ -28,6 +29,16 @@ var (
 	minTimeFormatted = MinTime.Format(time.RFC3339Nano)
 	maxTimeFormatted = MaxTime.Format(time.RFC3339Nano)
 )
+
+// Convert a slice of types into slice of interfaces
+func islice(x interface{}) []interface{} {
+	xv := reflect.ValueOf(x)
+	out := make([]interface{}, xv.Len())
+	for i := range out {
+		out[i] = xv.Index(i).Interface()
+	}
+	return out
+}
 
 // AllowRetry checks if a failed request can be retried
 func AllowRetry(r *http.Request) bool {

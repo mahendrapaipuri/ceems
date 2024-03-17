@@ -4,12 +4,15 @@ import (
 	"math"
 	"time"
 
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/backend"
 )
 
 // leastConn implements the least connection load balancer strategy
 type leastConn struct {
 	backends []backend.TSDBServer
+	logger   log.Logger
 }
 
 // Target returns the backend server to send the request if it is alive
@@ -27,7 +30,11 @@ func (s *leastConn) Target(d time.Duration) backend.TSDBServer {
 			activeConnections = backendActiveConnections
 		}
 	}
-	return targetBackend
+	if targetBackend != nil {
+		level.Debug(s.logger).Log("msg", "Least connection strategy", "selected_backend", targetBackend.String())
+		return targetBackend
+	}
+	return nil
 }
 
 func (s *leastConn) Add(b backend.TSDBServer) {

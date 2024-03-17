@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/backend"
 )
 
@@ -23,9 +24,9 @@ var (
 
 func TestNewManager(t *testing.T) {
 	for _, strategy := range []string{"round-robin", "least-connection", "resource-based"} {
-		m, _ := NewManager(strategy)
+		m, _ := NewManager(strategy, log.NewNopLogger())
 		url, _ := url.Parse("http://localhost:3333")
-		b := backend.NewTSDBServer(url, httputil.NewSingleHostReverseProxy(url))
+		b := backend.NewTSDBServer(url, httputil.NewSingleHostReverseProxy(url), log.NewNopLogger())
 		m.Add(b)
 
 		if m.Size() != 1 {
@@ -35,7 +36,7 @@ func TestNewManager(t *testing.T) {
 }
 
 func TestNewManagerUnknownStrategy(t *testing.T) {
-	_, err := NewManager("unknown")
+	_, err := NewManager("unknown", log.NewNopLogger())
 	if err == nil {
 		t.Errorf("expected error in creating a manager with unknown strategy")
 	}
