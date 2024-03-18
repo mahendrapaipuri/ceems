@@ -28,7 +28,7 @@ func TestTSDBConfigSuccess(t *testing.T) {
 			w.Write([]byte("KO"))
 		}
 	}))
-	defer server.Close()
+	// defer server.Close()
 
 	url, _ := url.Parse(server.URL)
 	b := NewTSDBServer(url, httputil.NewSingleHostReverseProxy(url), log.NewNopLogger())
@@ -41,6 +41,12 @@ func TestTSDBConfigSuccess(t *testing.T) {
 	}
 	if !b.IsAlive() {
 		t.Errorf("expected backend to be alive")
+	}
+
+	// Stop dummy server and query for retention period, we should get last updated value
+	server.Close()
+	if b.RetentionPeriod() != time.Duration(30*24*time.Hour) {
+		t.Errorf("expected retention period 30d, got %s", b.RetentionPeriod())
 	}
 }
 
