@@ -48,9 +48,13 @@ func RegisterManager(
 	flagHelp := fmt.Sprintf("Fetch compute units from %s (default: %s).", manager, helpDefaultState)
 	defaultValue := fmt.Sprintf("%v", isDefaultEnabled)
 
-	flag := base.CEEMSServerApp.Flag(flagName, flagHelp).
-		Default(defaultValue).
-		Bool()
+	// Hide default manager from CLI
+	var flag *bool
+	if manager == "default" {
+		flag = base.CEEMSServerApp.Flag(flagName, flagHelp).Hidden().Default(defaultValue).Bool()
+	} else {
+		flag = base.CEEMSServerApp.Flag(flagName, flagHelp).Default(defaultValue).Bool()
+	}
 	managerState[manager] = flag
 	factories[manager] = factory
 }
@@ -63,7 +67,9 @@ func NewManager(logger log.Logger) (*Manager, error) {
 
 	// Loop over factories and create new instances
 	for key, factory := range factories {
-		factoryKeys = append(factoryKeys, key)
+		if key != "default" {
+			factoryKeys = append(factoryKeys, key)
+		}
 		if *managerState[key] {
 			fetcher, err = factory(log.With(logger, "manager", key))
 			if err != nil {
@@ -73,10 +79,18 @@ func NewManager(logger log.Logger) (*Manager, error) {
 			return &Manager{Fetcher: fetcher, logger: logger}, nil
 		}
 	}
-	return nil, fmt.Errorf(
-		"no resource manager enabled. Please choose one of [%s] using flag --manager.manager.<name>",
-		strings.Join(factoryKeys, ", "),
+	level.Warn(logger).Log(
+		"msg", "No resource manager enabled. Using a default resource manager",
+		"available_resource_managers", strings.Join(factoryKeys, ","),
 	)
+
+	// Return an instance of default manager
+	fetcher, err = factories["default"](log.With(logger, "manager", "default"))
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to setup default resource manager", "err", err)
+		return nil, err
+	}
+	return &Manager{Fetcher: fetcher, logger: logger}, nil
 }
 
 // Fetch implements collection jobs between start and end times
