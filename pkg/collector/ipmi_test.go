@@ -4,6 +4,9 @@
 package collector
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -59,14 +62,29 @@ ipmiutil dcmi, completed successfully
 	Sampling period:                          00000001 Seconds.
 	Power reading state is:                   activated
 
-`}
+`, "capmc": `{
+"start_time":"2015-04-01 17:02:10",
+"avg":348,
+"min":68,
+"max":504,
+"window_len":600,
+"e":0,
+"err_msg":""
+}`}
 	ipmidcmiStdoutDisactive = map[string]string{
 		"freeipmi":  "Power Measurement                    : Not Available",
 		"ipmitutil": "Power reading state is:          not active",
 		"ipmitool":  "Power reading state is:                   deactivated",
+		"capmc":     `{"e":1,"err_msg":"failed"}`,
 	}
 	expectedPower = map[string]float64{
 		"current": 332,
+		"min":     68,
+		"max":     504,
+		"avg":     348,
+	}
+	expectedCapmcPower = map[string]float64{
+		"current": 348,
 		"min":     68,
 		"max":     504,
 		"avg":     348,
@@ -76,12 +94,20 @@ ipmiutil dcmi, completed successfully
 func TestIpmiMetrics(t *testing.T) {
 	c := impiCollector{logger: log.NewNopLogger()}
 	for testName, testString := range ipmidcmiStdout {
-		value, err := c.parseIPMIOutput([]byte(testString))
+		var value map[string]float64
+		var err error
+		expectedOutput := expectedPower
+		if testName == "capmc" {
+			expectedOutput = expectedCapmcPower
+			value, err = c.parseCapmcOutput([]byte(testString))
+		} else {
+			value, err = c.parseIPMIOutput([]byte(testString))
+		}
 		if err != nil {
 			t.Errorf("failed to parse %s output: %v", testName, err)
 		}
-		if !reflect.DeepEqual(value, expectedPower) {
-			t.Fatalf("%s: expected power %v. Got %v", testName, expectedPower, value)
+		if !reflect.DeepEqual(value, expectedOutput) {
+			t.Fatalf("%s: expected power %v. Got %v", testName, expectedOutput, value)
 		}
 	}
 }
@@ -89,9 +115,80 @@ func TestIpmiMetrics(t *testing.T) {
 func TestIpmiMetricsDisactive(t *testing.T) {
 	c := impiCollector{logger: log.NewNopLogger()}
 	for testName, testString := range ipmidcmiStdoutDisactive {
-		value, _ := c.parseIPMIOutput([]byte(testString))
+		var value map[string]float64
+		if testName == "capmc" {
+			value, _ = c.parseCapmcOutput([]byte(testString))
+		} else {
+			value, _ = c.parseIPMIOutput([]byte(testString))
+		}
 		if value != nil {
 			t.Errorf("%s: expected nil output. Got %v", testName, value)
 		}
+	}
+}
+
+func TestIpmiDcmiFinder(t *testing.T) {
+	tmpDir := t.TempDir()
+	tmpIPMIPath := tmpDir + "/ipmi-dcmi"
+
+	// Set path
+	t.Setenv("PATH", fmt.Sprintf("%s:%s", tmpDir, os.Getenv("PATH")))
+
+	ipmiDcmiPath, err := filepath.Abs("testdata/ipmi/freeipmi/ipmi-dcmi")
+	if err != nil {
+		t.Error(err)
+	}
+	err = os.Link(ipmiDcmiPath, tmpIPMIPath)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// findIPMICmd() should give ipmi-dcmi command
+	if ipmiCmdSlice := findIPMICmd(); ipmiCmdSlice[0] != "ipmi-dcmi" {
+		t.Errorf("expected ipmi-dcmi command. Got %v", ipmiCmdSlice[0])
+	}
+}
+
+func TestIpmiToolFinder(t *testing.T) {
+	tmpDir := t.TempDir()
+	tmpIPMIPath := tmpDir + "/ipmitool"
+
+	// Set path
+	t.Setenv("PATH", fmt.Sprintf("%s:%s", tmpDir, os.Getenv("PATH")))
+
+	ipmiDcmiPath, err := filepath.Abs("testdata/ipmi/openipmi/ipmitool")
+	if err != nil {
+		t.Error(err)
+	}
+	err = os.Link(ipmiDcmiPath, tmpIPMIPath)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// findIPMICmd() should give ipmitool command
+	if ipmiCmdSlice := findIPMICmd(); ipmiCmdSlice[0] != "ipmitool" {
+		t.Errorf("expected ipmitool command. Got %v", ipmiCmdSlice[0])
+	}
+}
+
+func TestIpmiUtilFinder(t *testing.T) {
+	tmpDir := t.TempDir()
+	tmpIPMIPath := tmpDir + "/ipmiutil"
+
+	// Set path
+	t.Setenv("PATH", fmt.Sprintf("%s:%s", tmpDir, os.Getenv("PATH")))
+
+	ipmiDcmiPath, err := filepath.Abs("testdata/ipmi/ipmiutils/ipmiutil")
+	if err != nil {
+		t.Error(err)
+	}
+	err = os.Link(ipmiDcmiPath, tmpIPMIPath)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// findIPMICmd() should give ipmiutil command
+	if ipmiCmdSlice := findIPMICmd(); ipmiCmdSlice[0] != "ipmiutil" {
+		t.Errorf("expected ipmiutil command. Got %v", ipmiCmdSlice[0])
 	}
 }
