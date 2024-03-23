@@ -219,14 +219,14 @@ then
         --collector.slurm.nvidia.smi.path="pkg/collector/testdata/nvidia-smi" \
         --collector.slurm.force.cgroups.version="v1" \
         --collector.slurm.gpu.job.map.path="pkg/collector/testdata/gpujobmap" \
-        --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi-dcmi-wrapper.sh" \
+        --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/freeipmi/ipmi-dcmi" \
         --collector.empty.hostname.label \
         --web.listen-address "127.0.0.1:${port}" \
         --log.level="debug" > "${logfile}" 2>&1 &
 
   elif [ "${scenario}" = "exporter-cgroups-v2-nvidia-ipmiutil" ] 
   then
-      ./bin/ceems_exporter \
+      PATH="${PWD}/pkg/collector/testdata/ipmi/ipmiutils:${PATH}" ./bin/ceems_exporter \
         --path.sysfs="pkg/collector/testdata/sys" \
         --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
         --path.procfs="pkg/collector/testdata/proc" \
@@ -235,14 +235,13 @@ then
         --collector.slurm.nvidia.smi.path="pkg/collector/testdata/nvidia-smi" \
         --collector.slurm.force.cgroups.version="v2" \
         --collector.slurm.gpu.job.map.path="pkg/collector/testdata/gpujobmap" \
-        --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmiutil-wrapper.sh" \
         --collector.empty.hostname.label \
         --web.listen-address "127.0.0.1:${port}" \
         --log.level="debug" > "${logfile}" 2>&1 &
 
   elif [ "${scenario}" = "exporter-cgroups-v2-amd-ipmitool" ] 
   then
-      ./bin/ceems_exporter \
+      PATH="${PWD}/pkg/collector/testdata/ipmi/openipmi:${PATH}" ./bin/ceems_exporter \
         --path.sysfs="pkg/collector/testdata/sys" \
         --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
         --path.procfs="pkg/collector/testdata/proc" \
@@ -252,21 +251,19 @@ then
         --collector.slurm.rocm.smi.path="pkg/collector/testdata/rocm-smi" \
         --collector.slurm.force.cgroups.version="v2" \
         --collector.slurm.gpu.job.map.path="pkg/collector/testdata/gpujobmap" \
-        --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmitool-wrapper.sh" \
         --collector.empty.hostname.label \
         --web.listen-address "127.0.0.1:${port}" \
         --log.level="debug" > "${logfile}" 2>&1 &
 
   elif [ "${scenario}" = "exporter-cgroups-v2-nogpu" ] 
   then
-      ./bin/ceems_exporter \
+      PATH="${PWD}/pkg/collector/testdata/ipmi/capmc:${PATH}" ./bin/ceems_exporter \
         --path.sysfs="pkg/collector/testdata/sys" \
         --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
         --path.procfs="pkg/collector/testdata/proc" \
         --collector.slurm.create.unique.jobids \
         --collector.slurm.job.props.path="pkg/collector/testdata/slurmjobprops" \
         --collector.slurm.force.cgroups.version="v2" \
-        --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi-dcmi-wrapper.sh" \
         --collector.empty.hostname.label \
         --web.listen-address "127.0.0.1:${port}" \
         --log.level="debug" > "${logfile}" 2>&1 &
@@ -281,7 +278,7 @@ then
         --collector.slurm.gpu.type="nvidia" \
         --collector.slurm.nvidia.smi.path="pkg/collector/testdata/nvidia-smi" \
         --collector.slurm.force.cgroups.version="v2" \
-        --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi-dcmi-wrapper.sh" \
+        --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/ipmiutils/ipmiutil" \
         --collector.empty.hostname.label \
         --web.listen-address "127.0.0.1:${port}" \
         --log.level="debug" > "${logfile}" 2>&1 &
@@ -300,7 +297,7 @@ then
         --collector.slurm.gpu.job.map.path="pkg/collector/testdata/gpujobmap" \
         --collector.slurm.swap.memory.metrics \
         --collector.slurm.psi.metrics \
-        --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi-dcmi-wrapper.sh" \
+        --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/capmc/capmc" \
         --collector.empty.hostname.label \
         --web.listen-address "127.0.0.1:${port}" \
         --log.level="debug" > "${logfile}" 2>&1 &

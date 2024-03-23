@@ -35,6 +35,9 @@ else
 	test-docker := test-docker
 endif
 
+# go test flags
+test-flags := -coverprofile=coverage.out
+
 # Use CGO for api and GO for ceems_exporter.
 ifeq ($(CGO_BUILD), 1)
 	PROMU_CONF ?= .promu-cgo.yml

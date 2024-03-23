@@ -7,7 +7,10 @@
 package collector
 
 import (
+	"encoding/json"
 	"fmt"
+	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -24,6 +27,7 @@ type impiCollector struct {
 	logger       log.Logger
 	hostname     string
 	execMode     string
+	ipmiCmd      []string
 	cachedMetric map[string]float64
 	metricDesc   map[string]*prometheus.Desc
 }
@@ -61,6 +65,7 @@ type impiCollector struct {
 		Power reading state is:                   activated
 
 	----------------------------------------------------------------------
+
 	**IPMIUtils**:
 	Command: `ipmiutil dcmi power`
 	Output:
@@ -86,13 +91,38 @@ type impiCollector struct {
 	Sampling period:   1472 sec
 	ipmiutil dcmi, completed successfully
 	----------------------------------------------------------------------
+
+	**Capmc**: Cray specific
+	Command: `capmc get_system_power -w 600` Ref: https://github.com/Cray-HPE/hms-capmc/blob/release/csm-1.0/api/swagger.yaml
+	Output:
+	----------------------------------------------------------------------
+	{
+	"start_time":"2015-04-01 17:02:10",
+	"avg":5942,
+	"min":5748,
+	"max":6132,
+	"window_len":600,
+	"e":0,
+	"err_msg":""
+	}
+	----------------------------------------------------------------------
 */
 
 var (
 	ipmiDcmiCmd = CEEMSExporterApp.Flag(
 		"collector.ipmi.dcmi.cmd",
 		"IPMI DCMI command to get system power statistics. Use full path to executables.",
-	).Default("/usr/sbin/ipmi-dcmi --get-system-power-statistics").String()
+	).Default("").String()
+
+	ipmiDcmiCmds = []string{
+		"ipmi-dcmi --get-system-power-statistics",
+		"ipmitool dcmi power reading",
+		"ipmiutil dcmi power",
+		// Cray capmc
+		// Ref: https://cug.org/proceedings/cug2015_proceedings/includes/files/pap132.pdf
+		"capmc get_system_power -w 600",
+	}
+
 	// IPMIUtil Ref: https://sourceforge.net/p/ipmiutil/code-git/ci/master/tree/util/idcmi.c#l343
 	// FreeIPMI Ref: https://github.com/chu11/freeipmi-mirror/blob/f4057a93cbc11ecf4bfadb4bcd5d375f65f01f19/ipmi-dcmi/ipmi-dcmi.c#L1828-L1830
 	// IPMITool Ref: https://github.com/ipmitool/ipmitool/blob/be11d948f89b10be094e28d8a0a5e8fb532c7b60/lib/ipmi_dcmi.c#L1447-L1451
@@ -143,8 +173,22 @@ func NewIPMICollector(logger log.Logger) (Collector, error) {
 		"Average Power consumption in watts", []string{"hostname"}, nil,
 	)
 
-	// Split command
-	cmdSlice := strings.Split(*ipmiDcmiCmd, " ")
+	// If no IPMI command is provided, try to find one
+	var cmdSlice []string
+	if *ipmiDcmiCmd == "" {
+		cmdSlice = findIPMICmd()
+	} else {
+		cmdSlice = strings.Split(*ipmiDcmiCmd, " ")
+	}
+	level.Debug(logger).Log(
+		"msg", "Using IPMI command", "ipmi", strings.Join(cmdSlice, " "),
+	)
+
+	// Append to cmdSlice an empty string if it has len of 1
+	// We dont want nil pointer references when we execute command
+	if len(cmdSlice) == 1 {
+		cmdSlice = append(cmdSlice, "")
+	}
 
 	// Verify if running ipmiDcmiCmd works
 	if _, err := osexec.Execute(cmdSlice[0], cmdSlice[1:], nil, logger); err == nil {
@@ -173,10 +217,23 @@ outside:
 		logger:       logger,
 		hostname:     hostname,
 		execMode:     execMode,
+		ipmiCmd:      cmdSlice,
 		metricDesc:   metricDesc,
 		cachedMetric: cachedMetric,
 	}
 	return &collector, nil
+}
+
+// Find IPMI command from list of different IPMI implementations
+func findIPMICmd() []string {
+	for _, cmd := range ipmiDcmiCmds {
+		cmdSlice := strings.Split(cmd, " ")
+		if _, err := exec.LookPath(cmdSlice[0]); err == nil {
+			return cmdSlice
+		}
+	}
+	// Return a sane default and collector will handle even if bin does not exist
+	return strings.Split(ipmiDcmiCmds[0], " ")
 }
 
 // Get value based on regex from IPMI output
@@ -227,15 +284,49 @@ func (c *impiCollector) getPowerReadings() (map[string]float64, error) {
 		return nil, err
 	}
 
-	// Parse IPMI output
-	values, err := c.parseIPMIOutput(ipmiOutput)
+	// For capmc, we get JSON output, so treat it differently
+	var values map[string]float64
+	if filepath.Base(c.ipmiCmd[0]) == "capmc" {
+		values, err = c.parseCapmcOutput(ipmiOutput)
+	} else {
+		// Parse IPMI output
+		values, err = c.parseIPMIOutput(ipmiOutput)
+	}
 	if err != nil {
 		return nil, err
 	}
 	return values, nil
 }
 
-// Parse current, min and max power readings
+// Parse current, min and max power readings for capmc output
+func (c *impiCollector) parseCapmcOutput(stdOut []byte) (map[string]float64, error) {
+	// Unmarshal JSON output
+	var data map[string]interface{}
+	if err := json.Unmarshal(stdOut, &data); err != nil {
+		return nil, fmt.Errorf("capmc Power readings command failed")
+	}
+
+	// Check error code
+	if data["e"].(float64) != 0 {
+		return nil, fmt.Errorf("capmc Power readings not Active: %s", data["err_msg"].(string))
+	}
+
+	// Get power readings
+	var powerReadings = make(map[string]float64, 3)
+	for rType := range ipmiDCMIPowerReadingRegexMap {
+		if value, ok := data[rType]; ok {
+			powerReadings[rType] = value.(float64)
+		}
+	}
+
+	// capmc does not return current power. So we use avg as proxy for current
+	if powerReadings["avg"] > 0 {
+		powerReadings["current"] = powerReadings["avg"]
+	}
+	return powerReadings, nil
+}
+
+// Parse current, min and max power readings for IPMI commands
 func (c *impiCollector) parseIPMIOutput(stdOut []byte) (map[string]float64, error) {
 	// Check for Power Measurement are avail
 	value, err := getValue(stdOut, ipmiDCMIPowerMeasurementRegex)
@@ -264,16 +355,15 @@ func (c *impiCollector) executeIPMICmd() ([]byte, error) {
 	var stdOut []byte
 	var err error
 
-	// Execute ipmi-dcmi command
-	cmdSlice := strings.Split(*ipmiDcmiCmd, " ")
+	// Execute found ipmi command
 	if c.execMode == "cap" {
-		stdOut, err = osexec.ExecuteAs(cmdSlice[0], cmdSlice[1:], 0, 0, nil, c.logger)
+		stdOut, err = osexec.ExecuteAs(c.ipmiCmd[0], c.ipmiCmd[1:], 0, 0, nil, c.logger)
 	} else if c.execMode == "sudo" {
-		stdOut, err = osexec.ExecuteWithTimeout("sudo", cmdSlice, 1, nil, c.logger)
+		stdOut, err = osexec.ExecuteWithTimeout("sudo", c.ipmiCmd, 1, nil, c.logger)
 	} else if c.execMode == "native" {
-		stdOut, err = osexec.Execute(cmdSlice[0], cmdSlice[1:], nil, c.logger)
+		stdOut, err = osexec.Execute(c.ipmiCmd[0], c.ipmiCmd[1:], nil, c.logger)
 	} else {
-		err = fmt.Errorf("current process do not have permissions to execute %s", *ipmiDcmiCmd)
+		err = fmt.Errorf("current process do not have permissions to execute %s", strings.Join(c.ipmiCmd, " "))
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute IPMI command: %s", err)

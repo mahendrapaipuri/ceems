@@ -15,16 +15,16 @@ ceems_cpu_seconds_total{hostname="",mode="user"} 3018.54
 # TYPE ceems_exporter_build_info gauge
 # HELP ceems_ipmi_dcmi_avg_watts Average Power consumption in watts
 # TYPE ceems_ipmi_dcmi_avg_watts gauge
-ceems_ipmi_dcmi_avg_watts{hostname=""} 348
+ceems_ipmi_dcmi_avg_watts{hostname=""} 49
 # HELP ceems_ipmi_dcmi_current_watts Current Power consumption in watts
 # TYPE ceems_ipmi_dcmi_current_watts gauge
-ceems_ipmi_dcmi_current_watts{hostname=""} 332
+ceems_ipmi_dcmi_current_watts{hostname=""} 49
 # HELP ceems_ipmi_dcmi_max_watts Maximum Power consumption in watts
 # TYPE ceems_ipmi_dcmi_max_watts gauge
-ceems_ipmi_dcmi_max_watts{hostname=""} 504
+ceems_ipmi_dcmi_max_watts{hostname=""} 304
 # HELP ceems_ipmi_dcmi_min_watts Minimum Power consumption in watts
 # TYPE ceems_ipmi_dcmi_min_watts gauge
-ceems_ipmi_dcmi_min_watts{hostname=""} 68
+ceems_ipmi_dcmi_min_watts{hostname=""} 6
 # HELP ceems_meminfo_MemAvailable_bytes Memory information field MemAvailable_bytes.
 # TYPE ceems_meminfo_MemAvailable_bytes gauge
 ceems_meminfo_MemAvailable_bytes{hostname=""} 0
