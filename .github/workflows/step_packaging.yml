@@ -52,3 +52,10 @@ jobs:
 
           # Check artifacts
           ls -la .tarballs
+
+      - name: Upload go build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-go-artifacts
+          path: .tarballs
+          retention-days: 1
