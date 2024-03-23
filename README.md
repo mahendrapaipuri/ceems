@@ -198,14 +198,29 @@ always favoured to running the exporter as `root`.
 
 ### IPMI collector
 
-There are several IPMI implementation available like FreeIPMI, IPMITool, IPMIUtil, 
- _etc._ Current exporter allows to configure the IPMI command that will report 
-the power usage of the node. The default value is set to FreeIPMI one as 
-`--collector.ipmi.dcmi.cmd="/usr/bin/ipmi-dcmi --get-system-power-statistics"`. 
+There are several IPMI implementation available like FreeIPMI, OpenIPMI, IPMIUtil, 
+ _etc._ Current exporter is capable of auto detecting the IPMI implementation and using
+the one that is found.
+
+> [!IMPORTANT]
+> In addition to IPMI, the exporter can scrape energy readings
+from Cray's [capmc](https://cray-hpe.github.io/docs-csm/en-10/operations/power_management/cray_advanced_platform_monitoring_and_control_capmc/) interface.
+
+If the host where exporter is running does not use any of the IPMI implementations, 
+it is possible to configure the custom command using CLI flag `--collector.ipmi.dcmi.cmd`. 
+
+> [!NOTE]
+> Current auto detection mode is only limited to `ipmi-dcmi` (FreeIPMI), `ipmitool` 
+(OpenIPMI), `ipmitutil` (IPMIUtils) and `capmc` (Cray) implementations. These binaries 
+must be on `PATH` for the exporter to detect them. If a custom IPMI command is used, 
+the command must output the power info in 
+[one of these formats](https://github.com/mahendrapaipuri/ceems/blob/c031e0e5b484c30ad8b6e2b68e35874441e9d167/pkg/collector/ipmi.go#L35-L92). 
+If that is not the case, operators must write a wrapper around the custom IPMI command 
+to output the energy info in one of the supported formats.
 
 The exporter is capable of parsing FreeIPMI, IPMITool and IPMIUtil outputs.
 If your IPMI implementation does not return an output in 
-[one of these formats](https://github.com/mahendrapaipuri/ceems/blob/96190ca346333e073d2ad636695efd61c292b7f5/pkg/collector/ipmi.go#L31-L89), 
+[one of these formats](https://github.com/mahendrapaipuri/ceems/blob/c031e0e5b484c30ad8b6e2b68e35874441e9d167/pkg/collector/ipmi.go#L35-L92), 
 you can write your own wrapper that parses your IPMI implementation's output and 
 returns output in one of above formats. 
 
@@ -217,9 +232,7 @@ implementation, that sudoers entry will be
 ```
 ceems ALL = NOPASSWD: /usr/sbin/ipmi-dcmi
 ```
-
-and pass the flag `--collector.ipmi.dcmi.cmd="sudo /usr/bin/ipmi-dcmi --get-system-power-statistics"` 
-to `ceems_exporter`.
+The exporter will automatically execute the command with `sudo`.
 
 Another supported approach is to run the subprocess `ipmi-dcmi` command as root. In this 
 approach, the subprocess will be spawned as root to be able to execute the command. 
@@ -358,7 +371,6 @@ Using prolog and epilog scripts approach and `sudo` for `ipmi`,
     --collector.slurm.job.props.path="/run/slurmjobprops" \
     --collector.slurm.gpu.type="nvidia" \
     --collector.slurm.gpu.job.map.path="/run/gpujobmap" \
-    --collector.ipmi.dcmi.cmd="sudo /usr/sbin/ipmi-dcmi --get-system-power-statistics" \
     --log.level="debug"
 ```
 
