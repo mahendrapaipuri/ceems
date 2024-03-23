@@ -37,6 +37,10 @@ jobs:
           # Strip v from tag name, eg v0.1.0 -> 0.1.0
           export CEEMS_VERSION=$(echo "${TAG_NAME//v}")
 
+          # Add go bins to PATH
+          # Ref: https://github.com/actions/setup-go/issues/27
+          export PATH=${PATH}:`go env GOPATH`/bin
+
           # Ensure target directory exists
           mkdir -p .tarballs
 
