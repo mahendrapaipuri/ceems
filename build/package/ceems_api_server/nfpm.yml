@@ -1,0 +1,93 @@
+# Name. (required)
+name: ceems_api_server
+
+# Architecture. (required)
+# This will expand any env var you set in the field, e.g. version: ${GOARCH}
+# The architecture is specified using Go nomenclature (GOARCH) and translated
+# to the platform specific equivalent. In order to manually set the architecture
+# to a platform specific value, use deb_arch, rpm_arch and apk_arch.
+# Examples: `all`, `amd64`, `386`, `arm5`, `arm6`, `arm7`, `arm64`, `mips`,
+# `mipsle`, `mips64le`, `ppc64le`, `s390`
+arch: "${GOARCH}"
+
+# Platform.
+# This will expand any env var you set in the field, e.g. version: ${GOOS}
+# This is only used by the rpm and deb packagers.
+# Examples: `linux` (default), `darwin`
+platform: linux
+
+# Version. (required)
+# This will expand any env var you set in the field, e.g. version: ${SEMVER}
+# Some package managers, like deb, require the version to start with a digit.
+# Hence, you should not prefix the version with 'v'.
+version: "${CEEMS_VERSION}"
+
+# Maintainer. (required)
+# This will expand any env var you set in the field, e.g. maintainer: ${GIT_COMMITTER_NAME} <${GIT_COMMITTER_EMAIL}>
+# Defaults to empty on rpm and apk
+# Leaving the 'maintainer' field unset will not be allowed in a future version
+maintainer: Mahendra PAIPURI <mahendra.paipuri@gmail.com>
+
+# Description.
+# Defaults to `no description given`.
+# Most packagers call for a one-line synopsis of the package. Some (like deb)
+# also call for a multi-line description starting on the second line.
+description: A REST API server that exposes projects and compute units information of users by querying a SQLite3 DB.
+
+# Vendor.
+# This will expand any env var you set in the field, e.g. vendor: ${VENDOR}
+# This is only used by the rpm packager.
+vendor: GoReleaser
+
+# Package's homepage.
+# This will expand any env var you set in the field, e.g. homepage: ${CI_PROJECT_URL}
+homepage: https://github.com/mahendrapaipuri/ceems
+
+# License.
+license: BSD-3-Clause
+
+# Contents to add to the package
+# This can be binaries or any other files.
+contents:
+  # CEEMS API server binary
+  - src: .build/linux-${GOARCH}/ceems_api_server
+    dst: /usr/local/bin/ceems_api_server
+    expand: true
+    file_info:
+      mode: 0511
+
+  # CEEMS API server web config file
+  - src: build/package/config/web-config.yml
+    dst: /etc/ceems_api_server/web-config.yml
+    type: config
+    file_info:
+      # Make sure that the mode is specified in octal, e.g. 0644 instead of 644.
+      mode: 0660
+      owner: ceemsapi
+      group: root
+
+  # systemd unit file
+  - src: build/package/ceems_api_server/ceems_api_server.service
+    dst: /usr/lib/systemd/system/ceems_api_server.service
+    type: config
+    file_info:
+      # Make sure that the mode is specified in octal, e.g. 0644 instead of 644.
+      mode: 0640
+
+# Umask to be used on files without explicit mode set.
+#
+# By default, nFPM will inherit the mode of the original file that's being
+# added.
+# This may lead to issues if these files are checkout out in Git, for example,
+# as it won't keep all the permissions on fresh checkouts, or if the local
+# system has a problematic umask setting.
+#
+# This setting allows to set the umask for all files that are added to the
+# package without a specific file_info.mode set.
+umask: 0o007
+
+# Scripts to run at specific stages. (overridable)
+scripts:
+  preinstall: build/package/ceems_api_server/preinstall.sh
+  postinstall: build/package/ceems_api_server/postinstall.sh
+  postremove: build/package/ceems_api_server/postremove.sh

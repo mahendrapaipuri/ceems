@@ -58,3 +58,7 @@ data-backup
 
 # Ignore extracted folder
 ceems-*
+
+# Ignore .deb and .rpm files
+*.deb
+*.rpm

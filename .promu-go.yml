@@ -19,6 +19,7 @@ build:
         -X github.com/prometheus/common/version.BuildDate={{date "20060102-15:04:05"}}
 tarball:
     files:
+        - build/config/web-config.yml
         - LICENSE
         - README.md
 crossbuild:

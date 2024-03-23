@@ -22,7 +22,8 @@ build:
         -X github.com/prometheus/common/version.BuildDate={{date "20060102-15:04:05"}}
 tarball:
     files:
-        - configs/ceems_lb.yml
+        - build/package/ceems_lb/config.yml
+        - build/config/web-config.yml
         - LICENSE
         - README.md
 crossbuild:

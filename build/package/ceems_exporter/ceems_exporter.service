@@ -1,0 +1,30 @@
+[Unit]
+Description=Prometheus CEEMS Exporter
+After=network-online.target
+
+[Service]
+Type=simple
+User=ceemsexp
+Group=ceemsexp
+ExecStart=/usr/local/bin/ceems_exporter \
+    --web.disable-exporter-metrics \
+    --web.config.file=/etc/ceems_exporter/web-config.yml \
+    --web.telemetry-path=/metrics
+
+SyslogIdentifier=ceems_exporter
+Restart=always
+RestartSec=1
+StartLimitInterval=0
+
+ProtectHome=read-only
+
+AmbientCapabilities=CAP_SYS_PTRACE CAP_DAC_READ_SEARCH CAP_SETUID CAP_SETGID
+CapabilityBoundingSet=CAP_SYS_PTRACE CAP_DAC_READ_SEARCH CAP_SETUID CAP_SETGID
+
+ProtectSystem=strict
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=yes
+
+[Install]
+WantedBy=multi-user.target
