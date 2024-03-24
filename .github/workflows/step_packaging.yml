@@ -1,0 +1,57 @@
+name: packaging
+run-name: Packaging
+
+on:
+  workflow_call:
+
+jobs:
+  packaging:
+    name: packaging
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.21.x
+
+      - name: Install nfpm
+        run: go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
+
+      - name: Download go build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: build-go-artifacts
+
+      # Build RPM and DEB packages
+      - name: Build deb and rpm packages
+        run: |
+          # Replace any '/' with '-' for non tag workflows
+          export REF_NAME=$(echo "${GITHUB_REF_NAME//\//-}")
+          # Strip v from tag name, eg v0.1.0 -> 0.1.0
+          export CEEMS_VERSION=$(echo "${REF_NAME//v}")
+          export GOOS=linux
+
+          # Ensure target directory exists
+          mkdir -p .tarballs
+
+          # Build packages
+          # Use a simple for loop instead of matrix strategy as building packages
+          # is a very rapid process and we pay more price by repeating all the steps
+          # if using a matrix strategy
+          for arch in amd64 arm64; do
+            for packager in rpm deb; do
+              for app in ceems_exporter ceems_api_server ceems_lb; do
+                  GOARCH=${arch} nfpm pkg --config build/package/${app}/nfpm.yml --packager ${packager} --target .tarballs/${app}-${CEEMS_VERSION}-${GOOS}-${arch}.${packager}
+              done 
+            done 
+          done
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: release-artifacts
+          path: .tarballs
+          retention-days: 1

@@ -23,7 +23,7 @@ jobs:
           go mod download
 
       - name: Run e2e tests for Go packages
-        run: make 
+        run: make test-e2e
 
       - name: Run e2e tests for CGo packages
-        run: CGO_BUILD=1 make
+        run: CGO_BUILD=1 make test-e2e

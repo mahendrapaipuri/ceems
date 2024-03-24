@@ -1,0 +1,26 @@
+[Unit]
+Description=CEEMS Load Balancer App
+After=network-online.target
+
+[Service]
+Type=simple
+User=ceemslb
+Group=ceemslb
+ExecStart=/usr/local/bin/ceems_lb \
+    --config.file=/etc/ceems_lb/config.yml \
+    --web.config.file=/etc/ceems_lb/web-config.yml
+
+SyslogIdentifier=ceems_lb
+Restart=always
+RestartSec=1
+StartLimitInterval=0
+
+ProtectHome=read-only
+
+ProtectSystem=strict
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=yes
+
+[Install]
+WantedBy=multi-user.target

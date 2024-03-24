@@ -1,0 +1,33 @@
+[Unit]
+Description=Prometheus CEEMS API Server
+After=network-online.target
+
+[Service]
+Type=simple
+User=ceemsapi
+Group=ceemsapi
+ExecStart=/usr/local/bin/ceems_api_server \
+    --storage.data.path="/var/lib/ceems_api_server" \
+    --storage.data.retention.period="30d" \
+    --storage.data.update.interval="15m" \
+    --web.config.file=/etc/ceems_api_server/web-config.yml
+
+SyslogIdentifier=ceems_api_server
+Restart=always
+RestartSec=1
+StartLimitInterval=0
+
+ProtectHome=read-only
+ReadWritePaths=/var/lib/ceems_api_server
+WorkingDirectory=/var/lib/ceems_api_server
+
+AmbientCapabilities=CAP_SETUID CAP_SETGID
+CapabilityBoundingSet=CAP_SETUID CAP_SETGID
+
+ProtectSystem=strict
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -1,12 +1,12 @@
-name: build
-run-name: Build
+name: cross-build
+run-name: Cross build
 
 on:
   workflow_call:
 
 jobs:
-  build:
-    name: build
+  cross-build:
+    name: cross-build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -22,15 +22,24 @@ jobs:
           make promu
           go mod download
 
-      # Cross compile for only AMD and ARM archs in CI to reduce CI time and artifacts size
-      # We will compile for all supported archs in release workflow
+      # These steps are taken from https://circleci.com/developer/orbs/orb/prometheus/prometheus#jobs-publish_release
+      - name: Setup build environment
+        run: |
+          docker version
+          docker run --privileged linuxkit/binfmt:v0.8
+
       - name: Cross compile Go packages
-        run: promu --config .promu-go.yml crossbuild -v -p linux/amd64 -p linux/arm64
+        run: promu --config .promu-go.yml crossbuild -v
 
       - name: Cross compile CGo packages
         run: |
           sed -i -e 's/CGO_BUILD               ?= 0/CGO_BUILD               ?= 1/g' Makefile
-          promu --config .promu-cgo.yml crossbuild -v -p linux/amd64 -p linux/arm64
+          promu --config .promu-cgo.yml crossbuild -v
+      
+      - name: Create tarballs and checksums
+        run: |
+          promu crossbuild tarballs
+          promu checksum .tarballs
 
       - name: Upload go build artifacts
         uses: actions/upload-artifact@v3
@@ -39,4 +48,4 @@ jobs:
           path: |
             .build
             .tarballs
-          retention-days: 3
+          retention-days: 1

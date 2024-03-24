@@ -25,8 +25,16 @@ jobs:
     needs: [test-unit, test-e2e]
     uses: ./.github/workflows/step_build.yml
 
-  publish:
+  cross-build:
     needs: [build]
+    uses: ./.github/workflows/step_cross-build.yml
+
+  packaging:
+    needs: [cross-build]
+    uses: ./.github/workflows/step_packaging.yml
+
+  publish:
+    needs: [packaging]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -46,22 +54,11 @@ jobs:
           make promu
           go mod download
 
-      # These steps are taken from https://circleci.com/developer/orbs/orb/prometheus/prometheus#jobs-publish_release
-      - name: Setup build environment
-        run: |
-          docker version
-          docker run --privileged linuxkit/binfmt:v0.8
-
-      - name: Cross compile Go packages
-        run: promu --config .promu-go.yml crossbuild -v
-
-      - name: Cross compile CGo packages
-        run: |
-          sed -i -e 's/CGO_BUILD               ?= 0/CGO_BUILD               ?= 1/g' Makefile
-          promu --config .promu-cgo.yml crossbuild -v
+      - name: Download release artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: release-artifacts
       
       - name: Publish release
         run: |
-          promu crossbuild tarballs
-          promu checksum .tarballs
           promu release .tarballs

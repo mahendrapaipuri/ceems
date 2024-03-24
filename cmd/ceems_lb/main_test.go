@@ -25,7 +25,7 @@ func TestCEEMSLBExecutable(t *testing.T) {
 	tmpDir := t.TempDir()
 	tmpConfigPath := tmpDir + "/config.yaml"
 
-	configPath, err := filepath.Abs("../../configs/lb_config.yml")
+	configPath, err := filepath.Abs("../../build/package/ceems_lb/config.yml")
 	if err != nil {
 		t.Error(err)
 	}

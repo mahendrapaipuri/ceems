@@ -1,0 +1,28 @@
+# CEEMS LB config file
+---
+
+# Load balancing strategy. Three possibilites
+# - round-robin
+# - least-connection
+# - resource-based
+# Round robin and least connection are classic strategies.
+# Resource based works based on the query range in the TSDB query. The 
+# query will be proxied to the backend that covers the query_range
+strategy: resource-based
+
+# Path to CEEMS API server DB. 
+# The DB contains the information of user and projet units and LB will verify
+# if user/project is the owner of the uuid under request to decide whether to
+# proxy request to backend or not.
+# db_path: /var/lib/ceems_api_server/ceems_api_server.db
+
+# TLS is not supported for backends. CEEMS LB supports TLS and TLS terminates
+# at the LB and requests are proxied to backends on HTTP. 
+#
+# LB and backend servers are meant to be in the same DMZ so that we do not need
+# to encrypt communications. Backends however support basic auth and they can 
+# be configured in URL with usual syntax.
+backends:
+  - url: "http://localhost:9090"
+  # An example of configuring the basic auth username and password with backend
+  # - url: "http://alice:password@localhost:9091"
