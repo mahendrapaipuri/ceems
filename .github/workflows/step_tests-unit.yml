@@ -50,7 +50,11 @@ jobs:
       - name: Go coverage badge
         run: |
           # Install our custom badge updater
-          go install github.com/mahendrapaipuri/gobadge@latest
+          git clone https://github.com/mahendrapaipuri/gobadge
+          cd gobadge
+          go install .
+          cd ..
+          
           # Create/Update badge
           gobadge -target README.md -filename coverage.out -link https://github.com/mahendrapaipuri/ceems/actions/workflows/ci.yml?query=branch%3Amain
           git diff
