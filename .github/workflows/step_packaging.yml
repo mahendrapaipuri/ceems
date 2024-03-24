@@ -28,9 +28,10 @@ jobs:
       # Build RPM and DEB packages
       - name: Build deb and rpm packages
         run: |
-          export TAG_NAME=v0.1.0 # ${{ github.ref_name }}
+          # Replace any '/' with '-' for non tag workflows
+          export REF_NAME=$(echo "${GITHUB_REF_NAME//\//-}")
           # Strip v from tag name, eg v0.1.0 -> 0.1.0
-          export CEEMS_VERSION=$(echo "${TAG_NAME//v}")
+          export CEEMS_VERSION=$(echo "${REF_NAME//v}")
           export GOOS=linux
 
           # Ensure target directory exists
@@ -46,10 +47,7 @@ jobs:
                   GOARCH=${arch} nfpm pkg --config build/package/${app}/nfpm.yml --packager ${packager} --target .tarballs/${app}-${CEEMS_VERSION}-${GOOS}-${arch}.${packager}
               done 
             done 
-          done 
-
-          # Check artifacts
-          ls -la .tarballs
+          done
 
       - name: Upload release artifacts
         uses: actions/upload-artifact@v3
