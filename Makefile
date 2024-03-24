@@ -35,9 +35,6 @@ else
 	test-docker := test-docker
 endif
 
-# go test flags
-test-flags := -coverprofile=coverage.out
-
 # Use CGO for api and GO for ceems_exporter.
 ifeq ($(CGO_BUILD), 1)
 	PROMU_CONF ?= .promu-cgo.yml
@@ -50,11 +47,17 @@ ifeq ($(CGO_BUILD), 1)
 			./cmd/ceems_lb
 	checkmetrics := skip-checkmetrics
 	checkrules := skip-checkrules
+
+	# go test flags
+	test-flags := -coverprofile=coverage-cgo.out
 else
 	PROMU_CONF ?= .promu-go.yml
 	pkgs := ./pkg/collector ./pkg/emissions ./pkg/tsdb ./pkg/grafana ./cmd/ceems_exporter
 	checkmetrics := checkmetrics
 	checkrules := checkrules
+
+	# go test flags
+	test-flags := -coverprofile=coverage-go.out
 endif
 
 ifeq ($(GOHOSTOS), linux)
