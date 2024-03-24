@@ -36,5 +36,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: build-go-artifacts
-          path: .build
+          path: |
+            .build
+            .tarballs
           retention-days: 3

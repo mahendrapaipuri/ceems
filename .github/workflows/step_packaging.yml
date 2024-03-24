@@ -28,6 +28,11 @@ jobs:
       - name: Install nfpm
         run: go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
 
+      - name: Download go build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: build-go-artifacts
+
       # Build RPM and DEB packages
       - name: Build deb and rpm packages
         run: |
