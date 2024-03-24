@@ -8,14 +8,6 @@ jobs:
   packaging:
     name: packaging
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - arch: amd64
-          - arch: arm64
-    env:
-      GOOS: linux
-      GOARCH: ${{ matrix.arch }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -36,35 +28,32 @@ jobs:
       # Build RPM and DEB packages
       - name: Build deb and rpm packages
         run: |
-          export GOOS=${{ env.GOOS }}
-          export GOARCH=${{ env.GOARCH }}
           export TAG_NAME=v0.1.0 # ${{ github.ref_name }}
           # Strip v from tag name, eg v0.1.0 -> 0.1.0
           export CEEMS_VERSION=$(echo "${TAG_NAME//v}")
-
-          # Add go bins to PATH
-          # Ref: https://github.com/actions/setup-go/issues/27
-          export PATH=${PATH}:`go env GOPATH`/bin
+          export GOOS=linux
 
           # Ensure target directory exists
           mkdir -p .tarballs
 
-          # deb packages
-          nfpm pkg --config build/package/ceems_exporter/nfpm.yml --packager deb --target .tarballs/ceems_exporter-${CEEMS_VERSION}-${{ env.GOOS }}-${{ env.GOARCH }}.deb
-          nfpm pkg --config build/package/ceems_api_server/nfpm.yml --packager deb --target .tarballs/ceems_api_server-${CEEMS_VERSION}-${{ env.GOOS }}-${{ env.GOARCH }}.deb
-          nfpm pkg --config build/package/ceems_lb/nfpm.yml --packager deb --target .tarballs/ceems_lb-${CEEMS_VERSION}-${{ env.GOOS }}-${{ env.GOARCH }}.deb
-
-          # rpm packages
-          nfpm pkg --config build/package/ceems_exporter/nfpm.yml --packager rpm --target .tarballs/ceems_exporter-${CEEMS_VERSION}-${{ env.GOOS }}-${{ env.GOARCH }}.rpm
-          nfpm pkg --config build/package/ceems_api_server/nfpm.yml --packager rpm --target .tarballs/ceems_api_server-${CEEMS_VERSION}-${{ env.GOOS }}-${{ env.GOARCH }}.rpm
-          nfpm pkg --config build/package/ceems_lb/nfpm.yml --packager rpm --target .tarballs/ceems_lb-${CEEMS_VERSION}-${{ env.GOOS }}-${{ env.GOARCH }}.rpm
+          # Build packages
+          # Use a simple for loop instead of matrix strategy as building packages
+          # is a very rapid process and we pay more price by repeating all the steps
+          # if using a matrix strategy
+          for arch in amd64 arm64; do
+            for packager in rpm deb; do
+              for app in ceems_exporter ceems_api_server ceems_lb; do
+                  GOARCH=${arch} nfpm pkg --config build/package/${app}/nfpm.yml --packager ${packager} --target .tarballs/${app}-${CEEMS_VERSION}-${GOOS}-${arch}.${packager}
+              done 
+            done 
+          done 
 
           # Check artifacts
           ls -la .tarballs
 
-      - name: Upload go build artifacts
+      - name: Upload release artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: build-go-artifacts
+          name: release-artifacts
           path: .tarballs
           retention-days: 1

@@ -53,6 +53,11 @@ jobs:
         run: |
           make promu
           go mod download
+
+      - name: Download release artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: release-artifacts
       
       - name: Publish release
         run: |
