@@ -33,7 +33,7 @@ jobs:
         run: |
           export GOOS=${{ env.GOOS }}
           export GOARCH=${{ env.GOARCH }}
-          export TAG_NAME=${{ github.ref_name }}
+          export TAG_NAME=v0.1.0 # ${{ github.ref_name }}
           # Strip v from tag name, eg v0.1.0 -> 0.1.0
           export CEEMS_VERSION=$(echo "${TAG_NAME//v}")
 

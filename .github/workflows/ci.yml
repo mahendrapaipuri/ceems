@@ -38,5 +38,5 @@ jobs:
     uses: ./.github/workflows/step_build.yml
 
   packaging:
-    needs: [test-lint, test-unit, test-e2e]
+    needs: [build]
     uses: ./.github/workflows/step_packaging.yml

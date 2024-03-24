@@ -54,7 +54,9 @@ contents:
     dst: /usr/local/bin/ceems_exporter
     expand: true
     file_info:
-      mode: 0511
+      mode: 0750
+      owner: root
+      group: ceemsexp
 
   # CEEMS exporter web config file
   - src: build/package/config/web-config.yml
