@@ -28,6 +28,9 @@ jobs:
   test-unit:
     needs: [test-lint]
     uses: ./.github/workflows/step_tests-unit.yml
+    # To update coverage badge
+    permissions:
+      contents: write
 
   test-e2e:
     needs: [test-lint]

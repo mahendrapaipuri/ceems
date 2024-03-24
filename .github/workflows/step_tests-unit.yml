@@ -7,8 +7,6 @@ on:
 jobs:
   unit-tests:
     name: unit-tests
-    permissions:
-      contents: write
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
