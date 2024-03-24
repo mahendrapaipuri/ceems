@@ -7,6 +7,8 @@ on:
 jobs:
   unit-tests:
     name: unit-tests
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -27,3 +29,38 @@ jobs:
 
       - name: Run unit tests for CGo packages
         run: CGO_BUILD=1 make test
+
+      - name: Merge coverage files
+        run: |
+          # Remove first line from coverage-cgo.out file
+          tail -n +2 coverage-cgo.out > coverage-cgo.tmp.out && mv coverage-cgo.tmp.out coverage-cgo.out
+          # Merge coverage-go.out and coverage-cgo.out files
+          cat coverage-go.out coverage-cgo.out > coverage.out
+          go tool cover -func=coverage.out -o=coverage.out
+
+      - name: Go Coverage Badge  # Pass the `coverage.out` output to this action
+        uses: tj-actions/coverage-badge-go@v2
+        with:
+          filename: coverage.out
+          link: https://github.com/mahendrapaipuri/ceems/actions/workflows/ci.yml?query=branch%3Amain
+
+      - name: Verify Changed files
+        uses: tj-actions/verify-changed-files@v16
+        id: verify-changed-files
+        with:
+          files: README.md
+
+      - name: Commit changes
+        if: steps.verify-changed-files.outputs.files_changed == 'true' && github.ref == 'refs/heads/main'
+        run: |
+          git config --local user.email "bot@ceems.com"
+          git config --local user.name "CEEMS Bot"
+          git add README.md
+          git commit -m "chore: Updated coverage badge" -s
+
+      - name: Push changes
+        if: steps.verify-changed-files.outputs.files_changed == 'true' && github.ref == 'refs/heads/main'
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.head_ref }}
