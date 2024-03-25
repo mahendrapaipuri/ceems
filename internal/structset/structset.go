@@ -27,17 +27,17 @@ func GetStructFieldNames(Struct interface{}) []string {
 	return fields
 }
 
-// GetStructFieldValues returns all values in a given struct
-func GetStructFieldValues(Struct interface{}) []interface{} {
-	v := reflect.ValueOf(Struct)
-	values := make([]interface{}, v.NumField())
+// // GetStructFieldValues returns all values in a given struct
+// func GetStructFieldValues(Struct interface{}) []interface{} {
+// 	v := reflect.ValueOf(Struct)
+// 	values := make([]interface{}, v.NumField())
 
-	for i := 0; i < v.NumField(); i++ {
-		f := v.Field(i)
-		values = append(values, f.Interface())
-	}
-	return values
-}
+// 	for i := 0; i < v.NumField(); i++ {
+// 		f := v.Field(i)
+// 		values = append(values, f.Interface())
+// 	}
+// 	return values
+// }
 
 // Get tag value of field. If tag value is "-", return lower case value of field name
 func getTagValue(field reflect.StructField, tag string) string {

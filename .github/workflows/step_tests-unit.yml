@@ -30,11 +30,8 @@ jobs:
 
       - name: Merge coverage files
         run: |
-          # Remove first line from coverage-cgo.out file
-          tail -n +2 coverage-cgo.out > coverage-cgo.tmp.out && mv coverage-cgo.tmp.out coverage-cgo.out
-          # Merge coverage-go.out and coverage-cgo.out files
-          cat coverage-go.out coverage-cgo.out > coverage.out
-          go tool cover -func=coverage.out -o=coverage.out
+          # Make global coverage report
+          make coverage
 
           # Remove testdata that contains too many files
           rm -rf pkg/collector/testdata
@@ -57,6 +54,9 @@ jobs:
 
           # Create/Update badge
           gobadge -target README.md -filename coverage.out -link https://github.com/mahendrapaipuri/ceems/actions/workflows/ci.yml?query=branch%3Amain
+
+          # Check diff on README
+          git diff README.md
 
       - name: Verify Changed files
         uses: tj-actions/verify-changed-files@v19

@@ -310,37 +310,27 @@ func TestJobStatsDBBackup(t *testing.T) {
 	}
 }
 
-// func TestJobStatsDBBackupFailRetries(t *testing.T) {
-// 	tmpDir := t.TempDir()
-// 	c := prepareMockConfig(tmpDir)
+func TestStatsDBBackup(t *testing.T) {
+	tmpDir := t.TempDir()
+	c := prepareMockConfig(tmpDir)
 
-// 	// Make new stats DB
-// 	j, err := NewJobStatsDB(c)
-// 	if err != nil {
-// 		t.Errorf("Failed to create new statsDB struct due to %s", err)
-// 	}
+	// Make new stats DB
+	s, err := NewStatsDB(c)
+	if err != nil {
+		t.Errorf("Failed to create new statsDB struct due to %s", err)
+	}
 
-// 	// Make backup dir non existent
-// 	s.storage.dbBackupPath = "non-existent"
+	// Make backup dir non existent
+	s.storage.dbBackupPath = tmpDir
 
-// 	// Populate DB with data
-// 	populateDBWithMockData(s.db, j)
+	// Populate DB with data
+	populateDBWithMockData(s)
 
-// 	// Run backup
-// 	for i := 0; i < maxBackupRetries; i++ {
-// 		s.createBackup()
-// 	}
-// 	if s.storage.backupRetries != 0 {
-// 		t.Errorf("Failed to reset DB backup retries counter. Expected 0, got %d", s.storage.backupRetries)
-// 	}
-
-// 	for i := 0; i < maxBackupRetries-1; i++ {
-// 		s.createBackup()
-// 	}
-// 	if s.storage.backupRetries != 0 {
-// 		t.Errorf("Failed to increment DB backup retries counter. Expected %d, got %d", maxBackupRetries-1, s.storage.backupRetries)
-// 	}
-// }
+	// Run backup
+	if err := s.createBackup(); err != nil {
+		t.Errorf("Failed to backup DB: %s", err)
+	}
+}
 
 func TestJobStatsDeleteOldUnits(t *testing.T) {
 	tmpDir := t.TempDir()
