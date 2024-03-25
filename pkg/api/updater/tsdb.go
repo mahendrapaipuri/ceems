@@ -3,6 +3,7 @@ package updater
 import (
 	"fmt"
 	"maps"
+	"math"
 	"os"
 	"strings"
 	"sync"
@@ -218,44 +219,44 @@ func (t *tsdbUpdater) Update(startTime time.Time, endTime time.Time, units []mod
 		// Update with CPU metrics
 		if metric, mExists := aggMetrics["cpuUsage"]; mExists {
 			if value, exists := metric[units[i].UUID]; exists {
-				units[i].AveCPUUsage = value
+				units[i].AveCPUUsage = sanitizeValue(value)
 			}
 		}
 		if metric, mExists := aggMetrics["cpuMemUsage"]; mExists {
 			if value, exists := metric[units[i].UUID]; exists {
-				units[i].AveCPUMemUsage = value
+				units[i].AveCPUMemUsage = sanitizeValue(value)
 			}
 		}
 		if metric, mExists := aggMetrics["cpuEnergyUsage"]; mExists {
 			if value, exists := metric[units[i].UUID]; exists {
-				units[i].TotalCPUEnergyUsage = value
+				units[i].TotalCPUEnergyUsage = sanitizeValue(value)
 			}
 		}
 		if metric, mExists := aggMetrics["cpuEmissions"]; mExists {
 			if value, exists := metric[units[i].UUID]; exists {
-				units[i].TotalCPUEmissions = value
+				units[i].TotalCPUEmissions = sanitizeValue(value)
 			}
 		}
 
 		// Update with GPU metrics
 		if metric, mExists := aggMetrics["gpuUsage"]; mExists {
 			if value, exists := metric[units[i].UUID]; exists {
-				units[i].AveGPUUsage = value
+				units[i].AveGPUUsage = sanitizeValue(value)
 			}
 		}
 		if metric, mExists := aggMetrics["gpuMemUsage"]; mExists {
 			if value, exists := metric[units[i].UUID]; exists {
-				units[i].AveGPUMemUsage = value
+				units[i].AveGPUMemUsage = sanitizeValue(value)
 			}
 		}
 		if metric, mExists := aggMetrics["gpuEnergyUsage"]; mExists {
 			if value, exists := metric[units[i].UUID]; exists {
-				units[i].TotalGPUEnergyUsage = value
+				units[i].TotalGPUEnergyUsage = sanitizeValue(value)
 			}
 		}
 		if metric, mExists := aggMetrics["gpuEmissions"]; mExists {
 			if value, exists := metric[units[i].UUID]; exists {
-				units[i].TotalGPUEmissions = value
+				units[i].TotalGPUEmissions = sanitizeValue(value)
 			}
 		}
 	}
@@ -307,4 +308,13 @@ func (t *tsdbUpdater) deleteTimeSeries(startTime time.Time, endTime time.Time, u
 	matcher := fmt.Sprintf("{uuid=~\"%s\"}", allUUIDs)
 	// Make a API request to delete data of ignored units
 	return t.Delete(start, end, matcher)
+}
+
+// sanitizeValue verifies if value is either NaN/Inf/-Inf.
+// If value is any of these, zero will be returned
+func sanitizeValue(val float64) models.JSONFloat {
+	if math.IsNaN(val) || math.IsInf(val, 0) {
+		return models.JSONFloat(0)
+	}
+	return models.JSONFloat(val)
 }

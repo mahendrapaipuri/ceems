@@ -1,12 +1,54 @@
 // Package models defines different models used in stats
 package models
 
-import "github.com/mahendrapaipuri/ceems/internal/structset"
+import (
+	"encoding/json"
+	"math"
+
+	"github.com/mahendrapaipuri/ceems/internal/structset"
+)
 
 const (
 	unitsTableName = "units"
 	usageTableName = "usage"
 )
+
+// JSONFloat is a custom float64 that can handle Inf and NaN during JSON (un)marshalling
+type JSONFloat float64
+
+// MarshalJSON marshals JSONFloat into byte array
+func (j JSONFloat) MarshalJSON() ([]byte, error) {
+	v := float64(j)
+	if math.IsInf(v, 0) || math.IsNaN(v) {
+		// handle infinity, assign desired value to v
+		s := "0"
+		return []byte(s), nil
+	}
+	return json.Marshal(v) // marshal result as standard float64
+}
+
+// UnmarshalJSON unmarshals byte array into JSONFloat
+func (j *JSONFloat) UnmarshalJSON(v []byte) error {
+	if s := string(v); s == "+Inf" || s == "-Inf" || s == "NaN" {
+		// if +Inf/-Inf indiciates infinity
+		if s == "+Inf" {
+			*j = JSONFloat(math.Inf(1))
+			return nil
+		} else if s == "-Inf" {
+			*j = JSONFloat(math.Inf(-1))
+			return nil
+		}
+		*j = JSONFloat(math.NaN())
+		return nil
+	}
+	// just a regular float value
+	var fv float64
+	if err := json.Unmarshal(v, &fv); err != nil {
+		return err
+	}
+	*j = JSONFloat(fv)
+	return nil
+}
 
 // Unit is an abstract compute unit that can mean Job (batchjobs), VM (cloud) or Pod (k8s)
 type Unit struct {
@@ -29,20 +71,20 @@ type Unit struct {
 	TotalCPUBilling     int64      `json:"total_cpu_billing,omitempty"          sql:"total_cpu_billing"          sqlitetype:"integer"` // Total CPU billing for unit
 	TotalGPUBilling     int64      `json:"total_gpu_billing,omitempty"          sql:"total_gpu_billing"          sqlitetype:"integer"` // Total GPU billing for unit
 	TotalMiscBilling    int64      `json:"total_misc_billing,omitempty"         sql:"total_misc_billing"         sqlitetype:"integer"` // Total billing for unit that are not in CPU and GPU billing
-	AveCPUUsage         float64    `json:"avg_cpu_usage,omitempty"              sql:"avg_cpu_usage"              sqlitetype:"real"`    // Average CPU usage during lifetime of unit
-	AveCPUMemUsage      float64    `json:"avg_cpu_mem_usage,omitempty"          sql:"avg_cpu_mem_usage"          sqlitetype:"real"`    // Average CPU memory during lifetime of unit
-	TotalCPUEnergyUsage float64    `json:"total_cpu_energy_usage_kwh,omitempty" sql:"total_cpu_energy_usage_kwh" sqlitetype:"real"`    // Total CPU energy usage in kWh during lifetime of unit
-	TotalCPUEmissions   float64    `json:"total_cpu_emissions_gms,omitempty"    sql:"total_cpu_emissions_gms"    sqlitetype:"real"`    // Total CPU emissions in grams during lifetime of unit
-	AveGPUUsage         float64    `json:"avg_gpu_usage,omitempty"              sql:"avg_gpu_usage"              sqlitetype:"real"`    // Average GPU usage during lifetime of unit
-	AveGPUMemUsage      float64    `json:"avg_gpu_mem_usage,omitempty"          sql:"avg_gpu_mem_usage"          sqlitetype:"real"`    // Average GPU memory during lifetime of unit
-	TotalGPUEnergyUsage float64    `json:"total_gpu_energy_usage_kwh,omitempty" sql:"total_gpu_energy_usage_kwh" sqlitetype:"real"`    // Total GPU energy usage in kWh during lifetime of unit
-	TotalGPUEmissions   float64    `json:"total_gpu_emissions_gms,omitempty"    sql:"total_gpu_emissions_gms"    sqlitetype:"real"`    // Total GPU emissions in grams during lifetime of unit
-	TotalIOWriteHot     float64    `json:"total_io_write_hot_gb,omitempty"      sql:"total_io_write_hot_gb"      sqlitetype:"real"`    // Total IO write on hot storage in GB during lifetime of unit
-	TotalIOReadHot      float64    `json:"total_io_read_hot_gb,omitempty"       sql:"total_io_read_hot_gb"       sqlitetype:"real"`    // Total IO read on hot storage in GB during lifetime of unit
-	TotalIOWriteCold    float64    `json:"total_io_write_cold_gb,omitempty"     sql:"total_io_write_cold_gb"     sqlitetype:"real"`    // Total IO write on cold storage in GB during lifetime of unit
-	TotalIOReadCold     float64    `json:"total_io_read_cold_gb,omitempty"      sql:"total_io_read_cold_gb"      sqlitetype:"real"`    // Total IO read on cold storage in GB during lifetime of unit
-	TotalIngress        float64    `json:"total_ingress_in_gb,omitempty"        sql:"total_ingress_in_gb"        sqlitetype:"real"`    // Total ingress traffic in GB of unit
-	TotalOutgress       float64    `json:"total_outgress_in_gb,omitempty"       sql:"total_outgress_in_gb"       sqlitetype:"real"`    // Total outgress traffic in GB of unit
+	AveCPUUsage         JSONFloat  `json:"avg_cpu_usage,omitempty"              sql:"avg_cpu_usage"              sqlitetype:"real"`    // Average CPU usage during lifetime of unit
+	AveCPUMemUsage      JSONFloat  `json:"avg_cpu_mem_usage,omitempty"          sql:"avg_cpu_mem_usage"          sqlitetype:"real"`    // Average CPU memory during lifetime of unit
+	TotalCPUEnergyUsage JSONFloat  `json:"total_cpu_energy_usage_kwh,omitempty" sql:"total_cpu_energy_usage_kwh" sqlitetype:"real"`    // Total CPU energy usage in kWh during lifetime of unit
+	TotalCPUEmissions   JSONFloat  `json:"total_cpu_emissions_gms,omitempty"    sql:"total_cpu_emissions_gms"    sqlitetype:"real"`    // Total CPU emissions in grams during lifetime of unit
+	AveGPUUsage         JSONFloat  `json:"avg_gpu_usage,omitempty"              sql:"avg_gpu_usage"              sqlitetype:"real"`    // Average GPU usage during lifetime of unit
+	AveGPUMemUsage      JSONFloat  `json:"avg_gpu_mem_usage,omitempty"          sql:"avg_gpu_mem_usage"          sqlitetype:"real"`    // Average GPU memory during lifetime of unit
+	TotalGPUEnergyUsage JSONFloat  `json:"total_gpu_energy_usage_kwh,omitempty" sql:"total_gpu_energy_usage_kwh" sqlitetype:"real"`    // Total GPU energy usage in kWh during lifetime of unit
+	TotalGPUEmissions   JSONFloat  `json:"total_gpu_emissions_gms,omitempty"    sql:"total_gpu_emissions_gms"    sqlitetype:"real"`    // Total GPU emissions in grams during lifetime of unit
+	TotalIOWriteHot     JSONFloat  `json:"total_io_write_hot_gb,omitempty"      sql:"total_io_write_hot_gb"      sqlitetype:"real"`    // Total IO write on hot storage in GB during lifetime of unit
+	TotalIOReadHot      JSONFloat  `json:"total_io_read_hot_gb,omitempty"       sql:"total_io_read_hot_gb"       sqlitetype:"real"`    // Total IO read on hot storage in GB during lifetime of unit
+	TotalIOWriteCold    JSONFloat  `json:"total_io_write_cold_gb,omitempty"     sql:"total_io_write_cold_gb"     sqlitetype:"real"`    // Total IO write on cold storage in GB during lifetime of unit
+	TotalIOReadCold     JSONFloat  `json:"total_io_read_cold_gb,omitempty"      sql:"total_io_read_cold_gb"      sqlitetype:"real"`    // Total IO read on cold storage in GB during lifetime of unit
+	TotalIngress        JSONFloat  `json:"total_ingress_in_gb,omitempty"        sql:"total_ingress_in_gb"        sqlitetype:"real"`    // Total ingress traffic in GB of unit
+	TotalOutgress       JSONFloat  `json:"total_outgress_in_gb,omitempty"       sql:"total_outgress_in_gb"       sqlitetype:"real"`    // Total outgress traffic in GB of unit
 	Tags                Tag        `json:"tags,omitempty"                       sql:"tags"                       sqlitetype:"text"`    // A map to store generic info. String and int64 are valid value types of map
 	Ignore              int        `json:"-"                                    sql:"ignore"                     sqlitetype:"integer"` // Whether to ignore unit
 	NumIntervals        int        `json:"-"                                    sql:"num_intervals"              sqlitetype:"integer"` // Number of update intervals. This is used internally to update aggregate metrics
@@ -60,27 +102,27 @@ func (u Unit) TagNames(tag string) []string {
 
 // Usage statistics of each project/tenant/namespace
 type Usage struct {
-	ID                  int64   `json:"-"                          sql:"id"                         sqlitetype:"integer not null primary key"`
-	NumUnits            int64   `json:"num_units"                  sql:"num_units"                  sqlitetype:"integer"` // Number of consumed units
-	Project             string  `json:"project"                    sql:"project"                    sqlitetype:"text"`    // Account in batch systems, Tenant in Openstack, Namespace in k8s
-	Usr                 string  `json:"usr"                        sql:"usr"                        sqlitetype:"text"`    // Username
-	TotalCPUBilling     int64   `json:"total_cpu_billing"          sql:"total_cpu_billing"          sqlitetype:"integer"` // Total CPU billing for project
-	TotalGPUBilling     int64   `json:"total_gpu_billing"          sql:"total_gpu_billing"          sqlitetype:"integer"` // Total GPU billing for project
-	TotalMiscBilling    int64   `json:"total_misc_billing"         sql:"total_misc_billing"         sqlitetype:"integer"` // Total billing for project that are not in CPU and GPU billing
-	AveCPUUsage         float64 `json:"avg_cpu_usage"              sql:"avg_cpu_usage"              sqlitetype:"real"`    // Average CPU usage during lifetime of project
-	AveCPUMemUsage      float64 `json:"avg_cpu_mem_usage"          sql:"avg_cpu_mem_usage"          sqlitetype:"real"`    // Average CPU memory during lifetime of project
-	TotalCPUEnergyUsage float64 `json:"total_cpu_energy_usage_kwh" sql:"total_cpu_energy_usage_kwh" sqlitetype:"real"`    // Total CPU energy usage in kWh during lifetime of project
-	TotalCPUEmissions   float64 `json:"total_cpu_emissions_gms"    sql:"total_cpu_emissions_gms"    sqlitetype:"real"`    // Total CPU emissions in grams during lifetime of project
-	AveGPUUsage         float64 `json:"avg_gpu_usage"              sql:"avg_gpu_usage"              sqlitetype:"real"`    // Average GPU usage during lifetime of project
-	AveGPUMemUsage      float64 `json:"avg_gpu_mem_usage"          sql:"avg_gpu_mem_usage"          sqlitetype:"real"`    // Average GPU memory during lifetime of project
-	TotalGPUEnergyUsage float64 `json:"total_gpu_energy_usage_kwh" sql:"total_gpu_energy_usage_kwh" sqlitetype:"real"`    // Total GPU energy usage in kWh during lifetime of project
-	TotalGPUEmissions   float64 `json:"total_gpu_emissions_gms"    sql:"total_gpu_emissions_gms"    sqlitetype:"real"`    // Total GPU emissions in grams during lifetime of project
-	TotalIOWriteHot     float64 `json:"total_io_write_hot_gb"      sql:"total_io_write_hot_gb"      sqlitetype:"real"`    // Total IO write on hot storage in GB during lifetime of project
-	TotalIOReadHot      float64 `json:"total_io_read_hot_gb"       sql:"total_io_read_hot_gb"       sqlitetype:"real"`    // Total IO read on hot storage in GB during lifetime of project
-	TotalIOWriteCold    float64 `json:"total_io_write_cold_gb"     sql:"total_io_write_cold_gb"     sqlitetype:"real"`    // Total IO write on cold storage in GB during lifetime of project
-	TotalIOReadCold     float64 `json:"total_io_read_cold_gb"      sql:"total_io_read_cold_gb"      sqlitetype:"real"`    // Total IO read on cold storage in GB during lifetime of project
-	TotalIngress        float64 `json:"total_ingress_in_gb"        sql:"total_ingress_in_gb"        sqlitetype:"real"`    // Total ingress traffic in GB of project
-	TotalOutgress       float64 `json:"total_outgress_in_gb"       sql:"total_outgress_in_gb"       sqlitetype:"real"`    // Total outgress traffic in GB of project
+	ID                  int64     `json:"-"                          sql:"id"                         sqlitetype:"integer not null primary key"`
+	NumUnits            int64     `json:"num_units"                  sql:"num_units"                  sqlitetype:"integer"` // Number of consumed units
+	Project             string    `json:"project"                    sql:"project"                    sqlitetype:"text"`    // Account in batch systems, Tenant in Openstack, Namespace in k8s
+	Usr                 string    `json:"usr"                        sql:"usr"                        sqlitetype:"text"`    // Username
+	TotalCPUBilling     int64     `json:"total_cpu_billing"          sql:"total_cpu_billing"          sqlitetype:"integer"` // Total CPU billing for project
+	TotalGPUBilling     int64     `json:"total_gpu_billing"          sql:"total_gpu_billing"          sqlitetype:"integer"` // Total GPU billing for project
+	TotalMiscBilling    int64     `json:"total_misc_billing"         sql:"total_misc_billing"         sqlitetype:"integer"` // Total billing for project that are not in CPU and GPU billing
+	AveCPUUsage         JSONFloat `json:"avg_cpu_usage"              sql:"avg_cpu_usage"              sqlitetype:"real"`    // Average CPU usage during lifetime of project
+	AveCPUMemUsage      JSONFloat `json:"avg_cpu_mem_usage"          sql:"avg_cpu_mem_usage"          sqlitetype:"real"`    // Average CPU memory during lifetime of project
+	TotalCPUEnergyUsage JSONFloat `json:"total_cpu_energy_usage_kwh" sql:"total_cpu_energy_usage_kwh" sqlitetype:"real"`    // Total CPU energy usage in kWh during lifetime of project
+	TotalCPUEmissions   JSONFloat `json:"total_cpu_emissions_gms"    sql:"total_cpu_emissions_gms"    sqlitetype:"real"`    // Total CPU emissions in grams during lifetime of project
+	AveGPUUsage         JSONFloat `json:"avg_gpu_usage"              sql:"avg_gpu_usage"              sqlitetype:"real"`    // Average GPU usage during lifetime of project
+	AveGPUMemUsage      JSONFloat `json:"avg_gpu_mem_usage"          sql:"avg_gpu_mem_usage"          sqlitetype:"real"`    // Average GPU memory during lifetime of project
+	TotalGPUEnergyUsage JSONFloat `json:"total_gpu_energy_usage_kwh" sql:"total_gpu_energy_usage_kwh" sqlitetype:"real"`    // Total GPU energy usage in kWh during lifetime of project
+	TotalGPUEmissions   JSONFloat `json:"total_gpu_emissions_gms"    sql:"total_gpu_emissions_gms"    sqlitetype:"real"`    // Total GPU emissions in grams during lifetime of project
+	TotalIOWriteHot     JSONFloat `json:"total_io_write_hot_gb"      sql:"total_io_write_hot_gb"      sqlitetype:"real"`    // Total IO write on hot storage in GB during lifetime of project
+	TotalIOReadHot      JSONFloat `json:"total_io_read_hot_gb"       sql:"total_io_read_hot_gb"       sqlitetype:"real"`    // Total IO read on hot storage in GB during lifetime of project
+	TotalIOWriteCold    JSONFloat `json:"total_io_write_cold_gb"     sql:"total_io_write_cold_gb"     sqlitetype:"real"`    // Total IO write on cold storage in GB during lifetime of project
+	TotalIOReadCold     JSONFloat `json:"total_io_read_cold_gb"      sql:"total_io_read_cold_gb"      sqlitetype:"real"`    // Total IO read on cold storage in GB during lifetime of project
+	TotalIngress        JSONFloat `json:"total_ingress_in_gb"        sql:"total_ingress_in_gb"        sqlitetype:"real"`    // Total ingress traffic in GB of project
+	TotalOutgress       JSONFloat `json:"total_outgress_in_gb"       sql:"total_outgress_in_gb"       sqlitetype:"real"`    // Total outgress traffic in GB of project
 }
 
 // TableName returns the table which usage stats are stored into.
