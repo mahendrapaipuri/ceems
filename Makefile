@@ -49,15 +49,19 @@ ifeq ($(CGO_BUILD), 1)
 	checkrules := skip-checkrules
 
 	# go test flags
-	test-flags := -coverprofile=coverage-cgo.out
+	coverage-file := coverage-cgo.out
+	test-flags := -covermode=atomic -coverprofile=$(coverage-file).tmp
 else
 	PROMU_CONF ?= .promu-go.yml
-	pkgs := ./pkg/collector ./pkg/emissions ./pkg/tsdb ./pkg/grafana ./cmd/ceems_exporter
+	pkgs := ./pkg/collector ./pkg/emissions ./pkg/tsdb ./pkg/grafana \
+			./internal/helpers ./internal/osexec ./internal/structset \
+			./cmd/ceems_exporter
 	checkmetrics := checkmetrics
 	checkrules := checkrules
 
 	# go test flags
-	test-flags := -coverprofile=coverage-go.out
+	coverage-file := coverage-go.out
+	test-flags := -covermode=atomic -coverprofile=$(coverage-file).tmp
 endif
 
 ifeq ($(GOHOSTOS), linux)
@@ -90,10 +94,18 @@ $(eval $(call goarch_pair,mips64el,mipsel))
 
 all:: vet common-all $(cross-test) $(test-docker) $(checkmetrics) $(checkrules) $(test-e2e)
 
+.PHONY: coverage
+coverage:
+	@echo ">> getting coverage report"
+	tail -n +2 coverage-cgo.out > coverage-cgo.tmp.out && mv coverage-cgo.tmp.out coverage-cgo.out
+	cat coverage-go.out coverage-cgo.out > coverage.out
+	$(GO) tool cover -func=coverage.out -o=coverage.out
+
 .PHONY: test
 test: pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked
 	@echo ">> running tests"
 	$(GO) test -short $(test-flags) $(pkgs)
+	cat $(coverage-file).tmp | grep -v "main.go" > $(coverage-file)
 
 .PHONY: test-32bit
 test-32bit: pkg/collector/testdata/sys/.unpacked 
