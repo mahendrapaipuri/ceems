@@ -113,7 +113,9 @@ func init() {
 			"(%s)",
 			strings.Join(strings.Split(strings.Repeat("?", len(base.UnitsDBTableColNames)), ""), ","),
 		),
-		"ON CONFLICT(uuid,started_at) DO UPDATE SET", // Index is defined in 000001_create_unit_table.up.sql
+		// Index is defined in 000001_create_unit_table.up.sql
+		// Update: 20240327: Index updated in 000004_alter_units_usage_tables.up.sql
+		"ON CONFLICT(resource_manager,uuid,started_at) DO UPDATE SET",
 	)
 
 	prepareStatements[base.UnitsDBTableName] = strings.Join(
@@ -149,7 +151,9 @@ func init() {
 			"(%s)",
 			strings.Join(strings.Split(strings.Repeat("?", len(base.UsageDBTableColNames)), ""), ","),
 		),
-		"ON CONFLICT(usr,project) DO UPDATE SET", // Index is defined in 000002_create_usage_table.up.sql
+		// Index is defined in 000002_create_usage_table.up.sql
+		// Update: 20240327: Index updated in 000004_alter_units_usage_tables.up.sql
+		"ON CONFLICT(resource_manager,usr,project) DO UPDATE SET",
 	)
 	prepareStatements[base.UsageDBTableName] = strings.Join(
 		[]string{
@@ -413,6 +417,7 @@ func (s *statsDB) execStatements(statements map[string]*sql.Stmt, units []models
 
 		// level.Debug(s.logger).Log("msg", "Inserting unit", "id", unit.Jobid)
 		if _, err = statements[base.UnitsDBTableName].Exec(
+			unit.ResourceManager,
 			unit.UUID,
 			unit.Name,
 			unit.Project,
@@ -486,6 +491,7 @@ func (s *statsDB) execStatements(statements map[string]*sql.Stmt, units []models
 
 		// Update Usage table
 		if _, err = statements[base.UsageDBTableName].Exec(
+			unit.ResourceManager,
 			unitIncr,
 			unit.Project,
 			unit.Usr,
