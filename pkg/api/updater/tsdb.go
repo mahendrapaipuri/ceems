@@ -29,7 +29,7 @@ const (
 type tsdbUpdaterConfig struct {
 	WebURL         string            `yaml:"web_url"`
 	SkipTLSVerify  bool              `yaml:"skip_tls_verify"`
-	CutoffDuration string            `yaml:"cut_off_duration"`
+	CutoffDuration string            `yaml:"cutoff_duration"`
 	Queries        map[string]string `yaml:"queries"`
 	LabelsToDrop   []string          `yaml:"labels_to_drop"`
 }
@@ -152,7 +152,7 @@ func (t *tsdbUpdater) fetchAggMetrics(
 
 	// Template data
 	tmplData := map[string]interface{}{
-		"UUIDS":                   uuids,
+		"UUIDs":                   uuids,
 		"ScrapeInterval":          scrapeInterval,
 		"ScrapeIntervalMilli":     scrapeInterval.Milliseconds(),
 		"EvaluationInterval":      evaluationInterval,

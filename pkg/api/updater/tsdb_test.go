@@ -55,7 +55,7 @@ func mockConfig(tmpDir string, serverURL string) string {
 	configFileTmpl := `
 ---
 web_url: %s
-cut_off_duration: %s
+cutoff_duration: %s
 queries:
   avg_cpu_usage: foo
   avg_cpu_mem_usage: foo

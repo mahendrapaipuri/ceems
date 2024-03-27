@@ -81,13 +81,14 @@ func NewManager(logger log.Logger) (*Manager, error) {
 			fetchers = append(fetchers, fetcher)
 		}
 	}
-	level.Warn(logger).Log(
-		"msg", "No resource manager enabled. Using a default resource manager",
-		"available_resource_managers", strings.Join(factoryKeys, ","),
-	)
 
 	// Return an instance of default manager
 	if len(fetchers) == 0 {
+		level.Warn(logger).Log(
+			"msg", "No resource manager enabled. Using a default resource manager",
+			"available_resource_managers", strings.Join(factoryKeys, ","),
+		)
+
 		fetcher, err = factories["default"](log.With(logger, "manager", "default"))
 		if err != nil {
 			level.Error(logger).Log("msg", "Failed to setup default resource manager", "err", err)
