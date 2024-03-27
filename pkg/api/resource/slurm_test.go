@@ -17,6 +17,7 @@ var (
 	expectedBatchJobs = []models.Unit{
 		{
 			ID:              0,
+			ResourceManager: "slurm",
 			UUID:            "1479763",
 			Name:            "test_script1",
 			Project:         "acc1",
@@ -48,6 +49,7 @@ var (
 		},
 		{
 			ID:              0,
+			ResourceManager: "slurm",
 			UUID:            "1481508",
 			Name:            "test_script2",
 			Project:         "acc1",
@@ -78,6 +80,7 @@ var (
 		},
 		{
 			ID:              0,
+			ResourceManager: "slurm",
 			UUID:            "1481510",
 			Name:            "test_script2",
 			Project:         "acc1",
@@ -109,6 +112,7 @@ var (
 		},
 		{
 			ID:              0,
+			ResourceManager: "slurm",
 			UUID:            "1481518",
 			Name:            "test_script2",
 			Project:         "acc1",
