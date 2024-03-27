@@ -324,7 +324,6 @@ then
     --storage.data.backup.path="${tmpdir}" \
     --storage.data.backup.interval="2s" \
     --storage.data.skip.delete.old.units \
-    --tsdb.data.cutoff.duration="5m" \
     --test.disable.checks \
     --web.listen-address="127.0.0.1:${port}" \
     --web.admin-users="grafana" \

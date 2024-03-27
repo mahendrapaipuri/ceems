@@ -66,6 +66,16 @@ contents:
       owner: ceemsapi
       group: root
 
+  # CEEMS API server TSDB updater config file
+  - src: build/package/ceems_api_server/tsdb-config.yml
+    dst: /etc/ceems_api_server/tsdb-config.yml
+    type: config
+    file_info:
+      # Make sure that the mode is specified in octal, e.g. 0644 instead of 644.
+      mode: 0660
+      owner: ceemsapi
+      group: root
+
   # systemd unit file
   - src: build/package/ceems_api_server/ceems_api_server.service
     dst: /usr/lib/systemd/system/ceems_api_server.service

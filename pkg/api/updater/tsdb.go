@@ -2,6 +2,7 @@ package updater
 
 import (
 	"fmt"
+	"html/template"
 	"maps"
 	"math"
 	"os"
@@ -16,6 +17,7 @@ import (
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
 	"github.com/prometheus/common/model"
+	"gopkg.in/yaml.v2"
 )
 
 // Size of each chunk of UUIDs to make request to TSDB
@@ -23,29 +25,27 @@ const (
 	chunkSize = 1000
 )
 
+// tsdbUpdaterConfig contains the configuration file of tsdb updater
+type tsdbUpdaterConfig struct {
+	WebURL         string            `yaml:"web_url"`
+	SkipTLSVerify  bool              `yaml:"skip_tls_verify"`
+	CutoffDuration string            `yaml:"cut_off_duration"`
+	Queries        map[string]string `yaml:"queries"`
+	LabelsToDrop   []string          `yaml:"labels_to_drop"`
+}
+
 // Embed TSDB struct into our TSDBUpdater struct
 type tsdbUpdater struct {
 	*tsdb.TSDB
+	config tsdbUpdaterConfig
 }
 
 // Mutex lock
 var (
-	tsdbWebURL = base.CEEMSServerApp.Flag(
-		"tsdb.web.url",
-		"TSDB URL (Prometheus/Victoria Metrics). If basic auth is enabled consider providing this URL using environment variable TSDB_WEBURL.",
-	).Default(os.Getenv("TSDB_WEBURL")).String()
-	tsdbWebSkipTLSVerify = base.CEEMSServerApp.Flag(
-		"tsdb.web.skip-tls-verify",
-		"Whether to skip TLS verification when using self signed certificates (default is false).",
-	).Default("false").Bool()
-	cutoffDurationString = base.CEEMSServerApp.Flag(
-		"tsdb.data.cutoff.duration",
-		"Compute units (Batch jobs, VMs, Pods) with wall time less than this period will be ignored. By default none will be ignored. Units Supported: y, w, d, h, m, s, ms.",
-	).Default("0s").String()
-	purgeDataTS = base.CEEMSServerApp.Flag(
-		"tsdb.data.purge.ts",
-		"Ignored compute units (Batch jobs, VMs, Pods) will be purged from the TSDB. Admin API must be enabled in TSDB.",
-	).Default("false").Bool()
+	tsdbConfigFile = base.CEEMSServerApp.Flag(
+		"tsdb.config.file",
+		"TSDB (Prometheus/Victoria Metrics) config file path.",
+	).Default("").String()
 	metricLock = sync.RWMutex{}
 	cutoff     = time.Duration(0 * time.Second)
 )
@@ -57,40 +57,67 @@ func init() {
 	RegisterUpdater("tsdb", false, NewTSDBUpdater)
 }
 
+// updaterConfig will read config file and create tsdbUpdaterConfig instance
+func updaterConfig(filePath string) (*tsdbUpdaterConfig, error) {
+	// Set a default config
+	config := tsdbUpdaterConfig{
+		WebURL:         "http://localhost:9090",
+		SkipTLSVerify:  true,
+		CutoffDuration: "0s",
+	}
+
+	// If no config file path provided, return default config
+	if filePath == "" {
+		return &config, nil
+	}
+
+	// Read config file
+	configFile, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Update config from YAML file
+	err = yaml.Unmarshal(configFile, &config)
+	if err != nil {
+		return nil, err
+	}
+	return &config, nil
+}
+
 // NewTSDBUpdater create a new updater interface
 func NewTSDBUpdater(logger log.Logger) (Updater, error) {
-	tsdb, err := tsdb.NewTSDB(*tsdbWebURL, *tsdbWebSkipTLSVerify, logger)
+	// Fetch updater config
+	config, err := updaterConfig(*tsdbConfigFile)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create an instance of TSDB
+	tsdb, err := tsdb.NewTSDB(config.WebURL, config.SkipTLSVerify, logger)
 	if err != nil {
 		return nil, err
 	}
 
 	// Update cutoff duration
-	if *cutoffDurationString != "" {
-		cutoffDuration, err := model.ParseDuration(*cutoffDurationString)
+	if config.CutoffDuration != "" {
+		cutoffDuration, err := model.ParseDuration(config.CutoffDuration)
 		if err != nil {
-			panic(fmt.Sprintf("failed to parse --tsdb.data.cutoff.duration flag: %s", err))
+			panic(fmt.Sprintf("failed to parse cutoffDuration in TSDB updater config: %s", err))
 		}
 		cutoff = time.Duration(cutoffDuration)
 	}
-	return &tsdbUpdater{tsdb}, nil
+	return &tsdbUpdater{tsdb, *config}, nil
 }
 
-// Return formatted query string after replacing placeholders
-func (t *tsdbUpdater) queryString(
-	query string,
-	uuids string,
-	duration time.Duration,
-	scrapeInterval time.Duration,
-	rateInterval time.Duration,
-) string {
-	return fmt.Sprintf(
-		strings.TrimLeft(query, "\n"),
-		uuids,
-		rateInterval,
-		duration,
-		scrapeInterval,
-		scrapeInterval.Milliseconds(),
-	)
+// Return query string from template
+func (t *tsdbUpdater) queryBuilder(name string, queryTemplate string, data map[string]interface{}) (string, error) {
+	tmpl := template.Must(template.New(name).Parse(queryTemplate))
+	builder := &strings.Builder{}
+	if err := tmpl.Execute(builder, data); err != nil {
+		return "", err
+	}
+	return builder.String(), nil
 }
 
 // Get time averaged value of each metric identified by label uuid
@@ -99,11 +126,12 @@ func (t *tsdbUpdater) fetchAggMetrics(
 	duration time.Duration,
 	uuids string,
 ) map[string]tsdb.Metric {
-	var aggMetrics = make(map[string]tsdb.Metric, len(aggMetricQueries))
+	var aggMetrics = make(map[string]tsdb.Metric, len(t.config.Queries))
 
 	// Get rate and scrape intervals
 	rateInterval := t.RateInterval()
-	scrapeInterval := t.ScrapeInterval()
+	scrapeInterval := t.Intervals()["scrape_interval"]
+	evaluationInterval := t.Intervals()["evaluation_interval"]
 
 	// If duration is less than rateInterval bail
 	if duration < rateInterval {
@@ -114,19 +142,40 @@ func (t *tsdbUpdater) fetchAggMetrics(
 	// to reduce number of data points Prometheus has to process
 	if duration >= time.Duration(24*time.Hour) {
 		scrapeInterval = 2 * scrapeInterval
+		evaluationInterval = 2 * evaluationInterval
 		rateInterval = 2 * rateInterval
 	}
 
 	// Start a wait group
 	var wg sync.WaitGroup
-	wg.Add(len(aggMetricQueries))
+	wg.Add(len(t.config.Queries))
 
-	// Loop over aggMetricQueries map and make queries
-	for name, query := range aggMetricQueries {
+	// Template data
+	tmplData := map[string]interface{}{
+		"UUIDS":                   uuids,
+		"ScrapeInterval":          scrapeInterval,
+		"ScrapeIntervalMilli":     scrapeInterval.Milliseconds(),
+		"EvaluationInterval":      evaluationInterval,
+		"EvaluationIntervalMilli": evaluationInterval.Milliseconds(),
+		"RateInterval":            rateInterval,
+		"Range":                   duration,
+	}
+
+	// Loop over t.config.queries map and make queries
+	for name, query := range t.config.Queries {
 		go func(n string, q string) {
 			var aggMetric tsdb.Metric
 			var err error
-			tsdbQuery := t.queryString(q, uuids, duration, scrapeInterval, rateInterval)
+			tsdbQuery, err := t.queryBuilder(n, q, tmplData)
+			if err != nil {
+				level.Error(t.Logger).Log(
+					"msg", "Failed to build query from template", "metric", n,
+					"query_template", q, "err", err,
+				)
+				wg.Done()
+				return
+			}
+
 			if aggMetric, err = t.Query(tsdbQuery, queryTime); err != nil {
 				level.Error(t.Logger).Log(
 					"msg", "Failed to fetch metrics from TSDB", "metric", n, "duration",
@@ -217,55 +266,89 @@ func (t *tsdbUpdater) Update(startTime time.Time, endTime time.Time, units []mod
 		}
 
 		// Update with CPU metrics
-		if metric, mExists := aggMetrics["cpuUsage"]; mExists {
+		if metric, mExists := aggMetrics["avg_cpu_usage"]; mExists {
 			if value, exists := metric[units[i].UUID]; exists {
 				units[i].AveCPUUsage = sanitizeValue(value)
 			}
 		}
-		if metric, mExists := aggMetrics["cpuMemUsage"]; mExists {
+		if metric, mExists := aggMetrics["avg_cpu_mem_usage"]; mExists {
 			if value, exists := metric[units[i].UUID]; exists {
 				units[i].AveCPUMemUsage = sanitizeValue(value)
 			}
 		}
-		if metric, mExists := aggMetrics["cpuEnergyUsage"]; mExists {
+		if metric, mExists := aggMetrics["total_cpu_energy_usage_kwh"]; mExists {
 			if value, exists := metric[units[i].UUID]; exists {
 				units[i].TotalCPUEnergyUsage = sanitizeValue(value)
 			}
 		}
-		if metric, mExists := aggMetrics["cpuEmissions"]; mExists {
+		if metric, mExists := aggMetrics["total_cpu_emissions_gms"]; mExists {
 			if value, exists := metric[units[i].UUID]; exists {
 				units[i].TotalCPUEmissions = sanitizeValue(value)
 			}
 		}
 
 		// Update with GPU metrics
-		if metric, mExists := aggMetrics["gpuUsage"]; mExists {
+		if metric, mExists := aggMetrics["avg_gpu_usage"]; mExists {
 			if value, exists := metric[units[i].UUID]; exists {
 				units[i].AveGPUUsage = sanitizeValue(value)
 			}
 		}
-		if metric, mExists := aggMetrics["gpuMemUsage"]; mExists {
+		if metric, mExists := aggMetrics["avg_gpu_mem_usage"]; mExists {
 			if value, exists := metric[units[i].UUID]; exists {
 				units[i].AveGPUMemUsage = sanitizeValue(value)
 			}
 		}
-		if metric, mExists := aggMetrics["gpuEnergyUsage"]; mExists {
+		if metric, mExists := aggMetrics["total_gpu_energy_usage_kwh"]; mExists {
 			if value, exists := metric[units[i].UUID]; exists {
 				units[i].TotalGPUEnergyUsage = sanitizeValue(value)
 			}
 		}
-		if metric, mExists := aggMetrics["gpuEmissions"]; mExists {
+		if metric, mExists := aggMetrics["total_gpu_emissions_gms"]; mExists {
 			if value, exists := metric[units[i].UUID]; exists {
 				units[i].TotalGPUEmissions = sanitizeValue(value)
 			}
 		}
+
+		// Update with IO metrics
+		if metric, mExists := aggMetrics["total_io_write_hot_gb"]; mExists {
+			if value, exists := metric[units[i].UUID]; exists {
+				units[i].TotalIOWriteHot = sanitizeValue(value)
+			}
+		}
+		if metric, mExists := aggMetrics["total_io_read_hot_gb"]; mExists {
+			if value, exists := metric[units[i].UUID]; exists {
+				units[i].TotalIOReadHot = sanitizeValue(value)
+			}
+		}
+		if metric, mExists := aggMetrics["total_io_write_cold_gb"]; mExists {
+			if value, exists := metric[units[i].UUID]; exists {
+				units[i].TotalIOWriteCold = sanitizeValue(value)
+			}
+		}
+		if metric, mExists := aggMetrics["total_io_read_cold_gb"]; mExists {
+			if value, exists := metric[units[i].UUID]; exists {
+				units[i].TotalIOReadCold = sanitizeValue(value)
+			}
+		}
+
+		// Update with network metrics
+		if metric, mExists := aggMetrics["total_ingress_in_gb"]; mExists {
+			if value, exists := metric[units[i].UUID]; exists {
+				units[i].TotalIngress = sanitizeValue(value)
+			}
+		}
+		if metric, mExists := aggMetrics["total_outgress_in_gb"]; mExists {
+			if value, exists := metric[units[i].UUID]; exists {
+				units[i].TotalOutgress = sanitizeValue(value)
+			}
+		}
 	}
 
-	// Finally delete time series corresponding to ignoredUnits
-	if *purgeDataTS {
+	// Finally delete time series
+	if len(ignoredUnits) > 0 || len(t.config.LabelsToDrop) > 0 {
 		if err := t.deleteTimeSeries(startTime, endTime, ignoredUnits); err != nil {
 			level.Error(t.Logger).
-				Log("msg", "Failed delete ignored units' time series in TSDB", "err", err)
+				Log("msg", "Failed to delete time series in TSDB", "err", err)
 		}
 	}
 	return units
@@ -276,7 +359,7 @@ func (t *tsdbUpdater) deleteTimeSeries(startTime time.Time, endTime time.Time, u
 	// Check if there are any units to ignore. If there aren't return immediately
 	// We shouldnt make a API request to delete with empty units slice as TSDB will
 	// match all units during that period with uuid=~"" matcher
-	if len(unitUUIDs) == 0 {
+	if len(unitUUIDs) == 0 && len(t.config.LabelsToDrop) == 0 {
 		return nil
 	}
 	level.Debug(t.Logger).Log("units_ignored", len(unitUUIDs))
@@ -296,7 +379,7 @@ func (t *tsdbUpdater) deleteTimeSeries(startTime time.Time, endTime time.Time, u
 		will help TSDB to narrow the search to head block and hence deletion of time series
 		will be easy as they are potentially not yet persisted to disk.
 	*/
-	start := startTime.Add(cutoff)
+	start := startTime.Add(-cutoff)
 	end := endTime
 
 	// Matcher must be of format "{uuid=~"<regex>"}"
@@ -305,9 +388,9 @@ func (t *tsdbUpdater) deleteTimeSeries(startTime time.Time, endTime time.Time, u
 	// Join them with | as delimiter. We will use regex match to match all series
 	// with the label uuid=~"$unitids"
 	allUUIDs := strings.Join(unitUUIDs, "|")
-	matcher := fmt.Sprintf("{uuid=~\"%s\"}", allUUIDs)
+	matchers := append(t.config.LabelsToDrop, fmt.Sprintf("{uuid=~\"%s\"}", allUUIDs))
 	// Make a API request to delete data of ignored units
-	return t.Delete(start, end, matcher)
+	return t.Delete(start, end, matchers)
 }
 
 // sanitizeValue verifies if value is either NaN/Inf/-Inf.
