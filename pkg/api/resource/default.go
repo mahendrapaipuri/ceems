@@ -20,7 +20,7 @@ func init() {
 
 // NewDefaultResourceManager returns a new defaultResourceManager that returns empty compute units
 func NewDefaultResourceManager(logger log.Logger) (Fetcher, error) {
-	level.Info(logger).Log("msg", "Dummy resource manager activated")
+	level.Info(logger).Log("msg", "Default resource manager activated")
 	return &defaultResourceManager{
 		logger: logger,
 	}, nil

@@ -85,7 +85,8 @@ func (b *tsdbServer) RetentionPeriod() time.Duration {
 	b.mux.RUnlock()
 
 	// Update retention period for every 3 hours
-	if retentionPeriod == time.Duration(0*time.Second) || lastUpdate.IsZero() || time.Since(lastUpdate) > b.updateInterval {
+	if retentionPeriod == time.Duration(0*time.Second) || lastUpdate.IsZero() ||
+		time.Since(lastUpdate) > b.updateInterval {
 		newRetentionPeriod, err := b.fetchRetentionPeriod()
 		// If errored, return last retention period
 		if err != nil {

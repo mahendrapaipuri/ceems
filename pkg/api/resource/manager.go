@@ -3,6 +3,7 @@
 package resource
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -22,8 +23,8 @@ type Fetcher interface {
 // Manager implements the interface to collect
 // manager jobs from different resource managers.
 type Manager struct {
-	Fetcher
-	logger log.Logger
+	Fetchers []Fetcher
+	logger   log.Logger
 }
 
 var (
@@ -66,6 +67,7 @@ func NewManager(logger log.Logger) (*Manager, error) {
 	var factoryKeys []string
 
 	// Loop over factories and create new instances
+	var fetchers []Fetcher
 	for key, factory := range factories {
 		if key != "default" {
 			factoryKeys = append(factoryKeys, key)
@@ -76,7 +78,7 @@ func NewManager(logger log.Logger) (*Manager, error) {
 				level.Error(logger).Log("msg", "Failed to setup resource manager", "name", key, "err", err)
 				return nil, err
 			}
-			return &Manager{Fetcher: fetcher, logger: logger}, nil
+			fetchers = append(fetchers, fetcher)
 		}
 	}
 	level.Warn(logger).Log(
@@ -85,15 +87,28 @@ func NewManager(logger log.Logger) (*Manager, error) {
 	)
 
 	// Return an instance of default manager
-	fetcher, err = factories["default"](log.With(logger, "manager", "default"))
-	if err != nil {
-		level.Error(logger).Log("msg", "Failed to setup default resource manager", "err", err)
-		return nil, err
+	if len(fetchers) == 0 {
+		fetcher, err = factories["default"](log.With(logger, "manager", "default"))
+		if err != nil {
+			level.Error(logger).Log("msg", "Failed to setup default resource manager", "err", err)
+			return nil, err
+		}
+		fetchers = append(fetchers, fetcher)
 	}
-	return &Manager{Fetcher: fetcher, logger: logger}, nil
+	return &Manager{Fetchers: fetchers, logger: logger}, nil
 }
 
 // Fetch implements collection jobs between start and end times
 func (b Manager) Fetch(start time.Time, end time.Time) ([]models.Unit, error) {
-	return b.Fetcher.Fetch(start, end)
+	var allUnits []models.Unit
+	var errs error
+	for _, fetcher := range b.Fetchers {
+		units, err := fetcher.Fetch(start, end)
+		if err != nil {
+			errs = errors.Join(errs, err)
+			continue
+		}
+		allUnits = append(allUnits, units...)
+	}
+	return allUnits, errs
 }
