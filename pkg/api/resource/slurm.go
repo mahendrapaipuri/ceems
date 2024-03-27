@@ -319,6 +319,7 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 
 			// Make jobStats struct for each job and put it in jobs slice
 			jobStat = models.Unit{
+				ResourceManager: "slurm",
 				UUID:            jobid,
 				Name:            components[sacctFieldMap["jobname"]],
 				Project:         components[sacctFieldMap["account"]],

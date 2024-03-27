@@ -42,13 +42,15 @@ type TSDB struct {
 	ConfigEndpoint     *url.URL
 	Logger             log.Logger
 	scrapeInterval     time.Duration
+	evaluationInterval time.Duration
 	lastConfigUpdate   time.Time
 	available          bool
 }
 
 const (
-	// Default scrape interval. Return this if we cannot fetch config
-	defaultScrapeInterval = time.Duration(time.Minute)
+	// Default intervals. Return them if we cannot fetch config
+	defaultScrapeInterval     = time.Duration(time.Minute)
+	defaultEvaluationInterval = time.Duration(time.Minute)
 )
 
 // NewTSDB returns a new instance of TSDB
@@ -147,41 +149,56 @@ func (t *TSDB) GlobalConfig() (map[interface{}]interface{}, error) {
 	return nil, fmt.Errorf("global config not found in TSDB config")
 }
 
-// ScrapeInterval returns scrape interval of TSDB
-func (t *TSDB) ScrapeInterval() time.Duration {
+// Intervals returns scrape and evaluation intervals of TSDB
+func (t *TSDB) Intervals() map[string]time.Duration {
 	// Check if lastConfigUpdate time is more than 3 hrs
 	if time.Since(t.lastConfigUpdate) < time.Duration(3*time.Hour) {
-		return t.scrapeInterval
+		return map[string]time.Duration{
+			"scrape_interval":     t.scrapeInterval,
+			"evaluation_interval": t.evaluationInterval,
+		}
 	}
 
-	// Set scrapeInterval cache value to default and we will override it if found
-	// from config
+	// Set scrapeInterval and evaluationInterval cache values to
+	// default and we will override it if found from config
 	t.lastConfigUpdate = time.Now()
 	t.scrapeInterval = defaultScrapeInterval
+	t.evaluationInterval = defaultEvaluationInterval
 
 	// Get config
 	var globalConfig map[interface{}]interface{}
 	var err error
 	if globalConfig, err = t.GlobalConfig(); err != nil {
-		return defaultScrapeInterval
+		return map[string]time.Duration{
+			"scrape_interval":     defaultScrapeInterval,
+			"evaluation_interval": defaultEvaluationInterval,
+		}
 	}
 
 	// Parse duration string
-	if v, exists := globalConfig["scrape_interval"]; exists {
-		scrapeInterval, err := model.ParseDuration(v.(string))
-		if err != nil {
-			return defaultScrapeInterval
-		}
-		t.scrapeInterval = time.Duration(scrapeInterval)
-		return time.Duration(scrapeInterval)
+	intervals := map[string]time.Duration{
+		"scrape_interval":     defaultScrapeInterval,
+		"evaluation_interval": defaultEvaluationInterval,
 	}
-	return defaultScrapeInterval
+	if v, exists := globalConfig["scrape_interval"]; exists {
+		if scrapeInterval, err := model.ParseDuration(v.(string)); err == nil {
+			t.scrapeInterval = time.Duration(scrapeInterval)
+			intervals["scrape_interval"] = time.Duration(scrapeInterval)
+		}
+	}
+	if v, exists := globalConfig["evaluation_interval"]; exists {
+		if evaluationInterval, err := model.ParseDuration(v.(string)); err == nil {
+			t.evaluationInterval = time.Duration(evaluationInterval)
+			intervals["evaluation_interval"] = time.Duration(evaluationInterval)
+		}
+	}
+	return intervals
 }
 
 // RateInterval returns rate interval of TSDB
 func (t *TSDB) RateInterval() time.Duration {
 	// Grafana recommends atleast 4 times of scrape interval to estimate rate
-	return 4 * t.ScrapeInterval()
+	return 4 * t.Intervals()["scrape_interval"]
 }
 
 // Query makes a TSDB query
@@ -265,11 +282,11 @@ func (t *TSDB) Query(query string, queryTime time.Time) (Metric, error) {
 }
 
 // Delete time series with given labels
-func (t *TSDB) Delete(startTime time.Time, endTime time.Time, matcher string) error {
+func (t *TSDB) Delete(startTime time.Time, endTime time.Time, matchers []string) error {
 	// Add form data to request
 	// TSDB expects time stamps in UTC zone
 	values := url.Values{
-		"match[]": []string{matcher},
+		"match[]": matchers,
 		"start":   []string{startTime.UTC().Format(time.RFC3339Nano)},
 		"end":     []string{endTime.UTC().Format(time.RFC3339Nano)},
 	}

@@ -113,7 +113,9 @@ func init() {
 			"(%s)",
 			strings.Join(strings.Split(strings.Repeat("?", len(base.UnitsDBTableColNames)), ""), ","),
 		),
-		"ON CONFLICT(uuid,started_at) DO UPDATE SET", // Index is defined in 000001_create_unit_table.up.sql
+		// Index is defined in 000001_create_unit_table.up.sql
+		// Update: 20240327: Index updated in 000004_alter_units_usage_tables.up.sql
+		"ON CONFLICT(resource_manager,uuid,started_at) DO UPDATE SET",
 	)
 
 	prepareStatements[base.UnitsDBTableName] = strings.Join(
@@ -149,7 +151,9 @@ func init() {
 			"(%s)",
 			strings.Join(strings.Split(strings.Repeat("?", len(base.UsageDBTableColNames)), ""), ","),
 		),
-		"ON CONFLICT(usr,project) DO UPDATE SET", // Index is defined in 000002_create_usage_table.up.sql
+		// Index is defined in 000002_create_usage_table.up.sql
+		// Update: 20240327: Index updated in 000004_alter_units_usage_tables.up.sql
+		"ON CONFLICT(resource_manager,usr,project) DO UPDATE SET",
 	)
 	prepareStatements[base.UsageDBTableName] = strings.Join(
 		[]string{
@@ -271,7 +275,7 @@ func (s *statsDB) Collect() error {
 
 	// If duration is less than 1 day do single update
 	if currentTime.Sub(s.storage.lastUpdateTime) < time.Duration(24*time.Hour) {
-		return s.getJobStats(s.storage.lastUpdateTime, currentTime)
+		return s.getUnitStats(s.storage.lastUpdateTime, currentTime)
 	}
 	level.Info(s.logger).
 		Log("msg", "DB update duration is more than 1 day. Doing incremental update. This may take a while...")
@@ -283,14 +287,14 @@ func (s *statsDB) Collect() error {
 		if nextUpdateTime.Compare(currentTime) == -1 {
 			level.Debug(s.logger).
 				Log("msg", "Incremental DB update step", "from", s.storage.lastUpdateTime, "to", nextUpdateTime)
-			if err := s.getJobStats(s.storage.lastUpdateTime, nextUpdateTime); err != nil {
+			if err := s.getUnitStats(s.storage.lastUpdateTime, nextUpdateTime); err != nil {
 				level.Error(s.logger).
 					Log("msg", "Failed incremental update", "from", s.storage.lastUpdateTime, "to", nextUpdateTime, "err", err)
 				return err
 			}
 		} else {
 			level.Debug(s.logger).Log("msg", "Final incremental DB update step", "from", s.storage.lastUpdateTime, "to", currentTime)
-			return s.getJobStats(s.storage.lastUpdateTime, currentTime)
+			return s.getUnitStats(s.storage.lastUpdateTime, currentTime)
 		}
 
 		// Sleep for couple of seconds before making next update
@@ -310,11 +314,16 @@ func (s *statsDB) Stop() error {
 }
 
 // Get unit stats and insert them into DB
-func (s *statsDB) getJobStats(startTime, endTime time.Time) error {
-	// Retrieve units from unerlying resource manager
+func (s *statsDB) getUnitStats(startTime, endTime time.Time) error {
+	// Retrieve units from unerlying resource manager(s)
+	// Return error only if **all** resource manager(s) failed
 	units, err := s.manager.Fetch(startTime, endTime)
-	if err != nil {
+	if len(units) == 0 && err != nil {
 		return err
+	}
+	// If atleast one manager passed, and there are failed ones, log the errors
+	if err != nil {
+		level.Error(s.logger).Log("msg", "Fetching units from atleast one resource manager failed", "err", err)
 	}
 
 	// Update units struct with unit level metrics from TSDB
@@ -408,6 +417,7 @@ func (s *statsDB) execStatements(statements map[string]*sql.Stmt, units []models
 
 		// level.Debug(s.logger).Log("msg", "Inserting unit", "id", unit.Jobid)
 		if _, err = statements[base.UnitsDBTableName].Exec(
+			unit.ResourceManager,
 			unit.UUID,
 			unit.Name,
 			unit.Project,
@@ -481,6 +491,7 @@ func (s *statsDB) execStatements(statements map[string]*sql.Stmt, units []models
 
 		// Update Usage table
 		if _, err = statements[base.UsageDBTableName].Exec(
+			unit.ResourceManager,
 			unitIncr,
 			unit.Project,
 			unit.Usr,

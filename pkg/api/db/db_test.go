@@ -17,19 +17,45 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-type mockFetcher struct {
+type mockFetcherOne struct {
 	logger log.Logger
 }
 
-var mockUnits = []models.Unit{{UUID: "10000"}, {UUID: "10001"}, {UUID: "10002"}}
+type mockFetcherTwo struct {
+	logger log.Logger
+}
+
+type mockFetcherThree struct {
+	logger log.Logger
+}
+
+var mockUnitsOne = []models.Unit{{UUID: "10000"}, {UUID: "10001"}, {UUID: "10002"}}
+var mockUnitsTwo = []models.Unit{{UUID: "20000"}, {UUID: "20001"}, {UUID: "20002"}}
+var mockUnits = append(mockUnitsOne, mockUnitsTwo...)
 
 func newMockManager(logger log.Logger) (*resource.Manager, error) {
-	return &resource.Manager{Fetcher: &mockFetcher{logger: logger}}, nil
+	return &resource.Manager{
+		Fetchers: []resource.Fetcher{
+			&mockFetcherOne{logger: logger},
+			&mockFetcherTwo{logger: logger},
+			&mockFetcherThree{logger: logger},
+		},
+	}, nil
 }
 
 // GetUnits implements collection units between start and end times
-func (m *mockFetcher) Fetch(start time.Time, end time.Time) ([]models.Unit, error) {
-	return mockUnits, nil
+func (m *mockFetcherOne) Fetch(start time.Time, end time.Time) ([]models.Unit, error) {
+	return mockUnitsOne, nil
+}
+
+// GetUnits implements collection units between start and end times
+func (m *mockFetcherTwo) Fetch(start time.Time, end time.Time) ([]models.Unit, error) {
+	return mockUnitsTwo, nil
+}
+
+// Return error for this mockFetcher
+func (m *mockFetcherThree) Fetch(start time.Time, end time.Time) ([]models.Unit, error) {
+	return nil, fmt.Errorf("failed to fetch units")
 }
 
 type mockUpdater struct {
@@ -91,7 +117,7 @@ func populateDBWithMockData(s *statsDB) {
 	tx.Commit()
 }
 
-func TestNewJobStatsDB(t *testing.T) {
+func TestNewUnitStatsDB(t *testing.T) {
 	tmpDir := t.TempDir()
 	c := prepareMockConfig(tmpDir)
 
@@ -183,7 +209,7 @@ func TestNewJobStatsDB(t *testing.T) {
 	}
 }
 
-func TestJobStatsDBEntries(t *testing.T) {
+func TestUnitStatsDBEntries(t *testing.T) {
 	tmpDir := t.TempDir()
 	c := prepareMockConfig(tmpDir)
 
@@ -191,6 +217,16 @@ func TestJobStatsDBEntries(t *testing.T) {
 	s, err := NewStatsDB(c)
 	if err != nil {
 		t.Errorf("Failed to create new statsDB struct due to %s", err)
+	}
+
+	// Fetch units
+	expectedUnits := append(mockUnitsOne, mockUnitsTwo...)
+	fetchedUnits, err := s.manager.Fetch(time.Now(), time.Now())
+	if !reflect.DeepEqual(fetchedUnits, expectedUnits) {
+		t.Errorf("expected %#v, got %#v", expectedUnits, fetchedUnits)
+	}
+	if err == nil {
+		t.Errorf("expected one err from fetcher got none")
 	}
 
 	// Try to insert data. It should fail
@@ -210,9 +246,8 @@ func TestJobStatsDBEntries(t *testing.T) {
 	for rows.Next() {
 		var unit models.Unit
 
-		err = rows.Scan(&unit.UUID, &unit.Usr)
-		if err != nil {
-			t.Errorf("Failed to scan row")
+		if err = rows.Scan(&unit.UUID, &unit.Usr); err != nil {
+			t.Errorf("failed to scan row: %s", err)
 		}
 		units = append(units, unit)
 	}
@@ -224,7 +259,7 @@ func TestJobStatsDBEntries(t *testing.T) {
 	s.Stop()
 }
 
-func TestJobStatsDBLock(t *testing.T) {
+func TestUnitStatsDBLock(t *testing.T) {
 	tmpDir := t.TempDir()
 	c := prepareMockConfig(tmpDir)
 
@@ -251,7 +286,7 @@ func TestJobStatsDBLock(t *testing.T) {
 	s.Stop()
 }
 
-func TestJobStatsDBVacuum(t *testing.T) {
+func TestUnitStatsDBVacuum(t *testing.T) {
 	tmpDir := t.TempDir()
 	c := prepareMockConfig(tmpDir)
 
@@ -271,7 +306,7 @@ func TestJobStatsDBVacuum(t *testing.T) {
 	}
 }
 
-func TestJobStatsDBBackup(t *testing.T) {
+func TestUnitStatsDBBackup(t *testing.T) {
 	tmpDir := t.TempDir()
 	c := prepareMockConfig(tmpDir)
 
@@ -305,8 +340,8 @@ func TestJobStatsDBBackup(t *testing.T) {
 	for rows.Next() {
 		numRows += 1
 	}
-	if numRows != 3 {
-		t.Errorf("Backup DB check failed. Expected rows 3 , Got %d.", numRows)
+	if numRows != 6 {
+		t.Errorf("Backup DB check failed. Expected rows 6 , Got %d.", numRows)
 	}
 }
 
@@ -332,7 +367,7 @@ func TestStatsDBBackup(t *testing.T) {
 	}
 }
 
-func TestJobStatsDeleteOldUnits(t *testing.T) {
+func TestUnitStatsDeleteOldUnits(t *testing.T) {
 	tmpDir := t.TempDir()
 	unitID := "1111"
 	c := prepareMockConfig(tmpDir)

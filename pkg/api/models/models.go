@@ -53,6 +53,7 @@ func (j *JSONFloat) UnmarshalJSON(v []byte) error {
 // Unit is an abstract compute unit that can mean Job (batchjobs), VM (cloud) or Pod (k8s)
 type Unit struct {
 	ID                  int64      `json:"-"                                    sql:"id"                         sqlitetype:"integer not null primary key"`
+	ResourceManager     string     `json:"resource_manager,omitempty"           sql:"resource_manager"           sqlitetype:"text"`    // Name of the resource manager that owns compute unit. Eg slurm, openstack, kubernetes, etc
 	UUID                string     `json:"uuid"                                 sql:"uuid"                       sqlitetype:"text"`    // Unique identifier of unit. It can be Job ID for batch jobs, UUID for pods in k8s or VMs in Openstack
 	Name                string     `json:"name,omitempty"                       sql:"name"                       sqlitetype:"text"`    // Name of compute unit
 	Project             string     `json:"project,omitempty"                    sql:"project"                    sqlitetype:"text"`    // Account in batch systems, Tenant in Openstack, Namespace in k8s
@@ -103,6 +104,7 @@ func (u Unit) TagNames(tag string) []string {
 // Usage statistics of each project/tenant/namespace
 type Usage struct {
 	ID                  int64     `json:"-"                          sql:"id"                         sqlitetype:"integer not null primary key"`
+	ResourceManager     string    `json:"resource_manager"           sql:"resource_manager"           sqlitetype:"text"`    // Name of the resource manager that owns project. Eg slurm, openstack, kubernetes, etc
 	NumUnits            int64     `json:"num_units"                  sql:"num_units"                  sqlitetype:"integer"` // Number of consumed units
 	Project             string    `json:"project"                    sql:"project"                    sqlitetype:"text"`    // Account in batch systems, Tenant in Openstack, Namespace in k8s
 	Usr                 string    `json:"usr"                        sql:"usr"                        sqlitetype:"text"`    // Username

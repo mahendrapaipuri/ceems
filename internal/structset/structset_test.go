@@ -7,7 +7,7 @@ import (
 
 // testStruct is a test struct that will be used in tests
 type testStruct struct {
-	ID     int         `json:"id" sql:"id"`
+	ID     int         `json:"id"     sql:"id"`
 	Field1 string      `json:"field1" sql:"f1"`
 	Field2 bool        `json:"field2" sql:"f2"`
 	Field3 interface{} `json:"field3" sql:"f3"`
