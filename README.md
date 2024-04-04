@@ -378,6 +378,92 @@ This will start exporter server on default 9010 port. Metrics can be consulted u
 `curl http://localhost:9010/metrics` command which will give an output as follows:
 
 ```
+# HELP ceems_compute_unit_cpu_psi_seconds Total CPU PSI in seconds
+# TYPE ceems_compute_unit_cpu_psi_seconds gauge
+ceems_compute_unit_cpu_psi_seconds{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 0
+ceems_compute_unit_cpu_psi_seconds{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 0
+ceems_compute_unit_cpu_psi_seconds{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 0
+# HELP ceems_compute_unit_cpu_system_seconds_total Total job CPU system seconds
+# TYPE ceems_compute_unit_cpu_system_seconds_total counter
+ceems_compute_unit_cpu_system_seconds_total{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 115.777502
+ceems_compute_unit_cpu_system_seconds_total{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 115.777502
+ceems_compute_unit_cpu_system_seconds_total{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 115.777502
+# HELP ceems_compute_unit_cpu_user_seconds_total Total job CPU user seconds
+# TYPE ceems_compute_unit_cpu_user_seconds_total counter
+ceems_compute_unit_cpu_user_seconds_total{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 60375.292848
+ceems_compute_unit_cpu_user_seconds_total{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 60375.292848
+ceems_compute_unit_cpu_user_seconds_total{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 60375.292848
+# HELP ceems_compute_unit_cpus Total number of job CPUs
+# TYPE ceems_compute_unit_cpus gauge
+ceems_compute_unit_cpus{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 2
+ceems_compute_unit_cpus{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 2
+ceems_compute_unit_cpus{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 2
+# HELP ceems_compute_unit_gpu_index_flag Indicates running job on GPU, 1=job running
+# TYPE ceems_compute_unit_gpu_index_flag gauge
+ceems_compute_unit_gpu_index_flag{account="testacc",gpuuuid="20170005280c",hindex="-gpu-3",hostname="",index="3",manager="slurm",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 1
+ceems_compute_unit_gpu_index_flag{account="testacc",gpuuuid="20180003050c",hindex="-gpu-2",hostname="",index="2",manager="slurm",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 1
+ceems_compute_unit_gpu_index_flag{account="testacc2",gpuuuid="20170000800c",hindex="-gpu-0",hostname="",index="0",manager="slurm",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 1
+ceems_compute_unit_gpu_index_flag{account="testacc3",gpuuuid="20170003580c",hindex="-gpu-1",hostname="",index="1",manager="slurm",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 1
+# HELP ceems_compute_unit_memory_cache_bytes Memory cache used in bytes
+# TYPE ceems_compute_unit_memory_cache_bytes gauge
+ceems_compute_unit_memory_cache_bytes{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 0
+ceems_compute_unit_memory_cache_bytes{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 0
+ceems_compute_unit_memory_cache_bytes{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 0
+# HELP ceems_compute_unit_memory_fail_count Memory fail count
+# TYPE ceems_compute_unit_memory_fail_count gauge
+ceems_compute_unit_memory_fail_count{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 0
+ceems_compute_unit_memory_fail_count{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 0
+ceems_compute_unit_memory_fail_count{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 0
+# HELP ceems_compute_unit_memory_psi_seconds Total memory PSI in seconds
+# TYPE ceems_compute_unit_memory_psi_seconds gauge
+ceems_compute_unit_memory_psi_seconds{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 0
+ceems_compute_unit_memory_psi_seconds{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 0
+ceems_compute_unit_memory_psi_seconds{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 0
+# HELP ceems_compute_unit_memory_rss_bytes Memory RSS used in bytes
+# TYPE ceems_compute_unit_memory_rss_bytes gauge
+ceems_compute_unit_memory_rss_bytes{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 4.098592768e+09
+ceems_compute_unit_memory_rss_bytes{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 4.098592768e+09
+ceems_compute_unit_memory_rss_bytes{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 4.098592768e+09
+# HELP ceems_compute_unit_memory_total_bytes Memory total in bytes
+# TYPE ceems_compute_unit_memory_total_bytes gauge
+ceems_compute_unit_memory_total_bytes{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 4.294967296e+09
+ceems_compute_unit_memory_total_bytes{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 4.294967296e+09
+ceems_compute_unit_memory_total_bytes{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 4.294967296e+09
+# HELP ceems_compute_unit_memory_used_bytes Memory used in bytes
+# TYPE ceems_compute_unit_memory_used_bytes gauge
+ceems_compute_unit_memory_used_bytes{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 4.111491072e+09
+ceems_compute_unit_memory_used_bytes{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 4.111491072e+09
+ceems_compute_unit_memory_used_bytes{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 4.111491072e+09
+# HELP ceems_compute_unit_memsw_fail_count Swap fail count
+# TYPE ceems_compute_unit_memsw_fail_count gauge
+ceems_compute_unit_memsw_fail_count{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 0
+ceems_compute_unit_memsw_fail_count{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 0
+ceems_compute_unit_memsw_fail_count{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 0
+# HELP ceems_compute_unit_memsw_total_bytes Swap total in bytes
+# TYPE ceems_compute_unit_memsw_total_bytes gauge
+ceems_compute_unit_memsw_total_bytes{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 1.6042172416e+10
+ceems_compute_unit_memsw_total_bytes{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 1.6042172416e+10
+ceems_compute_unit_memsw_total_bytes{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 1.6042172416e+10
+# HELP ceems_compute_unit_memsw_used_bytes Swap used in bytes
+# TYPE ceems_compute_unit_memsw_used_bytes gauge
+ceems_compute_unit_memsw_used_bytes{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 0
+ceems_compute_unit_memsw_used_bytes{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 0
+ceems_compute_unit_memsw_used_bytes{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 0
+# HELP ceems_compute_unit_rdma_hca_handles Current number of RDMA HCA handles
+# TYPE ceems_compute_unit_rdma_hca_handles gauge
+ceems_compute_unit_rdma_hca_handles{device="hfi1_0",hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 479
+ceems_compute_unit_rdma_hca_handles{device="hfi1_0",hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 289
+ceems_compute_unit_rdma_hca_handles{device="hfi1_1",hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 1479
+ceems_compute_unit_rdma_hca_handles{device="hfi1_2",hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 2479
+# HELP ceems_compute_unit_rdma_hca_objects Current number of RDMA HCA objects
+# TYPE ceems_compute_unit_rdma_hca_objects gauge
+ceems_compute_unit_rdma_hca_objects{device="hfi1_0",hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 479
+ceems_compute_unit_rdma_hca_objects{device="hfi1_0",hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 289
+ceems_compute_unit_rdma_hca_objects{device="hfi1_1",hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 1479
+ceems_compute_unit_rdma_hca_objects{device="hfi1_2",hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 2479
+# HELP ceems_compute_units Total number of jobs
+# TYPE ceems_compute_units gauge
+ceems_compute_units{hostname="",manager="slurm"} 3
 # HELP ceems_cpu_count Number of CPUs.
 # TYPE ceems_cpu_count gauge
 ceems_cpu_count{hostname=""} 8
@@ -393,15 +479,18 @@ ceems_cpu_seconds_total{hostname="",mode="system"} 1119.22
 ceems_cpu_seconds_total{hostname="",mode="user"} 3018.54
 # HELP ceems_exporter_build_info A metric with a constant '1' value labeled by version, revision, branch, goversion from which ceems_exporter was built, and the goos and goarch for the build.
 # TYPE ceems_exporter_build_info gauge
-# HELP ceems_ipmi_dcmi_current_watts_total Current Power consumption in watts
-# TYPE ceems_ipmi_dcmi_current_watts_total counter
-ceems_ipmi_dcmi_current_watts_total{hostname=""} 332
-# HELP ceems_ipmi_dcmi_max_watts_total Maximum Power consumption in watts
-# TYPE ceems_ipmi_dcmi_max_watts_total counter
-ceems_ipmi_dcmi_max_watts_total{hostname=""} 504
-# HELP ceems_ipmi_dcmi_min_watts_total Minimum Power consumption in watts
-# TYPE ceems_ipmi_dcmi_min_watts_total counter
-ceems_ipmi_dcmi_min_watts_total{hostname=""} 68
+# HELP ceems_ipmi_dcmi_avg_watts Average Power consumption in watts
+# TYPE ceems_ipmi_dcmi_avg_watts gauge
+ceems_ipmi_dcmi_avg_watts{hostname=""} 5942
+# HELP ceems_ipmi_dcmi_current_watts Current Power consumption in watts
+# TYPE ceems_ipmi_dcmi_current_watts gauge
+ceems_ipmi_dcmi_current_watts{hostname=""} 5942
+# HELP ceems_ipmi_dcmi_max_watts Maximum Power consumption in watts
+# TYPE ceems_ipmi_dcmi_max_watts gauge
+ceems_ipmi_dcmi_max_watts{hostname=""} 6132
+# HELP ceems_ipmi_dcmi_min_watts Minimum Power consumption in watts
+# TYPE ceems_ipmi_dcmi_min_watts gauge
+ceems_ipmi_dcmi_min_watts{hostname=""} 5748
 # HELP ceems_meminfo_MemAvailable_bytes Memory information field MemAvailable_bytes.
 # TYPE ceems_meminfo_MemAvailable_bytes gauge
 ceems_meminfo_MemAvailable_bytes{hostname=""} 0
@@ -413,91 +502,8 @@ ceems_meminfo_MemFree_bytes{hostname=""} 4.50891776e+08
 ceems_meminfo_MemTotal_bytes{hostname=""} 1.6042172416e+10
 # HELP ceems_rapl_package_joules_total Current RAPL package value in joules
 # TYPE ceems_rapl_package_joules_total counter
-ceems_rapl_package_joules_total{hostname="",index="0",path="pkg/collector/fixtures/sys/class/powercap/intel-rapl:0"} 258218.293244
-ceems_rapl_package_joules_total{hostname="",index="1",path="pkg/collector/fixtures/sys/class/powercap/intel-rapl:1"} 130570.505826
-# HELP ceems_scrape_collector_duration_seconds ceems_exporter: Duration of a collector scrape.
-# TYPE ceems_scrape_collector_duration_seconds gauge
-# HELP ceems_scrape_collector_success ceems_exporter: Whether a collector succeeded.
-# TYPE ceems_scrape_collector_success gauge
-ceems_scrape_collector_success{collector="cpu"} 1
-ceems_scrape_collector_success{collector="ipmi_dcmi"} 1
-ceems_scrape_collector_success{collector="meminfo"} 1
-ceems_scrape_collector_success{collector="rapl"} 1
-ceems_scrape_collector_success{collector="slurm"} 1
-# HELP ceems_slurm_job_cpu_psi_seconds Total CPU PSI in seconds
-# TYPE ceems_slurm_job_cpu_psi_seconds gauge
-ceems_slurm_job_cpu_psi_seconds{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 0
-ceems_slurm_job_cpu_psi_seconds{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 0
-ceems_slurm_job_cpu_psi_seconds{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 0
-# HELP ceems_slurm_job_cpu_system_seconds Total job CPU system seconds
-# TYPE ceems_slurm_job_cpu_system_seconds gauge
-ceems_slurm_job_cpu_system_seconds{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 115.777502
-ceems_slurm_job_cpu_system_seconds{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 115.777502
-ceems_slurm_job_cpu_system_seconds{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 115.777502
-# HELP ceems_slurm_job_cpu_user_seconds Total job CPU user seconds
-# TYPE ceems_slurm_job_cpu_user_seconds gauge
-ceems_slurm_job_cpu_user_seconds{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 60375.292848
-ceems_slurm_job_cpu_user_seconds{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 60375.292848
-ceems_slurm_job_cpu_user_seconds{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 60375.292848
-# HELP ceems_slurm_job_cpus Total number of job CPUs
-# TYPE ceems_slurm_job_cpus gauge
-ceems_slurm_job_cpus{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 2
-ceems_slurm_job_cpus{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 2
-ceems_slurm_job_cpus{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 2
-# HELP ceems_slurm_job_gpu_index_flag Indicates running job on GPU, 1=job running
-# TYPE ceems_slurm_job_gpu_index_flag gauge
-ceems_slurm_job_gpu_index_flag{account="testacc",gpuuuid="20170005280c",hindex="-gpu-3",hostname="",index="3",manager="slurm",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 1
-ceems_slurm_job_gpu_index_flag{account="testacc",gpuuuid="20180003050c",hindex="-gpu-2",hostname="",index="2",manager="slurm",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 1
-ceems_slurm_job_gpu_index_flag{account="testacc2",gpuuuid="20170000800c",hindex="-gpu-0",hostname="",index="0",manager="slurm",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 1
-ceems_slurm_job_gpu_index_flag{account="testacc3",gpuuuid="20170003580c",hindex="-gpu-1",hostname="",index="1",manager="slurm",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 1
-# HELP ceems_slurm_job_memory_cache_bytes Memory cache used in bytes
-# TYPE ceems_slurm_job_memory_cache_bytes gauge
-ceems_slurm_job_memory_cache_bytes{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 0
-ceems_slurm_job_memory_cache_bytes{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 0
-ceems_slurm_job_memory_cache_bytes{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 0
-# HELP ceems_slurm_job_memory_fail_count Memory fail count
-# TYPE ceems_slurm_job_memory_fail_count gauge
-ceems_slurm_job_memory_fail_count{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 0
-ceems_slurm_job_memory_fail_count{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 0
-ceems_slurm_job_memory_fail_count{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 0
-# HELP ceems_slurm_job_memory_psi_seconds Total memory PSI in seconds
-# TYPE ceems_slurm_job_memory_psi_seconds gauge
-ceems_slurm_job_memory_psi_seconds{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 0
-ceems_slurm_job_memory_psi_seconds{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 0
-ceems_slurm_job_memory_psi_seconds{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 0
-# HELP ceems_slurm_job_memory_rss_bytes Memory RSS used in bytes
-# TYPE ceems_slurm_job_memory_rss_bytes gauge
-ceems_slurm_job_memory_rss_bytes{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 4.098592768e+09
-ceems_slurm_job_memory_rss_bytes{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 4.098592768e+09
-ceems_slurm_job_memory_rss_bytes{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 4.098592768e+09
-# HELP ceems_slurm_job_memory_total_bytes Memory total in bytes
-# TYPE ceems_slurm_job_memory_total_bytes gauge
-ceems_slurm_job_memory_total_bytes{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 4.294967296e+09
-ceems_slurm_job_memory_total_bytes{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 4.294967296e+09
-ceems_slurm_job_memory_total_bytes{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 4.294967296e+09
-# HELP ceems_slurm_job_memory_used_bytes Memory used in bytes
-# TYPE ceems_slurm_job_memory_used_bytes gauge
-ceems_slurm_job_memory_used_bytes{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 4.111491072e+09
-ceems_slurm_job_memory_used_bytes{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 4.111491072e+09
-ceems_slurm_job_memory_used_bytes{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 4.111491072e+09
-# HELP ceems_slurm_job_memsw_fail_count Swap fail count
-# TYPE ceems_slurm_job_memsw_fail_count gauge
-ceems_slurm_job_memsw_fail_count{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 0
-ceems_slurm_job_memsw_fail_count{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 0
-ceems_slurm_job_memsw_fail_count{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 0
-# HELP ceems_slurm_job_memsw_total_bytes Swap total in bytes
-# TYPE ceems_slurm_job_memsw_total_bytes gauge
-ceems_slurm_job_memsw_total_bytes{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 1.6042172416e+10
-ceems_slurm_job_memsw_total_bytes{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 1.6042172416e+10
-ceems_slurm_job_memsw_total_bytes{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 1.6042172416e+10
-# HELP ceems_slurm_job_memsw_used_bytes Swap used in bytes
-# TYPE ceems_slurm_job_memsw_used_bytes gauge
-ceems_slurm_job_memsw_used_bytes{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 0
-ceems_slurm_job_memsw_used_bytes{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 0
-ceems_slurm_job_memsw_used_bytes{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 0
-# HELP ceems_slurm_jobs Total number of jobs
-# TYPE ceems_slurm_jobs gauge
-ceems_slurm_jobs{hostname="",manager="slurm"} 3
+ceems_rapl_package_joules_total{hostname="",index="0",path="pkg/collector/testdata/sys/class/powercap/intel-rapl:0"} 258218.293244
+ceems_rapl_package_joules_total{hostname="",index="1",path="pkg/collector/testdata/sys/class/powercap/intel-rapl:1"} 130570.505826
 ```
 
 If the `ceems_exporter` process have necessary capabilities assigned either _via_ 

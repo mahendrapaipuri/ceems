@@ -22,6 +22,9 @@ jobs:
           make promu
           go mod download
 
+      - name: Run checkmetrics and checkrules
+        run: make checkmetrics checkrules
+
       - name: Run unit tests for Go packages
         run: make test
 
