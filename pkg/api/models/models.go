@@ -2,9 +2,6 @@
 package models
 
 import (
-	"encoding/json"
-	"math"
-
 	"github.com/mahendrapaipuri/ceems/internal/structset"
 )
 
@@ -12,43 +9,6 @@ const (
 	unitsTableName = "units"
 	usageTableName = "usage"
 )
-
-// JSONFloat is a custom float64 that can handle Inf and NaN during JSON (un)marshalling
-type JSONFloat float64
-
-// MarshalJSON marshals JSONFloat into byte array
-func (j JSONFloat) MarshalJSON() ([]byte, error) {
-	v := float64(j)
-	if math.IsInf(v, 0) || math.IsNaN(v) {
-		// handle infinity, assign desired value to v
-		s := "0"
-		return []byte(s), nil
-	}
-	return json.Marshal(v) // marshal result as standard float64
-}
-
-// UnmarshalJSON unmarshals byte array into JSONFloat
-func (j *JSONFloat) UnmarshalJSON(v []byte) error {
-	if s := string(v); s == "+Inf" || s == "-Inf" || s == "NaN" {
-		// if +Inf/-Inf indiciates infinity
-		if s == "+Inf" {
-			*j = JSONFloat(math.Inf(1))
-			return nil
-		} else if s == "-Inf" {
-			*j = JSONFloat(math.Inf(-1))
-			return nil
-		}
-		*j = JSONFloat(math.NaN())
-		return nil
-	}
-	// just a regular float value
-	var fv float64
-	if err := json.Unmarshal(v, &fv); err != nil {
-		return err
-	}
-	*j = JSONFloat(fv)
-	return nil
-}
 
 // Unit is an abstract compute unit that can mean Job (batchjobs), VM (cloud) or Pod (k8s)
 type Unit struct {
@@ -88,7 +48,7 @@ type Unit struct {
 	TotalOutgress       JSONFloat  `json:"total_outgress_in_gb,omitempty"       sql:"total_outgress_in_gb"       sqlitetype:"real"`    // Total outgress traffic in GB of unit
 	Tags                Tag        `json:"tags,omitempty"                       sql:"tags"                       sqlitetype:"text"`    // A map to store generic info. String and int64 are valid value types of map
 	Ignore              int        `json:"-"                                    sql:"ignore"                     sqlitetype:"integer"` // Whether to ignore unit
-	NumIntervals        int        `json:"-"                                    sql:"num_intervals"              sqlitetype:"integer"` // Number of update intervals. This is used internally to update aggregate metrics
+	NumUpdates          int64      `json:"-"                                    sql:"num_updates"                sqlitetype:"integer"` // Number of updates. This is used internally to update aggregate metrics
 }
 
 // TableName returns the table which units are stored into.
@@ -99,6 +59,12 @@ func (Unit) TableName() string {
 // TagNames returns a slice of all tag names.
 func (u Unit) TagNames(tag string) []string {
 	return structset.GetStructFieldTagValues(u, tag)
+}
+
+// TagMap returns a map of tags based on keyTag and valueTag. If keyTag is empty,
+// field names are used as map keys.
+func (u Unit) TagMap(keyTag string, valueTag string) map[string]string {
+	return structset.GetStructFieldTagMap(u, keyTag, valueTag)
 }
 
 // Usage statistics of each project/tenant/namespace
@@ -125,6 +91,7 @@ type Usage struct {
 	TotalIOReadCold     JSONFloat `json:"total_io_read_cold_gb"      sql:"total_io_read_cold_gb"      sqlitetype:"real"`    // Total IO read on cold storage in GB during lifetime of project
 	TotalIngress        JSONFloat `json:"total_ingress_in_gb"        sql:"total_ingress_in_gb"        sqlitetype:"real"`    // Total ingress traffic in GB of project
 	TotalOutgress       JSONFloat `json:"total_outgress_in_gb"       sql:"total_outgress_in_gb"       sqlitetype:"real"`    // Total outgress traffic in GB of project
+	NumUpdates          int64     `json:"-"                          sql:"num_updates"                sqlitetype:"integer"` // Number of updates. This is used internally to update aggregate metrics
 }
 
 // TableName returns the table which usage stats are stored into.
@@ -135,6 +102,12 @@ func (Usage) TableName() string {
 // TagNames returns a slice of all tag names.
 func (u Usage) TagNames(tag string) []string {
 	return structset.GetStructFieldTagValues(u, tag)
+}
+
+// TagMap returns a map of tags based on keyTag and valueTag. If keyTag is empty,
+// field names are used as map keys.
+func (u Usage) TagMap(keyTag string, valueTag string) map[string]string {
+	return structset.GetStructFieldTagMap(u, keyTag, valueTag)
 }
 
 // Project struct

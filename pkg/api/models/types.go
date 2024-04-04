@@ -5,6 +5,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"math"
 )
 
 // Generic is map to store any mixed data types. Only string and int are supported.
@@ -67,3 +68,40 @@ type Tag = Generic
 
 // Allocation is a type alias to Generic that stores allocation data of compute units
 type Allocation = Generic
+
+// JSONFloat is a custom float64 that can handle Inf and NaN during JSON (un)marshalling
+type JSONFloat float64
+
+// MarshalJSON marshals JSONFloat into byte array
+func (j JSONFloat) MarshalJSON() ([]byte, error) {
+	v := float64(j)
+	if math.IsInf(v, 0) || math.IsNaN(v) {
+		// handle infinity, assign desired value to v
+		s := "0"
+		return []byte(s), nil
+	}
+	return json.Marshal(v) // marshal result as standard float64
+}
+
+// UnmarshalJSON unmarshals byte array into JSONFloat
+func (j *JSONFloat) UnmarshalJSON(v []byte) error {
+	if s := string(v); s == "+Inf" || s == "-Inf" || s == "NaN" {
+		// if +Inf/-Inf indiciates infinity
+		if s == "+Inf" {
+			*j = JSONFloat(math.Inf(1))
+			return nil
+		} else if s == "-Inf" {
+			*j = JSONFloat(math.Inf(-1))
+			return nil
+		}
+		*j = JSONFloat(math.NaN())
+		return nil
+	}
+	// just a regular float value
+	var fv float64
+	if err := json.Unmarshal(v, &fv); err != nil {
+		return err
+	}
+	*j = JSONFloat(fv)
+	return nil
+}

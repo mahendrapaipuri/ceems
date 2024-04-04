@@ -29,8 +29,17 @@ type mockFetcherThree struct {
 	logger log.Logger
 }
 
-var mockUnitsOne = []models.Unit{{UUID: "10000"}, {UUID: "10001"}, {UUID: "10002"}}
-var mockUnitsTwo = []models.Unit{{UUID: "20000"}, {UUID: "20001"}, {UUID: "20002"}}
+var mockUnitsOne = []models.Unit{
+	{UUID: "10000", Usr: "foo1", Project: "fooprj"},
+	{UUID: "10001", Usr: "foo1", Project: "fooprj"},
+	{UUID: "10002", Usr: "foo1", Project: "fooprj"},
+	{UUID: "10003", Usr: "foo2", Project: "fooprj"},
+}
+var mockUnitsTwo = []models.Unit{
+	{UUID: "20000", Usr: "bar1", Project: "barprj"},
+	{UUID: "20001", Usr: "bar3", Project: "barprj"},
+	{UUID: "20002", Usr: "bar3", Project: "barprj"},
+}
 var mockUnits = append(mockUnitsOne, mockUnitsTwo...)
 
 func newMockManager(logger log.Logger) (*resource.Manager, error) {
@@ -62,7 +71,15 @@ type mockUpdater struct {
 	logger log.Logger
 }
 
-var mockUpdatedUnits = []models.Unit{{UUID: "10000", Usr: "foo"}, {UUID: "10001", Usr: "bar"}}
+var mockUpdatedUnits = []models.Unit{
+	{UUID: "10000", Usr: "foo1", Project: "fooprj", AveCPUUsage: 10, AveGPUUsage: 20},
+	{UUID: "10001", Usr: "foo1", Project: "fooprj", AveCPUUsage: 15, TotalCPUEnergyUsage: 100},
+	{UUID: "10002", Usr: "foo1", Project: "fooprj", TotalCPUEmissions: 20},
+	{UUID: "10003", Usr: "foo2", Project: "fooprj", TotalCPUEmissions: 40},
+	{UUID: "20000", Usr: "bar1", Project: "barprj", TotalGPUEnergyUsage: 200},
+	{UUID: "20001", Usr: "bar3", Project: "barprj", AveCPUUsage: 20, AveGPUMemUsage: 40},
+	{UUID: "20002", Usr: "bar3", Project: "barprj", TotalGPUEmissions: 40},
+}
 
 func newMockUpdater(logger log.Logger) (*updater.UnitUpdater, error) {
 	return &updater.UnitUpdater{
@@ -229,14 +246,14 @@ func TestUnitStatsDBEntries(t *testing.T) {
 		t.Errorf("expected one err from fetcher got none")
 	}
 
-	// Try to insert data. It should fail
+	// Try to insert data
 	err = s.Collect()
 	if err != nil {
 		t.Errorf("Failed to collect units data: %s", err)
 	}
 
-	// Make query
-	rows, err := s.db.Query("SELECT uuid,usr FROM units ORDER BY uuid")
+	// Make units query
+	rows, err := s.db.Query("SELECT uuid,usr,project,avg_cpu_usage,avg_cpu_mem_usage,total_cpu_energy_usage_kwh,total_cpu_emissions_gms,avg_gpu_usage,avg_gpu_mem_usage,total_gpu_energy_usage_kwh,total_gpu_emissions_gms FROM units ORDER BY uuid")
 	if err != nil {
 		t.Errorf("Failed to make DB query")
 	}
@@ -246,7 +263,11 @@ func TestUnitStatsDBEntries(t *testing.T) {
 	for rows.Next() {
 		var unit models.Unit
 
-		if err = rows.Scan(&unit.UUID, &unit.Usr); err != nil {
+		if err = rows.Scan(
+			&unit.UUID, &unit.Usr, &unit.Project, &unit.AveCPUUsage,
+			&unit.AveCPUMemUsage, &unit.TotalCPUEnergyUsage,
+			&unit.TotalCPUEmissions, &unit.AveGPUUsage, &unit.AveGPUMemUsage,
+			&unit.TotalGPUEnergyUsage, &unit.TotalGPUEmissions); err != nil {
 			t.Errorf("failed to scan row: %s", err)
 		}
 		units = append(units, unit)
@@ -255,6 +276,26 @@ func TestUnitStatsDBEntries(t *testing.T) {
 	if !reflect.DeepEqual(units, mockUpdatedUnits) {
 		t.Errorf("expected %#v, \n got %#v", mockUpdatedUnits, units)
 	}
+
+	// Make usage query
+	rows, err = s.db.Query("SELECT avg_cpu_usage,num_updates FROM usage WHERE usr = 'foo1'")
+	if err != nil {
+		t.Errorf("Failed to make DB query")
+	}
+	defer rows.Close()
+
+	var cpuUsage float64
+	var numUpdates int64
+	for rows.Next() {
+		if err = rows.Scan(&cpuUsage, &numUpdates); err != nil {
+			t.Errorf("failed to scan row: %s", err)
+		}
+	}
+
+	if cpuUsage != 12.5 {
+		t.Errorf("expected 12.5, \n got %f", cpuUsage)
+	}
+
 	// Close DB
 	s.Stop()
 }
@@ -340,8 +381,8 @@ func TestUnitStatsDBBackup(t *testing.T) {
 	for rows.Next() {
 		numRows += 1
 	}
-	if numRows != 6 {
-		t.Errorf("Backup DB check failed. Expected rows 6 , Got %d.", numRows)
+	if numRows != 7 {
+		t.Errorf("Backup DB check failed. Expected rows 7 , Got %d.", numRows)
 	}
 }
 

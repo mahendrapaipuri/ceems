@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
-	"github.com/mahendrapaipuri/ceems/internal/structset"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 )
 
@@ -32,10 +31,16 @@ var (
 	UsageDBTableColNames = models.Usage{}.TagNames("sql")
 )
 
-// Map of field names to DB column type
+// Map of struct field name to DB column name
 var (
-	UnitsDBTableColTypeMap = structset.GetStructFieldTagMap(models.Unit{}, "sql", "sqlitetype")
-	UsageDBTableColTypeMap = structset.GetStructFieldTagMap(models.Usage{}, "sql", "sqlitetype")
+	UnitsDBTableStructFieldColNameMap = models.Unit{}.TagMap("", "sql")  // structset.GetStructFieldTagMap(models.Unit{}, "", "sql")
+	UsageDBTableStructFieldColNameMap = models.Usage{}.TagMap("", "sql") // structset.GetStructFieldTagMap(models.Usage{}, "", "sql")
+)
+
+// Map of DB column names to DB column type
+var (
+	UnitsDBTableColTypeMap = models.Unit{}.TagMap("sql", "sqlitetype")  // structset.GetStructFieldTagMap(models.Unit{}, "sql", "sqlitetype")
+	UsageDBTableColTypeMap = models.Usage{}.TagMap("sql", "sqlitetype") // structset.GetStructFieldTagMap(models.Usage{}, "sql", "sqlitetype")
 )
 
 // DatetimeLayout to be used in the package

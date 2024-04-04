@@ -255,7 +255,7 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 			// If job has not started between interval's start and end time,
 			// elapsedTime should be zero. This can happen when job is in pending state
 			// after submission
-			if jobStartTS > intEndTS {
+			if jobStartTS == 0 {
 				endMark = startMark
 				goto elapsed
 			}
