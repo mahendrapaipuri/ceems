@@ -4,12 +4,12 @@ ceems_compute_unit_cpu_psi_seconds{hostname="",manager="slurm",project="testacc"
 ceems_compute_unit_cpu_psi_seconds{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 0
 ceems_compute_unit_cpu_psi_seconds{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 0
 # HELP ceems_compute_unit_cpu_system_seconds_total Total job CPU system seconds
-# TYPE ceems_compute_unit_cpu_system_seconds_total gauge
+# TYPE ceems_compute_unit_cpu_system_seconds_total counter
 ceems_compute_unit_cpu_system_seconds_total{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 115.777502
 ceems_compute_unit_cpu_system_seconds_total{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 115.777502
 ceems_compute_unit_cpu_system_seconds_total{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 115.777502
 # HELP ceems_compute_unit_cpu_user_seconds_total Total job CPU user seconds
-# TYPE ceems_compute_unit_cpu_user_seconds_total gauge
+# TYPE ceems_compute_unit_cpu_user_seconds_total counter
 ceems_compute_unit_cpu_user_seconds_total{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 60375.292848
 ceems_compute_unit_cpu_user_seconds_total{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 60375.292848
 ceems_compute_unit_cpu_user_seconds_total{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 60375.292848
