@@ -27,6 +27,7 @@ import (
 
 const (
 	slurmCollectorSubsystem = "slurm"
+	genericSubsystem        = "compute"
 )
 
 var (
@@ -217,109 +218,109 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 		gpuDevs:          gpuDevs,
 		hostMemTotal:     memTotal,
 		numJobs: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "jobs"),
+			prometheus.BuildFQName(Namespace, genericSubsystem, "units"),
 			"Total number of jobs",
 			[]string{"manager", "hostname"},
 			nil,
 		),
 		jobCPUUser: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_cpu_user_seconds"),
+			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_cpu_user_seconds_total"),
 			"Total job CPU user seconds",
 			[]string{"manager", "hostname", "user", "project", "uuid"},
 			nil,
 		),
 		jobCPUSystem: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_cpu_system_seconds"),
+			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_cpu_system_seconds_total"),
 			"Total job CPU system seconds",
 			[]string{"manager", "hostname", "user", "project", "uuid"},
 			nil,
 		),
 		// cpuTotal: prometheus.NewDesc(
-		// 	prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_cpu_total_seconds"),
+		// 	prometheus.BuildFQName(Namespace, genericSubsystem, "job_cpu_total_seconds"),
 		// 	"Total job CPU total seconds",
 		// 	[]string{"manager", "hostname", "user", "project", "uuid"},
 		// 	nil,
 		// ),
 		jobCPUs: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_cpus"),
+			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_cpus"),
 			"Total number of job CPUs",
 			[]string{"manager", "hostname", "user", "project", "uuid"},
 			nil,
 		),
 		jobCPUPressure: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_cpu_psi_seconds"),
+			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_cpu_psi_seconds"),
 			"Total CPU PSI in seconds",
 			[]string{"manager", "hostname", "user", "project", "uuid"},
 			nil,
 		),
 		jobMemoryRSS: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_memory_rss_bytes"),
+			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_memory_rss_bytes"),
 			"Memory RSS used in bytes",
 			[]string{"manager", "hostname", "user", "project", "uuid"},
 			nil,
 		),
 		jobMemoryCache: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_memory_cache_bytes"),
+			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_memory_cache_bytes"),
 			"Memory cache used in bytes",
 			[]string{"manager", "hostname", "user", "project", "uuid"},
 			nil,
 		),
 		jobMemoryUsed: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_memory_used_bytes"),
+			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_memory_used_bytes"),
 			"Memory used in bytes",
 			[]string{"manager", "hostname", "user", "project", "uuid"},
 			nil,
 		),
 		jobMemoryTotal: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_memory_total_bytes"),
+			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_memory_total_bytes"),
 			"Memory total in bytes",
 			[]string{"manager", "hostname", "user", "project", "uuid"},
 			nil,
 		),
 		jobMemoryFailCount: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_memory_fail_count"),
+			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_memory_fail_count"),
 			"Memory fail count",
 			[]string{"manager", "hostname", "user", "project", "uuid"},
 			nil,
 		),
 		jobMemswUsed: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_memsw_used_bytes"),
+			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_memsw_used_bytes"),
 			"Swap used in bytes",
 			[]string{"manager", "hostname", "user", "project", "uuid"},
 			nil,
 		),
 		jobMemswTotal: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_memsw_total_bytes"),
+			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_memsw_total_bytes"),
 			"Swap total in bytes",
 			[]string{"manager", "hostname", "user", "project", "uuid"},
 			nil,
 		),
 		jobMemswFailCount: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_memsw_fail_count"),
+			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_memsw_fail_count"),
 			"Swap fail count",
 			[]string{"manager", "hostname", "user", "project", "uuid"},
 			nil,
 		),
 		jobMemoryPressure: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_memory_psi_seconds"),
+			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_memory_psi_seconds"),
 			"Total memory PSI in seconds",
 			[]string{"manager", "hostname", "user", "project", "uuid"},
 			nil,
 		),
 		jobRDMAHCAHandles: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_rdma_hca_handles"),
+			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_rdma_hca_handles"),
 			"Current number of RDMA HCA handles",
 			[]string{"manager", "hostname", "user", "project", "uuid", "device"},
 			nil,
 		),
 		jobRDMAHCAObjects: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_rdma_hca_objects"),
+			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_rdma_hca_objects"),
 			"Current number of RDMA HCA objects",
 			[]string{"manager", "hostname", "user", "project", "uuid", "device"},
 			nil,
 		),
 		jobGpuFlag: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "job_gpu_index_flag"),
+			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_gpu_index_flag"),
 			"Indicates running job on GPU, 1=job running",
 			[]string{
 				"manager",
@@ -334,7 +335,7 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 			nil,
 		),
 		collectError: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, slurmCollectorSubsystem, "collect_error"),
+			prometheus.BuildFQName(Namespace, genericSubsystem, "collect_error"),
 			"Indicates collection error, 0=no error, 1=error",
 			[]string{"manager", "hostname", "user", "project", "uuid"},
 			nil,
