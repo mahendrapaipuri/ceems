@@ -58,7 +58,7 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: release-artifacts
+          path: .tarballs
       
       - name: Publish release
-        run: |
-          promu release .tarballs
+        run: promu release .tarballs
