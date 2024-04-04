@@ -28,12 +28,12 @@ queries: {}
   #   avg_over_time(
   #     avg by (uuid) (
   #       (
-  #         rate(ceems_slurm_job_cpu_user_seconds{uuid=~"{{.UUIDs}}"}[{{.RateInterval}}])
+  #         rate(ceems_compute_unit_cpu_user_seconds{uuid=~"{{.UUIDs}}"}[{{.RateInterval}}])
   #         +
-  #         rate(ceems_slurm_job_cpu_system_seconds{uuid=~"{{.UUIDs}}"}[{{.RateInterval}}])
+  #         rate(ceems_compute_unit_cpu_system_seconds{uuid=~"{{.UUIDs}}"}[{{.RateInterval}}])
   #       )
   #       /
-  #       ceems_slurm_job_cpus{uuid=~"{{.UUIDs}}"}
+  #       ceems_compute_unit_cpus{uuid=~"{{.UUIDs}}"}
   #     )[{{.Range}}:]
   #   ) * 100
 
@@ -41,9 +41,9 @@ queries: {}
   # avg_cpu_mem_usage: |
   #   avg_over_time(
   #     avg by (uuid) (
-  #       ceems_slurm_job_memory_used_bytes{uuid=~"{{.UUIDs}}"}
+  #       ceems_compute_unit_memory_used_bytes{uuid=~"{{.UUIDs}}"}
   #       /
-  #       ceems_slurm_job_memory_total_bytes{uuid=~"{{.UUIDs}}"}
+  #       ceems_compute_unit_memory_total_bytes{uuid=~"{{.UUIDs}}"}
   #     )[{{.Range}}:]
   #   ) * 100
 
@@ -51,7 +51,7 @@ queries: {}
   # total_cpu_energy_usage_kwh: |
   #   sum_over_time(
   #     sum by (uuid) (
-  #       unit:ceems_slurm_job_cpu_energy_usage:sum{uuid=~"{{.UUIDs}}"} * {{.ScrapeIntervalMilli}} / 3.6e9
+  #       unit:ceems_compute_unit_cpu_energy_usage:sum{uuid=~"{{.UUIDs}}"} * {{.ScrapeIntervalMilli}} / 3.6e9
   #     )[{{.Range}}:{{.ScrapeInterval}}]
   #   )
 
@@ -60,7 +60,7 @@ queries: {}
   #   sum_over_time(
   #     sum by (uuid) (
   #       label_replace(
-  #         unit:ceems_slurm_job_cpu_energy_usage:sum{uuid=~"{{.UUIDs}}"} * {{.ScrapeIntervalMilli}} / 3.6e9,
+  #         unit:ceems_compute_unit_cpu_energy_usage:sum{uuid=~"{{.UUIDs}}"} * {{.ScrapeIntervalMilli}} / 3.6e9,
   #         "common_label",
   #         "mock",
   #         "hostname",
@@ -83,7 +83,7 @@ queries: {}
   #     avg by (uuid) (
   #       DCGM_FI_DEV_GPU_UTIL
   #       * on (gpuuuid) group_right ()
-  #       ceems_slurm_job_gpu_index_flag{uuid=~"{{.UUIDs}}"}
+  #       ceems_compute_unit_gpu_index_flag{uuid=~"{{.UUIDs}}"}
   #     )[{{.Range}}:{{.ScrapeInterval}}]
   #   )
 
@@ -93,7 +93,7 @@ queries: {}
   #     avg by (uuid) (
   #       DCGM_FI_DEV_MEM_COPY_UTIL
   #       * on (gpuuuid) group_right ()
-  #       ceems_slurm_job_gpu_index_flag{uuid=~"{{.UUIDs}}"}
+  #       ceems_compute_unit_gpu_index_flag{uuid=~"{{.UUIDs}}"}
   #     )[{{.Range}}:{{.ScrapeInterval}}]
   #   )
 
@@ -103,7 +103,7 @@ queries: {}
   #     sum by (uuid) (
   #       instance:DCGM_FI_DEV_POWER_USAGE:pue_avg * {{.ScrapeIntervalMilli}} / 3.6e9
   #       * on (gpuuuid) group_right()
-  #       ceems_slurm_job_gpu_index_flag{uuid=~"{{.UUIDs}}"}
+  #       ceems_compute_unit_gpu_index_flag{uuid=~"{{.UUIDs}}"}
   #     )[{{.Range}}:{{.ScrapeInterval}}]
   #   )
 
@@ -114,7 +114,7 @@ queries: {}
   #       label_replace(
   #         instance:DCGM_FI_DEV_POWER_USAGE:pue_avg * {{.ScrapeIntervalMilli}} / 3.6e+09
   #         * on (gpuuuid) group_right ()
-  #         ceems_slurm_job_gpu_index_flag{uuid=~"{{.UUIDs}}"},
+  #         ceems_compute_unit_gpu_index_flag{uuid=~"{{.UUIDs}}"},
   #         "common_label",
   #         "mock",
   #         "instance",

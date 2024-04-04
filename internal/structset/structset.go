@@ -40,9 +40,12 @@ func GetStructFieldNames(Struct interface{}) []string {
 // }
 
 // Get tag value of field. If tag value is "-", return lower case value of field name
+// If tag is empty, return name of field in map key
 func getTagValue(field reflect.StructField, tag string) string {
 	if field.Tag.Get(tag) == "-" {
 		return strings.ToLower(field.Name)
+	} else if field.Tag.Get(tag) == "" {
+		return field.Name
 	} else {
 		return field.Tag.Get(tag)
 	}
