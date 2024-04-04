@@ -372,8 +372,8 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 		}
 
 		// CPU stats
-		ch <- prometheus.MustNewConstMetric(c.jobCPUUser, prometheus.GaugeValue, m.cpuUser, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
-		ch <- prometheus.MustNewConstMetric(c.jobCPUSystem, prometheus.GaugeValue, m.cpuSystem, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
+		ch <- prometheus.MustNewConstMetric(c.jobCPUUser, prometheus.CounterValue, m.cpuUser, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
+		ch <- prometheus.MustNewConstMetric(c.jobCPUSystem, prometheus.CounterValue, m.cpuSystem, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
 		// ch <- prometheus.MustNewConstMetric(c.cpuTotal, prometheus.GaugeValue, m.cpuTotal, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
 		cpus := m.cpus
 		if cpus == 0 {
