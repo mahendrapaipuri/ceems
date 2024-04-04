@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.1.0-rc.6 / 2024-04-04
+
+- [REFACTOR] Use generic name in metric names [#65](https://github.com/mahendrapaipuri/ceems/pull/65) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Use custom float64 type [#62](https://github.com/mahendrapaipuri/ceems/pull/62) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Configurable TSDB updater queries and DB migrations [#64](https://github.com/mahendrapaipuri/ceems/pull/64) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Use custom float64 type [#62](https://github.com/mahendrapaipuri/ceems/pull/62) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [TEST] Add unit tests [#61](https://github.com/mahendrapaipuri/ceems/pull/61) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [CI] Fix go coverage badge in README [#60](https://github.com/mahendrapaipuri/ceems/pull/60) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [CI] Add coverage badge to README [#59](https://github.com/mahendrapaipuri/ceems/pull/59) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Debian and RPM packaging  [#58](https://github.com/mahendrapaipuri/ceems/pull/58) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Add a default resource manager [#57](https://github.com/mahendrapaipuri/ceems/pull/57) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Auto detect IPMI command and add support for capmc [#56](https://github.com/mahendrapaipuri/ceems/pull/44) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] chore: Several enhancements for CEEMS LB [#54](https://github.com/mahendrapaipuri/ceems/pull/54) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Incremental metrics aggregation [#53](https://github.com/mahendrapaipuri/ceems/pull/53) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [MAINT] Backend Auth for CEEMS LB  [#52](https://github.com/mahendrapaipuri/ceems/pull/52) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+
 ## 0.1.0-rc.5 / 2024-03-02
 
 - [FEATURE] feat: Support RDMA stats in exporter [#45](https://github.com/mahendrapaipuri/ceems/pull/45) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
@@ -35,7 +51,6 @@
 - [FEATURE] Export min and max power readings from ipmi [#21](https://github.com/mahendrapaipuri/ceems/pull/21) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
 - [FEATURE] Add hostname label to exporter metrics [#20](https://github.com/mahendrapaipuri/ceems/pull/20) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
 - [BUGFIX] Correct env var name for getting gpu index [#19](https://github.com/mahendrapaipuri/ceems/pull/19) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
-
 
 ## 0.1.0-rc.2 / 2023-12-26
 
