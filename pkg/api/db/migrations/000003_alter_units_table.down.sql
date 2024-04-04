@@ -1,7 +1,8 @@
 DROP INDEX IF EXISTS uq_uuid_start;
 DROP INDEX IF EXISTS idx_usr_uuid;
 DROP INDEX IF EXISTS idx_usr_project_start;
-ALTER TABLE units DROP COLUMN num_intervals;
+ALTER TABLE usage DROP COLUMN num_updates;
+ALTER TABLE units DROP COLUMN num_updates;
 ALTER TABLE units RENAME COLUMN ended_at_ts to end_ts;
 ALTER TABLE units RENAME COLUMN started_at_ts to start_ts;
 ALTER TABLE units RENAME COLUMN created_at_ts to submit_ts;
