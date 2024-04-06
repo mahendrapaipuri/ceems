@@ -394,9 +394,9 @@ func (t *tsdbUpdater) deleteTimeSeries(startTime time.Time, endTime time.Time, u
 }
 
 // sanitizeValue verifies if value is either NaN/Inf/-Inf.
-// If value is any of these, zero will be returned
+// If value is any of these, zero will be returned. Returns 0 if value is negative
 func sanitizeValue(val float64) models.JSONFloat {
-	if math.IsNaN(val) || math.IsInf(val, 0) {
+	if math.IsNaN(val) || math.IsInf(val, 0) || val < 0 {
 		return models.JSONFloat(0)
 	}
 	return models.JSONFloat(val)
