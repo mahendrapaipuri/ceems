@@ -28,9 +28,9 @@ queries: {}
   #   avg_over_time(
   #     avg by (uuid) (
   #       (
-  #         rate(ceems_compute_unit_cpu_user_seconds{uuid=~"{{.UUIDs}}"}[{{.RateInterval}}])
+  #         rate(ceems_compute_unit_cpu_user_seconds_total{uuid=~"{{.UUIDs}}"}[{{.RateInterval}}])
   #         +
-  #         rate(ceems_compute_unit_cpu_system_seconds{uuid=~"{{.UUIDs}}"}[{{.RateInterval}}])
+  #         rate(ceems_compute_unit_cpu_system_seconds_total{uuid=~"{{.UUIDs}}"}[{{.RateInterval}}])
   #       )
   #       /
   #       ceems_compute_unit_cpus{uuid=~"{{.UUIDs}}"}

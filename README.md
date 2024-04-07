@@ -176,7 +176,7 @@ SLURM job properties can be used here as well
 Currently the exporter supports few different ways to get these job properties.
 
 - Use prolog and epilog scripts to get the GPU to job ID map. Example prolog script 
-is provided in the [repo](./configs/slurm/prolog.d/gpujobmap.sh). Similarly, this approach 
+is provided in the [repo](./etc/slurm/prolog.d/gpujobmap.sh). Similarly, this approach 
 needs `--collector.slurm.gpu.job.map.path=/run/gpujobmap` command line option.
 
 - Reading env vars from `/proc`: If the file created by prolog script cannot be found, 
