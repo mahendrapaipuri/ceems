@@ -201,7 +201,7 @@ skip-checkmetrics: $(PROMTOOL)
 .PHONY: checkrules
 checkrules: $(PROMTOOL)
 	@echo ">> checking rules for correctness"
-	find . -name "*rules*.yml" | xargs -I {} $(PROMTOOL) check rules {}
+	find . -name "*.rules" | xargs -I {} $(PROMTOOL) check rules {}
 
 .PHONY: skip-checkrules
 skip-checkrules: $(PROMTOOL)
