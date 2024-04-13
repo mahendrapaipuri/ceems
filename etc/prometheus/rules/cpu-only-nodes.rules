@@ -22,8 +22,8 @@
 #
 # At node level, power consumed by CPU and DRAM can be estimated as
 #
-# node_cpu_power = 0.9 * ipmi_power * (rapl_package/(rapl_package * rapl_dram))
-# node_dram_power = 0.9 * ipmi_power * (rapl_dram/(rapl_package * rapl_dram))
+# node_cpu_power = 0.9 * ipmi_power * (rapl_package/(rapl_package + rapl_dram))
+# node_dram_power = 0.9 * ipmi_power * (rapl_dram/(rapl_package + rapl_dram))
 #
 # Now we have power usage at node level for CPU and DRAM. We split it further at the
 # compute unit level using CPU time and DRAM usage by the compute unit. For network power usage, we split

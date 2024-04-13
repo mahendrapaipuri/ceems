@@ -138,6 +138,18 @@ then
   then
     desc="basic e2e load balancer test"
     fixture='pkg/lb/testdata/output/e2e-test-lb-server.txt'
+  elif [ "${scenario}" = "lb-forbid-user-query" ]
+  then
+    desc="e2e load balancer test that forbids user query for backend"
+    fixture='pkg/lb/testdata/output/e2e-test-lb-forbid-user-query.txt'
+  elif [ "${scenario}" = "lb-allow-user-query" ]
+  then
+    desc="e2e load balancer test that allow user query for backend"
+    fixture='pkg/lb/testdata/output/e2e-test-lb-allow-user-query.txt'
+  elif [ "${scenario}" = "lb-allow-admin-query" ]
+  then
+    desc="e2e load balancer test that allows admin user query for backend"
+    fixture='pkg/lb/testdata/output/e2e-test-lb-allow-admin-query.txt'
   elif [ "${scenario}" = "lb-auth" ]
   then
     desc="basic e2e load balancer test with auth configued for backend"
@@ -195,7 +207,7 @@ get() {
 }
 
 waitport() {
-  timeout 5 bash -c "while ! curl -s -f "http://localhost:${1}" > /dev/null; do sleep 0.1; done";
+  timeout 5 bash -c "while ! curl -H 'X-Grafana-User: usr1' -s "http://localhost:${1}" > /dev/null; do sleep 0.1; done";
   sleep 1
 }
 
@@ -398,6 +410,93 @@ then
 
   get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/v1/status/config" > "${fixture_output}"
 
+elif [[ "${scenario}" = "lb-forbid-user-query" ]] 
+then
+  if [ ! -x ./bin/ceems_lb ]
+  then
+      echo './bin/ceems_lb not found. Consider running `go build` first.' >&2
+      exit 1
+  fi
+
+  export PATH="${GOBIN:-}:${PATH}"
+  prometheus \
+    --config.file pkg/lb/testdata/prometheus.yml \
+    --storage.tsdb.path "${tmpdir}" \
+    --log.level="debug" >> "${logfile}" 2>&1 &
+  PROMETHEUS_PID=$!
+
+  waitport "9090"
+
+  ./bin/ceems_lb \
+    --config.file pkg/lb/testdata/config.yml \
+    --web.listen-address="127.0.0.1:${port}" \
+    --log.level="debug" >> "${logfile}" 2>&1 &
+  LB_PID=$!
+
+  echo "${PROMETHEUS_PID} ${LB_PID}" > "${pidfile}"
+
+  waitport "${port}"
+
+  get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/v1/query?query=foo\{uuid=\"1479765\"\}&time=1713032179.506" > "${fixture_output}"
+
+elif [[ "${scenario}" = "lb-allow-user-query" ]] 
+then
+  if [ ! -x ./bin/ceems_lb ]
+  then
+      echo './bin/ceems_lb not found. Consider running `go build` first.' >&2
+      exit 1
+  fi
+
+  export PATH="${GOBIN:-}:${PATH}"
+  prometheus \
+    --config.file pkg/lb/testdata/prometheus.yml \
+    --storage.tsdb.path "${tmpdir}" \
+    --log.level="debug" >> "${logfile}" 2>&1 &
+  PROMETHEUS_PID=$!
+
+  waitport "9090"
+
+  ./bin/ceems_lb \
+    --config.file pkg/lb/testdata/config.yml \
+    --web.listen-address="127.0.0.1:${port}" \
+    --log.level="debug" >> "${logfile}" 2>&1 &
+  LB_PID=$!
+
+  echo "${PROMETHEUS_PID} ${LB_PID}" > "${pidfile}"
+
+  waitport "${port}"
+
+  get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/v1/query?query=foo\{uuid=\"1479763\"\}&time=1713032179.506" > "${fixture_output}"
+
+elif [[ "${scenario}" = "lb-allow-admin-query" ]] 
+then
+  if [ ! -x ./bin/ceems_lb ]
+  then
+      echo './bin/ceems_lb not found. Consider running `go build` first.' >&2
+      exit 1
+  fi
+
+  export PATH="${GOBIN:-}:${PATH}"
+  prometheus \
+    --config.file pkg/lb/testdata/prometheus.yml \
+    --storage.tsdb.path "${tmpdir}" \
+    --log.level="debug" >> "${logfile}" 2>&1 &
+  PROMETHEUS_PID=$!
+
+  waitport "9090"
+
+  ./bin/ceems_lb \
+    --config.file pkg/lb/testdata/config.yml \
+    --web.listen-address="127.0.0.1:${port}" \
+    --log.level="debug" >> "${logfile}" 2>&1 &
+  LB_PID=$!
+
+  echo "${PROMETHEUS_PID} ${LB_PID}" > "${pidfile}"
+
+  waitport "${port}"
+
+  get -H "X-Grafana-User: adm1" "127.0.0.1:${port}/api/v1/query?query=foo\{uuid=\"1479765\"\}&time=1713032179.506" > "${fixture_output}"
+
 elif [[ "${scenario}" = "lb-auth" ]] 
 then
   if [ ! -x ./bin/ceems_lb ]
@@ -409,6 +508,7 @@ then
   export PATH="${GOBIN:-}:${PATH}"
   prometheus \
     --config.file pkg/lb/testdata/prometheus.yml \
+    --web.config.file pkg/lb/testdata/web-config.yml \
     --storage.tsdb.path "${tmpdir}" \
     --log.level="debug" >> "${logfile}" 2>&1 &
   PROMETHEUS_PID=$!

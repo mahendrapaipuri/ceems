@@ -1,3 +1,6 @@
 strategy: resource-based
+db_path: ./pkg/lb/testdata/ceems_api_server.db
+admin_users: 
+  - adm1
 backends:
   - url: "http://localhost:9090"

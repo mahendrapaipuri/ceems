@@ -34,12 +34,12 @@ func TestCEEMSLBExecutable(t *testing.T) {
 		t.Error(err)
 	}
 
-	usagestats := exec.Command(
+	lb := exec.Command(
 		binary, "--path.data", tmpDir,
 		"--config.path", tmpConfigPath,
 		"--web.listen-address", address,
 	)
-	if err := runCommandAndTests(usagestats); err != nil {
+	if err := runCommandAndTests(lb); err != nil {
 		t.Error(err)
 	}
 }
