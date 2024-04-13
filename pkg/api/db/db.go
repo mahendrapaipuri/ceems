@@ -467,6 +467,7 @@ func (s *statsDB) execStatements(statements map[string]*sql.Stmt, units []models
 			sql.Named(base.UsageDBTableStructFieldColNameMap["NumUnits"], unitIncr),
 			sql.Named(base.UsageDBTableStructFieldColNameMap["Project"], unit.Project),
 			sql.Named(base.UsageDBTableStructFieldColNameMap["Usr"], unit.Usr),
+			sql.Named(base.UsageDBTableStructFieldColNameMap["LastUpdatedAt"], time.Now().Format(base.DatetimeLayout)),
 			sql.Named(base.UsageDBTableStructFieldColNameMap["TotalCPUBilling"], unit.TotalCPUBilling),
 			sql.Named(base.UsageDBTableStructFieldColNameMap["TotalGPUBilling"], unit.TotalGPUBilling),
 			sql.Named(base.UsageDBTableStructFieldColNameMap["TotalMiscBilling"], unit.TotalMiscBilling),
