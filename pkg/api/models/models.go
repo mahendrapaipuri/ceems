@@ -74,6 +74,7 @@ type Usage struct {
 	NumUnits            int64     `json:"num_units"                  sql:"num_units"                  sqlitetype:"integer"` // Number of consumed units
 	Project             string    `json:"project"                    sql:"project"                    sqlitetype:"text"`    // Account in batch systems, Tenant in Openstack, Namespace in k8s
 	Usr                 string    `json:"usr"                        sql:"usr"                        sqlitetype:"text"`    // Username
+	LastUpdatedAt       string    `json:"-"                          sql:"last_updated_at"            sqlitetype:"text"`    // Last updated time. It can be used to clean up DB
 	TotalCPUBilling     int64     `json:"total_cpu_billing"          sql:"total_cpu_billing"          sqlitetype:"integer"` // Total CPU billing for project
 	TotalGPUBilling     int64     `json:"total_gpu_billing"          sql:"total_gpu_billing"          sqlitetype:"integer"` // Total GPU billing for project
 	TotalMiscBilling    int64     `json:"total_misc_billing"         sql:"total_misc_billing"         sqlitetype:"integer"` // Total billing for project that are not in CPU and GPU billing

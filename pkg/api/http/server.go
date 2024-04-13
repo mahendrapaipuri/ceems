@@ -67,7 +67,7 @@ type Response struct {
 }
 
 var (
-	aggUsageDBCols     = make([]string, len(base.UsageDBTableColNames)+1)
+	aggUsageDBCols     = make([]string, len(base.UsageDBTableColNames))
 	defaultQueryWindow = time.Duration(2 * time.Hour) // Two hours
 )
 
@@ -77,17 +77,24 @@ func init() {
 	aggUsageDBCols[0] = "id"
 
 	// Use SQL aggregate functions in query
+	j := 0
 	for i := 0; i < len(base.UsageDBTableColNames); i++ {
 		col := base.UsageDBTableColNames[i]
-		if strings.HasPrefix(col, "avg") {
-			aggUsageDBCols[i+1] = fmt.Sprintf("AVG(%[1]s) AS %[1]s", col)
-		} else if strings.HasPrefix(col, "total") {
-			aggUsageDBCols[i+1] = fmt.Sprintf("SUM(%[1]s) AS %[1]s", col)
-		} else if strings.HasPrefix(col, "num") {
-			aggUsageDBCols[i+1] = "COUNT(id) AS num_units"
-		} else {
-			aggUsageDBCols[i+1] = col
+		// Ignore last_updated_at col
+		if slices.Contains([]string{"last_updated_at"}, col) {
+			continue
 		}
+
+		if strings.HasPrefix(col, "avg") {
+			aggUsageDBCols[j+1] = fmt.Sprintf("AVG(%[1]s) AS %[1]s", col)
+		} else if strings.HasPrefix(col, "total") {
+			aggUsageDBCols[j+1] = fmt.Sprintf("SUM(%[1]s) AS %[1]s", col)
+		} else if strings.HasPrefix(col, "num") {
+			aggUsageDBCols[j+1] = "COUNT(id) AS num_units"
+		} else {
+			aggUsageDBCols[j+1] = col
+		}
+		j++
 	}
 }
 
