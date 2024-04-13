@@ -42,6 +42,7 @@ run.sh
 *.db
 *.prof
 lasttimestamp
+!pkg/lb/testdata/ceems_api_server.db
 
 # Ignore promu related files
 promu*

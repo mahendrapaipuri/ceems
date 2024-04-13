@@ -22,10 +22,18 @@ var mockCEEMSLBApp = *kingpin.New(
 )
 
 func queryLB(address string) error {
-	resp, err := http.Get(fmt.Sprintf("http://%s", address))
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s", address), nil)
 	if err != nil {
 		return err
 	}
+
+	req.Header.Add("X-Grafana-User", "usr1")
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err

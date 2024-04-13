@@ -18,6 +18,7 @@ import (
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/log/level"
 	internal_runtime "github.com/mahendrapaipuri/ceems/internal/runtime"
+	"github.com/mahendrapaipuri/ceems/pkg/grafana"
 	tsdb "github.com/mahendrapaipuri/ceems/pkg/lb/backend"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/base"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/frontend"
@@ -102,6 +103,18 @@ func (lb *CEEMSLoadBalancer) Main() error {
 	runtime.GOMAXPROCS(*maxProcs)
 	level.Debug(logger).Log("msg", "Go MAXPROCS", "procs", runtime.GOMAXPROCS(0))
 
+	// If Grafana config found, create a new Grafana client instance
+	var grafanaClient *grafana.Grafana
+	grafanaClient, err = grafana.NewGrafana(config.Grafana.URL, config.Grafana.SkipTLSVerify, logger)
+	if err != nil {
+		return fmt.Errorf("failed to create Grafana client: %s", err)
+	}
+	if grafanaClient.Available() {
+		if err := grafanaClient.Ping(); err != nil {
+			return fmt.Errorf("Grafana at %s is unreachable: %s", grafanaClient.URL.Redacted(), err)
+		}
+	}
+
 	// Create context that listens for the interrupt signal from the OS.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -120,7 +133,9 @@ func (lb *CEEMSLoadBalancer) Main() error {
 		WebSystemdSocket: *systemdSocket,
 		WebConfigFile:    *webConfigFile,
 		DBPath:           config.DBPath,
+		AdminUsers:       config.AdminUsers,
 		Manager:          manager,
+		Grafana:          grafanaClient,
 	}
 
 	// Create frontend instance

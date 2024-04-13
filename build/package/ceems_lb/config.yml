@@ -16,6 +16,35 @@ strategy: resource-based
 # proxy request to backend or not.
 # db_path: /var/lib/ceems_api_server/ceems_api_server.db
 
+# List of admin users. 
+# Requests from users defined in this list will be passed through without 
+# any additional checks. This allows admin users to be able to access 
+# dashboards of _any_ user.
+# admin_users: []
+
+# Grafana configuration.
+# Besides the admin_users defined statically in the config, LB is capable of
+# synchronizing users from a given Grafana Team to add the users of this team
+# to the admin users. The synchronization is done every 2 hours and thus, whenever
+# a new user is added to Grafana Team, that user will have access to be able to
+# access dashboards of all users by skipping additional checks
+# grafana:
+#
+#   # URL at which Grafana is running. If Grafana and CEEMS LB are running on the 
+#   # same host, use the localhost. Else use the public URL of Grafana instance
+#   url: http://localhost:3000
+#
+#   # If Grafana is using self signed TLS, set this option to true to skip TLS
+#   # certificate check
+#   skip_tls_verify: false
+#
+#   # The ID of the Grafana team to fetch the users from. 
+#   # IMPORTANT: The CEEMS LB service should have a GRAFANA_API_TOKEN environment
+#   # variable set to be able to fetch members of this Grafana team.
+#   # Operators can create a service account and create a API token with admin scope
+#   # in this service accoount and use that token for CEEMS LB service.
+#   admin_team_id: 1
+
 # TLS is not supported for backends. CEEMS LB supports TLS and TLS terminates
 # at the LB and requests are proxied to backends on HTTP. 
 #
@@ -24,5 +53,6 @@ strategy: resource-based
 # be configured in URL with usual syntax.
 backends:
   - url: "http://localhost:9090"
+  
   # An example of configuring the basic auth username and password with backend
   # - url: "http://alice:password@localhost:9091"

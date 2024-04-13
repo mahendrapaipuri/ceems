@@ -206,10 +206,11 @@ func (b *CEEMSServer) Main() error {
 	base.GrafanaAdminTeamID = *grafanaAdminTeamID
 	grafana, err := grafana.NewGrafana(*grafanaWebURL, *grafanaWebSkipTLSVerify, logger)
 	if err != nil {
-		return fmt.Errorf("failed to create Grafana: %s", err)
+		return fmt.Errorf("failed to create Grafana client: %s", err)
 	}
 	if grafana.Available() {
 		if err := grafana.Ping(); err != nil {
+			//lint:ignore ST1005 Grafana is a noun and need to capitalize!
 			return fmt.Errorf("Grafana at %s is unreachable: %s", grafana.URL.Redacted(), err)
 		}
 	}
