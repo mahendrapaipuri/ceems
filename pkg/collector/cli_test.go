@@ -53,9 +53,16 @@ func TestCEEMSExporterAppHandler(t *testing.T) {
 func TestCEEMSExporterMain(t *testing.T) {
 	// Remove test related args and add a dummy arg
 	os.Args = append([]string{os.Args[0]}, "--web.max-requests=2")
-	a := CEEMSExporter{
-		appName: mockCEEMSExporterAppName,
-		App:     mockCEEMSExporterApp,
+
+	// Create new instance of exporter CLI app
+	a, err := NewCEEMSExporter()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Add procfs path
+	if _, err := a.App.Parse([]string{"--path.procfs", "testdata/proc"}); err != nil {
+		t.Fatal(err)
 	}
 
 	// Start Main

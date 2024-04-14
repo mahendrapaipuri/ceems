@@ -133,6 +133,7 @@ type slurmCollector struct {
 	hostname           string
 	gpuDevs            map[int]Device
 	hostMemTotal       float64
+	cpusPerCore        string
 	numJobs            *prometheus.Desc
 	jobCPUUser         *prometheus.Desc
 	jobCPUSystem       *prometheus.Desc
@@ -217,6 +218,8 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 		hostname:         hostname,
 		gpuDevs:          gpuDevs,
 		hostMemTotal:     memTotal,
+		// Ensure that cpusPerCore is at least 1 in all cases
+		cpusPerCore: strconv.Itoa(int(math.Max(1, float64(int(math.Max(float64(logicalCores), 1))/int(math.Max(float64(physicalCores), 1)))))),
 		numJobs: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, genericSubsystem, "units"),
 			"Total number of jobs",
@@ -244,7 +247,7 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 		jobCPUs: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_cpus"),
 			"Total number of job CPUs",
-			[]string{"manager", "hostname", "user", "project", "uuid"},
+			[]string{"manager", "hostname", "user", "project", "uuid", "cpuspercore"},
 			nil,
 		),
 		jobCPUPressure: prometheus.NewDesc(
@@ -383,7 +386,7 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 				cpus = metrics[filepath.Dir(dir)].cpus
 			}
 		}
-		ch <- prometheus.MustNewConstMetric(c.jobCPUs, prometheus.GaugeValue, float64(cpus), c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
+		ch <- prometheus.MustNewConstMetric(c.jobCPUs, prometheus.GaugeValue, float64(cpus), c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid, c.cpusPerCore)
 
 		// Memory stats
 		ch <- prometheus.MustNewConstMetric(c.jobMemoryRSS, prometheus.GaugeValue, m.memoryRSS, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)

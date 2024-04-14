@@ -5,6 +5,7 @@ package collector
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"sync"
 
@@ -22,8 +23,7 @@ type cpuCollector struct {
 	cpuStats      procfs.CPUStat
 	cpuStatsMutex sync.Mutex
 	hostname      string
-	physicalCores string
-	logicalCores  string
+	cpusPerCore   string
 }
 
 // Idle jump back limit in seconds.
@@ -49,35 +49,6 @@ func NewCPUCollector(logger log.Logger) (Collector, error) {
 		return nil, fmt.Errorf("failed to open procfs: %w", err)
 	}
 
-	// Get cpu info from /proc/cpuinfo
-	info, err := fs.CPUInfo()
-	if err != nil {
-		return nil, fmt.Errorf("failed to open cpuinfo: %w", err)
-	}
-
-	// Get number of physical cores
-	var socketCoreMap = make(map[string]int)
-	var logicalCores = 0
-	for _, cpu := range info {
-		socketCoreMap[cpu.PhysicalID] = int(cpu.CPUCores)
-		logicalCores++
-	}
-	physicalCores := 0
-	for _, cores := range socketCoreMap {
-		physicalCores += cores
-	}
-
-	// On ARM and some other architectures there is no CPUCores variable in the info.
-	// As HT/SMT is Intel's properitiary stuff, we can safely set
-	// physicalCores = logicalCores when physicalCores == 0 on other architectures
-	if physicalCores == 0 {
-		physicalCores = logicalCores
-	}
-
-	// In tests, the expected output is 4
-	if *emptyHostnameLabel {
-		physicalCores = 4
-	}
 	return &cpuCollector{
 		fs: fs,
 		cpu: prometheus.NewDesc(
@@ -88,13 +59,13 @@ func NewCPUCollector(logger log.Logger) (Collector, error) {
 		ncpu: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, cpuCollectorSubsystem, "count"),
 			"Number of CPUs.",
-			[]string{"hostname", "physicalcores", "logicalcores"}, nil,
+			[]string{"hostname", "cpuspercore"}, nil,
 		),
-		logger:        logger,
-		hostname:      hostname,
-		physicalCores: strconv.Itoa(physicalCores),
-		logicalCores:  strconv.Itoa(logicalCores),
-		cpuStats:      procfs.CPUStat{},
+		logger:   logger,
+		hostname: hostname,
+		// Ensure that cpusPerCore is at least 1 in all cases
+		cpusPerCore: strconv.Itoa(int(math.Max(1, float64(int(math.Max(float64(logicalCores), 1))/int(math.Max(float64(physicalCores), 1)))))),
+		cpuStats:    procfs.CPUStat{},
 	}, nil
 }
 
@@ -114,7 +85,7 @@ func (c *cpuCollector) Update(ch chan<- prometheus.Metric) error {
 	// Acquire a lock to read the stats.
 	c.cpuStatsMutex.Lock()
 	defer c.cpuStatsMutex.Unlock()
-	ch <- prometheus.MustNewConstMetric(c.ncpu, prometheus.GaugeValue, float64(ncpus), c.hostname, c.physicalCores, c.logicalCores)
+	ch <- prometheus.MustNewConstMetric(c.ncpu, prometheus.GaugeValue, float64(ncpus), c.hostname, c.cpusPerCore)
 	ch <- prometheus.MustNewConstMetric(c.cpu, prometheus.CounterValue, c.cpuStats.User, c.hostname, "user")
 	ch <- prometheus.MustNewConstMetric(c.cpu, prometheus.CounterValue, c.cpuStats.Nice, c.hostname, "nice")
 	ch <- prometheus.MustNewConstMetric(c.cpu, prometheus.CounterValue, c.cpuStats.System, c.hostname, "system")

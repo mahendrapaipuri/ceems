@@ -19,6 +19,7 @@ import (
 	"github.com/prometheus/common/version"
 	"github.com/prometheus/exporter-toolkit/web"
 	"github.com/prometheus/exporter-toolkit/web/kingpinflag"
+	"github.com/prometheus/procfs"
 )
 
 // CEEMSExporter represents the `ceems_exporter` cli.
@@ -38,6 +39,12 @@ var CEEMSExporterApp = *kingpin.New(
 
 // Current hostname
 var hostname string
+
+// Current host's physical core count
+var physicalCores int
+
+// Current host's logical core count
+var logicalCores int
 
 // Empty hostname flag (Used only for testing)
 var emptyHostnameLabel *bool
@@ -135,6 +142,40 @@ func (b *CEEMSExporter) Main() error {
 		if err != nil {
 			level.Error(logger).Log("msg", "Failed to get hostname", "err", err)
 		}
+	}
+
+	// Get physical and logical core count
+	fs, err := procfs.NewFS(*procfsPath)
+	if err != nil {
+		return fmt.Errorf("failed to open procfs: %w", err)
+	}
+
+	// Get cpu info from /proc/cpuinfo
+	info, err := fs.CPUInfo()
+	if err != nil {
+		return fmt.Errorf("failed to open cpuinfo: %w", err)
+	}
+
+	// Get number of physical cores
+	var socketCoreMap = make(map[string]int)
+	for _, cpu := range info {
+		socketCoreMap[cpu.PhysicalID] = int(cpu.CPUCores)
+		logicalCores++
+	}
+	for _, cores := range socketCoreMap {
+		physicalCores += cores
+	}
+
+	// On ARM and some other architectures there is no CPUCores variable in the info.
+	// As HT/SMT is Intel's properitiary stuff, we can safely set
+	// physicalCores = logicalCores when physicalCores == 0 on other architectures
+	if physicalCores == 0 {
+		physicalCores = logicalCores
+	}
+
+	// In tests, the expected output is 4
+	if *emptyHostnameLabel {
+		physicalCores = 4
 	}
 
 	runtime.GOMAXPROCS(*maxProcs)

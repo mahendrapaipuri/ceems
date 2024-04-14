@@ -36,15 +36,21 @@ func TestFileDescriptorLeak(t *testing.T) {
 		t.Errorf("unable to read process stats: %s", err)
 	}
 
-	fixturePath, err := filepath.Abs("../../pkg/collector/fixtures/sys/fs/cgroup")
+	sysfsPath, err := filepath.Abs("../../pkg/collector/testdata/sys/fs/cgroup")
 	if err != nil {
-		t.Errorf("Failed to read fixtures: %s", err)
+		t.Errorf("Failed to read testdata: %s", err)
+	}
+
+	procfsPath, err := filepath.Abs("../../pkg/collector/testdata/proc")
+	if err != nil {
+		t.Errorf("Failed to read testdata: %s", err)
 	}
 
 	exporter := exec.Command(
 		binary,
 		"--web.listen-address", address,
-		"--path.cgroupfs", fixturePath,
+		"--path.cgroupfs", sysfsPath,
+		"--path.procfs", procfsPath,
 	)
 	test := func(pid int) error {
 		if err := queryExporter(address); err != nil {
@@ -111,7 +117,7 @@ func runCommandAndTests(cmd *exec.Cmd, address string, fn func(pid int) error) e
 		}
 		time.Sleep(500 * time.Millisecond)
 		if cmd.Process == nil || i == 9 {
-			return fmt.Errorf("can't start command")
+			return fmt.Errorf("can't start command %s %s", cmd.Stderr, cmd.Stdout)
 		}
 	}
 
