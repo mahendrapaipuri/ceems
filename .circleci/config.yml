@@ -26,6 +26,7 @@ jobs:
     steps:
       - checkout
       - run: uname -a
+      - run: cat /proc/cpuinfo
       - run: make
       - run: CGO_BUILD=1 make
   build:
