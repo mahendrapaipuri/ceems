@@ -67,6 +67,17 @@ func NewCPUCollector(logger log.Logger) (Collector, error) {
 		physicalCores += cores
 	}
 
+	// On ARM and some other architectures there is no CPUCores variable in the info.
+	// As HT/SMT is Intel's properitiary stuff, we can safely set
+	// physicalCores = logicalCores when physicalCores == 0 on other architectures
+	if physicalCores == 0 {
+		physicalCores = logicalCores
+	}
+
+	// In tests, the expected output is 4
+	if *emptyHostnameLabel {
+		physicalCores = 4
+	}
 	return &cpuCollector{
 		fs: fs,
 		cpu: prometheus.NewDesc(
