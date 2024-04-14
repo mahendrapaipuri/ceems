@@ -62,6 +62,9 @@ ceems_compute_units{hostname="",manager="slurm"} 3
 # HELP ceems_cpu_count Number of CPUs.
 # TYPE ceems_cpu_count gauge
 ceems_cpu_count{hostname=""} 8
+# HELP ceems_cpu_per_core_count Number of logical CPUs per physical core.
+# TYPE ceems_cpu_per_core_count gauge
+ceems_cpu_per_core_count{hostname=""} 2
 # HELP ceems_cpu_seconds_total Seconds the CPUs spent in each mode.
 # TYPE ceems_cpu_seconds_total counter
 ceems_cpu_seconds_total{hostname="",mode="idle"} 89790.04
