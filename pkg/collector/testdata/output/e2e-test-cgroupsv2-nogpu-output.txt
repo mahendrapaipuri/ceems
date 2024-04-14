@@ -10,9 +10,9 @@ ceems_compute_unit_cpu_user_seconds_total{hostname="",manager="slurm",project="t
 ceems_compute_unit_cpu_user_seconds_total{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 60375.292848
 # HELP ceems_compute_unit_cpus Total number of job CPUs
 # TYPE ceems_compute_unit_cpus gauge
-ceems_compute_unit_cpus{cpuspercore="2",hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 2
-ceems_compute_unit_cpus{cpuspercore="2",hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 2
-ceems_compute_unit_cpus{cpuspercore="2",hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 2
+ceems_compute_unit_cpus{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 2
+ceems_compute_unit_cpus{hostname="",manager="slurm",project="testacc2",user="testusr2",uuid="018ce2fe-b3f9-632a-7507-0e01c2687de5"} 2
+ceems_compute_unit_cpus{hostname="",manager="slurm",project="testacc3",user="testusr2",uuid="77caf800-acd0-1fd2-7211-644e46814fc1"} 2
 # HELP ceems_compute_unit_memory_cache_bytes Memory cache used in bytes
 # TYPE ceems_compute_unit_memory_cache_bytes gauge
 ceems_compute_unit_memory_cache_bytes{hostname="",manager="slurm",project="testacc",user="testusr",uuid="0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5"} 0
@@ -55,7 +55,10 @@ ceems_compute_unit_rdma_hca_objects{device="hfi1_2",hostname="",manager="slurm",
 ceems_compute_units{hostname="",manager="slurm"} 3
 # HELP ceems_cpu_count Number of CPUs.
 # TYPE ceems_cpu_count gauge
-ceems_cpu_count{cpuspercore="2",hostname=""} 8
+ceems_cpu_count{hostname=""} 8
+# HELP ceems_cpu_per_core_count Number of logical CPUs per physical core.
+# TYPE ceems_cpu_per_core_count gauge
+ceems_cpu_per_core_count{hostname=""} 2
 # HELP ceems_cpu_seconds_total Seconds the CPUs spent in each mode.
 # TYPE ceems_cpu_seconds_total counter
 ceems_cpu_seconds_total{hostname="",mode="idle"} 89790.04
