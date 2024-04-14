@@ -11,7 +11,7 @@ executors:
   arm:
     machine:
       image: ubuntu-2204:current
-    resource_class: arm.large
+    resource_class: arm.medium
 
 jobs:
   test:
@@ -26,7 +26,6 @@ jobs:
     steps:
       - checkout
       - run: uname -a
-      - run: cat /proc/cpuinfo
       - run: make
       - run: CGO_BUILD=1 make
   build:
