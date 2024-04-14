@@ -5,6 +5,7 @@ package collector
 
 import (
 	"fmt"
+	"strconv"
 	"sync"
 
 	"github.com/go-kit/log"
@@ -21,6 +22,8 @@ type cpuCollector struct {
 	cpuStats      procfs.CPUStat
 	cpuStatsMutex sync.Mutex
 	hostname      string
+	physicalCores string
+	logicalCores  string
 }
 
 // Idle jump back limit in seconds.
@@ -46,6 +49,24 @@ func NewCPUCollector(logger log.Logger) (Collector, error) {
 		return nil, fmt.Errorf("failed to open procfs: %w", err)
 	}
 
+	// Get cpu info from /proc/cpuinfo
+	info, err := fs.CPUInfo()
+	if err != nil {
+		return nil, fmt.Errorf("failed to open cpuinfo: %w", err)
+	}
+
+	// Get number of physical cores
+	var socketCoreMap = make(map[string]int)
+	var logicalCores = 0
+	for _, cpu := range info {
+		socketCoreMap[cpu.PhysicalID] = int(cpu.CPUCores)
+		logicalCores++
+	}
+	physicalCores := 0
+	for _, cores := range socketCoreMap {
+		physicalCores += cores
+	}
+
 	return &cpuCollector{
 		fs: fs,
 		cpu: prometheus.NewDesc(
@@ -56,11 +77,13 @@ func NewCPUCollector(logger log.Logger) (Collector, error) {
 		ncpu: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, cpuCollectorSubsystem, "count"),
 			"Number of CPUs.",
-			[]string{"hostname"}, nil,
+			[]string{"hostname", "physicalcores", "logicalcores"}, nil,
 		),
-		logger:   logger,
-		hostname: hostname,
-		cpuStats: procfs.CPUStat{},
+		logger:        logger,
+		hostname:      hostname,
+		physicalCores: strconv.Itoa(physicalCores),
+		logicalCores:  strconv.Itoa(logicalCores),
+		cpuStats:      procfs.CPUStat{},
 	}, nil
 }
 
@@ -80,7 +103,7 @@ func (c *cpuCollector) Update(ch chan<- prometheus.Metric) error {
 	// Acquire a lock to read the stats.
 	c.cpuStatsMutex.Lock()
 	defer c.cpuStatsMutex.Unlock()
-	ch <- prometheus.MustNewConstMetric(c.ncpu, prometheus.GaugeValue, float64(ncpus), c.hostname)
+	ch <- prometheus.MustNewConstMetric(c.ncpu, prometheus.GaugeValue, float64(ncpus), c.hostname, c.physicalCores, c.logicalCores)
 	ch <- prometheus.MustNewConstMetric(c.cpu, prometheus.CounterValue, c.cpuStats.User, c.hostname, "user")
 	ch <- prometheus.MustNewConstMetric(c.cpu, prometheus.CounterValue, c.cpuStats.Nice, c.hostname, "nice")
 	ch <- prometheus.MustNewConstMetric(c.cpu, prometheus.CounterValue, c.cpuStats.System, c.hostname, "system")
