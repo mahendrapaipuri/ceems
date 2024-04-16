@@ -2,11 +2,9 @@
 package frontend
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
-	"io"
 	"net/http"
 	"time"
 
@@ -21,6 +19,15 @@ import (
 
 // RetryContextKey is the key used to set context value for retry
 type RetryContextKey struct{}
+
+// QueryParamsContextKey is the key used to set context value for query params
+type QueryParamsContextKey struct{}
+
+// QueryParams is the context value
+type QueryParams struct {
+	uuids       []string
+	queryPeriod time.Duration
+}
 
 // LoadBalancer is the interface to implement
 type LoadBalancer interface {
@@ -39,6 +46,7 @@ type Config struct {
 	AdminUsers       []string
 	Manager          serverpool.Manager
 	Grafana          *grafana.Grafana
+	GrafanaTeamID    string
 }
 
 // loadBalancer struct
@@ -73,10 +81,11 @@ func NewLoadBalancer(c *Config) (LoadBalancer, error) {
 		manager: c.Manager,
 		db:      db,
 		amw: authenticationMiddleware{
-			logger:     c.Logger,
-			adminUsers: c.AdminUsers,
-			grafana:    c.Grafana,
-			db:         db,
+			logger:        c.Logger,
+			adminUsers:    c.AdminUsers,
+			grafana:       c.Grafana,
+			db:            db,
+			grafanaTeamID: c.GrafanaTeamID,
 		},
 	}, nil
 }
@@ -113,49 +122,17 @@ func (lb *loadBalancer) Shutdown(ctx context.Context) error {
 // Serve serves the request using a backend TSDB server from the pool
 func (lb *loadBalancer) Serve(w http.ResponseWriter, r *http.Request) {
 	var queryPeriod time.Duration
-	var body []byte
-	var err error
 
-	// Make a new request and add newReader to that request body
-	newReq := r.Clone(r.Context())
+	// Retrieve query params from context
+	queryParams := r.Context().Value(QueryParamsContextKey{})
 
-	// If request has no body go to proxy directly
-	if r.Body == nil {
-		goto proxy
-	}
-
-	// If failed to read body, skip verification and go to request proxy
-	body, err = io.ReadAll(r.Body)
-	if err != nil {
-		level.Error(lb.logger).Log("msg", "Failed to read request body", "err", err)
-		goto proxy
-	}
-
-	// clone body to existing request and new request
-	r.Body = io.NopCloser(bytes.NewReader(body))
-	newReq.Body = io.NopCloser(bytes.NewReader(body))
-
-	// Get form values
-	if err := newReq.ParseForm(); err != nil {
-		level.Error(lb.logger).Log("msg", "Could not parse request body", "err", err)
-		goto proxy
-	}
-
-	// If not userUnits, forbid request
-	// if !lb.userUnits(newReq) {
-	// 	http.Error(w, "Bad request", http.StatusBadRequest)
-	// 	return
-	// }
-
-	// Get query period and target server will depend on this
-	if startTime, err := parseTimeParam(newReq, "start", time.Now().UTC()); err != nil {
-		level.Error(lb.logger).Log("msg", "Could not parse start query param", "err", err)
+	// Check if queryParams is nil which could happen in edge cases
+	if queryParams == nil {
 		queryPeriod = time.Duration(0 * time.Second)
 	} else {
-		queryPeriod = time.Now().UTC().Sub(startTime)
+		queryPeriod = queryParams.(*QueryParams).queryPeriod
 	}
 
-proxy:
 	// Choose target based on query Period
 	target := lb.manager.Target(queryPeriod)
 	if target != nil {

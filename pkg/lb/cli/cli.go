@@ -55,7 +55,7 @@ func (lb *CEEMSLoadBalancer) Main() error {
 		).Default("").String()
 		configFile = lb.App.Flag(
 			"config.file",
-			"Config file containing backend server web URLs.",
+			"Configuration file path.",
 		).Default("").String()
 		maxProcs = lb.App.Flag(
 			"runtime.gomaxprocs", "The target number of CPUs Go will run on (GOMAXPROCS)",
@@ -136,6 +136,7 @@ func (lb *CEEMSLoadBalancer) Main() error {
 		AdminUsers:       config.AdminUsers,
 		Manager:          manager,
 		Grafana:          grafanaClient,
+		GrafanaTeamID:    config.Grafana.AdminTeamID,
 	}
 
 	// Create frontend instance
