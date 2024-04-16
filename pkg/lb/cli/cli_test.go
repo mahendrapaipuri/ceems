@@ -102,9 +102,9 @@ func TestCEEMSLBMainSuccess(t *testing.T) {
 func TestCEEMSLBMainFail(t *testing.T) {
 	// Remove test related args and add a dummy arg
 	os.Args = []string{os.Args[0]}
-	a := CEEMSLoadBalancer{
-		appName: mockCEEMSLBAppName,
-		App:     mockCEEMSLBApp,
+	a, err := NewCEEMSLoadBalancer()
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	// Start Main

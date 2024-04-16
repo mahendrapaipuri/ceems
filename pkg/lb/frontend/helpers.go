@@ -1,14 +1,18 @@
 package frontend
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"math"
 	"net"
 	"net/http"
 	"net/url"
 	"reflect"
+	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-kit/log"
@@ -67,15 +71,68 @@ func Monitor(ctx context.Context, manager serverpool.Manager, logger log.Logger)
 	}
 }
 
-// // Returns query period based on start time of query
-// func parseQueryPeriod(r *http.Request) time.Duration {
-// 	// Parse start query string in request
-// 	start, err := parseTimeParam(r, "start", MinTime)
-// 	if err != nil {
-// 		return time.Duration(0 * time.Second)
-// 	}
-// 	return time.Now().UTC().Sub(start)
-// }
+// Set query params into request's context and return new request
+func setQueryParams(r *http.Request, queryParams *QueryParams) *http.Request {
+	return r.WithContext(context.WithValue(r.Context(), QueryParamsContextKey{}, queryParams))
+}
+
+// Parse query in the request after cloning it and add query params to context
+func parseQueryParams(r *http.Request, logger log.Logger) *http.Request {
+	var body []byte
+	var uuids []string
+	var queryPeriod time.Duration
+	var err error
+
+	// Make a new request and add newReader to that request body
+	clonedReq := r.Clone(r.Context())
+
+	// If request has no body go to proxy directly
+	if r.Body == nil {
+		return setQueryParams(r, &QueryParams{uuids, queryPeriod})
+	}
+
+	// If failed to read body, skip verification and go to request proxy
+	if body, err = io.ReadAll(r.Body); err != nil {
+		level.Error(logger).Log("msg", "Failed to read request body", "err", err)
+		return setQueryParams(r, &QueryParams{uuids, queryPeriod})
+	}
+
+	// clone body to existing request and new request
+	r.Body = io.NopCloser(bytes.NewReader(body))
+	clonedReq.Body = io.NopCloser(bytes.NewReader(body))
+
+	// Get form values
+	if err = clonedReq.ParseForm(); err != nil {
+		level.Error(logger).Log("msg", "Could not parse request body", "err", err)
+		return setQueryParams(r, &QueryParams{uuids, queryPeriod})
+	}
+
+	// Parse TSDB's query in request query params
+	if val := clonedReq.FormValue("query"); val != "" {
+		matches := regexpUUID.FindAllStringSubmatch(val, -1)
+		for _, match := range matches {
+			if len(match) > 1 {
+				for _, uuid := range strings.Split(match[1], "|") {
+					// Ignore empty strings
+					if strings.TrimSpace(uuid) != "" && !slices.Contains(uuids, uuid) {
+						uuids = append(uuids, uuid)
+					}
+				}
+			}
+		}
+	}
+
+	// Parse TSDB's start query in request query params
+	if startTime, err := parseTimeParam(clonedReq, "start", time.Now().UTC()); err != nil {
+		level.Error(logger).Log("msg", "Could not parse start query param", "err", err)
+		queryPeriod = time.Duration(0 * time.Second)
+	} else {
+		queryPeriod = time.Now().UTC().Sub(startTime)
+	}
+
+	// Set query params to request's context
+	return setQueryParams(r, &QueryParams{uuids, queryPeriod})
+}
 
 // Parse time parameter in request
 func parseTimeParam(r *http.Request, paramName string, defaultValue time.Time) (time.Time, error) {

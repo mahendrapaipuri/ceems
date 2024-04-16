@@ -13,7 +13,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 
-	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	http_api "github.com/mahendrapaipuri/ceems/pkg/api/http"
 	"github.com/mahendrapaipuri/ceems/pkg/grafana"
 )
@@ -40,6 +39,7 @@ type authenticationMiddleware struct {
 	db               *sql.DB
 	adminUsers       []string
 	grafana          *grafana.Grafana
+	grafanaTeamID    string
 	lastAdminsUpdate time.Time
 }
 
@@ -61,7 +61,7 @@ func (amw *authenticationMiddleware) isUserUnit(user string, uuids []string) boo
 			Log("msg", "Failed to get user projects. Allowing query", "user", user,
 				"queried_uuids", strings.Join(uuids, ","), "err", err,
 			)
-		return true
+		return false
 	}
 
 	// Scan project rows
@@ -78,10 +78,10 @@ func (amw *authenticationMiddleware) isUserUnit(user string, uuids []string) boo
 	// something is wrong. Spit a warning log
 	if len(projects) == 0 {
 		level.Warn(amw.logger).
-			Log("msg", "No user projects found. Allowing query", "user", user,
+			Log("msg", "No user projects found. Query unauthorized", "user", user,
 				"queried_uuids", strings.Join(uuids, ","), "err", err,
 			)
-		return true
+		return false
 	}
 
 	// Make a query and query args. Query args must be converted to slice of interfaces
@@ -97,11 +97,11 @@ func (amw *authenticationMiddleware) isUserUnit(user string, uuids []string) boo
 	rows, err = amw.db.Query(query, queryData...)
 	if err != nil {
 		level.Warn(amw.logger).
-			Log("msg", "Failed to query the uuid check. Allowing query", "user", user,
+			Log("msg", "Failed to check uuid ownership. Query unauthorized", "user", user, "query", query,
 				"user_projects", strings.Join(projects, ","), "queried_uuids", strings.Join(uuids, ","),
 				"err", err,
 			)
-		return true
+		return false
 	}
 	defer rows.Close()
 
@@ -115,7 +115,7 @@ func (amw *authenticationMiddleware) isUserUnit(user string, uuids []string) boo
 	// to query for jobs of other user
 	if uuidCount != len(uuids) {
 		level.Debug(amw.logger).
-			Log("msg", "Forbiding query", "user", user, "user_projects", strings.Join(projects, ","),
+			Log("msg", "Unauthorized query", "user", user, "user_projects", strings.Join(projects, ","),
 				"queried_uuids", len(uuids), "found_uuids", uuidCount,
 			)
 		return false
@@ -126,14 +126,16 @@ func (amw *authenticationMiddleware) isUserUnit(user string, uuids []string) boo
 // Update admin users from Grafana teams
 func (amw *authenticationMiddleware) updateAdminUsers() {
 	if amw.lastAdminsUpdate.IsZero() || time.Since(amw.lastAdminsUpdate) > time.Duration(time.Hour) {
-		adminUsers, err := amw.grafana.TeamMembers(base.GrafanaAdminTeamID)
+		adminUsers, err := amw.grafana.TeamMembers(amw.grafanaTeamID)
 		if err != nil {
 			level.Warn(amw.logger).Log("msg", "Failed to sync admin users from Grafana Teams", "err", err)
 			return
 		}
 
-		// Get list of all usernames and add them to admin users
-		amw.adminUsers = append(amw.adminUsers, adminUsers...)
+		// Get list of all usernames and add them to admin users after removing duplicates
+		latesAdminUsers := append(amw.adminUsers, adminUsers...)
+		slices.Sort(latesAdminUsers) // First sort the slice and then compact
+		amw.adminUsers = slices.Compact(latesAdminUsers)
 		level.Debug(amw.logger).
 			Log("msg", "Admin users updated from Grafana teams API", "admins", strings.Join(amw.adminUsers, ","))
 
@@ -146,7 +148,8 @@ func (amw *authenticationMiddleware) updateAdminUsers() {
 func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var loggedUser string
-		var uuids []string
+		var newReq *http.Request
+		var queryParams interface{}
 
 		// First update admin users
 		if amw.grafana.Available() {
@@ -168,6 +171,7 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 			response := http_api.Response{
 				Status:    "error",
 				ErrorType: "unauthorized",
+				Error:     "no user header found",
 			}
 			if err := json.NewEncoder(w).Encode(&response); err != nil {
 				level.Error(amw.logger).Log("msg", "Failed to encode response", "err", err)
@@ -180,44 +184,40 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 		// Set logged user header
 		r.Header.Set(loggedUserHeader, loggedUser)
 
+		// Clone request, parse query params and set them in request context
+		newReq = parseQueryParams(r, amw.logger)
+
 		// If current user is in list of admin users, dont do any checks
 		if slices.Contains(amw.adminUsers, loggedUser) {
 			goto end
 		}
 
-		// If current user is unprivileged user, introspect the request
-		// and allow only if user is querying for his/her own compute units
-		// Check if user is quering their own compute unit by looking to DB
-		if val := r.FormValue("query"); val != "" {
-			matches := regexpUUID.FindAllStringSubmatch(val, -1)
-			for _, match := range matches {
-				if len(match) > 1 {
-					for _, uuid := range strings.Split(match[1], "|") {
-						// Ignore empty strings
-						if strings.TrimSpace(uuid) != "" && !slices.Contains(uuids, uuid) {
-							uuids = append(uuids, uuid)
-						}
-					}
-				}
-			}
+		// Retrieve query params from context
+		queryParams = newReq.Context().Value(QueryParamsContextKey{})
 
-			if !amw.isUserUnit(loggedUser, uuids) {
-				// Write an error and stop the handler chain
-				w.WriteHeader(http.StatusUnauthorized)
-				response := http_api.Response{
-					Status:    "error",
-					ErrorType: "unauthorized",
-				}
-				if err := json.NewEncoder(w).Encode(&response); err != nil {
-					level.Error(amw.logger).Log("msg", "Failed to encode response", "err", err)
-					w.Write([]byte("KO"))
-				}
-				return
+		// If no query params found, pass request
+		if queryParams == nil {
+			goto end
+		}
+
+		// Check if user is querying for his/her own compute units by looking to DB
+		if !amw.isUserUnit(loggedUser, queryParams.(*QueryParams).uuids) {
+			// Write an error and stop the handler chain
+			w.WriteHeader(http.StatusUnauthorized)
+			response := http_api.Response{
+				Status:    "error",
+				ErrorType: "unauthorized",
+				Error:     "user do not have permissions to view unit metrics",
 			}
+			if err := json.NewEncoder(w).Encode(&response); err != nil {
+				level.Error(amw.logger).Log("msg", "Failed to encode response", "err", err)
+				w.Write([]byte("KO"))
+			}
+			return
 		}
 
 	end:
 		// Pass down the request to the next middleware (or final handler)
-		next.ServeHTTP(w, r)
+		next.ServeHTTP(w, newReq)
 	})
 }

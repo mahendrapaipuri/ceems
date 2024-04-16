@@ -1,8 +1,8 @@
 package frontend
 
 import (
+	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
@@ -70,48 +70,49 @@ func TestNewFrontend(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		req      string
-		header   bool
+		start    int64
 		code     int
 		response bool
 	}{
 		{
-			name:     "pass with query",
-			req:      "/test?query=foo{uuid=\"1479765|1481510\"}",
-			header:   true,
+			name:     "query with params in ctx",
+			start:    time.Now().UTC().Unix(),
 			code:     200,
 			response: true,
 		},
 		{
-			name: "pass with start and query params",
-			req: fmt.Sprintf(
-				"/test?query=foo{uuid=\"123|345\"}&start=%d",
-				time.Now().UTC().Add(-time.Duration(29*24*time.Hour)).Unix(),
-			),
-			header:   false,
+			name:     "query with no params in ctx",
 			code:     200,
 			response: true,
 		},
 		{
-			name: "no target with start more than retention period",
-			req: fmt.Sprintf(
-				"/test?query=foo{uuid=\"123|345\"}&start=%d",
-				time.Now().UTC().Add(-time.Duration(31*24*time.Hour)).Unix(),
-			),
-			header:   false,
+			name:     "query with params in ctx and start more than retention period",
+			start:    time.Now().UTC().Add(-time.Duration(31 * 24 * time.Hour)).Unix(),
 			code:     503,
 			response: false,
 		},
 	}
 
 	for _, test := range tests {
-		request := httptest.NewRequest("GET", test.req, nil)
-		if test.header {
-			request.Header.Set("X-Grafana-User", "usr1")
+		request := httptest.NewRequest("GET", "/test", nil)
+
+		// Add uuids and start to context
+		var newReq *http.Request
+		if test.start > 0 {
+			period := time.Duration((time.Now().UTC().Unix() - test.start)) * time.Second
+			newReq = request.WithContext(
+				context.WithValue(
+					request.Context(), QueryParamsContextKey{},
+					&QueryParams{queryPeriod: period},
+				),
+			)
+		} else {
+			newReq = request
 		}
+
 		responseRecorder := httptest.NewRecorder()
 
-		http.HandlerFunc(lb.Serve).ServeHTTP(responseRecorder, request)
+		http.HandlerFunc(lb.Serve).ServeHTTP(responseRecorder, newReq)
 
 		if responseRecorder.Code != test.code {
 			t.Errorf("%s: expected status %d, got %d", test.name, test.code, responseRecorder.Code)

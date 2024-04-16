@@ -495,7 +495,7 @@ then
 
   waitport "${port}"
 
-  get -H "X-Grafana-User: adm1" "127.0.0.1:${port}/api/v1/query?query=foo\{uuid=\"1479765\"\}&time=1713032179.506" > "${fixture_output}"
+  get -H "X-Grafana-User: adm1" -H "Content-Type: application/x-www-form-urlencoded" -X POST -d "query=foo{uuid=\"1479765\"}&time=1713032179.506" "127.0.0.1:${port}/api/v1/query" > "${fixture_output}"
 
 elif [[ "${scenario}" = "lb-auth" ]] 
 then
