@@ -231,6 +231,14 @@ func (s *CEEMSServer) getCommonQueryParams(q *Query, URLValues url.Values) Query
 		q.query(" AND project IN ")
 		q.param(projects)
 	}
+
+	// Check if running query param is included
+	// Running units will have ended_at_ts as 0 and we use this in query to
+	// fetch these units
+	if _, ok := URLValues["running"]; ok {
+		q.query(" OR ended_at_ts IN ")
+		q.param([]string{"0"})
+	}
 	return *q
 }
 
@@ -266,7 +274,7 @@ func (s *CEEMSServer) getQueryWindow(r *http.Request) (map[string]string, error)
 	// If difference between from and to is more than max query period, return with empty
 	// response. This is to prevent users from making "big" requests that can "potentially"
 	// choke server and end up in OOM errors
-	if toTime.Sub(fromTime) > s.maxQueryPeriod {
+	if s.maxQueryPeriod > time.Duration(0*time.Second) && toTime.Sub(fromTime) > s.maxQueryPeriod {
 		level.Error(s.logger).Log(
 			"msg", "Exceeded maximum query time window",
 			"maxQueryWindow", s.maxQueryPeriod,

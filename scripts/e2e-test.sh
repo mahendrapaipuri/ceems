@@ -90,6 +90,10 @@ then
   then
     desc="/api/units end point test with uuid query param"
     fixture='pkg/api/testdata/output/e2e-test-api-server-uuid-query.txt'
+  elif [ "${scenario}" = "api-running-query" ]
+  then
+    desc="/api/units end point test with running query param"
+    fixture='pkg/api/testdata/output/e2e-test-api-server-running-query.txt'
   elif [ "${scenario}" = "api-admin-query" ]
   then
     desc="/api/units/admin end point test for admin query"
@@ -352,6 +356,9 @@ then
   elif [ "${scenario}" = "api-uuid-query" ]
   then
     get -H "X-Grafana-User: usr2" "127.0.0.1:${port}/api/units?uuid=1481508&project=acc2" > "${fixture_output}"
+  elif [ "${scenario}" = "api-running-query" ]
+  then
+    get -H "X-Grafana-User: usr3" "127.0.0.1:${port}/api/units?running&from=1676934000&to=1677538800" > "${fixture_output}"
   elif [ "${scenario}" = "api-admin-query" ]
   then
     get -H "X-Grafana-User: grafana" -H "X-Dashboard-User: usr3" "127.0.0.1:${port}/api/units?project=acc3&from=1676934000&to=1677538800" > "${fixture_output}"
