@@ -1,3 +1,4 @@
+// Package cli implements the CLI of the CEEMS API server app
 package cli
 
 import (
@@ -33,7 +34,7 @@ type CEEMSServer struct {
 	App     kingpin.Application
 }
 
-// Create a new CEEMSServer struct
+// NewCEEMSServer creates a new CEEMSServer instance
 func NewCEEMSServer() (*CEEMSServer, error) {
 	return &CEEMSServer{
 		appName: base.CEEMSServerAppName,
@@ -54,8 +55,8 @@ func (b *CEEMSServer) Main() error {
 		).Default("").String()
 		maxQueryString = b.App.Flag(
 			"web.max.query.period",
-			"Maximum allowable query period to get usage statistics. Units Supported: y, w, d, h, m, s, ms.",
-		).Default("1w").String()
+			"Maximum allowable query period to get usage statistics. Default is 0 which means no limit. Units Supported: y, w, d, h, m, s, ms.",
+		).Default("0").String()
 		adminUsers = b.App.Flag(
 			"web.admin-users",
 			"Comma separated list of admin users (example: \"admin1,admin2\").",
