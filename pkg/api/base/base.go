@@ -33,14 +33,14 @@ var (
 
 // Map of struct field name to DB column name
 var (
-	UnitsDBTableStructFieldColNameMap = models.Unit{}.TagMap("", "sql")  // structset.GetStructFieldTagMap(models.Unit{}, "", "sql")
-	UsageDBTableStructFieldColNameMap = models.Usage{}.TagMap("", "sql") // structset.GetStructFieldTagMap(models.Usage{}, "", "sql")
+	UnitsDBTableStructFieldColNameMap = models.Unit{}.TagMap("", "sql")
+	UsageDBTableStructFieldColNameMap = models.Usage{}.TagMap("", "sql")
 )
 
 // Map of DB column names to DB column type
 var (
-	UnitsDBTableColTypeMap = models.Unit{}.TagMap("sql", "sqlitetype")  // structset.GetStructFieldTagMap(models.Unit{}, "sql", "sqlitetype")
-	UsageDBTableColTypeMap = models.Usage{}.TagMap("sql", "sqlitetype") // structset.GetStructFieldTagMap(models.Usage{}, "sql", "sqlitetype")
+	UnitsDBTableColTypeMap = models.Unit{}.TagMap("sql", "sqlitetype")
+	UsageDBTableColTypeMap = models.Usage{}.TagMap("sql", "sqlitetype")
 )
 
 // DatetimeLayout to be used in the package

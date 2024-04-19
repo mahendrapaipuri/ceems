@@ -253,7 +253,9 @@ func TestUnitStatsDBEntries(t *testing.T) {
 	}
 
 	// Make units query
-	rows, err := s.db.Query("SELECT uuid,usr,project,avg_cpu_usage,avg_cpu_mem_usage,total_cpu_energy_usage_kwh,total_cpu_emissions_gms,avg_gpu_usage,avg_gpu_mem_usage,total_gpu_energy_usage_kwh,total_gpu_emissions_gms FROM units ORDER BY uuid")
+	rows, err := s.db.Query(
+		"SELECT uuid,usr,project,avg_cpu_usage,avg_cpu_mem_usage,total_cpu_energy_usage_kwh,total_cpu_emissions_gms,avg_gpu_usage,avg_gpu_mem_usage,total_gpu_energy_usage_kwh,total_gpu_emissions_gms FROM units ORDER BY uuid",
+	)
 	if err != nil {
 		t.Errorf("Failed to make DB query")
 	}

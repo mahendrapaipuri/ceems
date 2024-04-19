@@ -98,8 +98,11 @@ func NewCPUCollector(logger log.Logger) (Collector, error) {
 		logger:   logger,
 		hostname: hostname,
 		// Ensure that cpusPerCore is at least 1 in all cases
-		cpusPerCore: math.Max(1, float64(int(math.Max(float64(logicalCores), 1))/int(math.Max(float64(physicalCores), 1)))),
-		cpuStats:    procfs.CPUStat{},
+		cpusPerCore: math.Max(
+			1,
+			float64(int(math.Max(float64(logicalCores), 1))/int(math.Max(float64(physicalCores), 1))),
+		),
+		cpuStats: procfs.CPUStat{},
 	}, nil
 }
 
