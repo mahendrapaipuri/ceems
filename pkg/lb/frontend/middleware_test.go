@@ -83,7 +83,7 @@ func setupMiddlewareWithAPI(tmpDir string) http.Handler {
 	amw := authenticationMiddleware{
 		logger:     log.NewNopLogger(),
 		adminUsers: []string{"adm1"},
-		ceems:      ceems{url: ceemsURL, client: http.DefaultClient},
+		ceems:      ceems{webURL: ceemsURL, client: http.DefaultClient},
 		grafana:    &grafana.Grafana{},
 	}
 
@@ -108,7 +108,7 @@ func setupCEEMSAPI(db *sql.DB) *httptest.Server {
 		uuids := r.URL.Query()["uuid"]
 
 		// Check if user is owner of the queries uuids
-		if http_api.UnitOwnership(user, uuids, db, log.NewNopLogger()) {
+		if http_api.VerifyOwnership(user, uuids, db, log.NewNopLogger()) {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("success"))
 		} else {

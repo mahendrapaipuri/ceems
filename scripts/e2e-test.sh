@@ -130,14 +130,14 @@ then
   then
     desc="/api/usage/current/admin end point test"
     fixture='pkg/api/testdata/output/e2e-test-api-server-current-usage-admin-denied-query.txt'
-  elif [ "${scenario}" = "api-validate-pass-query" ]
+  elif [ "${scenario}" = "api-verify-pass-query" ]
   then
-    desc="/api/units/validate end point test with pass request"
-    fixture='pkg/api/testdata/output/e2e-test-api-validate-pass-query.txt'
-  elif [ "${scenario}" = "api-validate-fail-query" ]
+    desc="/api/units/verify end point test with pass request"
+    fixture='pkg/api/testdata/output/e2e-test-api-verify-pass-query.txt'
+  elif [ "${scenario}" = "api-verify-fail-query" ]
   then
-    desc="/api/units/validate end point test with fail request"
-    fixture='pkg/api/testdata/output/e2e-test-api-validate-fail-query.txt'
+    desc="/api/units/verify end point test with fail request"
+    fixture='pkg/api/testdata/output/e2e-test-api-verify-fail-query.txt'
   fi
 
   logfile="${tmpdir}/ceems_api_server.log"
@@ -414,12 +414,12 @@ then
   elif [ "${scenario}" = "api-current-usage-admin-denied-query" ]
   then
     get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/usage/global/admin?user=usr2" > "${fixture_output}"
-  elif [ "${scenario}" = "api-validate-pass-query" ]
+  elif [ "${scenario}" = "api-verify-pass-query" ]
   then
-    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/units/validate?uuid=1479763&uuid=1479765" > "${fixture_output}"
-  elif [ "${scenario}" = "api-validate-fail-query" ]
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/units/verify?uuid=1479763&uuid=1479765" > "${fixture_output}"
+  elif [ "${scenario}" = "api-verify-fail-query" ]
   then
-    get -H "X-Grafana-User: usr2" "127.0.0.1:${port}/api/units/validate?uuid=1479763&uuid=11508" > "${fixture_output}"
+    get -H "X-Grafana-User: usr2" "127.0.0.1:${port}/api/units/verify?uuid=1479763&uuid=11508" > "${fixture_output}"
   fi
 
 elif [[ "${scenario}" =~ ^"lb" ]] 

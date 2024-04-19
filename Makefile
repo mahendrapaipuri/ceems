@@ -153,6 +153,8 @@ test-e2e: $(PROMTOOL) build pkg/collector/testdata/sys/.unpacked pkg/collector/t
 	./scripts/e2e-test.sh -s api-current-usage-admin-query
 	./scripts/e2e-test.sh -s api-global-usage-admin-query
 	./scripts/e2e-test.sh -s api-current-usage-admin-denied-query
+	./scripts/e2e-test.sh -s api-verify-pass-query
+	./scripts/e2e-test.sh -s api-verify-fail-query
 	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-basic
 	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-forbid-user-query-db
 	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-allow-user-query-db
@@ -188,6 +190,8 @@ test-e2e-update: $(PROMTOOL) build pkg/collector/testdata/sys/.unpacked pkg/coll
 	./scripts/e2e-test.sh -s api-current-usage-admin-query -u || true
 	./scripts/e2e-test.sh -s api-global-usage-admin-query -u || true
 	./scripts/e2e-test.sh -s api-current-usage-admin-denied-query -u || true
+	./scripts/e2e-test.sh -s api-verify-pass-query -u || true
+	./scripts/e2e-test.sh -s api-verify-fail-query -u || true
 	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-basic -u || true
 	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-forbid-user-query-db -u || true
 	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-allow-user-query-db -u || true

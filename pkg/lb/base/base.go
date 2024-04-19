@@ -14,14 +14,14 @@ var CEEMSLoadBalancerApp = *kingpin.New(
 
 // CEEMSAPI defines CEEMS API server struct
 type CEEMSAPI struct {
-	URL           string `yaml:"url"`
+	WebURL        string `yaml:"url"`
 	SkipTLSVerify bool   `yaml:"skip_tls_verify"`
 	DBPath        string `yaml:"db_path"`
 }
 
 // Grafana defines Grafana server struct
 type Grafana struct {
-	URL           string `yaml:"url"`
+	WebURL        string `yaml:"url"`
 	SkipTLSVerify bool   `yaml:"skip_tls_verify"`
 	AdminTeamID   string `yaml:"admin_team_id"`
 }

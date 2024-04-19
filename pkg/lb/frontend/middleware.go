@@ -36,13 +36,13 @@ var (
 // CEEMS API server struct
 type ceems struct {
 	db     *sql.DB
-	url    *url.URL
+	webURL *url.URL
 	client *http.Client
 }
 
-func (c *ceems) validateEndpoint() *url.URL {
-	if c.url != nil {
-		return c.url.JoinPath("/api/units/validate")
+func (c *ceems) verifyEndpoint() *url.URL {
+	if c.webURL != nil {
+		return c.webURL.JoinPath("/api/units/verify")
 	}
 	return nil
 }
@@ -62,19 +62,19 @@ func (amw *authenticationMiddleware) isUserUnit(user string, uuids []string) boo
 	// Always prefer checking with DB connection directly if it is available
 	// As DB query is way more faster than HTTP API request
 	if amw.ceems.db != nil {
-		return http_api.UnitOwnership(user, uuids, amw.ceems.db, amw.logger)
+		return http_api.VerifyOwnership(user, uuids, amw.ceems.db, amw.logger)
 	}
 
 	// If CEEMS URL is available make a API request
 	// Any errors in making HTTP request will fail the query. This can happen due
 	// to deployment issues and by failing queries we make operators to look into
 	// what is happening
-	if amw.ceems.validateEndpoint() != nil {
+	if amw.ceems.verifyEndpoint() != nil {
 		// Create a new POST request
-		req, err := http.NewRequest(http.MethodGet, amw.ceems.validateEndpoint().String(), nil)
+		req, err := http.NewRequest(http.MethodGet, amw.ceems.verifyEndpoint().String(), nil)
 		if err != nil {
 			level.Debug(amw.logger).
-				Log("msg", "Failed to create new request for unit validation", "user", user, "queried_uuids", strings.Join(uuids, ","), "err", err)
+				Log("msg", "Failed to create new request for unit ownership verification", "user", user, "queried_uuids", strings.Join(uuids, ","), "err", err)
 			return false
 		}
 
@@ -89,7 +89,7 @@ func (amw *authenticationMiddleware) isUserUnit(user string, uuids []string) boo
 		// goes offline and we should wait for it to come back online
 		if resp, err := amw.ceems.client.Do(req); err != nil {
 			level.Debug(amw.logger).
-				Log("msg", "Failed to make request for unit validation", "user", user, "queried_uuids", strings.Join(uuids, ","), "err", err)
+				Log("msg", "Failed to make request for unit ownership verification", "user", user, "queried_uuids", strings.Join(uuids, ","), "err", err)
 			return false
 		} else {
 			// Any status code other than 200 should be treated as check failure

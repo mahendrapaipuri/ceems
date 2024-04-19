@@ -66,7 +66,7 @@ type loadBalancer struct {
 func NewLoadBalancer(c *Config) (LoadBalancer, error) {
 	var db *sql.DB
 	var ceemsClient *http.Client
-	var ceemsURL *url.URL
+	var ceemsWebURL *url.URL
 	var err error
 
 	// Check if DB path exists and get pointer to DB connection
@@ -77,12 +77,12 @@ func NewLoadBalancer(c *Config) (LoadBalancer, error) {
 	}
 
 	// Check if URL for CEEMS API exists
-	if c.CEEMSAPI.URL == "" {
+	if c.CEEMSAPI.WebURL == "" {
 		goto outside
 	}
 
 	// Unwrap original error to avoid leaking sensitive passwords in output
-	ceemsURL, err = url.Parse(c.CEEMSAPI.URL)
+	ceemsWebURL, err = url.Parse(c.CEEMSAPI.WebURL)
 	if err != nil {
 		return nil, errors.Unwrap(err)
 	}
@@ -116,7 +116,7 @@ outside:
 			grafana:    c.Grafana,
 			ceems: ceems{
 				db:     db,
-				url:    ceemsURL,
+				webURL: ceemsWebURL,
 				client: ceemsClient,
 			},
 			grafanaTeamID: c.GrafanaTeamID,

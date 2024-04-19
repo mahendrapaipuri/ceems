@@ -105,7 +105,7 @@ func (lb *CEEMSLoadBalancer) Main() error {
 
 	// If Grafana config found, create a new Grafana client instance
 	var grafanaClient *grafana.Grafana
-	grafanaClient, err = grafana.NewGrafana(config.Grafana.URL, config.Grafana.SkipTLSVerify, logger)
+	grafanaClient, err = grafana.NewGrafana(config.Grafana.WebURL, config.Grafana.SkipTLSVerify, logger)
 	if err != nil {
 		return fmt.Errorf("failed to create Grafana client: %s", err)
 	}
