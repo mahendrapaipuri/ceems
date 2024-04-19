@@ -111,6 +111,7 @@ func (lb *CEEMSLoadBalancer) Main() error {
 	}
 	if grafanaClient.Available() {
 		if err := grafanaClient.Ping(); err != nil {
+			//lint:ignore ST1005 Grafana is noun!
 			return fmt.Errorf("Grafana at %s is unreachable: %s", grafanaClient.URL.Redacted(), err)
 		}
 	}
@@ -132,7 +133,7 @@ func (lb *CEEMSLoadBalancer) Main() error {
 		Address:          *webListenAddresses,
 		WebSystemdSocket: *systemdSocket,
 		WebConfigFile:    *webConfigFile,
-		DBPath:           config.DBPath,
+		CEEMSAPI:         config.CEEMSAPI,
 		AdminUsers:       config.AdminUsers,
 		Manager:          manager,
 		Grafana:          grafanaClient,

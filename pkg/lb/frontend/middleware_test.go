@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"path/filepath"
 	"testing"
 
 	"github.com/go-kit/log"
+	http_api "github.com/mahendrapaipuri/ceems/pkg/api/http"
 	"github.com/mahendrapaipuri/ceems/pkg/grafana"
 )
 
@@ -50,7 +52,7 @@ COMMIT;
 	return db, dbPath
 }
 
-func setupMiddleware(tmpDir string) http.Handler {
+func setupMiddlewareWithDB(tmpDir string) http.Handler {
 	// Setup test DB
 	db, _ := setupTestDB(tmpDir)
 
@@ -58,7 +60,7 @@ func setupMiddleware(tmpDir string) http.Handler {
 	amw := authenticationMiddleware{
 		logger:     log.NewNopLogger(),
 		adminUsers: []string{"adm1"},
-		db:         db,
+		ceems:      ceems{db: db},
 		grafana:    &grafana.Grafana{},
 	}
 
@@ -69,9 +71,58 @@ func setupMiddleware(tmpDir string) http.Handler {
 	return amw.Middleware(nextHandler)
 }
 
-func TestMiddleware(t *testing.T) {
-	// Setup middleware handler
-	handlerToTest := setupMiddleware(t.TempDir())
+func setupMiddlewareWithAPI(tmpDir string) http.Handler {
+	// Setup test DB
+	db, _ := setupTestDB(tmpDir)
+
+	// Setup test CEEMS API server
+	ceemsServer := setupCEEMSAPI(db)
+	ceemsURL, _ := url.Parse(ceemsServer.URL)
+
+	// Create an instance of middleware
+	amw := authenticationMiddleware{
+		logger:     log.NewNopLogger(),
+		adminUsers: []string{"adm1"},
+		ceems:      ceems{url: ceemsURL, client: http.DefaultClient},
+		grafana:    &grafana.Grafana{},
+	}
+
+	// create a handler to use as "next" which will verify the request
+	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+
+	// create the handler to test, using our custom "next" handler
+	return amw.Middleware(nextHandler)
+}
+
+func setupCEEMSAPI(db *sql.DB) *httptest.Server {
+	// We copy the logic from CEEMS API server here for testing
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Set headers
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+
+		// Get current logged user and dashboard user from headers
+		user := r.Header.Get(grafanaUserHeader)
+
+		// Get list of queried uuids
+		uuids := r.URL.Query()["uuid"]
+
+		// Check if user is owner of the queries uuids
+		if http_api.UnitOwnership(user, uuids, db, log.NewNopLogger()) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("success"))
+		} else {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("fail"))
+		}
+	}))
+	return server
+}
+
+func TestMiddlewareWithDB(t *testing.T) {
+	// Setup middleware handlers
+	handlerToTestDB := setupMiddlewareWithDB(t.TempDir())
+	handlerToTestAPI := setupMiddlewareWithAPI(t.TempDir())
 
 	tests := []struct {
 		name   string
@@ -151,11 +202,24 @@ func TestMiddleware(t *testing.T) {
 		}
 		responseRecorder := httptest.NewRecorder()
 
-		handlerToTest.ServeHTTP(responseRecorder, request)
+		handlerToTestDB.ServeHTTP(responseRecorder, request)
 
 		if responseRecorder.Result().StatusCode != test.code {
-			t.Errorf("%s: expected status %d, got %d", test.name, test.code, responseRecorder.Result().StatusCode)
+			t.Errorf("DB %s: expected status %d, got %d", test.name, test.code, responseRecorder.Result().StatusCode)
 		}
 	}
 
+	for _, test := range tests {
+		request := httptest.NewRequest("GET", test.req, nil)
+		if test.header {
+			request.Header.Set("X-Grafana-User", test.user)
+		}
+		responseRecorder := httptest.NewRecorder()
+
+		handlerToTestAPI.ServeHTTP(responseRecorder, request)
+
+		if responseRecorder.Result().StatusCode != test.code {
+			t.Errorf("API %s: expected status %d, got %d", test.name, test.code, responseRecorder.Result().StatusCode)
+		}
+	}
 }
