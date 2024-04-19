@@ -36,10 +36,6 @@ type Response struct {
 type TSDB struct {
 	URL                *url.URL
 	Client             *http.Client
-	DeleteEndpoint     *url.URL
-	QueryEndpoint      *url.URL
-	QueryRangeEndpoint *url.URL
-	ConfigEndpoint     *url.URL
 	Logger             log.Logger
 	scrapeInterval     time.Duration
 	evaluationInterval time.Duration
@@ -82,15 +78,31 @@ func NewTSDB(webURL string, webSkipTLSVerify bool, logger log.Logger) (*TSDB, er
 		tsdbClient = &http.Client{Timeout: time.Duration(30 * time.Second)}
 	}
 	return &TSDB{
-		URL:                tsdbURL,
-		Client:             tsdbClient,
-		DeleteEndpoint:     tsdbURL.JoinPath("/api/v1/admin/tsdb/delete_series"),
-		QueryEndpoint:      tsdbURL.JoinPath("/api/v1/query"),
-		QueryRangeEndpoint: tsdbURL.JoinPath("/api/v1/query_range"),
-		ConfigEndpoint:     tsdbURL.JoinPath("/api/v1/status/config"),
-		Logger:             logger,
-		available:          true,
+		URL:       tsdbURL,
+		Client:    tsdbClient,
+		Logger:    logger,
+		available: true,
 	}, nil
+}
+
+// Delete endpoint
+func (t *TSDB) deleteEndpoint() *url.URL {
+	return t.URL.JoinPath("/api/v1/admin/tsdb/delete_series")
+}
+
+// Query endpoint
+func (t *TSDB) queryEndpoint() *url.URL {
+	return t.URL.JoinPath("/api/v1/query")
+}
+
+// // Query range endpoint
+// func (t *TSDB) queryRangeEndpoint() *url.URL {
+// 	return t.URL.JoinPath("/api/v1/query_range")
+// }
+
+// Config endpoint
+func (t *TSDB) configEndpoint() *url.URL {
+	return t.URL.JoinPath("/api/v1/status/config")
 }
 
 // String implements stringer method for TSDB
@@ -118,7 +130,7 @@ func (t *TSDB) Ping() error {
 // Config returns TSDB config
 func (t *TSDB) Config() (map[interface{}]interface{}, error) {
 	// Make a API request to TSDB
-	data, err := Request(t.ConfigEndpoint.String(), t.Client)
+	data, err := Request(t.configEndpoint().String(), t.Client)
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +223,7 @@ func (t *TSDB) Query(query string, queryTime time.Time) (Metric, error) {
 	}
 
 	// Create a new POST request
-	req, err := http.NewRequest(http.MethodPost, t.QueryEndpoint.String(), strings.NewReader(values.Encode()))
+	req, err := http.NewRequest(http.MethodPost, t.queryEndpoint().String(), strings.NewReader(values.Encode()))
 	if err != nil {
 		return nil, err
 	}
@@ -292,7 +304,7 @@ func (t *TSDB) Delete(startTime time.Time, endTime time.Time, matchers []string)
 	}
 
 	// Create a new POST request
-	req, err := http.NewRequest(http.MethodPost, t.DeleteEndpoint.String(), strings.NewReader(values.Encode()))
+	req, err := http.NewRequest(http.MethodPost, t.deleteEndpoint().String(), strings.NewReader(values.Encode()))
 	if err != nil {
 		return err
 	}
