@@ -7,6 +7,10 @@
 # avoids the necessity for auth
 web_url: http://localhost:9090
 
+# If TLS certificates are self signed, set this to true to skip TLS certificate 
+# verification
+skip_tls_verify: false
+
 # Purge data from TSDB based on cut_off_duration. Compute units that have total
 # life time less than this value will be deleted from TSDB to reduce number of labels
 cutoff_duration: 0s
