@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
+	"github.com/mahendrapaipuri/ceems/pkg/lb/base"
 	"gopkg.in/yaml.v2"
 )
 
@@ -57,7 +58,7 @@ func TestCEEMSLBMainSuccess(t *testing.T) {
 	// Make config
 	config := Config{
 		Strategy: "round-robin",
-		Backends: []Backend{
+		Backends: []base.Backend{
 			{
 				URL: server.URL,
 			},

@@ -64,3 +64,4 @@ ceems-*
 # Ignore .deb and .rpm files
 *.deb
 *.rpm
+pkg/lb/testdata/lastupdatetime

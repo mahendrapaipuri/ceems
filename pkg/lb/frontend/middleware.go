@@ -3,8 +3,8 @@ package frontend
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"net/http"
+	"net/url"
 	"regexp"
 	"slices"
 	"strings"
@@ -33,92 +33,71 @@ var (
 	regexpUUID = regexp.MustCompile("(?:.+?)[^gpu]uuid=[~]{0,1}\"(?P<uuid>[a-zA-Z0-9-|]+)\"(?:.*)")
 )
 
+// CEEMS API server struct
+type ceems struct {
+	db     *sql.DB
+	url    *url.URL
+	client *http.Client
+}
+
+func (c *ceems) validateEndpoint() *url.URL {
+	if c.url != nil {
+		return c.url.JoinPath("/api/units/validate")
+	}
+	return nil
+}
+
 // Define our struct
 type authenticationMiddleware struct {
 	logger           log.Logger
-	db               *sql.DB
+	ceems            ceems
 	adminUsers       []string
 	grafana          *grafana.Grafana
 	grafanaTeamID    string
 	lastAdminsUpdate time.Time
 }
 
-// Check UUIDs in query belong to user or not. This check is less invasive.
-// Any error will mark the check as pass and request will be proxied to backend
+// Check UUIDs in query belong to user or not
 func (amw *authenticationMiddleware) isUserUnit(user string, uuids []string) bool {
-	// If there is no active DB conn or if uuids is empty, return
-	if amw.db == nil || len(uuids) == 0 {
-		return true
+	// Always prefer checking with DB connection directly if it is available
+	// As DB query is way more faster than HTTP API request
+	if amw.ceems.db != nil {
+		return http_api.UnitOwnership(user, uuids, amw.ceems.db, amw.logger)
 	}
 
-	level.Debug(amw.logger).
-		Log("msg", "UUIDs in query", "user", user, "queried_uuids", strings.Join(uuids, ","))
-
-	// First get a list of projects that user is part of
-	rows, err := amw.db.Query("SELECT DISTINCT project FROM usage WHERE usr = ?", user)
-	if err != nil {
-		level.Warn(amw.logger).
-			Log("msg", "Failed to get user projects. Allowing query", "user", user,
-				"queried_uuids", strings.Join(uuids, ","), "err", err,
-			)
-		return false
-	}
-
-	// Scan project rows
-	var projects []string
-	var project string
-	for rows.Next() {
-		if err := rows.Scan(&project); err != nil {
-			continue
+	// If CEEMS URL is available make a API request
+	// Any errors in making HTTP request will fail the query. This can happen due
+	// to deployment issues and by failing queries we make operators to look into
+	// what is happening
+	if amw.ceems.validateEndpoint() != nil {
+		// Create a new POST request
+		req, err := http.NewRequest(http.MethodGet, amw.ceems.validateEndpoint().String(), nil)
+		if err != nil {
+			level.Debug(amw.logger).
+				Log("msg", "Failed to create new request for unit validation", "user", user, "queried_uuids", strings.Join(uuids, ","), "err", err)
+			return false
 		}
-		projects = append(projects, project)
-	}
 
-	// If no projects found, return. This should not be the case and if it happens
-	// something is wrong. Spit a warning log
-	if len(projects) == 0 {
-		level.Warn(amw.logger).
-			Log("msg", "No user projects found. Query unauthorized", "user", user,
-				"queried_uuids", strings.Join(uuids, ","), "err", err,
-			)
-		return false
-	}
+		// Add uuids to request
+		req.URL.RawQuery = url.Values{"uuid": uuids}.Encode()
 
-	// Make a query and query args. Query args must be converted to slice of interfaces
-	// and it is sql driver's responsibility to cast them to proper types
-	query := fmt.Sprintf(
-		"SELECT uuid FROM units WHERE project IN (%s) AND uuid IN (%s)",
-		strings.Join(strings.Split(strings.Repeat("?", len(projects)), ""), ","),
-		strings.Join(strings.Split(strings.Repeat("?", len(uuids)), ""), ","),
-	)
-	queryData := islice(append(projects, uuids...))
+		// Add necessary headers
+		req.Header.Add(grafanaUserHeader, user)
 
-	// Make query. If query fails for any reason, we allow request to avoid false negatives
-	rows, err = amw.db.Query(query, queryData...)
-	if err != nil {
-		level.Warn(amw.logger).
-			Log("msg", "Failed to check uuid ownership. Query unauthorized", "user", user, "query", query,
-				"user_projects", strings.Join(projects, ","), "queried_uuids", strings.Join(uuids, ","),
-				"err", err,
-			)
-		return false
-	}
-	defer rows.Close()
-
-	// Get number of rows returned by query
-	uuidCount := 0
-	for rows.Next() {
-		uuidCount++
-	}
-
-	// If returned number of UUIDs is not same as queried UUIDs, user is attempting
-	// to query for jobs of other user
-	if uuidCount != len(uuids) {
-		level.Debug(amw.logger).
-			Log("msg", "Unauthorized query", "user", user, "user_projects", strings.Join(projects, ","),
-				"queried_uuids", len(uuids), "found_uuids", uuidCount,
-			)
-		return false
+		// Make request
+		// If request failed, forbid the query. It can happen when CEEMS API server
+		// goes offline and we should wait for it to come back online
+		if resp, err := amw.ceems.client.Do(req); err != nil {
+			level.Debug(amw.logger).
+				Log("msg", "Failed to make request for unit validation", "user", user, "queried_uuids", strings.Join(uuids, ","), "err", err)
+			return false
+		} else {
+			// Any status code other than 200 should be treated as check failure
+			if resp.StatusCode != 200 {
+				level.Debug(amw.logger).Log("msg", "Unauthorised query", "user", user, "queried_uuids", strings.Join(uuids, ","), "status_code", resp.StatusCode)
+				return false
+			}
+		}
 	}
 	return true
 }

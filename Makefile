@@ -153,9 +153,11 @@ test-e2e: $(PROMTOOL) build pkg/collector/testdata/sys/.unpacked pkg/collector/t
 	./scripts/e2e-test.sh -s api-current-usage-admin-query
 	./scripts/e2e-test.sh -s api-global-usage-admin-query
 	./scripts/e2e-test.sh -s api-current-usage-admin-denied-query
-	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb
-	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-forbid-user-query
-	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-allow-user-query
+	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-basic
+	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-forbid-user-query-db
+	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-allow-user-query-db
+	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-forbid-user-query-api
+	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-allow-user-query-api
 	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-allow-admin-query
 	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-auth
 endif
@@ -186,9 +188,11 @@ test-e2e-update: $(PROMTOOL) build pkg/collector/testdata/sys/.unpacked pkg/coll
 	./scripts/e2e-test.sh -s api-current-usage-admin-query -u || true
 	./scripts/e2e-test.sh -s api-global-usage-admin-query -u || true
 	./scripts/e2e-test.sh -s api-current-usage-admin-denied-query -u || true
-	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb -u || true
-	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-forbid-user-query -u || true
-	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-allow-user-query -u || true
+	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-basic -u || true
+	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-forbid-user-query-db -u || true
+	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-allow-user-query-db -u || true
+	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-forbid-user-query-api -u || true
+	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-allow-user-query-api -u || true
 	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-allow-admin-query -u || true
 	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-auth -u || true
 endif

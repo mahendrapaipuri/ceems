@@ -5,13 +5,14 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/mahendrapaipuri/ceems/pkg/lb/base"
 	"gopkg.in/yaml.v2"
 )
 
 func TestGetConfigSuccess(t *testing.T) {
 	config := Config{
 		Strategy: "round-robin",
-		Backends: []Backend{
+		Backends: []base.Backend{
 			{
 				URL: "http://localhost:9090",
 			},

@@ -39,7 +39,7 @@ do
   esac
 done
 
-if [[ "${scenario}" =~ "exporter" ]]
+if [[ "${scenario}" =~ ^"exporter" ]]
 then
   # cgroups_mode=$([ $(stat -fc %T /sys/fs/cgroup/) = "cgroup2fs" ] && echo "unified" || ( [ -e /sys/fs/cgroup/unified/ ] && echo "hybrid" || echo "legacy"))
   # cgroups_mode="legacy"
@@ -79,7 +79,7 @@ then
   logfile="${tmpdir}/ceems_exporter.log"
   fixture_output="${tmpdir}/e2e-test-exporter-output.txt"
   pidfile="${tmpdir}/ceems_exporter.pid"
-elif [[ "${scenario}" =~ "api" ]] 
+elif [[ "${scenario}" =~ ^"api" ]] 
 then
 
   if [ "${scenario}" = "api-project-query" ]
@@ -130,26 +130,42 @@ then
   then
     desc="/api/usage/current/admin end point test"
     fixture='pkg/api/testdata/output/e2e-test-api-server-current-usage-admin-denied-query.txt'
+  elif [ "${scenario}" = "api-validate-pass-query" ]
+  then
+    desc="/api/units/validate end point test with pass request"
+    fixture='pkg/api/testdata/output/e2e-test-api-validate-pass-query.txt'
+  elif [ "${scenario}" = "api-validate-fail-query" ]
+  then
+    desc="/api/units/validate end point test with fail request"
+    fixture='pkg/api/testdata/output/e2e-test-api-validate-fail-query.txt'
   fi
 
   logfile="${tmpdir}/ceems_api_server.log"
   fixture_output="${tmpdir}/e2e-test-api-server-output.txt"
   pidfile="${tmpdir}/ceems_api_server.pid"
-elif [[ "${scenario}" =~ "lb" ]] 
+elif [[ "${scenario}" =~ ^"lb" ]] 
 then
 
-  if [ "${scenario}" = "lb" ]
+  if [ "${scenario}" = "lb-basic" ]
   then
     desc="basic e2e load balancer test"
     fixture='pkg/lb/testdata/output/e2e-test-lb-server.txt'
-  elif [ "${scenario}" = "lb-forbid-user-query" ]
+  elif [ "${scenario}" = "lb-forbid-user-query-db" ]
   then
-    desc="e2e load balancer test that forbids user query for backend"
-    fixture='pkg/lb/testdata/output/e2e-test-lb-forbid-user-query.txt'
-  elif [ "${scenario}" = "lb-allow-user-query" ]
+    desc="e2e load balancer test that forbids user query for backend using DB conn"
+    fixture='pkg/lb/testdata/output/e2e-test-lb-forbid-user-query-db.txt'
+  elif [ "${scenario}" = "lb-allow-user-query-db" ]
   then
-    desc="e2e load balancer test that allow user query for backend"
-    fixture='pkg/lb/testdata/output/e2e-test-lb-allow-user-query.txt'
+    desc="e2e load balancer test that allow user query for backend using DB conn"
+    fixture='pkg/lb/testdata/output/e2e-test-lb-allow-user-query-db.txt'
+  elif [ "${scenario}" = "lb-forbid-user-query-api" ]
+  then
+    desc="e2e load balancer test that forbids user query for backend using API"
+    fixture='pkg/lb/testdata/output/e2e-test-lb-forbid-user-query-api.txt'
+  elif [ "${scenario}" = "lb-allow-user-query-api" ]
+  then
+    desc="e2e load balancer test that allow user query for backend using API"
+    fixture='pkg/lb/testdata/output/e2e-test-lb-allow-user-query-api.txt'
   elif [ "${scenario}" = "lb-allow-admin-query" ]
   then
     desc="e2e load balancer test that allows admin user query for backend"
@@ -215,7 +231,7 @@ waitport() {
   sleep 1
 }
 
-if [[ "${scenario}" =~ "exporter" ]] 
+if [[ "${scenario}" =~ ^"exporter" ]] 
 then
   if [ ! -x ./bin/ceems_exporter ]
   then
@@ -325,13 +341,22 @@ then
   waitport "${port}"
 
   get "127.0.0.1:${port}/metrics" | grep -E -v "${skip_re}" > "${fixture_output}"
-elif [[ "${scenario}" =~ "api" ]] 
+elif [[ "${scenario}" =~ ^"api" ]] 
 then
   if [ ! -x ./bin/ceems_api_server ]
   then
       echo './bin/ceems_api_server not found. Consider running `go build` first.' >&2
       exit 1
   fi
+
+  export PATH="${GOBIN:-}:${PATH}"
+    prometheus \
+      --config.file pkg/lb/testdata/prometheus.yml \
+      --storage.tsdb.path "${tmpdir}" \
+      --log.level="debug" >> "${logfile}" 2>&1 &
+    PROMETHEUS_PID=$!
+
+    waitport "9090"
 
   ./bin/ceems_api_server \
     --slurm.sacct.path="pkg/api/testdata/sacct" \
@@ -343,9 +368,12 @@ then
     --test.disable.checks \
     --web.listen-address="127.0.0.1:${port}" \
     --web.admin-users="grafana" \
+    --updater.tsdb \
+    --tsdb.config.file="pkg/api/testdata/tsdb-config.yml" \
     --log.level="debug" > "${logfile}" 2>&1 &
+  CEEMS_API=$!
 
-  echo $! > "${pidfile}"
+  echo "${PROMETHEUS_PID} ${CEEMS_API}" > "${pidfile}"
 
   # sleep 2
   waitport "${port}"
@@ -386,153 +414,240 @@ then
   elif [ "${scenario}" = "api-current-usage-admin-denied-query" ]
   then
     get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/usage/global/admin?user=usr2" > "${fixture_output}"
-  fi
-
-elif [[ "${scenario}" = "lb" ]] 
-then
-  if [ ! -x ./bin/ceems_lb ]
+  elif [ "${scenario}" = "api-validate-pass-query" ]
   then
-      echo './bin/ceems_lb not found. Consider running `go build` first.' >&2
-      exit 1
-  fi
-
-  export PATH="${GOBIN:-}:${PATH}"
-  prometheus \
-    --config.file pkg/lb/testdata/prometheus.yml \
-    --storage.tsdb.path "${tmpdir}" \
-    --log.level="debug" >> "${logfile}" 2>&1 &
-  PROMETHEUS_PID=$!
-
-  waitport "9090"
-
-  ./bin/ceems_lb \
-    --config.file pkg/lb/testdata/config.yml \
-    --web.listen-address="127.0.0.1:${port}" \
-    --log.level="debug" >> "${logfile}" 2>&1 &
-  LB_PID=$!
-
-  echo "${PROMETHEUS_PID} ${LB_PID}" > "${pidfile}"
-
-  waitport "${port}"
-
-  get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/v1/status/config" > "${fixture_output}"
-
-elif [[ "${scenario}" = "lb-forbid-user-query" ]] 
-then
-  if [ ! -x ./bin/ceems_lb ]
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/units/validate?uuid=1479763&uuid=1479765" > "${fixture_output}"
+  elif [ "${scenario}" = "api-validate-fail-query" ]
   then
-      echo './bin/ceems_lb not found. Consider running `go build` first.' >&2
-      exit 1
+    get -H "X-Grafana-User: usr2" "127.0.0.1:${port}/api/units/validate?uuid=1479763&uuid=11508" > "${fixture_output}"
   fi
 
-  export PATH="${GOBIN:-}:${PATH}"
-  prometheus \
-    --config.file pkg/lb/testdata/prometheus.yml \
-    --storage.tsdb.path "${tmpdir}" \
-    --log.level="debug" >> "${logfile}" 2>&1 &
-  PROMETHEUS_PID=$!
-
-  waitport "9090"
-
-  ./bin/ceems_lb \
-    --config.file pkg/lb/testdata/config.yml \
-    --web.listen-address="127.0.0.1:${port}" \
-    --log.level="debug" >> "${logfile}" 2>&1 &
-  LB_PID=$!
-
-  echo "${PROMETHEUS_PID} ${LB_PID}" > "${pidfile}"
-
-  waitport "${port}"
-
-  get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/v1/query?query=foo\{uuid=\"1479765\"\}&time=1713032179.506" > "${fixture_output}"
-
-elif [[ "${scenario}" = "lb-allow-user-query" ]] 
+elif [[ "${scenario}" =~ ^"lb" ]] 
 then
-  if [ ! -x ./bin/ceems_lb ]
+  if [[ "${scenario}" = "lb-basic" ]] 
   then
-      echo './bin/ceems_lb not found. Consider running `go build` first.' >&2
-      exit 1
-  fi
+    if [ ! -x ./bin/ceems_lb ]
+    then
+        echo './bin/ceems_lb not found. Consider running `go build` first.' >&2
+        exit 1
+    fi
 
-  export PATH="${GOBIN:-}:${PATH}"
-  prometheus \
-    --config.file pkg/lb/testdata/prometheus.yml \
-    --storage.tsdb.path "${tmpdir}" \
-    --log.level="debug" >> "${logfile}" 2>&1 &
-  PROMETHEUS_PID=$!
+    export PATH="${GOBIN:-}:${PATH}"
+    prometheus \
+      --config.file pkg/lb/testdata/prometheus.yml \
+      --storage.tsdb.path "${tmpdir}" \
+      --log.level="debug" >> "${logfile}" 2>&1 &
+    PROMETHEUS_PID=$!
 
-  waitport "9090"
+    waitport "9090"
 
-  ./bin/ceems_lb \
-    --config.file pkg/lb/testdata/config.yml \
-    --web.listen-address="127.0.0.1:${port}" \
-    --log.level="debug" >> "${logfile}" 2>&1 &
-  LB_PID=$!
+    ./bin/ceems_lb \
+      --config.file pkg/lb/testdata/config-db.yml \
+      --web.listen-address="127.0.0.1:${port}" \
+      --log.level="debug" >> "${logfile}" 2>&1 &
+    LB_PID=$!
 
-  echo "${PROMETHEUS_PID} ${LB_PID}" > "${pidfile}"
+    echo "${PROMETHEUS_PID} ${LB_PID}" > "${pidfile}"
 
-  waitport "${port}"
+    waitport "${port}"
 
-  get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/v1/query?query=foo\{uuid=\"1479763\"\}&time=1713032179.506" > "${fixture_output}"
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/v1/status/config" > "${fixture_output}"
 
-elif [[ "${scenario}" = "lb-allow-admin-query" ]] 
-then
-  if [ ! -x ./bin/ceems_lb ]
+  elif [[ "${scenario}" = "lb-forbid-user-query-db" ]] 
   then
-      echo './bin/ceems_lb not found. Consider running `go build` first.' >&2
-      exit 1
-  fi
+    if [ ! -x ./bin/ceems_lb ]
+    then
+        echo './bin/ceems_lb not found. Consider running `go build` first.' >&2
+        exit 1
+    fi
 
-  export PATH="${GOBIN:-}:${PATH}"
-  prometheus \
-    --config.file pkg/lb/testdata/prometheus.yml \
-    --storage.tsdb.path "${tmpdir}" \
-    --log.level="debug" >> "${logfile}" 2>&1 &
-  PROMETHEUS_PID=$!
+    export PATH="${GOBIN:-}:${PATH}"
+    prometheus \
+      --config.file pkg/lb/testdata/prometheus.yml \
+      --storage.tsdb.path "${tmpdir}" \
+      --log.level="debug" >> "${logfile}" 2>&1 &
+    PROMETHEUS_PID=$!
 
-  waitport "9090"
+    waitport "9090"
 
-  ./bin/ceems_lb \
-    --config.file pkg/lb/testdata/config.yml \
-    --web.listen-address="127.0.0.1:${port}" \
-    --log.level="debug" >> "${logfile}" 2>&1 &
-  LB_PID=$!
+    ./bin/ceems_lb \
+      --config.file pkg/lb/testdata/config-db.yml \
+      --web.listen-address="127.0.0.1:${port}" \
+      --log.level="debug" >> "${logfile}" 2>&1 &
+    LB_PID=$!
 
-  echo "${PROMETHEUS_PID} ${LB_PID}" > "${pidfile}"
+    echo "${PROMETHEUS_PID} ${LB_PID}" > "${pidfile}"
 
-  waitport "${port}"
+    waitport "${port}"
 
-  get -H "X-Grafana-User: adm1" -H "Content-Type: application/x-www-form-urlencoded" -X POST -d "query=foo{uuid=\"1479765\"}&time=1713032179.506" "127.0.0.1:${port}/api/v1/query" > "${fixture_output}"
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/v1/query?query=foo\{uuid=\"1481510\"\}&time=1713032179.506" > "${fixture_output}"
 
-elif [[ "${scenario}" = "lb-auth" ]] 
-then
-  if [ ! -x ./bin/ceems_lb ]
+  elif [[ "${scenario}" = "lb-allow-user-query-db" ]] 
   then
-      echo './bin/ceems_lb not found. Consider running `go build` first.' >&2
-      exit 1
+    if [ ! -x ./bin/ceems_lb ]
+    then
+        echo './bin/ceems_lb not found. Consider running `go build` first.' >&2
+        exit 1
+    fi
+
+    export PATH="${GOBIN:-}:${PATH}"
+    prometheus \
+      --config.file pkg/lb/testdata/prometheus.yml \
+      --storage.tsdb.path "${tmpdir}" \
+      --log.level="debug" >> "${logfile}" 2>&1 &
+    PROMETHEUS_PID=$!
+
+    waitport "9090"
+
+    ./bin/ceems_lb \
+      --config.file pkg/lb/testdata/config-db.yml \
+      --web.listen-address="127.0.0.1:${port}" \
+      --log.level="debug" >> "${logfile}" 2>&1 &
+    LB_PID=$!
+
+    echo "${PROMETHEUS_PID} ${LB_PID}" > "${pidfile}"
+
+    waitport "${port}"
+
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/v1/query?query=foo\{uuid=\"1479763\"\}&time=1713032179.506" > "${fixture_output}"
+
+  elif [[ "${scenario}" = "lb-forbid-user-query-api" ]] 
+  then
+    if [ ! -x ./bin/ceems_lb ]
+    then
+        echo './bin/ceems_lb not found. Consider running `go build` first.' >&2
+        exit 1
+    fi
+
+    export PATH="${GOBIN:-}:${PATH}"
+    prometheus \
+      --config.file pkg/lb/testdata/prometheus.yml \
+      --storage.tsdb.path "${tmpdir}" \
+      --log.level="debug" >> "${logfile}" 2>&1 &
+    PROMETHEUS_PID=$!
+
+    waitport "9090"
+
+    ./bin/ceems_api_server \
+      --storage.data.path="pkg/lb/testdata" \
+      --storage.data.skip.delete.old.units \
+      --test.disable.checks \
+      --web.listen-address="127.0.0.1:9020" \
+      --log.level="debug" >> "${logfile}" 2>&1 &
+    CEEMS_API_PID=$!
+
+    waitport "9020"
+
+    ./bin/ceems_lb \
+      --config.file pkg/lb/testdata/config-api.yml \
+      --web.listen-address="127.0.0.1:${port}" \
+      --log.level="debug" >> "${logfile}" 2>&1 &
+    LB_PID=$!
+
+    echo "${PROMETHEUS_PID} ${CEEMS_API_PID} ${LB_PID}" > "${pidfile}"
+
+    waitport "${port}"
+
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/v1/query?query=foo\{uuid=\"1481510\"\}&time=1713032179.506" > "${fixture_output}"
+
+  elif [[ "${scenario}" = "lb-allow-user-query-api" ]] 
+  then
+    if [ ! -x ./bin/ceems_lb ]
+    then
+        echo './bin/ceems_lb not found. Consider running `go build` first.' >&2
+        exit 1
+    fi
+
+    export PATH="${GOBIN:-}:${PATH}"
+    prometheus \
+      --config.file pkg/lb/testdata/prometheus.yml \
+      --storage.tsdb.path "${tmpdir}" \
+      --log.level="debug" >> "${logfile}" 2>&1 &
+    PROMETHEUS_PID=$!
+
+    waitport "9090"
+
+    ./bin/ceems_api_server \
+      --storage.data.path="pkg/lb/testdata" \
+      --storage.data.skip.delete.old.units \
+      --test.disable.checks \
+      --web.listen-address="127.0.0.1:9020" \
+      --log.level="debug" >> "${logfile}" 2>&1 &
+    CEEMS_API_PID=$!
+
+    waitport "9020"
+
+    ./bin/ceems_lb \
+      --config.file pkg/lb/testdata/config-api.yml \
+      --web.listen-address="127.0.0.1:${port}" \
+      --log.level="debug" >> "${logfile}" 2>&1 &
+    LB_PID=$!
+
+    echo "${PROMETHEUS_PID} ${CEEMS_API_PID} ${LB_PID}" > "${pidfile}"
+
+    waitport "${port}"
+
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/v1/query?query=foo\{uuid=\"1479763\"\}&time=1713032179.506" > "${fixture_output}"
+
+  elif [[ "${scenario}" = "lb-allow-admin-query" ]] 
+  then
+    if [ ! -x ./bin/ceems_lb ]
+    then
+        echo './bin/ceems_lb not found. Consider running `go build` first.' >&2
+        exit 1
+    fi
+
+    export PATH="${GOBIN:-}:${PATH}"
+    prometheus \
+      --config.file pkg/lb/testdata/prometheus.yml \
+      --storage.tsdb.path "${tmpdir}" \
+      --log.level="debug" >> "${logfile}" 2>&1 &
+    PROMETHEUS_PID=$!
+
+    waitport "9090"
+
+    ./bin/ceems_lb \
+      --config.file pkg/lb/testdata/config-db.yml \
+      --web.listen-address="127.0.0.1:${port}" \
+      --log.level="debug" >> "${logfile}" 2>&1 &
+    LB_PID=$!
+
+    echo "${PROMETHEUS_PID} ${LB_PID}" > "${pidfile}"
+
+    waitport "${port}"
+
+    get -H "X-Grafana-User: adm1" -H "Content-Type: application/x-www-form-urlencoded" -X POST -d "query=foo{uuid=\"1479765\"}&time=1713032179.506" "127.0.0.1:${port}/api/v1/query" > "${fixture_output}"
+
+  elif [[ "${scenario}" = "lb-auth" ]] 
+  then
+    if [ ! -x ./bin/ceems_lb ]
+    then
+        echo './bin/ceems_lb not found. Consider running `go build` first.' >&2
+        exit 1
+    fi
+
+    export PATH="${GOBIN:-}:${PATH}"
+    prometheus \
+      --config.file pkg/lb/testdata/prometheus.yml \
+      --web.config.file pkg/lb/testdata/web-config.yml \
+      --storage.tsdb.path "${tmpdir}" \
+      --log.level="debug" >> "${logfile}" 2>&1 &
+    PROMETHEUS_PID=$!
+
+    waitport "9090"
+
+    ./bin/ceems_lb \
+      --config.file pkg/lb/testdata/config-with-auth.yml \
+      --web.listen-address="127.0.0.1:${port}" \
+      --log.level="debug" >> "${logfile}" 2>&1 &
+    LB_PID=$!
+
+    echo "${PROMETHEUS_PID} ${LB_PID}" > "${pidfile}"
+
+    waitport "${port}"
+
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/v1/status/config" > "${fixture_output}"
   fi
-
-  export PATH="${GOBIN:-}:${PATH}"
-  prometheus \
-    --config.file pkg/lb/testdata/prometheus.yml \
-    --web.config.file pkg/lb/testdata/web-config.yml \
-    --storage.tsdb.path "${tmpdir}" \
-    --log.level="debug" >> "${logfile}" 2>&1 &
-  PROMETHEUS_PID=$!
-
-  waitport "9090"
-
-  ./bin/ceems_lb \
-    --config.file pkg/lb/testdata/config-with-auth.yml \
-    --web.listen-address="127.0.0.1:${port}" \
-    --log.level="debug" >> "${logfile}" 2>&1 &
-  LB_PID=$!
-
-  echo "${PROMETHEUS_PID} ${LB_PID}" > "${pidfile}"
-
-  waitport "${port}"
-
-  get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/v1/status/config" > "${fixture_output}"
 fi
 
 diff -u \

@@ -3,9 +3,12 @@ package frontend
 
 import (
 	"context"
+	"crypto/tls"
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/go-kit/log"
@@ -42,7 +45,7 @@ type Config struct {
 	Address          string
 	WebSystemdSocket bool
 	WebConfigFile    string
-	DBPath           string
+	CEEMSAPI         base.CEEMSAPI
 	AdminUsers       []string
 	Manager          serverpool.Manager
 	Grafana          *grafana.Grafana
@@ -62,12 +65,39 @@ type loadBalancer struct {
 // NewLoadBalancer returns a new instance of load balancer
 func NewLoadBalancer(c *Config) (LoadBalancer, error) {
 	var db *sql.DB
+	var ceemsClient *http.Client
+	var ceemsURL *url.URL
 	var err error
-	if c.DBPath != "" {
-		if db, err = sql.Open("sqlite3", c.DBPath); err != nil {
+
+	// Check if DB path exists and get pointer to DB connection
+	if c.CEEMSAPI.DBPath != "" {
+		if db, err = sql.Open("sqlite3", c.CEEMSAPI.DBPath); err != nil {
 			return nil, err
 		}
 	}
+
+	// Check if URL for CEEMS API exists
+	if c.CEEMSAPI.URL == "" {
+		goto outside
+	}
+
+	// Unwrap original error to avoid leaking sensitive passwords in output
+	ceemsURL, err = url.Parse(c.CEEMSAPI.URL)
+	if err != nil {
+		return nil, errors.Unwrap(err)
+	}
+
+	// If skip verify is set to true for TSDB add it to client
+	if c.CEEMSAPI.SkipTLSVerify {
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+		ceemsClient = &http.Client{Transport: tr, Timeout: time.Duration(30 * time.Second)}
+	} else {
+		ceemsClient = &http.Client{Timeout: time.Duration(30 * time.Second)}
+	}
+
+outside:
 	return &loadBalancer{
 		logger: c.Logger,
 		server: &http.Server{
@@ -81,10 +111,14 @@ func NewLoadBalancer(c *Config) (LoadBalancer, error) {
 		manager: c.Manager,
 		db:      db,
 		amw: authenticationMiddleware{
-			logger:        c.Logger,
-			adminUsers:    c.AdminUsers,
-			grafana:       c.Grafana,
-			db:            db,
+			logger:     c.Logger,
+			adminUsers: c.AdminUsers,
+			grafana:    c.Grafana,
+			ceems: ceems{
+				db:     db,
+				url:    ceemsURL,
+				client: ceemsClient,
+			},
 			grafanaTeamID: c.GrafanaTeamID,
 		},
 	}, nil
