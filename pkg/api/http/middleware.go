@@ -53,8 +53,8 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var loggedUser string
 
-		// If requested URI is health or root "/" pass through
-		if strings.HasSuffix(r.URL.Path, "health") || r.URL.Path == "/" {
+		// If requested URI is health, demo or "/" pass through
+		if strings.HasSuffix(r.URL.Path, "health") || strings.HasSuffix(r.URL.Path, "demo") || r.URL.Path == "/" {
 			goto end
 		}
 
