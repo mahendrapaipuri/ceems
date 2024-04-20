@@ -155,6 +155,9 @@ func NewCEEMSServer(c *Config) (*CEEMSServer, func(), error) {
 		Methods("GET")
 	router.HandleFunc(fmt.Sprintf("/api/%s/verify", unitsResourceName), server.verifyUnitsOwnership).Methods("GET")
 
+	// A demo end point that returns mocked data for units and/or usage tables
+	router.HandleFunc("/api/{resource:(?:units|usage)}/demo", server.demo).Methods("GET")
+
 	// pprof debug end points
 	router.PathPrefix("/debug/").Handler(http.DefaultServeMux)
 
@@ -631,5 +634,50 @@ func (s *CEEMSServer) usageAdmin(w http.ResponseWriter, r *http.Request) {
 	// handle global usage query
 	if queryType == "global" {
 		s.globalUsage(r.URL.Query()["user"], w, r)
+	}
+}
+
+// GET /api/demo/{units,usage}
+// Return mocked data for different models
+func (s *CEEMSServer) demo(w http.ResponseWriter, r *http.Request) {
+	// Set headers
+	s.setHeaders(w)
+
+	// Get path parameter type
+	var resourceType string
+	var exists bool
+	if resourceType, exists = mux.Vars(r)["resource"]; !exists {
+		errorResponse(w, &apiError{errorBadData, errInvalidRequest}, s.logger, nil)
+		return
+	}
+
+	// handle units mock data
+	if resourceType == "units" {
+		units := mockUnits()
+		// Write response
+		w.WriteHeader(http.StatusOK)
+		unitsResponse := Response{
+			Status: "success",
+			Data:   units,
+		}
+		if err := json.NewEncoder(w).Encode(&unitsResponse); err != nil {
+			level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
+			w.Write([]byte("KO"))
+		}
+	}
+
+	// handle usage mock data
+	if resourceType == "usage" {
+		usage := mockUsage()
+		// Write response
+		w.WriteHeader(http.StatusOK)
+		usageResponse := Response{
+			Status: "success",
+			Data:   usage,
+		}
+		if err := json.NewEncoder(w).Encode(&usageResponse); err != nil {
+			level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
+			w.Write([]byte("KO"))
+		}
 	}
 }

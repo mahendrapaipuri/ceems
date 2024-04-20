@@ -9,10 +9,10 @@
 
 
 Compute Energy & Emissions Monitoring Stack (CEEMS) contains a Prometheus exporter to 
-export metrics of compute instance units and a REST API server which is meant to be used
-as JSON datasource in Grafana that exposes the metadata and aggregated metrics of each 
-compute unit. Optionally, it includes a TSDB load balancer that supports basic load 
-balancing functionality based on retention periods of two or more TSDBs. 
+export metrics of compute instance units and a REST API server that serves the 
+metadata and aggregated metrics of each 
+compute unit. Optionally, it includes a TSDB load balancer that supports basic access 
+control on TSDB so that one user cannot access metrics of another user.
 
 "Compute Unit" in the current context has a wider scope. It can be a batch job in HPC, 
 a VM in cloud, a pod in k8s, _etc_. The main objective of the repository is to quantify 
@@ -90,7 +90,7 @@ series metrics of their compute units be it a batch job, a VM or a pod. The user
 also able to have information on total energy consumed and total emissions generated 
 by their individual workloads, by their project/namespace. 
 
-On the otherhand system admins will be able to list the consumption of energy, emissions, 
+On the other hand system admins will be able to list the consumption of energy, emissions, 
 CPU time, memory, _etc_ for each projects/namespaces/users. This can be used to generate
 reports regularly on the energy usage of the data center.
 
@@ -110,7 +110,8 @@ This server can be used as
 in Grafana to construct dashboards for users. The DB contain aggregate metrics of each 
 compute unit along with aggregate metrics of each project.
 
-- `ceems_lb`: This is a basic load balancer meant to work with TSDB instances.
+- `ceems_lb`: This is a basic load balancer meant to provide basic access control for
+TSDB so that one user cannot access metrics of another user.
 
 Currently, only SLURM is supported as a resource manager. In future support for Openstack 
 and Kubernetes will be added. 
@@ -275,7 +276,7 @@ based on these proportions.
 As discussed in the introduction, `ceems_api_server` 
 exposes usage and compute unit details of users _via_ API end points. This data will be 
 gathered from the underlying resource manager at a configured interval of time and 
-keep it in a local DB.
+keep it in a local DB. The API server has demo end points that serves mock data.
 
 ## CEEMS Load Balancer
 
@@ -518,12 +519,12 @@ The stats server can be started as follows:
 ```
 /path/to/ceems_api_server \
     --resource.manager.slurm \
-    --storage.data.path="/var/lib/ceems" \
+    --storage.data.path="data" \
     --log.level="debug"
 ```
 
 Data files like SQLite3 DB created for the server will be placed in 
-`/var/lib/ceems` directory. Note that if this directory does exist, 
+`data` directory. Note that if this directory does not exist, 
 `ceems_api_server` will attempt to create one if it has enough privileges. If it 
 fails to create, error will be shown up.
 
@@ -559,11 +560,18 @@ keeps the data for the past one year.
 ```
 /path/to/ceems_api_server \
     --resource.manager.slurm \
-    --storage.path.data="/var/lib/ceems" \
+    --storage.path.data="data" \
     --storage.data.update.interval="30m" \
     --storage.data.retention.period="1y" \
     --log.level="debug"
 ```
+
+Once the server is running, we can query for compute units and usage using API endpoints.
+To understand the data structure that will be returned by these end points, the server
+has demo end points that return mock data. For getting units data, users can open the 
+browser and go to [localhost:9020/api/units/demo](http://localhost:9020/api/units/demo).
+Similarly, for usage data, it is enough to visit
+[localhost:9020/api/usage/demo](http://localhost:9020/api/usage/demo)
 
 ### `ceems_lb`
 

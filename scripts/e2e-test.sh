@@ -138,6 +138,14 @@ then
   then
     desc="/api/units/verify end point test with fail request"
     fixture='pkg/api/testdata/output/e2e-test-api-verify-fail-query.txt'
+  elif [ "${scenario}" = "api-demo-units-query" ]
+  then
+    desc="/api/units/demo end point test"
+    fixture='pkg/api/testdata/output/e2e-test-api-demo-units-query.txt'
+  elif [ "${scenario}" = "api-demo-usage-query" ]
+  then
+    desc="/api/usage/demo end point test"
+    fixture='pkg/api/testdata/output/e2e-test-api-demo-usage-query.txt'
   fi
 
   logfile="${tmpdir}/ceems_api_server.log"
@@ -420,6 +428,12 @@ then
   elif [ "${scenario}" = "api-verify-fail-query" ]
   then
     get -H "X-Grafana-User: usr2" "127.0.0.1:${port}/api/units/verify?uuid=1479763&uuid=11508" > "${fixture_output}"
+  elif [ "${scenario}" = "api-demo-units-query" ]
+  then
+    get -s -o /dev/null -w "%{http_code}" "127.0.0.1:${port}/api/units/demo" > "${fixture_output}"
+  elif [ "${scenario}" = "api-demo-usage-query" ]
+  then
+    get -s -o /dev/null -w "%{http_code}" "127.0.0.1:${port}/api/usage/demo" > "${fixture_output}"
   fi
 
 elif [[ "${scenario}" =~ ^"lb" ]] 
