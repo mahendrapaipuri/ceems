@@ -2,7 +2,7 @@ name: CI
 on:
   workflow_dispatch:
     inputs:
-      docker_hub_organisation:
+      docker_hub_organization:
         type: string
         description: DockerHub organization
         default: mahendrapaipuri
