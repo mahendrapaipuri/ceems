@@ -6,19 +6,20 @@ on:
     inputs:
       registry:
         type: string
-        description: Docker registry
+        description: Registry
       organization:
         type: string
         description: Organization
+    secrets:
       login:
-        type: string
-        description: Username
+        required: true
+        description: ''
       password:
-        type: string
-        description: Password
+        required: true
+        description: ''
 
 jobs:
-  packaging:
+  images:
     name: docker
     runs-on: ubuntu-latest
     steps:
@@ -60,7 +61,7 @@ jobs:
       - name: Publish image for main branch
         if: github.ref == 'refs/heads/main'
         run: |
-          echo ${{ inputs.password }} | docker login -u ${{ inputs.login }} --password-stdin ${{ inputs.registry }}
+          echo ${{ secrets.password }} | docker login -u ${{ secrets.login }} --password-stdin ${{ inputs.registry }}
           make docker-publish DOCKER_IMAGE_TAG=${{ steps.get_branch.outputs.branch }} DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
           make docker-manifest DOCKER_IMAGE_TAG=${{ steps.get_branch.outputs.branch }} DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
         shell: bash

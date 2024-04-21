@@ -2,13 +2,13 @@ name: CI
 on:
   workflow_dispatch:
     inputs:
+      docker_hub_registry:
+        type: string
+        description: DockerHub registry
+        default: docker.io
       docker_hub_organization:
         type: string
         description: DockerHub organization
-        default: mahendrapaipuri
-      quay_io_organization:
-        type: string
-        description: Quay.io organization
         default: mahendrapaipuri
   push:
     paths:
@@ -55,14 +55,13 @@ jobs:
 
   docker:
     needs: [build]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: ./.github/workflows/step_docker.yml
-        with:
-          registry: "docker.io"
-          organization: ${{ inputs.docker_hub_organization }}
-          login: ${{ secrets.DOCKER_HUB_LOGIN }}
-          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+    uses: ./.github/workflows/step_docker.yml
+    with:
+      registry: ${{ inputs.docker_hub_registry }}
+      organization: ${{ inputs.docker_hub_organization }}
+    secrets:  
+      login: ${{ secrets.DOCKER_HUB_LOGIN }}
+      password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
   # quay:
   #   needs: [build]
