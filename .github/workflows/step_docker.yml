@@ -1,0 +1,54 @@
+name: docker
+run-name: Docker images
+
+on:
+  workflow_call:
+    inputs:
+      registry:
+        type: string
+        description: Docker registry
+      organization:
+        type: string
+        description: Organization
+      login:
+        type: string
+        description: Username
+      password:
+        type: string
+        description: Password
+
+jobs:
+  packaging:
+    name: docker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Download go build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: build-go-artifacts
+
+      - name: Setup build environment
+        run: |
+          docker version
+          docker run --rm --privileged tonistiigi/binfmt:latest --install all
+
+      - name: Build container images
+        run: |
+          make docker DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
+          docker images
+        shell: bash
+
+      - name: Test container images
+        run: make docker-test DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
+        shell: bash
+
+      - name: Publish image for main branch
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo ${{ inputs.password }} | docker login -u ${{ inputs.login }} --password-stdin ${{ inputs.registry }}
+          make docker-publish DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
+          make docker-manifest DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
+        shell: bash
