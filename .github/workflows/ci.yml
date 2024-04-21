@@ -55,10 +55,14 @@ jobs:
 
   docker:
     needs: [build]
-    uses: ./.github/workflows/step_docker.yml
-    with:
-      registry: "docker.io"
-      organization: ${{ inputs.docker_hub_organization }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ./.github/workflows/step_docker.yml
+        with:
+          registry: "docker.io"
+          organization: ${{ inputs.docker_hub_organization }}
+          login: ${{ secrets.DOCKER_HUB_LOGIN }}
+          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
   # quay:
   #   needs: [build]
