@@ -11,12 +11,12 @@ on:
         description: Quay.io organization
         default: mahendrapaipuri
   push:
-    paths:
-      - "go.sum"
-      - "go.mod"
-      - "**.go"
-      - ".github/workflows/**"
-      - ".golangci.yml"
+    # paths:
+    #   - "go.sum"
+    #   - "go.mod"
+    #   - "**.go"
+    #   - ".github/workflows/**"
+    #   - ".golangci.yml"
     branches: [main]
   pull_request:
     branches: [main]
