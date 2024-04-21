@@ -48,7 +48,10 @@ jobs:
       - name: Publish image for main branch
         if: github.ref == 'refs/heads/main'
         run: |
-          echo ${{ inputs.password }} | docker login -u ${{ inputs.login }} --password-stdin ${{ inputs.registry }}
+          echo ${DOCKER_HUB_PASSWORD} | docker login -u ${DOCKER_HUB_LOGIN} --password-stdin ${{ inputs.registry }}
           make docker-publish DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
           make docker-manifest DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
         shell: bash
+        env:
+          DOCKER_HUB_LOGIN: ${{ secrets.DOCKER_HUB_LOGIN }}
+          DOCKER_HUB_PASSWORD: ${{ secrets.DOCKER_HUB_PASSWORD }}
