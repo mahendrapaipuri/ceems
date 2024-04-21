@@ -127,8 +127,13 @@ func (amw *authenticationMiddleware) updateAdminUsers() {
 func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var loggedUser string
-		var newReq *http.Request
 		var queryParams interface{}
+
+		// If ceems url or db is not configured, pass through. There is nothing
+		// to check here
+		if amw.ceems.webURL == nil && amw.ceems.db == nil {
+			goto end
+		}
 
 		// First update admin users
 		if amw.grafana.Available() {
@@ -164,7 +169,7 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 		r.Header.Set(loggedUserHeader, loggedUser)
 
 		// Clone request, parse query params and set them in request context
-		newReq = parseQueryParams(r, amw.logger)
+		r = parseQueryParams(r, amw.logger)
 
 		// If current user is in list of admin users, dont do any checks
 		if slices.Contains(amw.adminUsers, loggedUser) {
@@ -172,7 +177,7 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 		}
 
 		// Retrieve query params from context
-		queryParams = newReq.Context().Value(QueryParamsContextKey{})
+		queryParams = r.Context().Value(QueryParamsContextKey{})
 
 		// If no query params found, pass request
 		if queryParams == nil {
@@ -197,6 +202,6 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 
 	end:
 		// Pass down the request to the next middleware (or final handler)
-		next.ServeHTTP(w, newReq)
+		next.ServeHTTP(w, r)
 	})
 }

@@ -10,11 +10,52 @@
 # query will be proxied to the backend that covers the query_range
 strategy: resource-based
 
-# Path to CEEMS API server DB. 
-# The DB contains the information of user and projet units and LB will verify
-# if user/project is the owner of the uuid under request to decide whether to
-# proxy request to backend or not.
-# db_path: /var/lib/ceems_api_server/ceems_api_server.db
+# CEEMS API server config.
+# This config is essential to enable access control on the TSDB. By excluding 
+# this config, no access control is imposed on the TSDB and a basic load balancing
+# based on the chosen strategy will be made.
+#
+# Essentially, basic access control is implemented by checking the ownership of the
+# queried unit. Users that belong to the same project can query the units belong
+# to that project. 
+# 
+# For example, if there is a unit U that belongs to User A and 
+# Project P. Any user that belongs to same project P can query for the metrics of unit U
+# but not users from other projects.
+# ceems_api:
+#
+#   # The DB contains the information of user and projet units and LB will verify
+#   # if user/project is the owner of the uuid under request to decide whether to
+#   # proxy request to backend or not.
+#   #
+#   # To identify the current user, X-Grafana-User header will be used that Grafana
+#   # is capable of sending to the datasource. Grafana essenatially adds this header
+#   # on the backend server and hence it is not possible for the users to spoof this 
+#   # header from the browser. 
+#   # In order to enable this feature, it is essential to set `send_user_header = true`
+#   # in Grafana config file.
+#   #
+#   # If both CEEMS API and CEEMS LB is running on the same host, it is preferable to
+#   # use the DB directly using `db_path` as DB query is way faster than a API request
+#   # If both apps are deployed on the same host, ensure that the user running `ceems_lb`
+#   # has permissions to open CEEMS API DB
+#   db_path: /var/lib/ceems_api_server/ceems_api_server.db
+#
+#   # In the case where CEEMS API and ceems LB are deployed on different hosts, we can
+#   # still perform access control using CEEMS API server by making a API request to
+#   # check the ownership of the queried unit. This method should be only preferred when
+#   # DB cannot be access directly as API request has additional latency than querying DB
+#   # directly.
+#   #
+#   # If both `db_path` and `url` are provdided, DB will be preferred as it has lower
+#   # latencies.
+#   #
+#   # Basic auth and TLS are supported.
+#   url: http://localhost:9020
+#
+#   # If TLS certificates are self signed, set this parameter to true to skip TLS
+#   # certificate verification
+#   skip_tls_verify: false
 
 # List of admin users. 
 # Requests from users defined in this list will be passed through without 
