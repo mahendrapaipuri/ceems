@@ -37,7 +37,8 @@ jobs:
 
       - name: Build container images
         run: |
-          make docker DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
+          current_tag=${GITHUB_REF#refs/*/}
+          make docker DOCKER_IMAGE_TAG="$current_tag" DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
           docker images
         shell: bash
 
@@ -49,8 +50,8 @@ jobs:
         if: github.ref == 'refs/heads/main'
         run: |
           echo ${DOCKER_HUB_PASSWORD} | docker login -u ${DOCKER_HUB_LOGIN} --password-stdin ${{ inputs.registry }}
-          make docker-publish DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
-          make docker-manifest DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
+          make docker-publish DOCKER_IMAGE_TAG="$current_tag" DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
+          make docker-manifest DOCKER_IMAGE_TAG="$current_tag" DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
         shell: bash
         env:
           DOCKER_HUB_LOGIN: ${{ secrets.DOCKER_HUB_LOGIN }}
