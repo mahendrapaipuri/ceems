@@ -56,11 +56,10 @@ jobs:
         shell: bash
 
       - name: Test container images
-        run: make test-docker DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
+        run: make test-docker DOCKER_IMAGE_TAG=${{ steps.target_branch.outputs.name }} DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
         shell: bash
 
       - name: Publish image for main branch
-        # if: github.ref == 'refs/heads/main'
         run: |
           echo ${{ secrets.password }} | docker login -u ${{ secrets.login }} --password-stdin ${{ inputs.registry }}
           make docker-publish DOCKER_IMAGE_TAG=${{ steps.target_branch.outputs.name }} DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
