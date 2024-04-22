@@ -12,7 +12,7 @@ COPY build/config/ceems_api_server/tsdb-config.yml /etc/ceems_api_server/tsdb-co
 COPY build/config/ceems_lb/config.yml /etc/ceems_lb/config.yml
 COPY LICENSE /LICENSE
 
-RUN chown -R nobody:nobody /etc/ceems_api_server /etc/ceems_lb /bin
+RUN mkdir /ceems && chown -R nobody:nobody /ceems /etc/ceems_api_server /etc/ceems_lb
 
 USER        nobody
-WORKDIR     /bin
+WORKDIR     /ceems
