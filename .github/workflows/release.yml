@@ -1,6 +1,24 @@
 name: Release
 
 on:
+  workflow_dispatch:
+    inputs:
+      docker_hub_registry:
+        type: string
+        description: DockerHub registry
+        default: docker.io
+      docker_hub_organization:
+        type: string
+        description: DockerHub organization
+        default: mahendrapaipuri
+      quay_registry:
+        type: string
+        description: Quay registry
+        default: quay.io
+      quay_organization:
+        type: string
+        description: Quay organization
+        default: mahendrapaipuri
   push:
     # Run workflow on new tags
     tags:
@@ -33,6 +51,30 @@ jobs:
     needs: [cross-build]
     uses: ./.github/workflows/step_packaging.yml
 
+  publish-docker-images:
+    needs: [cross-build]
+    uses: ./.github/workflows/step_images.yml
+    # Since workflow_dispatch inputs are only available on manual triggers
+    # we need to set default values to the context vars here
+    with:
+      registry: ${{ inputs.quay_registry || 'docker.io' }}
+      organization: ${{ inputs.quay_organization || 'mahendrapaipuri' }}
+    secrets:  
+      login: ${{ secrets.DOCKER_HUB_LOGIN }}
+      password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+  
+  publish-quay-images:
+    needs: [cross-build]
+    uses: ./.github/workflows/step_images.yml
+    # Since workflow_dispatch inputs are only available on manual triggers
+    # we need to set default values to the context vars here
+    with:
+      registry: ${{ inputs.quay_registry || 'quay.io' }}
+      organization: ${{ inputs.quay_organization || 'mahendrapaipuri' }}
+    secrets:  
+      login: ${{ secrets.QUAY_LOGIN }}
+      password: ${{ secrets.QUAY_PASSWORD }}
+
   publish:
     needs: [packaging]
     runs-on: ubuntu-latest
@@ -55,7 +97,7 @@ jobs:
           go mod download
 
       - name: Download release artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: release-artifacts
           path: .tarballs

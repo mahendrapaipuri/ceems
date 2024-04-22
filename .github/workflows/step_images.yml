@@ -1,0 +1,70 @@
+name: images
+run-name: Container images
+
+on:
+  workflow_call:
+    inputs:
+      registry:
+        type: string
+        description: Registry
+      organization:
+        type: string
+        description: Organization
+    secrets:
+      login:
+        required: true
+      password:
+        required: true
+
+jobs:
+  images:
+    name: images
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Get target branch
+        id: target_branch
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
+            echo "name=$(echo ${GITHUB_REF##*/})" >> $GITHUB_OUTPUT
+          elif [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+            echo "name=$(echo $GITHUB_BASE_REF)" >> $GITHUB_OUTPUT
+          else
+            echo "name=nightly" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download go build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-go-artifacts
+
+      - name: Setup build environment
+        run: |
+          docker version
+          docker run --rm --privileged tonistiigi/binfmt:latest --install all
+
+      - name: Build container images
+        run: |
+          chmod +x -R .build
+          make docker DOCKER_IMAGE_TAG=${{ steps.target_branch.outputs.name }} DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
+          docker images
+
+      - name: Test container images
+        run: make test-docker DOCKER_IMAGE_TAG=${{ steps.target_branch.outputs.name }} DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
+
+      - name: Publish image for current branch/tag
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo ${{ secrets.password }} | docker login -u ${{ secrets.login }} --password-stdin ${{ inputs.registry }}
+          make docker-publish DOCKER_IMAGE_TAG=${{ steps.target_branch.outputs.name }} DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
+          make docker-manifest DOCKER_IMAGE_TAG=${{ steps.target_branch.outputs.name }} DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
+
+      - name: Publish image with latest tag
+        if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
+        run: |
+          echo ${{ secrets.password }} | docker login -u ${{ secrets.login }} --password-stdin ${{ inputs.registry }}
+          make docker-tag-latest DOCKER_IMAGE_TAG=${{ steps.target_branch.outputs.name }} DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
+          make docker-publish DOCKER_IMAGE_TAG=latest DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
+          make docker-manifest DOCKER_IMAGE_TAG=latest DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}

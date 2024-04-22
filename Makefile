@@ -1,10 +1,10 @@
-# Nicked from node_exporter repo and modified to current exporter
+# Nicked from node_exporter repo and modified for current repo needs
 
 # Ensure that 'all' is the default target otherwise it will be the first target from Makefile.common.
 all::
 
 # Needs to be defined before including Makefile.common to auto-generate targets
-DOCKER_ARCHS ?= amd64 armv7 arm64 ppc64le s390x
+DOCKER_ARCHS ?= amd64 arm64
 
 include Makefile.common
 
@@ -15,7 +15,7 @@ PROMTOOL         ?= $(FIRST_GOPATH)/bin/promtool
 PREFIX           := $(shell pwd)/bin
 
 TEST_DOCKER             ?= false
-DOCKER_IMAGE_NAME       ?= batchjob-exporter
+DOCKER_IMAGE_NAME       ?= ceems
 MACH                    ?= $(shell uname -m)
 CGROUPS_MODE            ?= $([ $(stat -fc %T /sys/fs/cgroup/) = "cgroup2fs" ] && echo "unified" || ( [ -e /sys/fs/cgroup/unified/ ] && echo "hybrid" || echo "legacy"))
 
@@ -230,7 +230,9 @@ skip-checkrules: $(PROMTOOL)
 .PHONY: test-docker
 test-docker:
 	@echo ">> testing docker image"
-	./scripts/test_image.sh "$(DOCKER_REPO)/$(DOCKER_IMAGE_NAME)-linux-amd64:$(DOCKER_IMAGE_TAG)" 9010
+	./scripts/test_image.sh "$(DOCKER_REPO)/$(DOCKER_IMAGE_NAME)-linux-amd64:$(DOCKER_IMAGE_TAG)" 9010 ceems_exporter
+	./scripts/test_image.sh "$(DOCKER_REPO)/$(DOCKER_IMAGE_NAME)-linux-amd64:$(DOCKER_IMAGE_TAG)" 9020 ceems_api_server
+	./scripts/test_image.sh "$(DOCKER_REPO)/$(DOCKER_IMAGE_NAME)-linux-amd64:$(DOCKER_IMAGE_TAG)" 9030 ceems_lb --config.file=/etc/ceems_lb/config.yml
 
 .PHONY: skip-test-docker
 skip-test-docker:
