@@ -47,17 +47,23 @@ jobs:
 
       - name: Build container images
         run: |
-          ls -la .build/linux-amd64
-          ls -la .build/linux-arm64
-          chmod +x -R .build
           make docker DOCKER_IMAGE_TAG=${{ steps.target_branch.outputs.name }} DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
           docker images
 
       - name: Test container images
         run: make test-docker DOCKER_IMAGE_TAG=${{ steps.target_branch.outputs.name }} DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
 
-      - name: Publish image for main branch
+      - name: Publish image for current branch/tag
+        if: github.ref == 'refs/heads/main'
         run: |
           echo ${{ secrets.password }} | docker login -u ${{ secrets.login }} --password-stdin ${{ inputs.registry }}
           make docker-publish DOCKER_IMAGE_TAG=${{ steps.target_branch.outputs.name }} DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
           make docker-manifest DOCKER_IMAGE_TAG=${{ steps.target_branch.outputs.name }} DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
+
+      - name: Publish image with latest tag
+        if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
+        run: |
+          echo ${{ secrets.password }} | docker login -u ${{ secrets.login }} --password-stdin ${{ inputs.registry }}
+          make docker-tag-latest DOCKER_IMAGE_TAG=${{ steps.target_branch.outputs.name }} DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
+          make docker-publish DOCKER_IMAGE_TAG=latest DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
+          make docker-manifest DOCKER_IMAGE_TAG=latest DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
