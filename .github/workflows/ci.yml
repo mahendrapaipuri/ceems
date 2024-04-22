@@ -56,9 +56,11 @@ jobs:
   docker:
     needs: [build]
     uses: ./.github/workflows/step_docker.yml
+    # Since workflow_dispatch inputs are only available on manual triggers
+    # we need to set default values to the context vars here
     with:
-      registry: ${{ inputs.docker_hub_registry }}
-      organization: ${{ inputs.docker_hub_organization }}
+      registry: ${{ inputs.docker_hub_registry || 'docker.io' }}
+      organization: ${{ inputs.docker_hub_organization || 'mahendrapaipuri' }}
     secrets:  
       login: ${{ secrets.DOCKER_HUB_LOGIN }}
       password: ${{ secrets.DOCKER_HUB_PASSWORD }}

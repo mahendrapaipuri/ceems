@@ -13,10 +13,8 @@ on:
     secrets:
       login:
         required: true
-        description: ''
       password:
         required: true
-        description: ''
 
 jobs:
   images:
@@ -26,15 +24,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Get branch
-        id: get_branch
+      - name: Get target branch
+        id: target_branch
         run: |
           if [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
-            echo "::set-output name=branch::$(echo ${GITHUB_REF##*/})"
+            echo "name=$(echo ${GITHUB_REF##*/})" >> $GITHUB_OUTPUT
           elif [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
-            echo "::set-output name=branch::$(echo $GITHUB_BASE_REF)"
+            echo "name=$(echo $GITHUB_BASE_REF)" >> $GITHUB_OUTPUT
           else
-            echo "::set-output name=branch::INVALID_EVENT_BRANCH_UNKNOWN"
+            echo "name=nightly" >> $GITHUB_OUTPUT
           fi
 
       - name: Download go build artifacts
@@ -49,8 +47,7 @@ jobs:
 
       - name: Build container images
         run: |
-          current_tag=${GITHUB_REF#refs/*/}
-          make docker DOCKER_IMAGE_TAG=${{ steps.get_branch.outputs.branch }} DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
+          make docker DOCKER_IMAGE_TAG=${{ steps.target_branch.outputs.name }} DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
           docker images
         shell: bash
 
@@ -62,6 +59,6 @@ jobs:
         if: github.ref == 'refs/heads/main'
         run: |
           echo ${{ secrets.password }} | docker login -u ${{ secrets.login }} --password-stdin ${{ inputs.registry }}
-          make docker-publish DOCKER_IMAGE_TAG=${{ steps.get_branch.outputs.branch }} DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
-          make docker-manifest DOCKER_IMAGE_TAG=${{ steps.get_branch.outputs.branch }} DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
+          make docker-publish DOCKER_IMAGE_TAG=${{ steps.target_branch.outputs.name }} DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
+          make docker-manifest DOCKER_IMAGE_TAG=${{ steps.target_branch.outputs.name }} DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
         shell: bash
