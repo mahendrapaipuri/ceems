@@ -1,5 +1,5 @@
-name: docker
-run-name: Docker images
+name: images
+run-name: Container images
 
 on:
   workflow_call:
@@ -18,7 +18,7 @@ on:
 
 jobs:
   images:
-    name: docker
+    name: images
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -47,6 +47,7 @@ jobs:
 
       - name: Build container images
         run: |
+          chmod +x -R .build
           make docker DOCKER_IMAGE_TAG=${{ steps.target_branch.outputs.name }} DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
           docker images
 

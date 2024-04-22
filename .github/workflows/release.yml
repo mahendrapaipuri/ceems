@@ -53,7 +53,7 @@ jobs:
 
   publish-docker-images:
     needs: [cross-build]
-    uses: ./.github/workflows/step_docker.yml
+    uses: ./.github/workflows/step_images.yml
     # Since workflow_dispatch inputs are only available on manual triggers
     # we need to set default values to the context vars here
     with:
@@ -65,7 +65,7 @@ jobs:
   
   publish-quay-images:
     needs: [cross-build]
-    uses: ./.github/workflows/step_docker.yml
+    uses: ./.github/workflows/step_images.yml
     # Since workflow_dispatch inputs are only available on manual triggers
     # we need to set default values to the context vars here
     with:

@@ -63,7 +63,7 @@ jobs:
 
   docker:
     needs: [build]
-    uses: ./.github/workflows/step_docker.yml
+    uses: ./.github/workflows/step_images.yml
     # Since workflow_dispatch inputs are only available on manual triggers
     # we need to set default values to the context vars here
     with:
@@ -75,7 +75,7 @@ jobs:
 
   quay:
     needs: [build]
-    uses: ./.github/workflows/step_docker.yml
+    uses: ./.github/workflows/step_images.yml
     # Since workflow_dispatch inputs are only available on manual triggers
     # we need to set default values to the context vars here
     with:
