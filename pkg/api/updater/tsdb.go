@@ -257,7 +257,7 @@ func (t *tsdbUpdater) Update(startTime time.Time, endTime time.Time, units []mod
 		// EndTS will be zero as we cannot convert unknown time into time stamp.
 		// Check if we EndTS is not zero before ignoring unit. If it is zero, it means
 		// it must be RUNNING unit
-		if units[i].EndedAtTS > 0 && units[i].ElapsedRaw < int64(cutoff.Seconds()) {
+		if units[i].EndedAtTS > 0 && units[i].TotalWallTime < int64(cutoff.Seconds()) {
 			ignoredUnits = append(
 				ignoredUnits,
 				units[i].UUID,

@@ -1,0 +1,12 @@
+ALTER TABLE units RENAME COLUMN total_cpu_billing TO total_cputime_seconds;
+ALTER TABLE units RENAME COLUMN total_gpu_billing TO total_gputime_seconds;
+ALTER TABLE units RENAME COLUMN total_misc_billing TO total_misctime_seconds;
+ALTER TABLE usage RENAME COLUMN total_cpu_billing TO total_cputime_seconds;
+ALTER TABLE usage RENAME COLUMN total_gpu_billing TO total_gputime_seconds;
+ALTER TABLE usage RENAME COLUMN total_misc_billing TO total_misctime_seconds;
+ALTER TABLE units RENAME COLUMN elapsed_raw TO total_walltime_seconds;
+ALTER TABLE usage ADD COLUMN "total_walltime_seconds" integer;
+ALTER TABLE units ADD COLUMN "total_cpumemtime_seconds" integer;
+ALTER TABLE units ADD COLUMN "total_gpumemtime_seconds" integer;
+ALTER TABLE usage ADD COLUMN "total_cpumemtime_seconds" integer;
+ALTER TABLE usage ADD COLUMN "total_gpumemtime_seconds" integer;
