@@ -65,7 +65,7 @@ func TestGrafanaTeamMembersQuerySuccess(t *testing.T) {
 	}
 
 	if m, err := grafana.TeamMembers("0"); err != nil {
-		t.Errorf("Expected Grafana query to return value")
+		t.Errorf("Expected Grafana query to return value: %s", err)
 	} else {
 		if !reflect.DeepEqual(m, []string{"foo", "bar"}) {
 			t.Errorf("Expected {foo, bar}, got %v", m)
