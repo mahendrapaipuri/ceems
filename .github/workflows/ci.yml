@@ -50,6 +50,9 @@ jobs:
   test-lint:
     uses: ./.github/workflows/step_tests-lint.yml
 
+  docs:
+    uses: ./.github/workflows/step_docs.yml
+
   test-unit:
     needs: [test-lint]
     uses: ./.github/workflows/step_tests-unit.yml
