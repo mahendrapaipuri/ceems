@@ -71,7 +71,7 @@ func (u Unit) TagMap(keyTag string, valueTag string) map[string]string {
 // Usage statistics of each project/tenant/namespace
 type Usage struct {
 	ID                  int64     `json:"-"                                    sql:"id"                         sqlitetype:"integer not null primary key"`
-	ResourceManager     string    `json:"resource_manager"                     sql:"resource_manager"           sqlitetype:"text"`    // Name of the resource manager that owns project. Eg slurm, openstack, kubernetes, etc
+	ResourceManager     string    `json:"resource_manager,omitempty"           sql:"resource_manager"           sqlitetype:"text"`    // Name of the resource manager that owns project. Eg slurm, openstack, kubernetes, etc
 	NumUnits            int64     `json:"num_units"                            sql:"num_units"                  sqlitetype:"integer"` // Number of consumed units
 	Project             string    `json:"project"                              sql:"project"                    sqlitetype:"text"`    // Account in batch systems, Tenant in Openstack, Namespace in k8s
 	Usr                 string    `json:"usr"                                  sql:"usr"                        sqlitetype:"text"`    // Username

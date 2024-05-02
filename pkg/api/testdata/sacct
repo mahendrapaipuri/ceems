@@ -11,6 +11,6 @@ echo """JobIDRaw|Partition|QoS|Account|Group|GID|User|UID|Submit|Start|End|Elaps
 11508|part1|qos1|acc1|grp15|1015|usr15|1015|2023-02-21T15:48:20+0100|2023-02-21T15:49:06+0100|2023-02-21T15:57:23+0100|00:08:17|4500|0:0|CANCELLED by 1015|billing=160,cpu=16,energy=1439089,gres/gpu=8,mem=320G,node=2|compute-[0-2]|test_script2|/home/usr15
 81510|part1|qos1|acc1|grp15|1015|usr15|1015|2023-02-21T15:48:20+0100|2023-02-21T15:49:06+0100|2023-02-21T15:57:23+0100|00:00:17|3533|0:0|CANCELLED by 1015|billing=160,cpu=16,energy=1439089,gres/gpu=8,mem=320G,node=2|compute-[0-2]|test_script2|/home/usr23
 1009248|part1|qos1|testacc|grp15|1015|testusr|1015|2023-02-21T15:48:20+0100|2023-02-21T15:49:06+0100|2023-02-21T15:57:23+0100|00:00:17|17|0:0|CANCELLED by 1015|billing=160,cpu=16,energy=1439089,gres/gpu=8,mem=320G,node=2|compute-[0-2]|test_script2|/home/usr23
-2009248|part2|qos3|acc3|grp3|1003|usr3|1003|2023-02-21T15:48:20+0100|2023-02-21T15:49:06+0100|Unknown|00:00:17|17|0:0|RUNNING|billing=0,cpu=16,gres/gpu=8,mem=320G,node=2|compute-[0-2]|test_script2|/home/usr3
-3009248|part3|qos3|acc2|grp2|1002|usr2|1002|2023-02-21T15:48:20+0100|2023-02-21T15:49:06+0100|Unknown|00:00:17|17|0:0|RUNNING|billing=0,cpu=16,gres/gpu=8,mem=320G,node=2|compute-[0-2]|test_script2|/home/usr2
+2009248|part2|qos3|acc3|grp3|1003|usr3|1003|2023-02-21T15:48:20+0100|2023-02-21T15:49:06+0100|Unknown|00:00:17|17|0:0|RUNNING|billing=0,cpu=0,gres/gpu=0,mem=0,node=2|compute-[0-2]|test_script2|/home/usr3
+3009248|part3|qos3|acc2|grp2|1002|usr2|1002|2023-02-21T15:48:20+0100|2023-02-21T15:49:06+0100|Unknown|00:00:17|17|0:0|RUNNING|billing=0,cpu=0,gres/gpu=0,mem=0,node=2|compute-[0-2]|test_script2|/home/usr2
 """

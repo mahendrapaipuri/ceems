@@ -34,11 +34,10 @@ type GrafanaTeamsReponse struct {
 
 // Grafana struct
 type Grafana struct {
-	logger              log.Logger
-	URL                 *url.URL
-	Client              *http.Client
-	TeamMembersEndpoint string
-	available           bool
+	logger    log.Logger
+	URL       *url.URL
+	Client    *http.Client
+	available bool
 }
 
 // NewGrafana return a new instance of Grafana struct
@@ -69,12 +68,16 @@ func NewGrafana(webURL string, webSkipTLSVerify bool, logger log.Logger) (*Grafa
 		grafanaClient = &http.Client{Timeout: time.Duration(30 * time.Second)}
 	}
 	return &Grafana{
-		URL:                 grafanaURL,
-		Client:              grafanaClient,
-		TeamMembersEndpoint: "/api/teams/%s/members",
-		logger:              logger,
-		available:           true,
+		URL:       grafanaURL,
+		Client:    grafanaClient,
+		logger:    logger,
+		available: true,
 	}, nil
+}
+
+// teamMembersEndpoint returns the URL for fetching team members
+func (g *Grafana) teamMembersEndpoint(teamID string) string {
+	return g.URL.JoinPath(fmt.Sprintf("/api/teams/%s/members", teamID)).String()
 }
 
 // String receiver for Grafana struct
@@ -96,16 +99,6 @@ func (g *Grafana) Ping() error {
 		return err
 	}
 	defer conn.Close()
-	// // Create a new GET request to reach out to Grafana
-	// req, err := http.NewRequest(http.MethodGet, g.URL.String(), nil)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// // Check if Grafana is reachable
-	// if _, err = g.Client.Do(req); err != nil {
-	// 	return err
-	// }
 	return nil
 }
 
@@ -116,12 +109,14 @@ func (g *Grafana) TeamMembers(teamID string) ([]string, error) {
 	if teamID == "" {
 		return nil, fmt.Errorf("Grafana Team ID not set")
 	}
+
 	// Check if API Token is provided
 	if os.Getenv("GRAFANA_API_TOKEN") == "" {
 		return nil, fmt.Errorf("GRAFANA_API_TOKEN environment variable not set")
 	}
 
-	teamMembersURL := g.URL.JoinPath(fmt.Sprintf(g.TeamMembersEndpoint, teamID)).String()
+	// Make API URL
+	teamMembersURL := g.teamMembersEndpoint(teamID)
 
 	// Create a new GET request
 	req, err := http.NewRequest(http.MethodGet, teamMembersURL, nil)

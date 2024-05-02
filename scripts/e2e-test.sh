@@ -235,7 +235,7 @@ get() {
 }
 
 waitport() {
-  timeout 5 bash -c "while ! curl -H 'X-Grafana-User: usr1' -s "http://localhost:${1}" > /dev/null; do sleep 0.1; done";
+  timeout 5 bash -c "while ! curl -s "http://localhost:${1}" > /dev/null; do sleep 0.1; done";
   sleep 1
 }
 
@@ -394,7 +394,7 @@ then
     get -H "X-Grafana-User: usr2" "127.0.0.1:${port}/api/units?uuid=1481508&project=acc2" > "${fixture_output}"
   elif [ "${scenario}" = "api-running-query" ]
   then
-    get -H "X-Grafana-User: usr3" "127.0.0.1:${port}/api/units?running&from=1676934000&to=1677538800" > "${fixture_output}"
+    get -H "X-Grafana-User: usr3" "127.0.0.1:${port}/api/units?running&from=1676934000&to=1677538800&field=uuid&field=state&field=started_at&field=allocation&field=tags" > "${fixture_output}"
   elif [ "${scenario}" = "api-admin-query" ]
   then
     get -H "X-Grafana-User: grafana" -H "X-Dashboard-User: usr3" "127.0.0.1:${port}/api/units?project=acc3&from=1676934000&to=1677538800" > "${fixture_output}"
@@ -412,13 +412,13 @@ then
     get -H "X-Grafana-User: usr3" "127.0.0.1:${port}/api/usage/current?from=1676934000&to=1677538800" > "${fixture_output}"
   elif [ "${scenario}" = "api-global-usage-query" ]
   then
-    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/usage/global" > "${fixture_output}"
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/usage/global?field=usr&field=project&field=num_units" > "${fixture_output}"
   elif [ "${scenario}" = "api-current-usage-admin-query" ]
   then
     get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/usage/current/admin?user=usr3&from=1676934000&to=1677538800" > "${fixture_output}"
   elif [ "${scenario}" = "api-global-usage-admin-query" ]
   then
-    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/usage/global/admin" > "${fixture_output}"
+    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/usage/global/admin?field=usr&field=project&field=num_units" > "${fixture_output}"
   elif [ "${scenario}" = "api-current-usage-admin-denied-query" ]
   then
     get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/usage/global/admin?user=usr2" > "${fixture_output}"
