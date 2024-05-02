@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -40,6 +41,18 @@ var (
 		"alloctres", "nodelist", "jobname", "workdir",
 	}
 	sacctFieldMap = make(map[string]int, len(sacctFields))
+
+	// SLURM AllocTRES gives memory as 200M, 250G and we dont know if it gives without
+	// units. So, regex will capture the number and unit (if exists) and we convert it
+	// to bytes
+	memRegex = regexp.MustCompile("([0-9]+)([K|M|G|T]?)")
+	toBytes  = map[string]int64{
+		"K": 1024,
+		"M": 1024 * 1024,
+		"G": 1024 * 1024 * 1024,
+		"T": 1024 * 1024 * 1024 * 1024,
+		"Z": 1024 * 1024 * 1024 * 1024 * 1024,
+	}
 )
 
 func init() {
@@ -84,25 +97,25 @@ func preflightChecks(logger log.Logger) (string, error) {
 	// it will be a success
 	slurmUser, err := user.Lookup("slurm")
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to lookup slurm user for executing sacct cmd", "err", err)
+		level.Error(logger).Log("msg", "Failed to lookup SLURM user for executing sacct cmd", "err", err)
 		goto sudomode
 	}
 
 	slurmUserUID, err = strconv.Atoi(slurmUser.Uid)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to convert slurm user uid to int", "uid", slurmUserUID, "err", err)
+		level.Error(logger).Log("msg", "Failed to convert SLURM user uid to int", "uid", slurmUserUID, "err", err)
 		goto sudomode
 	}
 
 	slurmUserGID, err = strconv.Atoi(slurmUser.Gid)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to convert slurm user gid to int", "gid", slurmUserGID, "err", err)
+		level.Error(logger).Log("msg", "Failed to convert SLURM user gid to int", "gid", slurmUserGID, "err", err)
 		goto sudomode
 	}
 
 	if _, err := internal_osexec.ExecuteAs(*sacctPath, []string{"--help"}, slurmUserUID, slurmUserGID, nil, logger); err == nil {
 		execMode = "cap"
-		level.Debug(logger).Log("msg", "Linux capabilities will be used to execute sacct as slurm user")
+		level.Debug(logger).Log("msg", "Linux capabilities will be used to execute sacct as SLURM user")
 		return execMode, nil
 	}
 
@@ -122,11 +135,11 @@ sudomode:
 func NewSlurmScheduler(logger log.Logger) (Fetcher, error) {
 	execMode, err := preflightChecks(logger)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to setup Slurm batch scheduler for retreiving jobs", "err", err)
+		level.Error(logger).Log("msg", "Failed to setup SLURM batch scheduler for retreiving jobs", "err", err)
 		return nil, err
 	}
 
-	level.Info(logger).Log("msg", "Jobs from slurm batch scheduler will be retrieved")
+	level.Info(logger).Log("msg", "Fetching batch jobs from SLURM")
 	return &slurmScheduler{
 		logger:   logger,
 		execMode: execMode,
@@ -215,10 +228,10 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 			}
 
 			// Attempt to convert strings to int and ignore any errors in conversion
-			var gidInt, uidInt, elapsedrawInt int64
+			var gidInt, uidInt int64
 			gidInt, _ = strconv.ParseInt(components[sacctFieldMap["gid"]], 10, 64)
 			uidInt, _ = strconv.ParseInt(components[sacctFieldMap["uid"]], 10, 64)
-			elapsedrawInt, _ = strconv.ParseInt(components[sacctFieldMap["elapsedraw"]], 10, 64)
+			// elapsedSeconds, _ = strconv.ParseInt(components[sacctFieldMap["elapsedraw"]], 10, 64)
 
 			// Get job submit, start and end times
 			jobSubmitTS := helper.TimeToTimestamp(slurmTimeFormat, components[8])
@@ -227,7 +240,7 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 
 			// Parse alloctres to get billing, nnodes, ncpus, ngpus and mem
 			var billing, nnodes, ncpus, ngpus int64
-			var mem string
+			var memString string
 			for _, elem := range strings.Split(components[sacctFieldMap["alloctres"]], ",") {
 				var tresKV = strings.Split(elem, "=")
 				if tresKV[0] == "billing" {
@@ -239,11 +252,32 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 				if tresKV[0] == "cpu" {
 					ncpus, _ = strconv.ParseInt(tresKV[1], 10, 64)
 				}
-				if tresKV[0] == "gres/gpu" {
+				// For MIG devices, it can be gres/gpu:<MIG ID>
+				// https://github.com/SchedMD/slurm/blob/db91ac3046b3b7b845cce4a99127db8c6f14a8e8/testsuite/expect/test39.19#L70
+				// Use a regex gres\/gpu:([^=]+)=(\d+) for identifying number of instances
+				// For the moment, use strings.HasPrefix to identify GPU
+				if strings.HasPrefix(tresKV[0], "gres/gpu") {
 					ngpus, _ = strconv.ParseInt(tresKV[1], 10, 64)
 				}
 				if tresKV[0] == "mem" {
-					mem = tresKV[1]
+					memString = tresKV[1]
+				}
+			}
+
+			// If mem is not empty string, convert the units [K|M|G|T] into numeric bytes
+			// The following logic covers the cases when memory is of form 200M, 250G
+			// and also without unit eg 20000, 40000. When there is no unit we assume
+			// it is already in bytes
+			matches := memRegex.FindStringSubmatch(memString)
+			var mem int64
+			var err error
+			if len(matches) >= 2 {
+				if mem, err = strconv.ParseInt(matches[1], 10, 64); err == nil {
+					if len(matches) == 3 {
+						if unitConv, ok := toBytes[matches[2]]; ok {
+							mem = mem * unitConv
+						}
+					}
 				}
 			}
 
@@ -283,15 +317,27 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 
 		elapsed:
 			// Get elapsed time of job in this interval in seconds
-			elapsedTime := (endMark - startMark) / 1000
+			elapsedSeconds := (endMark - startMark) / 1000
 
-			// Attribute billing to CPUBilling if ngpus is 0 or attribute to GPUBilling
-			var cpuBilling, gpuBilling int64
-			if ngpus == 0 {
-				cpuBilling = billing * elapsedTime
+			// Get cpuSeconds and gpuSeconds of the current interval
+			var cpuSeconds, gpuSeconds int64
+			cpuSeconds = ncpus * elapsedSeconds
+			gpuSeconds = ngpus * elapsedSeconds
+
+			// Get cpuMemSeconds and gpuMemSeconds of current interval in MB
+			var cpuMemSeconds, gpuMemSeconds int64
+			if mem > 0 {
+				cpuMemSeconds = mem * elapsedSeconds / toBytes["M"]
 			} else {
-				gpuBilling = billing * elapsedTime
+				cpuMemSeconds = elapsedSeconds / toBytes["M"]
 			}
+
+			// Currently we use walltime as GPU mem time. This wont be a correct proxy
+			// if MIG is enabled in GPUs where different portions of memory can be
+			// allocated
+			// NOTE: Not sure how SLURM outputs the gres/gpu when MIG is activated.
+			// We need to check it and update this part to take GPU memory into account
+			gpuMemSeconds = elapsedSeconds
 
 			// Expand nodelist range expressions
 			allNodes := helper.NodelistParser(components[sacctFieldMap["nodelist"]])
@@ -299,10 +345,11 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 
 			// Allocation
 			allocation := models.Allocation{
-				"nodes": nnodes,
-				"cpus":  ncpus,
-				"mem":   mem,
-				"gpus":  ngpus,
+				"nodes":   nnodes,
+				"cpus":    ncpus,
+				"mem":     mem,
+				"gpus":    ngpus,
+				"billing": billing,
 			}
 
 			// Tags
@@ -332,11 +379,13 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 				StartedAtTS:     jobStartTS,
 				EndedAtTS:       jobEndTS,
 				Elapsed:         components[sacctFieldMap["elapsed"]],
-				ElapsedRaw:      elapsedrawInt,
 				State:           components[sacctFieldMap["state"]],
 				Allocation:      allocation,
-				TotalCPUBilling: cpuBilling,
-				TotalGPUBilling: gpuBilling,
+				TotalWallTime:   elapsedSeconds,
+				TotalCPUTime:    cpuSeconds,
+				TotalGPUTime:    gpuSeconds,
+				TotalCPUMemTime: cpuMemSeconds,
+				TotalGPUMemTime: gpuMemSeconds,
 				Tags:            tags,
 			}
 			jobLock.Lock()

@@ -67,34 +67,26 @@ type Response struct {
 }
 
 var (
-	aggUsageDBCols     = make([]string, len(base.UsageDBTableColNames))
+	aggUsageDBCols     = make(map[string]string, len(base.UsageDBTableColNames))
 	defaultQueryWindow = time.Duration(2 * time.Hour) // Two hours
 )
 
 // Make summary DB col names by using aggregate SQL functions
 func init() {
 	// Add primary field manually as it is ignored in UsageDBColNames
-	aggUsageDBCols[0] = "id"
+	aggUsageDBCols["id"] = "id"
 
 	// Use SQL aggregate functions in query
-	j := 0
-	for i := 0; i < len(base.UsageDBTableColNames); i++ {
-		col := base.UsageDBTableColNames[i]
-		// Ignore last_updated_at col
-		if slices.Contains([]string{"last_updated_at"}, col) {
-			continue
-		}
-
+	for _, col := range base.UsageDBTableColNames {
 		if strings.HasPrefix(col, "avg") {
-			aggUsageDBCols[j+1] = fmt.Sprintf("AVG(%[1]s) AS %[1]s", col)
+			aggUsageDBCols[col] = fmt.Sprintf("SUM(%[1]s * %[2]s) / SUM(%[2]s) AS %[1]s", col, db.Weights[col])
 		} else if strings.HasPrefix(col, "total") {
-			aggUsageDBCols[j+1] = fmt.Sprintf("SUM(%[1]s) AS %[1]s", col)
+			aggUsageDBCols[col] = fmt.Sprintf("SUM(%[1]s) AS %[1]s", col)
 		} else if strings.HasPrefix(col, "num") {
-			aggUsageDBCols[j+1] = "COUNT(id) AS num_units"
+			aggUsageDBCols[col] = "COUNT(id) AS num_units"
 		} else {
-			aggUsageDBCols[j+1] = col
+			aggUsageDBCols[col] = col
 		}
-		j++
 	}
 }
 
@@ -246,6 +238,23 @@ func (s *CEEMSServer) getCommonQueryParams(q *Query, URLValues url.Values) Query
 	return *q
 }
 
+// Fetch queried fields
+func (s *CEEMSServer) getQueriedFields(URLValues url.Values, validFieldNames []string) []string {
+	// Get fields query parameters if any
+	var queriedFields []string
+	if fields := URLValues["field"]; len(fields) > 0 {
+		// Check if fields are valid field names
+		for _, f := range fields {
+			if slices.Contains(validFieldNames, f) {
+				queriedFields = append(queriedFields, f)
+			}
+		}
+	} else {
+		queriedFields = validFieldNames
+	}
+	return queriedFields
+}
+
 // Get from and to time stamps from query vars and cast them into proper format
 func (s *CEEMSServer) getQueryWindow(r *http.Request) (map[string]string, error) {
 	var fromTime, toTime time.Time
@@ -312,23 +321,11 @@ func (s *CEEMSServer) unitsQuerier(
 	checkQueryWindow := true // Check query window size
 
 	// Get fields query parameters if any
-	var reqFields string
-	if fields := r.URL.Query()["field"]; len(fields) > 0 {
-		// Check if fields are valid field names
-		var validFields []string
-		for _, f := range fields {
-			if slices.Contains(base.UnitsDBTableColNames, f) {
-				validFields = append(validFields, f)
-			}
-		}
-		reqFields = strings.Join(validFields, ",")
-	} else {
-		reqFields = strings.Join(base.UnitsDBTableColNames, ",")
-	}
+	queriedFields := s.getQueriedFields(r.URL.Query(), base.UnitsDBTableColNames)
 
 	// Initialise query builder
 	q := Query{}
-	q.query(fmt.Sprintf("SELECT %s FROM %s", reqFields, base.UnitsDBTableName))
+	q.query(fmt.Sprintf("SELECT %s FROM %s", strings.Join(queriedFields, ","), base.UnitsDBTableName))
 
 	// Query for only unignored units
 	q.query(" WHERE ignore = 0 ")
@@ -492,13 +489,23 @@ func (s *CEEMSServer) projectsSubQuery(users []string) Query {
 
 // GET /api/usage/current
 // Get current usage statistics
-func (s *CEEMSServer) currentUsage(users []string, w http.ResponseWriter, r *http.Request) {
+func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.ResponseWriter, r *http.Request) {
 	// Get sub query for projects
 	qSub := s.projectsSubQuery(users)
 
+	// Get aggUsageCols based on queried fields
+	var queriedFields []string
+	for _, field := range fields {
+		// Ignore last_updated_at col
+		if slices.Contains([]string{"last_updated_at"}, field) {
+			continue
+		}
+		queriedFields = append(queriedFields, aggUsageDBCols[field])
+	}
+
 	// Make query
 	q := Query{}
-	q.query(fmt.Sprintf("SELECT %s FROM %s", strings.Join(aggUsageDBCols, ","), base.UnitsDBTableName))
+	q.query(fmt.Sprintf("SELECT %s FROM %s", strings.Join(queriedFields, ","), base.UnitsDBTableName))
 
 	// First select all projects that user is part of using subquery
 	q.query(" WHERE project IN ")
@@ -548,13 +555,13 @@ func (s *CEEMSServer) currentUsage(users []string, w http.ResponseWriter, r *htt
 
 // GET /api/usage/global
 // Get global usage statistics
-func (s *CEEMSServer) globalUsage(users []string, w http.ResponseWriter, r *http.Request) {
+func (s *CEEMSServer) globalUsage(users []string, queriedFields []string, w http.ResponseWriter, r *http.Request) {
 	// Get sub query for projects
 	qSub := s.projectsSubQuery(users)
 
 	// Make query
 	q := Query{}
-	q.query(fmt.Sprintf("SELECT %s FROM %s", strings.Join(base.UsageDBTableColNames, ","), base.UsageDBTableName))
+	q.query(fmt.Sprintf("SELECT %s FROM %s", strings.Join(queriedFields, ","), base.UsageDBTableName))
 
 	// First select all projects that user is part of using subquery
 	q.query(" WHERE project IN ")
@@ -601,14 +608,17 @@ func (s *CEEMSServer) usage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get fields query parameters if any
+	queriedFields := s.getQueriedFields(r.URL.Query(), base.UsageDBTableColNames)
+
 	// handle current usage query
 	if queryType == "current" {
-		s.currentUsage([]string{dashboardUser}, w, r)
+		s.currentUsage([]string{dashboardUser}, queriedFields, w, r)
 	}
 
 	// handle global usage query
 	if queryType == "global" {
-		s.globalUsage([]string{dashboardUser}, w, r)
+		s.globalUsage([]string{dashboardUser}, queriedFields, w, r)
 	}
 }
 
@@ -626,14 +636,17 @@ func (s *CEEMSServer) usageAdmin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get fields query parameters if any
+	queriedFields := s.getQueriedFields(r.URL.Query(), base.UsageDBTableColNames)
+
 	// handle current usage query
 	if queryType == "current" {
-		s.currentUsage(r.URL.Query()["user"], w, r)
+		s.currentUsage(r.URL.Query()["user"], queriedFields, w, r)
 	}
 
 	// handle global usage query
 	if queryType == "global" {
-		s.globalUsage(r.URL.Query()["user"], w, r)
+		s.globalUsage(r.URL.Query()["user"], queriedFields, w, r)
 	}
 }
 

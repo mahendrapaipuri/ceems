@@ -81,6 +81,18 @@ const (
 
 var (
 	prepareStatements = make(map[string]string, 3)
+
+	// For estimating average values, we do weighted average method using following
+	// values as weight for each DB column
+	// For CPU and GPU, we use CPU time and GPU time as weights
+	// For memory usage, we use Walltime * Mem for CPU as weight and just walltime
+	// for GPU
+	Weights = map[string]string{
+		"avg_cpu_usage":     "total_cputime_seconds",
+		"avg_gpu_usage":     "total_gputime_seconds",
+		"avg_cpu_mem_usage": "total_cpumemtime_seconds",
+		"avg_gpu_mem_usage": "total_gpumemtime_seconds",
+	}
 )
 
 // Init func to set prepareStatements
@@ -92,7 +104,10 @@ func init() {
 			unitTablePlaceholders = append(unitTablePlaceholders, fmt.Sprintf("  %[1]s = %[1]s + :%[1]s", col))
 		} else if strings.HasPrefix(col, "avg") {
 			// Update average values only when the new value is non zero
-			unitTablePlaceholders = append(unitTablePlaceholders, fmt.Sprintf("  %[1]s = CASE WHEN :%[1]s > 0 THEN (%[1]s * num_updates + :%[1]s) / (num_updates + 1) ELSE %[1]s END", col))
+			unitTablePlaceholders = append(
+				unitTablePlaceholders,
+				fmt.Sprintf("  %[1]s = CASE WHEN :%[1]s > 0 THEN (%[1]s * %[2]s + :%[1]s * :%[2]s) / (%[2]s + :%[2]s) ELSE %[1]s END", col, Weights[col]),
+			)
 		} else if strings.HasPrefix(col, "total") {
 			unitTablePlaceholders = append(unitTablePlaceholders, fmt.Sprintf("  %[1]s = (%[1]s + :%[1]s)", col))
 			// We will need to update end time, elapsed time and state as they change with time
@@ -129,7 +144,10 @@ func init() {
 			usageTablePlaceholders = append(usageTablePlaceholders, fmt.Sprintf("  %[1]s = %[1]s + :%[1]s", col))
 		} else if strings.HasPrefix(col, "avg") {
 			// Update average values only when the new value is non zero
-			usageTablePlaceholders = append(usageTablePlaceholders, fmt.Sprintf("  %[1]s = CASE WHEN :%[1]s > 0 THEN (%[1]s * num_updates + :%[1]s) / (num_updates + 1) ELSE %[1]s END", col))
+			usageTablePlaceholders = append(
+				usageTablePlaceholders,
+				fmt.Sprintf("  %[1]s = CASE WHEN :%[1]s > 0 THEN (%[1]s * %[2]s + :%[1]s * :%[2]s) / (%[2]s + :%[2]s) ELSE %[1]s END", col, Weights[col]),
+			)
 		} else if strings.HasPrefix(col, "total") {
 			usageTablePlaceholders = append(usageTablePlaceholders, fmt.Sprintf("  %[1]s = (%[1]s + :%[1]s)", col))
 		} else if col == "tags" {
@@ -332,11 +350,11 @@ func (s *statsDB) getUnitStats(startTime, endTime time.Time) error {
 	// Delete older entries and free up DB pages
 	// In testing we want to skip this
 	if !s.storage.skipDeleteOldUnits {
-		level.Debug(s.logger).Log("msg", "Cleaning up old units")
+		level.Debug(s.logger).Log("msg", "Cleaning up old entries in DB")
 		if err = s.purgeExpiredUnits(tx); err != nil {
-			level.Error(s.logger).Log("msg", "Failed to clean up old unit entries", "err", err)
+			level.Error(s.logger).Log("msg", "Failed to clean up old entries", "err", err)
 		} else {
-			level.Debug(s.logger).Log("msg", "Cleaned up old units in DB")
+			level.Debug(s.logger).Log("msg", "Cleaned up old entries in DB")
 		}
 	}
 
@@ -369,19 +387,35 @@ func (s *statsDB) getUnitStats(startTime, endTime time.Time) error {
 
 // Delete old entries in DB
 func (s *statsDB) purgeExpiredUnits(tx *sql.Tx) error {
-	deleteRowQuery := fmt.Sprintf(
+	// Purge expired units
+	deleteUnitsQuery := fmt.Sprintf(
 		"DELETE FROM %s WHERE started_at <= date('now', '-%d day')",
 		base.UnitsDBTableName,
 		int(s.storage.retentionPeriod.Hours()/24),
 	)
-	if _, err := tx.Exec(deleteRowQuery); err != nil {
+	if _, err := tx.Exec(deleteUnitsQuery); err != nil {
 		return err
 	}
 
 	// Get changes
-	var rowsDeleted int
-	_ = tx.QueryRow("SELECT changes();").Scan(&rowsDeleted)
-	level.Debug(s.logger).Log("units_deleted", rowsDeleted)
+	var unitsDeleted int
+	_ = tx.QueryRow("SELECT changes();").Scan(&unitsDeleted)
+	level.Debug(s.logger).Log("units_deleted", unitsDeleted)
+
+	// Purge stale usage data
+	deleteUsageQuery := fmt.Sprintf(
+		"DELETE FROM %s WHERE last_updated_at <= date('now', '-%d day')",
+		base.UsageDBTableName,
+		int(s.storage.retentionPeriod.Hours()/24),
+	)
+	if _, err := tx.Exec(deleteUsageQuery); err != nil {
+		return err
+	}
+
+	// Get changes
+	var usageDeleted int
+	_ = tx.QueryRow("SELECT changes();").Scan(&usageDeleted)
+	level.Debug(s.logger).Log("usage_deleted", usageDeleted)
 	return nil
 }
 
@@ -425,12 +459,13 @@ func (s *statsDB) execStatements(statements map[string]*sql.Stmt, units []models
 			sql.Named(base.UnitsDBTableStructFieldColNameMap["StartedAtTS"], unit.StartedAtTS),
 			sql.Named(base.UnitsDBTableStructFieldColNameMap["EndedAtTS"], unit.EndedAtTS),
 			sql.Named(base.UnitsDBTableStructFieldColNameMap["Elapsed"], unit.Elapsed),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["ElapsedRaw"], unit.ElapsedRaw),
 			sql.Named(base.UnitsDBTableStructFieldColNameMap["State"], unit.State),
 			sql.Named(base.UnitsDBTableStructFieldColNameMap["Allocation"], unit.Allocation),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalCPUBilling"], unit.TotalCPUBilling),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalGPUBilling"], unit.TotalGPUBilling),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalMiscBilling"], unit.TotalMiscBilling),
+			sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalWallTime"], unit.TotalWallTime),
+			sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalCPUTime"], unit.TotalCPUTime),
+			sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalGPUTime"], unit.TotalGPUTime),
+			sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalCPUMemTime"], unit.TotalCPUMemTime),
+			sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalGPUMemTime"], unit.TotalGPUMemTime),
 			sql.Named(base.UnitsDBTableStructFieldColNameMap["AveCPUUsage"], unit.AveCPUUsage),
 			sql.Named(base.UnitsDBTableStructFieldColNameMap["AveCPUMemUsage"], unit.AveCPUMemUsage),
 			sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalCPUEnergyUsage"], unit.TotalCPUEnergyUsage),
@@ -468,9 +503,11 @@ func (s *statsDB) execStatements(statements map[string]*sql.Stmt, units []models
 			sql.Named(base.UsageDBTableStructFieldColNameMap["Project"], unit.Project),
 			sql.Named(base.UsageDBTableStructFieldColNameMap["Usr"], unit.Usr),
 			sql.Named(base.UsageDBTableStructFieldColNameMap["LastUpdatedAt"], time.Now().Format(base.DatetimeLayout)),
-			sql.Named(base.UsageDBTableStructFieldColNameMap["TotalCPUBilling"], unit.TotalCPUBilling),
-			sql.Named(base.UsageDBTableStructFieldColNameMap["TotalGPUBilling"], unit.TotalGPUBilling),
-			sql.Named(base.UsageDBTableStructFieldColNameMap["TotalMiscBilling"], unit.TotalMiscBilling),
+			sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalWallTime"], unit.TotalWallTime),
+			sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalCPUTime"], unit.TotalCPUTime),
+			sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalGPUTime"], unit.TotalGPUTime),
+			sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalCPUMemTime"], unit.TotalCPUMemTime),
+			sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalGPUMemTime"], unit.TotalGPUMemTime),
 			sql.Named(base.UsageDBTableStructFieldColNameMap["AveCPUUsage"], unit.AveCPUUsage),
 			sql.Named(base.UsageDBTableStructFieldColNameMap["AveCPUMemUsage"], unit.AveCPUMemUsage),
 			sql.Named(base.UsageDBTableStructFieldColNameMap["TotalCPUEnergyUsage"], unit.TotalCPUEnergyUsage),
