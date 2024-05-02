@@ -10,6 +10,10 @@ on:
         type: string
         description: DockerHub organization
         default: mahendrapaipuri
+      docker_hub_registry_provider:
+        type: string
+        description: DockerHub registry provider
+        default: dockerhub
       quay_registry:
         type: string
         description: Quay registry
@@ -18,6 +22,10 @@ on:
         type: string
         description: Quay organization
         default: mahendrapaipuri
+      quay_registry_provider:
+        type: string
+        description: Quay registry provider
+        default: quay
   push:
     paths:
       - "go.sum"
@@ -69,9 +77,11 @@ jobs:
     with:
       registry: ${{ inputs.docker_hub_registry || 'docker.io' }}
       organization: ${{ inputs.docker_hub_organization || 'mahendrapaipuri' }}
+      registry_provider: ${{ inputs.docker_hub_registry_provider || 'dockerhub' }}
     secrets:  
       login: ${{ secrets.DOCKER_HUB_LOGIN }}
       password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+      quay_api_token: ${{ secrets.QUAY_API_TOKEN }}
 
   quay:
     needs: [build]
@@ -81,6 +91,8 @@ jobs:
     with:
       registry: ${{ inputs.quay_registry || 'quay.io' }}
       organization: ${{ inputs.quay_organization || 'mahendrapaipuri' }}
+      registry_provider: ${{ inputs.quay_registry_provider || 'quay' }}
     secrets:  
       login: ${{ secrets.QUAY_LOGIN }}
       password: ${{ secrets.QUAY_PASSWORD }}
+      quay_api_token: ${{ secrets.QUAY_API_TOKEN }}
