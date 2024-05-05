@@ -1,1 +1,1 @@
-{"status":"success","data":{"user":"usr1","uuids":["1479763","1479765"],"verfiy":true}}
+{"status":"success","data":[{"user":"usr1","uuids":["1479763","1479765"],"owner":true}]}

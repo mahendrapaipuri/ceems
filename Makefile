@@ -23,6 +23,10 @@ STATICCHECK_IGNORE =
 
 CGO_BUILD               ?= 0
 
+# Swagger docs
+SWAGGER_DIR     ?= pkg/api/http
+SWAGGER_MAIN    ?= server.go
+
 ifeq ($(GOHOSTOS), linux)
 	test-e2e := test-e2e
 else
@@ -240,7 +244,6 @@ skip-test-docker:
 
 .PHONY: promtool
 promtool: $(PROMTOOL)
-
 $(PROMTOOL):
 	mkdir -p $(FIRST_GOPATH)/bin
 	curl -fsS -L $(PROMTOOL_URL) | tar -xvzf - -C $(FIRST_GOPATH)/bin --strip 1 "prometheus-$(PROMTOOL_VERSION).$(GO_BUILD_PLATFORM)/promtool" 

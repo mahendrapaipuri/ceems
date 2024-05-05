@@ -136,7 +136,7 @@ func TestMiddlewareWithDB(t *testing.T) {
 			req:    "/test?query=foo{uuid=~\"1479765|1481510\"}",
 			user:   "usr1",
 			header: true,
-			code:   401,
+			code:   403,
 		},
 		{
 			name:   "allow query for admins",
@@ -150,7 +150,7 @@ func TestMiddlewareWithDB(t *testing.T) {
 			req:    "/test?query=foo{uuid=~\"123|345\"}",
 			user:   "usr1",
 			header: true,
-			code:   401,
+			code:   403,
 		},
 		{
 			name:   "forbid due to missing header",

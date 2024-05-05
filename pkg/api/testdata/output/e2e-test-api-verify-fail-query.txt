@@ -1,1 +1,1 @@
-{"status":"error","errorType":"unauthorized","error":"user do not have permissions on uuids"}
+{"status":"error","errorType":"forbidden","error":"user do not have permissions on uuids"}
