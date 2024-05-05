@@ -102,18 +102,13 @@ func TestAccountsHandler(t *testing.T) {
 	expectedAccounts, _ := mockQuerier(server.db, Query{}, "projects", server.logger)
 
 	// Unmarshal byte into structs.
-	var response Response
+	var response Response[models.Project]
 	json.Unmarshal(data, &response)
-	var projectData []models.Project
-	for _, name := range response.Data.([]interface{}) {
-		projectData = append(projectData, models.Project{Name: name.(map[string]interface{})["name"].(string)})
-	}
-
 	if response.Status != "success" {
 		t.Errorf("expected success status got %v", response.Status)
 	}
-	if !reflect.DeepEqual(projectData, expectedAccounts) {
-		t.Errorf("expected %#v got %#v", expectedAccounts, projectData)
+	if !reflect.DeepEqual(response.Data, expectedAccounts) {
+		t.Errorf("expected %#v got %#v", expectedAccounts, response.Data)
 	}
 }
 
@@ -175,16 +170,15 @@ func TestUnitsHandler(t *testing.T) {
 	expectedUnits, _ := getMockUnits(Query{}, server.logger)
 
 	// Unmarshal byte into structs.
-	var response Response
+	var response Response[models.Unit]
 	json.Unmarshal(data, &response)
 
 	if response.Status != "success" {
 		t.Errorf("expected success status got %v", response.Status)
 	}
 
-	var unitData = response.Data.([]interface{})
-	if len(unitData) != len(expectedUnits) {
-		t.Errorf("expected %d units, got %d", len(unitData), len(expectedUnits))
+	if len(response.Data) != len(expectedUnits) {
+		t.Errorf("expected %d units, got %d", len(response.Data), len(expectedUnits))
 	}
 }
 
@@ -250,7 +244,7 @@ func TestUnitsHandlerWithMalformedQueryParams(t *testing.T) {
 	}
 
 	// Unmarshal byte into structs.
-	var response Response
+	var response Response[any]
 	json.Unmarshal(data, &response)
 
 	if response.Status != "error" {
@@ -290,7 +284,7 @@ func TestUnitsHandlerWithQueryWindowExceeded(t *testing.T) {
 	}
 
 	// Unmarshal byte into structs.
-	var response Response
+	var response Response[any]
 	json.Unmarshal(data, &response)
 
 	if response.Status != "error" {
@@ -333,14 +327,14 @@ func TestUnitsHandlerWithUnituuidsQueryParams(t *testing.T) {
 	expectedUnits, _ := getMockUnits(Query{}, server.logger)
 
 	// Unmarshal byte into structs.
-	var response Response
+	var response Response[models.Unit]
 	json.Unmarshal(data, &response)
 
 	if response.Status != "success" {
 		t.Errorf("expected success status got %v", response.Status)
 	}
 
-	var unitData = response.Data.([]interface{})
+	var unitData = response.Data
 	if len(unitData) != len(expectedUnits) {
 		t.Errorf("expected %d units, got %d", len(unitData), len(expectedUnits))
 	}

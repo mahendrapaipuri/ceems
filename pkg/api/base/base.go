@@ -52,3 +52,6 @@ var (
 	GrafanaWebSkipTLSVerify bool
 	GrafanaAdminTeamID      string
 )
+
+// APIVersion sets the version of API in paths
+const APIVersion = "v1"

@@ -20,10 +20,12 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/db"
+	"github.com/mahendrapaipuri/ceems/pkg/api/http/docs"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/mahendrapaipuri/ceems/pkg/grafana"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/prometheus/exporter-toolkit/web"
+	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
 
 // API Resources names
@@ -58,12 +60,12 @@ type CEEMSServer struct {
 }
 
 // Response defines the response model of CEEMSServer
-type Response struct {
-	Status    string      `json:"status"`
-	Data      interface{} `json:"data,omitempty"`
-	ErrorType errorType   `json:"errorType,omitempty"`
-	Error     string      `json:"error,omitempty"`
-	Warnings  []string    `json:"warnings,omitempty"`
+type Response[T any] struct {
+	Status    string    `json:"status"`
+	Data      []T       `json:"data,omitempty"`
+	ErrorType errorType `json:"errorType,omitempty"`
+	Error     string    `json:"error,omitempty"`
+	Warnings  []string  `json:"warnings,omitempty"`
 }
 
 var (
@@ -136,22 +138,33 @@ func NewCEEMSServer(c *Config) (*CEEMSServer, func(), error) {
 			</html>`))
 	})
 
+	// Create a sub router with apiVersion as PathPrefix
+	subRouter := router.PathPrefix(fmt.Sprintf("/api/%s/", base.APIVersion)).Subrouter()
+
 	// Allow only GET methods
-	router.HandleFunc("/api/health", server.health).Methods("GET")
-	router.HandleFunc("/api/projects", server.projects).Methods("GET")
-	router.HandleFunc(fmt.Sprintf("/api/%s", unitsResourceName), server.units).Methods("GET")
-	router.HandleFunc(fmt.Sprintf("/api/%s/admin", unitsResourceName), server.unitsAdmin).Methods("GET")
-	router.HandleFunc(fmt.Sprintf("/api/%s/{query:(?:current|global)}", usageResourceName), server.usage).
-		Methods("GET")
-	router.HandleFunc(fmt.Sprintf("/api/%s/{query:(?:current|global)}/admin", usageResourceName), server.usageAdmin).
-		Methods("GET")
-	router.HandleFunc(fmt.Sprintf("/api/%s/verify", unitsResourceName), server.verifyUnitsOwnership).Methods("GET")
+	subRouter.HandleFunc("/health", server.health).Methods(http.MethodGet)
+	subRouter.HandleFunc("/projects", server.projects).Methods(http.MethodGet)
+	subRouter.HandleFunc(fmt.Sprintf("/%s", unitsResourceName), server.units).Methods(http.MethodGet)
+	subRouter.HandleFunc(fmt.Sprintf("/%s/admin", unitsResourceName), server.unitsAdmin).Methods(http.MethodGet)
+	subRouter.HandleFunc(fmt.Sprintf("/%s/{mode:(?:current|global)}", usageResourceName), server.usage).
+		Methods(http.MethodGet)
+	subRouter.HandleFunc(fmt.Sprintf("/%s/{mode:(?:current|global)}/admin", usageResourceName), server.usageAdmin).
+		Methods(http.MethodGet)
+	subRouter.HandleFunc(fmt.Sprintf("/%s/verify", unitsResourceName), server.verifyUnitsOwnership).
+		Methods(http.MethodGet)
 
 	// A demo end point that returns mocked data for units and/or usage tables
-	router.HandleFunc("/api/{resource:(?:units|usage)}/demo", server.demo).Methods("GET")
+	subRouter.HandleFunc("/{resource:(?:units|usage)}/demo", server.demo).Methods(http.MethodGet)
 
 	// pprof debug end points
 	router.PathPrefix("/debug/").Handler(http.DefaultServeMux)
+
+	router.PathPrefix("/swagger/").Handler(httpSwagger.Handler(
+		httpSwagger.URL("doc.json"), // The url pointing to API definition
+		httpSwagger.DeepLinking(true),
+		httpSwagger.DocExpansion("list"),
+		httpSwagger.DomID("swagger-ui"),
+	)).Methods(http.MethodGet)
 
 	// Add a middleware that verifies headers and pass them in requests
 	// The middleware will fetch admin users from Grafana periodically to update list
@@ -170,8 +183,27 @@ func NewCEEMSServer(c *Config) (*CEEMSServer, func(), error) {
 	return server, func() {}, nil
 }
 
-// Start server
+// Start launches CEEMS HTTP server godoc
+//
+//	@title						CEEMS API
+//	@version					1.0
+//	@description				CEEMS REST API server.
+//	@termsOfService				http://swagger.io/terms/
+//
+//	@contact.name				Mahendra Paipuri
+//	@contact.url				https://github.com/mahendrapaipuri/ceems/issues
+//	@contact.email				mahendra.paipuri@gmail.com
+//
+//	@license.name				BSD-3-Clause license
+//	@license.url				https://opensource.org/license/bsd-3-clause
+//
+//	@securityDefinitions.basic	BasicAuth
 func (s *CEEMSServer) Start() error {
+	// Set swagger info
+	docs.SwaggerInfo.BasePath = fmt.Sprintf("/api/%s", base.APIVersion)
+	docs.SwaggerInfo.Schemes = []string{"http", "https"}
+	docs.SwaggerInfo.Host = s.server.Addr
+
 	level.Info(s.logger).Log("msg", fmt.Sprintf("Starting %s", base.CEEMSServerAppName))
 	if err := web.ListenAndServe(s.server, s.webConfig, s.logger); err != nil && err != http.ErrServerClosed {
 		level.Error(s.logger).Log("msg", "Failed to Listen and Server HTTP server", "err", err)
@@ -207,6 +239,16 @@ func (s *CEEMSServer) setHeaders(w http.ResponseWriter) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 }
 
+// health godoc
+//
+//	@Summary		Health status
+//	@Description	get health status of API server
+//	@Tags			health
+//	@Produce		plain
+//	@Success		200	{string}	OK
+//	@Failure		503	{string}	KO
+//	@Router			/health [get]
+//
 // Check status of server
 func (s *CEEMSServer) health(w http.ResponseWriter, r *http.Request) {
 	if !s.HealthCheck(s.db, s.logger) {
@@ -357,7 +399,7 @@ func (s *CEEMSServer) unitsQuerier(
 	// Get query window time stamps
 	queryWindowTS, err = s.getQueryWindow(r)
 	if err != nil {
-		errorResponse(w, &apiError{errorBadData, err}, s.logger, nil)
+		errorResponse[any](w, &apiError{errorBadData, err}, s.logger, nil)
 		return
 	}
 
@@ -373,13 +415,13 @@ queryUnits:
 	units, err := s.Querier(s.db, q, unitsResourceName, s.logger)
 	if err != nil {
 		level.Error(s.logger).Log("msg", "Failed to fetch units", "loggedUser", loggedUser, "err", err)
-		errorResponse(w, &apiError{errorInternal, err}, s.logger, nil)
+		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
 		return
 	}
 
 	// Write response
 	w.WriteHeader(http.StatusOK)
-	response := Response{
+	response := Response[models.Unit]{
 		Status: "success",
 		Data:   units.([]models.Unit),
 	}
@@ -389,14 +431,55 @@ queryUnits:
 	}
 }
 
-// GET /api/units/admin
+// unitsAdmin    godoc
+//
+//	@Summary		Admin endpoint for fetching compute units
+//	@Description	get units for admins that can query units of any user
+//	@Security		BasicAuth
+//	@Tags			units
+//	@Produce		json
+//	@Param			X-Grafana-User	header		string		true	"Current user name"
+//	@Param			uuid			query		[]string	false	"Unit UUID"	collectionFormat(multi)
+//	@Param			project			query		[]string	false	"Project"	collectionFormat(multi)
+//	@Param			user			query		[]string	false	"User name"	collectionFormat(multi)
+//	@Param			running			query		bool		false	"Whether to fetch running units"
+//	@Param			from			query		string		false	"From timestamp"
+//	@Param			to				query		string		false	"To timestamp"
+//	@Param			field			query		[]string	false	"Fields to return in response"	collectionFormat(multi)
+//	@Success		200				{object}	Response[models.Unit]
+//	@Failure		401				{object}	Response[any]
+//	@Failure		403				{object}	Response[any]
+//	@Failure		500				{object}	Response[any]
+//	@Router			/units/admin [get]
+//
+// GET /units/admin
 // Get any unit of any user
 func (s *CEEMSServer) unitsAdmin(w http.ResponseWriter, r *http.Request) {
 	// Query for units and write response
 	s.unitsQuerier(r.URL.Query()["user"], w, r)
 }
 
-// GET /api/units
+// units         godoc
+//
+//	@Summary		User endpoint for fetching compute units
+//	@Description	get units queried by a user
+//	@Security		BasicAuth
+//	@Tags			units
+//	@Produce		json
+//	@Param			X-Grafana-User	header		string		true	"Current user name"
+//	@Param			uuid			query		[]string	false	"Unit UUID"	collectionFormat(multi)
+//	@Param			project			query		[]string	false	"Project"	collectionFormat(multi)
+//	@Param			running			query		bool		false	"Whether to fetch running units"
+//	@Param			from			query		string		false	"From timestamp"
+//	@Param			to				query		string		false	"To timestamp"
+//	@Param			field			query		[]string	false	"Fields to return in response"	collectionFormat(multi)
+//	@Success		200				{object}	Response[models.Unit]
+//	@Failure		401				{object}	Response[any]
+//	@Failure		403				{object}	Response[any]
+//	@Failure		500				{object}	Response[any]
+//	@Router			/units [get]
+//
+// GET /units
 // Get unit of dashboard user
 func (s *CEEMSServer) units(w http.ResponseWriter, r *http.Request) {
 	// Get current logged user and dashboard user from headers
@@ -406,7 +489,22 @@ func (s *CEEMSServer) units(w http.ResponseWriter, r *http.Request) {
 	s.unitsQuerier([]string{dashboardUser}, w, r)
 }
 
-// GET /api/units/verify
+// verifyUnitsOwnership         godoc
+//
+//	@Summary		Verify unit ownership
+//	@Description	verify ownership of the unit
+//	@Security		BasicAuth
+//	@Tags			units
+//	@Produce		json
+//	@Param			X-Grafana-User	header		string		true	"Current user name"
+//	@Param			uuid			query		[]string	false	"Unit UUID"	collectionFormat(multi)
+//	@Success		200				{object}	Response[models.Ownership]
+//	@Failure		401				{object}	Response[any]
+//	@Failure		403				{object}	Response[any]
+//	@Failure		500				{object}	Response[any]
+//	@Router			/units/verify [get]
+//
+// GET /units/verify
 // Verify the user ownership for queried units
 func (s *CEEMSServer) verifyUnitsOwnership(w http.ResponseWriter, r *http.Request) {
 	// Set headers
@@ -421,12 +519,14 @@ func (s *CEEMSServer) verifyUnitsOwnership(w http.ResponseWriter, r *http.Reques
 	// Check if user is owner of the queries uuids
 	if VerifyOwnership(dashboardUser, uuids, s.db, s.logger) {
 		w.WriteHeader(http.StatusOK)
-		response := Response{
+		response := Response[models.Ownership]{
 			Status: "success",
-			Data: map[string]interface{}{
-				"user":   dashboardUser,
-				"uuids":  uuids,
-				"verfiy": true,
+			Data: []models.Ownership{
+				{
+					User:  dashboardUser,
+					UUIDS: uuids,
+					Owner: true,
+				},
 			},
 		}
 		if err := json.NewEncoder(w).Encode(&response); err != nil {
@@ -434,11 +534,24 @@ func (s *CEEMSServer) verifyUnitsOwnership(w http.ResponseWriter, r *http.Reques
 			w.Write([]byte("KO"))
 		}
 	} else {
-		errorResponse(w, &apiError{errorUnauthorized, fmt.Errorf("user do not have permissions on uuids")}, s.logger, nil)
+		errorResponse[any](w, &apiError{errorForbidden, fmt.Errorf("user do not have permissions on uuids")}, s.logger, nil)
 	}
 }
 
-// GET /api/projects
+// projects         godoc
+//
+//	@Summary		List projects
+//	@Description	get list of projects that user belong to
+//	@Security		BasicAuth
+//	@Tags			projects
+//	@Produce		json
+//	@Param			X-Grafana-User	header		string	true	"Current user name"
+//	@Success		200				{object}	Response[models.Project]
+//	@Failure		401				{object}	Response[any]
+//	@Failure		500				{object}	Response[any]
+//	@Router			/projects [get]
+//
+// GET /projects
 // Get projects list of user
 func (s *CEEMSServer) projects(w http.ResponseWriter, r *http.Request) {
 	// Set headers
@@ -457,13 +570,13 @@ func (s *CEEMSServer) projects(w http.ResponseWriter, r *http.Request) {
 	projects, err := s.Querier(s.db, q, "projects", s.logger)
 	if err != nil {
 		level.Error(s.logger).Log("msg", "Failed to fetch projects", "user", dashboardUser, "err", err)
-		errorResponse(w, &apiError{errorInternal, err}, s.logger, nil)
+		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
 		return
 	}
 
 	// Write response
 	w.WriteHeader(http.StatusOK)
-	projectsResponse := Response{
+	projectsResponse := Response[models.Project]{
 		Status: "success",
 		Data:   projects.([]models.Project),
 	}
@@ -487,7 +600,7 @@ func (s *CEEMSServer) projectsSubQuery(users []string) Query {
 	return qSub
 }
 
-// GET /api/usage/current
+// GET /usage/current
 // Get current usage statistics
 func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.ResponseWriter, r *http.Request) {
 	// Get sub query for projects
@@ -517,7 +630,7 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 	// Get query window time stamps
 	queryWindowTS, err := s.getQueryWindow(r)
 	if err != nil {
-		errorResponse(w, &apiError{errorBadData, err}, s.logger, nil)
+		errorResponse[any](w, &apiError{errorBadData, err}, s.logger, nil)
 		return
 	}
 
@@ -537,13 +650,13 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 	if err != nil {
 		level.Error(s.logger).
 			Log("msg", "Failed to fetch current usage statistics", "users", strings.Join(users, ","), "err", err)
-		errorResponse(w, &apiError{errorInternal, err}, s.logger, nil)
+		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
 		return
 	}
 
 	// Write response
 	w.WriteHeader(http.StatusOK)
-	projectsResponse := Response{
+	projectsResponse := Response[models.Usage]{
 		Status: "success",
 		Data:   usage.([]models.Usage),
 	}
@@ -553,7 +666,7 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 	}
 }
 
-// GET /api/usage/global
+// GET /usage/global
 // Get global usage statistics
 func (s *CEEMSServer) globalUsage(users []string, queriedFields []string, w http.ResponseWriter, r *http.Request) {
 	// Get sub query for projects
@@ -575,13 +688,13 @@ func (s *CEEMSServer) globalUsage(users []string, queriedFields []string, w http
 	if err != nil {
 		level.Error(s.logger).
 			Log("msg", "Failed to fetch global usage statistics", "users", strings.Join(users, ","), "err", err)
-		errorResponse(w, &apiError{errorInternal, err}, s.logger, nil)
+		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
 		return
 	}
 
 	// Write response
 	w.WriteHeader(http.StatusOK)
-	projectsResponse := Response{
+	projectsResponse := Response[models.Usage]{
 		Status: "success",
 		Data:   usage.([]models.Usage),
 	}
@@ -591,7 +704,25 @@ func (s *CEEMSServer) globalUsage(users []string, queriedFields []string, w http
 	}
 }
 
-// GET /api/usage
+// usage         godoc
+//
+//	@Summary		Usage statistics
+//	@Description	get current/global usage statistics of a current user
+//	@Security		BasicAuth
+//	@Tags			usage
+//	@Produce		json
+//	@Param			X-Grafana-User	header		string		true	"Current user name"
+//	@Param			mode			path		string		true	"Whether to get usage stats within a period or global"	Enums(current, global)
+//	@Param			user			query		[]string	false	"User name(s)"											collectionFormat(multi)
+//	@Param			from			query		string		false	"From timestamp"
+//	@Param			to				query		string		false	"To timestamp"
+//	@Param			field			query		[]string	false	"Fields to return in response"	collectionFormat(multi)
+//	@Success		200				{object}	Response[models.Usage]
+//	@Failure		401				{object}	Response[any]
+//	@Failure		500				{object}	Response[any]
+//	@Router			/usage/{mode} [get]
+//
+// GET /usage/{mode}
 // Get current/global usage statistics
 func (s *CEEMSServer) usage(w http.ResponseWriter, r *http.Request) {
 	// Set headers
@@ -601,10 +732,10 @@ func (s *CEEMSServer) usage(w http.ResponseWriter, r *http.Request) {
 	_, dashboardUser := s.getUser(r)
 
 	// Get path parameter type
-	var queryType string
+	var mode string
 	var exists bool
-	if queryType, exists = mux.Vars(r)["query"]; !exists {
-		errorResponse(w, &apiError{errorBadData, errInvalidRequest}, s.logger, nil)
+	if mode, exists = mux.Vars(r)["mode"]; !exists {
+		errorResponse[any](w, &apiError{errorBadData, errInvalidRequest}, s.logger, nil)
 		return
 	}
 
@@ -612,27 +743,46 @@ func (s *CEEMSServer) usage(w http.ResponseWriter, r *http.Request) {
 	queriedFields := s.getQueriedFields(r.URL.Query(), base.UsageDBTableColNames)
 
 	// handle current usage query
-	if queryType == "current" {
+	if mode == "current" {
 		s.currentUsage([]string{dashboardUser}, queriedFields, w, r)
 	}
 
 	// handle global usage query
-	if queryType == "global" {
+	if mode == "global" {
 		s.globalUsage([]string{dashboardUser}, queriedFields, w, r)
 	}
 }
 
-// GET /api/usage/admin
+// usage         godoc
+//
+//	@Summary		Admin Usage statistics
+//	@Description	get current/global usage statistics of a given user and/or project for admins
+//	@Security		BasicAuth
+//	@Tags			usage
+//	@Produce		json
+//	@Param			X-Grafana-User	header		string		true	"Current user name"
+//	@Param			mode			path		string		true	"Whether to get usage stats within a period or global"	Enums(current, global)
+//	@Param			user			query		[]string	false	"User name(s)"											collectionFormat(multi)
+//	@Param			from			query		string		false	"From timestamp"
+//	@Param			to				query		string		false	"To timestamp"
+//	@Param			field			query		[]string	false	"Fields to return in response"	collectionFormat(multi)
+//	@Success		200				{object}	Response[models.Usage]
+//	@Failure		401				{object}	Response[any]
+//	@Failure		403				{object}	Response[any]
+//	@Failure		500				{object}	Response[any]
+//	@Router			/usage/{mode}/admin [get]
+//
+// GET /usage/{mode}/admin
 // Get current/global usage statistics of any user
 func (s *CEEMSServer) usageAdmin(w http.ResponseWriter, r *http.Request) {
 	// Set headers
 	s.setHeaders(w)
 
 	// Get path parameter type
-	var queryType string
+	var mode string
 	var exists bool
-	if queryType, exists = mux.Vars(r)["query"]; !exists {
-		errorResponse(w, &apiError{errorBadData, errInvalidRequest}, s.logger, nil)
+	if mode, exists = mux.Vars(r)["mode"]; !exists {
+		errorResponse[any](w, &apiError{errorBadData, errInvalidRequest}, s.logger, nil)
 		return
 	}
 
@@ -640,17 +790,29 @@ func (s *CEEMSServer) usageAdmin(w http.ResponseWriter, r *http.Request) {
 	queriedFields := s.getQueriedFields(r.URL.Query(), base.UsageDBTableColNames)
 
 	// handle current usage query
-	if queryType == "current" {
+	if mode == "current" {
 		s.currentUsage(r.URL.Query()["user"], queriedFields, w, r)
 	}
 
 	// handle global usage query
-	if queryType == "global" {
+	if mode == "global" {
 		s.globalUsage(r.URL.Query()["user"], queriedFields, w, r)
 	}
 }
 
-// GET /api/demo/{units,usage}
+// usage         godoc
+//
+//	@Summary		Demo Units/Usage endpoints
+//	@Description	get units and/or usage response generated by mock data
+//	@Tags			demo
+//	@Produce		json
+//	@Param			resource	path		string	true	"Whether to return mock units or usage data"	Enums(units, usage)
+//	@Success		200			{object}	Response[models.Unit]
+//	@Success		200			{object}	Response[models.Usage]
+//	@Failure		500			{object}	Response[any]
+//	@Router			/{resource}/demo [get]
+//
+// GET /demo/{units,usage}
 // Return mocked data for different models
 func (s *CEEMSServer) demo(w http.ResponseWriter, r *http.Request) {
 	// Set headers
@@ -660,7 +822,7 @@ func (s *CEEMSServer) demo(w http.ResponseWriter, r *http.Request) {
 	var resourceType string
 	var exists bool
 	if resourceType, exists = mux.Vars(r)["resource"]; !exists {
-		errorResponse(w, &apiError{errorBadData, errInvalidRequest}, s.logger, nil)
+		errorResponse[any](w, &apiError{errorBadData, errInvalidRequest}, s.logger, nil)
 		return
 	}
 
@@ -669,7 +831,7 @@ func (s *CEEMSServer) demo(w http.ResponseWriter, r *http.Request) {
 		units := mockUnits()
 		// Write response
 		w.WriteHeader(http.StatusOK)
-		unitsResponse := Response{
+		unitsResponse := Response[models.Unit]{
 			Status: "success",
 			Data:   units,
 		}
@@ -684,7 +846,7 @@ func (s *CEEMSServer) demo(w http.ResponseWriter, r *http.Request) {
 		usage := mockUsage()
 		// Write response
 		w.WriteHeader(http.StatusOK)
-		usageResponse := Response{
+		usageResponse := Response[models.Usage]{
 			Status: "success",
 			Data:   usage,
 		}
