@@ -27,6 +27,7 @@ func (e *apiError) Error() string {
 const (
 	errorNone          errorType = ""
 	errorUnauthorized  errorType = "unauthorized"
+	errorForbidden     errorType = "forbidden"
 	errorTimeout       errorType = "timeout"
 	errorCanceled      errorType = "canceled"
 	errorExec          errorType = "execution"
@@ -52,13 +53,15 @@ var (
 )
 
 // Return error response for by setting errorString and errorType in response
-func errorResponse(w http.ResponseWriter, apiErr *apiError, logger log.Logger, data interface{}) {
+func errorResponse[T any](w http.ResponseWriter, apiErr *apiError, logger log.Logger, data []T) {
 	var code int
 	switch apiErr.typ {
 	case errorBadData:
 		code = http.StatusBadRequest
 	case errorUnauthorized:
 		code = http.StatusUnauthorized
+	case errorForbidden:
+		code = http.StatusForbidden
 	case errorExec:
 		code = http.StatusUnprocessableEntity
 	case errorCanceled:
@@ -76,7 +79,7 @@ func errorResponse(w http.ResponseWriter, apiErr *apiError, logger log.Logger, d
 	}
 
 	w.WriteHeader(code)
-	response := Response{
+	response := Response[T]{
 		Status:    "error",
 		ErrorType: apiErr.typ,
 		Error:     apiErr.err.Error(),

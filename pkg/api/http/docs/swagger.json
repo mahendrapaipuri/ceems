@@ -1,0 +1,1026 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "CEEMS REST API server.",
+        "title": "CEEMS API",
+        "termsOfService": "http://swagger.io/terms/",
+        "contact": {
+            "name": "Mahendra Paipuri",
+            "url": "https://github.com/mahendrapaipuri/ceems/issues",
+            "email": "mahendra.paipuri@gmail.com"
+        },
+        "license": {
+            "name": "BSD-3-Clause license",
+            "url": "https://opensource.org/license/bsd-3-clause"
+        },
+        "version": "1.0"
+    },
+    "paths": {
+        "/health": {
+            "get": {
+                "description": "get health status of API server",
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "health"
+                ],
+                "summary": "Health status",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/projects": {
+            "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
+                "description": "get list of projects that user belong to",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "projects"
+                ],
+                "summary": "List projects",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Current user name",
+                        "name": "X-Grafana-User",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-models_Project"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/units": {
+            "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
+                "description": "get units queried by a user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "units"
+                ],
+                "summary": "User endpoint for fetching compute units",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Current user name",
+                        "name": "X-Grafana-User",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Unit UUID",
+                        "name": "uuid",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Project",
+                        "name": "project",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Whether to fetch running units",
+                        "name": "running",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "From timestamp",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "To timestamp",
+                        "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Fields to return in response",
+                        "name": "field",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-models_Unit"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/units/admin": {
+            "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
+                "description": "get units for admins that can query units of any user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "units"
+                ],
+                "summary": "Admin endpoint for fetching compute units",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Current user name",
+                        "name": "X-Grafana-User",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Unit UUID",
+                        "name": "uuid",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Project",
+                        "name": "project",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "User name",
+                        "name": "user",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Whether to fetch running units",
+                        "name": "running",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "From timestamp",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "To timestamp",
+                        "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Fields to return in response",
+                        "name": "field",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-models_Unit"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/units/verify": {
+            "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
+                "description": "verify ownership of the unit",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "units"
+                ],
+                "summary": "Verify unit ownership",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Current user name",
+                        "name": "X-Grafana-User",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Unit UUID",
+                        "name": "uuid",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-models_Ownership"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/usage/{mode}": {
+            "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
+                "description": "get current/global usage statistics of a current user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "usage"
+                ],
+                "summary": "Usage statistics",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Current user name",
+                        "name": "X-Grafana-User",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "enum": [
+                            "current",
+                            "global"
+                        ],
+                        "type": "string",
+                        "description": "Whether to get usage stats within a period or global",
+                        "name": "mode",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "User name(s)",
+                        "name": "user",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "From timestamp",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "To timestamp",
+                        "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Fields to return in response",
+                        "name": "field",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-models_Usage"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/usage/{mode}/admin": {
+            "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
+                "description": "get current/global usage statistics of a given user and/or project for admins",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "usage"
+                ],
+                "summary": "Admin Usage statistics",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Current user name",
+                        "name": "X-Grafana-User",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "enum": [
+                            "current",
+                            "global"
+                        ],
+                        "type": "string",
+                        "description": "Whether to get usage stats within a period or global",
+                        "name": "mode",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "User name(s)",
+                        "name": "user",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "From timestamp",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "To timestamp",
+                        "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Fields to return in response",
+                        "name": "field",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-models_Usage"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/{resource}/demo": {
+            "get": {
+                "description": "get units and/or usage response generated by mock data",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "demo"
+                ],
+                "summary": "Demo Units/Usage endpoints",
+                "parameters": [
+                    {
+                        "enum": [
+                            "units",
+                            "usage"
+                        ],
+                        "type": "string",
+                        "description": "Whether to return mock units or usage data",
+                        "name": "resource",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-models_Usage"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-any"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "http.Response-any": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {}
+                },
+                "error": {
+                    "type": "string"
+                },
+                "errorType": {
+                    "$ref": "#/definitions/http.errorType"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "http.Response-models_Ownership": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Ownership"
+                    }
+                },
+                "error": {
+                    "type": "string"
+                },
+                "errorType": {
+                    "$ref": "#/definitions/http.errorType"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "http.Response-models_Project": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Project"
+                    }
+                },
+                "error": {
+                    "type": "string"
+                },
+                "errorType": {
+                    "$ref": "#/definitions/http.errorType"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "http.Response-models_Unit": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Unit"
+                    }
+                },
+                "error": {
+                    "type": "string"
+                },
+                "errorType": {
+                    "$ref": "#/definitions/http.errorType"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "http.Response-models_Usage": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Usage"
+                    }
+                },
+                "error": {
+                    "type": "string"
+                },
+                "errorType": {
+                    "$ref": "#/definitions/http.errorType"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "http.errorType": {
+            "type": "string",
+            "enum": [
+                "",
+                "unauthorized",
+                "forbidden",
+                "timeout",
+                "canceled",
+                "execution",
+                "bad_data",
+                "internal",
+                "unavailable",
+                "not_found",
+                "not_acceptable"
+            ],
+            "x-enum-varnames": [
+                "errorNone",
+                "errorUnauthorized",
+                "errorForbidden",
+                "errorTimeout",
+                "errorCanceled",
+                "errorExec",
+                "errorBadData",
+                "errorInternal",
+                "errorUnavailable",
+                "errorNotFound",
+                "errorNotAcceptable"
+            ]
+        },
+        "models.Allocation": {
+            "type": "object",
+            "additionalProperties": true
+        },
+        "models.Ownership": {
+            "type": "object",
+            "properties": {
+                "owner": {
+                    "type": "boolean"
+                },
+                "user": {
+                    "type": "string"
+                },
+                "uuids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "models.Project": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Tag": {
+            "type": "object",
+            "additionalProperties": true
+        },
+        "models.Unit": {
+            "type": "object",
+            "properties": {
+                "allocation": {
+                    "description": "Allocation map of unit. Only string and int64 values are supported in map",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Allocation"
+                        }
+                    ]
+                },
+                "avg_cpu_mem_usage": {
+                    "description": "Average CPU memory during lifetime of unit",
+                    "type": "number"
+                },
+                "avg_cpu_usage": {
+                    "description": "Average CPU usage during lifetime of unit",
+                    "type": "number"
+                },
+                "avg_gpu_mem_usage": {
+                    "description": "Average GPU memory during lifetime of unit",
+                    "type": "number"
+                },
+                "avg_gpu_usage": {
+                    "description": "Average GPU usage during lifetime of unit",
+                    "type": "number"
+                },
+                "created_at": {
+                    "description": "Creation time",
+                    "type": "string"
+                },
+                "created_at_ts": {
+                    "description": "Creation timestamp",
+                    "type": "integer"
+                },
+                "elapsed": {
+                    "description": "Human readable total elapsed time string",
+                    "type": "string"
+                },
+                "ended_at": {
+                    "description": "End time",
+                    "type": "string"
+                },
+                "ended_at_ts": {
+                    "description": "End timestamp",
+                    "type": "integer"
+                },
+                "grp": {
+                    "description": "User group",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Name of compute unit",
+                    "type": "string"
+                },
+                "project": {
+                    "description": "Account in batch systems, Tenant in Openstack, Namespace in k8s",
+                    "type": "string"
+                },
+                "resource_manager": {
+                    "description": "Name of the resource manager that owns compute unit. Eg slurm, openstack, kubernetes, etc",
+                    "type": "string"
+                },
+                "started_at": {
+                    "description": "Start time",
+                    "type": "string"
+                },
+                "started_at_ts": {
+                    "description": "Start timestamp",
+                    "type": "integer"
+                },
+                "state": {
+                    "description": "Current state of unit",
+                    "type": "string"
+                },
+                "tags": {
+                    "description": "A map to store generic info. String and int64 are valid value types of map",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Tag"
+                        }
+                    ]
+                },
+                "total_cpu_emissions_gms": {
+                    "description": "Total CPU emissions in grams during lifetime of unit",
+                    "type": "number"
+                },
+                "total_cpu_energy_usage_kwh": {
+                    "description": "Total CPU energy usage in kWh during lifetime of unit",
+                    "type": "number"
+                },
+                "total_cputime_seconds": {
+                    "description": "Total number of CPU seconds consumed by the unit",
+                    "type": "integer"
+                },
+                "total_gpu_emissions_gms": {
+                    "description": "Total GPU emissions in grams during lifetime of unit",
+                    "type": "number"
+                },
+                "total_gpu_energy_usage_kwh": {
+                    "description": "Total GPU energy usage in kWh during lifetime of unit",
+                    "type": "number"
+                },
+                "total_gputime_seconds": {
+                    "description": "Total number of GPU seconds consumed by the unit",
+                    "type": "integer"
+                },
+                "total_ingress_in_gb": {
+                    "description": "Total ingress traffic in GB of unit",
+                    "type": "number"
+                },
+                "total_io_read_cold_gb": {
+                    "description": "Total IO read on cold storage in GB during lifetime of unit",
+                    "type": "number"
+                },
+                "total_io_read_hot_gb": {
+                    "description": "Total IO read on hot storage in GB during lifetime of unit",
+                    "type": "number"
+                },
+                "total_io_write_cold_gb": {
+                    "description": "Total IO write on cold storage in GB during lifetime of unit",
+                    "type": "number"
+                },
+                "total_io_write_hot_gb": {
+                    "description": "Total IO write on hot storage in GB during lifetime of unit",
+                    "type": "number"
+                },
+                "total_outgress_in_gb": {
+                    "description": "Total outgress traffic in GB of unit",
+                    "type": "number"
+                },
+                "total_walltime_seconds": {
+                    "description": "Total elapsed wall time in seconds",
+                    "type": "integer"
+                },
+                "usr": {
+                    "description": "Username",
+                    "type": "string"
+                },
+                "uuid": {
+                    "description": "Unique identifier of unit. It can be Job ID for batch jobs, UUID for pods in k8s or VMs in Openstack",
+                    "type": "string"
+                }
+            }
+        },
+        "models.Usage": {
+            "type": "object",
+            "properties": {
+                "avg_cpu_mem_usage": {
+                    "description": "Average CPU memory during lifetime of project",
+                    "type": "number"
+                },
+                "avg_cpu_usage": {
+                    "description": "Average CPU usage during lifetime of project",
+                    "type": "number"
+                },
+                "avg_gpu_mem_usage": {
+                    "description": "Average GPU memory during lifetime of project",
+                    "type": "number"
+                },
+                "avg_gpu_usage": {
+                    "description": "Average GPU usage during lifetime of project",
+                    "type": "number"
+                },
+                "num_units": {
+                    "description": "Number of consumed units",
+                    "type": "integer"
+                },
+                "project": {
+                    "description": "Account in batch systems, Tenant in Openstack, Namespace in k8s",
+                    "type": "string"
+                },
+                "resource_manager": {
+                    "description": "Name of the resource manager that owns project. Eg slurm, openstack, kubernetes, etc",
+                    "type": "string"
+                },
+                "total_cpu_emissions_gms": {
+                    "description": "Total CPU emissions in grams during lifetime of project",
+                    "type": "number"
+                },
+                "total_cpu_energy_usage_kwh": {
+                    "description": "Total CPU energy usage in kWh during lifetime of project",
+                    "type": "number"
+                },
+                "total_cpumemtime_seconds": {
+                    "description": "Total number of CPU memory (in MB) seconds consumed by the project",
+                    "type": "integer"
+                },
+                "total_cputime_seconds": {
+                    "description": "Total number of CPU seconds consumed by the project",
+                    "type": "integer"
+                },
+                "total_gpu_emissions_gms": {
+                    "description": "Total GPU emissions in grams during lifetime of project",
+                    "type": "number"
+                },
+                "total_gpu_energy_usage_kwh": {
+                    "description": "Total GPU energy usage in kWh during lifetime of project",
+                    "type": "number"
+                },
+                "total_gpumemtime_seconds": {
+                    "description": "Total number of GPU memory (in MB) seconds consumed by the project",
+                    "type": "integer"
+                },
+                "total_gputime_seconds": {
+                    "description": "Total number of GPU seconds consumed by the project",
+                    "type": "integer"
+                },
+                "total_ingress_in_gb": {
+                    "description": "Total ingress traffic in GB of project",
+                    "type": "number"
+                },
+                "total_io_read_cold_gb": {
+                    "description": "Total IO read on cold storage in GB during lifetime of project",
+                    "type": "number"
+                },
+                "total_io_read_hot_gb": {
+                    "description": "Total IO read on hot storage in GB during lifetime of project",
+                    "type": "number"
+                },
+                "total_io_write_cold_gb": {
+                    "description": "Total IO write on cold storage in GB during lifetime of project",
+                    "type": "number"
+                },
+                "total_io_write_hot_gb": {
+                    "description": "Total IO write on hot storage in GB during lifetime of project",
+                    "type": "number"
+                },
+                "total_outgress_in_gb": {
+                    "description": "Total outgress traffic in GB of project",
+                    "type": "number"
+                },
+                "total_walltime_seconds": {
+                    "description": "Total elapsed wall time in seconds consumed by the project",
+                    "type": "integer"
+                },
+                "usr": {
+                    "description": "Username",
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "BasicAuth": {
+            "type": "basic"
+        }
+    }
+}

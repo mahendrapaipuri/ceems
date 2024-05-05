@@ -118,3 +118,10 @@ func (u Usage) TagMap(keyTag string, valueTag string) map[string]string {
 type Project struct {
 	Name string `json:"name,omitempty" sql:"project" sqlitetype:"text"`
 }
+
+// Ownership status of queried UUIDs
+type Ownership struct {
+	User  string   `json:"user"`
+	UUIDS []string `json:"uuids"`
+	Owner bool     `json:"owner"`
+}

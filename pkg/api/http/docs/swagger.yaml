@@ -1,0 +1,705 @@
+definitions:
+  http.Response-any:
+    properties:
+      data:
+        items: {}
+        type: array
+      error:
+        type: string
+      errorType:
+        $ref: '#/definitions/http.errorType'
+      status:
+        type: string
+      warnings:
+        items:
+          type: string
+        type: array
+    type: object
+  http.Response-models_Ownership:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/models.Ownership'
+        type: array
+      error:
+        type: string
+      errorType:
+        $ref: '#/definitions/http.errorType'
+      status:
+        type: string
+      warnings:
+        items:
+          type: string
+        type: array
+    type: object
+  http.Response-models_Project:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/models.Project'
+        type: array
+      error:
+        type: string
+      errorType:
+        $ref: '#/definitions/http.errorType'
+      status:
+        type: string
+      warnings:
+        items:
+          type: string
+        type: array
+    type: object
+  http.Response-models_Unit:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/models.Unit'
+        type: array
+      error:
+        type: string
+      errorType:
+        $ref: '#/definitions/http.errorType'
+      status:
+        type: string
+      warnings:
+        items:
+          type: string
+        type: array
+    type: object
+  http.Response-models_Usage:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/models.Usage'
+        type: array
+      error:
+        type: string
+      errorType:
+        $ref: '#/definitions/http.errorType'
+      status:
+        type: string
+      warnings:
+        items:
+          type: string
+        type: array
+    type: object
+  http.errorType:
+    enum:
+    - ""
+    - unauthorized
+    - forbidden
+    - timeout
+    - canceled
+    - execution
+    - bad_data
+    - internal
+    - unavailable
+    - not_found
+    - not_acceptable
+    type: string
+    x-enum-varnames:
+    - errorNone
+    - errorUnauthorized
+    - errorForbidden
+    - errorTimeout
+    - errorCanceled
+    - errorExec
+    - errorBadData
+    - errorInternal
+    - errorUnavailable
+    - errorNotFound
+    - errorNotAcceptable
+  models.Allocation:
+    additionalProperties: true
+    type: object
+  models.Ownership:
+    properties:
+      owner:
+        type: boolean
+      user:
+        type: string
+      uuids:
+        items:
+          type: string
+        type: array
+    type: object
+  models.Project:
+    properties:
+      name:
+        type: string
+    type: object
+  models.Tag:
+    additionalProperties: true
+    type: object
+  models.Unit:
+    properties:
+      allocation:
+        allOf:
+        - $ref: '#/definitions/models.Allocation'
+        description: Allocation map of unit. Only string and int64 values are supported
+          in map
+      avg_cpu_mem_usage:
+        description: Average CPU memory during lifetime of unit
+        type: number
+      avg_cpu_usage:
+        description: Average CPU usage during lifetime of unit
+        type: number
+      avg_gpu_mem_usage:
+        description: Average GPU memory during lifetime of unit
+        type: number
+      avg_gpu_usage:
+        description: Average GPU usage during lifetime of unit
+        type: number
+      created_at:
+        description: Creation time
+        type: string
+      created_at_ts:
+        description: Creation timestamp
+        type: integer
+      elapsed:
+        description: Human readable total elapsed time string
+        type: string
+      ended_at:
+        description: End time
+        type: string
+      ended_at_ts:
+        description: End timestamp
+        type: integer
+      grp:
+        description: User group
+        type: string
+      name:
+        description: Name of compute unit
+        type: string
+      project:
+        description: Account in batch systems, Tenant in Openstack, Namespace in k8s
+        type: string
+      resource_manager:
+        description: Name of the resource manager that owns compute unit. Eg slurm,
+          openstack, kubernetes, etc
+        type: string
+      started_at:
+        description: Start time
+        type: string
+      started_at_ts:
+        description: Start timestamp
+        type: integer
+      state:
+        description: Current state of unit
+        type: string
+      tags:
+        allOf:
+        - $ref: '#/definitions/models.Tag'
+        description: A map to store generic info. String and int64 are valid value
+          types of map
+      total_cpu_emissions_gms:
+        description: Total CPU emissions in grams during lifetime of unit
+        type: number
+      total_cpu_energy_usage_kwh:
+        description: Total CPU energy usage in kWh during lifetime of unit
+        type: number
+      total_cputime_seconds:
+        description: Total number of CPU seconds consumed by the unit
+        type: integer
+      total_gpu_emissions_gms:
+        description: Total GPU emissions in grams during lifetime of unit
+        type: number
+      total_gpu_energy_usage_kwh:
+        description: Total GPU energy usage in kWh during lifetime of unit
+        type: number
+      total_gputime_seconds:
+        description: Total number of GPU seconds consumed by the unit
+        type: integer
+      total_ingress_in_gb:
+        description: Total ingress traffic in GB of unit
+        type: number
+      total_io_read_cold_gb:
+        description: Total IO read on cold storage in GB during lifetime of unit
+        type: number
+      total_io_read_hot_gb:
+        description: Total IO read on hot storage in GB during lifetime of unit
+        type: number
+      total_io_write_cold_gb:
+        description: Total IO write on cold storage in GB during lifetime of unit
+        type: number
+      total_io_write_hot_gb:
+        description: Total IO write on hot storage in GB during lifetime of unit
+        type: number
+      total_outgress_in_gb:
+        description: Total outgress traffic in GB of unit
+        type: number
+      total_walltime_seconds:
+        description: Total elapsed wall time in seconds
+        type: integer
+      usr:
+        description: Username
+        type: string
+      uuid:
+        description: Unique identifier of unit. It can be Job ID for batch jobs, UUID
+          for pods in k8s or VMs in Openstack
+        type: string
+    type: object
+  models.Usage:
+    properties:
+      avg_cpu_mem_usage:
+        description: Average CPU memory during lifetime of project
+        type: number
+      avg_cpu_usage:
+        description: Average CPU usage during lifetime of project
+        type: number
+      avg_gpu_mem_usage:
+        description: Average GPU memory during lifetime of project
+        type: number
+      avg_gpu_usage:
+        description: Average GPU usage during lifetime of project
+        type: number
+      num_units:
+        description: Number of consumed units
+        type: integer
+      project:
+        description: Account in batch systems, Tenant in Openstack, Namespace in k8s
+        type: string
+      resource_manager:
+        description: Name of the resource manager that owns project. Eg slurm, openstack,
+          kubernetes, etc
+        type: string
+      total_cpu_emissions_gms:
+        description: Total CPU emissions in grams during lifetime of project
+        type: number
+      total_cpu_energy_usage_kwh:
+        description: Total CPU energy usage in kWh during lifetime of project
+        type: number
+      total_cpumemtime_seconds:
+        description: Total number of CPU memory (in MB) seconds consumed by the project
+        type: integer
+      total_cputime_seconds:
+        description: Total number of CPU seconds consumed by the project
+        type: integer
+      total_gpu_emissions_gms:
+        description: Total GPU emissions in grams during lifetime of project
+        type: number
+      total_gpu_energy_usage_kwh:
+        description: Total GPU energy usage in kWh during lifetime of project
+        type: number
+      total_gpumemtime_seconds:
+        description: Total number of GPU memory (in MB) seconds consumed by the project
+        type: integer
+      total_gputime_seconds:
+        description: Total number of GPU seconds consumed by the project
+        type: integer
+      total_ingress_in_gb:
+        description: Total ingress traffic in GB of project
+        type: number
+      total_io_read_cold_gb:
+        description: Total IO read on cold storage in GB during lifetime of project
+        type: number
+      total_io_read_hot_gb:
+        description: Total IO read on hot storage in GB during lifetime of project
+        type: number
+      total_io_write_cold_gb:
+        description: Total IO write on cold storage in GB during lifetime of project
+        type: number
+      total_io_write_hot_gb:
+        description: Total IO write on hot storage in GB during lifetime of project
+        type: number
+      total_outgress_in_gb:
+        description: Total outgress traffic in GB of project
+        type: number
+      total_walltime_seconds:
+        description: Total elapsed wall time in seconds consumed by the project
+        type: integer
+      usr:
+        description: Username
+        type: string
+    type: object
+info:
+  contact:
+    email: mahendra.paipuri@gmail.com
+    name: Mahendra Paipuri
+    url: https://github.com/mahendrapaipuri/ceems/issues
+  description: CEEMS REST API server.
+  license:
+    name: BSD-3-Clause license
+    url: https://opensource.org/license/bsd-3-clause
+  termsOfService: http://swagger.io/terms/
+  title: CEEMS API
+  version: "1.0"
+paths:
+  /{resource}/demo:
+    get:
+      description: get units and/or usage response generated by mock data
+      parameters:
+      - description: Whether to return mock units or usage data
+        enum:
+        - units
+        - usage
+        in: path
+        name: resource
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.Response-models_Usage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.Response-any'
+      summary: Demo Units/Usage endpoints
+      tags:
+      - demo
+  /health:
+    get:
+      description: get health status of API server
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "503":
+          description: Service Unavailable
+          schema:
+            type: string
+      summary: Health status
+      tags:
+      - health
+  /projects:
+    get:
+      description: get list of projects that user belong to
+      parameters:
+      - description: Current user name
+        in: header
+        name: X-Grafana-User
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.Response-models_Project'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.Response-any'
+      security:
+      - BasicAuth: []
+      summary: List projects
+      tags:
+      - projects
+  /units:
+    get:
+      description: get units queried by a user
+      parameters:
+      - description: Current user name
+        in: header
+        name: X-Grafana-User
+        required: true
+        type: string
+      - collectionFormat: multi
+        description: Unit UUID
+        in: query
+        items:
+          type: string
+        name: uuid
+        type: array
+      - collectionFormat: multi
+        description: Project
+        in: query
+        items:
+          type: string
+        name: project
+        type: array
+      - description: Whether to fetch running units
+        in: query
+        name: running
+        type: boolean
+      - description: From timestamp
+        in: query
+        name: from
+        type: string
+      - description: To timestamp
+        in: query
+        name: to
+        type: string
+      - collectionFormat: multi
+        description: Fields to return in response
+        in: query
+        items:
+          type: string
+        name: field
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.Response-models_Unit'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.Response-any'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.Response-any'
+      security:
+      - BasicAuth: []
+      summary: User endpoint for fetching compute units
+      tags:
+      - units
+  /units/admin:
+    get:
+      description: get units for admins that can query units of any user
+      parameters:
+      - description: Current user name
+        in: header
+        name: X-Grafana-User
+        required: true
+        type: string
+      - collectionFormat: multi
+        description: Unit UUID
+        in: query
+        items:
+          type: string
+        name: uuid
+        type: array
+      - collectionFormat: multi
+        description: Project
+        in: query
+        items:
+          type: string
+        name: project
+        type: array
+      - collectionFormat: multi
+        description: User name
+        in: query
+        items:
+          type: string
+        name: user
+        type: array
+      - description: Whether to fetch running units
+        in: query
+        name: running
+        type: boolean
+      - description: From timestamp
+        in: query
+        name: from
+        type: string
+      - description: To timestamp
+        in: query
+        name: to
+        type: string
+      - collectionFormat: multi
+        description: Fields to return in response
+        in: query
+        items:
+          type: string
+        name: field
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.Response-models_Unit'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.Response-any'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.Response-any'
+      security:
+      - BasicAuth: []
+      summary: Admin endpoint for fetching compute units
+      tags:
+      - units
+  /units/verify:
+    get:
+      description: verify ownership of the unit
+      parameters:
+      - description: Current user name
+        in: header
+        name: X-Grafana-User
+        required: true
+        type: string
+      - collectionFormat: multi
+        description: Unit UUID
+        in: query
+        items:
+          type: string
+        name: uuid
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.Response-models_Ownership'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.Response-any'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.Response-any'
+      security:
+      - BasicAuth: []
+      summary: Verify unit ownership
+      tags:
+      - units
+  /usage/{mode}:
+    get:
+      description: get current/global usage statistics of a current user
+      parameters:
+      - description: Current user name
+        in: header
+        name: X-Grafana-User
+        required: true
+        type: string
+      - description: Whether to get usage stats within a period or global
+        enum:
+        - current
+        - global
+        in: path
+        name: mode
+        required: true
+        type: string
+      - collectionFormat: multi
+        description: User name(s)
+        in: query
+        items:
+          type: string
+        name: user
+        type: array
+      - description: From timestamp
+        in: query
+        name: from
+        type: string
+      - description: To timestamp
+        in: query
+        name: to
+        type: string
+      - collectionFormat: multi
+        description: Fields to return in response
+        in: query
+        items:
+          type: string
+        name: field
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.Response-models_Usage'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.Response-any'
+      security:
+      - BasicAuth: []
+      summary: Usage statistics
+      tags:
+      - usage
+  /usage/{mode}/admin:
+    get:
+      description: get current/global usage statistics of a given user and/or project
+        for admins
+      parameters:
+      - description: Current user name
+        in: header
+        name: X-Grafana-User
+        required: true
+        type: string
+      - description: Whether to get usage stats within a period or global
+        enum:
+        - current
+        - global
+        in: path
+        name: mode
+        required: true
+        type: string
+      - collectionFormat: multi
+        description: User name(s)
+        in: query
+        items:
+          type: string
+        name: user
+        type: array
+      - description: From timestamp
+        in: query
+        name: from
+        type: string
+      - description: To timestamp
+        in: query
+        name: to
+        type: string
+      - collectionFormat: multi
+        description: Fields to return in response
+        in: query
+        items:
+          type: string
+        name: field
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.Response-models_Usage'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.Response-any'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.Response-any'
+      security:
+      - BasicAuth: []
+      summary: Admin Usage statistics
+      tags:
+      - usage
+securityDefinitions:
+  BasicAuth:
+    type: basic
+swagger: "2.0"

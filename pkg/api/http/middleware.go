@@ -2,6 +2,7 @@ package http
 
 import (
 	"net/http"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -53,8 +54,20 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var loggedUser string
 
-		// If requested URI is health, demo or "/" pass through
-		if strings.HasSuffix(r.URL.Path, "health") || strings.HasSuffix(r.URL.Path, "demo") || r.URL.Path == "/" {
+		// If requested URI is one of the following, skip checking for user header
+		//  - Root document
+		//  - /health endpoint
+		//  - /demo endpoint
+		//  - /swagger/* endpoints
+		//  - /debug/* endpoints
+		//
+		// NOTE that we only skip checking X-Grafana-User header. In prod when
+		// basic auth is enabled, all these end points are under auth and hence an
+		// autorised user cannot access these end points
+		if r.URL.Path == "/" ||
+			strings.HasSuffix(r.URL.Path, "health") ||
+			strings.HasSuffix(r.URL.Path, "demo") ||
+			regexp.MustCompile("/(swagger|debug)/(.*)").MatchString(r.URL.Path) {
 			goto end
 		}
 
@@ -74,7 +87,7 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 				Log("msg", "Grafana user Header not found. Denying authentication")
 
 			// Write an error and stop the handler chain
-			errorResponse(w, &apiError{errorUnauthorized, errNoUser}, amw.logger, nil)
+			errorResponse[any](w, &apiError{errorUnauthorized, errNoUser}, amw.logger, nil)
 			return
 		}
 		level.Info(amw.logger).Log("loggedUser", loggedUser, "url", r.URL)
@@ -105,7 +118,7 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 				level.Error(amw.logger).Log("msg", "Unprivileged user accessing admin endpoint", "user", loggedUser, "url", r.URL)
 
 				// Write an error and stop the handler chain
-				errorResponse(w, &apiError{errorUnauthorized, errNoPrivs}, amw.logger, nil)
+				errorResponse[any](w, &apiError{errorForbidden, errNoPrivs}, amw.logger, nil)
 				return
 			}
 			r.Header.Set(dashboardUserHeader, loggedUser)
