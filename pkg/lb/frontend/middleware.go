@@ -152,7 +152,7 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 
 			// Write an error and stop the handler chain
 			w.WriteHeader(http.StatusUnauthorized)
-			response := http_api.Response{
+			response := http_api.Response[any]{
 				Status:    "error",
 				ErrorType: "unauthorized",
 				Error:     "no user header found",
@@ -187,10 +187,10 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 		// Check if user is querying for his/her own compute units by looking to DB
 		if !amw.isUserUnit(loggedUser, queryParams.(*QueryParams).uuids) {
 			// Write an error and stop the handler chain
-			w.WriteHeader(http.StatusUnauthorized)
-			response := http_api.Response{
+			w.WriteHeader(http.StatusForbidden)
+			response := http_api.Response[any]{
 				Status:    "error",
-				ErrorType: "unauthorized",
+				ErrorType: "forbidden",
 				Error:     "user do not have permissions to view unit metrics",
 			}
 			if err := json.NewEncoder(w).Encode(&response); err != nil {

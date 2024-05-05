@@ -101,8 +101,8 @@ func TestMiddlewareAdminFailure(t *testing.T) {
 	handlerToTest.ServeHTTP(w, req)
 
 	// Should pass test
-	if w.Result().StatusCode != 401 {
-		t.Errorf("expected 401 got %d", w.Result().StatusCode)
+	if w.Result().StatusCode != 403 {
+		t.Errorf("expected 403 got %d", w.Result().StatusCode)
 	}
 }
 
@@ -120,8 +120,8 @@ func TestMiddlewareAdminFailurePresetHeader(t *testing.T) {
 	handlerToTest.ServeHTTP(w, req)
 
 	// Should pass test
-	if w.Result().StatusCode != 401 {
-		t.Errorf("expected 401 got %d", w.Result().StatusCode)
+	if w.Result().StatusCode != 403 {
+		t.Errorf("expected 403 got %d", w.Result().StatusCode)
 	}
 	// Should not contain adminHeader
 	if req.Header.Get(adminUserHeader) != "" {

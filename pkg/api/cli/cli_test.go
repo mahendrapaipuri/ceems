@@ -8,17 +8,19 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 )
 
 func setCLIArgs() {
-	os.Args = append(os.Args, "--resource.manager.slurm")
-	os.Args = append(os.Args, "--slurm.sacct.path=../testdata/sacct")
-	os.Args = append(os.Args, "--log.level=error")
+	// os.Args = append(os.Args, "--resource.manager.slurm")
+	// os.Args = append(os.Args, "--slurm.sacct.path=../testdata/sacct")
+	os.Args = append(os.Args, "--log.level=debug")
 }
 
 func queryServer(address string) error {
 	client := &http.Client{}
-	req, _ := http.NewRequest("GET", fmt.Sprintf("http://%s/api/health", address), nil)
+	req, _ := http.NewRequest("GET", fmt.Sprintf("http://%s/api/%s/health", address, base.APIVersion), nil)
 	req.Header.Set("X-Grafana-User", "usr1")
 	resp, err := client.Do(req)
 	if err != nil {
@@ -57,6 +59,8 @@ func TestBatchStatsServerMainNestedDirs(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		if err := queryServer("localhost:9020"); err == nil {
 			break
+		} else {
+			fmt.Printf("err %s", err)
 		}
 		time.Sleep(500 * time.Millisecond)
 		if i == 9 {

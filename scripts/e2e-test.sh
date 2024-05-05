@@ -11,6 +11,8 @@ skip_re="^(go_|ceems_exporter_build_info|ceems_scrape_collector_duration_seconds
 
 arch="$(uname -m)"
 
+api_version="v1"
+
 scenario="exporter-cgroups-v1"; keep=0; update=0; verbose=0
 while getopts 'hs:kuv' opt
 do
@@ -84,67 +86,67 @@ then
 
   if [ "${scenario}" = "api-project-query" ]
   then
-    desc="/api/projects end point test"
+    desc="/projects end point test"
     fixture='pkg/api/testdata/output/e2e-test-api-server-project-query.txt'
   elif [ "${scenario}" = "api-uuid-query" ]
   then
-    desc="/api/units end point test with uuid query param"
+    desc="/units end point test with uuid query param"
     fixture='pkg/api/testdata/output/e2e-test-api-server-uuid-query.txt'
   elif [ "${scenario}" = "api-running-query" ]
   then
-    desc="/api/units end point test with running query param"
+    desc="/units end point test with running query param"
     fixture='pkg/api/testdata/output/e2e-test-api-server-running-query.txt'
   elif [ "${scenario}" = "api-admin-query" ]
   then
-    desc="/api/units/admin end point test for admin query"
+    desc="/units/admin end point test for admin query"
     fixture='pkg/api/testdata/output/e2e-test-api-server-admin-query.txt'
   elif [ "${scenario}" = "api-admin-query-all" ]
   then
-    desc="/api/units/admin end point test for admin query for all jobs"
+    desc="/units/admin end point test for admin query for all jobs"
     fixture='pkg/api/testdata/output/e2e-test-api-server-admin-query-all.txt'
   elif [ "${scenario}" = "api-admin-query-all-selected-fields" ]
   then
-    desc="/api/units/admin end point test for admin query for all jobs with selected fields"
+    desc="/units/admin end point test for admin query for all jobs with selected fields"
     fixture='pkg/api/testdata/output/e2e-test-api-server-admin-query-all-selected-fields.txt'
   elif [ "${scenario}" = "api-admin-denied-query" ]
   then
-    desc="/api/units/admin end point test for denied request"
+    desc="/units/admin end point test for denied request"
     fixture='pkg/api/testdata/output/e2e-test-api-server-admin--denied-query.txt'
   elif [ "${scenario}" = "api-current-usage-query" ]
   then
-    desc="/api/usage/current end point test"
+    desc="/usage/current end point test"
     fixture='pkg/api/testdata/output/e2e-test-api-server-current-usage-query.txt'
   elif [ "${scenario}" = "api-global-usage-query" ]
   then
-    desc="/api/usage/global end point test"
+    desc="/usage/global end point test"
     fixture='pkg/api/testdata/output/e2e-test-api-server-global-usage-query.txt'
   elif [ "${scenario}" = "api-current-usage-admin-query" ]
   then
-    desc="/api/usage/current/admin end point test"
+    desc="/usage/current/admin end point test"
     fixture='pkg/api/testdata/output/e2e-test-api-server-current-usage-admin-query.txt'
   elif [ "${scenario}" = "api-global-usage-admin-query" ]
   then
-    desc="/api/usage/global/admin end point test"
+    desc="/usage/global/admin end point test"
     fixture='pkg/api/testdata/output/e2e-test-api-server-global-usage-admin-query.txt'
   elif [ "${scenario}" = "api-current-usage-admin-denied-query" ]
   then
-    desc="/api/usage/current/admin end point test"
+    desc="/usage/current/admin end point test"
     fixture='pkg/api/testdata/output/e2e-test-api-server-current-usage-admin-denied-query.txt'
   elif [ "${scenario}" = "api-verify-pass-query" ]
   then
-    desc="/api/units/verify end point test with pass request"
+    desc="/units/verify end point test with pass request"
     fixture='pkg/api/testdata/output/e2e-test-api-verify-pass-query.txt'
   elif [ "${scenario}" = "api-verify-fail-query" ]
   then
-    desc="/api/units/verify end point test with fail request"
+    desc="/units/verify end point test with fail request"
     fixture='pkg/api/testdata/output/e2e-test-api-verify-fail-query.txt'
   elif [ "${scenario}" = "api-demo-units-query" ]
   then
-    desc="/api/units/demo end point test"
+    desc="/units/demo end point test"
     fixture='pkg/api/testdata/output/e2e-test-api-demo-units-query.txt'
   elif [ "${scenario}" = "api-demo-usage-query" ]
   then
-    desc="/api/usage/demo end point test"
+    desc="/usage/demo end point test"
     fixture='pkg/api/testdata/output/e2e-test-api-demo-usage-query.txt'
   fi
 
@@ -388,52 +390,52 @@ then
 
   if [ "${scenario}" = "api-project-query" ]
   then
-    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/projects" > "${fixture_output}"
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/projects" > "${fixture_output}"
   elif [ "${scenario}" = "api-uuid-query" ]
   then
-    get -H "X-Grafana-User: usr2" "127.0.0.1:${port}/api/units?uuid=1481508&project=acc2" > "${fixture_output}"
+    get -H "X-Grafana-User: usr2" "127.0.0.1:${port}/api/${api_version}/units?uuid=1481508&project=acc2" > "${fixture_output}"
   elif [ "${scenario}" = "api-running-query" ]
   then
-    get -H "X-Grafana-User: usr3" "127.0.0.1:${port}/api/units?running&from=1676934000&to=1677538800&field=uuid&field=state&field=started_at&field=allocation&field=tags" > "${fixture_output}"
+    get -H "X-Grafana-User: usr3" "127.0.0.1:${port}/api/${api_version}/units?running&from=1676934000&to=1677538800&field=uuid&field=state&field=started_at&field=allocation&field=tags" > "${fixture_output}"
   elif [ "${scenario}" = "api-admin-query" ]
   then
-    get -H "X-Grafana-User: grafana" -H "X-Dashboard-User: usr3" "127.0.0.1:${port}/api/units?project=acc3&from=1676934000&to=1677538800" > "${fixture_output}"
+    get -H "X-Grafana-User: grafana" -H "X-Dashboard-User: usr3" "127.0.0.1:${port}/api/${api_version}/units?project=acc3&from=1676934000&to=1677538800" > "${fixture_output}"
   elif [ "${scenario}" = "api-admin-query-all" ]
   then
-    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/units/admin?from=1676934000&to=1677538800" > "${fixture_output}"
+    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/units/admin?from=1676934000&to=1677538800" > "${fixture_output}"
   elif [ "${scenario}" = "api-admin-query-all-selected-fields" ]
   then
-    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/units/admin?from=1676934000&to=1677538800&field=uuid&field=started_at&field=ended_at&field=foo" > "${fixture_output}"
+    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/units/admin?from=1676934000&to=1677538800&field=uuid&field=started_at&field=ended_at&field=foo" > "${fixture_output}"
   elif [ "${scenario}" = "api-admin-denied-query" ]
   then
-    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/units/admin" > "${fixture_output}"
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/units/admin" > "${fixture_output}"
   elif [ "${scenario}" = "api-current-usage-query" ]
   then
-    get -H "X-Grafana-User: usr3" "127.0.0.1:${port}/api/usage/current?from=1676934000&to=1677538800" > "${fixture_output}"
+    get -H "X-Grafana-User: usr3" "127.0.0.1:${port}/api/${api_version}/usage/current?from=1676934000&to=1677538800" > "${fixture_output}"
   elif [ "${scenario}" = "api-global-usage-query" ]
   then
-    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/usage/global?field=usr&field=project&field=num_units" > "${fixture_output}"
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/usage/global?field=usr&field=project&field=num_units" > "${fixture_output}"
   elif [ "${scenario}" = "api-current-usage-admin-query" ]
   then
-    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/usage/current/admin?user=usr3&from=1676934000&to=1677538800" > "${fixture_output}"
+    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/usage/current/admin?user=usr3&from=1676934000&to=1677538800" > "${fixture_output}"
   elif [ "${scenario}" = "api-global-usage-admin-query" ]
   then
-    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/usage/global/admin?field=usr&field=project&field=num_units" > "${fixture_output}"
+    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/usage/global/admin?field=usr&field=project&field=num_units" > "${fixture_output}"
   elif [ "${scenario}" = "api-current-usage-admin-denied-query" ]
   then
-    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/usage/global/admin?user=usr2" > "${fixture_output}"
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/usage/global/admin?user=usr2" > "${fixture_output}"
   elif [ "${scenario}" = "api-verify-pass-query" ]
   then
-    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/units/verify?uuid=1479763&uuid=1479765" > "${fixture_output}"
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/units/verify?uuid=1479763&uuid=1479765" > "${fixture_output}"
   elif [ "${scenario}" = "api-verify-fail-query" ]
   then
-    get -H "X-Grafana-User: usr2" "127.0.0.1:${port}/api/units/verify?uuid=1479763&uuid=11508" > "${fixture_output}"
+    get -H "X-Grafana-User: usr2" "127.0.0.1:${port}/api/${api_version}/units/verify?uuid=1479763&uuid=11508" > "${fixture_output}"
   elif [ "${scenario}" = "api-demo-units-query" ]
   then
-    get -s -o /dev/null -w "%{http_code}" "127.0.0.1:${port}/api/units/demo" > "${fixture_output}"
+    get -s -o /dev/null -w "%{http_code}" "127.0.0.1:${port}/api/${api_version}/units/demo" > "${fixture_output}"
   elif [ "${scenario}" = "api-demo-usage-query" ]
   then
-    get -s -o /dev/null -w "%{http_code}" "127.0.0.1:${port}/api/usage/demo" > "${fixture_output}"
+    get -s -o /dev/null -w "%{http_code}" "127.0.0.1:${port}/api/${api_version}/usage/demo" > "${fixture_output}"
   fi
 
 elif [[ "${scenario}" =~ ^"lb" ]] 
