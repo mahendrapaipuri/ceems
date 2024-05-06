@@ -10,32 +10,34 @@ type FeatureItem = {
 
 const FeatureList: FeatureItem[] = [
   {
-    title: 'Easy to Use',
-    Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
+    title: "Supports SLURM, Openstack, k8s",
+    Svg: require("@site/static/img/slurm_os_k8s.svg").default,
     description: (
       <>
-        Docusaurus was designed from the ground up to be easily installed and
-        used to get your website up and running quickly.
+        CEEMS was designed to be resource manager agnostic. Although
+        thoeritically it can support many resource managers, we are focusing to
+        support SLURM, Openstack and Kubernetes deployed on baremetal.
       </>
     ),
   },
   {
-    title: 'Focus on What Matters',
-    Svg: require('@site/static/img/undraw_docusaurus_tree.svg').default,
+    title: "ML/AI workloads",
+    Svg: require("@site/static/img/ml_ai.svg").default,
     description: (
       <>
-        Docusaurus lets you focus on your docs, and we&apos;ll do the chores. Go
-        ahead and move your docs into the <code>docs</code> directory.
+        CEEMS supports energy monitoring of both NVIDIA and AMD GPUs allowing to
+        quantify the energy consumption of your AI workloads.
       </>
     ),
   },
   {
-    title: 'Powered by React',
-    Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
+    title: "Realtime emissions",
+    Svg: require("@site/static/img/cloud_co2.svg").default,
     description: (
       <>
-        Extend or customize your website layout by reusing React. Docusaurus can
-        be extended while reusing the same header and footer.
+        CEEMS uses realtime emission factors to estimate the emissions of your
+        workloads. It is also possible to include emboided emissions data, if
+        and when available.
       </>
     ),
   },

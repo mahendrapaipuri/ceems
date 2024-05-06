@@ -1,6 +1,7 @@
 import { themes as prismThemes } from "prism-react-renderer";
 import type { Config } from "@docusaurus/types";
 import type * as Preset from "@docusaurus/preset-classic";
+import type * as Redocusaurus from "redocusaurus";
 
 // Constants
 const organizationName = "mahendrapaipuri";
@@ -9,7 +10,7 @@ const projectName = "ceems";
 const config: Config = {
   title: "Compute Energy & Emissions Monitoring Stack (CEEMS)",
   tagline:
-    "Want to find out if your compute units are energy hungry? Check CEEMS out!",
+    "Monitor the energy consumption and equivalent emissions of your workloads in realtime",
   favicon: "img/favicon.ico",
 
   // Set the production url of your site here
@@ -55,6 +56,25 @@ const config: Config = {
         },
       } satisfies Preset.Options,
     ],
+    // Redocusaurus config
+    [
+      "redocusaurus",
+      {
+        // Plugin Options for loading OpenAPI files
+        specs: [
+          {
+            // Redocusaurus will automatically bundle your spec into a single file during the build
+            spec: "../pkg/api/http/docs/swagger.yaml",
+            route: "/api/",
+          },
+        ],
+        // Theme Options for modifying how redoc renders them
+        theme: {
+          // Change with your site colors
+          primaryColor: "#3cc9beff",
+        },
+      },
+    ] satisfies Redocusaurus.PresetEntry,
   ],
 
   themeConfig: {
@@ -69,7 +89,7 @@ const config: Config = {
       },
     },
     navbar: {
-      title: "CEEMS Documentation",
+      title: "CEEMS",
       logo: {
         alt: "CEEMS Logo",
         src: "img/logo.svg",
@@ -77,11 +97,11 @@ const config: Config = {
       items: [
         {
           type: "docSidebar",
-          sidebarId: "tutorialSidebar",
+          sidebarId: "ceemsSidebar",
           position: "left",
-          label: "Tutorial",
+          label: "Documentation",
         },
-        { to: "/blog", label: "Blog", position: "left" },
+        { to: "/api", label: "API", position: "left" },
         {
           href: `https://github.com/${organizationName}/${projectName}`,
           label: "GitHub",
@@ -96,8 +116,16 @@ const config: Config = {
           title: "Docs",
           items: [
             {
-              label: "Tutorial",
-              to: "/docs/intro",
+              label: "Docs",
+              to: "/docs/",
+            },
+            {
+              label: "Objectives",
+              to: "/docs/category/objectives",
+            },
+            {
+              label: "Installation",
+              to: "/docs/category/installation",
             },
           ],
         },
@@ -123,12 +151,16 @@ const config: Config = {
           title: "More",
           items: [
             {
-              label: "Blog",
-              to: "/blog",
-            },
-            {
               label: "GitHub",
               href: `https://github.com/${organizationName}/${projectName}`,
+            },
+            {
+              label: "Prometheus Docs",
+              href: `https://prometheus.io/docs/introduction/overview/`,
+            },
+            {
+              label: "Grafana Docs",
+              href: `https://grafana.com/docs/`,
             },
           ],
         },
