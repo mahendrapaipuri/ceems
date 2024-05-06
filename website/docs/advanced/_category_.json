@@ -1,0 +1,8 @@
+{
+  "label": "Advanced",
+  "position": 8,
+  "link": {
+    "type": "generated-index",
+    "description": "This section explains advanced usage of CEEMS components."
+  }
+}

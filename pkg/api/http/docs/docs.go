@@ -9,7 +9,6 @@ const docTemplate = `{
     "info": {
         "description": "{{escape .Description}}",
         "title": "{{.Title}}",
-        "termsOfService": "http://swagger.io/terms/",
         "contact": {
             "name": "Mahendra Paipuri",
             "url": "https://github.com/mahendrapaipuri/ceems/issues",
@@ -26,7 +25,7 @@ const docTemplate = `{
     "paths": {
         "/health": {
             "get": {
-                "description": "get health status of API server",
+                "description": "This endpoint returns the health status of the server.\n\nA healthy server returns 200 response code and any other\nresponses should be treated as unhealthy server.",
                 "produces": [
                     "text/plain"
                 ],
@@ -57,7 +56,7 @@ const docTemplate = `{
                         "BasicAuth": []
                     }
                 ],
-                "description": "get list of projects that user belong to",
+                "description": "This endpoint will list all the active projects of the current user. The\ncurrent user is always identified by the header ` + "`" + `X-Grafana-User` + "`" + ` in\nthe request.\n\nThis will list all the projects that the user has ever been a part of\nalthough if the user loses the membership after.\n\nThis needs to be improved as it has potential security implications.\nCheck the [issue 91](https://github.com/mahendrapaipuri/ceems/issues/91)\n",
                 "produces": [
                     "application/json"
                 ],
@@ -103,7 +102,7 @@ const docTemplate = `{
                         "BasicAuth": []
                     }
                 ],
-                "description": "get units queried by a user",
+                "description": "This user endpoint will fetch compute units of the current user. The\ncurrent user is always identified by the header ` + "`" + `X-Grafana-User` + "`" + ` in\nthe request.\n\nIf multiple query parameters are passed, for instance, ` + "`" + `?uuid=\u003cuuid\u003e\u0026project=\u003cproject\u003e` + "`" + `,\nthe intersection of query parameters are used to fetch compute units rather than\nthe union. That means if the compute unit's ` + "`" + `uuid` + "`" + ` does not belong to the queried\nproject, null response will be returned.\n\nIn order to return the running compute units as well, use the query parameter ` + "`" + `running` + "`" + `.\n\nIf ` + "`" + `to` + "`" + ` query parameter is not provided, current time will be used. If ` + "`" + `from` + "`" + `\nquery parameter is not used, a default query window of 24 hours will be used.\nIt means if ` + "`" + `to` + "`" + ` is provided, ` + "`" + `from` + "`" + ` will be calculated as ` + "`" + `to` + "`" + ` - 24hrs.\n\nTo limit the number of fields in the response, use ` + "`" + `field` + "`" + ` query parameter. By default, all\nfields will be included in the response if they are _non-empty_.",
                 "produces": [
                     "application/json"
                 ],
@@ -203,14 +202,14 @@ const docTemplate = `{
                         "BasicAuth": []
                     }
                 ],
-                "description": "get units for admins that can query units of any user",
+                "description": "This admin endpoint will fetch compute units of _any_ user, compute unit and/or project. The\ncurrent user is always identified by the header ` + "`" + `X-Grafana-User` + "`" + ` in\nthe request.\n\nThe user who is making the request must be in the list of admin users\nconfigured for the server.\n\nIf multiple query parameters are passed, for instance, ` + "`" + `?uuid=\u003cuuid\u003e\u0026user=\u003cuser\u003e` + "`" + `,\nthe intersection of query parameters are used to fetch compute units rather than\nthe union. That means if the compute unit's ` + "`" + `uuid` + "`" + ` does not belong to the queried\nuser, null response will be returned.\n\nIn order to return the running compute units as well, use the query parameter ` + "`" + `running` + "`" + `.\n\nIf ` + "`" + `to` + "`" + ` query parameter is not provided, current time will be used. If ` + "`" + `from` + "`" + `\nquery parameter is not used, a default query window of 24 hours will be used.\nIt means if ` + "`" + `to` + "`" + ` is provided, ` + "`" + `from` + "`" + ` will be calculated as ` + "`" + `to` + "`" + ` - 24hrs.\n\nTo limit the number of fields in the response, use ` + "`" + `field` + "`" + ` query parameter. By default, all\nfields will be included in the response if they are _non-empty_.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "units"
                 ],
-                "summary": "Admin endpoint for fetching compute units",
+                "summary": "Admin endpoint for fetching compute units.",
                 "parameters": [
                     {
                         "type": "string",
@@ -313,7 +312,7 @@ const docTemplate = `{
                         "BasicAuth": []
                     }
                 ],
-                "description": "verify ownership of the unit",
+                "description": "This endpoint will check if the current user is the owner of the\nqueried UUIDs. The current user is always identified by the header ` + "`" + `X-Grafana-User` + "`" + ` in\nthe request.\n\nA response of 200 means that the current user is the owner of the queried UUIDs.\nAny other response code should be treated as the current user not being the owner\nof the queried units.\n\nThe ownership check passes if any of the following conditions are ` + "`" + `true` + "`" + `:\n- If the current user is the _direct_ owner of the compute unit.\n- If the current user belongs to the same account/project/namespace as\nthe compute unit. This means the users belonging to the same project can\naccess each others compute units.\n\nThe above checks must pass for **all** the queried units.\nIf the check does not pass for at least one queried unit, a response 403 will be\nreturned.\n\nAny 500 response codes should be treated as failed check as well.",
                 "produces": [
                     "application/json"
                 ],
@@ -375,7 +374,7 @@ const docTemplate = `{
                         "BasicAuth": []
                     }
                 ],
-                "description": "get current/global usage statistics of a current user",
+                "description": "This endpoint will return the usage statistics current user. The\ncurrent user is always identified by the header ` + "`" + `X-Grafana-User` + "`" + ` in\nthe request.\n\nA path parameter ` + "`" + `mode` + "`" + ` is required to return the kind of usage statistics.\nCurrently, two modes of statistics are supported:\n- ` + "`" + `current` + "`" + `: In this mode the usage between two time periods is returned\nbased on ` + "`" + `from` + "`" + ` and ` + "`" + `to` + "`" + ` query parameters.\n- ` + "`" + `global` + "`" + `: In this mode the _total_ usage statistics are returned. For\ninstance, if the retention period of the DB is set to 2 years, usage\nstatistics of last 2 years will be returned.\n\nThe statistics can be limited to certain projects by passing ` + "`" + `project` + "`" + ` query,\nparameter.\n\nIf ` + "`" + `to` + "`" + ` query parameter is not provided, current time will be used. If ` + "`" + `from` + "`" + `\nquery parameter is not used, a default query window of 24 hours will be used.\nIt means if ` + "`" + `to` + "`" + ` is provided, ` + "`" + `from` + "`" + ` will be calculated as ` + "`" + `to` + "`" + ` - 24hrs.\n\nTo limit the number of fields in the response, use ` + "`" + `field` + "`" + ` query parameter. By default, all\nfields will be included in the response if they are _non-empty_.",
                 "produces": [
                     "application/json"
                 ],
@@ -408,8 +407,8 @@ const docTemplate = `{
                             "type": "string"
                         },
                         "collectionFormat": "multi",
-                        "description": "User name(s)",
-                        "name": "user",
+                        "description": "Project",
+                        "name": "project",
                         "in": "query"
                     },
                     {
@@ -464,7 +463,7 @@ const docTemplate = `{
                         "BasicAuth": []
                     }
                 ],
-                "description": "get current/global usage statistics of a given user and/or project for admins",
+                "description": "This admin endpoint will return the usage statistics of _queried_ user. The\ncurrent user is always identified by the header ` + "`" + `X-Grafana-User` + "`" + ` in\nthe request.\n\nThe user who is making the request must be in the list of admin users\nconfigured for the server.\n\nA path parameter ` + "`" + `mode` + "`" + ` is required to return the kind of usage statistics.\nCurrently, two modes of statistics are supported:\n- ` + "`" + `current` + "`" + `: In this mode the usage between two time periods is returned\nbased on ` + "`" + `from` + "`" + ` and ` + "`" + `to` + "`" + ` query parameters.\n- ` + "`" + `global` + "`" + `: In this mode the _total_ usage statistics are returned. For\ninstance, if the retention period of the DB is set to 2 years, usage\nstatistics of last 2 years will be returned.\n\nThe statistics can be limited to certain projects by passing ` + "`" + `project` + "`" + ` query,\nparameter.\n\nIf ` + "`" + `to` + "`" + ` query parameter is not provided, current time will be used. If ` + "`" + `from` + "`" + `\nquery parameter is not used, a default query window of 24 hours will be used.\nIt means if ` + "`" + `to` + "`" + ` is provided, ` + "`" + `from` + "`" + ` will be calculated as ` + "`" + `to` + "`" + ` - 24hrs.\n\nTo limit the number of fields in the response, use ` + "`" + `field` + "`" + ` query parameter. By default, all\nfields will be included in the response if they are _non-empty_.",
                 "produces": [
                     "application/json"
                 ],
@@ -497,8 +496,8 @@ const docTemplate = `{
                             "type": "string"
                         },
                         "collectionFormat": "multi",
-                        "description": "User name(s)",
-                        "name": "user",
+                        "description": "Project",
+                        "name": "project",
                         "in": "query"
                     },
                     {
@@ -554,7 +553,7 @@ const docTemplate = `{
         },
         "/{resource}/demo": {
             "get": {
-                "description": "get units and/or usage response generated by mock data",
+                "description": "This endpoint returns sample response for units and usage models. This\nendpoint do not require the setting of ` + "`" + `X-Grafana-User` + "`" + ` header as it\nonly returns mock data for each request. This can be used to introspect\nthe response models for different resources.\n\nThe endpoint requires a path parameter ` + "`" + `resource` + "`" + ` which takes either:\n- ` + "`" + `units` + "`" + ` which returns a mock units response\n- ` + "`" + `usage` + "`" + ` which returns a mock usage response.\n\nThe mock data is generated randomly for each request and there is\nno guarantee that the data has logical sense.",
                 "produces": [
                     "application/json"
                 ],
@@ -1030,6 +1029,9 @@ const docTemplate = `{
         "BasicAuth": {
             "type": "basic"
         }
+    },
+    "externalDocs": {
+        "url": "https://mahendrapaipuri.github.io/ceems/"
     }
 }`
 
@@ -1040,7 +1042,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "",
 	Schemes:          []string{},
 	Title:            "CEEMS API",
-	Description:      "CEEMS REST API server.",
+	Description:      "OpenAPI specification (OAS) for the CEEMS REST API.\n\nSee the Interactive Docs to try CEEMS API methods without writing code, and get\nthe complete schema of resources exposed by the API.\n\nIf basic auth is enabled, all the endpoints require authentication.\n\nAll the endpoints, except `health` and `demo`, must send a user-agent header.\n\nTimestamps must be specified in milliseconds, unless otherwise specified.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

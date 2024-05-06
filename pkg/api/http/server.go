@@ -70,7 +70,7 @@ type Response[T any] struct {
 
 var (
 	aggUsageDBCols     = make(map[string]string, len(base.UsageDBTableColNames))
-	defaultQueryWindow = time.Duration(2 * time.Hour) // Two hours
+	defaultQueryWindow = time.Duration(24 * time.Hour) // One day
 )
 
 // Make summary DB col names by using aggregate SQL functions
@@ -185,10 +185,18 @@ func NewCEEMSServer(c *Config) (*CEEMSServer, func(), error) {
 
 // Start launches CEEMS HTTP server godoc
 //
-//	@title						CEEMS API
-//	@version					1.0
-//	@description				CEEMS REST API server.
-//	@termsOfService				http://swagger.io/terms/
+//	@title			CEEMS API
+//	@version		1.0
+//	@description	OpenAPI specification (OAS) for the CEEMS REST API.
+//	@description
+//	@description	See the Interactive Docs to try CEEMS API methods without writing code, and get
+//	@description	the complete schema of resources exposed by the API.
+//	@description
+//	@description	If basic auth is enabled, all the endpoints require authentication.
+//	@description
+//	@description	All the endpoints, except `health` and `demo`, must send a user-agent header.
+//	@description
+//	@description				Timestamps must be specified in milliseconds, unless otherwise specified.
 //
 //	@contact.name				Mahendra Paipuri
 //	@contact.url				https://github.com/mahendrapaipuri/ceems/issues
@@ -198,6 +206,8 @@ func NewCEEMSServer(c *Config) (*CEEMSServer, func(), error) {
 //	@license.url				https://opensource.org/license/bsd-3-clause
 //
 //	@securityDefinitions.basic	BasicAuth
+//
+//	@externalDocs.url			https://mahendrapaipuri.github.io/ceems/
 func (s *CEEMSServer) Start() error {
 	// Set swagger info
 	docs.SwaggerInfo.BasePath = fmt.Sprintf("/api/%s", base.APIVersion)
@@ -242,7 +252,10 @@ func (s *CEEMSServer) setHeaders(w http.ResponseWriter) {
 // health godoc
 //
 //	@Summary		Health status
-//	@Description	get health status of API server
+//	@Description	This endpoint returns the health status of the server.
+//	@Description
+//	@Description	A healthy server returns 200 response code and any other
+//	@Description	responses should be treated as unhealthy server.
 //	@Tags			health
 //	@Produce		plain
 //	@Success		200	{string}	OK
@@ -262,7 +275,7 @@ func (s *CEEMSServer) health(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Fetch project, partition and QoS query params and add them to query
+// Fetch project and running query parameters and add them to query
 func (s *CEEMSServer) getCommonQueryParams(q *Query, URLValues url.Values) Query {
 	// Get project query parameters if any
 	if projects := URLValues["project"]; len(projects) > 0 {
@@ -433,8 +446,27 @@ queryUnits:
 
 // unitsAdmin    godoc
 //
-//	@Summary		Admin endpoint for fetching compute units
-//	@Description	get units for admins that can query units of any user
+//	@Summary		Admin endpoint for fetching compute units.
+//	@Description	This admin endpoint will fetch compute units of _any_ user, compute unit and/or project. The
+//	@Description	current user is always identified by the header `X-Grafana-User` in
+//	@Description	the request.
+//	@Description
+//	@Description	The user who is making the request must be in the list of admin users
+//	@Description	configured for the server.
+//	@Description
+//	@Description	If multiple query parameters are passed, for instance, `?uuid=<uuid>&user=<user>`,
+//	@Description	the intersection of query parameters are used to fetch compute units rather than
+//	@Description	the union. That means if the compute unit's `uuid` does not belong to the queried
+//	@Description	user, null response will be returned.
+//	@Description
+//	@Description	In order to return the running compute units as well, use the query parameter `running`.
+//	@Description
+//	@Description	If `to` query parameter is not provided, current time will be used. If `from`
+//	@Description	query parameter is not used, a default query window of 24 hours will be used.
+//	@Description	It means if `to` is provided, `from` will be calculated as `to` - 24hrs.
+//	@Description
+//	@Description	To limit the number of fields in the response, use `field` query parameter. By default, all
+//	@Description	fields will be included in the response if they are _non-empty_.
 //	@Security		BasicAuth
 //	@Tags			units
 //	@Produce		json
@@ -462,7 +494,23 @@ func (s *CEEMSServer) unitsAdmin(w http.ResponseWriter, r *http.Request) {
 // units         godoc
 //
 //	@Summary		User endpoint for fetching compute units
-//	@Description	get units queried by a user
+//	@Description	This user endpoint will fetch compute units of the current user. The
+//	@Description	current user is always identified by the header `X-Grafana-User` in
+//	@Description	the request.
+//	@Description
+//	@Description	If multiple query parameters are passed, for instance, `?uuid=<uuid>&project=<project>`,
+//	@Description	the intersection of query parameters are used to fetch compute units rather than
+//	@Description	the union. That means if the compute unit's `uuid` does not belong to the queried
+//	@Description	project, null response will be returned.
+//	@Description
+//	@Description	In order to return the running compute units as well, use the query parameter `running`.
+//	@Description
+//	@Description	If `to` query parameter is not provided, current time will be used. If `from`
+//	@Description	query parameter is not used, a default query window of 24 hours will be used.
+//	@Description	It means if `to` is provided, `from` will be calculated as `to` - 24hrs.
+//	@Description
+//	@Description	To limit the number of fields in the response, use `field` query parameter. By default, all
+//	@Description	fields will be included in the response if they are _non-empty_.
 //	@Security		BasicAuth
 //	@Tags			units
 //	@Produce		json
@@ -492,7 +540,25 @@ func (s *CEEMSServer) units(w http.ResponseWriter, r *http.Request) {
 // verifyUnitsOwnership         godoc
 //
 //	@Summary		Verify unit ownership
-//	@Description	verify ownership of the unit
+//	@Description	This endpoint will check if the current user is the owner of the
+//	@Description	queried UUIDs. The current user is always identified by the header `X-Grafana-User` in
+//	@Description	the request.
+//	@Description
+//	@Description	A response of 200 means that the current user is the owner of the queried UUIDs.
+//	@Description	Any other response code should be treated as the current user not being the owner
+//	@Description	of the queried units.
+//	@Description
+//	@Description	The ownership check passes if any of the following conditions are `true`:
+//	@Description	- If the current user is the _direct_ owner of the compute unit.
+//	@Description	- If the current user belongs to the same account/project/namespace as
+//	@Description	the compute unit. This means the users belonging to the same project can
+//	@Description	access each others compute units.
+//	@Description
+//	@Description	The above checks must pass for **all** the queried units.
+//	@Description	If the check does not pass for at least one queried unit, a response 403 will be
+//	@Description	returned.
+//	@Description
+//	@Description	Any 500 response codes should be treated as failed check as well.
 //	@Security		BasicAuth
 //	@Tags			units
 //	@Produce		json
@@ -541,15 +607,24 @@ func (s *CEEMSServer) verifyUnitsOwnership(w http.ResponseWriter, r *http.Reques
 // projects         godoc
 //
 //	@Summary		List projects
-//	@Description	get list of projects that user belong to
-//	@Security		BasicAuth
-//	@Tags			projects
-//	@Produce		json
-//	@Param			X-Grafana-User	header		string	true	"Current user name"
-//	@Success		200				{object}	Response[models.Project]
-//	@Failure		401				{object}	Response[any]
-//	@Failure		500				{object}	Response[any]
-//	@Router			/projects [get]
+//	@Description	This endpoint will list all the active projects of the current user. The
+//	@Description	current user is always identified by the header `X-Grafana-User` in
+//	@Description	the request.
+//	@Description
+//	@Description	This will list all the projects that the user has ever been a part of
+//	@Description	although if the user loses the membership after.
+//	@Description
+//	@Description	This needs to be improved as it has potential security implications.
+//	@Description	Check the [issue 91](https://github.com/mahendrapaipuri/ceems/issues/91)
+//	@Description
+//	@Security	BasicAuth
+//	@Tags		projects
+//	@Produce	json
+//	@Param		X-Grafana-User	header		string	true	"Current user name"
+//	@Success	200				{object}	Response[models.Project]
+//	@Failure	401				{object}	Response[any]
+//	@Failure	500				{object}	Response[any]
+//	@Router		/projects [get]
 //
 // GET /projects
 // Get projects list of user
@@ -624,8 +699,11 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 	q.query(" WHERE project IN ")
 	q.subQuery(qSub)
 
-	// Add common query parameters
-	q = s.getCommonQueryParams(&q, r.URL.Query())
+	// Get project query parameters if any
+	if projects := r.URL.Query()["project"]; len(projects) > 0 {
+		q.query(" AND project IN ")
+		q.param(projects)
+	}
 
 	// Get query window time stamps
 	queryWindowTS, err := s.getQueryWindow(r)
@@ -680,8 +758,11 @@ func (s *CEEMSServer) globalUsage(users []string, queriedFields []string, w http
 	q.query(" WHERE project IN ")
 	q.subQuery(qSub)
 
-	// Add common query parameters
-	q = s.getCommonQueryParams(&q, r.URL.Query())
+	// Get project query parameters if any
+	if projects := r.URL.Query()["project"]; len(projects) > 0 {
+		q.query(" AND project IN ")
+		q.param(projects)
+	}
 
 	// Make query and check for returned number of rows
 	usage, err := s.Querier(s.db, q, usageResourceName, s.logger)
@@ -707,13 +788,33 @@ func (s *CEEMSServer) globalUsage(users []string, queriedFields []string, w http
 // usage         godoc
 //
 //	@Summary		Usage statistics
-//	@Description	get current/global usage statistics of a current user
+//	@Description	This endpoint will return the usage statistics current user. The
+//	@Description	current user is always identified by the header `X-Grafana-User` in
+//	@Description	the request.
+//	@Description
+//	@Description	A path parameter `mode` is required to return the kind of usage statistics.
+//	@Description	Currently, two modes of statistics are supported:
+//	@Description	- `current`: In this mode the usage between two time periods is returned
+//	@Description	based on `from` and `to` query parameters.
+//	@Description	- `global`: In this mode the _total_ usage statistics are returned. For
+//	@Description	instance, if the retention period of the DB is set to 2 years, usage
+//	@Description	statistics of last 2 years will be returned.
+//	@Description
+//	@Description	The statistics can be limited to certain projects by passing `project` query,
+//	@Description	parameter.
+//	@Description
+//	@Description	If `to` query parameter is not provided, current time will be used. If `from`
+//	@Description	query parameter is not used, a default query window of 24 hours will be used.
+//	@Description	It means if `to` is provided, `from` will be calculated as `to` - 24hrs.
+//	@Description
+//	@Description	To limit the number of fields in the response, use `field` query parameter. By default, all
+//	@Description	fields will be included in the response if they are _non-empty_.
 //	@Security		BasicAuth
 //	@Tags			usage
 //	@Produce		json
 //	@Param			X-Grafana-User	header		string		true	"Current user name"
 //	@Param			mode			path		string		true	"Whether to get usage stats within a period or global"	Enums(current, global)
-//	@Param			user			query		[]string	false	"User name(s)"											collectionFormat(multi)
+//	@Param			project			query		[]string	false	"Project"												collectionFormat(multi)
 //	@Param			from			query		string		false	"From timestamp"
 //	@Param			to				query		string		false	"To timestamp"
 //	@Param			field			query		[]string	false	"Fields to return in response"	collectionFormat(multi)
@@ -756,13 +857,36 @@ func (s *CEEMSServer) usage(w http.ResponseWriter, r *http.Request) {
 // usage         godoc
 //
 //	@Summary		Admin Usage statistics
-//	@Description	get current/global usage statistics of a given user and/or project for admins
+//	@Description	This admin endpoint will return the usage statistics of _queried_ user. The
+//	@Description	current user is always identified by the header `X-Grafana-User` in
+//	@Description	the request.
+//	@Description
+//	@Description	The user who is making the request must be in the list of admin users
+//	@Description	configured for the server.
+//	@Description
+//	@Description	A path parameter `mode` is required to return the kind of usage statistics.
+//	@Description	Currently, two modes of statistics are supported:
+//	@Description	- `current`: In this mode the usage between two time periods is returned
+//	@Description	based on `from` and `to` query parameters.
+//	@Description	- `global`: In this mode the _total_ usage statistics are returned. For
+//	@Description	instance, if the retention period of the DB is set to 2 years, usage
+//	@Description	statistics of last 2 years will be returned.
+//	@Description
+//	@Description	The statistics can be limited to certain projects by passing `project` query,
+//	@Description	parameter.
+//	@Description
+//	@Description	If `to` query parameter is not provided, current time will be used. If `from`
+//	@Description	query parameter is not used, a default query window of 24 hours will be used.
+//	@Description	It means if `to` is provided, `from` will be calculated as `to` - 24hrs.
+//	@Description
+//	@Description	To limit the number of fields in the response, use `field` query parameter. By default, all
+//	@Description	fields will be included in the response if they are _non-empty_.
 //	@Security		BasicAuth
 //	@Tags			usage
 //	@Produce		json
 //	@Param			X-Grafana-User	header		string		true	"Current user name"
 //	@Param			mode			path		string		true	"Whether to get usage stats within a period or global"	Enums(current, global)
-//	@Param			user			query		[]string	false	"User name(s)"											collectionFormat(multi)
+//	@Param			project			query		[]string	false	"Project"												collectionFormat(multi)
 //	@Param			from			query		string		false	"From timestamp"
 //	@Param			to				query		string		false	"To timestamp"
 //	@Param			field			query		[]string	false	"Fields to return in response"	collectionFormat(multi)
@@ -803,7 +927,17 @@ func (s *CEEMSServer) usageAdmin(w http.ResponseWriter, r *http.Request) {
 // usage         godoc
 //
 //	@Summary		Demo Units/Usage endpoints
-//	@Description	get units and/or usage response generated by mock data
+//	@Description	This endpoint returns sample response for units and usage models. This
+//	@Description	endpoint do not require the setting of `X-Grafana-User` header as it
+//	@Description	only returns mock data for each request. This can be used to introspect
+//	@Description	the response models for different resources.
+//	@Description
+//	@Description	The endpoint requires a path parameter `resource` which takes either:
+//	@Description	- `units` which returns a mock units response
+//	@Description	- `usage` which returns a mock usage response.
+//	@Description
+//	@Description	The mock data is generated randomly for each request and there is
+//	@Description	no guarantee that the data has logical sense.
 //	@Tags			demo
 //	@Produce		json
 //	@Param			resource	path		string	true	"Whether to return mock units or usage data"	Enums(units, usage)
@@ -812,7 +946,7 @@ func (s *CEEMSServer) usageAdmin(w http.ResponseWriter, r *http.Request) {
 //	@Failure		500			{object}	Response[any]
 //	@Router			/{resource}/demo [get]
 //
-// GET /demo/{units,usage}
+// GET /{units,usage}/demo
 // Return mocked data for different models
 func (s *CEEMSServer) demo(w http.ResponseWriter, r *http.Request) {
 	// Set headers
