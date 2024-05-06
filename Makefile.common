@@ -186,6 +186,7 @@ common-build: promu swag
 ifeq ($(CGO_BUILD), 1)
 	@echo ">> updating swagger docs"
 	$(SWAG) init -d $(SWAGGER_DIR) -g $(SWAGGER_MAIN) -o $(SWAGGER_DIR)/docs --pd --quiet
+	$(SWAG) fmt -d $(SWAGGER_DIR) -g $(SWAGGER_MAIN)
 endif
 	@echo ">> building binaries"
 	$(PROMU) build --prefix $(PREFIX) $(PROMU_BINARIES)
