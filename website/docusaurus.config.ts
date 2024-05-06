@@ -24,7 +24,8 @@ const config: Config = {
   organizationName: `${organizationName}`, // Usually your GitHub org/user name.
   projectName: `${projectName}`, // Usually your repo name.
 
-  onBrokenLinks: "throw",
+  // NOTE: Set it to throw once docs are "release" ready
+  onBrokenLinks: "warn",
   onBrokenMarkdownLinks: "warn",
 
   // Even if you don't use internationalization, you can use this field to set
@@ -116,16 +117,16 @@ const config: Config = {
           title: "Docs",
           items: [
             {
-              label: "Docs",
+              label: "CEEMS Docs",
               to: "/docs/",
             },
             {
-              label: "Objectives",
-              to: "/docs/category/objectives",
+              label: "Prometheus Docs",
+              href: `https://prometheus.io/docs/introduction/overview/`,
             },
             {
-              label: "Installation",
-              to: "/docs/category/installation",
+              label: "Grafana Docs",
+              href: `https://grafana.com/docs/`,
             },
           ],
         },
@@ -153,14 +154,6 @@ const config: Config = {
             {
               label: "GitHub",
               href: `https://github.com/${organizationName}/${projectName}`,
-            },
-            {
-              label: "Prometheus Docs",
-              href: `https://prometheus.io/docs/introduction/overview/`,
-            },
-            {
-              label: "Grafana Docs",
-              href: `https://grafana.com/docs/`,
             },
           ],
         },
