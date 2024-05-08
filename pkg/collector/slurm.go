@@ -44,7 +44,7 @@ var (
 		"collector.slurm.create.unique.jobids",
 		`Enables calculation of a unique hash based job UUID (default: disabled). 
 UUID is calculated based on SLURM_JOBID, SLURM_JOB_USER, SLURM_JOB_ACCOUNT, SLURM_JOB_NODELIST.`,
-	).Default("false").Bool()
+	).Default("false").Hidden().Bool()
 	gpuType = CEEMSExporterApp.Flag(
 		"collector.slurm.gpu.type",
 		"GPU device type. Currently only nvidia and amd devices are supported.",
@@ -53,11 +53,11 @@ UUID is calculated based on SLURM_JOBID, SLURM_JOB_USER, SLURM_JOB_ACCOUNT, SLUR
 		"collector.slurm.job.props.path",
 		`Directory containing files with job properties. Files should be named after SLURM_JOBID 
 with contents as "$SLURM_JOB_USER $SLURM_JOB_ACCOUNT $SLURM_JOB_NODELIST" in the same order.`,
-	).Default("/run/slurmjobprops").String()
+	).Default("/run/slurmjobprops").Hidden().String()
 	gpuStatPath = CEEMSExporterApp.Flag(
 		"collector.slurm.gpu.job.map.path",
 		"Path to file that maps GPU ordinals to job IDs.",
-	).Default("/run/gpujobmap").String()
+	).Default("/run/gpujobmap").Hidden().String()
 	forceCgroupsVersion = CEEMSExporterApp.Flag(
 		"collector.slurm.force.cgroups.version",
 		"Set cgroups version manually. Used only for testing.",
