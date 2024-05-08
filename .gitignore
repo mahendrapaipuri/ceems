@@ -51,6 +51,9 @@ promu*
 data
 data-backup
 
+# Dont ignore data in emissions package
+!pkg/emissions/data
+
 # Ignore zipped files
 *.tar.gz
 

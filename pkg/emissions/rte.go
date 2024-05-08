@@ -17,18 +17,16 @@ import (
 )
 
 const (
-	opendatasoftAPIBaseURL = "https://reseaux-energies-rte.opendatasoft.com"
-	opendatasoftAPIPath    = `%s/api/explore/v2.1/catalog/datasets/eco2mix-national-tr/records?%s`
+	opendatasoftAPIBaseURL = "https://reseaux-energies-rte.opendatasoft.com/api/explore/v2.1/catalog/datasets/eco2mix-national-tr/records"
 	rteEmissionsProvider   = "rte"
 )
 
 type rteProvider struct {
 	logger             log.Logger
-	ctx                context.Context
 	cacheDuration      int64
 	lastRequestTime    int64
-	lastEmissionFactor float64
-	fetch              func(ctx context.Context, logger log.Logger) (float64, error)
+	lastEmissionFactor EmissionFactors
+	fetch              func(url string, logger log.Logger) (EmissionFactors, error)
 }
 
 func init() {
@@ -37,19 +35,13 @@ func init() {
 }
 
 // NewRTEProvider returns a new Provider that returns emission factor from RTE eCO2 mix
-func NewRTEProvider(ctx context.Context, logger log.Logger) (Provider, error) {
-	// Check if country is FR and if not return
-	if ctx.Value(ContextKey{}).(ContextValues).CountryCodeAlpha2 != "FR" {
-		return nil, fmt.Errorf("RTE eCO2 data is only available for France")
-	}
+func NewRTEProvider(logger log.Logger) (Provider, error) {
 	level.Info(logger).Log("msg", "Emission factor from RTE eCO2 mix will be reported.")
 	return &rteProvider{
-		logger:             logger,
-		ctx:                ctx,
-		cacheDuration:      1800,
-		lastRequestTime:    time.Now().Unix(),
-		lastEmissionFactor: -1,
-		fetch:              makeRTEAPIRequest,
+		logger:          logger,
+		cacheDuration:   1800000,
+		lastRequestTime: time.Now().UnixMilli(),
+		fetch:           makeRTEAPIRequest,
 	}, nil
 }
 
@@ -58,33 +50,35 @@ func NewRTEProvider(ctx context.Context, logger log.Logger) (Provider, error) {
 // only once every 30 min and cache data for rest of the scrapes
 // This is useful when exporter is used along with other collectors need shorter
 // scrape intervals.
-func (s *rteProvider) Update() (float64, error) {
-	if time.Now().Unix()-s.lastRequestTime > s.cacheDuration || s.lastEmissionFactor == -1 {
-		currentEmissionFactor, err := s.fetch(s.ctx, s.logger)
+func (s *rteProvider) Update() (EmissionFactors, error) {
+	// Make RTE URL
+	url := makeRTEURL(opendatasoftAPIBaseURL)
+	if time.Now().UnixMilli()-s.lastRequestTime > s.cacheDuration || s.lastEmissionFactor == nil {
+		currentEmissionFactor, err := s.fetch(url, s.logger)
 		if err != nil {
 			level.Warn(s.logger).Log("msg", "Failed to retrieve emission factor from RTE provider", "err", err)
 
 			// Check if last emission factor is valid and if it is use the same for current
-			if s.lastEmissionFactor > -1 {
+			if s.lastEmissionFactor != nil {
 				currentEmissionFactor = s.lastEmissionFactor
 				err = nil
 			}
 		}
 
 		// Update last request time and factor
-		s.lastRequestTime = time.Now().Unix()
+		s.lastRequestTime = time.Now().UnixMilli()
 		s.lastEmissionFactor = currentEmissionFactor
 		level.Debug(s.logger).
-			Log("msg", "Using real time emission factor from RTE provider", "factor", currentEmissionFactor)
+			Log("msg", "Using real time emission factor from RTE provider", "factor", currentEmissionFactor["FR"].Factor)
 		return currentEmissionFactor, err
 	} else {
-		level.Debug(s.logger).Log("msg", "Using cached emission factor for RTE provider", "factor", s.lastEmissionFactor)
+		level.Debug(s.logger).Log("msg", "Using cached emission factor for RTE provider", "factor", s.lastEmissionFactor["FR"].Factor)
 		return s.lastEmissionFactor, nil
 	}
 }
 
-// Make request to Opendatasoft API
-func makeRTEAPIRequest(ctx context.Context, logger log.Logger) (float64, error) {
+// Make URL
+func makeRTEURL(baseURL string) string {
 	// Make query string
 	params := url.Values{}
 	params.Add("select", "taux_co2,date_heure")
@@ -102,50 +96,47 @@ func makeRTEAPIRequest(ctx context.Context, logger log.Logger) (float64, error) 
 		),
 	)
 	queryString := params.Encode()
+	return fmt.Sprintf("%s?%s", baseURL, queryString)
+}
 
+// Make request to Opendatasoft API
+func makeRTEAPIRequest(url string, logger log.Logger) (EmissionFactors, error) {
 	// Create a context with timeout to ensure we dont have deadlocks
 	// Dont use a long timeout. If one provider takes too long, whole scrape will be
 	// marked as fail when there is a timeout
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
-		fmt.Sprintf(opendatasoftAPIPath, opendatasoftAPIBaseURL, queryString), nil,
-	)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create HTTP request for RTE provider", "err", err)
-		return float64(-1), err
+		return nil, err
 	}
 
-	// tlsConfig := &http.Transport{
-	//     TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	// }
-	// client := &http.Client{Transport: tlsConfig}
-	// resp, err := client.Do(req)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to make HTTP request for RTE provider", "err", err)
-		return float64(-1), err
+		return nil, err
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to read HTTP response body for RTE provider", "err", err)
-		return float64(-1), err
+		return nil, err
 	}
 
 	var data nationalRealTimeResponseV2
 	err = json.Unmarshal(body, &data)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to unmarshal HTTP response body for RTE provider", "err", err)
-		return float64(-1), err
+		return nil, err
 	}
 
 	var fields []nationalRealTimeFieldsV2
 	fields = append(fields, data.Results...)
 	// Check size of fields as it can be zero sometimes
 	if len(fields) >= 1 {
-		return float64(fields[0].TauxCo2), nil
+		return EmissionFactors{"FR": EmissionFactor{"France", float64(fields[0].TauxCo2)}}, nil
 	}
-	return float64(-1), fmt.Errorf("empty response received from RTE server: %v", fields)
+	return nil, fmt.Errorf("empty response received from RTE server: %v", fields)
 }

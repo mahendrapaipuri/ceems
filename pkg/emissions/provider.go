@@ -2,9 +2,7 @@
 package emissions
 
 import (
-	"context"
 	"embed"
-	"encoding/json"
 	"sync"
 
 	"github.com/go-kit/log"
@@ -15,42 +13,28 @@ import (
 var dataDir embed.FS
 
 var (
-	CountryCodes  CountryCode
 	emissionsLock = sync.RWMutex{}
-	factories     = make(map[string]func(ctx context.Context, logger log.Logger) (Provider, error))
+	factories     = make(map[string]func(logger log.Logger) (Provider, error))
 	factoryNames  = make(map[string]string)
 )
-
-func init() {
-	// Read countries JSON file
-	countryCodesContents, err := dataDir.ReadFile("data/data_iso_3166-1.json")
-	if err != nil {
-		return
-	}
-
-	// Unmarshal JSON file into struct
-	if err := json.Unmarshal(countryCodesContents, &CountryCodes); err != nil {
-		return
-	}
-}
 
 // RegisterProvider registers a emission factor provider
 func RegisterProvider(
 	provider string,
 	providerName string,
-	factory func(ctx context.Context, logger log.Logger) (Provider, error)) {
+	factory func(logger log.Logger) (Provider, error)) {
 	factories[provider] = factory
 	factoryNames[provider] = providerName
 }
 
 // NewFactorProviders creates a new EmissionProviders
-func NewFactorProviders(ctx context.Context, logger log.Logger) (*FactorProviders, error) {
+func NewFactorProviders(logger log.Logger) (*FactorProviders, error) {
 	providers := make(map[string]Provider)
 	providerNames := make(map[string]string)
 
 	// Loop over factories and create new instances
 	for key, factory := range factories {
-		provider, err := factory(ctx, log.With(logger, "provider", key))
+		provider, err := factory(log.With(logger, "provider", key))
 		if err != nil {
 			level.Error(logger).Log("msg", "Failed to create data provider", "provider", key, "err", err)
 			continue
