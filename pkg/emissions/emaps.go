@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-kit/log"
@@ -18,19 +20,22 @@ import (
 )
 
 const (
-	eMapAPIBaseURL         = "https://api-access.electricitymaps.com"
-	eMapAPIBaseURLPath     = `%s/free-tier/carbon-intensity/latest?%s`
+	eMapAPIBaseURL         = "https://api.electricitymap.org/v3"
 	eMapsEmissionsProvider = "emaps"
+)
+
+var (
+	emissionLock = sync.RWMutex{}
 )
 
 type emapsProvider struct {
 	logger             log.Logger
-	ctx                context.Context
 	apiToken           string
+	zones              map[string]string
 	cacheDuration      int64
 	lastRequestTime    int64
-	lastEmissionFactor float64
-	fetch              func(apiToken string, ctx context.Context, logger log.Logger) (float64, error)
+	lastEmissionFactor EmissionFactors
+	fetch              func(baseURL string, apiToken string, zones map[string]string, logger log.Logger) (EmissionFactors, error)
 }
 
 func init() {
@@ -39,23 +44,48 @@ func init() {
 }
 
 // NewEMapsProvider returns a new Provider that returns emission factor from electricity maps data
-func NewEMapsProvider(ctx context.Context, logger log.Logger) (Provider, error) {
-	var eMapsAPIToken string
+func NewEMapsProvider(logger log.Logger) (Provider, error) {
 	// Check if EMAPS_API_TOKEN is set
+	var eMapsAPIToken string
 	if token, present := os.LookupEnv("EMAPS_API_TOKEN"); present {
 		level.Info(logger).Log("msg", "Emission factor from Electricity Maps will be reported.")
 		eMapsAPIToken = token
 	} else {
 		return nil, fmt.Errorf("api token missing for Electricity Maps")
 	}
+
+	// Get all available zones for Electricity Maps
+	// Seems like EMaps do not like token for zones endpoint
+	url := fmt.Sprintf("%s/zones", eMapAPIBaseURL)
+	// To override baseURL in tests
+	if baseURL, present := os.LookupEnv("__EMAPS_BASE_URL"); present {
+		url = fmt.Sprintf("%s/zones", baseURL)
+	}
+	zoneData, err := eMapsAPIRequest[eMapsZonesResponse](url, "")
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch electricity maps zones: %s", err)
+	}
+
+	var zones = make(map[string]string, len(zoneData))
+	for zone, details := range zoneData {
+		// Check for countryName
+		var compoundName string
+		for _, name := range []string{"countryName", "zoneName"} {
+			if n, ok := details[name]; ok {
+				compoundName = fmt.Sprintf("%s %s", compoundName, n)
+			}
+		}
+		// Trim white spaces
+		compoundName = strings.TrimSpace(compoundName)
+		zones[zone] = compoundName
+	}
 	return &emapsProvider{
-		logger:             logger,
-		ctx:                ctx,
-		apiToken:           eMapsAPIToken,
-		cacheDuration:      1800,
-		lastRequestTime:    time.Now().Unix(),
-		lastEmissionFactor: -1,
-		fetch:              makeEMapsAPIRequest,
+		logger:          logger,
+		apiToken:        eMapsAPIToken,
+		zones:           zones,
+		cacheDuration:   1800000,
+		lastRequestTime: time.Now().UnixMilli(),
+		fetch:           makeEMapsAPIRequest,
 	}, nil
 }
 
@@ -64,76 +94,104 @@ func NewEMapsProvider(ctx context.Context, logger log.Logger) (Provider, error) 
 // only once every 30 min and cache data for rest of the scrapes
 // This is useful when exporter is used along with other collectors need shorter
 // scrape intervals.
-func (s *emapsProvider) Update() (float64, error) {
-	if time.Now().Unix()-s.lastRequestTime > s.cacheDuration || s.lastEmissionFactor == -1 {
-		currentEmissionFactor, err := s.fetch(s.apiToken, s.ctx, s.logger)
+func (s *emapsProvider) Update() (EmissionFactors, error) {
+	if time.Now().UnixMilli()-s.lastRequestTime > s.cacheDuration || s.lastEmissionFactor == nil {
+		currentEmissionFactor, err := s.fetch(eMapAPIBaseURL, s.apiToken, s.zones, s.logger)
 		if err != nil {
 			level.Warn(s.logger).
 				Log("msg", "Failed to fetch emission factor from Electricity maps provider", "err", err)
 
 			// Check if last emission factor is valid and if it is use the same for current
-			if s.lastEmissionFactor > -1 {
+			if s.lastEmissionFactor != nil {
 				currentEmissionFactor = s.lastEmissionFactor
 				err = nil
 			}
 		}
 
 		// Update last request time and factor
-		s.lastRequestTime = time.Now().Unix()
+		s.lastRequestTime = time.Now().UnixMilli()
 		s.lastEmissionFactor = currentEmissionFactor
 		level.Debug(s.logger).
-			Log("msg", "Using real time emission factor from Electricity maps provider", "factor", currentEmissionFactor)
+			Log("msg", "Using real time emission factor from Electricity maps provider")
 		return currentEmissionFactor, err
 	} else {
-		level.Debug(s.logger).Log("msg", "Using cached emission factor for Electricity maps provider", "factor", s.lastEmissionFactor)
+		level.Debug(s.logger).Log("msg", "Using cached emission factor for Electricity maps provider")
 		return s.lastEmissionFactor, nil
 	}
 }
 
-// Make request to Electricity maps API
-func makeEMapsAPIRequest(apiToken string, ctx context.Context, logger log.Logger) (float64, error) {
-	// Retrieve context values
-	contextValues := ctx.Value(ContextKey{}).(ContextValues)
+// Make requests to Electricity maps API to fetch factors for all countries
+func makeEMapsAPIRequest(baseURL string, apiToken string, zones map[string]string, logger log.Logger) (EmissionFactors, error) {
+	// Initialize a wait group
+	wg := &sync.WaitGroup{}
+	wg.Add(len(zones))
 
-	params := url.Values{}
-	params.Add("zone", contextValues.CountryCodeAlpha2)
-	queryString := params.Encode()
+	// Spawn go routine for each group to make an API request
+	var emissionFactors = make(EmissionFactors)
+	for zone, name := range zones {
+		go func(z string, n string) {
+			// Make query parameters
+			params := url.Values{}
+			params.Add("zone", z)
+			queryString := params.Encode()
 
+			url := fmt.Sprintf("%s/carbon-intensity/latest?%s", baseURL, queryString)
+			response, err := eMapsAPIRequest[eMapsCarbonIntensityResponse](url, apiToken)
+			if err != nil {
+				level.Error(logger).
+					Log("msg", "Failed to fetch factor for Electricity maps provider", "zone", z, "err", err)
+			}
+
+			// Set emission factor only when returned value is non zero
+			if response.CarbonIntensity > 0 {
+				emissionLock.Lock()
+				emissionFactors[z] = EmissionFactor{n, float64(response.CarbonIntensity)}
+				emissionLock.Unlock()
+			}
+
+			// Mark routine as done
+			wg.Done()
+		}(zone, name)
+	}
+
+	// Wait for all go routines to finish
+	wg.Wait()
+	return emissionFactors, nil
+}
+
+// Make a single request to Electricity maps API
+// Returning nil for generics: https://stackoverflow.com/questions/70585852/return-default-value-for-generic-type
+func eMapsAPIRequest[T any](url string, apiToken string) (T, error) {
 	// Create a context with timeout to ensure we dont have deadlocks
 	// Dont use a long timeout. If one provider takes too long, whole scrape will be
 	// marked as fail when there is a timeout
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
-		fmt.Sprintf(eMapAPIBaseURLPath, eMapAPIBaseURL, queryString), nil,
-	)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create HTTP request for Electricity Maps provider", "err", err)
-		return float64(-1), err
+		return *new(T), fmt.Errorf("failed to create HTTP request for url %s: %s", url, err)
 	}
 
 	// Add token to auth header
-	req.Header.Add("auth-token", apiToken)
+	if apiToken != "" {
+		req.Header.Add("auth-token", apiToken)
+	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to make HTTP request for Electricity Maps provider", "err", err)
-		return float64(-1), err
+		return *new(T), fmt.Errorf("failed to make HTTP request for url %s: %s", url, err)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to read HTTP response body for Electricity Maps provider", "err", err)
-		return float64(-1), err
+		return *new(T), fmt.Errorf("failed to read HTTP response body for url %s: %s", url, err)
 	}
 
-	var data eMapsResponse
+	var data T
 	err = json.Unmarshal(body, &data)
 	if err != nil {
-		level.Error(logger).
-			Log("msg", "Failed to unmarshal HTTP response body for Electricity Maps provider", "err", err)
-		return -1, err
+		return *new(T), fmt.Errorf("failed to unmarshal HTTP response body for url %s: %s", url, err)
 	}
-	return float64(data.CarbonIntensity), nil
+	return data, nil
 }
