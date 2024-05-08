@@ -2,7 +2,6 @@ package db
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -417,10 +416,11 @@ func TestUnitStatsDBEntries(t *testing.T) {
 	source, _ := os.Open(filepath.Join(tmpDir, "data", "ceems_api_server.db"))
 	defer source.Close()
 
-	destination, _ := os.Create("test.db")
-	defer destination.Close()
-	nBytes, _ := io.Copy(destination, source)
-	fmt.Println(nBytes)
+	// For debugging
+	// destination, _ := os.Create("test.db")
+	// defer destination.Close()
+	// nBytes, _ := io.Copy(destination, source)
+	// fmt.Println(nBytes)
 
 	var cpuUsage float64
 	var numUpdates int64

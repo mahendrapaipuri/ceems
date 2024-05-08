@@ -37,13 +37,14 @@ jobs:
         with:
           path: website/build
 
-  # Deployment job
+  # Deployment job only on main branch
   deploy:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     needs: build-docs
+    if: github.ref == 'refs/heads/main'
     steps:
       - name: Deploy to GitHub Pages
         id: deployment

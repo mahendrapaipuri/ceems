@@ -5,6 +5,8 @@ package collector
 import (
 	"reflect"
 	"testing"
+
+	"github.com/go-kit/log"
 )
 
 var (
@@ -79,7 +81,7 @@ func getExpectedAmdDevs() map[int]Device {
 }
 
 func TestParseNvidiaSmiOutput(t *testing.T) {
-	gpuDevices := parseNvidiaSmiOutput(expectedNvidiaSmiOutput, logger)
+	gpuDevices := parseNvidiaSmiOutput(expectedNvidiaSmiOutput, log.NewNopLogger())
 
 	if !reflect.DeepEqual(gpuDevices, getExpectedNvidiaDevs()) {
 		t.Errorf("Expected: %v, Got: %v", getExpectedNvidiaDevs(), gpuDevices)
@@ -87,7 +89,7 @@ func TestParseNvidiaSmiOutput(t *testing.T) {
 }
 
 func TestParseAmdSmiOutput(t *testing.T) {
-	gpuDevices := parseAmdSmioutput(expectedAmdSmiOutput, logger)
+	gpuDevices := parseAmdSmioutput(expectedAmdSmiOutput, log.NewNopLogger())
 
 	if !reflect.DeepEqual(gpuDevices, getExpectedAmdDevs()) {
 		t.Errorf("Expected: %v, Got: %v", getExpectedAmdDevs(), gpuDevices)
