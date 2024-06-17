@@ -19,7 +19,7 @@ require (
 	github.com/swaggo/swag v1.16.3
 	github.com/zeebo/xxh3 v1.0.2
 	golang.org/x/sys v0.19.0
-	gopkg.in/yaml.v2 v2.4.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -64,5 +64,5 @@ require (
 	golang.org/x/tools v0.20.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 )

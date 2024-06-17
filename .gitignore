@@ -42,7 +42,7 @@ run.sh
 *.db
 *.prof
 lasttimestamp
-!pkg/lb/testdata/ceems_api_server.db
+!pkg/api/testdata/ceems.db
 
 # Ignore promu related files
 promu*
@@ -71,3 +71,6 @@ ceems-*
 *.deb
 *.rpm
 pkg/lb/testdata/lastupdatetime
+
+# Ignore TO_REPLACE folder
+TO_REPLACE

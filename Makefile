@@ -54,19 +54,18 @@ ifeq ($(CGO_BUILD), 1)
 
 	# go test flags
 	coverage-file := coverage-cgo.out
-	test-flags := -covermode=atomic -coverprofile=$(coverage-file).tmp
 else
 	PROMU_CONF ?= .promu-go.yml
 	pkgs := ./pkg/collector ./pkg/emissions ./pkg/tsdb ./pkg/grafana \
-			./internal/helpers ./internal/osexec ./internal/structset \
+			./internal/common ./internal/osexec ./internal/structset \
 			./cmd/ceems_exporter
 	checkmetrics := checkmetrics
 	checkrules := checkrules
 
 	# go test flags
 	coverage-file := coverage-go.out
-	test-flags := -covermode=atomic -coverprofile=$(coverage-file).tmp
 endif
+test-flags := -covermode=atomic -coverprofile=$(coverage-file).tmp
 
 ifeq ($(GOHOSTOS), linux)
 	test-e2e := test-e2e
@@ -146,6 +145,7 @@ else
 test-e2e: $(PROMTOOL) build pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked
 	@echo ">> running end-to-end tests"
 	./scripts/e2e-test.sh -s api-project-query
+	./scripts/e2e-test.sh -s api-cluster-admin-query
 	./scripts/e2e-test.sh -s api-uuid-query
 	./scripts/e2e-test.sh -s api-running-query
 	./scripts/e2e-test.sh -s api-admin-query
@@ -185,6 +185,7 @@ else
 test-e2e-update: $(PROMTOOL) build pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked
 	@echo ">> updating end-to-end tests outputs"
 	./scripts/e2e-test.sh -s api-project-query -u || true
+	./scripts/e2e-test.sh -s api-cluster-admin-query -u || true
 	./scripts/e2e-test.sh -s api-uuid-query -u || true
 	./scripts/e2e-test.sh -s api-running-query -u || true
 	./scripts/e2e-test.sh -s api-admin-query -u || true

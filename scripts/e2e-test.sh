@@ -88,6 +88,10 @@ then
   then
     desc="/projects end point test"
     fixture='pkg/api/testdata/output/e2e-test-api-server-project-query.txt'
+  elif [ "${scenario}" = "api-cluster-admin-query" ]
+  then
+    desc="/clusters/admin end point test"
+    fixture='pkg/api/testdata/output/e2e-test-api-server-cluster-admin-query.txt'
   elif [ "${scenario}" = "api-uuid-query" ]
   then
     desc="/units end point test with uuid query param"
@@ -368,18 +372,17 @@ then
 
     waitport "9090"
 
+  # Copy config file to tmpdir
+  cp pkg/api/testdata/config.yml "${tmpdir}/config.yml"
+
+  # Replace strings in the config file
+  sed -i -e "s,TO_REPLACE,${tmpdir},g" "${tmpdir}/config.yml"
+
   ./bin/ceems_api_server \
-    --slurm.sacct.path="pkg/api/testdata/sacct" \
-    --resource.manager.slurm \
-    --storage.data.path="${tmpdir}" \
-    --storage.data.backup.path="${tmpdir}" \
-    --storage.data.backup.interval="2s" \
     --storage.data.skip.delete.old.units \
     --test.disable.checks \
     --web.listen-address="127.0.0.1:${port}" \
-    --web.admin-users="grafana" \
-    --updater.tsdb \
-    --tsdb.config.file="pkg/api/testdata/tsdb-config.yml" \
+    --config.file="${tmpdir}/config.yml" \
     --log.level="debug" > "${logfile}" 2>&1 &
   CEEMS_API=$!
 
@@ -391,45 +394,48 @@ then
   if [ "${scenario}" = "api-project-query" ]
   then
     get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/projects" > "${fixture_output}"
+  elif [ "${scenario}" = "api-cluster-admin-query" ]
+  then
+    get -H "X-Ceems-User: usr1" "127.0.0.1:${port}/api/${api_version}/clusters/admin" > "${fixture_output}"
   elif [ "${scenario}" = "api-uuid-query" ]
   then
-    get -H "X-Grafana-User: usr2" "127.0.0.1:${port}/api/${api_version}/units?uuid=1481508&project=acc2" > "${fixture_output}"
+    get -H "X-Grafana-User: usr2" "127.0.0.1:${port}/api/${api_version}/units?uuid=1481508&project=acc2&cluster_id=slurm-0" > "${fixture_output}"
   elif [ "${scenario}" = "api-running-query" ]
   then
-    get -H "X-Grafana-User: usr3" "127.0.0.1:${port}/api/${api_version}/units?running&from=1676934000&to=1677538800&field=uuid&field=state&field=started_at&field=allocation&field=tags" > "${fixture_output}"
+    get -H "X-Grafana-User: usr3" "127.0.0.1:${port}/api/${api_version}/units?running&cluster_id=slurm-1&from=1676934000&to=1677538800&field=uuid&field=state&field=started_at&field=allocation&field=tags" > "${fixture_output}"
   elif [ "${scenario}" = "api-admin-query" ]
   then
-    get -H "X-Grafana-User: grafana" -H "X-Dashboard-User: usr3" "127.0.0.1:${port}/api/${api_version}/units?project=acc3&from=1676934000&to=1677538800" > "${fixture_output}"
+    get -H "X-Grafana-User: grafana" -H "X-Dashboard-User: usr3" "127.0.0.1:${port}/api/${api_version}/units?cluster_id=slurm-0&project=acc3&from=1676934000&to=1677538800" > "${fixture_output}"
   elif [ "${scenario}" = "api-admin-query-all" ]
   then
-    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/units/admin?from=1676934000&to=1677538800" > "${fixture_output}"
+    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/units/admin?cluster_id=slurm-1&from=1676934000&to=1677538800" > "${fixture_output}"
   elif [ "${scenario}" = "api-admin-query-all-selected-fields" ]
   then
-    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/units/admin?from=1676934000&to=1677538800&field=uuid&field=started_at&field=ended_at&field=foo" > "${fixture_output}"
+    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/units/admin?cluster_id=slurm-0&from=1676934000&to=1677538800&field=uuid&field=started_at&field=ended_at&field=foo" > "${fixture_output}"
   elif [ "${scenario}" = "api-admin-denied-query" ]
   then
     get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/units/admin" > "${fixture_output}"
   elif [ "${scenario}" = "api-current-usage-query" ]
   then
-    get -H "X-Grafana-User: usr3" "127.0.0.1:${port}/api/${api_version}/usage/current?from=1676934000&to=1677538800" > "${fixture_output}"
+    get -H "X-Grafana-User: usr3" "127.0.0.1:${port}/api/${api_version}/usage/current?cluster_id=slurm-1&from=1676934000&to=1677538800" > "${fixture_output}"
   elif [ "${scenario}" = "api-global-usage-query" ]
   then
-    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/usage/global?field=usr&field=project&field=num_units" > "${fixture_output}"
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/usage/global?cluster_id=slurm-0&field=usr&field=project&field=num_units" > "${fixture_output}"
   elif [ "${scenario}" = "api-current-usage-admin-query" ]
   then
-    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/usage/current/admin?user=usr3&from=1676934000&to=1677538800" > "${fixture_output}"
+    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/usage/current/admin?cluster_id=slurm-1&user=usr3&from=1676934000&to=1677538800" > "${fixture_output}"
   elif [ "${scenario}" = "api-global-usage-admin-query" ]
   then
-    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/usage/global/admin?field=usr&field=project&field=num_units" > "${fixture_output}"
+    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/usage/global/admin?cluster_id=slurm-0&field=usr&field=project&field=num_units" > "${fixture_output}"
   elif [ "${scenario}" = "api-current-usage-admin-denied-query" ]
   then
-    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/usage/global/admin?user=usr2" > "${fixture_output}"
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/usage/global/admin?cluster_id=slurm-1&user=usr2" > "${fixture_output}"
   elif [ "${scenario}" = "api-verify-pass-query" ]
   then
-    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/units/verify?uuid=1479763&uuid=1479765" > "${fixture_output}"
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/units/verify?cluster_id=slurm-0&uuid=1479763&uuid=1479765" > "${fixture_output}"
   elif [ "${scenario}" = "api-verify-fail-query" ]
   then
-    get -H "X-Grafana-User: usr2" "127.0.0.1:${port}/api/${api_version}/units/verify?uuid=1479763&uuid=11508" > "${fixture_output}"
+    get -H "X-Grafana-User: usr2" "127.0.0.1:${port}/api/${api_version}/units/verify?cluster_id=slurm-1&uuid=1479763&uuid=11508" > "${fixture_output}"
   elif [ "${scenario}" = "api-demo-units-query" ]
   then
     get -s -o /dev/null -w "%{http_code}" "127.0.0.1:${port}/api/${api_version}/units/demo" > "${fixture_output}"
@@ -467,7 +473,7 @@ then
 
     waitport "${port}"
 
-    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/v1/status/config" > "${fixture_output}"
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/slurm-0/api/v1/status/config" > "${fixture_output}"
 
   elif [[ "${scenario}" = "lb-forbid-user-query-db" ]] 
   then
@@ -496,7 +502,7 @@ then
 
     waitport "${port}"
 
-    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/v1/query?query=foo\{uuid=\"1481510\"\}&time=1713032179.506" > "${fixture_output}"
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/slurm-1/api/v1/query?query=foo\{uuid=\"1481510\"\}&time=1713032179.506" > "${fixture_output}"
 
   elif [[ "${scenario}" = "lb-allow-user-query-db" ]] 
   then
@@ -525,7 +531,7 @@ then
 
     waitport "${port}"
 
-    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/v1/query?query=foo\{uuid=\"1479763\"\}&time=1713032179.506" > "${fixture_output}"
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/slurm-0/api/v1/query?query=foo\{uuid=\"1479763\"\}&time=1713032179.506" > "${fixture_output}"
 
   elif [[ "${scenario}" = "lb-forbid-user-query-api" ]] 
   then
@@ -544,11 +550,16 @@ then
 
     waitport "9090"
 
+    # Copy config file to tmpdir
+    cp pkg/api/testdata/config.yml "${tmpdir}/config.yml"
+
+    # Replace strings in the config file
+    sed -i -e "s,TO_REPLACE,${tmpdir},g" "${tmpdir}/config.yml"
+
     ./bin/ceems_api_server \
-      --storage.data.path="pkg/lb/testdata" \
       --storage.data.skip.delete.old.units \
       --test.disable.checks \
-      --web.listen-address="127.0.0.1:9020" \
+      --config.file="${tmpdir}/config.yml" \
       --log.level="debug" >> "${logfile}" 2>&1 &
     CEEMS_API_PID=$!
 
@@ -564,7 +575,7 @@ then
 
     waitport "${port}"
 
-    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/v1/query?query=foo\{uuid=\"1481510\"\}&time=1713032179.506" > "${fixture_output}"
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/slurm-1/api/v1/query?query=foo\{uuid=\"1481510\"\}&time=1713032179.506" > "${fixture_output}"
 
   elif [[ "${scenario}" = "lb-allow-user-query-api" ]] 
   then
@@ -583,11 +594,16 @@ then
 
     waitport "9090"
 
+    # Copy config file to tmpdir
+    cp pkg/api/testdata/config.yml "${tmpdir}/config.yml"
+
+    # Replace strings in the config file
+    sed -i -e "s,TO_REPLACE,${tmpdir},g" "${tmpdir}/config.yml"
+
     ./bin/ceems_api_server \
-      --storage.data.path="pkg/lb/testdata" \
       --storage.data.skip.delete.old.units \
       --test.disable.checks \
-      --web.listen-address="127.0.0.1:9020" \
+      --config.file="${tmpdir}/config.yml" \
       --log.level="debug" >> "${logfile}" 2>&1 &
     CEEMS_API_PID=$!
 
@@ -603,7 +619,7 @@ then
 
     waitport "${port}"
 
-    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/v1/query?query=foo\{uuid=\"1479763\"\}&time=1713032179.506" > "${fixture_output}"
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/slurm-0/api/v1/query?query=foo\{uuid=\"1479763\"\}&time=1713032179.506" > "${fixture_output}"
 
   elif [[ "${scenario}" = "lb-allow-admin-query" ]] 
   then
@@ -632,7 +648,7 @@ then
 
     waitport "${port}"
 
-    get -H "X-Grafana-User: adm1" -H "Content-Type: application/x-www-form-urlencoded" -X POST -d "query=foo{uuid=\"1479765\"}&time=1713032179.506" "127.0.0.1:${port}/api/v1/query" > "${fixture_output}"
+    get -H "X-Grafana-User: grafana" -H "Content-Type: application/x-www-form-urlencoded" -X POST -d "query=foo{uuid=\"1479765\"}&time=1713032179.506" "127.0.0.1:${port}/slurm-1/api/v1/query" > "${fixture_output}"
 
   elif [[ "${scenario}" = "lb-auth" ]] 
   then
@@ -662,7 +678,7 @@ then
 
     waitport "${port}"
 
-    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/v1/status/config" > "${fixture_output}"
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/slurm-1/api/v1/status/config" > "${fixture_output}"
   fi
 fi
 
