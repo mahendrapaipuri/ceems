@@ -15,6 +15,23 @@ definitions:
           type: string
         type: array
     type: object
+  http.Response-models_Cluster:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/models.Cluster'
+        type: array
+      error:
+        type: string
+      errorType:
+        $ref: '#/definitions/http.errorType'
+      status:
+        type: string
+      warnings:
+        items:
+          type: string
+        type: array
+    type: object
   http.Response-models_Ownership:
     properties:
       data:
@@ -112,6 +129,13 @@ definitions:
   models.Allocation:
     additionalProperties: true
     type: object
+  models.Cluster:
+    properties:
+      id:
+        type: string
+      manager:
+        type: string
+    type: object
   models.Ownership:
     properties:
       owner:
@@ -150,6 +174,10 @@ definitions:
       avg_gpu_usage:
         description: Average GPU usage during lifetime of unit
         type: number
+      cluster_id:
+        description: Identifier of the resource manager that owns compute unit. It
+          is used to differentiate multiple clusters of same resource manager.
+        type: string
       created_at:
         description: Creation time
         type: string
@@ -253,6 +281,10 @@ definitions:
       avg_gpu_usage:
         description: Average GPU usage during lifetime of project
         type: number
+      cluster_id:
+        description: Identifier of the resource manager that owns compute unit. It
+          is used to differentiate multiple clusters of same resource manager.
+        type: string
       num_units:
         description: Number of consumed units
         type: integer
@@ -373,6 +405,49 @@ paths:
       summary: Demo Units/Usage endpoints
       tags:
       - demo
+  /clusters/admin:
+    get:
+      description: |
+        This endpoint will list all the cluster IDs in the CEEMS DB. The
+        current user is always identified by the header `X-Grafana-User` in
+        the request.
+
+        This will list all the cluster IDs in the DB. This is primarily
+        used to verify the CEEMS load balancer's backend IDs that should match
+        with cluster IDs.
+      parameters:
+      - description: Current user name
+        in: header
+        name: X-Grafana-User
+        required: true
+        type: string
+      - collectionFormat: multi
+        description: cluster ID
+        in: query
+        items:
+          type: string
+        name: cluster_id
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.Response-models_Cluster'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.Response-any'
+      security:
+      - BasicAuth: []
+      summary: List clusters
+      tags:
+      - clusters
   /health:
     get:
       description: |-
@@ -412,6 +487,13 @@ paths:
         name: X-Grafana-User
         required: true
         type: string
+      - collectionFormat: multi
+        description: cluster ID
+        in: query
+        items:
+          type: string
+        name: cluster_id
+        type: array
       produces:
       - application/json
       responses:
@@ -458,6 +540,13 @@ paths:
         name: X-Grafana-User
         required: true
         type: string
+      - collectionFormat: multi
+        description: cluster ID
+        in: query
+        items:
+          type: string
+        name: cluster_id
+        type: array
       - collectionFormat: multi
         description: Unit UUID
         in: query
@@ -544,6 +633,13 @@ paths:
         name: X-Grafana-User
         required: true
         type: string
+      - collectionFormat: multi
+        description: cluster ID
+        in: query
+        items:
+          type: string
+        name: cluster_id
+        type: array
       - collectionFormat: multi
         description: Unit UUID
         in: query
@@ -706,6 +802,13 @@ paths:
         required: true
         type: string
       - collectionFormat: multi
+        description: cluster ID
+        in: query
+        items:
+          type: string
+        name: cluster_id
+        type: array
+      - collectionFormat: multi
         description: Project
         in: query
         items:
@@ -788,6 +891,13 @@ paths:
         name: mode
         required: true
         type: string
+      - collectionFormat: multi
+        description: cluster ID
+        in: query
+        items:
+          type: string
+        name: cluster_id
+        type: array
       - collectionFormat: multi
         description: Project
         in: query

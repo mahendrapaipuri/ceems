@@ -6,6 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+
+	"github.com/prometheus/common/config"
+	"gopkg.in/yaml.v3"
 )
 
 // Generic is map to store any mixed data types. Only string and int are supported.
@@ -104,4 +107,52 @@ func (j *JSONFloat) UnmarshalJSON(v []byte) error {
 	}
 	*j = JSONFloat(fv)
 	return nil
+}
+
+// WebConfig contains the client related configuration of a REST API server
+type WebConfig struct {
+	URL              string                  `yaml:"url"`
+	HTTPClientConfig config.HTTPClientConfig `yaml:",inline"`
+}
+
+// SetDirectory joins any relative file paths with dir.
+func (c *WebConfig) SetDirectory(dir string) {
+	c.HTTPClientConfig.SetDirectory(dir)
+}
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface.
+func (c *WebConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type plain WebConfig
+	*c = WebConfig{
+		HTTPClientConfig: config.DefaultHTTPClientConfig,
+	}
+	if err := unmarshal((*plain)(c)); err != nil {
+		return err
+	}
+	// The UnmarshalYAML method of HTTPClientConfig is not being called because it's not a pointer.
+	// We cannot make it a pointer as the parser panics for inlined pointer structs.
+	// Thus we just do its validation here.
+	return c.HTTPClientConfig.Validate()
+}
+
+// CLIConfig contains the configuration of CLI client
+type CLIConfig struct {
+	Path    string            `yaml:"path"`
+	EnvVars map[string]string `yaml:"environment_variables"`
+}
+
+// Cluster contains the configuration of the given resource manager
+type Cluster struct {
+	ID       string    `yaml:"id"           json:"id"      sql:"cluster_id"`
+	Manager  string    `yaml:"manager"      json:"manager" sql:"resource_manager"`
+	Web      WebConfig `yaml:"web"          json:"-"`
+	CLI      CLIConfig `yaml:"cli"          json:"-"`
+	Updaters []string  `yaml:"updaters"     json:"-"`
+	Extra    yaml.Node `yaml:"extra_config" json:"-"`
+}
+
+// ClusterUnits is the container for the units and config of a given cluster
+type ClusterUnits struct {
+	Cluster Cluster
+	Units   []Unit
 }

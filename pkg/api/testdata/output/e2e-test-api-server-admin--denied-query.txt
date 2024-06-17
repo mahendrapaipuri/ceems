@@ -1,1 +1,1 @@
-{"status":"error","errorType":"forbidden","error":"current user does not have admin privileges"}
+{"status":"error","data":null,"errorType":"forbidden","error":"current user does not have admin privileges"}

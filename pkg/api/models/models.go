@@ -6,13 +6,15 @@ import (
 )
 
 const (
-	unitsTableName = "units"
-	usageTableName = "usage"
+	unitsTableName      = "units"
+	usageTableName      = "usage"
+	adminUsersTableName = "admin_users"
 )
 
 // Unit is an abstract compute unit that can mean Job (batchjobs), VM (cloud) or Pod (k8s)
 type Unit struct {
 	ID                  int64      `json:"-"                                    sql:"id"                         sqlitetype:"integer not null primary key"`
+	ClusterID           string     `json:"cluster_id,omitempty"                 sql:"cluster_id"                 sqlitetype:"text"`    // Identifier of the resource manager that owns compute unit. It is used to differentiate multiple clusters of same resource manager.
 	ResourceManager     string     `json:"resource_manager,omitempty"           sql:"resource_manager"           sqlitetype:"text"`    // Name of the resource manager that owns compute unit. Eg slurm, openstack, kubernetes, etc
 	UUID                string     `json:"uuid"                                 sql:"uuid"                       sqlitetype:"text"`    // Unique identifier of unit. It can be Job ID for batch jobs, UUID for pods in k8s or VMs in Openstack
 	Name                string     `json:"name,omitempty"                       sql:"name"                       sqlitetype:"text"`    // Name of compute unit
@@ -50,6 +52,7 @@ type Unit struct {
 	Tags                Tag        `json:"tags,omitempty"                       sql:"tags"                       sqlitetype:"text"`    // A map to store generic info. String and int64 are valid value types of map
 	Ignore              int        `json:"-"                                    sql:"ignore"                     sqlitetype:"integer"` // Whether to ignore unit
 	NumUpdates          int64      `json:"-"                                    sql:"num_updates"                sqlitetype:"integer"` // Number of updates. This is used internally to update aggregate metrics
+	LastUpdatedAt       string     `json:"-"                                    sql:"last_updated_at"            sqlitetype:"text"`    // Last updated time. It can be used to clean up DB
 }
 
 // TableName returns the table which units are stored into.
@@ -71,6 +74,7 @@ func (u Unit) TagMap(keyTag string, valueTag string) map[string]string {
 // Usage statistics of each project/tenant/namespace
 type Usage struct {
 	ID                  int64     `json:"-"                                    sql:"id"                         sqlitetype:"integer not null primary key"`
+	ClusterID           string    `json:"cluster_id,omitempty"                 sql:"cluster_id"                 sqlitetype:"text"`    // Identifier of the resource manager that owns compute unit. It is used to differentiate multiple clusters of same resource manager.
 	ResourceManager     string    `json:"resource_manager,omitempty"           sql:"resource_manager"           sqlitetype:"text"`    // Name of the resource manager that owns project. Eg slurm, openstack, kubernetes, etc
 	NumUnits            int64     `json:"num_units"                            sql:"num_units"                  sqlitetype:"integer"` // Number of consumed units
 	Project             string    `json:"project"                              sql:"project"                    sqlitetype:"text"`    // Account in batch systems, Tenant in Openstack, Namespace in k8s
@@ -112,6 +116,30 @@ func (u Usage) TagNames(tag string) []string {
 // field names are used as map keys.
 func (u Usage) TagMap(keyTag string, valueTag string) map[string]string {
 	return structset.GetStructFieldTagMap(u, keyTag, valueTag)
+}
+
+// AdminUsers from different sources
+type AdminUsers struct {
+	ID            int64    `json:"-"               sql:"id"              sqlitetype:"integer not null primary key"`
+	Source        string   `json:"source"          sql:"source"          sqlitetype:"text"`
+	Users         []string `json:"users"           sql:"users"           sqlitetype:"text"`
+	LastUpdatedAt string   `json:"last_updated_at" sql:"last_updated_at" sqlitetype:"text"`
+}
+
+// TableName returns the table which admin users list is stored into.
+func (AdminUsers) TableName() string {
+	return adminUsersTableName
+}
+
+// TagNames returns a slice of all tag names.
+func (a AdminUsers) TagNames(tag string) []string {
+	return structset.GetStructFieldTagValues(a, tag)
+}
+
+// TagMap returns a map of tags based on keyTag and valueTag. If keyTag is empty,
+// field names are used as map keys.
+func (a AdminUsers) TagMap(keyTag string, valueTag string) map[string]string {
+	return structset.GetStructFieldTagMap(a, keyTag, valueTag)
 }
 
 // Project struct

@@ -5,75 +5,113 @@ package resource
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/mahendrapaipuri/ceems/internal/common"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 )
 
+// Config contains the configuration of resource manager cluster(s)
+type Config[T any] struct {
+	Clusters []T `yaml:"clusters"`
+}
+
 // Fetcher is the interface resource manager has to implement.
 type Fetcher interface {
 	// Fetch compute units between start and end times
-	Fetch(start time.Time, end time.Time) ([]models.Unit, error)
+	Fetch(start time.Time, end time.Time) ([]models.ClusterUnits, error)
 }
 
-// Manager implements the interface to collect
-// manager jobs from different resource managers.
+// Manager implements the interface to fetch compute units from different resource managers.
 type Manager struct {
 	Fetchers []Fetcher
 	logger   log.Logger
 }
 
 var (
-	factories    = make(map[string]func(logger log.Logger) (Fetcher, error))
-	managerState = make(map[string]*bool)
+	factories = make(map[string]func(cluster models.Cluster, logger log.Logger) (Fetcher, error))
 )
 
 // RegisterManager registers the resource manager into factory
 func RegisterManager(
 	manager string,
-	factory func(logger log.Logger) (Fetcher, error),
+	factory func(cluster models.Cluster, logger log.Logger) (Fetcher, error),
 ) {
-	var isDefaultEnabled = false
-	var helpDefaultState string
-	if isDefaultEnabled {
-		helpDefaultState = "enabled"
-	} else {
-		helpDefaultState = "disabled"
-	}
-
-	flagName := fmt.Sprintf("resource.manager.%s", manager)
-	flagHelp := fmt.Sprintf("Fetch compute units from %s (default: %s).", manager, helpDefaultState)
-	defaultValue := fmt.Sprintf("%v", isDefaultEnabled)
-
-	// Hide default manager from CLI
-	var flag *bool
-	if manager == "default" {
-		flag = base.CEEMSServerApp.Flag(flagName, flagHelp).Hidden().Default(defaultValue).Bool()
-	} else {
-		flag = base.CEEMSServerApp.Flag(flagName, flagHelp).Default(defaultValue).Bool()
-	}
-	managerState[manager] = flag
 	factories[manager] = factory
+}
+
+// checkConfig verifies for the errors in resource manager config and returns a map
+// of manager to its configs
+func checkConfig(managers []string, config *Config[models.Cluster]) (map[string][]models.Cluster, error) {
+	// Check if IDs are unique and manager is registered
+	var IDs []string
+	var configMap = make(map[string][]models.Cluster)
+	for i := 0; i < len(config.Clusters); i++ {
+		if slices.Contains(IDs, config.Clusters[i].ID) {
+			return nil, fmt.Errorf("duplicate ID found in resource managers config")
+		}
+		if !slices.Contains(managers, config.Clusters[i].Manager) {
+			return nil, fmt.Errorf("unknown resource manager found in the config: %s", config.Clusters[i].Manager)
+		}
+		IDs = append(IDs, config.Clusters[i].ID)
+		configMap[config.Clusters[i].Manager] = append(configMap[config.Clusters[i].Manager], config.Clusters[i])
+	}
+	return configMap, nil
+}
+
+// managerConfig returns the configuration of resource managers
+func managerConfig() (*Config[models.Cluster], error) {
+	// Make config from file
+	config, err := common.MakeConfig[Config[models.Cluster]](base.ConfigFilePath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Set directories
+	for i := 0; i < len(config.Clusters); i++ {
+		config.Clusters[i].Web.HTTPClientConfig.SetDirectory(filepath.Dir(base.ConfigFilePath))
+	}
+	return config, nil
 }
 
 // NewManager creates a new Manager struct instance
 func NewManager(logger log.Logger) (*Manager, error) {
 	var fetcher Fetcher
+	var registeredManagers []string
+	var fetchers []Fetcher
 	var err error
-	var factoryKeys []string
+
+	// Get all registered managers
+	for manager := range factories {
+		if manager != defaultManager {
+			registeredManagers = append(registeredManagers, manager)
+		}
+	}
+
+	// Get current config
+	config, err := managerConfig()
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to parse resource manager config", "err", err)
+		return nil, err
+	}
+
+	// Preflight checks on config
+	configMap, err := checkConfig(registeredManagers, config)
+	if err != nil {
+		level.Error(logger).Log("msg", "Invalid resource manager config", "err", err)
+		return nil, err
+	}
 
 	// Loop over factories and create new instances
-	var fetchers []Fetcher
 	for key, factory := range factories {
-		if key != "default" {
-			factoryKeys = append(factoryKeys, key)
-		}
-		if *managerState[key] {
-			fetcher, err = factory(log.With(logger, "manager", key))
+		for _, config := range configMap[key] {
+			fetcher, err = factory(config, log.With(logger, "manager", key))
 			if err != nil {
 				level.Error(logger).Log("msg", "Failed to setup resource manager", "name", key, "err", err)
 				return nil, err
@@ -86,10 +124,10 @@ func NewManager(logger log.Logger) (*Manager, error) {
 	if len(fetchers) == 0 {
 		level.Warn(logger).Log(
 			"msg", "No resource manager enabled. Using a default resource manager",
-			"available_resource_managers", strings.Join(factoryKeys, ","),
+			"available_resource_managers", strings.Join(registeredManagers, ","),
 		)
 
-		fetcher, err = factories["default"](log.With(logger, "manager", "default"))
+		fetcher, err = factories[defaultManager](models.Cluster{}, log.With(logger, "manager", defaultManager))
 		if err != nil {
 			level.Error(logger).Log("msg", "Failed to setup default resource manager", "err", err)
 			return nil, err
@@ -100,8 +138,8 @@ func NewManager(logger log.Logger) (*Manager, error) {
 }
 
 // Fetch implements collection jobs between start and end times
-func (b Manager) Fetch(start time.Time, end time.Time) ([]models.Unit, error) {
-	var allUnits []models.Unit
+func (b Manager) Fetch(start time.Time, end time.Time) ([]models.ClusterUnits, error) {
+	var clusterUnits []models.ClusterUnits
 	var errs error
 	for _, fetcher := range b.Fetchers {
 		units, err := fetcher.Fetch(start, end)
@@ -109,7 +147,7 @@ func (b Manager) Fetch(start time.Time, end time.Time) ([]models.Unit, error) {
 			errs = errors.Join(errs, err)
 			continue
 		}
-		allUnits = append(allUnits, units...)
+		clusterUnits = append(clusterUnits, units...)
 	}
-	return allUnits, errs
+	return clusterUnits, errs
 }

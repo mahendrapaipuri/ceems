@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -19,9 +20,12 @@ import (
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 )
 
+// slurmScheduler is the struct containing the configuration of a given slurm cluster
 type slurmScheduler struct {
-	logger   log.Logger
-	execMode string
+	logger      log.Logger
+	cluster     models.Cluster
+	fetchMode   string // Whether to fetch from REST API or command sacct
+	cmdExecMode string // If sacct mode is chosen, the mode of executing command, ie, sudo or cap or native
 }
 
 const slurmBatchScheduler = "slurm"
@@ -31,11 +35,7 @@ var (
 	slurmUserGID    int
 	slurmTimeFormat = fmt.Sprintf("%s-0700", base.DatetimeLayout)
 	jobLock         = sync.RWMutex{}
-	sacctPath       = base.CEEMSServerApp.Flag(
-		"slurm.sacct.path",
-		"Absolute path to sacct executable. If empty sacct on PATH will be used.",
-	).Hidden().Default("").String()
-	sacctFields = []string{
+	sacctFields     = []string{
 		"jobidraw", "partition", "qos", "account", "group", "gid", "user", "uid",
 		"submit", "start", "end", "elapsed", "elapsedraw", "exitcode", "state",
 		"alloctres", "nodelist", "jobname", "workdir",
@@ -65,107 +65,53 @@ func init() {
 	}
 }
 
-// Run basic checks like checking path of executable etc
-func preflightChecks(logger log.Logger) (string, error) {
-	// Assume execMode is always native
-	execMode := "native"
-
-	// If no sacct path is provided, assume it is available on PATH
-	if *sacctPath == "" {
-		path, err := exec.LookPath("sacct")
-		if err != nil {
-			level.Error(logger).Log("msg", "Failed to find sacct executable on PATH", "err", err)
-			return "", err
-		}
-		*sacctPath = path
-	} else {
-		// Check if sacct binary exists at the given path
-		if _, err := os.Stat(*sacctPath); err != nil {
-			level.Error(logger).Log("msg", "Failed to open sacct executable", "path", *sacctPath, "err", err)
-			return "", err
-		}
-	}
-
-	// If current user is slurm or root pass checks
-	if currentUser, err := user.Current(); err == nil && (currentUser.Username == "slurm" || currentUser.Uid == "0") {
-		level.Debug(logger).
-			Log("msg", "Current user have enough privileges to get job data for all users", "user", currentUser.Username)
-		return execMode, nil
-	}
-
-	// First try to run as slurm user in a subprocess. If current process have capabilities
-	// it will be a success
-	slurmUser, err := user.Lookup("slurm")
-	if err != nil {
-		level.Error(logger).Log("msg", "Failed to lookup SLURM user for executing sacct cmd", "err", err)
-		goto sudomode
-	}
-
-	slurmUserUID, err = strconv.Atoi(slurmUser.Uid)
-	if err != nil {
-		level.Error(logger).Log("msg", "Failed to convert SLURM user uid to int", "uid", slurmUserUID, "err", err)
-		goto sudomode
-	}
-
-	slurmUserGID, err = strconv.Atoi(slurmUser.Gid)
-	if err != nil {
-		level.Error(logger).Log("msg", "Failed to convert SLURM user gid to int", "gid", slurmUserGID, "err", err)
-		goto sudomode
-	}
-
-	if _, err := internal_osexec.ExecuteAs(*sacctPath, []string{"--help"}, slurmUserUID, slurmUserGID, nil, logger); err == nil {
-		execMode = "cap"
-		level.Debug(logger).Log("msg", "Linux capabilities will be used to execute sacct as SLURM user")
-		return execMode, nil
-	}
-
-sudomode:
-	// Last attempt to run sacct with sudo
-	if _, err := internal_osexec.ExecuteWithTimeout("sudo", []string{*sacctPath, "--help"}, 5, nil, logger); err == nil {
-		execMode = "sudo"
-		level.Debug(logger).Log("msg", "sudo will be used to execute sacct command")
-		return execMode, nil
-	}
-
-	// If nothing works give up. In the worst case DB will be updated with only jobs from current user
-	return execMode, nil
-}
-
 // NewSlurmScheduler returns a new SlurmScheduler that returns batch job stats
-func NewSlurmScheduler(logger log.Logger) (Fetcher, error) {
-	execMode, err := preflightChecks(logger)
-	if err != nil {
-		level.Error(logger).Log("msg", "Failed to setup SLURM batch scheduler for retreiving jobs", "err", err)
+func NewSlurmScheduler(cluster models.Cluster, logger log.Logger) (Fetcher, error) {
+	// Make slurmCluster configs from clusters
+	var slurmScheduler = slurmScheduler{logger: logger, cluster: cluster}
+	if err := preflightChecks(&slurmScheduler); err != nil {
 		return nil, err
 	}
-
-	level.Info(logger).Log("msg", "Fetching batch jobs from SLURM")
-	return &slurmScheduler{
-		logger:   logger,
-		execMode: execMode,
-	}, nil
+	level.Info(logger).Log("msg", "Fetching batch jobs from SLURM clusters", "id", cluster.ID)
+	return &slurmScheduler, nil
 }
 
 // Get jobs from slurm
-func (s *slurmScheduler) Fetch(start time.Time, end time.Time) ([]models.Unit, error) {
+func (s *slurmScheduler) Fetch(start time.Time, end time.Time) ([]models.ClusterUnits, error) {
+	// Fetch each cluster one by one to reduce memory footprint
+	var jobs []models.Unit
+	var err error
+	if s.fetchMode == "sacct" {
+		if jobs, err = s.fetchFromSacct(start, end); err != nil {
+			level.Error(s.logger).
+				Log("msg", "Failed to execute SLURM sacct command", "cluster_id", s.cluster.ID, "err", err)
+			return nil, err
+		}
+		return []models.ClusterUnits{{Cluster: s.cluster, Units: jobs}}, nil
+	}
+	return nil, fmt.Errorf("unknown fetch mode for SLURM cluster %s", s.cluster.ID)
+}
+
+// Get jobs from slurm sacct command
+func (s *slurmScheduler) fetchFromSacct(start time.Time, end time.Time) ([]models.Unit, error) {
 	startTime := start.Format(base.DatetimeLayout)
 	endTime := end.Format(base.DatetimeLayout)
 
 	// Execute sacct command between start and end times
-	sacctOutput, err := runSacctCmd(s.execMode, startTime, endTime, s.logger)
+	sacctOutput, err := s.runSacctCmd(startTime, endTime)
 	if err != nil {
-		level.Error(s.logger).Log("msg", "Failed to execute SLURM sacct command", "err", err)
 		return []models.Unit{}, err
 	}
 
 	// Parse sacct output and create BatchJob structs slice
 	jobs, numJobs := parseSacctCmdOutput(string(sacctOutput), start, end)
-	level.Info(s.logger).Log("msg", "Slurm jobs fetched", "start", startTime, "end", endTime, "njobs", numJobs)
+	level.Info(s.logger).
+		Log("msg", "SLURM jobs fetched", "cluster_id", s.cluster.ID, "start", startTime, "end", endTime, "njobs", numJobs)
 	return jobs, nil
 }
 
 // Run sacct command and return output
-func runSacctCmd(execMode string, startTime string, endTime string, logger log.Logger) ([]byte, error) {
+func (s *slurmScheduler) runSacctCmd(startTime string, endTime string) ([]byte, error) {
 	// Use jobIDRaw that outputs the array jobs as regular job IDs instead of id_array format
 	args := []string{
 		"-D", "-X", "--allusers", "--parsable2",
@@ -175,17 +121,107 @@ func runSacctCmd(execMode string, startTime string, endTime string, logger log.L
 		"--endtime", endTime,
 	}
 
+	// sacct path
+	sacctPath := filepath.Join(s.cluster.CLI.Path, "sacct")
+
 	// Use SLURM_TIME_FORMAT env var to get timezone offset
 	env := []string{"SLURM_TIME_FORMAT=%Y-%m-%dT%H:%M:%S%z"}
+	for name, value := range s.cluster.CLI.EnvVars {
+		env = append(env, fmt.Sprintf("%s=%s", name, value))
+	}
 
 	// Run command as slurm user
-	if execMode == "cap" {
-		return internal_osexec.ExecuteAs(*sacctPath, args, slurmUserUID, slurmUserGID, env, logger)
-	} else if execMode == "sudo" {
-		args = append([]string{*sacctPath}, args...)
-		return internal_osexec.Execute("sudo", args, env, logger)
+	if s.cmdExecMode == "cap" {
+		return internal_osexec.ExecuteAs(sacctPath, args, slurmUserUID, slurmUserGID, env, s.logger)
+	} else if s.cmdExecMode == "sudo" {
+		// Important that we need to export env as well as we set environment variables in the
+		// command execution
+		args = append([]string{"-E", sacctPath}, args...)
+		return internal_osexec.Execute("sudo", args, env, s.logger)
 	}
-	return internal_osexec.Execute(*sacctPath, args, env, logger)
+	return internal_osexec.Execute(sacctPath, args, env, s.logger)
+}
+
+// Run basic checks like checking path of executable etc
+func preflightChecks(s *slurmScheduler) error {
+	// // Always prefer REST API mode if configured
+	// if clusterConfig.Web.URL != "" {
+	// 	return checkRESTAPI(clusterConfig, logger)
+	// }
+
+	return preflightsSacct(s)
+}
+
+// Run preflights for sacct execution mode
+func preflightsSacct(slurm *slurmScheduler) error {
+	// We hit this only when fetch mode is sacct command
+	// Assume execMode is always native
+	slurm.fetchMode = "sacct"
+	level.Debug(slurm.logger).Log("msg", "SLURM jobs will be fetched using sacct command")
+	slurm.cmdExecMode = "native"
+
+	// If no sacct path is provided, assume it is available on PATH
+	if slurm.cluster.CLI.Path == "" {
+		path, err := exec.LookPath("sacct")
+		if err != nil {
+			level.Error(slurm.logger).Log("msg", "Failed to find sacct executable on PATH", "err", err)
+			return err
+		}
+		slurm.cluster.CLI.Path = filepath.Dir(path)
+	} else {
+		// Check if slurm binary directory exists at the given path
+		if _, err := os.Stat(slurm.cluster.CLI.Path); err != nil {
+			level.Error(slurm.logger).Log("msg", "Failed to open SLURM bin dir", "path", slurm.cluster.CLI.Path, "err", err)
+			return err
+		}
+	}
+
+	// sacct path
+	sacctPath := filepath.Join(slurm.cluster.CLI.Path, "sacct")
+
+	// If current user is slurm or root pass checks
+	if currentUser, err := user.Current(); err == nil && (currentUser.Username == "slurm" || currentUser.Uid == "0") {
+		level.Debug(slurm.logger).
+			Log("msg", "Current user have enough privileges to get job data for all users", "user", currentUser.Username)
+		return nil
+	}
+
+	// First try to run as slurm user in a subprocess. If current process have capabilities
+	// it will be a success
+	slurmUser, err := user.Lookup("slurm")
+	if err != nil {
+		level.Error(slurm.logger).Log("msg", "Failed to lookup SLURM user for executing sacct cmd", "err", err)
+		goto sudomode
+	}
+
+	slurmUserUID, err = strconv.Atoi(slurmUser.Uid)
+	if err != nil {
+		level.Error(slurm.logger).Log("msg", "Failed to convert SLURM user uid to int", "uid", slurmUserUID, "err", err)
+		goto sudomode
+	}
+
+	slurmUserGID, err = strconv.Atoi(slurmUser.Gid)
+	if err != nil {
+		level.Error(slurm.logger).Log("msg", "Failed to convert SLURM user gid to int", "gid", slurmUserGID, "err", err)
+		goto sudomode
+	}
+
+	if _, err := internal_osexec.ExecuteAs(sacctPath, []string{"--help"}, slurmUserUID, slurmUserGID, nil, slurm.logger); err == nil {
+		slurm.cmdExecMode = "cap"
+		level.Debug(slurm.logger).Log("msg", "Linux capabilities will be used to execute sacct as SLURM user")
+		return nil
+	}
+
+sudomode:
+	// Last attempt to run sacct with sudo
+	if _, err := internal_osexec.ExecuteWithTimeout("sudo", []string{sacctPath, "--help"}, 5, nil, slurm.logger); err == nil {
+		slurm.cmdExecMode = "sudo"
+		level.Debug(slurm.logger).Log("msg", "sudo will be used to execute sacct command")
+		return nil
+	}
+
+	// If nothing works give up. In the worst case DB will be updated with only jobs from current user
+	return nil
 }
 
 // Parse sacct command output and return batchjob slice

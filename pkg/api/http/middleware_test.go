@@ -1,20 +1,23 @@
 package http
 
 import (
+	"database/sql"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/go-kit/log"
-	"github.com/mahendrapaipuri/ceems/pkg/grafana"
 )
+
+func mockAdminUsers(db *sql.DB, logger log.Logger) []string {
+	return []string{"adm1"}
+}
 
 func setupMiddleware() http.Handler {
 	// Create an instance of middleware
 	amw := authenticationMiddleware{
 		logger:     log.NewNopLogger(),
-		adminUsers: []string{"adm1"},
-		grafana:    &grafana.Grafana{},
+		adminUsers: mockAdminUsers,
 	}
 
 	// create a handler to use as "next" which will verify the request

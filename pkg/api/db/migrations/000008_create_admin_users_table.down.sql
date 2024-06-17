@@ -1,0 +1,2 @@
+DROP INDEX IF EXISTS uq_source;
+DROP TABLE IF EXISTS admin_users;

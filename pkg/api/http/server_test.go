@@ -3,7 +3,6 @@ package http
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -19,19 +18,29 @@ func setupServer() *CEEMSServer {
 	logger := log.NewNopLogger()
 	server, _, _ := NewCEEMSServer(&Config{Logger: logger})
 	server.maxQueryPeriod = time.Duration(time.Hour * 168)
-	server.Querier = mockQuerier
+	server.queriers = queriers{
+		unit:    unitQuerier,
+		usage:   usageQuerier,
+		project: projectQuerier,
+		cluster: clusterQuerier,
+	}
 	return server
 }
 
-func mockQuerier(db *sql.DB, q Query, model string, logger log.Logger) (interface{}, error) {
-	if model == "units" {
-		return []models.Unit{{UUID: "1000", Usr: "user"}, {UUID: "10001", Usr: "user"}}, nil
-	} else if model == "usage" {
-		return []models.Usage{{Project: "foo"}, {Project: "bar"}}, nil
-	} else if model == "projects" {
-		return []models.Project{{Name: "foo"}, {Name: "bar"}}, nil
-	}
-	return nil, fmt.Errorf("unknown model")
+func unitQuerier(db *sql.DB, q Query, logger log.Logger) ([]models.Unit, error) {
+	return []models.Unit{{UUID: "1000", Usr: "user"}, {UUID: "10001", Usr: "user"}}, nil
+}
+
+func usageQuerier(db *sql.DB, q Query, logger log.Logger) ([]models.Usage, error) {
+	return []models.Usage{{Project: "foo"}, {Project: "bar"}}, nil
+}
+
+func projectQuerier(db *sql.DB, q Query, logger log.Logger) ([]models.Project, error) {
+	return []models.Project{{Name: "foo"}, {Name: "bar"}}, nil
+}
+
+func clusterQuerier(db *sql.DB, q Query, logger log.Logger) ([]models.Cluster, error) {
+	return []models.Cluster{{ID: "slurm-0", Manager: "slurm"}, {ID: "os-0", Manager: "openstack"}}, nil
 }
 
 func getMockUnits(
@@ -99,7 +108,7 @@ func TestAccountsHandler(t *testing.T) {
 	}
 
 	// Expected result
-	expectedAccounts, _ := mockQuerier(server.db, Query{}, "projects", server.logger)
+	expectedAccounts, _ := projectQuerier(server.db, Query{}, server.logger)
 
 	// Unmarshal byte into structs.
 	var response Response[models.Project]
@@ -167,7 +176,7 @@ func TestUnitsHandler(t *testing.T) {
 	}
 
 	// Expected result
-	expectedUnits, _ := getMockUnits(Query{}, server.logger)
+	expectedUnits, _ := unitQuerier(server.db, Query{}, server.logger)
 
 	// Unmarshal byte into structs.
 	var response Response[models.Unit]
@@ -337,5 +346,79 @@ func TestUnitsHandlerWithUnituuidsQueryParams(t *testing.T) {
 	var unitData = response.Data
 	if len(unitData) != len(expectedUnits) {
 		t.Errorf("expected %d units, got %d", len(unitData), len(expectedUnits))
+	}
+}
+
+// Test /api/usage
+func TestUsageHandler(t *testing.T) {
+	server := setupServer()
+	// Create request
+	req := httptest.NewRequest(http.MethodGet, "/api/usage", nil)
+	// Add user header
+	currentUser := "foo"
+	req.Header.Set("X-Grafana-User", currentUser)
+
+	// Start recorder
+	w := httptest.NewRecorder()
+	server.units(w, req)
+	res := w.Result()
+	defer res.Body.Close()
+
+	// Get body
+	data, err := io.ReadAll(res.Body)
+	if err != nil {
+		t.Errorf("expected error to be nil got %v", err)
+	}
+
+	// Expected result
+	expectedUsage, _ := usageQuerier(server.db, Query{}, server.logger)
+
+	// Unmarshal byte into structs.
+	var response Response[models.Unit]
+	json.Unmarshal(data, &response)
+
+	if response.Status != "success" {
+		t.Errorf("expected success status got %v", response.Status)
+	}
+
+	if len(response.Data) != len(expectedUsage) {
+		t.Errorf("expected %d usage, got %d", len(response.Data), len(expectedUsage))
+	}
+}
+
+// Test /api/clusters
+func TestClustersHandler(t *testing.T) {
+	server := setupServer()
+	// Create request
+	req := httptest.NewRequest(http.MethodGet, "/api/clusters/admin", nil)
+	// Add user header
+	currentUser := "foo"
+	req.Header.Set("X-Grafana-User", currentUser)
+
+	// Start recorder
+	w := httptest.NewRecorder()
+	server.units(w, req)
+	res := w.Result()
+	defer res.Body.Close()
+
+	// Get body
+	data, err := io.ReadAll(res.Body)
+	if err != nil {
+		t.Errorf("expected error to be nil got %v", err)
+	}
+
+	// Expected result
+	expectedClusters, _ := clusterQuerier(server.db, Query{}, server.logger)
+
+	// Unmarshal byte into structs.
+	var response Response[models.Unit]
+	json.Unmarshal(data, &response)
+
+	if response.Status != "success" {
+		t.Errorf("expected success status got %v", response.Status)
+	}
+
+	if len(response.Data) != len(expectedClusters) {
+		t.Errorf("expected %d clusters, got %d", len(response.Data), len(expectedClusters))
 	}
 }

@@ -23,6 +23,62 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/clusters/admin": {
+            "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
+                "description": "This endpoint will list all the cluster IDs in the CEEMS DB. The\ncurrent user is always identified by the header ` + "`" + `X-Grafana-User` + "`" + ` in\nthe request.\n\nThis will list all the cluster IDs in the DB. This is primarily\nused to verify the CEEMS load balancer's backend IDs that should match\nwith cluster IDs.\n",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "clusters"
+                ],
+                "summary": "List clusters",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Current user name",
+                        "name": "X-Grafana-User",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "cluster ID",
+                        "name": "cluster_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-models_Cluster"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/health": {
             "get": {
                 "description": "This endpoint returns the health status of the server.\n\nA healthy server returns 200 response code and any other\nresponses should be treated as unhealthy server.",
@@ -71,6 +127,16 @@ const docTemplate = `{
                         "name": "X-Grafana-User",
                         "in": "header",
                         "required": true
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "cluster ID",
+                        "name": "cluster_id",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -117,6 +183,16 @@ const docTemplate = `{
                         "name": "X-Grafana-User",
                         "in": "header",
                         "required": true
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "cluster ID",
+                        "name": "cluster_id",
+                        "in": "query"
                     },
                     {
                         "type": "array",
@@ -217,6 +293,16 @@ const docTemplate = `{
                         "name": "X-Grafana-User",
                         "in": "header",
                         "required": true
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "cluster ID",
+                        "name": "cluster_id",
+                        "in": "query"
                     },
                     {
                         "type": "array",
@@ -407,6 +493,16 @@ const docTemplate = `{
                             "type": "string"
                         },
                         "collectionFormat": "multi",
+                        "description": "cluster ID",
+                        "name": "cluster_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
                         "description": "Project",
                         "name": "project",
                         "in": "query"
@@ -489,6 +585,16 @@ const docTemplate = `{
                         "name": "mode",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "cluster ID",
+                        "name": "cluster_id",
+                        "in": "query"
                     },
                     {
                         "type": "array",
@@ -598,6 +704,32 @@ const docTemplate = `{
                 "data": {
                     "type": "array",
                     "items": {}
+                },
+                "error": {
+                    "type": "string"
+                },
+                "errorType": {
+                    "$ref": "#/definitions/http.errorType"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "http.Response-models_Cluster": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Cluster"
+                    }
                 },
                 "error": {
                     "type": "string"
@@ -753,6 +885,17 @@ const docTemplate = `{
             "type": "object",
             "additionalProperties": true
         },
+        "models.Cluster": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "manager": {
+                    "type": "string"
+                }
+            }
+        },
         "models.Ownership": {
             "type": "object",
             "properties": {
@@ -808,6 +951,10 @@ const docTemplate = `{
                 "avg_gpu_usage": {
                     "description": "Average GPU usage during lifetime of unit",
                     "type": "number"
+                },
+                "cluster_id": {
+                    "description": "Identifier of the resource manager that owns compute unit. It is used to differentiate multiple clusters of same resource manager.",
+                    "type": "string"
                 },
                 "created_at": {
                     "description": "Creation time",
@@ -945,6 +1092,10 @@ const docTemplate = `{
                 "avg_gpu_usage": {
                     "description": "Average GPU usage during lifetime of project",
                     "type": "number"
+                },
+                "cluster_id": {
+                    "description": "Identifier of the resource manager that owns compute unit. It is used to differentiate multiple clusters of same resource manager.",
+                    "type": "string"
                 },
                 "num_units": {
                     "description": "Number of consumed units",

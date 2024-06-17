@@ -14,12 +14,14 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/mahendrapaipuri/ceems/internal/common"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/mahendrapaipuri/ceems/pkg/api/resource"
 	"github.com/mahendrapaipuri/ceems/pkg/api/updater"
-	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
+	"github.com/mahendrapaipuri/ceems/pkg/grafana"
 	"github.com/mattn/go-sqlite3"
+	"github.com/prometheus/common/model"
 	"github.com/rotationalio/ensign/pkg/utils/sqlite"
 )
 
@@ -29,20 +31,33 @@ const migrationsDir = "migrations"
 //go:embed migrations/*.sql
 var MigrationsFS embed.FS
 
-// Config makes a DB config from CLI args
-type Config struct {
-	Logger               log.Logger
-	DataPath             string
-	DataBackupPath       string
-	RetentionPeriod      time.Duration
-	SkipDeleteOldUnits   bool
-	LastUpdateTimeString string
-	ResourceManager      func(log.Logger) (*resource.Manager, error)
-	Updater              func(log.Logger) (*updater.UnitUpdater, error)
-	TSDB                 *tsdb.TSDB
+// AdminConfig is the container for the admin users related config
+type AdminConfig struct {
+	Users   []string                `yaml:"users"`
+	Grafana common.GrafanaWebConfig `yaml:"grafana"`
 }
 
-// Storage
+// DataConfig is the container for the data related config
+type DataConfig struct {
+	Path               string         `yaml:"path"`
+	BackupPath         string         `yaml:"backup_path"`
+	RetentionPeriod    model.Duration `yaml:"retention_period"`
+	UpdateInterval     model.Duration `yaml:"update_interval"`
+	BackupInterval     model.Duration `yaml:"backup_interval"`
+	LastUpdateTime     time.Time      `yaml:"update_from"`
+	SkipDeleteOldUnits bool
+}
+
+// Config makes a DB config from config file
+type Config struct {
+	Logger          log.Logger
+	Data            DataConfig
+	Admin           AdminConfig
+	ResourceManager func(log.Logger) (*resource.Manager, error)
+	Updater         func(log.Logger) (*updater.UnitUpdater, error)
+}
+
+// storageConfig is the container for storage related config
 type storageConfig struct {
 	dbPath             string
 	dbBackupPath       string
@@ -52,13 +67,18 @@ type storageConfig struct {
 	skipDeleteOldUnits bool
 }
 
-// Stringer receiver for storageConfig
+// String implements Stringer interface for storageConfig
 func (s *storageConfig) String() string {
 	return fmt.Sprintf(
-		"storageConfig{dbPath: %s, retentionPeriod: %s, "+
-			"lastUpdateTime: %s, lastUpdateTimeFile: %s}",
+		"dbPath: %s; retentionPeriod: %s; lastUpdateTime: %s; lastUpdateTimeFile: %s",
 		s.dbPath, s.retentionPeriod, s.lastUpdateTime, s.lastUpdateTimeFile,
 	)
+}
+
+type adminConfig struct {
+	users                map[string][]string // Map of admin users from different sources
+	grafana              *grafana.Grafana
+	grafanaAdminTeamsIDs []string
 }
 
 // statsDB struct
@@ -69,6 +89,7 @@ type statsDB struct {
 	manager *resource.Manager
 	updater *updater.UnitUpdater
 	storage *storageConfig
+	admin   *adminConfig
 }
 
 // SQLite DB related constant vars
@@ -93,6 +114,12 @@ var (
 		"avg_cpu_mem_usage": "total_cpumemtime_seconds",
 		"avg_gpu_mem_usage": "total_gpumemtime_seconds",
 	}
+
+	// Admin users sources
+	AdminUsersSources = []string{"ceems", "grafana"}
+
+	// Separator used in admin users list
+	AdminUsersSeparator = "|"
 )
 
 // Init func to set prepareStatements
@@ -113,8 +140,6 @@ func init() {
 			// We will need to update end time, elapsed time and state as they change with time
 		} else if slices.Contains([]string{"ended_at", "ended_at_ts", "elapsed", "elapsed_raw", "state", "tags"}, col) {
 			unitTablePlaceholders = append(unitTablePlaceholders, fmt.Sprintf("  %[1]s = :%[1]s", col))
-		} else {
-			continue
 		}
 	}
 
@@ -125,8 +150,8 @@ func init() {
 		strings.Join(base.UnitsDBTableColNames, ","),
 		strings.Join(base.UnitsDBTableColNames, ",:"),
 		// Index is defined in 000001_create_unit_table.up.sql
-		// Update: 20240327: Index updated in 000004_alter_units_usage_tables.up.sql
-		"ON CONFLICT(resource_manager,uuid,started_at) DO UPDATE SET",
+		// Update: 20240523: Index updated in 000007_alter_units_usage_tables.up.sql
+		"ON CONFLICT(cluster_id,uuid,started_at) DO UPDATE SET",
 	)
 
 	prepareStatements[base.UnitsDBTableName] = strings.Join(
@@ -137,7 +162,7 @@ func init() {
 		"\n",
 	)
 
-	// Usage update statement
+	// Usage update statement placeholders
 	var usageTablePlaceholders []string
 	for _, col := range base.UsageDBTableColNames {
 		if strings.HasPrefix(col, "num") {
@@ -152,8 +177,6 @@ func init() {
 			usageTablePlaceholders = append(usageTablePlaceholders, fmt.Sprintf("  %[1]s = (%[1]s + :%[1]s)", col))
 		} else if col == "tags" {
 			usageTablePlaceholders = append(usageTablePlaceholders, fmt.Sprintf("  %[1]s = :%[1]s", col))
-		} else {
-			continue
 		}
 	}
 
@@ -164,8 +187,8 @@ func init() {
 		strings.Join(base.UsageDBTableColNames, ","),
 		strings.Join(base.UsageDBTableColNames, ",:"),
 		// Index is defined in 000002_create_usage_table.up.sql
-		// Update: 20240327: Index updated in 000004_alter_units_usage_tables.up.sql
-		"ON CONFLICT(resource_manager,usr,project) DO UPDATE SET",
+		// Update: 20240523: Index updated in 000007_alter_units_usage_tables.up.sql
+		"ON CONFLICT(cluster_id,usr,project) DO UPDATE SET",
 	)
 	prepareStatements[base.UsageDBTableName] = strings.Join(
 		[]string{
@@ -174,16 +197,39 @@ func init() {
 		},
 		"\n",
 	)
+
+	// AdminUsers update statement placeholders
+	var adminUsersTablePlaceholders []string
+	for _, col := range base.AdminUsersDBTableColNames {
+		adminUsersTablePlaceholders = append(adminUsersTablePlaceholders, fmt.Sprintf("  %[1]s = :%[1]s", col))
+	}
+
+	// Unit update statement
+	adminUsersStmt := fmt.Sprintf(
+		"INSERT INTO %s (%s) VALUES (:%s) %s",
+		base.AdminUsersDBTableName,
+		strings.Join(base.AdminUsersDBTableColNames, ","),
+		strings.Join(base.AdminUsersDBTableColNames, ",:"),
+		// Update: 20240523: Index updated in 000008_create_admin_users_tables.up.sql
+		"ON CONFLICT(source) DO UPDATE SET",
+	)
+
+	prepareStatements[base.AdminUsersDBTableName] = strings.Join(
+		[]string{
+			adminUsersStmt,
+			strings.Join(adminUsersTablePlaceholders, ",\n"),
+		},
+		"\n",
+	)
 }
 
 // NewStatsDB returns a new instance of statsDB struct
 func NewStatsDB(c *Config) (*statsDB, error) {
-	var lastUpdateTime time.Time
 	var err error
 
 	// Get file paths
-	dbPath := filepath.Join(c.DataPath, fmt.Sprintf("%s.db", base.CEEMSServerAppName))
-	lastUpdateTimeStampFile := filepath.Join(c.DataPath, "lastupdatetime")
+	dbPath := filepath.Join(c.Data.Path, base.CEEMSDBName)
+	lastUpdateTimeStampFile := filepath.Join(c.Data.Path, "lastupdatetime")
 
 	// By this time dataPath **should** exist and we do not need to check for its
 	// existence. Check directly for lastupdatetime file
@@ -194,7 +240,7 @@ func NewStatsDB(c *Config) (*statsDB, error) {
 			goto updatetime
 		} else {
 			// Trim any spaces and new lines
-			lastUpdateTime, err = time.Parse(base.DatetimeLayout, strings.TrimSuffix(strings.TrimSpace(string(lastUpdateTimeString)), "\n"))
+			c.Data.LastUpdateTime, err = time.Parse(base.DatetimeLayout, strings.TrimSuffix(strings.TrimSpace(string(lastUpdateTimeString)), "\n"))
 			if err != nil {
 				level.Error(c.Logger).Log("msg", "Failed to parse time string in lastupdatetime file", "time", lastUpdateTimeString, "err", err)
 				goto updatetime
@@ -206,13 +252,8 @@ func NewStatsDB(c *Config) (*statsDB, error) {
 	}
 
 updatetime:
-	if lastUpdateTime, err = time.Parse("2006-01-02", c.LastUpdateTimeString); err != nil {
-		level.Error(c.Logger).Log("msg", "Failed to parse time string", "time", c.LastUpdateTimeString, "err", err)
-		return nil, err
-	}
-
 	// Write to file for persistence in case of restarts
-	writeTimeStampToFile(lastUpdateTimeStampFile, lastUpdateTime, c.Logger)
+	writeTimeStampToFile(lastUpdateTimeStampFile, c.Data.LastUpdateTime, c.Logger)
 
 setup:
 	// Setup manager struct that retrieves unit data
@@ -225,7 +266,7 @@ setup:
 	// Setup updater struct that updates units
 	updater, err := c.Updater(c.Logger)
 	if err != nil {
-		level.Error(c.Logger).Log("msg", "Metric updater setup failed", "err", err)
+		level.Error(c.Logger).Log("msg", "Updater setup failed", "err", err)
 		return nil, err
 	}
 
@@ -248,25 +289,45 @@ setup:
 	}
 
 	// Now make an instance of time.Date with proper format and zone
-	lastUpdateTime = time.Date(
-		lastUpdateTime.Year(),
-		lastUpdateTime.Month(),
-		lastUpdateTime.Day(),
-		lastUpdateTime.Hour(),
-		lastUpdateTime.Minute(),
-		lastUpdateTime.Second(),
-		lastUpdateTime.Nanosecond(),
+	c.Data.LastUpdateTime = time.Date(
+		c.Data.LastUpdateTime.Year(),
+		c.Data.LastUpdateTime.Month(),
+		c.Data.LastUpdateTime.Day(),
+		c.Data.LastUpdateTime.Hour(),
+		c.Data.LastUpdateTime.Minute(),
+		c.Data.LastUpdateTime.Second(),
+		c.Data.LastUpdateTime.Nanosecond(),
 		time.Now().Location(),
 	)
+
+	// Create a new instance of Grafana client
+	grafanaClient, err := common.CreateGrafanaClient(&c.Admin.Grafana, c.Logger)
+	if err != nil {
+		return nil, err
+	}
+
+	// Make admin users map
+	adminUsers := make(map[string][]string, len(AdminUsersSources))
+	for _, source := range AdminUsersSources {
+		adminUsers[source] = make([]string, 0)
+	}
+	adminUsers["ceems"] = append(adminUsers["ceems"], c.Admin.Users...)
+
+	// Admin config
+	adminConfig := &adminConfig{
+		users:                adminUsers,
+		grafana:              grafanaClient,
+		grafanaAdminTeamsIDs: c.Admin.Grafana.TeamsIDs,
+	}
 
 	// Storage config
 	storageConfig := &storageConfig{
 		dbPath:             dbPath,
-		dbBackupPath:       c.DataBackupPath,
-		retentionPeriod:    c.RetentionPeriod,
-		lastUpdateTime:     lastUpdateTime,
+		dbBackupPath:       c.Data.BackupPath,
+		retentionPeriod:    time.Duration(c.Data.RetentionPeriod),
+		lastUpdateTime:     c.Data.LastUpdateTime,
 		lastUpdateTimeFile: lastUpdateTimeStampFile,
-		skipDeleteOldUnits: c.SkipDeleteOldUnits,
+		skipDeleteOldUnits: c.Data.SkipDeleteOldUnits,
 	}
 
 	// Emit debug logs
@@ -278,6 +339,7 @@ setup:
 		manager: manager,
 		updater: updater,
 		storage: storageConfig,
+		admin:   adminConfig,
 	}, nil
 }
 
@@ -325,6 +387,22 @@ func (s *statsDB) Stop() error {
 	return s.db.Close()
 }
 
+// updateAdminUsers updates the static list of admin users with the ones fetched
+// from Grafana teams
+func (s *statsDB) updateAdminUsers() error {
+	// If no teams IDs are configured or Grafana is not online, return
+	if s.admin.grafanaAdminTeamsIDs == nil || !s.admin.grafana.Available() {
+		return nil
+	}
+
+	users, err := s.admin.grafana.TeamMembers(s.admin.grafanaAdminTeamsIDs)
+	if err != nil {
+		return err
+	}
+	s.admin.users["grafana"] = append(s.admin.users["grafana"], users...)
+	return nil
+}
+
 // Get unit stats and insert them into DB
 func (s *statsDB) getUnitStats(startTime, endTime time.Time) error {
 	// Retrieve units from unerlying resource manager(s)
@@ -340,6 +418,11 @@ func (s *statsDB) getUnitStats(startTime, endTime time.Time) error {
 
 	// Update units struct with unit level metrics from TSDB
 	units = s.updater.Update(startTime, endTime, units)
+
+	// Update admin users list from Grafana
+	if err := s.updateAdminUsers(); err != nil {
+		level.Error(s.logger).Log("msg", "Failed to update admin users from Grafana", "err", err)
+	}
 
 	// Begin transcation
 	tx, err := s.db.Begin()
@@ -434,98 +517,115 @@ func (s *statsDB) prepareStatements(tx *sql.Tx) (map[string]*sql.Stmt, error) {
 }
 
 // Insert unit stat into DB
-func (s *statsDB) execStatements(statements map[string]*sql.Stmt, units []models.Unit) {
+func (s *statsDB) execStatements(statements map[string]*sql.Stmt, clusterUnits []models.ClusterUnits) {
 	var ignore = 0
 	var err error
-	for _, unit := range units {
-		// Empty unit
-		if unit.UUID == "" {
-			continue
-		}
+	for _, units := range clusterUnits {
+		for _, unit := range units.Units {
+			// Empty unit
+			if unit.UUID == "" {
+				continue
+			}
 
-		// level.Debug(s.logger).Log("msg", "Inserting unit", "id", unit.Jobid)
-		// Use named parameters to not to repeat the values
-		if _, err = statements[base.UnitsDBTableName].Exec(
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["ResourceManager"], unit.ResourceManager),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["UUID"], unit.UUID),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["Name"], unit.Name),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["Project"], unit.Project),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["Grp"], unit.Grp),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["Usr"], unit.Usr),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["CreatedAt"], unit.CreatedAt),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["StartedAt"], unit.StartedAt),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["EndedAt"], unit.EndedAt),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["CreatedAtTS"], unit.CreatedAtTS),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["StartedAtTS"], unit.StartedAtTS),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["EndedAtTS"], unit.EndedAtTS),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["Elapsed"], unit.Elapsed),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["State"], unit.State),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["Allocation"], unit.Allocation),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalWallTime"], unit.TotalWallTime),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalCPUTime"], unit.TotalCPUTime),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalGPUTime"], unit.TotalGPUTime),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalCPUMemTime"], unit.TotalCPUMemTime),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalGPUMemTime"], unit.TotalGPUMemTime),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["AveCPUUsage"], unit.AveCPUUsage),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["AveCPUMemUsage"], unit.AveCPUMemUsage),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalCPUEnergyUsage"], unit.TotalCPUEnergyUsage),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalCPUEmissions"], unit.TotalCPUEmissions),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["AveGPUUsage"], unit.AveGPUUsage),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["AveGPUMemUsage"], unit.AveGPUMemUsage),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalGPUEnergyUsage"], unit.TotalGPUEnergyUsage),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalGPUEmissions"], unit.TotalGPUEmissions),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalIOWriteHot"], unit.TotalIOWriteHot),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalIOReadHot"], unit.TotalIOReadHot),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalIOWriteCold"], unit.TotalIOWriteCold),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalIOReadCold"], unit.TotalIOReadCold),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalIngress"], unit.TotalIngress),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalOutgress"], unit.TotalOutgress),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["Tags"], unit.Tags),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["ignore"], ignore),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["numupdates"], 1),
+			// level.Debug(s.logger).Log("msg", "Inserting unit", "id", unit.Jobid)
+			// Use named parameters to not to repeat the values
+			if _, err = statements[base.UnitsDBTableName].Exec(
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["ResourceManager"], unit.ResourceManager),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["ClusterID"], units.Cluster.ID),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["UUID"], unit.UUID),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["Name"], unit.Name),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["Project"], unit.Project),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["Grp"], unit.Grp),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["Usr"], unit.Usr),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["CreatedAt"], unit.CreatedAt),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["StartedAt"], unit.StartedAt),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["EndedAt"], unit.EndedAt),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["CreatedAtTS"], unit.CreatedAtTS),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["StartedAtTS"], unit.StartedAtTS),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["EndedAtTS"], unit.EndedAtTS),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["Elapsed"], unit.Elapsed),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["State"], unit.State),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["Allocation"], unit.Allocation),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalWallTime"], unit.TotalWallTime),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalCPUTime"], unit.TotalCPUTime),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalGPUTime"], unit.TotalGPUTime),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalCPUMemTime"], unit.TotalCPUMemTime),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalGPUMemTime"], unit.TotalGPUMemTime),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["AveCPUUsage"], unit.AveCPUUsage),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["AveCPUMemUsage"], unit.AveCPUMemUsage),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalCPUEnergyUsage"], unit.TotalCPUEnergyUsage),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalCPUEmissions"], unit.TotalCPUEmissions),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["AveGPUUsage"], unit.AveGPUUsage),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["AveGPUMemUsage"], unit.AveGPUMemUsage),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalGPUEnergyUsage"], unit.TotalGPUEnergyUsage),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalGPUEmissions"], unit.TotalGPUEmissions),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalIOWriteHot"], unit.TotalIOWriteHot),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalIOReadHot"], unit.TotalIOReadHot),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalIOWriteCold"], unit.TotalIOWriteCold),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalIOReadCold"], unit.TotalIOReadCold),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalIngress"], unit.TotalIngress),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalOutgress"], unit.TotalOutgress),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["Tags"], unit.Tags),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["ignore"], ignore),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["numupdates"], 1),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["lastupdatedat"], time.Now().Format(base.DatetimeLayout)),
+			); err != nil {
+				level.Error(s.logger).
+					Log("msg", "Failed to insert unit in DB", "id", unit.UUID, "err", err)
+			}
+
+			// If unit.EndTS is zero, it means a running unit. We shouldnt update stats
+			// of running units. They should be updated **ONLY** for finished units
+			unitIncr := 1
+			if unit.EndedAtTS == 0 {
+				unitIncr = 0
+			}
+
+			// Update Usage table
+			// Use named parameters to not to repeat the values
+			if _, err = statements[base.UsageDBTableName].Exec(
+				sql.Named(base.UsageDBTableStructFieldColNameMap["ResourceManager"], unit.ResourceManager),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["ClusterID"], units.Cluster.ID),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["NumUnits"], unitIncr),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["Project"], unit.Project),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["Usr"], unit.Usr),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["lastupdatedat"], time.Now().Format(base.DatetimeLayout)),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalWallTime"], unit.TotalWallTime),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalCPUTime"], unit.TotalCPUTime),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalGPUTime"], unit.TotalGPUTime),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalCPUMemTime"], unit.TotalCPUMemTime),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalGPUMemTime"], unit.TotalGPUMemTime),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["AveCPUUsage"], unit.AveCPUUsage),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["AveCPUMemUsage"], unit.AveCPUMemUsage),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalCPUEnergyUsage"], unit.TotalCPUEnergyUsage),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalCPUEmissions"], unit.TotalCPUEmissions),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["AveGPUUsage"], unit.AveGPUUsage),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["AveGPUMemUsage"], unit.AveGPUMemUsage),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalGPUEnergyUsage"], unit.TotalGPUEnergyUsage),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalGPUEmissions"], unit.TotalGPUEmissions),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalIOWriteHot"], unit.TotalIOWriteHot),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalIOReadHot"], unit.TotalIOReadHot),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalIOWriteCold"], unit.TotalIOWriteCold),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalIOReadCold"], unit.TotalIOReadCold),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalIngress"], unit.TotalIngress),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalOutgress"], unit.TotalOutgress),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["numupdates"], 1),
+			); err != nil {
+				level.Error(s.logger).
+					Log("msg", "Failed to update usage table in DB", "id", unit.UUID, "err", err)
+			}
+		}
+	}
+
+	// Update admin users table
+	for _, source := range AdminUsersSources {
+		if _, err = statements[base.AdminUsersDBTableName].Exec(
+			sql.Named(base.AdminUsersDBTableStructFieldColNameMap["Source"], source),
+			sql.Named(base.AdminUsersDBTableStructFieldColNameMap["Users"], strings.Join(s.admin.users[source], AdminUsersSeparator)),
+			sql.Named(base.AdminUsersDBTableStructFieldColNameMap["LastUpdatedAt"], time.Now().Format(base.DatetimeLayout)),
 		); err != nil {
 			level.Error(s.logger).
-				Log("msg", "Failed to insert unit in DB", "id", unit.UUID, "err", err)
-		}
-
-		// If unit.EndTS is zero, it means a running unit. We shouldnt update stats
-		// of running units. They should be updated **ONLY** for finished units
-		unitIncr := 1
-		if unit.EndedAtTS == 0 {
-			unitIncr = 0
-		}
-
-		// Update Usage table
-		// Use named parameters to not to repeat the values
-		if _, err = statements[base.UsageDBTableName].Exec(
-			sql.Named(base.UsageDBTableStructFieldColNameMap["ResourceManager"], unit.ResourceManager),
-			sql.Named(base.UsageDBTableStructFieldColNameMap["NumUnits"], unitIncr),
-			sql.Named(base.UsageDBTableStructFieldColNameMap["Project"], unit.Project),
-			sql.Named(base.UsageDBTableStructFieldColNameMap["Usr"], unit.Usr),
-			sql.Named(base.UsageDBTableStructFieldColNameMap["LastUpdatedAt"], time.Now().Format(base.DatetimeLayout)),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalWallTime"], unit.TotalWallTime),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalCPUTime"], unit.TotalCPUTime),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalGPUTime"], unit.TotalGPUTime),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalCPUMemTime"], unit.TotalCPUMemTime),
-			sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalGPUMemTime"], unit.TotalGPUMemTime),
-			sql.Named(base.UsageDBTableStructFieldColNameMap["AveCPUUsage"], unit.AveCPUUsage),
-			sql.Named(base.UsageDBTableStructFieldColNameMap["AveCPUMemUsage"], unit.AveCPUMemUsage),
-			sql.Named(base.UsageDBTableStructFieldColNameMap["TotalCPUEnergyUsage"], unit.TotalCPUEnergyUsage),
-			sql.Named(base.UsageDBTableStructFieldColNameMap["TotalCPUEmissions"], unit.TotalCPUEmissions),
-			sql.Named(base.UsageDBTableStructFieldColNameMap["AveGPUUsage"], unit.AveGPUUsage),
-			sql.Named(base.UsageDBTableStructFieldColNameMap["AveGPUMemUsage"], unit.AveGPUMemUsage),
-			sql.Named(base.UsageDBTableStructFieldColNameMap["TotalGPUEnergyUsage"], unit.TotalGPUEnergyUsage),
-			sql.Named(base.UsageDBTableStructFieldColNameMap["TotalGPUEmissions"], unit.TotalGPUEmissions),
-			sql.Named(base.UsageDBTableStructFieldColNameMap["TotalIOWriteHot"], unit.TotalIOWriteHot),
-			sql.Named(base.UsageDBTableStructFieldColNameMap["TotalIOReadHot"], unit.TotalIOReadHot),
-			sql.Named(base.UsageDBTableStructFieldColNameMap["TotalIOWriteCold"], unit.TotalIOWriteCold),
-			sql.Named(base.UsageDBTableStructFieldColNameMap["TotalIOReadCold"], unit.TotalIOReadCold),
-			sql.Named(base.UsageDBTableStructFieldColNameMap["TotalIngress"], unit.TotalIngress),
-			sql.Named(base.UsageDBTableStructFieldColNameMap["TotalOutgress"], unit.TotalOutgress),
-			sql.Named(base.UsageDBTableStructFieldColNameMap["numupdates"], 1),
-		); err != nil {
-			level.Error(s.logger).
-				Log("msg", "Failed to update usage table in DB", "id", unit.UUID, "err", err)
+				Log("msg", "Failed to update admin_users table in DB", "source", source, "err", err)
 		}
 	}
 }

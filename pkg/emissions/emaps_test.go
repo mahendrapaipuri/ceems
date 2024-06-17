@@ -21,7 +21,12 @@ var (
 	emapsIdx = 0
 )
 
-func mockEMapsAPIRequest(url string, token string, zones map[string]string, logger log.Logger) (EmissionFactors, error) {
+func mockEMapsAPIRequest(
+	url string,
+	token string,
+	zones map[string]string,
+	logger log.Logger,
+) (EmissionFactors, error) {
 	emapsIdx++
 	if emapsIdx > 2 {
 		return nil, fmt.Errorf("some random while fetching stuff")
@@ -29,7 +34,12 @@ func mockEMapsAPIRequest(url string, token string, zones map[string]string, logg
 	return expectedEMapsFactor[emapsIdx-1], nil
 }
 
-func mockEMapsAPIFailRequest(url string, token string, zones map[string]string, logger log.Logger) (EmissionFactors, error) {
+func mockEMapsAPIFailRequest(
+	url string,
+	token string,
+	zones map[string]string,
+	logger log.Logger,
+) (EmissionFactors, error) {
 	return nil, fmt.Errorf("Failed API request")
 }
 
