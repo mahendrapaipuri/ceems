@@ -34,6 +34,20 @@ ceems_lb:
       # for compute unit ownership, CEEMS LB will use the ID to query for the compute 
       # units of that cluster.
       #
+      # This identifier needs to be in the path parameter for requests to CEEMS LB
+      # to target correct cluster. For instance there are two different clusters,
+      # say cluster-0 and cluster-1, that have different TSDBs configured. Using CEEMS 
+      # LB we can load balance the traffic for these two clusters using a single CEEMS LB 
+      # deployement. However, we need to tell CEEMS LB which cluster to target for the 
+      # incoming traffic. This is done via path parameter. 
+      #
+      # If CEEMS LB is running at http://localhost:9030, then the cluster-0 is reachable at 
+      # `http://localhost:9030/cluster-0` and `cluster-1` at `http://localhost:9030/cluster-1`.
+      # Internally, CEEMS will strip the first part in the URL path, use it to identify
+      # cluster and proxy the rest of URL path to underlying TSDB backend. 
+      # Thus, all the requests to `http://localhost:9030/cluster-0` will be load 
+      # balanced across TSDB backends of `cluster-0`. 
+      #
     - id: default
     
       # List of TSDBs for this cluster. Load balancing between these TSDBs will be 
@@ -64,144 +78,145 @@ ceems_lb:
 # For example, if there is a unit U that belongs to User A and 
 # Project P. Any user that belongs to same project P can query for the metrics of unit U
 # but not users from other projects.
-ceems_api_server:
-  # The DB contains the information of user and projet units and LB will verify
-  # if user/project is the owner of the uuid under request to decide whether to
-  # proxy request to backend or not.
-  #
-  # To identify the current user, X-Grafana-User header will be used that Grafana
-  # is capable of sending to the datasource. Grafana essenatially adds this header
-  # on the backend server and hence it is not possible for the users to spoof this 
-  # header from the browser. 
-  # In order to enable this feature, it is essential to set `send_user_header = true`
-  # in Grafana config file.
-  #
-  # If both CEEMS API and CEEMS LB is running on the same host, it is preferable to
-  # use the DB directly using `data.path` as DB query is way faster than a API request
-  # If both apps are deployed on the same host, ensure that the user running `ceems_lb`
-  # has permissions to open CEEMS API data files
-  #
-  data:
-    path: /var/lib/ceems_api_server
+#
+# ceems_api_server:
+#   # The DB contains the information of user and projet units and LB will verify
+#   # if user/project is the owner of the uuid under request to decide whether to
+#   # proxy request to backend or not.
+#   #
+#   # To identify the current user, X-Grafana-User header will be used that Grafana
+#   # is capable of sending to the datasource. Grafana essenatially adds this header
+#   # on the backend server and hence it is not possible for the users to spoof this 
+#   # header from the browser. 
+#   # In order to enable this feature, it is essential to set `send_user_header = true`
+#   # in Grafana config file.
+#   #
+#   # If both CEEMS API and CEEMS LB is running on the same host, it is preferable to
+#   # use the DB directly using `data.path` as DB query is way faster than a API request
+#   # If both apps are deployed on the same host, ensure that the user running `ceems_lb`
+#   # has permissions to open CEEMS API data files
+#   #
+#   data:
+#     path: /var/lib/ceems
 
-  # In the case where CEEMS API and ceems LB are deployed on different hosts, we can
-  # still perform access control using CEEMS API server by making a API request to
-  # check the ownership of the queried unit. This method should be only preferred when
-  # DB cannot be access directly as API request has additional latency than querying DB
-  # directly.
-  #
-  # If both `data.path` and `web.url` are provided, DB will be preferred as it has lower
-  # latencies.
-  #
-  # web:
-  #   # External URL at which CEEMS API server is available
-  #   #
-  #   url: http://localhost:9020
+#   # In the case where CEEMS API and ceems LB are deployed on different hosts, we can
+#   # still perform access control using CEEMS API server by making a API request to
+#   # check the ownership of the queried unit. This method should be only preferred when
+#   # DB cannot be access directly as API request has additional latency than querying DB
+#   # directly.
+#   #
+#   # If both `data.path` and `web.url` are provided, DB will be preferred as it has lower
+#   # latencies.
+#   #
+#   web:
+#     # External URL at which CEEMS API server is available
+#     #
+#     url: http://localhost:9020
 
-  #   # Sets the `Authorization` header on every API request with the
-  #   # configured username and password.
-  #   # password and password_file are mutually exclusive.
-  #   #
-  #   basic_auth:
-  #     username: ''
-  #     password: ''
-  #     password_file: ''
+#     # Sets the `Authorization` header on every API request with the
+#     # configured username and password.
+#     # password and password_file are mutually exclusive.
+#     #
+#     basic_auth:
+#       username: ''
+#       password: ''
+#       password_file: ''
 
-  #   # Sets the `Authorization` header on every API request with
-  #   # the configured credentials.
-  #   #
-  #   authorization:
-  #     # Sets the authentication type of the request. Default is `Bearer`.
-  #     type: Bearer
-  #     # Sets the credentials of the request. It is mutually exclusive with
-  #     # `credentials_file`.
-  #     credentials: ''
-  #     # Sets the credentials of the request with the credentials read from the
-  #     # configured file. It is mutually exclusive with `credentials`.
-  #     credentials_file: ''
+#     # Sets the `Authorization` header on every API request with
+#     # the configured credentials.
+#     #
+#     authorization:
+#       # Sets the authentication type of the request. Default is `Bearer`.
+#       type: Bearer
+#       # Sets the credentials of the request. It is mutually exclusive with
+#       # `credentials_file`.
+#       credentials: ''
+#       # Sets the credentials of the request with the credentials read from the
+#       # configured file. It is mutually exclusive with `credentials`.
+#       credentials_file: ''
 
-  #   # Optional OAuth 2.0 configuration.
-  #   # Cannot be used at the same time as basic_auth or authorization.
-  #   #
-  #   oauth2:
-  #     client_id: ''
-  #     client_secret: ''
-  #     # Read the client secret from a file.
-  #     # It is mutually exclusive with `client_secret`.
-  #     client_secret_file: ''
-  #     # Scopes for the token request.
-  #     scopes: []
-  #     # The URL to fetch the token from.
-  #     token_url: ''
-  #     # Optional parameters to append to the token URL.
-  #     endpoint_params: {}
-  #     # Configures the token request's TLS settings.
-  #     tls_config: {}
+#     # Optional OAuth 2.0 configuration.
+#     # Cannot be used at the same time as basic_auth or authorization.
+#     #
+#     oauth2:
+#       client_id: ''
+#       client_secret: ''
+#       # Read the client secret from a file.
+#       # It is mutually exclusive with `client_secret`.
+#       client_secret_file: ''
+#       # Scopes for the token request.
+#       scopes: []
+#       # The URL to fetch the token from.
+#       token_url: ''
+#       # Optional parameters to append to the token URL.
+#       endpoint_params: {}
+#       # Configures the token request's TLS settings.
+#       tls_config: {}
 
-  #   # Configure whether API requests follow HTTP 3xx redirects.
-  #   # Default is true
-  #   #
-  #   follow_redirects: true
+#     # Configure whether API requests follow HTTP 3xx redirects.
+#     # Default is true
+#     #
+#     follow_redirects: true
 
-  #   # Whether to enable HTTP2.
-  #   # Default is true
-  #   #
-  #   enable_http2: true
+#     # Whether to enable HTTP2.
+#     # Default is true
+#     #
+#     enable_http2: true
 
-  #   # Configures the API request's TLS settings.
-  #   #
-  #   tls_config:
-  #     # CA certificate to validate API server certificate with. 
-  #     # At most one of ca and ca_file is allowed.
-  #     #
-  #     ca: ''
-  #     ca_file: ''
+#     # Configures the API request's TLS settings.
+#     #
+#     tls_config:
+#       # CA certificate to validate API server certificate with. 
+#       # At most one of ca and ca_file is allowed.
+#       #
+#       ca: ''
+#       ca_file: ''
 
-  #     # Certificate and key for client cert authentication to the server.
-  #     # At most one of cert and cert_file is allowed.
-  #     # At most one of key and key_file is allowed.
-  #     #
-  #     cert: ''
-  #     cert_file: ''
-  #     key: ''
-  #     key_file: ''
+#       # Certificate and key for client cert authentication to the server.
+#       # At most one of cert and cert_file is allowed.
+#       # At most one of key and key_file is allowed.
+#       #
+#       cert: ''
+#       cert_file: ''
+#       key: ''
+#       key_file: ''
 
-  #     # Disable validation of the server certificate.
-  #     #
-  #     insecure_skip_verify: false
+#       # Disable validation of the server certificate.
+#       #
+#       insecure_skip_verify: false
 
-  #     # Minimum acceptable TLS version. Accepted values: TLS10 (TLS 1.0), TLS11 (TLS
-  #     # 1.1), TLS12 (TLS 1.2), TLS13 (TLS 1.3).
-  #     # If unset, Prometheus will use Go default minimum version, which is TLS 1.2.
-  #     # See MinVersion in https://pkg.go.dev/crypto/tls#Config.
-  #     #
-  #     min_version: ''
-  #     # Maximum acceptable TLS version. Accepted values: TLS10 (TLS 1.0), TLS11 (TLS
-  #     # 1.1), TLS12 (TLS 1.2), TLS13 (TLS 1.3).
-  #     # If unset, Prometheus will use Go default maximum version, which is TLS 1.3.
-  #     # See MaxVersion in https://pkg.go.dev/crypto/tls#Config.
-  #     #
-  #     max_version: ''
+#       # Minimum acceptable TLS version. Accepted values: TLS10 (TLS 1.0), TLS11 (TLS
+#       # 1.1), TLS12 (TLS 1.2), TLS13 (TLS 1.3).
+#       # If unset, Prometheus will use Go default minimum version, which is TLS 1.2.
+#       # See MinVersion in https://pkg.go.dev/crypto/tls#Config.
+#       #
+#       min_version: ''
+#       # Maximum acceptable TLS version. Accepted values: TLS10 (TLS 1.0), TLS11 (TLS
+#       # 1.1), TLS12 (TLS 1.2), TLS13 (TLS 1.3).
+#       # If unset, Prometheus will use Go default maximum version, which is TLS 1.3.
+#       # See MaxVersion in https://pkg.go.dev/crypto/tls#Config.
+#       #
+#       max_version: ''
     
-  #   # List of headers that will be passed in the API requests to the server.
-  #   # Authentication related headers may be configured in this section. Header name
-  #   # must be configured as key and header value supports three different types of 
-  #   # headers: values, secrets and files.
-  #   #
-  #   # The difference between values and secrets is that secret will be redacted
-  #   # in server logs where as values will be emitted in the logs.
-  #   #
-  #   # Values are regular headers with values, secrets are headers that pass secret
-  #   # information like tokens and files pass the file content in the headers.
-  #   #
-  #   # Example:
-  #   # http_headers:
-  #   #   one:
-  #   #     values: [value1a, value1b, value1c]
-  #   #   two:
-  #   #     values: [value2a]
-  #   #     secrets: [value2b, value2c]
-  #   #   three:
-  #   #     files: [testdata/headers-file-a, testdata/headers-file-b, testdata/headers-file-c]
-  #   #
-  #   http_headers: {}
+#     # List of headers that will be passed in the API requests to the server.
+#     # Authentication related headers may be configured in this section. Header name
+#     # must be configured as key and header value supports three different types of 
+#     # headers: values, secrets and files.
+#     #
+#     # The difference between values and secrets is that secret will be redacted
+#     # in server logs where as values will be emitted in the logs.
+#     #
+#     # Values are regular headers with values, secrets are headers that pass secret
+#     # information like tokens and files pass the file content in the headers.
+#     #
+#     # Example:
+#     # http_headers:
+#     #   one:
+#     #     values: [value1a, value1b, value1c]
+#     #   two:
+#     #     values: [value2a]
+#     #     secrets: [value2b, value2c]
+#     #   three:
+#     #     files: [testdata/headers-file-a, testdata/headers-file-b, testdata/headers-file-c]
+#     #
+#     http_headers: {}

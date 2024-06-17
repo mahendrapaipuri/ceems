@@ -15,7 +15,7 @@ ceems_api_server:
     # Path at which CEEMS API server data will be stored.
     # If relative path is used, it will be resolved based on the current working directory.
     #
-    path: /var/lib/ceems_api_server
+    path: /var/lib/ceems
 
     # Units data will be fetched at this interval. CEEMS will pull the units from the 
     # underlying resource manager at this frequency into its own DB.

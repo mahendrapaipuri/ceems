@@ -8,11 +8,14 @@ ARG OS="linux"
 COPY .build/${OS}-${ARCH}/ceems_exporter /bin/ceems_exporter
 COPY .build/${OS}-${ARCH}/ceems_api_server /bin/ceems_api_server
 COPY .build/${OS}-${ARCH}/ceems_lb /bin/ceems_lb
-COPY build/config/ceems_api_server/tsdb-config.yml /etc/ceems_api_server/tsdb-config.yml
-COPY build/config/ceems_lb/config.yml /etc/ceems_lb/config.yml
+COPY build/config/ceems_api_server/ceems_api_server.yml /etc/ceems_api_server/config.yml
+COPY build/config/ceems_lb/ceems_lb.yml /etc/ceems_lb/config.yml
 COPY LICENSE /LICENSE
 
-RUN mkdir /ceems && chown -R nobody:nobody /ceems /etc/ceems_api_server /etc/ceems_lb
+ENV CEEMS_API_SERVER_CONFIG_FILE /etc/ceems_api_server/config.yml
+ENV CEEMS_LB_CONFIG_FILE /etc/ceems_lb/config.yml
+
+RUN mkdir -p /var/lib/ceems && chown -R nobody:nobody /var/lib/ceems /etc/ceems_api_server /etc/ceems_lb
 
 USER        nobody
-WORKDIR     /ceems
+WORKDIR     /var/lib/ceems
