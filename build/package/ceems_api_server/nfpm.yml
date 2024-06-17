@@ -32,7 +32,7 @@ maintainer: Mahendra PAIPURI <mahendra.paipuri@gmail.com>
 # Defaults to `no description given`.
 # Most packagers call for a one-line synopsis of the package. Some (like deb)
 # also call for a multi-line description starting on the second line.
-description: A REST API server that exposes projects and compute units information of users by querying a SQLite3 DB.
+description: A REST API server that stores projects and compute units information of users in a SQLite3 DB and serves them via HTTP requests.
 
 # Vendor.
 # This will expand any env var you set in the field, e.g. vendor: ${VENDOR}
@@ -63,17 +63,17 @@ contents:
     file_info:
       # Make sure that the mode is specified in octal, e.g. 0644 instead of 644.
       mode: 0660
-      owner: ceemsapi
+      owner: ceems
       group: root
 
-  # CEEMS API server TSDB updater config file
-  - src: build/config/ceems_api_server/tsdb-config.yml
-    dst: /etc/ceems_api_server/tsdb-config.yml
+  # CEEMS API server config file
+  - src: build/config/ceems_api_server/ceems_api_server.yml
+    dst: /etc/ceems_api_server/config.yml
     type: config
     file_info:
       # Make sure that the mode is specified in octal, e.g. 0644 instead of 644.
       mode: 0660
-      owner: ceemsapi
+      owner: ceems
       group: root
 
   # systemd unit file

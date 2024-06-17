@@ -1,7 +1,7 @@
 #!/bin/sh
 
-uid=ceemsexp
-gid=ceemsexp
+uid=ceems
+gid=ceems
 
 # Create user and group if nonexistent
 if [ ! $(getent group ${gid}) ]; then

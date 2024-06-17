@@ -1,7 +1,7 @@
 #!/bin/sh
 
-uid=ceemsapi
-gid=ceemsapi
+uid=ceems
+gid=ceems
 
 # Create user and group if nonexistent
 if [ ! $(getent group ${gid}) ]; then
@@ -11,7 +11,7 @@ if [ ! $(getent passwd ${uid}) ]; then
    useradd -M -r -d / -g ${gid} ${uid} > /dev/null 2>&1 || :
 fi
 
-# Create /var/lib/ceems_api_server directory and set ownership to ceemsapi user and root group
+# Create /var/lib/ceems_api_server directory and set ownership to ceems user and root group
 mkdir -p /var/lib/ceems_api_server
 chown -R ${uid}:root /var/lib/ceems_api_server
 chmod 0700 /var/lib/ceems_api_server
