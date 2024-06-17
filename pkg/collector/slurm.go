@@ -20,7 +20,7 @@ import (
 	"github.com/containerd/cgroups/v3/cgroup2"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/mahendrapaipuri/ceems/internal/helpers"
+	"github.com/mahendrapaipuri/ceems/internal/common"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/procfs"
 )
@@ -785,7 +785,7 @@ func (c *slurmCollector) getJobProperties(name string, metric *CgroupMetric, pid
 
 	// Compute a UUID using job properties if asked. If not set UUID to job ID
 	if *useJobIDHash && jobProps.jobUUID == "" {
-		jobProps.jobUUID, err = helpers.GetUUIDFromString(
+		jobProps.jobUUID, err = common.GetUUIDFromString(
 			[]string{
 				strings.TrimSpace(jobid),
 				strings.TrimSpace(jobProps.jobUser),

@@ -121,7 +121,12 @@ func (s *emapsProvider) Update() (EmissionFactors, error) {
 }
 
 // Make requests to Electricity maps API to fetch factors for all countries
-func makeEMapsAPIRequest(baseURL string, apiToken string, zones map[string]string, logger log.Logger) (EmissionFactors, error) {
+func makeEMapsAPIRequest(
+	baseURL string,
+	apiToken string,
+	zones map[string]string,
+	logger log.Logger,
+) (EmissionFactors, error) {
 	// Initialize a wait group
 	wg := &sync.WaitGroup{}
 	wg.Add(len(zones))

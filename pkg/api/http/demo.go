@@ -101,6 +101,7 @@ func mockUnits() []models.Unit {
 	var units = make([]models.Unit, numUnits)
 	for i := 0; i < numUnits; i++ {
 		resourceMgr := resourceMgrs[random(0, int64(numResourceMgrs))]
+		clusterID := fmt.Sprintf("%s-%d", resourceMgr, random(0, int64(3)))
 
 		// Use manager specific uuid
 		var uuid string
@@ -150,6 +151,7 @@ func mockUnits() []models.Unit {
 		units[i] = models.Unit{
 			ID:                  int64(i),
 			ResourceManager:     resourceMgr,
+			ClusterID:           clusterID,
 			UUID:                uuid,
 			Name:                name,
 			Project:             project,

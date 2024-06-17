@@ -1,17 +1,15 @@
 package http
 
 import (
+	"database/sql"
+	"fmt"
 	"net/http"
 	"regexp"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-
-	"github.com/mahendrapaipuri/ceems/pkg/api/base"
-	"github.com/mahendrapaipuri/ceems/pkg/grafana"
 )
 
 // Headers
@@ -20,39 +18,22 @@ const (
 	dashboardUserHeader = "X-Dashboard-User"
 	loggedUserHeader    = "X-Logged-User"
 	adminUserHeader     = "X-Admin-User"
+	ceemsUserHeader     = "X-Ceems-User" // Special header that will be included in requests from CEEMS LB
 )
 
 // Define our struct
 type authenticationMiddleware struct {
-	logger           log.Logger
-	adminUsers       []string
-	grafana          *grafana.Grafana
-	lastAdminsUpdate time.Time
-}
-
-// Update admin users from Grafana teams
-func (amw *authenticationMiddleware) updateAdminUsers() {
-	if amw.lastAdminsUpdate.IsZero() || time.Since(amw.lastAdminsUpdate) > time.Duration(time.Hour) {
-		adminUsers, err := amw.grafana.TeamMembers(base.GrafanaAdminTeamID)
-		if err != nil {
-			level.Warn(amw.logger).Log("msg", "Failed to sync admin users from Grafana Teams", "err", err)
-			return
-		}
-
-		// Get list of all usernames and add them to admin users
-		amw.adminUsers = append(amw.adminUsers, adminUsers...)
-		level.Debug(amw.logger).
-			Log("msg", "Admin users updated from Grafana teams API", "admins", strings.Join(amw.adminUsers, ","))
-
-		// Update the lastAdminsUpdate time
-		amw.lastAdminsUpdate = time.Now()
-	}
+	logger       log.Logger
+	routerPrefix string
+	db           *sql.DB
+	adminUsers   func(*sql.DB, log.Logger) []string
 }
 
 // Middleware function, which will be called for each request
 func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var loggedUser string
+		var admUsers []string
 
 		// If requested URI is one of the following, skip checking for user header
 		//  - Root document
@@ -64,17 +45,28 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 		// NOTE that we only skip checking X-Grafana-User header. In prod when
 		// basic auth is enabled, all these end points are under auth and hence an
 		// autorised user cannot access these end points
+		var whitelistedURLRegexp *regexp.Regexp
+		if amw.routerPrefix == "/" {
+			whitelistedURLRegexp = regexp.MustCompile("/(swagger|debug)/(.*)")
+		} else {
+			whitelistedURLRegexp = regexp.MustCompile(fmt.Sprintf("%s/(swagger|debug)/(.*)", amw.routerPrefix))
+		}
 		if r.URL.Path == "/" ||
+			r.URL.Path == amw.routerPrefix ||
 			strings.HasSuffix(r.URL.Path, "health") ||
 			strings.HasSuffix(r.URL.Path, "demo") ||
-			regexp.MustCompile("/(swagger|debug)/(.*)").MatchString(r.URL.Path) {
+			whitelistedURLRegexp.MatchString(r.URL.Path) {
 			goto end
 		}
 
-		// First update admin users
-		if amw.grafana.Available() {
-			amw.updateAdminUsers()
+		// If request has "special" CEEMS header, pass through. It must be
+		// coming from other CEEMS components
+		if _, ok := r.Header[ceemsUserHeader]; ok {
+			goto end
 		}
+
+		// Fetch admin users from DB
+		admUsers = amw.adminUsers(amw.db, amw.logger)
 
 		// Remove any X-Admin-User header or X-Logged-User if passed
 		r.Header.Del(adminUserHeader)
@@ -100,7 +92,7 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 		// as their username.
 		// For admin users who can look at dashboard of "any" user this will be the
 		// username of the "impersonated" user and we take it into account
-		if slices.Contains(amw.adminUsers, loggedUser) {
+		if slices.Contains(admUsers, loggedUser) {
 			// Set X-Admin-User header
 			r.Header.Set(adminUserHeader, loggedUser)
 

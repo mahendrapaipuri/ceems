@@ -1,0 +1,1 @@
+{"status":"success","data":[{"id":"slurm-0","manager":"slurm"},{"id":"slurm-1","manager":"slurm"}]}

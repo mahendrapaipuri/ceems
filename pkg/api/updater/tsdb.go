@@ -5,19 +5,16 @@ import (
 	"html/template"
 	"maps"
 	"math"
-	"os"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/helper"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
 	"github.com/prometheus/common/model"
-	"gopkg.in/yaml.v2"
 )
 
 // Size of each chunk of UUIDs to make request to TSDB
@@ -25,89 +22,72 @@ const (
 	chunkSize = 1000
 )
 
-// tsdbUpdaterConfig contains the configuration file of tsdb updater
-type tsdbUpdaterConfig struct {
-	WebURL         string            `yaml:"web_url"`
-	SkipTLSVerify  bool              `yaml:"skip_tls_verify"`
-	CutoffDuration string            `yaml:"cutoff_duration"`
+// Name of the TSDB updater
+const (
+	tsdbUpdaterID = "tsdb"
+)
+
+// config is the container for the configuration of a given TSDB instance
+type tsdbConfig struct {
+	CutoffDuration model.Duration    `yaml:"cutoff_duration"`
 	Queries        map[string]string `yaml:"queries"`
 	LabelsToDrop   []string          `yaml:"labels_to_drop"`
 }
 
 // Embed TSDB struct into our TSDBUpdater struct
 type tsdbUpdater struct {
+	config *tsdbConfig
 	*tsdb.TSDB
-	config tsdbUpdaterConfig
 }
 
 // Mutex lock
 var (
-	tsdbConfigFile = base.CEEMSServerApp.Flag(
-		"tsdb.config.file",
-		"TSDB (Prometheus/Victoria Metrics) config file path.",
-	).Default("").String()
 	metricLock = sync.RWMutex{}
-	cutoff     = time.Duration(0 * time.Second)
 )
 
 // Register TSDB updater
 // tsdb will estimate time averaged metrics and update units struct
 // It will also remove ignored units time series
 func init() {
-	RegisterUpdater("tsdb", false, NewTSDBUpdater)
-}
-
-// updaterConfig will read config file and create tsdbUpdaterConfig instance
-func updaterConfig(filePath string) (*tsdbUpdaterConfig, error) {
-	// Set a default config
-	config := tsdbUpdaterConfig{
-		WebURL:         "http://localhost:9090",
-		SkipTLSVerify:  true,
-		CutoffDuration: "0s",
-	}
-
-	// If no config file path provided, return default config
-	if filePath == "" {
-		return &config, nil
-	}
-
-	// Read config file
-	configFile, err := os.ReadFile(filePath)
-	if err != nil {
-		return nil, err
-	}
-
-	// Update config from YAML file
-	err = yaml.Unmarshal(configFile, &config)
-	if err != nil {
-		return nil, err
-	}
-	return &config, nil
+	RegisterUpdater(tsdbUpdaterID, NewTSDBUpdater)
 }
 
 // NewTSDBUpdater create a new updater interface
-func NewTSDBUpdater(logger log.Logger) (Updater, error) {
-	// Fetch updater config
-	config, err := updaterConfig(*tsdbConfigFile)
-	if err != nil {
+func NewTSDBUpdater(instance Instance, logger log.Logger) (Updater, error) {
+	// Make TSDB config from instances extra config
+	config := tsdbConfig{}
+	if err := instance.Extra.Decode(&config); err != nil {
+		level.Error(logger).Log("msg", "Failed to setup TSDB updater", "id", instance.ID, "err", err)
 		return nil, err
 	}
 
-	// Create an instance of TSDB
-	tsdb, err := tsdb.NewTSDB(config.WebURL, config.SkipTLSVerify, logger)
+	// Create instances of TSDB
+	tsdb, err := tsdb.NewTSDB(
+		instance.Web.URL,
+		instance.Web.HTTPClientConfig,
+		log.With(logger, "id", instance.ID),
+	)
 	if err != nil {
+		level.Error(logger).Log("msg", "Failed to setup TSDB updater", "instance_id", instance.ID, "err", err)
 		return nil, err
 	}
+	level.Info(logger).Log("msg", "TSDB updater setup successful", "id", instance.ID)
+	return &tsdbUpdater{
+		&config,
+		tsdb,
+	}, nil
+}
 
-	// Update cutoff duration
-	if config.CutoffDuration != "" {
-		cutoffDuration, err := model.ParseDuration(config.CutoffDuration)
-		if err != nil {
-			panic(fmt.Sprintf("failed to parse cutoffDuration in TSDB updater config: %s", err))
-		}
-		cutoff = time.Duration(cutoffDuration)
+// Update fetches unit metrics from TSDB and update unit struct
+func (t *tsdbUpdater) Update(
+	startTime time.Time,
+	endTime time.Time,
+	units []models.ClusterUnits,
+) []models.ClusterUnits {
+	for _, clusterUnit := range units {
+		clusterUnit.Units = t.update(startTime, endTime, clusterUnit.Units)
 	}
-	return &tsdbUpdater{tsdb, *config}, nil
+	return units
 }
 
 // Return query string from template
@@ -197,7 +177,7 @@ func (t *tsdbUpdater) fetchAggMetrics(
 }
 
 // Fetch unit metrics from TSDB and update UnitStat struct for each unit
-func (t *tsdbUpdater) Update(startTime time.Time, endTime time.Time, units []models.Unit) []models.Unit {
+func (t *tsdbUpdater) update(startTime time.Time, endTime time.Time, units []models.Unit) []models.Unit {
 	// Bail if TSDB is unavailable or there are no units to update
 	if !t.Available() || len(units) == 0 {
 		return units
@@ -257,7 +237,8 @@ func (t *tsdbUpdater) Update(startTime time.Time, endTime time.Time, units []mod
 		// EndTS will be zero as we cannot convert unknown time into time stamp.
 		// Check if we EndTS is not zero before ignoring unit. If it is zero, it means
 		// it must be RUNNING unit
-		if units[i].EndedAtTS > 0 && units[i].TotalWallTime < int64(cutoff.Seconds()) {
+		if units[i].EndedAtTS > 0 &&
+			units[i].TotalWallTime < int64(time.Duration(t.config.CutoffDuration).Seconds()) {
 			ignoredUnits = append(
 				ignoredUnits,
 				units[i].UUID,
@@ -345,11 +326,9 @@ func (t *tsdbUpdater) Update(startTime time.Time, endTime time.Time, units []mod
 	}
 
 	// Finally delete time series
-	if len(ignoredUnits) > 0 || len(t.config.LabelsToDrop) > 0 {
-		if err := t.deleteTimeSeries(startTime, endTime, ignoredUnits); err != nil {
-			level.Error(t.Logger).
-				Log("msg", "Failed to delete time series in TSDB", "err", err)
-		}
+	if err := t.deleteTimeSeries(startTime, endTime, ignoredUnits); err != nil {
+		level.Error(t.Logger).
+			Log("msg", "Failed to delete time series in TSDB", "err", err)
 	}
 	return units
 }
@@ -379,7 +358,7 @@ func (t *tsdbUpdater) deleteTimeSeries(startTime time.Time, endTime time.Time, u
 		will help TSDB to narrow the search to head block and hence deletion of time series
 		will be easy as they are potentially not yet persisted to disk.
 	*/
-	start := startTime.Add(-cutoff)
+	start := startTime.Add(-time.Duration(t.config.CutoffDuration))
 	end := endTime
 
 	// Matcher must be of format "{uuid=~"<regex>"}"

@@ -13,8 +13,8 @@ import (
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/mahendrapaipuri/ceems/pkg/api/resource"
 	"github.com/mahendrapaipuri/ceems/pkg/api/updater"
-	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/prometheus/common/model"
 )
 
 type mockFetcherOne struct {
@@ -29,75 +29,108 @@ type mockFetcherThree struct {
 	logger log.Logger
 }
 
-var mockUnitsOne = []models.Unit{
+var mockUnitsOne = []models.ClusterUnits{
 	{
-		UUID:            "10000",
-		Usr:             "foo1",
-		Project:         "fooprj",
-		TotalCPUTime:    int64(1800),
-		TotalGPUTime:    int64(900),
-		TotalWallTime:   int64(900),
-		TotalCPUMemTime: int64(9000),
-		TotalGPUMemTime: int64(900),
+		Cluster: models.Cluster{
+			ID:       "slurm-0",
+			Updaters: []string{"slurm-00", "slurm-01"},
+		},
+		Units: []models.Unit{
+			{
+				UUID:            "10000",
+				Usr:             "foo1",
+				Project:         "fooprj",
+				TotalCPUTime:    int64(1800),
+				TotalGPUTime:    int64(900),
+				TotalWallTime:   int64(900),
+				TotalCPUMemTime: int64(9000),
+				TotalGPUMemTime: int64(900),
+			},
+			{
+				UUID:            "10001",
+				Usr:             "foo1",
+				Project:         "fooprj",
+				TotalCPUTime:    int64(900),
+				TotalWallTime:   int64(900),
+				TotalCPUMemTime: int64(4500),
+			},
+		},
 	},
 	{
-		UUID:            "10001",
-		Usr:             "foo1",
-		Project:         "fooprj",
-		TotalCPUTime:    int64(900),
-		TotalWallTime:   int64(900),
-		TotalCPUMemTime: int64(4500),
-	},
-	{
-		UUID:            "10002",
-		Usr:             "foo1",
-		Project:         "fooprj",
-		TotalCPUTime:    int64(2700),
-		TotalWallTime:   int64(900),
-		TotalCPUMemTime: int64(9000),
-	},
-	{
-		UUID:            "10003",
-		Usr:             "foo2",
-		Project:         "fooprj",
-		TotalCPUTime:    int64(3600),
-		TotalWallTime:   int64(1800),
-		TotalCPUMemTime: int64(90000),
-	},
-}
-var mockUnitsTwo = []models.Unit{
-	{
-		UUID:            "20000",
-		Usr:             "bar1",
-		Project:         "barprj",
-		TotalCPUTime:    int64(900),
-		TotalGPUTime:    int64(900),
-		TotalWallTime:   int64(900),
-		TotalCPUMemTime: int64(9000),
-		TotalGPUMemTime: int64(900),
-	},
-	{
-		UUID:            "20001",
-		Usr:             "bar3",
-		Project:         "barprj",
-		TotalCPUTime:    int64(1800),
-		TotalGPUTime:    int64(1800),
-		TotalWallTime:   int64(900),
-		TotalCPUMemTime: int64(90000),
-		TotalGPUMemTime: int64(900),
-	},
-	{
-		UUID:            "20002",
-		Usr:             "bar3",
-		Project:         "barprj",
-		TotalCPUTime:    int64(2700),
-		TotalGPUTime:    int64(900),
-		TotalWallTime:   int64(900),
-		TotalCPUMemTime: int64(90000),
-		TotalGPUMemTime: int64(900),
+		Cluster: models.Cluster{
+			ID:       "slurm-1",
+			Updaters: []string{"slurm-1"},
+		},
+		Units: []models.Unit{
+			{
+				UUID:            "10002",
+				Usr:             "foo1",
+				Project:         "fooprj",
+				TotalCPUTime:    int64(2700),
+				TotalWallTime:   int64(900),
+				TotalCPUMemTime: int64(9000),
+			},
+			{
+				UUID:            "10003",
+				Usr:             "foo2",
+				Project:         "fooprj",
+				TotalCPUTime:    int64(3600),
+				TotalWallTime:   int64(1800),
+				TotalCPUMemTime: int64(90000),
+			},
+		},
 	},
 }
-var mockUnits = append(mockUnitsOne, mockUnitsTwo...)
+var mockUnitsTwo = []models.ClusterUnits{
+	{
+		Cluster: models.Cluster{
+			ID:       "os-0",
+			Updaters: []string{"os-0"},
+		},
+		Units: []models.Unit{
+			{
+				UUID:            "20000",
+				Usr:             "bar1",
+				Project:         "barprj",
+				TotalCPUTime:    int64(900),
+				TotalGPUTime:    int64(900),
+				TotalWallTime:   int64(900),
+				TotalCPUMemTime: int64(9000),
+				TotalGPUMemTime: int64(900),
+			},
+		},
+	},
+	{
+		Cluster: models.Cluster{
+			ID:       "os-1",
+			Updaters: []string{"os-1"},
+		},
+		Units: []models.Unit{
+			{
+				UUID:            "20001",
+				Usr:             "bar3",
+				Project:         "barprj",
+				TotalCPUTime:    int64(1800),
+				TotalGPUTime:    int64(1800),
+				TotalWallTime:   int64(900),
+				TotalCPUMemTime: int64(90000),
+				TotalGPUMemTime: int64(900),
+			},
+			{
+				UUID:            "20002",
+				Usr:             "bar3",
+				Project:         "barprj",
+				TotalCPUTime:    int64(2700),
+				TotalGPUTime:    int64(900),
+				TotalWallTime:   int64(900),
+				TotalCPUMemTime: int64(90000),
+				TotalGPUMemTime: int64(900),
+			},
+		},
+	},
+}
+
+// var mockUnits = append(mockUnitsOne, mockUnitsTwo...)
 
 func newMockManager(logger log.Logger) (*resource.Manager, error) {
 	return &resource.Manager{
@@ -110,112 +143,240 @@ func newMockManager(logger log.Logger) (*resource.Manager, error) {
 }
 
 // GetUnits implements collection units between start and end times
-func (m *mockFetcherOne) Fetch(start time.Time, end time.Time) ([]models.Unit, error) {
+func (m *mockFetcherOne) Fetch(start time.Time, end time.Time) ([]models.ClusterUnits, error) {
 	return mockUnitsOne, nil
 }
 
 // GetUnits implements collection units between start and end times
-func (m *mockFetcherTwo) Fetch(start time.Time, end time.Time) ([]models.Unit, error) {
+func (m *mockFetcherTwo) Fetch(start time.Time, end time.Time) ([]models.ClusterUnits, error) {
 	return mockUnitsTwo, nil
 }
 
 // Return error for this mockFetcher
-func (m *mockFetcherThree) Fetch(start time.Time, end time.Time) ([]models.Unit, error) {
+func (m *mockFetcherThree) Fetch(start time.Time, end time.Time) ([]models.ClusterUnits, error) {
 	return nil, fmt.Errorf("failed to fetch units")
 }
 
-type mockUpdater struct {
+var mockUpdatedUnitsSlurm00 = []models.ClusterUnits{
+	{
+		Cluster: models.Cluster{
+			ID: "slurm-0",
+		},
+		Units: []models.Unit{
+			{
+				UUID:            "10000",
+				Usr:             "foo1",
+				Project:         "fooprj",
+				TotalCPUTime:    int64(1800),
+				TotalGPUTime:    int64(900),
+				TotalWallTime:   int64(900),
+				TotalCPUMemTime: int64(9000),
+				TotalGPUMemTime: int64(900),
+				AveCPUUsage:     10,
+			},
+			{
+				UUID:            "10001",
+				Usr:             "foo1",
+				Project:         "fooprj",
+				TotalCPUTime:    int64(900),
+				TotalWallTime:   int64(900),
+				TotalCPUMemTime: int64(4500),
+				AveCPUUsage:     25,
+			},
+		},
+	},
+}
+
+var mockUpdatedUnitsSlurm01 = []models.ClusterUnits{
+	{
+		Cluster: models.Cluster{
+			ID: "slurm-0",
+		},
+		Units: []models.Unit{
+			{
+				UUID:            "10000",
+				Usr:             "foo1",
+				Project:         "fooprj",
+				TotalCPUTime:    int64(1800),
+				TotalGPUTime:    int64(900),
+				TotalWallTime:   int64(900),
+				TotalCPUMemTime: int64(9000),
+				TotalGPUMemTime: int64(900),
+				AveCPUUsage:     10,
+				AveGPUUsage:     20,
+			},
+			{
+				UUID:                "10001",
+				Usr:                 "foo1",
+				Project:             "fooprj",
+				TotalCPUTime:        int64(900),
+				TotalWallTime:       int64(900),
+				TotalCPUMemTime:     int64(4500),
+				AveCPUUsage:         25,
+				TotalCPUEnergyUsage: 100,
+			},
+		},
+	},
+}
+
+var mockUpdatedUnitsSlurm1 = []models.ClusterUnits{
+	{
+		Cluster: models.Cluster{
+			ID: "slurm-1",
+		},
+		Units: []models.Unit{
+			{
+				UUID:              "10002",
+				Usr:               "foo1",
+				Project:           "fooprj",
+				TotalCPUTime:      int64(2700),
+				TotalWallTime:     int64(900),
+				TotalCPUMemTime:   int64(9000),
+				TotalCPUEmissions: 20,
+			},
+			{
+				UUID:              "10003",
+				Usr:               "foo2",
+				Project:           "fooprj",
+				TotalCPUTime:      int64(3600),
+				TotalWallTime:     int64(1800),
+				TotalCPUMemTime:   int64(90000),
+				TotalCPUEmissions: 40,
+			},
+		},
+	},
+}
+
+var mockUpdatedUnitsOS0 = []models.ClusterUnits{
+	{
+		Cluster: models.Cluster{
+			ID: "os-0",
+		},
+		Units: []models.Unit{
+			{
+				UUID:                "20000",
+				Usr:                 "bar1",
+				Project:             "barprj",
+				TotalCPUTime:        int64(900),
+				TotalGPUTime:        int64(900),
+				TotalWallTime:       int64(900),
+				TotalCPUMemTime:     int64(9000),
+				TotalGPUMemTime:     int64(900),
+				TotalGPUEnergyUsage: 200,
+			},
+		},
+	},
+}
+
+var mockUpdatedUnitsOS1 = []models.ClusterUnits{
+	{
+		Cluster: models.Cluster{
+			ID: "os-1",
+		},
+		Units: []models.Unit{
+			{
+				UUID:            "20001",
+				Usr:             "bar3",
+				Project:         "barprj",
+				TotalCPUTime:    int64(1800),
+				TotalGPUTime:    int64(1800),
+				TotalWallTime:   int64(900),
+				TotalCPUMemTime: int64(90000),
+				TotalGPUMemTime: int64(900),
+				AveCPUUsage:     20,
+				AveGPUMemUsage:  40,
+			},
+			{
+				UUID:              "20002",
+				Usr:               "bar3",
+				Project:           "barprj",
+				TotalCPUTime:      int64(2700),
+				TotalGPUTime:      int64(900),
+				TotalWallTime:     int64(900),
+				TotalCPUMemTime:   int64(90000),
+				TotalGPUMemTime:   int64(900),
+				TotalGPUEmissions: 40,
+			},
+		},
+	},
+}
+
+type mockUpdaterSlurm00 struct {
 	logger log.Logger
 }
 
-var mockUpdatedUnits = []models.Unit{
-	{
-		UUID:            "10000",
-		Usr:             "foo1",
-		Project:         "fooprj",
-		TotalCPUTime:    int64(1800),
-		TotalGPUTime:    int64(900),
-		TotalWallTime:   int64(900),
-		TotalCPUMemTime: int64(9000),
-		TotalGPUMemTime: int64(900),
-		AveCPUUsage:     10,
-		AveGPUUsage:     20,
-	},
-	{
-		UUID:                "10001",
-		Usr:                 "foo1",
-		Project:             "fooprj",
-		TotalCPUTime:        int64(900),
-		TotalWallTime:       int64(900),
-		TotalCPUMemTime:     int64(4500),
-		AveCPUUsage:         25,
-		TotalCPUEnergyUsage: 100,
-	},
-	{
-		UUID:              "10002",
-		Usr:               "foo1",
-		Project:           "fooprj",
-		TotalCPUTime:      int64(2700),
-		TotalWallTime:     int64(900),
-		TotalCPUMemTime:   int64(9000),
-		TotalCPUEmissions: 20,
-	},
-	{
-		UUID:              "10003",
-		Usr:               "foo2",
-		Project:           "fooprj",
-		TotalCPUTime:      int64(3600),
-		TotalWallTime:     int64(1800),
-		TotalCPUMemTime:   int64(90000),
-		TotalCPUEmissions: 40,
-	},
-	{
-		UUID:                "20000",
-		Usr:                 "bar1",
-		Project:             "barprj",
-		TotalCPUTime:        int64(900),
-		TotalGPUTime:        int64(900),
-		TotalWallTime:       int64(900),
-		TotalCPUMemTime:     int64(9000),
-		TotalGPUMemTime:     int64(900),
-		TotalGPUEnergyUsage: 200,
-	},
-	{
-		UUID:            "20001",
-		Usr:             "bar3",
-		Project:         "barprj",
-		TotalCPUTime:    int64(1800),
-		TotalGPUTime:    int64(1800),
-		TotalWallTime:   int64(900),
-		TotalCPUMemTime: int64(90000),
-		TotalGPUMemTime: int64(900),
-		AveCPUUsage:     20,
-		AveGPUMemUsage:  40,
-	},
-	{
-		UUID:              "20002",
-		Usr:               "bar3",
-		Project:           "barprj",
-		TotalCPUTime:      int64(2700),
-		TotalGPUTime:      int64(900),
-		TotalWallTime:     int64(900),
-		TotalCPUMemTime:   int64(90000),
-		TotalGPUMemTime:   int64(900),
-		TotalGPUEmissions: 40,
-	},
+// GetUnits implements collection units between start and end times
+func (m mockUpdaterSlurm00) Update(
+	startTime time.Time,
+	endTime time.Time,
+	units []models.ClusterUnits,
+) []models.ClusterUnits {
+	return mockUpdatedUnitsSlurm00
+}
+
+type mockUpdaterSlurm01 struct {
+	logger log.Logger
+}
+
+// GetUnits implements collection units between start and end times
+func (m mockUpdaterSlurm01) Update(
+	startTime time.Time,
+	endTime time.Time,
+	units []models.ClusterUnits,
+) []models.ClusterUnits {
+	return mockUpdatedUnitsSlurm01
+}
+
+type mockUpdaterSlurm1 struct {
+	logger log.Logger
+}
+
+// GetUnits implements collection units between start and end times
+func (m mockUpdaterSlurm1) Update(
+	startTime time.Time,
+	endTime time.Time,
+	units []models.ClusterUnits,
+) []models.ClusterUnits {
+	return mockUpdatedUnitsSlurm1
+}
+
+type mockUpdaterOS0 struct {
+	logger log.Logger
+}
+
+// GetUnits implements collection units between start and end times
+func (m mockUpdaterOS0) Update(
+	startTime time.Time,
+	endTime time.Time,
+	units []models.ClusterUnits,
+) []models.ClusterUnits {
+	return mockUpdatedUnitsOS0
+}
+
+type mockUpdaterOS1 struct {
+	logger log.Logger
+}
+
+// GetUnits implements collection units between start and end times
+func (m mockUpdaterOS1) Update(
+	startTime time.Time,
+	endTime time.Time,
+	units []models.ClusterUnits,
+) []models.ClusterUnits {
+	return mockUpdatedUnitsOS1
 }
 
 func newMockUpdater(logger log.Logger) (*updater.UnitUpdater, error) {
 	return &updater.UnitUpdater{
-		Names:    []string{"mock"},
-		Updaters: []updater.Updater{&mockUpdater{logger: logger}},
-		Logger:   logger,
+		Updaters: map[string]updater.Updater{
+			"slurm-00": mockUpdaterSlurm00{logger: logger},
+			"slurm-01": mockUpdaterSlurm01{logger: logger},
+			"slurm-1":  mockUpdaterSlurm1{logger: logger},
+			"os-0":     mockUpdaterOS0{logger: logger},
+			"os-1":     mockUpdaterOS1{logger: logger},
+		},
+		Logger: logger,
 	}, nil
-}
-
-// GetUnits implements collection units between start and end times
-func (m *mockUpdater) Update(startTime time.Time, endTime time.Time, units []models.Unit) []models.Unit {
-	return mockUpdatedUnits
 }
 
 func prepareMockConfig(tmpDir string) *Config {
@@ -237,14 +398,15 @@ func prepareMockConfig(tmpDir string) *Config {
 	}
 	sacctFile.Close()
 	return &Config{
-		Logger:               log.NewNopLogger(),
-		DataPath:             dataDir,
-		DataBackupPath:       dataBackupDir,
-		LastUpdateTimeString: time.Now().Format("2006-01-02"),
-		RetentionPeriod:      time.Duration(24 * time.Hour),
-		ResourceManager:      newMockManager,
-		TSDB:                 &tsdb.TSDB{},
-		Updater:              newMockUpdater,
+		Logger: log.NewNopLogger(),
+		Data: DataConfig{
+			Path:            dataDir,
+			BackupPath:      dataBackupDir,
+			LastUpdateTime:  time.Now(),
+			RetentionPeriod: model.Duration(24 * time.Hour),
+		},
+		ResourceManager: newMockManager,
+		Updater:         newMockUpdater,
 	}
 }
 
@@ -254,7 +416,8 @@ func populateDBWithMockData(s *statsDB) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	s.execStatements(stmtMap, mockUnits)
+	s.execStatements(stmtMap, mockUnitsOne)
+	s.execStatements(stmtMap, mockUnitsTwo)
 	tx.Commit()
 }
 
@@ -262,10 +425,10 @@ func TestNewUnitStatsDB(t *testing.T) {
 	tmpDir := t.TempDir()
 	c := prepareMockConfig(tmpDir)
 
-	lastUnitsUpdateTimeFile := filepath.Join(c.DataPath, "lastupdatetime")
+	lastUnitsUpdateTimeFile := filepath.Join(c.Data.Path, "lastupdatetime")
 
 	// Make new stats DB
-	c.LastUpdateTimeString = "2023-12-20"
+	c.Data.LastUpdateTime, _ = time.Parse("2006-01-02", "2023-12-20")
 	_, err := NewStatsDB(c)
 	if err != nil {
 		t.Errorf("Failed to create new statsDB struct due to %s", err)
@@ -282,12 +445,12 @@ func TestNewUnitStatsDB(t *testing.T) {
 	}
 
 	// Check DB file exists
-	if _, err := os.Stat(c.DataPath); err != nil {
+	if _, err := os.Stat(c.Data.Path); err != nil {
 		t.Errorf("DB file not created")
 	}
 
 	// Make again a new stats DB with new lastUpdateTime
-	c.LastUpdateTimeString = "2023-12-21"
+	c.Data.LastUpdateTime, _ = time.Parse("2006-01-02", "2023-12-21")
 	_, err = NewStatsDB(c)
 	if err != nil {
 		t.Errorf("Failed to create new statsDB struct due to %s", err)
@@ -305,6 +468,7 @@ func TestNewUnitStatsDB(t *testing.T) {
 	}
 
 	// Make again a new stats DB with new lastUpdateTime
+	c.Data.LastUpdateTime, _ = time.Parse("2006-01-02", "2023-12-21")
 	_, err = NewStatsDB(c)
 	if err != nil {
 		t.Errorf("Failed to create new statsDB struct due to %s", err)
@@ -333,7 +497,7 @@ func TestNewUnitStatsDB(t *testing.T) {
 	}
 
 	// Make again a new stats DB with new lastUpdateTime
-	c.LastUpdateTimeString = "2023-12-22"
+	c.Data.LastUpdateTime, _ = time.Parse("2006-01-02", "2023-12-22")
 	_, err = NewStatsDB(c)
 	if err != nil {
 		t.Errorf("Failed to create new statsDB struct due to %s", err)
@@ -361,7 +525,9 @@ func TestUnitStatsDBEntries(t *testing.T) {
 	}
 
 	// Fetch units
-	expectedUnits := append(mockUnitsOne, mockUnitsTwo...)
+	var expectedUnits []models.ClusterUnits
+	expectedUnits = append(expectedUnits, mockUnitsOne...)
+	expectedUnits = append(expectedUnits, mockUnitsTwo...)
 	fetchedUnits, err := s.manager.Fetch(time.Now(), time.Now())
 	if !reflect.DeepEqual(fetchedUnits, expectedUnits) {
 		t.Errorf("expected %#v, got %#v", expectedUnits, fetchedUnits)
@@ -402,21 +568,32 @@ func TestUnitStatsDBEntries(t *testing.T) {
 		units = append(units, unit)
 	}
 
-	if !reflect.DeepEqual(units, mockUpdatedUnits) {
-		t.Errorf("expected %#v, \n\n\n got %#v", mockUpdatedUnits, units)
+	var mockUpdatedUnits []models.ClusterUnits
+	mockUpdatedUnits = append(mockUpdatedUnits, mockUpdatedUnitsSlurm01...)
+	mockUpdatedUnits = append(mockUpdatedUnits, mockUpdatedUnitsSlurm1...)
+	mockUpdatedUnits = append(mockUpdatedUnits, mockUpdatedUnitsOS0...)
+	mockUpdatedUnits = append(mockUpdatedUnits, mockUpdatedUnitsOS1...)
+	var expectedUpdatedUnits []models.Unit
+	for _, units := range mockUpdatedUnits {
+		expectedUpdatedUnits = append(expectedUpdatedUnits, units.Units...)
+	}
+
+	if !reflect.DeepEqual(units, expectedUpdatedUnits) {
+		t.Errorf("expected %#v, \n\n\n got %#v", expectedUpdatedUnits, units)
 	}
 
 	// Make usage query
-	rows, err = s.db.Query("SELECT avg_cpu_usage,num_updates FROM usage WHERE usr = 'foo1'")
+	rows, err = s.db.Query(
+		"SELECT avg_cpu_usage,num_updates FROM usage WHERE usr = 'foo1' AND cluster_id = 'slurm-0'",
+	)
 	if err != nil {
 		t.Errorf("Failed to make DB query: %s", err)
 	}
 	defer rows.Close()
 
-	source, _ := os.Open(filepath.Join(tmpDir, "data", "ceems_api_server.db"))
-	defer source.Close()
-
-	// For debugging
+	// // For debugging
+	// source, _ := os.Open(filepath.Join(tmpDir, "data", base.CEEMSDBName))
+	// defer source.Close()
 	// destination, _ := os.Create("test.db")
 	// defer destination.Close()
 	// nBytes, _ := io.Copy(destination, source)
@@ -499,7 +676,7 @@ func TestUnitStatsDBBackup(t *testing.T) {
 	populateDBWithMockData(s)
 
 	// Run backup
-	expectedBackupFile := filepath.Join(c.DataBackupPath, "backup.db")
+	expectedBackupFile := filepath.Join(c.Data.BackupPath, "backup.db")
 	err = s.backup(expectedBackupFile)
 	if err != nil {
 		t.Errorf("Failed to backup DB %s", err)
@@ -558,12 +735,19 @@ func TestUnitStatsDeleteOldUnits(t *testing.T) {
 	}
 
 	// Add new row that should be deleted
-	units := []models.Unit{
+	units := []models.ClusterUnits{
 		{
-			UUID: unitID,
-			CreatedAt: time.Now().
-				Add(time.Duration(-s.storage.retentionPeriod*24*2) * time.Hour).
-				Format(base.DatetimeLayout),
+			Cluster: models.Cluster{
+				ID: "default",
+			},
+			Units: []models.Unit{
+				{
+					UUID: unitID,
+					CreatedAt: time.Now().
+						Add(time.Duration(-s.storage.retentionPeriod*24*2) * time.Hour).
+						Format(base.DatetimeLayout),
+				},
+			},
 		},
 	}
 	tx, _ := s.db.Begin()

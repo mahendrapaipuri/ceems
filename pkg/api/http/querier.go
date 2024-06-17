@@ -45,52 +45,31 @@ func (q *Query) get() (string, []string) {
 	return q.builder.String(), q.params
 }
 
-// Scan rows to get usage statistics
-// Ignore numRows as getting correct number of rows is bit fragile at the moment.
-// We dont want panics due to insufficient allocation. We should look into improving
-// this for future
-func scanUsage(rows *sql.Rows) interface{} {
-	var usageRows []models.Usage
-	var usage models.Usage
-	for rows.Next() {
-		if err := structset.ScanRow(rows, &usage); err != nil {
-			continue
-		}
-		usageRows = append(usageRows, usage)
-	}
-	return usageRows
-}
-
-// Scan account rows
-func scanProjects(rows *sql.Rows) interface{} {
-	var accounts []models.Project
-	var account models.Project
-	for rows.Next() {
-		if err := structset.ScanRow(rows, &account); err != nil {
-			continue
-		}
-		accounts = append(accounts, account)
-	}
-	return accounts
-}
-
-// Scan unit rows
-func scanUnits(numRows int, rows *sql.Rows) interface{} {
-	var units = make([]models.Unit, numRows)
-	var unit models.Unit
+// Scan rows
+// We use numRows only for units query as returned number of units can be very big
+// and preallocating can have positive impact on performance
+// Ref: https://oilbeater.com/en/2024/03/04/golang-slice-performance/
+// For the rest of queries, they should return fewer rows and hence, we can live with
+// dynamic allocation
+func scanRows[T any](rows *sql.Rows, numRows int) []T {
+	var values = make([]T, numRows)
+	var value T
 	rowIdx := 0
 	for rows.Next() {
-		if err := structset.ScanRow(rows, &unit); err != nil {
+		if err := structset.ScanRow(rows, &value); err != nil {
 			continue
 		}
-		units[rowIdx] = unit
+		if numRows > 0 {
+			values[rowIdx] = value
+		} else {
+			values = append(values, value)
+		}
 		rowIdx++
 	}
-	return units
+	return values
 }
 
-// Get data from DB
-func querier(dbConn *sql.DB, query Query, model string, logger log.Logger) (interface{}, error) {
+func countRows(dbConn *sql.DB, query Query) (int, error) {
 	var numRows int
 
 	// Get query string and params
@@ -100,21 +79,13 @@ func querier(dbConn *sql.DB, query Query, model string, logger log.Logger) (inte
 	countQuery := queryRegexp.ReplaceAllString(queryString, "SELECT COUNT(*) FROM $2")
 	countStmt, err := dbConn.Prepare(countQuery)
 	if err != nil {
-		level.Error(logger).Log(
-			"msg", "Failed to prepare count SQL statement for query", "query", countQuery,
-			"queryParams", strings.Join(queryParams, ","), "err", err,
-		)
-		return nil, err
+		return 0, err
 	}
 	defer countStmt.Close()
 
 	queryStmt, err := dbConn.Prepare(queryString)
 	if err != nil {
-		level.Error(logger).Log(
-			"msg", "Failed to prepare query SQL statement for query", "query", queryString,
-			"queryParams", strings.Join(queryParams, ","), "err", err,
-		)
-		return nil, err
+		return 0, err
 	}
 	defer queryStmt.Close()
 
@@ -127,10 +98,7 @@ func querier(dbConn *sql.DB, query Query, model string, logger log.Logger) (inte
 	// First make a query to get number of rows that will be returned by query
 	countRows, err := countStmt.Query(qParams...)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to query for number of rows",
-			"query", countQuery, "queryParams", strings.Join(queryParams, ","), "err", err,
-		)
-		return nil, err
+		return 0, err
 	}
 	defer countRows.Close()
 
@@ -144,15 +112,41 @@ func querier(dbConn *sql.DB, query Query, model string, logger log.Logger) (inte
 	for countRows.Next() {
 		irow++
 		if err := countRows.Scan(&numRows); err != nil {
-			level.Error(logger).Log("msg", "Failed to scan count row",
-				"query", countQuery, "queryParams", strings.Join(queryParams, ","), "err", err,
-			)
 			continue
 		}
 	}
-	// It should be incremented by 1 as index starts from 0
-	if model == usageResourceName {
-		numRows = irow + 1
+	return numRows, nil
+}
+
+// Querier queries the DB and return the response
+func Querier[T any](dbConn *sql.DB, query Query, logger log.Logger) ([]T, error) {
+	var numRows int
+	var err error
+
+	// If requested model is units, get number of rows
+	switch any(*new(T)).(type) {
+	case models.Unit:
+		if numRows, err = countRows(dbConn, query); err != nil {
+			level.Error(logger).Log("msg", "Failed to get rows count", "err", err)
+			return nil, err
+		}
+	default:
+		numRows = 0
+	}
+
+	// Get query string and params
+	queryString, queryParams := query.get()
+
+	queryStmt, err := dbConn.Prepare(queryString)
+	if err != nil {
+		return nil, err
+	}
+	defer queryStmt.Close()
+
+	// queryParams has to be an inteface. Do casting here
+	qParams := make([]interface{}, len(queryParams))
+	for i, v := range queryParams {
+		qParams[i] = v
 	}
 
 	rows, err := queryStmt.Query(qParams...)
@@ -165,27 +159,10 @@ func querier(dbConn *sql.DB, query Query, model string, logger log.Logger) (inte
 	defer rows.Close()
 
 	// Loop through rows, using Scan to assign column data to struct fields.
-	if model == unitsResourceName {
-		var units = scanUnits(numRows, rows)
-		level.Debug(logger).Log(
-			"msg", "Units", "query", queryString, "queryParams", strings.Join(queryParams, ","),
-			"num_rows", numRows,
-		)
-		return units, nil
-	} else if model == usageResourceName {
-		var usageStats = scanUsage(rows)
-		level.Debug(logger).Log(
-			"msg", "Usage stats", "query", queryString,
-			"queryParams", strings.Join(queryParams, ","), "num_rows", numRows,
-		)
-		return usageStats, nil
-	} else if model == "projects" {
-		var accounts = scanProjects(rows)
-		level.Debug(logger).Log(
-			"msg", "Projects", "query", queryString,
-			"queryParams", strings.Join(queryParams, ","), "num_rows", numRows,
-		)
-		return accounts, nil
-	}
-	return nil, fmt.Errorf("unknown model: %s", model)
+	var values = scanRows[T](rows, numRows)
+	level.Debug(logger).Log(
+		"msg", "Rows", "query", queryString, "queryParams", strings.Join(queryParams, ","),
+		"num_rows", numRows,
+	)
+	return values, nil
 }

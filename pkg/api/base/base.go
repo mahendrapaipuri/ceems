@@ -13,6 +13,9 @@ import (
 // CEEMSServerAppName is kingpin app name
 const CEEMSServerAppName = "ceems_api_server"
 
+// CEEMSDBName is the name of CEEMS DB file
+const CEEMSDBName = "ceems.db"
+
 // CEEMSServerApp is kinpin app
 var CEEMSServerApp = *kingpin.New(
 	CEEMSServerAppName,
@@ -21,26 +24,30 @@ var CEEMSServerApp = *kingpin.New(
 
 // DB table names
 var (
-	UnitsDBTableName = models.Unit{}.TableName()
-	UsageDBTableName = models.Usage{}.TableName()
+	UnitsDBTableName      = models.Unit{}.TableName()
+	UsageDBTableName      = models.Usage{}.TableName()
+	AdminUsersDBTableName = models.AdminUsers{}.TableName()
 )
 
 // Slice of all field names of Unit struct
 var (
-	UnitsDBTableColNames = models.Unit{}.TagNames("sql")
-	UsageDBTableColNames = models.Usage{}.TagNames("sql")
+	UnitsDBTableColNames      = models.Unit{}.TagNames("sql")
+	UsageDBTableColNames      = models.Usage{}.TagNames("sql")
+	AdminUsersDBTableColNames = models.AdminUsers{}.TagNames("sql")
 )
 
 // Map of struct field name to DB column name
 var (
-	UnitsDBTableStructFieldColNameMap = models.Unit{}.TagMap("", "sql")
-	UsageDBTableStructFieldColNameMap = models.Usage{}.TagMap("", "sql")
+	UnitsDBTableStructFieldColNameMap      = models.Unit{}.TagMap("", "sql")
+	UsageDBTableStructFieldColNameMap      = models.Usage{}.TagMap("", "sql")
+	AdminUsersDBTableStructFieldColNameMap = models.AdminUsers{}.TagMap("", "sql")
 )
 
 // Map of DB column names to DB column type
 var (
-	UnitsDBTableColTypeMap = models.Unit{}.TagMap("sql", "sqlitetype")
-	UsageDBTableColTypeMap = models.Usage{}.TagMap("sql", "sqlitetype")
+	UnitsDBTableColTypeMap      = models.Unit{}.TagMap("sql", "sqlitetype")
+	UsageDBTableColTypeMap      = models.Usage{}.TagMap("sql", "sqlitetype")
+	AdminUsersDBTableColTypeMap = models.AdminUsers{}.TagMap("sql", "sqlitetype")
 )
 
 // DatetimeLayout to be used in the package
@@ -48,9 +55,7 @@ var DatetimeLayout = fmt.Sprintf("%sT%s", time.DateOnly, time.TimeOnly)
 
 // CLI args with global scope
 var (
-	GrafanaWebURL           string
-	GrafanaWebSkipTLSVerify bool
-	GrafanaAdminTeamID      string
+	ConfigFilePath string
 )
 
 // APIVersion sets the version of API in paths

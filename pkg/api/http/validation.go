@@ -4,32 +4,76 @@ import (
 	"database/sql"
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
+	ceems_db "github.com/mahendrapaipuri/ceems/pkg/api/db"
 )
 
+// adminUsers returns a slice of admin users fetched from DB
+func adminUsers(dbConn *sql.DB, logger log.Logger) []string {
+	var users []string
+	for _, source := range ceems_db.AdminUsersSources {
+		rows, err := dbConn.Query(
+			fmt.Sprintf("SELECT users FROM %s WHERE source = ?", base.AdminUsersDBTableName),
+			source,
+		)
+		if err != nil {
+			level.Error(logger).Log("msg", "Failed to query for admin users", "source", source, "err", err)
+			continue
+		}
+
+		// Scan users rows
+		var usersList string
+		for rows.Next() {
+			if err := rows.Scan(&usersList); err != nil {
+				level.Error(logger).Log("msg", "Failed to scan row for admin users query", "source", source, "err", err)
+				continue
+			}
+			users = append(users, strings.Split(usersList, ceems_db.AdminUsersSeparator)...)
+		}
+	}
+	return users
+}
+
 // VerifyOwnership returns true if user is the owner of queried units
-func VerifyOwnership(user string, uuids []string, db *sql.DB, logger log.Logger) bool {
-	// If there is no active DB conn or if uuids is empty, return
-	if db == nil || len(uuids) == 0 {
+func VerifyOwnership(user string, rmIDs []string, uuids []string, db *sql.DB, logger log.Logger) bool {
+	// If there are no UUIDs pass
+	// If current user is in list of admin users, pass the check
+	if len(uuids) == 0 || slices.Contains(adminUsers(db, logger), user) {
 		return true
 	}
 
+	// If the data is incomplete, forbid the request
+	if db == nil || len(rmIDs) == 0 || user == "" {
+		level.Debug(logger).Log(
+			"msg", "Incomplete data for unit ownership verification", "user", user,
+			"cluster_id", strings.Join(rmIDs, ","), "queried_uuids", strings.Join(uuids, ","),
+		)
+		return false
+	}
+
 	level.Debug(logger).
-		Log("msg", "UUIDs in query", "user", user, "queried_uuids", strings.Join(uuids, ","))
+		Log("msg", "UUIDs in query", "user", user,
+			"cluster_id", strings.Join(rmIDs, ","), "queried_uuids", strings.Join(uuids, ","),
+		)
 
 	// First get a list of projects that user is part of
+	queryData := islice(append([]string{user}, rmIDs...))
 	rows, err := db.Query(
-		fmt.Sprintf("SELECT DISTINCT project FROM %s WHERE usr = ?", base.UsageDBTableName),
-		user,
+		fmt.Sprintf(
+			"SELECT DISTINCT project FROM %s WHERE usr = ? AND cluster_id IN (%s)",
+			base.UsageDBTableName, strings.Join(strings.Split(strings.Repeat("?", len(rmIDs)), ""), ","),
+		),
+		queryData...,
 	)
 	if err != nil {
 		level.Warn(logger).
-			Log("msg", "Failed to get user projects. Allowing query", "user", user,
-				"queried_uuids", strings.Join(uuids, ","), "err", err,
+			Log("msg", "Failed to get user projects. Query unauthorized", "user", user,
+				"cluster_id", strings.Join(rmIDs, ","), "queried_uuids", strings.Join(uuids, ","), "err", err,
 			)
 		return false
 	}
@@ -49,7 +93,7 @@ func VerifyOwnership(user string, uuids []string, db *sql.DB, logger log.Logger)
 	if len(projects) == 0 {
 		level.Warn(logger).
 			Log("msg", "No user projects found. Query unauthorized", "user", user,
-				"queried_uuids", strings.Join(uuids, ","), "err", err,
+				"cluster_id", strings.Join(rmIDs, ","), "queried_uuids", strings.Join(uuids, ","), "err", err,
 			)
 		return false
 	}
@@ -57,20 +101,24 @@ func VerifyOwnership(user string, uuids []string, db *sql.DB, logger log.Logger)
 	// Make a query and query args. Query args must be converted to slice of interfaces
 	// and it is sql driver's responsibility to cast them to proper types
 	query := fmt.Sprintf(
-		"SELECT uuid FROM %s WHERE project IN (%s) AND uuid IN (%s)",
+		"SELECT uuid FROM %s WHERE cluster_id IN (%s) AND project IN (%s) AND uuid IN (%s)",
 		base.UnitsDBTableName,
+		strings.Join(strings.Split(strings.Repeat("?", len(rmIDs)), ""), ","),
 		strings.Join(strings.Split(strings.Repeat("?", len(projects)), ""), ","),
 		strings.Join(strings.Split(strings.Repeat("?", len(uuids)), ""), ","),
 	)
-	queryData := islice(append(projects, uuids...))
+	qData := rmIDs
+	qData = append(qData, projects...)
+	qData = append(qData, uuids...)
+	queryData = islice(qData)
 
-	// Make query. If query fails for any reason, we allow request to avoid false negatives
+	// Make query. If query fails for any reason, we block the request
 	rows, err = db.Query(query, queryData...)
 	if err != nil {
 		level.Warn(logger).
 			Log("msg", "Failed to check uuid ownership. Query unauthorized", "user", user, "query", query,
 				"user_projects", strings.Join(projects, ","), "queried_uuids", strings.Join(uuids, ","),
-				"err", err,
+				"cluster_id", strings.Join(rmIDs, ","), "err", err,
 			)
 		return false
 	}

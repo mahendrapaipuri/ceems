@@ -22,29 +22,44 @@ import (
 	"github.com/mahendrapaipuri/ceems/pkg/api/db"
 	"github.com/mahendrapaipuri/ceems/pkg/api/http/docs"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
-	"github.com/mahendrapaipuri/ceems/pkg/grafana"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/prometheus/common/config"
+	"github.com/prometheus/common/model"
 	"github.com/prometheus/exporter-toolkit/web"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
 
 // API Resources names
 const (
-	unitsResourceName    = "units"
-	usageResourceName    = "usage"
-	projectsResourceName = "projects"
+	unitsResourceName      = "units"
+	usageResourceName      = "usage"
+	adminUsersResourceName = "admin_users"
+	projectsResourceName   = "projects"
 )
 
-// Config makes a server config from CLI args
-type Config struct {
-	Logger           log.Logger
+// WebConfig makes HTTP web config from CLI args
+type WebConfig struct {
 	Address          string
 	WebSystemdSocket bool
 	WebConfigFile    string
-	DBConfig         db.Config
-	MaxQueryPeriod   time.Duration
-	AdminUsers       []string
-	Grafana          *grafana.Grafana
+	RoutePrefix      string                  `yaml:"route_prefix"`
+	MaxQueryPeriod   model.Duration          `yaml:"max_query"`
+	URL              string                  `yaml:"url"`
+	HTTPClientConfig config.HTTPClientConfig `yaml:",inline"`
+}
+
+// Config makes a server config
+type Config struct {
+	Logger log.Logger
+	Web    WebConfig
+	DB     db.Config
+}
+
+type queriers struct {
+	unit    func(*sql.DB, Query, log.Logger) ([]models.Unit, error)
+	usage   func(*sql.DB, Query, log.Logger) ([]models.Usage, error)
+	project func(*sql.DB, Query, log.Logger) ([]models.Project, error)
+	cluster func(*sql.DB, Query, log.Logger) ([]models.Cluster, error)
 }
 
 // CEEMSServer struct implements HTTP server for stats
@@ -55,14 +70,14 @@ type CEEMSServer struct {
 	db             *sql.DB
 	dbConfig       db.Config
 	maxQueryPeriod time.Duration
-	Querier        func(*sql.DB, Query, string, log.Logger) (interface{}, error)
-	HealthCheck    func(*sql.DB, log.Logger) bool
+	queriers       queriers
+	healthCheck    func(*sql.DB, log.Logger) bool
 }
 
 // Response defines the response model of CEEMSServer
 type Response[T any] struct {
 	Status    string    `json:"status"`
-	Data      []T       `json:"data,omitempty"`
+	Data      []T       `json:"data"`
 	ErrorType errorType `json:"errorType,omitempty"`
 	Error     string    `json:"error,omitempty"`
 	Warnings  []string  `json:"warnings,omitempty"`
@@ -103,47 +118,68 @@ func getDBStatus(dbConn *sql.DB, logger log.Logger) bool {
 
 // NewCEEMSServer creates new CEEMSServer struct instance
 func NewCEEMSServer(c *Config) (*CEEMSServer, func(), error) {
+	var dbConn *sql.DB
+	var err error
+
 	router := mux.NewRouter()
 	server := &CEEMSServer{
 		logger: c.Logger,
 		server: &http.Server{
-			Addr:         c.Address,
+			Addr:         c.Web.Address,
 			Handler:      router,
 			ReadTimeout:  10 * time.Second,
 			WriteTimeout: 10 * time.Second,
 		},
 		webConfig: &web.FlagConfig{
-			WebListenAddresses: &[]string{c.Address},
-			WebSystemdSocket:   &c.WebSystemdSocket,
-			WebConfigFile:      &c.WebConfigFile,
+			WebListenAddresses: &[]string{c.Web.Address},
+			WebSystemdSocket:   &c.Web.WebSystemdSocket,
+			WebConfigFile:      &c.Web.WebConfigFile,
 		},
-		dbConfig:       c.DBConfig,
-		maxQueryPeriod: c.MaxQueryPeriod,
-		Querier:        querier,
-		HealthCheck:    getDBStatus,
+		dbConfig:       c.DB,
+		maxQueryPeriod: time.Duration(c.Web.MaxQueryPeriod),
+		queriers: queriers{
+			unit:    Querier[models.Unit],
+			usage:   Querier[models.Usage],
+			project: Querier[models.Project],
+			cluster: Querier[models.Cluster],
+		},
+		healthCheck: getDBStatus,
 	}
 
+	// Get route prefix based on external URL path
+	var routePrefix string
+	if c.Web.RoutePrefix != "/" {
+		routePrefix = fmt.Sprintf("%s/api/%s/", c.Web.RoutePrefix, base.APIVersion)
+	} else {
+		routePrefix = fmt.Sprintf("/api/%s/", base.APIVersion)
+	}
+
+	level.Debug(c.Logger).Log("msg", "CEEMS API server running on prefix", "prefix", routePrefix)
+
+	// Create a sub router with apiVersion as PathPrefix
+	subRouter := router.PathPrefix(routePrefix).Subrouter()
+
+	// If the prefix is missing for the root path, prepend it.
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, routePrefix, http.StatusFound)
+	})
+
+	subRouter.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`<html>
-			<head><title>Usage Stats API Server</title></head>
+			<head><title>CEEMS API Server</title></head>
 			<body>
 			<h1>Compute Stats</h1>
-			<p><a href="./api/units">Compute Units</a></p>
-			<p><a href="./api/projects">Projects</a></p>
-			<p><a href="./api/usage/current">Current Usage</a></p>
-			<p><a href="./api/usage/global">Total Usage</a></p>
+			<p><a href="swagger/index.html">Swagger API</a></p>
 			</body>
 			</html>`))
 	})
 
-	// Create a sub router with apiVersion as PathPrefix
-	subRouter := router.PathPrefix(fmt.Sprintf("/api/%s/", base.APIVersion)).Subrouter()
-
 	// Allow only GET methods
 	subRouter.HandleFunc("/health", server.health).Methods(http.MethodGet)
 	subRouter.HandleFunc("/projects", server.projects).Methods(http.MethodGet)
+	subRouter.HandleFunc("/clusters/admin", server.clustersAdmin).Methods(http.MethodGet)
 	subRouter.HandleFunc(fmt.Sprintf("/%s", unitsResourceName), server.units).Methods(http.MethodGet)
 	subRouter.HandleFunc(fmt.Sprintf("/%s/admin", unitsResourceName), server.unitsAdmin).Methods(http.MethodGet)
 	subRouter.HandleFunc(fmt.Sprintf("/%s/{mode:(?:current|global)}", usageResourceName), server.usage).
@@ -157,29 +193,30 @@ func NewCEEMSServer(c *Config) (*CEEMSServer, func(), error) {
 	subRouter.HandleFunc("/{resource:(?:units|usage)}/demo", server.demo).Methods(http.MethodGet)
 
 	// pprof debug end points
-	router.PathPrefix("/debug/").Handler(http.DefaultServeMux)
+	subRouter.PathPrefix("/debug/").Handler(http.DefaultServeMux)
 
-	router.PathPrefix("/swagger/").Handler(httpSwagger.Handler(
+	subRouter.PathPrefix("/swagger/").Handler(httpSwagger.Handler(
 		httpSwagger.URL("doc.json"), // The url pointing to API definition
 		httpSwagger.DeepLinking(true),
 		httpSwagger.DocExpansion("list"),
 		httpSwagger.DomID("swagger-ui"),
 	)).Methods(http.MethodGet)
 
+	// Open DB connection
+	if dbConn, err = sql.Open("sqlite3", filepath.Join(c.DB.Data.Path, base.CEEMSDBName)); err != nil {
+		return nil, func() {}, err
+	}
+	server.db = dbConn
+
 	// Add a middleware that verifies headers and pass them in requests
 	// The middleware will fetch admin users from Grafana periodically to update list
 	amw := authenticationMiddleware{
-		logger:     c.Logger,
-		adminUsers: c.AdminUsers,
-		grafana:    c.Grafana,
+		logger:       c.Logger,
+		routerPrefix: routePrefix,
+		db:           dbConn,
+		adminUsers:   adminUsers,
 	}
 	router.Use(amw.Middleware)
-
-	// Open DB connection
-	var err error
-	if server.db, err = sql.Open("sqlite3", filepath.Join(c.DBConfig.DataPath, fmt.Sprintf("%s.db", base.CEEMSServerAppName))); err != nil {
-		return nil, func() {}, err
-	}
 	return server, func() {}, nil
 }
 
@@ -264,7 +301,7 @@ func (s *CEEMSServer) setHeaders(w http.ResponseWriter) {
 //
 // Check status of server
 func (s *CEEMSServer) health(w http.ResponseWriter, r *http.Request) {
-	if !s.HealthCheck(s.db, s.logger) {
+	if !s.healthCheck(s.db, s.logger) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.WriteHeader(http.StatusServiceUnavailable)
 		w.Write([]byte("KO"))
@@ -283,12 +320,10 @@ func (s *CEEMSServer) getCommonQueryParams(q *Query, URLValues url.Values) Query
 		q.param(projects)
 	}
 
-	// Check if running query param is included
-	// Running units will have ended_at_ts as 0 and we use this in query to
-	// fetch these units
-	if _, ok := URLValues["running"]; ok {
-		q.query(" OR ended_at_ts IN ")
-		q.param([]string{"0"})
+	// Get cluster_id query parameters if any
+	if rmIDs := URLValues["cluster_id"]; len(rmIDs) > 0 {
+		q.query(" AND cluster_id IN ")
+		q.param(rmIDs)
 	}
 	return *q
 }
@@ -394,6 +429,14 @@ func (s *CEEMSServer) unitsQuerier(
 	// Add common query parameters
 	q = s.getCommonQueryParams(&q, r.URL.Query())
 
+	// Check if running query param is included
+	// Running units will have ended_at_ts as 0 and we use this in query to
+	// fetch these units
+	if _, ok := r.URL.Query()["running"]; ok {
+		q.query(" OR ended_at_ts IN ")
+		q.param([]string{"0"})
+	}
+
 	// Check if uuid present in query params and add them
 	// If any of uuid query params are present
 	// do not check query window as we are fetching a specific unit(s)
@@ -425,7 +468,7 @@ func (s *CEEMSServer) unitsQuerier(
 queryUnits:
 
 	// Get all user units in the given time window
-	units, err := s.Querier(s.db, q, unitsResourceName, s.logger)
+	units, err := s.queriers.unit(s.db, q, s.logger)
 	if err != nil {
 		level.Error(s.logger).Log("msg", "Failed to fetch units", "loggedUser", loggedUser, "err", err)
 		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
@@ -436,7 +479,7 @@ queryUnits:
 	w.WriteHeader(http.StatusOK)
 	response := Response[models.Unit]{
 		Status: "success",
-		Data:   units.([]models.Unit),
+		Data:   units,
 	}
 	if err = json.NewEncoder(w).Encode(&response); err != nil {
 		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
@@ -471,9 +514,10 @@ queryUnits:
 //	@Tags			units
 //	@Produce		json
 //	@Param			X-Grafana-User	header		string		true	"Current user name"
-//	@Param			uuid			query		[]string	false	"Unit UUID"	collectionFormat(multi)
-//	@Param			project			query		[]string	false	"Project"	collectionFormat(multi)
-//	@Param			user			query		[]string	false	"User name"	collectionFormat(multi)
+//	@Param			cluster_id		query		[]string	false	"cluster ID"	collectionFormat(multi)
+//	@Param			uuid			query		[]string	false	"Unit UUID"		collectionFormat(multi)
+//	@Param			project			query		[]string	false	"Project"		collectionFormat(multi)
+//	@Param			user			query		[]string	false	"User name"		collectionFormat(multi)
 //	@Param			running			query		bool		false	"Whether to fetch running units"
 //	@Param			from			query		string		false	"From timestamp"
 //	@Param			to				query		string		false	"To timestamp"
@@ -515,8 +559,9 @@ func (s *CEEMSServer) unitsAdmin(w http.ResponseWriter, r *http.Request) {
 //	@Tags			units
 //	@Produce		json
 //	@Param			X-Grafana-User	header		string		true	"Current user name"
-//	@Param			uuid			query		[]string	false	"Unit UUID"	collectionFormat(multi)
-//	@Param			project			query		[]string	false	"Project"	collectionFormat(multi)
+//	@Param			cluster_id		query		[]string	false	"cluster ID"	collectionFormat(multi)
+//	@Param			uuid			query		[]string	false	"Unit UUID"		collectionFormat(multi)
+//	@Param			project			query		[]string	false	"Project"		collectionFormat(multi)
 //	@Param			running			query		bool		false	"Whether to fetch running units"
 //	@Param			from			query		string		false	"From timestamp"
 //	@Param			to				query		string		false	"To timestamp"
@@ -579,11 +624,14 @@ func (s *CEEMSServer) verifyUnitsOwnership(w http.ResponseWriter, r *http.Reques
 	// Get current logged user and dashboard user from headers
 	_, dashboardUser := s.getUser(r)
 
+	// Get cluster ID
+	rmID := r.URL.Query()["cluster_id"]
+
 	// Get list of queried uuids
 	uuids := r.URL.Query()["uuid"]
 
 	// Check if user is owner of the queries uuids
-	if VerifyOwnership(dashboardUser, uuids, s.db, s.logger) {
+	if VerifyOwnership(dashboardUser, rmID, uuids, s.db, s.logger) {
 		w.WriteHeader(http.StatusOK)
 		response := Response[models.Ownership]{
 			Status: "success",
@@ -604,6 +652,60 @@ func (s *CEEMSServer) verifyUnitsOwnership(w http.ResponseWriter, r *http.Reques
 	}
 }
 
+// clusters         godoc
+//
+//	@Summary		List clusters
+//	@Description	This endpoint will list all the cluster IDs in the CEEMS DB. The
+//	@Description	current user is always identified by the header `X-Grafana-User` in
+//	@Description	the request.
+//	@Description
+//	@Description	This will list all the cluster IDs in the DB. This is primarily
+//	@Description	used to verify the CEEMS load balancer's backend IDs that should match
+//	@Description	with cluster IDs.
+//	@Description
+//	@Security	BasicAuth
+//	@Tags		clusters
+//	@Produce	json
+//	@Param		X-Grafana-User	header		string		true	"Current user name"
+//	@Param		cluster_id		query		[]string	false	"cluster ID"	collectionFormat(multi)
+//	@Success	200				{object}	Response[models.Cluster]
+//	@Failure	401				{object}	Response[any]
+//	@Failure	500				{object}	Response[any]
+//	@Router		/clusters/admin [get]
+//
+// GET /clusters/admin
+// Get clusters list in the DB
+func (s *CEEMSServer) clustersAdmin(w http.ResponseWriter, r *http.Request) {
+	// Set headers
+	s.setHeaders(w)
+
+	// Get current user from header
+	_, dashboardUser := s.getUser(r)
+
+	// Make query
+	q := Query{}
+	q.query(fmt.Sprintf("SELECT DISTINCT cluster_id, resource_manager FROM %s", base.UnitsDBTableName))
+
+	// Make query and get list of cluster ids
+	clusterIDs, err := s.queriers.cluster(s.db, q, s.logger)
+	if err != nil {
+		level.Error(s.logger).Log("msg", "Failed to fetch cluster IDs", "user", dashboardUser, "err", err)
+		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
+		return
+	}
+
+	// Write response
+	w.WriteHeader(http.StatusOK)
+	rmIDsResponse := Response[models.Cluster]{
+		Status: "success",
+		Data:   clusterIDs,
+	}
+	if err = json.NewEncoder(w).Encode(&rmIDsResponse); err != nil {
+		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
+		w.Write([]byte("KO"))
+	}
+}
+
 // projects         godoc
 //
 //	@Summary		List projects
@@ -620,7 +722,8 @@ func (s *CEEMSServer) verifyUnitsOwnership(w http.ResponseWriter, r *http.Reques
 //	@Security	BasicAuth
 //	@Tags		projects
 //	@Produce	json
-//	@Param		X-Grafana-User	header		string	true	"Current user name"
+//	@Param		X-Grafana-User	header		string		true	"Current user name"
+//	@Param		cluster_id		query		[]string	false	"cluster ID"	collectionFormat(multi)
 //	@Success	200				{object}	Response[models.Project]
 //	@Failure	401				{object}	Response[any]
 //	@Failure	500				{object}	Response[any]
@@ -635,14 +738,20 @@ func (s *CEEMSServer) projects(w http.ResponseWriter, r *http.Request) {
 	// Get current user from header
 	_, dashboardUser := s.getUser(r)
 
-	// Make wuery
+	// Make query
 	q := Query{}
 	q.query(fmt.Sprintf("SELECT DISTINCT project FROM %s", base.UnitsDBTableName))
 	q.query(" WHERE usr IN ")
 	q.param([]string{dashboardUser})
 
+	// Get cluster_id query parameters if any
+	if rmIDs := r.URL.Query()["cluster_id"]; len(rmIDs) > 0 {
+		q.query(" AND cluster_id IN ")
+		q.param(rmIDs)
+	}
+
 	// Make query and check for projects returned in usage
-	projects, err := s.Querier(s.db, q, "projects", s.logger)
+	projects, err := s.queriers.project(s.db, q, s.logger)
 	if err != nil {
 		level.Error(s.logger).Log("msg", "Failed to fetch projects", "user", dashboardUser, "err", err)
 		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
@@ -653,7 +762,7 @@ func (s *CEEMSServer) projects(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	projectsResponse := Response[models.Project]{
 		Status: "success",
-		Data:   projects.([]models.Project),
+		Data:   projects,
 	}
 	if err = json.NewEncoder(w).Encode(&projectsResponse); err != nil {
 		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
@@ -699,11 +808,8 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 	q.query(" WHERE project IN ")
 	q.subQuery(qSub)
 
-	// Get project query parameters if any
-	if projects := r.URL.Query()["project"]; len(projects) > 0 {
-		q.query(" AND project IN ")
-		q.param(projects)
-	}
+	// Add common query parameters
+	q = s.getCommonQueryParams(&q, r.URL.Query())
 
 	// Get query window time stamps
 	queryWindowTS, err := s.getQueryWindow(r)
@@ -724,7 +830,7 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 	}
 
 	// Make query and check for returned number of rows
-	usage, err := s.Querier(s.db, q, usageResourceName, s.logger)
+	usage, err := s.queriers.usage(s.db, q, s.logger)
 	if err != nil {
 		level.Error(s.logger).
 			Log("msg", "Failed to fetch current usage statistics", "users", strings.Join(users, ","), "err", err)
@@ -736,7 +842,7 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 	w.WriteHeader(http.StatusOK)
 	projectsResponse := Response[models.Usage]{
 		Status: "success",
-		Data:   usage.([]models.Usage),
+		Data:   usage,
 	}
 	if err = json.NewEncoder(w).Encode(&projectsResponse); err != nil {
 		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
@@ -758,14 +864,11 @@ func (s *CEEMSServer) globalUsage(users []string, queriedFields []string, w http
 	q.query(" WHERE project IN ")
 	q.subQuery(qSub)
 
-	// Get project query parameters if any
-	if projects := r.URL.Query()["project"]; len(projects) > 0 {
-		q.query(" AND project IN ")
-		q.param(projects)
-	}
+	// Add common query parameters
+	q = s.getCommonQueryParams(&q, r.URL.Query())
 
 	// Make query and check for returned number of rows
-	usage, err := s.Querier(s.db, q, usageResourceName, s.logger)
+	usage, err := s.queriers.usage(s.db, q, s.logger)
 	if err != nil {
 		level.Error(s.logger).
 			Log("msg", "Failed to fetch global usage statistics", "users", strings.Join(users, ","), "err", err)
@@ -777,7 +880,7 @@ func (s *CEEMSServer) globalUsage(users []string, queriedFields []string, w http
 	w.WriteHeader(http.StatusOK)
 	projectsResponse := Response[models.Usage]{
 		Status: "success",
-		Data:   usage.([]models.Usage),
+		Data:   usage,
 	}
 	if err = json.NewEncoder(w).Encode(&projectsResponse); err != nil {
 		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
@@ -814,6 +917,7 @@ func (s *CEEMSServer) globalUsage(users []string, queriedFields []string, w http
 //	@Produce		json
 //	@Param			X-Grafana-User	header		string		true	"Current user name"
 //	@Param			mode			path		string		true	"Whether to get usage stats within a period or global"	Enums(current, global)
+//	@Param			cluster_id		query		[]string	false	"cluster ID"											collectionFormat(multi)
 //	@Param			project			query		[]string	false	"Project"												collectionFormat(multi)
 //	@Param			from			query		string		false	"From timestamp"
 //	@Param			to				query		string		false	"To timestamp"
@@ -886,6 +990,7 @@ func (s *CEEMSServer) usage(w http.ResponseWriter, r *http.Request) {
 //	@Produce		json
 //	@Param			X-Grafana-User	header		string		true	"Current user name"
 //	@Param			mode			path		string		true	"Whether to get usage stats within a period or global"	Enums(current, global)
+//	@Param			cluster_id		query		[]string	false	"cluster ID"											collectionFormat(multi)
 //	@Param			project			query		[]string	false	"Project"												collectionFormat(multi)
 //	@Param			from			query		string		false	"From timestamp"
 //	@Param			to				query		string		false	"To timestamp"

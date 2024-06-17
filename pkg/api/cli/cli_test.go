@@ -9,14 +9,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mahendrapaipuri/ceems/internal/common"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
+	"github.com/mahendrapaipuri/ceems/pkg/api/db"
 )
-
-func setCLIArgs() {
-	// os.Args = append(os.Args, "--resource.manager.slurm")
-	// os.Args = append(os.Args, "--slurm.sacct.path=../testdata/sacct")
-	os.Args = append(os.Args, "--log.level=debug")
-}
 
 func queryServer(address string) error {
 	client := &http.Client{}
@@ -39,15 +35,83 @@ func queryServer(address string) error {
 	return nil
 }
 
-func TestBatchStatsServerMainNestedDirs(t *testing.T) {
+func makeConfigFile(configFile string, tmpDir string) string {
+	configPath := filepath.Join(tmpDir, "config.yml")
+	os.WriteFile(configPath, []byte(configFile), 0644)
+	return configPath
+}
+
+func TestCEEMSConfigNestedDataDirs(t *testing.T) {
 	tmpDir := t.TempDir()
 	dataDir := filepath.Join(tmpDir, "data1", "data2", "data3")
 	backupDataDir := filepath.Join(tmpDir, "data1", "data2", "data3", "bakcup")
 
+	config := &CEEMSAPIAppConfig{
+		CEEMSAPIServerConfig{
+			Data: db.DataConfig{
+				Path:       dataDir,
+				BackupPath: backupDataDir,
+			},
+		},
+	}
+
+	// Setup data directories
+	var err error
+	if config, err = createDirs(config); err != nil {
+		t.Errorf("failed to create data directories")
+	}
+
+	// Check data dir exists
+	if _, err := os.Stat(dataDir); err != nil {
+		t.Errorf("Data directory does not exist")
+	}
+	if _, err := os.Stat(backupDataDir); err != nil {
+		t.Errorf("Backup data directory does not exist")
+	}
+
+	// Check if paths are absolute
+	if !filepath.IsAbs(config.Server.Data.Path) || !filepath.IsAbs(config.Server.Data.BackupPath) {
+		t.Errorf("Data paths are not absolute")
+	}
+}
+
+func TestCEEMSConfigMalformedData(t *testing.T) {
+	tmpDir := t.TempDir()
+	dataDir := filepath.Join(tmpDir, "data")
+
+	// Make config file
+	configFileTmpl := `
+---
+ceems_api_server:
+  data:
+    path: %s
+    retention_period: 3l`
+
+	configFile := fmt.Sprintf(configFileTmpl, dataDir)
+	configFilePath := makeConfigFile(configFile, tmpDir)
+
+	if _, err := common.MakeConfig[CEEMSAPIAppConfig](configFilePath); err == nil {
+		t.Errorf("Expected config parsing error")
+	}
+}
+
+func TestCEEMSServerMain(t *testing.T) {
+	tmpDir := t.TempDir()
+	dataDir := filepath.Join(tmpDir, "data")
+
+	// Make config file
+	configFileTmpl := `
+---
+ceems_api_server:
+  data:
+    path: %s`
+
+	configFile := fmt.Sprintf(configFileTmpl, dataDir)
+	configFilePath := makeConfigFile(configFile, tmpDir)
+
 	// Remove test related args
-	os.Args = append([]string{os.Args[0]}, fmt.Sprintf("--storage.data.path=%s", dataDir))
-	os.Args = append(os.Args, fmt.Sprintf("--storage.data.backup.path=%s", backupDataDir))
-	setCLIArgs()
+	os.Args = append([]string{os.Args[0]}, fmt.Sprintf("--config.file=%s", configFilePath))
+	os.Args = append(os.Args, "--log.level=debug")
 	a, _ := NewCEEMSServer()
 
 	// Start Main
@@ -66,125 +130,5 @@ func TestBatchStatsServerMainNestedDirs(t *testing.T) {
 		if i == 9 {
 			t.Errorf("Could not start stats server after %d attempts", i)
 		}
-	}
-
-	// Check data dir exists
-	if _, err := os.Stat(dataDir); err != nil {
-		t.Errorf("Data directory does not exist")
-	}
-	if _, err := os.Stat(backupDataDir); err != nil {
-		t.Errorf("Backup data directory does not exist")
-	}
-}
-
-func TestBatchStatsServerMainRetentionMalformedDuration(t *testing.T) {
-	tmpDir := t.TempDir()
-	dataDir := filepath.Join(tmpDir, "data")
-
-	// Remove test related args
-	os.Args = append([]string{os.Args[0]}, fmt.Sprintf("--storage.data.path=%s", dataDir))
-	os.Args = append(os.Args, "--storage.data.retention.period=3l")
-	setCLIArgs()
-	a, _ := NewCEEMSServer()
-
-	// Start Main
-	if err := a.Main(); err == nil {
-		t.Errorf("Expected CLI arg parsing error")
-	}
-}
-
-func TestBatchStatsServerMainUpdateIntMalformedDuration(t *testing.T) {
-	tmpDir := t.TempDir()
-	dataDir := filepath.Join(tmpDir, "data")
-
-	// Remove test related args
-	os.Args = append([]string{os.Args[0]}, fmt.Sprintf("--storage.data.path=%s", dataDir))
-	os.Args = append(os.Args, "--storage.data.update.interval=3l")
-	setCLIArgs()
-	a, _ := NewCEEMSServer()
-
-	// Start Main
-	if err := a.Main(); err == nil {
-		t.Errorf("Expected CLI arg parsing error")
-	}
-}
-
-func TestBatchStatsServerMainBackupIntMalformedDuration(t *testing.T) {
-	tmpDir := t.TempDir()
-	dataDir := filepath.Join(tmpDir, "data")
-
-	// Remove test related args
-	os.Args = append([]string{os.Args[0]}, fmt.Sprintf("--storage.data.path=%s", dataDir))
-	os.Args = append(os.Args, "--storage.data.backup.interval=3l")
-	setCLIArgs()
-	a, _ := NewCEEMSServer()
-
-	// Start Main
-	if err := a.Main(); err == nil {
-		t.Errorf("Expected CLI arg parsing error")
-	}
-}
-
-func TestBatchStatsServerJobCutoffIntMalformedDuration(t *testing.T) {
-	tmpDir := t.TempDir()
-	dataDir := filepath.Join(tmpDir, "data")
-
-	// Remove test related args
-	os.Args = append([]string{os.Args[0]}, fmt.Sprintf("--storage.data.path=%s", dataDir))
-	os.Args = append(os.Args, "--storage.data.job.duration.cutoff=3l")
-	setCLIArgs()
-	a, _ := NewCEEMSServer()
-
-	// Start Main
-	if err := a.Main(); err == nil {
-		t.Errorf("Expected CLI arg parsing error")
-	}
-}
-
-func TestBatchStatsServerMalformedLastUpdateTime(t *testing.T) {
-	tmpDir := t.TempDir()
-	dataDir := filepath.Join(tmpDir, "data")
-
-	// Remove test related args
-	os.Args = append([]string{os.Args[0]}, fmt.Sprintf("--storage.data.path=%s", dataDir))
-	os.Args = append(os.Args, "--storage.data.update.from=12-10-2008")
-	setCLIArgs()
-	a, _ := NewCEEMSServer()
-
-	// Start Main
-	if err := a.Main(); err == nil {
-		t.Errorf("Expected CLI arg parsing error")
-	}
-}
-
-func TestBatchStatsServerTSDBCLIArgs(t *testing.T) {
-	tmpDir := t.TempDir()
-	dataDir := filepath.Join(tmpDir, "data")
-
-	// Remove test related args
-	os.Args = append([]string{os.Args[0]}, fmt.Sprintf("--storage.data.path=%s", dataDir))
-	os.Args = append(os.Args, "--tsdb.data.clean")
-	setCLIArgs()
-	a, _ := NewCEEMSServer()
-
-	// Start Main
-	if err := a.Main(); err == nil {
-		t.Errorf("Expected TSDB web url CLI arg error")
-	}
-}
-
-func TestBatchStatsServerGrafanaCLIArgs(t *testing.T) {
-	tmpDir := t.TempDir()
-	dataDir := filepath.Join(tmpDir, "data")
-
-	// Remove test related args
-	os.Args = append([]string{os.Args[0]}, fmt.Sprintf("--storage.data.path=%s", dataDir))
-	os.Args = append(os.Args, "--web.admin-users.sync.from.grafana")
-	setCLIArgs()
-	a, _ := NewCEEMSServer()
-
-	// Start Main
-	if err := a.Main(); err == nil {
-		t.Errorf("Expected Grafana web url CLI arg error")
 	}
 }
