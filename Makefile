@@ -237,7 +237,7 @@ test-docker:
 	@echo ">> testing docker image"
 	./scripts/test_image.sh "$(DOCKER_REPO)/$(DOCKER_IMAGE_NAME)-linux-amd64:$(DOCKER_IMAGE_TAG)" 9010 ceems_exporter
 	./scripts/test_image.sh "$(DOCKER_REPO)/$(DOCKER_IMAGE_NAME)-linux-amd64:$(DOCKER_IMAGE_TAG)" 9020 ceems_api_server
-	./scripts/test_image.sh "$(DOCKER_REPO)/$(DOCKER_IMAGE_NAME)-linux-amd64:$(DOCKER_IMAGE_TAG)" 9030 ceems_lb --config.file=/etc/ceems_lb/config.yml
+	./scripts/test_image.sh "$(DOCKER_REPO)/$(DOCKER_IMAGE_NAME)-linux-amd64:$(DOCKER_IMAGE_TAG)" 9030 ceems_lb
 
 .PHONY: skip-test-docker
 skip-test-docker:

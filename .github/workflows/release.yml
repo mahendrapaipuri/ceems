@@ -62,6 +62,7 @@ jobs:
     secrets:  
       login: ${{ secrets.DOCKER_HUB_LOGIN }}
       password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+      quay_api_token: ${{ secrets.QUAY_API_TOKEN }}
   
   publish-quay-images:
     needs: [cross-build]
@@ -74,6 +75,7 @@ jobs:
     secrets:  
       login: ${{ secrets.QUAY_LOGIN }}
       password: ${{ secrets.QUAY_PASSWORD }}
+      quay_api_token: ${{ secrets.QUAY_API_TOKEN }}
 
   publish:
     needs: [packaging]

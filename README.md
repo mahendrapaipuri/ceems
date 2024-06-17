@@ -8,12 +8,12 @@
 | Meta    | [![GitHub License](https://img.shields.io/github/license/mahendrapaipuri/ceems)](https://gitlab.com/mahendrapaipuri/ceems) [![Go Report Card](https://goreportcard.com/badge/github.com/mahendrapaipuri/ceems)](https://goreportcard.com/report/github.com/mahendrapaipuri/ceems) [![code style](https://img.shields.io/badge/code%20style-gofmt-blue.svg)](https://pkg.go.dev/cmd/gofmt) |
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/mahendrapaipuri/ceems/main/website/static/img/logo.png" width="100">
+  <img src="https://raw.githubusercontent.com/mahendrapaipuri/ceems/main/website/static/img/logo.png" width="200">
 </p>
 
-Compute Energy & Emissions Monitoring Stack (CEEMS) contains a Prometheus exporter to
-export metrics of compute instance units and a REST API server that serves the
-metadata and aggregated metrics of each
+Compute Energy & Emissions Monitoring Stack (CEEMS) (pronounced as *kiːms*) contains 
+a Prometheus exporter to export metrics of compute instance units and a REST API 
+server that serves the metadata and aggregated metrics of each
 compute unit. Optionally, it includes a TSDB load balancer that supports basic access
 control on TSDB so that one user cannot access metrics of another user.
 

@@ -16,8 +16,8 @@ RestartSec=1
 StartLimitInterval=0
 
 ProtectHome=read-only
-ReadWritePaths=/var/lib/ceems_api_server
-WorkingDirectory=/var/lib/ceems_api_server
+ReadWritePaths=/var/lib/ceems
+WorkingDirectory=/var/lib/ceems
 
 AmbientCapabilities=CAP_SETUID CAP_SETGID
 CapabilityBoundingSet=CAP_SETUID CAP_SETGID
