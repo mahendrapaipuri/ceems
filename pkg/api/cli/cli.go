@@ -113,11 +113,11 @@ func (b *CEEMSServer) Main() error {
 		webConfigFile = b.App.Flag(
 			"web.config.file",
 			"Path to configuration file that can enable TLS or authentication. See: https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md",
-		).Default("").String()
+		).Envar("CEEMS_API_SERVER_WEB_CONFIG_FILE").Default("").String()
 		configFile = b.App.Flag(
 			"config.file",
 			"Path to CEEMS API server configuration file.",
-		).Default("").String()
+		).Envar("CEEMS_API_SERVER_CONFIG_FILE").Default("").String()
 
 		// Testing related hidden CLI args
 		skipDeleteOldUnits = b.App.Flag(
