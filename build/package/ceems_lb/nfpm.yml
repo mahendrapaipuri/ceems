@@ -57,13 +57,13 @@ contents:
       mode: 0511
 
   # CEEMS load balancer config file
-  - src: build/config/ceems_lb/config.yml
+  - src: build/config/ceems_lb/ceems_lb.yml
     dst: /etc/ceems_lb/config.yml
     type: config
     file_info:
       # Make sure that the mode is specified in octal, e.g. 0644 instead of 644.
       mode: 0660
-      owner: ceemslb
+      owner: ceems
       group: root
 
   # CEEMS load balancer web config file
@@ -73,7 +73,7 @@ contents:
     file_info:
       # Make sure that the mode is specified in octal, e.g. 0644 instead of 644.
       mode: 0660
-      owner: ceemslb
+      owner: ceems
       group: root
 
   # systemd unit file
