@@ -34,9 +34,7 @@ func TestBatchjobStatsExecutable(t *testing.T) {
 	}
 
 	usagestats := exec.Command(
-		binary, "--path.data", tmpDir,
-		"--slurm.sacct.path", tmpSacctPath,
-		"--resource.manager.slurm",
+		binary,
 		"--web.listen-address", address,
 	)
 	if err := runCommandAndTests(usagestats); err != nil {
