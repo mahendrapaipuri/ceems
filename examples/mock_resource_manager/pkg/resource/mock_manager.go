@@ -1,6 +1,9 @@
+// Package resource implements the Fetcher interface that retrieves compute units
+// from resource manager
 package resource
 
 import (
+	"os"
 	"time"
 
 	"github.com/go-kit/log"
@@ -30,11 +33,15 @@ func init() {
 
 // Do all basic checks here
 func preflightChecks(logger log.Logger) error {
+	if _, err := os.Stat(*macctPath); err != nil {
+		level.Error(logger).Log("msg", "Failed to open executable", "path", *macctPath, "err", err)
+		return err
+	}
 	return nil
 }
 
 // NewMockManager returns a new MockManager that returns compute units
-func NewMockManager(logger log.Logger) (resource.Fetcher, error) {
+func NewMockManager(cluster models.Cluster, logger log.Logger) (resource.Fetcher, error) {
 	err := preflightChecks(logger)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create mock manager.", "err", err)
@@ -50,6 +57,20 @@ func NewMockManager(logger log.Logger) (resource.Fetcher, error) {
 //
 // When making Unit stucts, ensure to format the datetime using base.DatetimeLayout
 // Also ensure to set StartTS and EndTS fields to start and end times in unix milliseconds epoch
-func (s *mockManager) Fetch(start time.Time, end time.Time) ([]models.Unit, error) {
-	return []models.Unit{{UUID: "1000"}, {UUID: "1100"}}, nil
+func (s *mockManager) Fetch(start time.Time, end time.Time) ([]models.ClusterUnits, error) {
+	return []models.ClusterUnits{
+		{
+			Cluster: models.Cluster{
+				ID: "mock",
+			},
+			Units: []models.Unit{
+				{
+					UUID: "10000",
+				},
+				{
+					UUID: "11000",
+				},
+			},
+		},
+	}, nil
 }
