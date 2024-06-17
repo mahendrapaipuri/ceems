@@ -1,6 +1,7 @@
 package serverpool
 
 import (
+	"fmt"
 	"math"
 	"slices"
 	"time"
@@ -18,27 +19,33 @@ import (
 // can be served by multiple backend TSDB servers, the one with least retention period
 // will be chosen as it is assumed as "hot" TSDB with maximum performance
 type resourceBased struct {
-	backends []backend.TSDBServer
+	backends map[string][]backend.TSDBServer
 	logger   log.Logger
 }
 
 // Target returns the backend server to send the request if it is alive
-func (s *resourceBased) Target(d time.Duration) backend.TSDBServer {
+func (s *resourceBased) Target(id string, d time.Duration) backend.TSDBServer {
+	// If the ID is unknown return
+	if _, ok := s.backends[id]; !ok {
+		level.Error(s.logger).Log("msg", "Round Robin strategy", "err", fmt.Errorf("unknown backend ID: %s", id))
+		return nil
+	}
+
 	// Get a list of eligible TSDB servers based on retention period and
 	// start time of TSDB query
 	var targetBackend backend.TSDBServer
 	var targetBackends []backend.TSDBServer
 	var retentionPeriods []time.Duration
-	for i := 0; i < s.Size(); i++ {
-		if !s.backends[i].IsAlive() {
+	for i := 0; i < s.Size(id); i++ {
+		if !s.backends[id][i].IsAlive() {
 			continue
 		}
 
 		// If query duration is less than backend TSDB's retention period, it is
 		// target backend as it can serve the query
-		if d < s.backends[i].RetentionPeriod() {
-			targetBackends = append(targetBackends, s.backends[i])
-			retentionPeriods = append(retentionPeriods, s.backends[i].RetentionPeriod())
+		if d < s.backends[id][i].RetentionPeriod() {
+			targetBackends = append(targetBackends, s.backends[id][i])
+			retentionPeriods = append(retentionPeriods, s.backends[id][i].RetentionPeriod())
 		}
 	}
 
@@ -75,16 +82,16 @@ func (s *resourceBased) Target(d time.Duration) backend.TSDBServer {
 }
 
 // List all backend servers in pool
-func (s *resourceBased) Backends() []backend.TSDBServer {
+func (s *resourceBased) Backends() map[string][]backend.TSDBServer {
 	return s.backends
 }
 
 // Add a backend server to pool
-func (s *resourceBased) Add(b backend.TSDBServer) {
-	s.backends = append(s.backends, b)
+func (s *resourceBased) Add(id string, b backend.TSDBServer) {
+	s.backends[id] = append(s.backends[id], b)
 }
 
 // Total number of backend servers in pool
-func (s *resourceBased) Size() int {
-	return len(s.backends)
+func (s *resourceBased) Size(id string) int {
+	return len(s.backends[id])
 }

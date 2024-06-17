@@ -3,20 +3,28 @@ package frontend
 
 import (
 	"context"
-	"crypto/tls"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
+	"path/filepath"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/mahendrapaipuri/ceems/pkg/grafana"
+	ceems_api_base "github.com/mahendrapaipuri/ceems/pkg/api/base"
+	ceems_api_cli "github.com/mahendrapaipuri/ceems/pkg/api/cli"
+	ceems_api_http "github.com/mahendrapaipuri/ceems/pkg/api/http"
+	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/base"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/serverpool"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/prometheus/common/config"
 	"github.com/prometheus/exporter-toolkit/web"
 )
 
@@ -28,6 +36,7 @@ type QueryParamsContextKey struct{}
 
 // QueryParams is the context value
 type QueryParams struct {
+	id          string
 	uuids       []string
 	queryPeriod time.Duration
 }
@@ -37,6 +46,7 @@ type LoadBalancer interface {
 	Serve(http.ResponseWriter, *http.Request)
 	Start() error
 	Shutdown(context.Context) error
+	ValidateClusterIDs() error
 }
 
 // Config makes a server config from CLI args
@@ -45,11 +55,8 @@ type Config struct {
 	Address          string
 	WebSystemdSocket bool
 	WebConfigFile    string
-	CEEMSAPI         base.CEEMSAPI
-	AdminUsers       []string
+	APIServer        ceems_api_cli.CEEMSAPIServerConfig
 	Manager          serverpool.Manager
-	Grafana          *grafana.Grafana
-	GrafanaTeamID    string
 }
 
 // loadBalancer struct
@@ -59,7 +66,6 @@ type loadBalancer struct {
 	server    *http.Server
 	webConfig *web.FlagConfig
 	amw       authenticationMiddleware
-	db        *sql.DB
 }
 
 // NewLoadBalancer returns a new instance of load balancer
@@ -70,31 +76,33 @@ func NewLoadBalancer(c *Config) (LoadBalancer, error) {
 	var err error
 
 	// Check if DB path exists and get pointer to DB connection
-	if c.CEEMSAPI.DBPath != "" {
-		if db, err = sql.Open("sqlite3", c.CEEMSAPI.DBPath); err != nil {
+	if c.APIServer.Data.Path != "" {
+		dbAbsPath, err := filepath.Abs(
+			filepath.Join(c.APIServer.Data.Path, ceems_api_base.CEEMSDBName),
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		if db, err = sql.Open("sqlite3", dbAbsPath); err != nil {
 			return nil, err
 		}
 	}
 
 	// Check if URL for CEEMS API exists
-	if c.CEEMSAPI.WebURL == "" {
+	if c.APIServer.Web.URL == "" {
 		goto outside
 	}
 
 	// Unwrap original error to avoid leaking sensitive passwords in output
-	ceemsWebURL, err = url.Parse(c.CEEMSAPI.WebURL)
+	ceemsWebURL, err = url.Parse(c.APIServer.Web.URL)
 	if err != nil {
 		return nil, errors.Unwrap(err)
 	}
 
-	// If skip verify is set to true for TSDB add it to client
-	if c.CEEMSAPI.SkipTLSVerify {
-		tr := &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		}
-		ceemsClient = &http.Client{Transport: tr, Timeout: time.Duration(30 * time.Second)}
-	} else {
-		ceemsClient = &http.Client{Timeout: time.Duration(30 * time.Second)}
+	// Make a CEEMS API server client from client config
+	if ceemsClient, err = config.NewClientFromConfig(c.APIServer.Web.HTTPClientConfig, "ceems_api_server"); err != nil {
+		return nil, err
 	}
 
 outside:
@@ -109,25 +117,121 @@ outside:
 			WebConfigFile:      &c.WebConfigFile,
 		},
 		manager: c.Manager,
-		db:      db,
 		amw: authenticationMiddleware{
-			logger:     c.Logger,
-			adminUsers: c.AdminUsers,
-			grafana:    c.Grafana,
+			logger: c.Logger,
 			ceems: ceems{
 				db:     db,
 				webURL: ceemsWebURL,
 				client: ceemsClient,
 			},
-			grafanaTeamID: c.GrafanaTeamID,
 		},
 	}, nil
 }
 
+// ValidateClusterIDs validates the cluster IDs by checking them against DB
+func (lb *loadBalancer) ValidateClusterIDs() error {
+	// Fetch all cluster IDs set in config file
+	for id := range lb.manager.Backends() {
+		lb.amw.clusterIDs = append(lb.amw.clusterIDs, id)
+	}
+
+	// If neither CEEMD DB or API server is configured, return
+	if lb.amw.ceems.db == nil && lb.amw.ceems.clustersEndpoint() == nil {
+		return nil
+	}
+
+	// If DB file is accessible, check directly from DB
+	var clusters []models.Cluster
+	if lb.amw.ceems.db != nil {
+		rows, err := lb.amw.ceems.db.Query(
+			fmt.Sprintf("SELECT DISTINCT cluster_id, resource_manager FROM %s", ceems_api_base.UnitsDBTableName),
+		)
+		if err != nil {
+			return err
+		}
+
+		var cluster models.Cluster
+		for rows.Next() {
+			if err := rows.Scan(&cluster.ID, &cluster.Manager); err != nil {
+				continue
+			}
+			clusters = append(clusters, cluster)
+		}
+		goto validate
+	}
+
+	if lb.amw.ceems.clustersEndpoint() != nil {
+		// Create a new GET request
+		req, err := http.NewRequest(http.MethodGet, lb.amw.ceems.clustersEndpoint().String(), nil)
+		if err != nil {
+			return err
+		}
+
+		// Add necessary headers. Value of header is not important only its presence
+		req.Header.Add(ceemsUserHeader, "admin")
+
+		// Make request
+		// If request failed, forbid the query. It can happen when CEEMS API server
+		// goes offline and we should wait for it to come back online
+		if resp, err := lb.amw.ceems.client.Do(req); err != nil {
+			return err
+		} else {
+			// Any status code other than 200 should be treated as check failure
+			if resp.StatusCode != 200 {
+				return fmt.Errorf("error response code %d from CEEMS API server", resp.StatusCode)
+			}
+
+			// Read response body
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return err
+			}
+
+			// Unpack into data
+			var data ceems_api_http.Response[models.Cluster]
+			if err = json.Unmarshal(body, &data); err != nil {
+				return err
+			}
+
+			// Check if Status is error
+			if data.Status == "error" {
+				return fmt.Errorf("error response from CEEMS API server: %v", data)
+			}
+
+			// Check if Data exists on response
+			if data.Data == nil {
+				return fmt.Errorf("CEEMS API server response returned no data: %v", data)
+			}
+			clusters = data.Data
+		}
+	}
+
+validate:
+	// Gather all IDs in clusters
+	var actualClusterIDs []string
+	for _, cluster := range clusters {
+		actualClusterIDs = append(actualClusterIDs, cluster.ID)
+	}
+
+	// Check if ID is in actualClusterIDs
+	for _, id := range lb.amw.clusterIDs {
+		if !slices.Contains(actualClusterIDs, id) {
+			return fmt.Errorf(
+				"unknown cluster ID %s. Cluster IDs in CEEMS DB are %s",
+				id, strings.Join(actualClusterIDs, ","),
+			)
+		}
+	}
+	return nil
+}
+
 // Start server
 func (lb *loadBalancer) Start() error {
+	// Apply middleware
 	lb.server.Handler = lb.amw.Middleware(http.HandlerFunc(lb.Serve))
 	level.Info(lb.logger).Log("msg", fmt.Sprintf("Starting %s", base.CEEMSLoadBalancerAppName))
+
+	// Listen for requests
 	if err := web.ListenAndServe(lb.server, lb.webConfig, lb.logger); err != nil && err != http.ErrServerClosed {
 		level.Error(lb.logger).Log("msg", "Failed to Listen and Serve HTTP server", "err", err)
 		return err
@@ -138,8 +242,8 @@ func (lb *loadBalancer) Start() error {
 // Shutdown server
 func (lb *loadBalancer) Shutdown(ctx context.Context) error {
 	// Close DB connection only if DB file is provided
-	if lb.db != nil {
-		if err := lb.db.Close(); err != nil {
+	if lb.amw.ceems.db != nil {
+		if err := lb.amw.ceems.db.Close(); err != nil {
 			level.Error(lb.logger).Log("msg", "Failed to close DB connection", "err", err)
 			return err
 		}
@@ -155,21 +259,21 @@ func (lb *loadBalancer) Shutdown(ctx context.Context) error {
 
 // Serve serves the request using a backend TSDB server from the pool
 func (lb *loadBalancer) Serve(w http.ResponseWriter, r *http.Request) {
-	var queryPeriod time.Duration
-
 	// Retrieve query params from context
 	queryParams := r.Context().Value(QueryParamsContextKey{})
 
 	// Check if queryParams is nil which could happen in edge cases
 	if queryParams == nil {
-		queryPeriod = time.Duration(0 * time.Second)
-	} else {
-		queryPeriod = queryParams.(*QueryParams).queryPeriod
+		http.Error(w, "Query parameters not found", http.StatusBadRequest)
+		return
 	}
 
+	// Middleware ensures that query parameters are always set in request's context
+	queryPeriod := queryParams.(*QueryParams).queryPeriod
+	id := queryParams.(*QueryParams).id
+
 	// Choose target based on query Period
-	target := lb.manager.Target(queryPeriod)
-	if target != nil {
+	if target := lb.manager.Target(id, queryPeriod); target != nil {
 		target.Serve(w, r)
 		return
 	}

@@ -1,1 +1,1 @@
-{"status":"error","errorType":"forbidden","error":"user do not have permissions to view unit metrics"}
+{"status":"error","data":null,"errorType":"forbidden","error":"user do not have permissions to view unit metrics"}

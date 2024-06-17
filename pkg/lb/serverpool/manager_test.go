@@ -27,10 +27,10 @@ func TestNewManager(t *testing.T) {
 		m, _ := NewManager(strategy, log.NewNopLogger())
 		url, _ := url.Parse("http://localhost:3333")
 		b := backend.NewTSDBServer(url, httputil.NewSingleHostReverseProxy(url), log.NewNopLogger())
-		m.Add(b)
+		m.Add("default", b)
 
-		if m.Size() != 1 {
-			t.Errorf("expected 1 backend TSDB servers, got %d", m.Size())
+		if m.Size("default") != 1 {
+			t.Errorf("expected 1 backend TSDB servers, got %d", m.Size("default"))
 		}
 	}
 }
