@@ -2,7 +2,6 @@
 package grafana
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,11 +9,10 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"os"
-	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	config_util "github.com/prometheus/common/config"
 )
 
 // GrafanaTeamsReponse is the API response struct from Grafana
@@ -41,7 +39,7 @@ type Grafana struct {
 }
 
 // NewGrafana return a new instance of Grafana struct
-func NewGrafana(webURL string, webSkipTLSVerify bool, logger log.Logger) (*Grafana, error) {
+func NewGrafana(webURL string, config config_util.HTTPClientConfig, logger log.Logger) (*Grafana, error) {
 	// If webURL is empty return empty struct with available set to false
 	if webURL == "" {
 		level.Warn(logger).Log("msg", "Grafana web URL not found")
@@ -59,13 +57,8 @@ func NewGrafana(webURL string, webSkipTLSVerify bool, logger log.Logger) (*Grafa
 	}
 
 	// If skip verify is set to true for TSDB add it to client
-	if webSkipTLSVerify {
-		tr := &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		}
-		grafanaClient = &http.Client{Transport: tr, Timeout: time.Duration(30 * time.Second)}
-	} else {
-		grafanaClient = &http.Client{Timeout: time.Duration(30 * time.Second)}
+	if grafanaClient, err = config_util.NewClientFromConfig(config, "grafana"); err != nil {
+		return nil, err
 	}
 	return &Grafana{
 		URL:       grafanaURL,
@@ -102,30 +95,42 @@ func (g *Grafana) Ping() error {
 	return nil
 }
 
-// TeamMembers fetches team members from a Grafana team
-func (g *Grafana) TeamMembers(teamID string) ([]string, error) {
+// TeamMembers fetches team members from a given slice of Grafana teams IDs
+func (g *Grafana) TeamMembers(teamsIDs []string) ([]string, error) {
 	// Sanity checks
 	// Check if adminTeamID is not an empty string
-	if teamID == "" {
-		return nil, fmt.Errorf("Grafana Team ID not set")
+	if teamsIDs == nil {
+		return nil, fmt.Errorf("Grafana Teams IDs not set")
 	}
 
-	// Check if API Token is provided
-	if os.Getenv("GRAFANA_API_TOKEN") == "" {
-		return nil, fmt.Errorf("GRAFANA_API_TOKEN environment variable not set")
+	var allMembers []string
+	for _, teamsID := range teamsIDs {
+		teamMembers, err := g.teamMembers(teamsID)
+		if err != nil {
+			level.Warn(g.logger).
+				Log("msg", "Failed to fetch team members from Grafana Team", "teams_id", teamsID, "err", err)
+		} else {
+			allMembers = append(allMembers, teamMembers...)
+		}
+	}
+	return allMembers, nil
+}
+
+// teamMembers fetches team members from a given Grafana team
+func (g *Grafana) teamMembers(teamsID string) ([]string, error) {
+	// Check if adminTeamID is not an empty string
+	if teamsID == "" {
+		return nil, fmt.Errorf("Grafana Teams IDs not set")
 	}
 
 	// Make API URL
-	teamMembersURL := g.teamMembersEndpoint(teamID)
+	teamMembersURL := g.teamMembersEndpoint(teamsID)
 
 	// Create a new GET request
 	req, err := http.NewRequest(http.MethodGet, teamMembersURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a new HTTP request for Grafana teams API: %s", err)
 	}
-
-	// Add token to auth header
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", os.Getenv("GRAFANA_API_TOKEN")))
 
 	// Add necessary headers
 	req.Header.Add("Content-Type", "application/json")

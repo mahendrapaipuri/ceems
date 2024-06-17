@@ -9,10 +9,11 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	config_util "github.com/prometheus/common/config"
 )
 
 func TestNewTSDBWithNoURL(t *testing.T) {
-	tsdb, err := NewTSDB("", true, log.NewNopLogger())
+	tsdb, err := NewTSDB("", config_util.HTTPClientConfig{}, log.NewNopLogger())
 	if err != nil {
 		t.Errorf("Failed to create TSDB instance")
 	}
@@ -29,7 +30,7 @@ func TestNewTSDBWithURL(t *testing.T) {
 	}))
 	defer server.Close()
 
-	tsdb, err := NewTSDB(server.URL, true, log.NewNopLogger())
+	tsdb, err := NewTSDB(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
 	if err != nil {
 		t.Errorf("Failed to create TSDB instance")
 	}
@@ -58,7 +59,7 @@ func TestTSDBConfigSuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	tsdb, err := NewTSDB(server.URL, true, log.NewNopLogger())
+	tsdb, err := NewTSDB(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
 	if err != nil {
 		t.Errorf("Failed to create TSDB instance")
 	}
@@ -69,7 +70,7 @@ func TestTSDBConfigSuccess(t *testing.T) {
 	}
 
 	// Check global config
-	var globalConfig map[interface{}]interface{}
+	var globalConfig map[string]interface{}
 	if globalConfig, err = tsdb.GlobalConfig(); err != nil {
 		t.Errorf("Could not get TSDB config: %s", err)
 	}
@@ -112,7 +113,7 @@ func TestTSDBConfigFail(t *testing.T) {
 	}))
 	defer server.Close()
 
-	tsdb, err := NewTSDB(server.URL, true, log.NewNopLogger())
+	tsdb, err := NewTSDB(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
 	if err != nil {
 		t.Errorf("Failed to create TSDB instance")
 	}
@@ -175,7 +176,7 @@ func TestTSDBQuerySuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	tsdb, err := NewTSDB(server.URL, true, log.NewNopLogger())
+	tsdb, err := NewTSDB(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
 	if err != nil {
 		t.Errorf("Failed to create TSDB instance")
 	}
@@ -204,7 +205,7 @@ func TestTSDBQueryFail(t *testing.T) {
 	}))
 	defer server.Close()
 
-	tsdb, err := NewTSDB(server.URL, true, log.NewNopLogger())
+	tsdb, err := NewTSDB(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
 	if err != nil {
 		t.Errorf("Failed to create TSDB instance")
 	}

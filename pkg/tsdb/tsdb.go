@@ -2,7 +2,6 @@
 package tsdb
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,8 +15,9 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	config_util "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 // Metric defines TSDB metrics
@@ -50,7 +50,7 @@ const (
 )
 
 // NewTSDB returns a new instance of TSDB
-func NewTSDB(webURL string, webSkipTLSVerify bool, logger log.Logger) (*TSDB, error) {
+func NewTSDB(webURL string, config config_util.HTTPClientConfig, logger log.Logger) (*TSDB, error) {
 	// If webURL is empty return empty struct with available set to false
 	if webURL == "" {
 		level.Warn(logger).Log("msg", "TSDB web URL not found")
@@ -68,14 +68,9 @@ func NewTSDB(webURL string, webSkipTLSVerify bool, logger log.Logger) (*TSDB, er
 		return nil, errors.Unwrap(err)
 	}
 
-	// If skip verify is set to true for TSDB add it to client
-	if webSkipTLSVerify {
-		tr := &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		}
-		tsdbClient = &http.Client{Transport: tr, Timeout: time.Duration(30 * time.Second)}
-	} else {
-		tsdbClient = &http.Client{Timeout: time.Duration(30 * time.Second)}
+	// Make a HTTP client for TSDB from client config
+	if tsdbClient, err = config_util.NewClientFromConfig(config, "tsdb"); err != nil {
+		return nil, err
 	}
 	return &TSDB{
 		URL:       tsdbURL,
@@ -147,7 +142,7 @@ func (t *TSDB) Config() (map[interface{}]interface{}, error) {
 }
 
 // GlobalConfig returns global config section of TSDB
-func (t *TSDB) GlobalConfig() (map[interface{}]interface{}, error) {
+func (t *TSDB) GlobalConfig() (map[string]interface{}, error) {
 	// Get config
 	fullConfig, err := t.Config()
 	if err != nil {
@@ -156,7 +151,7 @@ func (t *TSDB) GlobalConfig() (map[interface{}]interface{}, error) {
 
 	// Extract global config
 	if v, exists := fullConfig["global"]; exists {
-		return v.(map[interface{}]interface{}), nil
+		return v.(map[string]interface{}), nil
 	}
 	return nil, fmt.Errorf("global config not found in TSDB config")
 }
@@ -178,7 +173,7 @@ func (t *TSDB) Intervals() map[string]time.Duration {
 	t.evaluationInterval = defaultEvaluationInterval
 
 	// Get config
-	var globalConfig map[interface{}]interface{}
+	var globalConfig map[string]interface{}
 	var err error
 	if globalConfig, err = t.GlobalConfig(); err != nil {
 		return map[string]time.Duration{
