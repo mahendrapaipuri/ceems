@@ -164,6 +164,26 @@ const config: Config = {
       theme: prismThemes.github,
       darkTheme: prismThemes.dracula,
     },
+    algolia: {
+      // The application ID provided by Algolia
+      appId: 'KQ58EXUULN',
+      // Public API key: it is safe to commit it
+      apiKey: '16e0dc2efb99e9d654683fd9b9602082',
+      indexName: 'mahendrapaipuriio',
+      // // Optional: Replace parts of the item URLs from Algolia. Useful when using the same search index for multiple deployments using a different baseUrl. You can use regexp or string in the `from` param. For example: localhost:3000 vs myCompany.com/docs
+      replaceSearchResultPathname: {
+        from: '/ceems/',
+        to: '/',
+      },
+      // We may need to tune `contextualSearch` and `searchParameters` to handle search for versioned docs
+      // Optional: see doc section -- https://docusaurus.io/docs/search#contextual-search
+      contextualSearch: false,
+      // Optional: Algolia search parameters
+      // searchParameters: {},
+      // Optional: path for search page that enabled by default (`false` to disable it)
+      searchPagePath: 'search',
+    },
+
   } satisfies Preset.ThemeConfig,
 };
 
