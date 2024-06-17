@@ -26,18 +26,22 @@ var (
 
 func init() {
 	// Register mock updater
-	updater.RegisterUpdater(mockUpdaterHookName, false, NewMockUpdaterHook)
+	updater.RegisterUpdater(mockUpdaterHookName, NewMockUpdaterHook)
 }
 
 // NewMockUpdaterHook returns a new NewMockUpdaterHook to update units
-func NewMockUpdaterHook(logger log.Logger) (updater.Updater, error) {
-	level.Error(logger).Log("msg", "CLI args", "arg1", mockUpdaterHookCLI)
+func NewMockUpdaterHook(instance updater.Instance, logger log.Logger) (updater.Updater, error) {
+	level.Info(logger).Log("msg", "CLI args", "arg1", mockUpdaterHookCLI)
 	return &mockUpdater{
 		logger: logger,
 	}, nil
 }
 
 // Add the logic here to update the units retrieved from batch scheduler
-func (u *mockUpdater) Update(startTime time.Time, endTime time.Time, units []models.Unit) []models.Unit {
+func (u *mockUpdater) Update(
+	startTime time.Time,
+	endTime time.Time,
+	units []models.ClusterUnits,
+) []models.ClusterUnits {
 	return units
 }
