@@ -138,11 +138,11 @@ func (lb *CEEMSLoadBalancer) Main() error {
 		webConfigFile = lb.App.Flag(
 			"web.config.file",
 			"Path to configuration file that can enable TLS or authentication. See: https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md",
-		).Default("").String()
+		).Envar("CEEMS_LB_WEB_CONFIG_FILE").Default("").String()
 		configFile = lb.App.Flag(
 			"config.file",
 			"Configuration file path.",
-		).Default("").String()
+		).Envar("CEEMS_LB_CONFIG_FILE").Default("").String()
 		maxProcs = lb.App.Flag(
 			"runtime.gomaxprocs", "The target number of CPUs Go will run on (GOMAXPROCS)",
 		).Envar("GOMAXPROCS").Default("1").Int()

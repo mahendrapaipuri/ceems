@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -84,8 +85,12 @@ func NewLoadBalancer(c *Config) (LoadBalancer, error) {
 			return nil, err
 		}
 
-		if db, err = sql.Open("sqlite3", dbAbsPath); err != nil {
-			return nil, err
+		// Set DB pointer only if file exists. Else sql.Open will create an empty
+		// file as if exists already
+		if _, err := os.Stat(dbAbsPath); err == nil {
+			if db, err = sql.Open("sqlite3", dbAbsPath); err != nil {
+				return nil, err
+			}
 		}
 	}
 
