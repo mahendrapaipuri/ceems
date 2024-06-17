@@ -7,11 +7,11 @@ Type=simple
 User=ceems
 Group=ceems
 ExecStart=/usr/local/bin/ceems_exporter \
-    --collector.slurm.gpu.type="nvidia" \
+    --collector.slurm.gpu.type=nvidia \
     --collector.slurm.job.props.path="/run/slurmjobprops" \
     --collector.slurm.gpu.job.map.path="/run/gpujobmap" \
     --collector.ipmi.dcmi.cmd="sudo /usr/sbin/ipmi-dcmi --get-system-power-statistics" \
-    --log.level="debug"
+    --log.level=debug
 
 SyslogIdentifier=ceems_exporter
 Restart=always
