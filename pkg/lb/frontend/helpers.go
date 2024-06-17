@@ -66,24 +66,52 @@ func setQueryParams(r *http.Request, queryParams *QueryParams) *http.Request {
 }
 
 // Parse query in the request after cloning it and add query params to context
-func parseQueryParams(r *http.Request, logger log.Logger) *http.Request {
+func parseQueryParams(r *http.Request, rmIDs []string, logger log.Logger) *http.Request {
 	var body []byte
+	var id string
 	var uuids []string
 	var queryPeriod time.Duration
 	var err error
+
+	// Get id from path parameter.
+	// Requested paths will be of form /{id}/<rest of path>. Here will strip `id`
+	// part and proxy the rest to backend
+	var pathParts []string
+	for _, p := range strings.Split(r.URL.Path, "/") {
+		if strings.TrimSpace(p) == "" {
+			continue
+		}
+		pathParts = append(pathParts, p)
+	}
+
+	// First path part must be resource manager ID and check if it is in the valid IDs
+	if len(pathParts) > 0 {
+		if slices.Contains(rmIDs, pathParts[0]) {
+			id = pathParts[0]
+
+			// If there is more than 1 pathParts, make URL or set / as URL
+			if len(pathParts) > 1 {
+				r.URL.Path = fmt.Sprintf("/%s", strings.Join(pathParts[1:], "/"))
+				r.RequestURI = r.URL.Path
+			} else {
+				r.URL.Path = "/"
+				r.RequestURI = "/"
+			}
+		}
+	}
 
 	// Make a new request and add newReader to that request body
 	clonedReq := r.Clone(r.Context())
 
 	// If request has no body go to proxy directly
 	if r.Body == nil {
-		return setQueryParams(r, &QueryParams{uuids, queryPeriod})
+		return setQueryParams(r, &QueryParams{id, uuids, queryPeriod})
 	}
 
 	// If failed to read body, skip verification and go to request proxy
 	if body, err = io.ReadAll(r.Body); err != nil {
 		level.Error(logger).Log("msg", "Failed to read request body", "err", err)
-		return setQueryParams(r, &QueryParams{uuids, queryPeriod})
+		return setQueryParams(r, &QueryParams{id, uuids, queryPeriod})
 	}
 
 	// clone body to existing request and new request
@@ -93,18 +121,33 @@ func parseQueryParams(r *http.Request, logger log.Logger) *http.Request {
 	// Get form values
 	if err = clonedReq.ParseForm(); err != nil {
 		level.Error(logger).Log("msg", "Could not parse request body", "err", err)
-		return setQueryParams(r, &QueryParams{uuids, queryPeriod})
+		return setQueryParams(r, &QueryParams{id, uuids, queryPeriod})
 	}
 
 	// Parse TSDB's query in request query params
 	if val := clonedReq.FormValue("query"); val != "" {
-		matches := regexpUUID.FindAllStringSubmatch(val, -1)
-		for _, match := range matches {
+		// Extract UUIDs from query
+		uuidMatches := regexpUUID.FindAllStringSubmatch(val, -1)
+		for _, match := range uuidMatches {
 			if len(match) > 1 {
 				for _, uuid := range strings.Split(match[1], "|") {
 					// Ignore empty strings
 					if strings.TrimSpace(uuid) != "" && !slices.Contains(uuids, uuid) {
 						uuids = append(uuids, uuid)
+					}
+				}
+			}
+		}
+
+		// Extract ceems_lb_id from query. If multiple values are provided, always
+		// get the last and most recent one
+		idMatches := regexID.FindAllStringSubmatch(val, -1)
+		for _, match := range idMatches {
+			if len(match) > 1 {
+				for _, idMatch := range strings.Split(match[1], "|") {
+					// Ignore empty strings
+					if strings.TrimSpace(idMatch) != "" {
+						id = strings.TrimSpace(idMatch)
 					}
 				}
 			}
@@ -120,7 +163,7 @@ func parseQueryParams(r *http.Request, logger log.Logger) *http.Request {
 	}
 
 	// Set query params to request's context
-	return setQueryParams(r, &QueryParams{uuids, queryPeriod})
+	return setQueryParams(r, &QueryParams{id, uuids, queryPeriod})
 }
 
 // Parse time parameter in request
@@ -164,23 +207,25 @@ func parseTime(s string) (time.Time, error) {
 func healthCheck(ctx context.Context, manager serverpool.Manager, logger log.Logger) {
 	aliveChannel := make(chan bool, 1)
 
-	for _, backend := range manager.Backends() {
-		requestCtx, stop := context.WithTimeout(ctx, 10*time.Second)
-		defer stop()
-		status := "up"
-		go isAlive(requestCtx, aliveChannel, backend.URL(), logger)
+	for id, backends := range manager.Backends() {
+		for _, backend := range backends {
+			requestCtx, stop := context.WithTimeout(ctx, 10*time.Second)
+			defer stop()
+			status := "up"
+			go isAlive(requestCtx, aliveChannel, backend.URL(), logger)
 
-		select {
-		case <-ctx.Done():
-			level.Info(logger).Log("msg", "Gracefully shutting down health check")
-			return
-		case alive := <-aliveChannel:
-			backend.SetAlive(alive)
-			if !alive {
-				status = "down"
+			select {
+			case <-ctx.Done():
+				level.Info(logger).Log("msg", "Gracefully shutting down health check")
+				return
+			case alive := <-aliveChannel:
+				backend.SetAlive(alive)
+				if !alive {
+					status = "down"
+				}
 			}
+			level.Debug(logger).Log("msg", "Health check", "id", id, "url", backend.URL().Redacted(), "status", status)
 		}
-		level.Debug(logger).Log("msg", "Health check", "url", backend.URL().Redacted(), "status", status)
 	}
 }
 

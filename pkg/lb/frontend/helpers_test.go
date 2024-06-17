@@ -155,21 +155,29 @@ func TestParseQueryParams(t *testing.T) {
 	tests := []struct {
 		query  string
 		uuids  []string
+		rmID   string
+		rmIDs  []string
 		method string
 	}{
 		{
-			query:  "foo{uuid=~\"123|456\",gpuuuid=\"GPU-0123\"}",
+			query:  "foo{uuid=~\"123|456\",gpuuuid=\"GPU-0123\",ceems_id=\"rm-0\"}",
 			uuids:  []string{"123", "456"},
+			rmID:   "rm-0",
+			rmIDs:  []string{"rm-0", "rm-1"},
 			method: "GET",
 		},
 		{
-			query:  "foo{uuid=~\"abc-123|456\"}",
+			query:  "foo{uuid=~\"abc-123|456\",ceems_id=\"rm-0|rm-1\"}",
 			uuids:  []string{"abc-123", "456"},
+			rmID:   "rm-1",
+			rmIDs:  []string{"rm-0", "rm-1"},
 			method: "POST",
 		},
 		{
-			query:  "foo{uuid=\"456\",gpuuuid=\"GPU-0123\"}",
+			query:  "foo{uuid=\"456\",gpuuuid=\"GPU-0123\",ceems_id=\"rm-0\"}",
 			uuids:  []string{"456"},
+			rmID:   "rm-0",
+			rmIDs:  []string{"rm-0"},
 			method: "POST",
 		},
 		{
@@ -201,10 +209,15 @@ func TestParseQueryParams(t *testing.T) {
 			req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 		}
 
-		newReq := parseQueryParams(req, log.NewNopLogger())
+		newReq := parseQueryParams(req, test.rmIDs, log.NewNopLogger())
 		queryParams := newReq.Context().Value(QueryParamsContextKey{}).(*QueryParams)
 		if !reflect.DeepEqual(queryParams.uuids, test.uuids) {
 			t.Errorf("%s: expected %v, got %v", test.query, test.uuids, queryParams.uuids)
+			continue
+		}
+
+		if queryParams.id != test.rmID {
+			t.Errorf("%s: expected %s, got %s", test.query, test.rmID, queryParams.id)
 			continue
 		}
 

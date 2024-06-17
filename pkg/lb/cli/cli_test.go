@@ -11,8 +11,6 @@ import (
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
-	"github.com/mahendrapaipuri/ceems/pkg/lb/base"
-	"gopkg.in/yaml.v2"
 )
 
 const mockCEEMSLBAppName = "mockApp"
@@ -48,36 +46,36 @@ func queryLB(address string) error {
 	return nil
 }
 
+func makeConfigFile(configFile string, tmpDir string) string {
+	configPath := filepath.Join(tmpDir, "config.yml")
+	os.WriteFile(configPath, []byte(configFile), 0644)
+	return configPath
+}
+
 func TestCEEMSLBMainSuccess(t *testing.T) {
+	tmpDir := t.TempDir()
+
 	// Start a test server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("dummy-response"))
 	}))
 	defer server.Close()
 
-	// Make config
-	config := Config{
-		Strategy: "round-robin",
-		Backends: []base.Backend{
-			{
-				URL: server.URL,
-			},
-		},
-	}
-	yamlData, err := yaml.Marshal(&config)
-	if err != nil {
-		t.Errorf("failed to marshal: %s", err)
-	}
+	// Make config file
+	configFileTmpl := `
+---
+ceems_lb:
+  strategy: "round-robin"
+  backends:
+    - id: "default"
+      tsdb_urls:
+        - %s`
 
-	// Write config to file
-	configPath := filepath.Join(t.TempDir(), "config.yml")
-	err = os.WriteFile(configPath, yamlData, 0644)
-	if err != nil {
-		t.Fatal("failed to create config file")
-	}
+	configFile := fmt.Sprintf(configFileTmpl, server.URL)
+	configFilePath := makeConfigFile(configFile, tmpDir)
 
 	// Remove test related args and add a dummy arg
-	os.Args = append([]string{os.Args[0]}, "--log.level", "debug", fmt.Sprintf("--config.file=%s", configPath))
+	os.Args = append([]string{os.Args[0]}, "--log.level", "debug", fmt.Sprintf("--config.file=%s", configFilePath))
 	a := CEEMSLoadBalancer{
 		appName: mockCEEMSLBAppName,
 		App:     mockCEEMSLBApp,
@@ -90,8 +88,10 @@ func TestCEEMSLBMainSuccess(t *testing.T) {
 
 	// Query LB
 	for i := 0; i < 10; i++ {
-		if err := queryLB("localhost:9030"); err == nil {
+		if err := queryLB("localhost:9030/default"); err == nil {
 			break
+		} else {
+			fmt.Println(err)
 		}
 		time.Sleep(500 * time.Millisecond)
 		if i == 9 {
@@ -108,13 +108,39 @@ func TestCEEMSLBMainFail(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Start Main
-	go func() {
-		a.Main()
-	}()
+	// Run Main
+	if err := a.Main(); err == nil {
+		t.Errorf("expected error: %s", err)
+	}
+}
 
-	// Query LB
-	if err := queryLB("localhost:9030"); err == nil {
-		t.Errorf("expected error")
+func TestCEEMSLBMainFailMismatchIDs(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Make config file
+	configFile := `
+---
+ceems_lb:
+  strategy: "round-robin"
+  backends:
+    - id: "default"
+      tsdb_urls:
+        - http://localhost:9090
+
+clusters:
+  - id: "default-1"`
+
+	configFilePath := makeConfigFile(configFile, tmpDir)
+
+	// Remove test related args and add a dummy arg
+	os.Args = append([]string{os.Args[0]}, "--log.level", "debug", fmt.Sprintf("--config.file=%s", configFilePath))
+	a := CEEMSLoadBalancer{
+		appName: mockCEEMSLBAppName,
+		App:     mockCEEMSLBApp,
+	}
+
+	// Run Main
+	if err := a.Main(); err == nil {
+		t.Errorf("expected error: %s", err)
 	}
 }

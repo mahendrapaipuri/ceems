@@ -1,6 +1,7 @@
 package serverpool
 
 import (
+	"fmt"
 	"net/http/httptest"
 	"net/http/httputil"
 	"net/url"
@@ -10,6 +11,10 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/backend"
+)
+
+var (
+	lcIDs = []string{"lc0", "lc1"}
 )
 
 func TestUnAvailableBackends(t *testing.T) {
@@ -22,40 +27,56 @@ func TestUnAvailableBackends(t *testing.T) {
 	}
 
 	// Make dummy backend servers
-	backendURLs := make([]*url.URL, 2)
-	backends := make([]backend.TSDBServer, 2)
+	backendURLs := make(map[string][]*url.URL, 2)
+	backends := make(map[string][]backend.TSDBServer, 2)
 	for i := 0; i < 2; i++ {
-		backendURL, err := url.Parse("http://localhost:1234")
-		if err != nil {
-			t.Fatal(err)
-		}
-		backendURLs[i] = backendURL
+		for j, id := range lcIDs {
+			backendURL, err := url.Parse(fmt.Sprintf("http://localhost:%d", 3333*(i+1)+j))
+			if err != nil {
+				t.Fatal(err)
+			}
 
-		rp := httputil.NewSingleHostReverseProxy(backendURL)
-		backend := backend.NewTSDBServer(backendURL, rp, log.NewNopLogger())
-		backends[i] = backend
-		manager.Add(backend)
+			if _, ok := backendURLs[id]; !ok {
+				backendURLs[id] = make([]*url.URL, 2)
+				backends[id] = make([]backend.TSDBServer, 2)
+			}
+
+			backendURLs[id][i] = backendURL
+
+			rp := httputil.NewSingleHostReverseProxy(backendURL)
+			backend := backend.NewTSDBServer(backendURL, rp, log.NewNopLogger())
+			backends[id][i] = backend
+			manager.Add(id, backend)
+		}
 	}
 
 	// Check manager size
-	if manager.Size() != 2 {
-		t.Errorf("expected 2 backend TSDB servers, got %d", manager.Size())
+	for _, id := range lcIDs {
+		if manager.Size(id) != 2 {
+			t.Errorf("expected 2 backend TSDB servers, got %d", manager.Size(id))
+		}
 	}
 
-	// Set backend1 to dead
-	backends[0].SetAlive(false)
+	// Set one backend to dead
+	backends[lcIDs[0]][1].SetAlive(false)
+	backends[lcIDs[1]][0].SetAlive(false)
 
 	// Get target and it should be backend2
-	if target := manager.Target(d); target.URL() != backendURLs[1] {
-		t.Errorf("expected backend2, got %s", target.URL().String())
+	for i, id := range lcIDs {
+		if target := manager.Target(id, d); target.URL() != backendURLs[id][i] {
+			t.Errorf("expected %s, got %s", backendURLs[id][i], target.URL().String())
+		}
 	}
 
-	// Set backend2 to dead as well
-	backends[1].SetAlive(false)
+	// Set other backend to dead as well
+	backends[lcIDs[0]][0].SetAlive(false)
+	backends[lcIDs[1]][1].SetAlive(false)
 
 	// Get target and it should be nil
-	if target := manager.Target(d); target != nil {
-		t.Errorf("expected nil, got %s", target)
+	for _, id := range lcIDs {
+		if target := manager.Target(id, d); target != nil {
+			t.Errorf("expected nil, got %s", target)
+		}
 	}
 }
 
@@ -68,60 +89,79 @@ func TestLeastConnectionLB(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Make dummy backend servers
-	backendURLs := make([]*url.URL, 2)
-	backends := make([]backend.TSDBServer, 2)
+	backendURLs := make(map[string][]*url.URL, 2)
+	backends := make(map[string][]backend.TSDBServer, 2)
 	for i := 0; i < 2; i++ {
-		dummyServer := httptest.NewServer(h)
-		defer dummyServer.Close()
-		backendURL, err := url.Parse(dummyServer.URL)
-		if err != nil {
-			t.Fatal(err)
-		}
-		backendURLs[i] = backendURL
+		for _, id := range lcIDs {
+			dummyServer := httptest.NewServer(h)
+			defer dummyServer.Close()
+			backendURL, err := url.Parse(dummyServer.URL)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, ok := backendURLs[id]; !ok {
+				backendURLs[id] = make([]*url.URL, 2)
+				backends[id] = make([]backend.TSDBServer, 2)
+			}
+			backendURLs[id][i] = backendURL
 
-		rp := httputil.NewSingleHostReverseProxy(backendURL)
-		backend := backend.NewTSDBServer(backendURL, rp, log.NewNopLogger())
-		backends[i] = backend
-		manager.Add(backend)
+			rp := httputil.NewSingleHostReverseProxy(backendURL)
+			backend := backend.NewTSDBServer(backendURL, rp, log.NewNopLogger())
+			backends[id][i] = backend
+			manager.Add(id, backend)
+		}
 	}
 
 	// Check manager size
-	if manager.Size() != 2 {
-		t.Errorf("expected 2 backend TSDB servers, got %d", manager.Size())
+	for _, id := range lcIDs {
+		if manager.Size(id) != 2 {
+			t.Errorf("expected 2 backend TSDB servers, got %d", manager.Size(id))
+		}
 	}
 
 	// Start wait group
 	var wg sync.WaitGroup
-	wg.Add(1)
+	wg.Add(len(lcIDs))
 
 	// Check if we get non nil target
-	var target backend.TSDBServer
-	if target = manager.Target(d); target == nil {
-		t.Errorf("expected a target, got nil")
+	var target = make(map[string]backend.TSDBServer)
+	for _, id := range lcIDs {
+		if target[id] = manager.Target(id, d); target[id] == nil {
+			t.Errorf("expected a target, got nil for %s", id)
+		}
 	}
 
 	// Serve a long request
-	go func() {
-		defer wg.Done()
-		target.Serve(w, req)
-	}()
+	for _, id := range lcIDs {
+		go func(i string) {
+			defer wg.Done()
+			target[i].Serve(w, req)
+		}(id)
+	}
 
 	// Let the server serve request
 	time.Sleep(1 * time.Second)
 
 	// Check new target is not nil
-	if newTarget := manager.Target(d); newTarget == nil {
-		t.Errorf("expected a new target, got nil")
-	} else {
-		if connTwo := newTarget.ActiveConnections(); connTwo != 0 {
-			t.Errorf("expected 0 connections for two, got %d", connTwo)
-		}
+	for _, id := range lcIDs {
+		if newTarget := manager.Target(id, d); newTarget == nil {
+			t.Errorf("expected a new target, got nil for %s", id)
+		} else {
+			if connTwo := newTarget.ActiveConnections(); connTwo != 0 {
+				t.Errorf("expected 0 connections for two, got %d for %s", connTwo, id)
+			}
 
-		// New target must not be old one
-		if target == newTarget {
-			t.Errorf("expected target and newTarget to be different")
+			// New target must not be old one
+			fmt.Println(target[id], newTarget)
+			if target[id] == newTarget {
+				t.Errorf("expected target and newTarget to be different for %s", id)
+			}
 		}
+	}
+
+	// For unknown ID expect nil
+	if manager.Target("unknown", d) != nil {
+		t.Errorf("expected nil, got %v", manager.Target("unknown", d))
 	}
 
 	// Wait for go routines

@@ -11,7 +11,6 @@ import (
 
 	"github.com/go-kit/log"
 	http_api "github.com/mahendrapaipuri/ceems/pkg/api/http"
-	"github.com/mahendrapaipuri/ceems/pkg/grafana"
 )
 
 func setupTestDB(d string) (*sql.DB, string) {
@@ -26,25 +25,42 @@ PRAGMA foreign_keys=OFF;
 BEGIN TRANSACTION;
 CREATE TABLE units (
 	"id" integer not null primary key,
+	"cluster_id" text,
 	"uuid" text,
 	"project" text,
 	"usr" text
 );
-INSERT INTO units VALUES(1,'1479763', 'prj1', 'usr1');
-INSERT INTO units VALUES(2,'1481508', 'prj1', 'usr2');
-INSERT INTO units VALUES(3,'1479765', 'prj2', 'usr2');
-INSERT INTO units VALUES(4,'1481510', 'prj3', 'usr3');
+INSERT INTO units VALUES(1, 'rm-0', '1479763', 'prj1', 'usr1');
+INSERT INTO units VALUES(2, 'rm-0', '1481508', 'prj1', 'usr2');
+INSERT INTO units VALUES(3, 'rm-0', '1479765', 'prj2', 'usr2');
+INSERT INTO units VALUES(4, 'rm-0', '1481510', 'prj3', 'usr3');
+INSERT INTO units VALUES(5, 'rm-1', '1479763', 'prj1', 'usr1');
+INSERT INTO units VALUES(6, 'rm-1', '1481508', 'prj1', 'usr2');
+INSERT INTO units VALUES(7, 'rm-1', '1479765', 'prj4', 'usr4');
+INSERT INTO units VALUES(8, 'rm-1', '1481510', 'prj5', 'usr5');
 CREATE TABLE usage (
 	"id" integer not null primary key,
+	"cluster_id" text,
 	"project" text,
 	"usr" text
 );
-INSERT INTO usage VALUES(1, 'prj1', 'usr1');
-INSERT INTO usage VALUES(2, 'prj1', 'usr2');
-INSERT INTO usage VALUES(3, 'prj2', 'usr2');
-INSERT INTO usage VALUES(4, 'prj3', 'usr3');
-COMMIT;
-	`
+INSERT INTO usage VALUES(1, 'rm-0', 'prj1', 'usr1');
+INSERT INTO usage VALUES(2, 'rm-0', 'prj1', 'usr2');
+INSERT INTO usage VALUES(3, 'rm-0', 'prj2', 'usr2');
+INSERT INTO usage VALUES(4, 'rm-0', 'prj3', 'usr3');
+INSERT INTO usage VALUES(5, 'rm-1', 'prj1', 'usr1');
+INSERT INTO usage VALUES(6, 'rm-1', 'prj1', 'usr2');
+INSERT INTO usage VALUES(7, 'rm-1', 'prj4', 'usr4');
+INSERT INTO usage VALUES(8, 'rm-1', 'prj5', 'usr5');
+CREATE TABLE admin_users (
+	"id" integer not null primary key,
+	"source" text,
+	"users" text
+);
+INSERT INTO admin_users VALUES(1, 'ceems', 'adm1|adm2|adm3');
+INSERT INTO admin_users VALUES(2, 'grafana', 'adm4|adm5|adm6');
+COMMIT;`
+
 	_, err = db.Exec(stmts)
 	if err != nil {
 		fmt.Printf("failed to insert mock data into DB: %s", err)
@@ -59,9 +75,8 @@ func setupMiddlewareWithDB(tmpDir string) http.Handler {
 	// Create an instance of middleware
 	amw := authenticationMiddleware{
 		logger:     log.NewNopLogger(),
-		adminUsers: []string{"adm1"},
+		clusterIDs: []string{"rm-0", "rm-1"},
 		ceems:      ceems{db: db},
-		grafana:    &grafana.Grafana{},
 	}
 
 	// create a handler to use as "next" which will verify the request
@@ -82,9 +97,8 @@ func setupMiddlewareWithAPI(tmpDir string) http.Handler {
 	// Create an instance of middleware
 	amw := authenticationMiddleware{
 		logger:     log.NewNopLogger(),
-		adminUsers: []string{"adm1"},
+		clusterIDs: []string{"rm-0", "rm-1"},
 		ceems:      ceems{webURL: ceemsURL, client: http.DefaultClient},
-		grafana:    &grafana.Grafana{},
 	}
 
 	// create a handler to use as "next" which will verify the request
@@ -104,11 +118,12 @@ func setupCEEMSAPI(db *sql.DB) *httptest.Server {
 		// Get current logged user and dashboard user from headers
 		user := r.Header.Get(grafanaUserHeader)
 
-		// Get list of queried uuids
+		// Get list of queried uuids and cluster IDs
 		uuids := r.URL.Query()["uuid"]
+		rmIDs := r.URL.Query()["cluster_id"]
 
 		// Check if user is owner of the queries uuids
-		if http_api.VerifyOwnership(user, uuids, db, log.NewNopLogger()) {
+		if http_api.VerifyOwnership(user, rmIDs, uuids, db, log.NewNopLogger()) {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("success"))
 		} else {
@@ -133,62 +148,69 @@ func TestMiddlewareWithDB(t *testing.T) {
 	}{
 		{
 			name:   "forbid due to mismatch uuid",
-			req:    "/test?query=foo{uuid=~\"1479765|1481510\"}",
+			req:    "/rm-0/query?query=foo{uuid=~\"1479765|1481510\"}",
 			user:   "usr1",
 			header: true,
 			code:   403,
 		},
 		{
+			name:   "forbid due to missing cluster_id",
+			req:    "/query?query=foo{uuid=~\"1481508|1479765\"}",
+			user:   "usr2",
+			header: true,
+			code:   403,
+		},
+		{
 			name:   "allow query for admins",
-			req:    "/test?query=foo{uuid=~\"1479765|1481510\"}",
+			req:    "/rm-0/query_range?query=foo{uuid=~\"1479765|1481510\"}",
 			user:   "adm1",
 			header: true,
 			code:   200,
 		},
 		{
 			name:   "forbid due to missing project",
-			req:    "/test?query=foo{uuid=~\"123|345\"}",
+			req:    "/rm-1/query_range?query=foo{uuid=~\"123|345\"}",
 			user:   "usr1",
 			header: true,
 			code:   403,
 		},
 		{
 			name:   "forbid due to missing header",
-			req:    "/test?query=foo{uuid=~\"123|345\"}",
+			req:    "/rm-0/query?query=foo{uuid=~\"123|345\"}",
 			header: false,
 			code:   401,
 		},
 		{
 			name:   "pass due to correct uuid",
-			req:    "/test?query=foo{uuid=\"1479763\"}",
+			req:    "/rm-0/query_range?query=foo{uuid=\"1479763\"}",
 			user:   "usr1",
 			header: true,
 			code:   200,
 		},
 		{
 			name:   "pass due to correct uuid with gpuuuid in query",
-			req:    "/test?query=foo{uuid=\"1479763\",gpuuuid=\"GPU-01234\"}",
+			req:    "/rm-1/query?query=foo{uuid=\"1479763\",gpuuuid=\"GPU-01234\"}",
 			user:   "usr1",
 			header: true,
 			code:   200,
 		},
 		{
 			name:   "pass due to uuid from same project",
-			req:    "/test?query=foo{uuid=\"1481508\"}",
+			req:    "/rm-0/query?query=foo{uuid=\"1481508\"}",
 			user:   "usr1",
 			header: true,
 			code:   200,
 		},
 		{
 			name:   "pass due to no uuid",
-			req:    "/test?query=foo{uuid=\"\"}",
+			req:    "/rm-0/query_range?query=foo{uuid=\"\"}",
 			header: true,
 			user:   "usr3",
 			code:   200,
 		},
 		{
 			name:   "pass due to no uuid and non-empty gpuuuid",
-			req:    "/test?query=foo{uuid=\"\",gpuuuid=\"GPU-01234\"}",
+			req:    "/rm-0/query?query=foo{uuid=\"\",gpuuuid=\"GPU-01234\"}",
 			header: true,
 			user:   "usr2",
 			code:   200,
@@ -200,26 +222,26 @@ func TestMiddlewareWithDB(t *testing.T) {
 		if test.header {
 			request.Header.Set("X-Grafana-User", test.user)
 		}
-		responseRecorder := httptest.NewRecorder()
 
-		handlerToTestDB.ServeHTTP(responseRecorder, request)
-
-		if responseRecorder.Result().StatusCode != test.code {
-			t.Errorf("DB %s: expected status %d, got %d", test.name, test.code, responseRecorder.Result().StatusCode)
+		// Tests with CEEMS DB
+		dbRequest := request.Clone(request.Context())
+		responseRecorderDB := httptest.NewRecorder()
+		handlerToTestDB.ServeHTTP(responseRecorderDB, dbRequest)
+		if responseRecorderDB.Result().StatusCode != test.code {
+			t.Errorf("DB %s: expected status %d, got %d", test.name, test.code, responseRecorderDB.Result().StatusCode)
 		}
-	}
 
-	for _, test := range tests {
-		request := httptest.NewRequest("GET", test.req, nil)
-		if test.header {
-			request.Header.Set("X-Grafana-User", test.user)
-		}
-		responseRecorder := httptest.NewRecorder()
-
-		handlerToTestAPI.ServeHTTP(responseRecorder, request)
-
-		if responseRecorder.Result().StatusCode != test.code {
-			t.Errorf("API %s: expected status %d, got %d", test.name, test.code, responseRecorder.Result().StatusCode)
+		// Tests with CEEMS API
+		apiRequest := request.Clone(request.Context())
+		responseRecorderAPI := httptest.NewRecorder()
+		handlerToTestAPI.ServeHTTP(responseRecorderAPI, apiRequest)
+		if responseRecorderAPI.Result().StatusCode != test.code {
+			t.Errorf(
+				"API %s: expected status %d, got %d",
+				test.name,
+				test.code,
+				responseRecorderAPI.Result().StatusCode,
+			)
 		}
 	}
 }

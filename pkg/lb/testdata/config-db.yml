@@ -1,7 +1,16 @@
-strategy: resource-based
-ceems_api:
-  db_path: ./pkg/lb/testdata/ceems_api_server.db
-admin_users: 
-  - adm1
-backends:
-  - url: "http://localhost:9090"
+---
+
+ceems_lb:
+  strategy: resource-based
+  backends:
+    - id: slurm-0
+      tsdb_urls: 
+        - http://localhost:9090
+
+    - id: slurm-1
+      tsdb_urls: 
+        - http://localhost:9090
+
+ceems_api_server:
+  data:
+    path: ./pkg/api/testdata

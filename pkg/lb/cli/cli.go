@@ -11,22 +11,108 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"slices"
 	"sync"
 	"syscall"
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/log/level"
+	"github.com/mahendrapaipuri/ceems/internal/common"
 	internal_runtime "github.com/mahendrapaipuri/ceems/internal/runtime"
-	"github.com/mahendrapaipuri/ceems/pkg/grafana"
+	ceems_api "github.com/mahendrapaipuri/ceems/pkg/api/cli"
+	ceems_http "github.com/mahendrapaipuri/ceems/pkg/api/http"
+	ceems_api_models "github.com/mahendrapaipuri/ceems/pkg/api/models"
 	tsdb "github.com/mahendrapaipuri/ceems/pkg/lb/backend"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/base"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/frontend"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/serverpool"
+	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/promlog"
 	"github.com/prometheus/common/promlog/flag"
 	"github.com/prometheus/common/version"
 )
+
+// CEEMSLBAppConfig contains the configuration of CEEMS load balancer app
+type CEEMSLBAppConfig struct {
+	LB       CEEMSLBConfig                  `yaml:"ceems_lb"`
+	Server   ceems_api.CEEMSAPIServerConfig `yaml:"ceems_api_server"`
+	Clusters []ceems_api_models.Cluster     `yaml:"clusters"`
+}
+
+// SetDirectory joins any relative file paths with dir.
+func (c *CEEMSLBAppConfig) SetDirectory(dir string) {
+	c.Server.Web.HTTPClientConfig.SetDirectory(dir)
+}
+
+// Validate valides the CEEMS LB config to check if backend servers have IDs set.
+func (c *CEEMSLBAppConfig) Validate() error {
+	// Fetch all cluster IDs
+	var clusterIDs []string
+	for _, cluster := range c.Clusters {
+		if cluster.ID != "" {
+			clusterIDs = append(clusterIDs, cluster.ID)
+		}
+	}
+
+	// Preflight checks for backends
+	for _, backend := range c.LB.Backends {
+		if backend.ID == "" {
+			return fmt.Errorf("missing ID for backend(s)")
+		}
+		if len(backend.URLs) == 0 {
+			return fmt.Errorf("missing TSDB URL(s) for backend(s)")
+		}
+
+		// Clusters config is not always present. Validate only when it is available
+		if len(clusterIDs) > 0 && !slices.Contains(clusterIDs, backend.ID) {
+			return fmt.Errorf(
+				"unknown ID %s found in backends. IDs in ceems_lb.backends and in clusters config should match",
+				backend.ID,
+			)
+		}
+	}
+	return nil
+}
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface.
+func (c *CEEMSLBAppConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	// Set a default config
+	*c = CEEMSLBAppConfig{
+		CEEMSLBConfig{
+			Strategy: "round-robin",
+		},
+		ceems_api.CEEMSAPIServerConfig{
+			Web: ceems_http.WebConfig{
+				HTTPClientConfig: config.DefaultHTTPClientConfig,
+			},
+		},
+		[]ceems_api_models.Cluster{},
+	}
+	type plain CEEMSLBAppConfig
+	if err := unmarshal((*plain)(c)); err != nil {
+		return err
+	}
+
+	// Validate backend servers config
+	if err := c.Validate(); err != nil {
+		return err
+	}
+
+	// The UnmarshalYAML method of HTTPClientConfig is not being called because it's not a pointer.
+	// We cannot make it a pointer as the parser panics for inlined pointer structs.
+	// Thus we just do its validation here.
+	if err := c.Server.Web.HTTPClientConfig.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// CEEMSLBConfig contains the CEEMS load balancer config
+type CEEMSLBConfig struct {
+	Backends []base.Backend `yaml:"backends"`
+	Strategy string         `yaml:"strategy"`
+}
 
 // CEEMSLoadBalancer represents the `ceems_lb` cli.
 type CEEMSLoadBalancer struct {
@@ -81,15 +167,10 @@ func (lb *CEEMSLoadBalancer) Main() error {
 		return fmt.Errorf("failed to parse CLI flags: %s", err)
 	}
 
-	// Check if config file arg is present
-	if *configFile == "" {
-		return fmt.Errorf("--config.file is empty. Provide a valid config file")
-	}
-
-	// Get LB config
-	config, err := getLBConfig(*configFile)
+	// Make LB config
+	config, err := common.MakeConfig[CEEMSLBAppConfig](*configFile)
 	if err != nil {
-		return fmt.Errorf("failed to read config file: %s", err)
+		return fmt.Errorf("failed to parse config file: %s", err)
 	}
 
 	// Set logger here after properly configuring promlog
@@ -103,25 +184,12 @@ func (lb *CEEMSLoadBalancer) Main() error {
 	runtime.GOMAXPROCS(*maxProcs)
 	level.Debug(logger).Log("msg", "Go MAXPROCS", "procs", runtime.GOMAXPROCS(0))
 
-	// If Grafana config found, create a new Grafana client instance
-	var grafanaClient *grafana.Grafana
-	grafanaClient, err = grafana.NewGrafana(config.Grafana.WebURL, config.Grafana.SkipTLSVerify, logger)
-	if err != nil {
-		return fmt.Errorf("failed to create Grafana client: %s", err)
-	}
-	if grafanaClient.Available() {
-		if err := grafanaClient.Ping(); err != nil {
-			//lint:ignore ST1005 Grafana is noun!
-			return fmt.Errorf("Grafana at %s is unreachable: %s", grafanaClient.URL.Redacted(), err)
-		}
-	}
-
 	// Create context that listens for the interrupt signal from the OS.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
 	// Create a pool of backend TSDB servers
-	manager, err := serverpool.NewManager(config.Strategy, logger)
+	manager, err := serverpool.NewManager(config.LB.Strategy, logger)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create backend TSDB server pool", "err", err)
 		return err
@@ -133,11 +201,8 @@ func (lb *CEEMSLoadBalancer) Main() error {
 		Address:          *webListenAddresses,
 		WebSystemdSocket: *systemdSocket,
 		WebConfigFile:    *webConfigFile,
-		CEEMSAPI:         config.CEEMSAPI,
-		AdminUsers:       config.AdminUsers,
+		APIServer:        config.Server,
 		Manager:          manager,
-		Grafana:          grafanaClient,
-		GrafanaTeamID:    config.Grafana.AdminTeamID,
 	}
 
 	// Create frontend instance
@@ -148,39 +213,47 @@ func (lb *CEEMSLoadBalancer) Main() error {
 	}
 
 	// Add backend TSDB servers to serverPool
-	for _, backend := range config.Backends {
-		webURL, err := url.Parse(backend.URL)
-		if err != nil {
-			// If we dont unwrap original error, the URL string will be printed to log which
-			// might contain sensitive passwords
-			level.Error(logger).Log("msg", "Could not parse backend TSDB server URL", "err", errors.Unwrap(err))
-			continue
-		}
-
-		rp := httputil.NewSingleHostReverseProxy(webURL)
-		backendServer := tsdb.NewTSDBServer(webURL, rp, logger)
-		rp.ErrorHandler = func(writer http.ResponseWriter, request *http.Request, err error) {
-			level.Error(logger).Log("msg", "Failed to handle the request", "host", webURL.Host, "err", err)
-			backendServer.SetAlive(false)
-
-			// If already retried the request, return error
-			if !frontend.AllowRetry(request) {
-				level.Info(logger).
-					Log("msg", "Max retry attempts reached, terminating", "address", request.RemoteAddr, "path", request.URL.Path)
-				http.Error(writer, "Service not available", http.StatusServiceUnavailable)
-				return
+	for _, backend := range config.LB.Backends {
+		for _, backendURL := range backend.URLs {
+			webURL, err := url.Parse(backendURL)
+			if err != nil {
+				// If we dont unwrap original error, the URL string will be printed to log which
+				// might contain sensitive passwords
+				level.Error(logger).Log("msg", "Could not parse backend TSDB server URL", "err", errors.Unwrap(err))
+				continue
 			}
 
-			// Retry request and set context value so that we dont retry for second time
-			level.Info(logger).Log("msg", "Attempting retry", "address", request.RemoteAddr, "path", request.URL.Path)
-			loadBalancer.Serve(
-				writer,
-				request.WithContext(
-					context.WithValue(request.Context(), frontend.RetryContextKey{}, true),
-				),
-			)
+			rp := httputil.NewSingleHostReverseProxy(webURL)
+			backendServer := tsdb.NewTSDBServer(webURL, rp, logger)
+			rp.ErrorHandler = func(writer http.ResponseWriter, request *http.Request, err error) {
+				level.Error(logger).Log("msg", "Failed to handle the request", "host", webURL.Host, "err", err)
+				backendServer.SetAlive(false)
+
+				// If already retried the request, return error
+				if !frontend.AllowRetry(request) {
+					level.Info(logger).
+						Log("msg", "Max retry attempts reached, terminating", "address", request.RemoteAddr, "path", request.URL.Path)
+					http.Error(writer, "Service not available", http.StatusServiceUnavailable)
+					return
+				}
+
+				// Retry request and set context value so that we dont retry for second time
+				level.Info(logger).
+					Log("msg", "Attempting retry", "address", request.RemoteAddr, "path", request.URL.Path)
+				loadBalancer.Serve(
+					writer,
+					request.WithContext(
+						context.WithValue(request.Context(), frontend.RetryContextKey{}, true),
+					),
+				)
+			}
+			manager.Add(backend.ID, backendServer)
 		}
-		manager.Add(backendServer)
+	}
+
+	// Validate configured cluster IDs against the ones in CEEMS DB
+	if err := loadBalancer.ValidateClusterIDs(); err != nil {
+		return err
 	}
 
 	// Declare wait group and tickers
