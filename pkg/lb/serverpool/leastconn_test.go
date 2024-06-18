@@ -2,6 +2,7 @@ package serverpool
 
 import (
 	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
 	"net/url"
@@ -135,7 +136,11 @@ func TestLeastConnectionLB(t *testing.T) {
 	for _, id := range lcIDs {
 		go func(i string) {
 			defer wg.Done()
-			target[i].Serve(w, req)
+			r := httptest.NewRequest(http.MethodGet, "/test", nil)
+			w := httptest.NewRecorder()
+			if target := manager.Target(i, d); target != nil {
+				target.Serve(w, r)
+			}
 		}(id)
 	}
 
@@ -152,7 +157,6 @@ func TestLeastConnectionLB(t *testing.T) {
 			}
 
 			// New target must not be old one
-			fmt.Println(target[id], newTarget)
 			if target[id] == newTarget {
 				t.Errorf("expected target and newTarget to be different for %s", id)
 			}

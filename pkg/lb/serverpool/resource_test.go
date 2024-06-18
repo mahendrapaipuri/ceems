@@ -97,8 +97,11 @@ func TestResourceBasedLB(t *testing.T) {
 	for _, id := range rbIDs {
 		wg.Add(1)
 		go func(i string) {
+			r := httptest.NewRequest(http.MethodGet, "/test", nil)
+			w := httptest.NewRecorder()
 			defer wg.Done()
-			backends[i][1].Serve(w, req)
+			t := backends[i][1]
+			t.Serve(w, r)
 		}(id)
 	}
 

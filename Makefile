@@ -65,7 +65,7 @@ else
 	# go test flags
 	coverage-file := coverage-go.out
 endif
-test-flags := -covermode=atomic -coverprofile=$(coverage-file).tmp
+test-flags := -covermode=atomic -coverprofile=$(coverage-file).tmp -race
 
 ifeq ($(GOHOSTOS), linux)
 	test-e2e := test-e2e

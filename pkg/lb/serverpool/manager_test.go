@@ -2,7 +2,6 @@ package serverpool
 
 import (
 	"net/http"
-	"net/http/httptest"
 	"net/http/httputil"
 	"net/url"
 	"testing"
@@ -17,9 +16,9 @@ func SleepHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 var (
-	h   = http.HandlerFunc(SleepHandler)
-	req = httptest.NewRequest(http.MethodGet, "/test", nil)
-	w   = httptest.NewRecorder()
+	h = http.HandlerFunc(SleepHandler)
+	// req = httptest.NewRequest(http.MethodGet, "/test", nil)
+	// w   = httptest.NewRecorder()
 )
 
 func TestNewManager(t *testing.T) {
