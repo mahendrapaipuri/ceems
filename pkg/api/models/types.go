@@ -109,6 +109,59 @@ func (j *JSONFloat) UnmarshalJSON(v []byte) error {
 	return nil
 }
 
+// List is a generic type to store slices. Only string and int slices are supported.
+// Any number will be converted into int64.
+type List []interface{}
+
+// Value implements Valuer interface
+func (l List) Value() (driver.Value, error) {
+	var list []byte
+	var err error
+	if list, err = json.Marshal(l); err != nil {
+		return nil, err
+	}
+	return driver.Value(string(list)), nil
+}
+
+// Scan implements Scanner interface
+func (l *List) Scan(v interface{}) error {
+	if v == nil {
+		return nil
+	}
+
+	// Initialise a json decoder
+	var d *json.Decoder
+
+	switch data := v.(type) {
+	case string:
+		d = json.NewDecoder(bytes.NewReader([]byte(data)))
+	case []byte:
+		d = json.NewDecoder(bytes.NewReader(data))
+	default:
+		return fmt.Errorf("cannot scan type %t into Map", v)
+	}
+
+	// Ref: Improvable, see https://groups.google.com/g/golang-nuts/c/TDuGDJAIuVM?pli=1
+	// Decode into a tmp var
+	var tmp []interface{}
+	d.UseNumber()
+	if err := d.Decode(&tmp); err != nil {
+		return err
+	}
+
+	// Convert json.Number to int64
+	for k := range tmp {
+		switch tmpt := tmp[k].(type) {
+		case json.Number:
+			if i, err := tmpt.Int64(); err == nil {
+				tmp[k] = i
+			}
+		}
+	}
+	*l = tmp
+	return nil
+}
+
 // WebConfig contains the client related configuration of a REST API server
 type WebConfig struct {
 	URL              string                  `yaml:"url"`
@@ -155,4 +208,16 @@ type Cluster struct {
 type ClusterUnits struct {
 	Cluster Cluster
 	Units   []Unit
+}
+
+// ClusterProjects is the container for the projects for a given cluster
+type ClusterProjects struct {
+	Cluster  Cluster
+	Projects []Project
+}
+
+// ClusterUsers is the container for the users for a given cluster
+type ClusterUsers struct {
+	Cluster Cluster
+	Users   []User
 }

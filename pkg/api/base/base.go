@@ -26,6 +26,8 @@ var CEEMSServerApp = *kingpin.New(
 var (
 	UnitsDBTableName      = models.Unit{}.TableName()
 	UsageDBTableName      = models.Usage{}.TableName()
+	ProjectsDBTableName   = models.Project{}.TableName()
+	UsersDBTableName      = models.User{}.TableName()
 	AdminUsersDBTableName = models.AdminUsers{}.TableName()
 )
 
@@ -33,6 +35,8 @@ var (
 var (
 	UnitsDBTableColNames      = models.Unit{}.TagNames("sql")
 	UsageDBTableColNames      = models.Usage{}.TagNames("sql")
+	ProjectsDBTableColNames   = models.Project{}.TagNames("sql")
+	UsersDBTableColNames      = models.User{}.TagNames("sql")
 	AdminUsersDBTableColNames = models.AdminUsers{}.TagNames("sql")
 )
 
@@ -40,6 +44,8 @@ var (
 var (
 	UnitsDBTableStructFieldColNameMap      = models.Unit{}.TagMap("", "sql")
 	UsageDBTableStructFieldColNameMap      = models.Usage{}.TagMap("", "sql")
+	ProjectsDBTableStructFieldColNameMap   = models.Project{}.TagMap("", "sql")
+	UsersDBTableStructFieldColNameMap      = models.User{}.TagMap("", "sql")
 	AdminUsersDBTableStructFieldColNameMap = models.AdminUsers{}.TagMap("", "sql")
 )
 
@@ -47,6 +53,8 @@ var (
 var (
 	UnitsDBTableColTypeMap      = models.Unit{}.TagMap("sql", "sqlitetype")
 	UsageDBTableColTypeMap      = models.Usage{}.TagMap("sql", "sqlitetype")
+	ProjectsDBTableColTypeMap   = models.Project{}.TagMap("sql", "sqlitetype")
+	UsersDBTableColTypeMap      = models.User{}.TagMap("sql", "sqlitetype")
 	AdminUsersDBTableColTypeMap = models.AdminUsers{}.TagMap("sql", "sqlitetype")
 )
 
