@@ -65,7 +65,7 @@ chmod +x -R "$TMP_DIR/$FILE_NAME"
         mkdir -p "$CFG_DIR" "$BIN_DIR"
         cp -r "$TMP_DIR/$FILE_NAME/$APP" "$BIN_DIR/$APP"
         cp -r "$TMP_DIR/$FILE_NAME/web-config.yml" "$CFG_DIR"
-        test "$APP" = "ceems_api_server" && cp -r "$TMP_DIR/$FILE_NAME/tsdb-config.yml" "$CFG_DIR"
-        test "$APP" = "ceems_lb" && cp -r "$TMP_DIR/$FILE_NAME/config.yml" "$CFG_DIR"
+        test "$APP" = "ceems_api_server" && cp -r "$TMP_DIR/$FILE_NAME/ceems_api_server.yml" "$CFG_DIR"
+        test "$APP" = "ceems_lb" && cp -r "$TMP_DIR/$FILE_NAME/ceems_lb.yml" "$CFG_DIR"
     done
 )

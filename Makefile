@@ -44,7 +44,8 @@ ifeq ($(CGO_BUILD), 1)
 	PROMU_CONF ?= .promu-cgo.yml
 	pkgs := ./pkg/api/cli \
 			./pkg/api/db ./pkg/api/helper \
-			./pkg/api/resource ./pkg/api/updater \
+			./pkg/api/resource ./pkg/api/resource/slurm \
+			./pkg/api/updater \
 			./pkg/api/http ./cmd/ceems_api_server \
 			./pkg/lb/backend ./pkg/lb/cli \
 			./pkg/lb/frontend ./pkg/lb/serverpool \
@@ -145,6 +146,10 @@ else
 test-e2e: $(PROMTOOL) build pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked
 	@echo ">> running end-to-end tests"
 	./scripts/e2e-test.sh -s api-project-query
+	./scripts/e2e-test.sh -s api-project-empty-query
+	./scripts/e2e-test.sh -s api-project-admin-query
+	./scripts/e2e-test.sh -s api-user-query
+	./scripts/e2e-test.sh -s api-user-admin-query
 	./scripts/e2e-test.sh -s api-cluster-admin-query
 	./scripts/e2e-test.sh -s api-uuid-query
 	./scripts/e2e-test.sh -s api-running-query
@@ -185,6 +190,10 @@ else
 test-e2e-update: $(PROMTOOL) build pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked
 	@echo ">> updating end-to-end tests outputs"
 	./scripts/e2e-test.sh -s api-project-query -u || true
+	./scripts/e2e-test.sh -s api-project-empty-query -u || true
+	./scripts/e2e-test.sh -s api-project-admin-query -u || true
+	./scripts/e2e-test.sh -s api-user-query -u || true
+	./scripts/e2e-test.sh -s api-user-admin-query -u || true
 	./scripts/e2e-test.sh -s api-cluster-admin-query -u || true
 	./scripts/e2e-test.sh -s api-uuid-query -u || true
 	./scripts/e2e-test.sh -s api-running-query -u || true
