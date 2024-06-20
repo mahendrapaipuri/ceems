@@ -29,11 +29,27 @@ func NewDefaultResourceManager(cluster models.Cluster, logger log.Logger) (Fetch
 }
 
 // Return empty units response
-func (d *defaultResourceManager) Fetch(start time.Time, end time.Time) ([]models.ClusterUnits, error) {
+func (d *defaultResourceManager) FetchUnits(start time.Time, end time.Time) ([]models.ClusterUnits, error) {
 	level.Info(d.logger).Log("msg", "Empty units fetched from default resource manager")
 	return []models.ClusterUnits{
 		{
 			Cluster: models.Cluster{ID: "default"},
 		},
 	}, nil
+}
+
+// Return empty projects response
+func (d *defaultResourceManager) FetchUsersProjects(
+	currentTime time.Time,
+) ([]models.ClusterUsers, []models.ClusterProjects, error) {
+	level.Info(d.logger).Log("msg", "Empty users and projects fetched from default resource manager")
+	return []models.ClusterUsers{
+			{
+				Cluster: models.Cluster{ID: "default"},
+			},
+		}, []models.ClusterProjects{
+			{
+				Cluster: models.Cluster{ID: "default"},
+			},
+		}, nil
 }
