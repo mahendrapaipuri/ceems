@@ -32,23 +32,6 @@ definitions:
           type: string
         type: array
     type: object
-  http.Response-models_Ownership:
-    properties:
-      data:
-        items:
-          $ref: '#/definitions/models.Ownership'
-        type: array
-      error:
-        type: string
-      errorType:
-        $ref: '#/definitions/http.errorType'
-      status:
-        type: string
-      warnings:
-        items:
-          type: string
-        type: array
-    type: object
   http.Response-models_Project:
     properties:
       data:
@@ -100,6 +83,23 @@ definitions:
           type: string
         type: array
     type: object
+  http.Response-models_User:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/models.User'
+        type: array
+      error:
+        type: string
+      errorType:
+        $ref: '#/definitions/http.errorType'
+      status:
+        type: string
+      warnings:
+        items:
+          type: string
+        type: array
+    type: object
   http.errorType:
     enum:
     - ""
@@ -136,21 +136,30 @@ definitions:
       manager:
         type: string
     type: object
-  models.Ownership:
-    properties:
-      owner:
-        type: boolean
-      user:
-        type: string
-      uuids:
-        items:
-          type: string
-        type: array
-    type: object
   models.Project:
     properties:
-      name:
+      cluster_id:
+        description: Identifier of the resource manager that owns project. It is used
+          to differentiate multiple clusters of same resource manager.
         type: string
+      name:
+        description: Name of the project
+        type: string
+      resource_manager:
+        description: Name of the resource manager that owns project. Eg slurm, openstack,
+          kubernetes, etc
+        type: string
+      tags:
+        description: List of meta data tags of the project
+        items: {}
+        type: array
+      uid:
+        description: Unique identifier of the project provided by cluster
+        type: string
+      users:
+        description: List of users of the project
+        items: {}
+        type: array
     type: object
   models.Tag:
     additionalProperties: true
@@ -344,6 +353,31 @@ definitions:
         description: Username
         type: string
     type: object
+  models.User:
+    properties:
+      cluster_id:
+        description: Identifier of the resource manager that owns user. It is used
+          to differentiate multiple clusters of same resource manager.
+        type: string
+      name:
+        description: Name of the user
+        type: string
+      projects:
+        description: List of projects of the user
+        items: {}
+        type: array
+      resource_manager:
+        description: Name of the resource manager that owns user. Eg slurm, openstack,
+          kubernetes, etc
+        type: string
+      tags:
+        description: List of meta data tags of the user
+        items: {}
+        type: array
+      uid:
+        description: Unique identifier of the user provided by cluster
+        type: string
+    type: object
 externalDocs:
   url: https://mahendrapaipuri.github.io/ceems/
 info:
@@ -368,7 +402,43 @@ info:
   title: CEEMS API
   version: "1.0"
 paths:
-  /{resource}/demo:
+  /clusters/admin:
+    get:
+      description: |
+        This endpoint will list all the cluster IDs in the CEEMS DB. The
+        current user is always identified by the header `X-Grafana-User` in
+        the request.
+
+        This will list all the cluster IDs in the DB. This is primarily
+        used to verify the CEEMS load balancer's backend IDs that should match
+        with cluster IDs.
+      parameters:
+      - description: Current user name
+        in: header
+        name: X-Grafana-User
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.Response-models_Cluster'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.Response-any'
+      security:
+      - BasicAuth: []
+      summary: List clusters
+      tags:
+      - clusters
+  /demo/{resource}:
     get:
       description: |-
         This endpoint returns sample response for units and usage models. This
@@ -405,49 +475,6 @@ paths:
       summary: Demo Units/Usage endpoints
       tags:
       - demo
-  /clusters/admin:
-    get:
-      description: |
-        This endpoint will list all the cluster IDs in the CEEMS DB. The
-        current user is always identified by the header `X-Grafana-User` in
-        the request.
-
-        This will list all the cluster IDs in the DB. This is primarily
-        used to verify the CEEMS load balancer's backend IDs that should match
-        with cluster IDs.
-      parameters:
-      - description: Current user name
-        in: header
-        name: X-Grafana-User
-        required: true
-        type: string
-      - collectionFormat: multi
-        description: cluster ID
-        in: query
-        items:
-          type: string
-        name: cluster_id
-        type: array
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/http.Response-models_Cluster'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/http.Response-any'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/http.Response-any'
-      security:
-      - BasicAuth: []
-      summary: List clusters
-      tags:
-      - clusters
   /health:
     get:
       description: |-
@@ -472,21 +499,26 @@ paths:
   /projects:
     get:
       description: |
-        This endpoint will list all the active projects of the current user. The
+        This endpoint will show details of the queried project of current user. The
         current user is always identified by the header `X-Grafana-User` in
         the request.
 
-        This will list all the projects that the user has ever been a part of
-        although if the user loses the membership after.
-
-        This needs to be improved as it has potential security implications.
-        Check the [issue 91](https://github.com/mahendrapaipuri/ceems/issues/91)
+        The details include list of users in that project. If current user
+        attempts to query a project that they are not part of, empty response
+        will be returned
       parameters:
       - description: Current user name
         in: header
         name: X-Grafana-User
         required: true
         type: string
+      - collectionFormat: multi
+        description: Project
+        in: query
+        items:
+          type: string
+        name: project
+        type: array
       - collectionFormat: multi
         description: cluster ID
         in: query
@@ -511,7 +543,60 @@ paths:
             $ref: '#/definitions/http.Response-any'
       security:
       - BasicAuth: []
-      summary: List projects
+      summary: Show project details
+      tags:
+      - projects
+  /projects/admin:
+    get:
+      description: |
+        This endpoint will show details of the queried project. The
+        current user is always identified by the header `X-Grafana-User` in
+        the request.
+
+        The user who is making the request must be in the list of admin users
+        configured for the server.
+
+        The details include list of users in that project. If current user
+        attempts to query a project that they are not part of, empty response
+        will be returned
+      parameters:
+      - description: Current user name
+        in: header
+        name: X-Grafana-User
+        required: true
+        type: string
+      - collectionFormat: multi
+        description: Project
+        in: query
+        items:
+          type: string
+        name: project
+        type: array
+      - collectionFormat: multi
+        description: cluster ID
+        in: query
+        items:
+          type: string
+        name: cluster_id
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.Response-models_Project'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.Response-any'
+      security:
+      - BasicAuth: []
+      summary: Admin ednpoint to fetch project details
       tags:
       - projects
   /units:
@@ -745,7 +830,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/http.Response-models_Ownership'
+            $ref: '#/definitions/http.Response-any'
         "401":
           description: Unauthorized
           schema:
@@ -944,6 +1029,98 @@ paths:
       summary: Admin Usage statistics
       tags:
       - usage
+  /users:
+    get:
+      description: |
+        This endpoint will show details of the current user. The
+        current user is always identified by the header `X-Grafana-User` in
+        the request.
+
+        The details include list of projects that user is currently a part of.
+      parameters:
+      - description: Current user name
+        in: header
+        name: X-Grafana-User
+        required: true
+        type: string
+      - collectionFormat: multi
+        description: cluster ID
+        in: query
+        items:
+          type: string
+        name: cluster_id
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.Response-models_User'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.Response-any'
+      security:
+      - BasicAuth: []
+      summary: Show user details
+      tags:
+      - users
+  /users/admin:
+    get:
+      description: |
+        This endpoint will show details of the queried user(s). The
+        current user is always identified by the header `X-Grafana-User` in
+        the request.
+
+        The user who is making the request must be in the list of admin users
+        configured for the server.
+
+        The details include list of projects that user is currently a part of.
+      parameters:
+      - description: Current user name
+        in: header
+        name: X-Grafana-User
+        required: true
+        type: string
+      - collectionFormat: multi
+        description: User name
+        in: query
+        items:
+          type: string
+        name: user
+        type: array
+      - collectionFormat: multi
+        description: cluster ID
+        in: query
+        items:
+          type: string
+        name: cluster_id
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.Response-models_User'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.Response-any'
+      security:
+      - BasicAuth: []
+      summary: Admin endpoint for fetching user details of _any_ user.
+      tags:
+      - users
 securityDefinitions:
   BasicAuth:
     type: basic

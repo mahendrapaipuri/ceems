@@ -76,7 +76,7 @@ func (s *storageConfig) String() string {
 }
 
 type adminConfig struct {
-	users                map[string][]string // Map of admin users from different sources
+	users                map[string]models.List // Map of admin users from different sources
 	grafana              *grafana.Grafana
 	grafanaAdminTeamsIDs []string
 }
@@ -118,8 +118,8 @@ var (
 	// Admin users sources
 	AdminUsersSources = []string{"ceems", "grafana"}
 
-	// Separator used in admin users list
-	AdminUsersSeparator = "|"
+	// Delimiter used in users list
+	UsersDelimiter = "|"
 )
 
 // Init func to set prepareStatements
@@ -204,7 +204,7 @@ func init() {
 		adminUsersTablePlaceholders = append(adminUsersTablePlaceholders, fmt.Sprintf("  %[1]s = :%[1]s", col))
 	}
 
-	// Unit update statement
+	// AdminUsers update statement
 	adminUsersStmt := fmt.Sprintf(
 		"INSERT INTO %s (%s) VALUES (:%s) %s",
 		base.AdminUsersDBTableName,
@@ -221,6 +221,55 @@ func init() {
 		},
 		"\n",
 	)
+
+	// Users update statement placeholders
+	var usersTablePlaceholders []string
+	for _, col := range base.UsersDBTableColNames {
+		usersTablePlaceholders = append(usersTablePlaceholders, fmt.Sprintf("  %[1]s = :%[1]s", col))
+	}
+
+	// Users update statement
+	usersStmt := fmt.Sprintf(
+		"INSERT INTO %s (%s) VALUES (:%s) %s",
+		base.UsersDBTableName,
+		strings.Join(base.UsersDBTableColNames, ","),
+		strings.Join(base.UsersDBTableColNames, ",:"),
+		// Update: 20240523: Index updated in 000009_create_users_projects_tables.up.sql
+		"ON CONFLICT(cluster_id,name) DO UPDATE SET",
+	)
+
+	prepareStatements[base.UsersDBTableName] = strings.Join(
+		[]string{
+			usersStmt,
+			strings.Join(usersTablePlaceholders, ",\n"),
+		},
+		"\n",
+	)
+
+	// Projects update statement placeholders
+	var projectsTablePlaceholders []string
+	for _, col := range base.ProjectsDBTableColNames {
+		projectsTablePlaceholders = append(projectsTablePlaceholders, fmt.Sprintf("  %[1]s = :%[1]s", col))
+	}
+
+	// Projects update statement
+	projectsStmt := fmt.Sprintf(
+		"INSERT INTO %s (%s) VALUES (:%s) %s",
+		base.ProjectsDBTableName,
+		strings.Join(base.ProjectsDBTableColNames, ","),
+		strings.Join(base.ProjectsDBTableColNames, ",:"),
+		// Update: 20240523: Index updated in 000009_create_users_projects_tables.up.sql
+		"ON CONFLICT(cluster_id,name) DO UPDATE SET",
+	)
+
+	prepareStatements[base.ProjectsDBTableName] = strings.Join(
+		[]string{
+			projectsStmt,
+			strings.Join(projectsTablePlaceholders, ",\n"),
+		},
+		"\n",
+	)
+	// fmt.Println(prepareStatements)
 }
 
 // NewStatsDB returns a new instance of statsDB struct
@@ -307,11 +356,13 @@ setup:
 	}
 
 	// Make admin users map
-	adminUsers := make(map[string][]string, len(AdminUsersSources))
-	for _, source := range AdminUsersSources {
-		adminUsers[source] = make([]string, 0)
+	adminUsers := make(map[string]models.List, len(AdminUsersSources))
+	// for _, source := range AdminUsersSources {
+	// 	adminUsers[source] = make([]string, 0)
+	// }
+	for _, user := range c.Admin.Users {
+		adminUsers["ceems"] = append(adminUsers["ceems"], user)
 	}
-	adminUsers["ceems"] = append(adminUsers["ceems"], c.Admin.Users...)
 
 	// Admin config
 	adminConfig := &adminConfig{
@@ -399,21 +450,34 @@ func (s *statsDB) updateAdminUsers() error {
 	if err != nil {
 		return err
 	}
-	s.admin.users["grafana"] = append(s.admin.users["grafana"], users...)
+	for _, u := range users {
+		s.admin.users["grafana"] = append(s.admin.users["grafana"], u)
+	}
 	return nil
 }
 
 // Get unit stats and insert them into DB
 func (s *statsDB) getUnitStats(startTime, endTime time.Time) error {
-	// Retrieve units from unerlying resource manager(s)
+	// Retrieve units from underlying resource manager(s)
 	// Return error only if **all** resource manager(s) failed
-	units, err := s.manager.Fetch(startTime, endTime)
+	units, err := s.manager.FetchUnits(startTime, endTime)
 	if len(units) == 0 && err != nil {
 		return err
 	}
 	// If atleast one manager passed, and there are failed ones, log the errors
 	if err != nil {
 		level.Error(s.logger).Log("msg", "Fetching units from atleast one resource manager failed", "err", err)
+	}
+
+	// Fetch current users and projects
+	// Return error only if **all** resource manager(s) failed
+	users, projects, err := s.manager.FetchUsersProjects(endTime)
+	if len(users) == 0 && len(projects) == 0 && err != nil {
+		return err
+	}
+	// If atleast one manager passed, and there are failed ones, log the errors
+	if err != nil {
+		level.Error(s.logger).Log("msg", "Fetching associations from atleast one resource manager failed", "err", err)
 	}
 
 	// Update units struct with unit level metrics from TSDB
@@ -454,7 +518,7 @@ func (s *statsDB) getUnitStats(startTime, endTime time.Time) error {
 
 	// Insert data into DB
 	level.Debug(s.logger).Log("msg", "Executing SQL statements")
-	s.execStatements(stmtMap, units)
+	s.execStatements(stmtMap, units, users, projects)
 	level.Debug(s.logger).Log("msg", "Finished executing SQL statements")
 
 	// Commit changes
@@ -517,11 +581,16 @@ func (s *statsDB) prepareStatements(tx *sql.Tx) (map[string]*sql.Stmt, error) {
 }
 
 // Insert unit stat into DB
-func (s *statsDB) execStatements(statements map[string]*sql.Stmt, clusterUnits []models.ClusterUnits) {
+func (s *statsDB) execStatements(
+	statements map[string]*sql.Stmt,
+	clusterUnits []models.ClusterUnits,
+	clusterUsers []models.ClusterUsers,
+	clusterProjects []models.ClusterProjects,
+) {
 	var ignore = 0
 	var err error
-	for _, units := range clusterUnits {
-		for _, unit := range units.Units {
+	for _, cluster := range clusterUnits {
+		for _, unit := range cluster.Units {
 			// Empty unit
 			if unit.UUID == "" {
 				continue
@@ -531,7 +600,7 @@ func (s *statsDB) execStatements(statements map[string]*sql.Stmt, clusterUnits [
 			// Use named parameters to not to repeat the values
 			if _, err = statements[base.UnitsDBTableName].Exec(
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["ResourceManager"], unit.ResourceManager),
-				sql.Named(base.UnitsDBTableStructFieldColNameMap["ClusterID"], units.Cluster.ID),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["ClusterID"], cluster.Cluster.ID),
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["UUID"], unit.UUID),
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["Name"], unit.Name),
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["Project"], unit.Project),
@@ -571,7 +640,7 @@ func (s *statsDB) execStatements(statements map[string]*sql.Stmt, clusterUnits [
 				sql.Named(base.UsageDBTableStructFieldColNameMap["lastupdatedat"], time.Now().Format(base.DatetimeLayout)),
 			); err != nil {
 				level.Error(s.logger).
-					Log("msg", "Failed to insert unit in DB", "id", unit.UUID, "err", err)
+					Log("msg", "Failed to insert unit in DB", "cluster_id", cluster.Cluster.ID, "uuid", unit.UUID, "err", err)
 			}
 
 			// If unit.EndTS is zero, it means a running unit. We shouldnt update stats
@@ -585,7 +654,7 @@ func (s *statsDB) execStatements(statements map[string]*sql.Stmt, clusterUnits [
 			// Use named parameters to not to repeat the values
 			if _, err = statements[base.UsageDBTableName].Exec(
 				sql.Named(base.UsageDBTableStructFieldColNameMap["ResourceManager"], unit.ResourceManager),
-				sql.Named(base.UsageDBTableStructFieldColNameMap["ClusterID"], units.Cluster.ID),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["ClusterID"], cluster.Cluster.ID),
 				sql.Named(base.UsageDBTableStructFieldColNameMap["NumUnits"], unitIncr),
 				sql.Named(base.UsageDBTableStructFieldColNameMap["Project"], unit.Project),
 				sql.Named(base.UsageDBTableStructFieldColNameMap["Usr"], unit.Usr),
@@ -612,7 +681,43 @@ func (s *statsDB) execStatements(statements map[string]*sql.Stmt, clusterUnits [
 				sql.Named(base.UsageDBTableStructFieldColNameMap["numupdates"], 1),
 			); err != nil {
 				level.Error(s.logger).
-					Log("msg", "Failed to update usage table in DB", "id", unit.UUID, "err", err)
+					Log("msg", "Failed to update usage table in DB", "cluster_id", cluster.Cluster.ID, "uuid", unit.UUID, "err", err)
+			}
+		}
+	}
+
+	// Update users
+	for _, cluster := range clusterUsers {
+		for _, user := range cluster.Users {
+			if _, err = statements[base.UsersDBTableName].Exec(
+				sql.Named(base.UsersDBTableStructFieldColNameMap["ClusterID"], cluster.Cluster.ID),
+				sql.Named(base.UsersDBTableStructFieldColNameMap["ResourceManager"], cluster.Cluster.Manager),
+				sql.Named(base.UsersDBTableStructFieldColNameMap["UID"], user.UID),
+				sql.Named(base.UsersDBTableStructFieldColNameMap["Name"], user.Name),
+				sql.Named(base.UsersDBTableStructFieldColNameMap["Projects"], user.Projects),
+				sql.Named(base.UsersDBTableStructFieldColNameMap["Tags"], user.Tags),
+				sql.Named(base.UsersDBTableStructFieldColNameMap["LastUpdatedAt"], user.LastUpdatedAt),
+			); err != nil {
+				level.Error(s.logger).
+					Log("msg", "Failed to insert user in DB", "cluster_id", cluster.Cluster.ID, "user", user.Name, "err", err)
+			}
+		}
+	}
+
+	// Update projects
+	for _, cluster := range clusterProjects {
+		for _, project := range cluster.Projects {
+			if _, err = statements[base.ProjectsDBTableName].Exec(
+				sql.Named(base.ProjectsDBTableStructFieldColNameMap["ClusterID"], cluster.Cluster.ID),
+				sql.Named(base.ProjectsDBTableStructFieldColNameMap["ResourceManager"], cluster.Cluster.Manager),
+				sql.Named(base.ProjectsDBTableStructFieldColNameMap["UID"], project.UID),
+				sql.Named(base.ProjectsDBTableStructFieldColNameMap["Name"], project.Name),
+				sql.Named(base.ProjectsDBTableStructFieldColNameMap["Users"], project.Users),
+				sql.Named(base.ProjectsDBTableStructFieldColNameMap["Tags"], project.Tags),
+				sql.Named(base.ProjectsDBTableStructFieldColNameMap["LastUpdatedAt"], project.LastUpdatedAt),
+			); err != nil {
+				level.Error(s.logger).
+					Log("msg", "Failed to insert project in DB", "cluster_id", cluster.Cluster.ID, "project", project.Name, "err", err)
 			}
 		}
 	}
@@ -621,7 +726,7 @@ func (s *statsDB) execStatements(statements map[string]*sql.Stmt, clusterUnits [
 	for _, source := range AdminUsersSources {
 		if _, err = statements[base.AdminUsersDBTableName].Exec(
 			sql.Named(base.AdminUsersDBTableStructFieldColNameMap["Source"], source),
-			sql.Named(base.AdminUsersDBTableStructFieldColNameMap["Users"], strings.Join(s.admin.users[source], AdminUsersSeparator)),
+			sql.Named(base.AdminUsersDBTableStructFieldColNameMap["Users"], s.admin.users[source]),
 			sql.Named(base.AdminUsersDBTableStructFieldColNameMap["LastUpdatedAt"], time.Now().Format(base.DatetimeLayout)),
 		); err != nil {
 			level.Error(s.logger).

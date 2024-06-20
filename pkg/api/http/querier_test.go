@@ -84,7 +84,7 @@ func TestJobsQuerier(t *testing.T) {
 			},
 			Ignore:        0,
 			NumUpdates:    1,
-			LastUpdatedAt: "2024-06-14T15:58:17",
+			LastUpdatedAt: "2024-06-20T13:59:32",
 		},
 		{
 			ID:              1,
@@ -127,7 +127,7 @@ func TestJobsQuerier(t *testing.T) {
 			},
 			Ignore:        0,
 			NumUpdates:    1,
-			LastUpdatedAt: "2024-06-14T15:58:17",
+			LastUpdatedAt: "2024-06-20T13:59:32",
 		},
 	}
 	units, err := Querier[models.Unit](db, q, logger)
@@ -156,7 +156,7 @@ func TestUsageQuerier(t *testing.T) {
 			NumUnits:        2,
 			Project:         "acc1",
 			Usr:             "usr15",
-			LastUpdatedAt:   "2024-06-14T15:58:17",
+			LastUpdatedAt:   "2024-06-20T13:59:32",
 			TotalWallTime:   994,
 			TotalCPUTime:    15904,
 			TotalGPUTime:    7952,
@@ -183,14 +183,19 @@ func TestProjectQuerier(t *testing.T) {
 	q := Query{}
 	q.query(
 		fmt.Sprintf(
-			"SELECT DISTINCT project FROM %s WHERE usr IN ('usr15') AND cluster_id IN ('slurm-1')",
-			base.UnitsDBTableName,
+			"SELECT * FROM %s WHERE name IN ('acc1') AND cluster_id IN ('slurm-1')",
+			base.ProjectsDBTableName,
 		),
 	)
 
 	expectedProjects := []models.Project{
 		{
-			Name: "acc1",
+			ID:              6,
+			Name:            "acc1",
+			ResourceManager: "slurm",
+			ClusterID:       "slurm-1",
+			Users:           models.List{"usr1", "usr15", "usr8"},
+			LastUpdatedAt:   "2024-06-20T13:59:32",
 		},
 	}
 	projects, err := Querier[models.Project](db, q, logger)
@@ -199,6 +204,39 @@ func TestProjectQuerier(t *testing.T) {
 	}
 	if !reflect.DeepEqual(expectedProjects, projects) {
 		t.Errorf("expected projects %#v \n, got %#v", expectedProjects, projects)
+	}
+}
+
+func TestUserQuerier(t *testing.T) {
+	logger := log.NewNopLogger()
+	db := setupTestDB()
+	defer db.Close()
+
+	// Query
+	q := Query{}
+	q.query(
+		fmt.Sprintf(
+			"SELECT * FROM %s WHERE name IN ('usr1') AND cluster_id IN ('slurm-1')",
+			base.UsersDBTableName,
+		),
+	)
+
+	expectedUsers := []models.User{
+		{
+			ID:              9,
+			Name:            "usr1",
+			ResourceManager: "slurm",
+			ClusterID:       "slurm-1",
+			Projects:        models.List{"acc1", "acc2"},
+			LastUpdatedAt:   "2024-06-20T13:59:32",
+		},
+	}
+	users, err := Querier[models.User](db, q, logger)
+	if err != nil {
+		t.Errorf("failed to query for users: %s", err)
+	}
+	if !reflect.DeepEqual(expectedUsers, users) {
+		t.Errorf("expected users %#v \n, got %#v", expectedUsers, users)
 	}
 }
 

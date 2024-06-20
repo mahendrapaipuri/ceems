@@ -52,13 +52,38 @@ INSERT INTO usage VALUES(5, 'rm-1', 'prj1', 'usr1');
 INSERT INTO usage VALUES(6, 'rm-1', 'prj1', 'usr2');
 INSERT INTO usage VALUES(7, 'rm-1', 'prj4', 'usr4');
 INSERT INTO usage VALUES(8, 'rm-1', 'prj5', 'usr5');
+CREATE TABLE projects (
+	"id" integer not null primary key,
+	"cluster_id" text,
+	"name" text,
+	"users" text
+);
+INSERT INTO projects VALUES(1, 'rm-0', 'prj1', '["usr1","usr2"]');
+INSERT INTO projects VALUES(2, 'rm-0', 'prj2', '["usr2"]');
+INSERT INTO projects VALUES(3, 'rm-0', 'prj3', '["usr3"]');
+INSERT INTO projects VALUES(4, 'rm-1', 'prj1', '["usr1","usr2"]');
+INSERT INTO projects VALUES(5, 'rm-1', 'prj4', '["usr4"]');
+INSERT INTO projects VALUES(6, 'rm-1', 'prj5', '["usr5"]');
+CREATE TABLE users (
+	"id" integer not null primary key,
+	"cluster_id" text,
+	"name" text,
+	"projects" text
+);
+INSERT INTO users VALUES(1, 'rm-0', 'usr1', '["prj1"]');
+INSERT INTO users VALUES(2, 'rm-0', 'usr2', '["prj1","prj2"]');
+INSERT INTO users VALUES(3, 'rm-0', 'usr3', '["prj3"]');
+INSERT INTO users VALUES(4, 'rm-1', 'usr1', '["prj1"]');
+INSERT INTO users VALUES(5, 'rm-1', 'usr2', '["prj1"]');
+INSERT INTO users VALUES(6, 'rm-1', 'usr4', '["prj4"]');
+INSERT INTO users VALUES(7, 'rm-1', 'usr5', '["prj5"]');
 CREATE TABLE admin_users (
 	"id" integer not null primary key,
 	"source" text,
 	"users" text
 );
-INSERT INTO admin_users VALUES(1, 'ceems', 'adm1|adm2|adm3');
-INSERT INTO admin_users VALUES(2, 'grafana', 'adm4|adm5|adm6');
+INSERT INTO admin_users VALUES(1, 'ceems', '["adm1","adm2","adm3"]');
+INSERT INTO admin_users VALUES(2, 'grafana', '["adm4","adm5","adm6"]');
 COMMIT;`
 
 	_, err = db.Exec(stmts)

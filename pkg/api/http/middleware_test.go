@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"testing"
 
 	"github.com/go-kit/log"
@@ -16,8 +17,9 @@ func mockAdminUsers(db *sql.DB, logger log.Logger) []string {
 func setupMiddleware() http.Handler {
 	// Create an instance of middleware
 	amw := authenticationMiddleware{
-		logger:     log.NewNopLogger(),
-		adminUsers: mockAdminUsers,
+		logger:          log.NewNopLogger(),
+		whitelistedURLs: regexp.MustCompile("/api/v1/(swagger|debug|health|demo)(.*)"),
+		adminUsers:      mockAdminUsers,
 	}
 
 	// create a handler to use as "next" which will verify the request
@@ -32,7 +34,7 @@ func TestMiddlewareSuccess(t *testing.T) {
 	handlerToTest := setupMiddleware()
 
 	// create a mock request to use
-	req := httptest.NewRequest("GET", "/api/units", nil)
+	req := httptest.NewRequest("GET", "/api/v1/units", nil)
 	req.Header.Set(grafanaUserHeader, "usr1")
 
 	// call the handler using a mock response recorder (we'll not use that anyway)
@@ -57,7 +59,7 @@ func TestMiddlewareFailure(t *testing.T) {
 	handlerToTest := setupMiddleware()
 
 	// create a mock request to use
-	req := httptest.NewRequest("GET", "/api/units", nil)
+	req := httptest.NewRequest("GET", "/api/v1/units", nil)
 
 	// call the handler using a mock response recorder (we'll not use that anyway)
 	w := httptest.NewRecorder()
@@ -74,7 +76,7 @@ func TestMiddlewareAdminSuccess(t *testing.T) {
 	handlerToTest := setupMiddleware()
 
 	// create a mock request to use
-	req := httptest.NewRequest("GET", "/api/units/admin", nil)
+	req := httptest.NewRequest("GET", "/api/v1/units/admin", nil)
 	req.Header.Set(grafanaUserHeader, "adm1")
 
 	// call the handler using a mock response recorder (we'll not use that anyway)
@@ -96,7 +98,7 @@ func TestMiddlewareAdminFailure(t *testing.T) {
 	handlerToTest := setupMiddleware()
 
 	// create a mock request to use
-	req := httptest.NewRequest("GET", "/api/units/admin", nil)
+	req := httptest.NewRequest("GET", "/api/v1/units/admin", nil)
 	req.Header.Set(grafanaUserHeader, "usr1")
 
 	// call the handler using a mock response recorder (we'll not use that anyway)
@@ -114,7 +116,7 @@ func TestMiddlewareAdminFailurePresetHeader(t *testing.T) {
 	handlerToTest := setupMiddleware()
 
 	// create a mock request to use
-	req := httptest.NewRequest("GET", "/api/units/admin", nil)
+	req := httptest.NewRequest("GET", "/api/v1/units/admin", nil)
 	req.Header.Set(grafanaUserHeader, "usr1")
 	req.Header.Set(adminUserHeader, "usr1")
 

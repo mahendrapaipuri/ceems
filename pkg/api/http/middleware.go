@@ -2,7 +2,6 @@ package http
 
 import (
 	"database/sql"
-	"fmt"
 	"net/http"
 	"regexp"
 	"slices"
@@ -23,10 +22,11 @@ const (
 
 // Define our struct
 type authenticationMiddleware struct {
-	logger       log.Logger
-	routerPrefix string
-	db           *sql.DB
-	adminUsers   func(*sql.DB, log.Logger) []string
+	logger          log.Logger
+	routerPrefix    string
+	whitelistedURLs *regexp.Regexp
+	db              *sql.DB
+	adminUsers      func(*sql.DB, log.Logger) []string
 }
 
 // Middleware function, which will be called for each request
@@ -38,24 +38,16 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 		// If requested URI is one of the following, skip checking for user header
 		//  - Root document
 		//  - /health endpoint
-		//  - /demo endpoint
+		//  - /demo/* endpoint
 		//  - /swagger/* endpoints
 		//  - /debug/* endpoints
 		//
 		// NOTE that we only skip checking X-Grafana-User header. In prod when
 		// basic auth is enabled, all these end points are under auth and hence an
-		// autorised user cannot access these end points
-		var whitelistedURLRegexp *regexp.Regexp
-		if amw.routerPrefix == "/" {
-			whitelistedURLRegexp = regexp.MustCompile("/(swagger|debug)/(.*)")
-		} else {
-			whitelistedURLRegexp = regexp.MustCompile(fmt.Sprintf("%s/(swagger|debug)/(.*)", amw.routerPrefix))
-		}
+		// unautorised user cannot access these end points
 		if r.URL.Path == "/" ||
 			r.URL.Path == amw.routerPrefix ||
-			strings.HasSuffix(r.URL.Path, "health") ||
-			strings.HasSuffix(r.URL.Path, "demo") ||
-			whitelistedURLRegexp.MatchString(r.URL.Path) {
+			amw.whitelistedURLs.MatchString(r.URL.Path) {
 			goto end
 		}
 
