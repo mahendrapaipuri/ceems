@@ -1418,7 +1418,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "",
 	Schemes:          []string{},
 	Title:            "CEEMS API",
-	Description:      "OpenAPI specification (OAS) for the CEEMS REST API.\n\nSee the Interactive Docs to try CEEMS API methods without writing code, and get\nthe complete schema of resources exposed by the API.\n\nIf basic auth is enabled, all the endpoints require authentication.\n\nAll the endpoints, except `health` and `demo`, must send a user-agent header.\n\nTimestamps must be specified in milliseconds, unless otherwise specified.",
+	Description:      "OpenAPI specification (OAS) for the CEEMS REST API.\n\nSee the Interactive Docs to try CEEMS API methods without writing code, and get\nthe complete schema of resources exposed by the API.\n\nIf basic auth is enabled, all the endpoints require authentication.\n\nAll the endpoints, except `health`, `swagger`, `debug` and `demo`,\nmust send a user-agent header.\n\nTimestamps must be specified in milliseconds, unless otherwise specified.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

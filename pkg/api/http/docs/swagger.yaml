@@ -393,7 +393,8 @@ info:
 
     If basic auth is enabled, all the endpoints require authentication.
 
-    All the endpoints, except `health` and `demo`, must send a user-agent header.
+    All the endpoints, except `health`, `swagger`, `debug` and `demo`,
+    must send a user-agent header.
 
     Timestamps must be specified in milliseconds, unless otherwise specified.
   license:

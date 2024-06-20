@@ -7,7 +7,12 @@ import (
 	"os"
 
 	_ "github.com/mahendrapaipuri/ceems/examples/mock_resource_manager/pkg/resource"
+
 	"github.com/mahendrapaipuri/ceems/pkg/api/cli"
+
+	// If existing schedulers in CEEMS are needed, they need to be imported too
+	// For instance to import slurm manager, following import statement must be added
+	_ "github.com/mahendrapaipuri/ceems/pkg/api/resource/slurm"
 )
 
 // Main entry point for `usagestats` app

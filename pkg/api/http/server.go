@@ -202,8 +202,8 @@ func NewCEEMSServer(c *Config) (*CEEMSServer, func(), error) {
 	// A demo end point that returns mocked data for units and/or usage tables
 	subRouter.HandleFunc("/demo/{resource:(?:units|usage)}", server.demo).Methods(http.MethodGet)
 
-	// pprof debug end points
-	subRouter.PathPrefix("/debug/").Handler(http.DefaultServeMux)
+	// pprof debug end points. Expose them only on localhost
+	router.PathPrefix("/debug/").Handler(http.DefaultServeMux).Host("localhost")
 
 	subRouter.PathPrefix("/swagger/").Handler(httpSwagger.Handler(
 		httpSwagger.URL("doc.json"), // The url pointing to API definition
@@ -223,7 +223,7 @@ func NewCEEMSServer(c *Config) (*CEEMSServer, func(), error) {
 	amw := authenticationMiddleware{
 		logger:          c.Logger,
 		routerPrefix:    routePrefix,
-		whitelistedURLs: regexp.MustCompile(fmt.Sprintf("%s(swagger|debug|health|demo)(.*)", routePrefix)),
+		whitelistedURLs: regexp.MustCompile(fmt.Sprintf("%s(swagger|health|demo)(.*)", routePrefix)),
 		db:              dbConn,
 		adminUsers:      adminUsers,
 	}
@@ -242,7 +242,8 @@ func NewCEEMSServer(c *Config) (*CEEMSServer, func(), error) {
 //	@description
 //	@description	If basic auth is enabled, all the endpoints require authentication.
 //	@description
-//	@description	All the endpoints, except `health` and `demo`, must send a user-agent header.
+//	@description	All the endpoints, except `health`, `swagger`, `debug` and `demo`,
+//	@description	must send a user-agent header.
 //	@description
 //	@description				Timestamps must be specified in milliseconds, unless otherwise specified.
 //
