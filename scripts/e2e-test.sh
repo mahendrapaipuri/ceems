@@ -88,6 +88,22 @@ then
   then
     desc="/projects end point test"
     fixture='pkg/api/testdata/output/e2e-test-api-server-project-query.txt'
+  elif [ "${scenario}" = "api-project-empty-query" ]
+  then
+    desc="/projects end point test with user query a project that they are not part of"
+    fixture='pkg/api/testdata/output/e2e-test-api-server-project-empty-query.txt'
+  elif [ "${scenario}" = "api-project-admin-query" ]
+  then
+    desc="/projects/admin end point test"
+    fixture='pkg/api/testdata/output/e2e-test-api-server-project-admin-query.txt'
+  elif [ "${scenario}" = "api-user-query" ]
+  then
+    desc="/users end point test"
+    fixture='pkg/api/testdata/output/e2e-test-api-server-user-query.txt'
+  elif [ "${scenario}" = "api-user-admin-query" ]
+  then
+    desc="/users/admin end point test"
+    fixture='pkg/api/testdata/output/e2e-test-api-server-user-admin-query.txt'
   elif [ "${scenario}" = "api-cluster-admin-query" ]
   then
     desc="/clusters/admin end point test"
@@ -146,11 +162,11 @@ then
     fixture='pkg/api/testdata/output/e2e-test-api-verify-fail-query.txt'
   elif [ "${scenario}" = "api-demo-units-query" ]
   then
-    desc="/units/demo end point test"
+    desc="/demo/units end point test"
     fixture='pkg/api/testdata/output/e2e-test-api-demo-units-query.txt'
   elif [ "${scenario}" = "api-demo-usage-query" ]
   then
-    desc="/usage/demo end point test"
+    desc="/demo/usage end point test"
     fixture='pkg/api/testdata/output/e2e-test-api-demo-usage-query.txt'
   fi
 
@@ -393,7 +409,19 @@ then
 
   if [ "${scenario}" = "api-project-query" ]
   then
-    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/projects" > "${fixture_output}"
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/projects?project=acc1" > "${fixture_output}"
+  elif [ "${scenario}" = "api-project-empty-query" ]
+  then
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/projects?project=acc3" > "${fixture_output}"
+  elif [ "${scenario}" = "api-project-admin-query" ]
+  then
+    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/projects/admin?project=acc1" > "${fixture_output}"
+  elif [ "${scenario}" = "api-user-query" ]
+  then
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/users" > "${fixture_output}"
+  elif [ "${scenario}" = "api-user-admin-query" ]
+  then
+    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/users/admin?user=usr1" > "${fixture_output}"
   elif [ "${scenario}" = "api-cluster-admin-query" ]
   then
     get -H "X-Ceems-User: usr1" "127.0.0.1:${port}/api/${api_version}/clusters/admin" > "${fixture_output}"
@@ -438,10 +466,10 @@ then
     get -H "X-Grafana-User: usr2" "127.0.0.1:${port}/api/${api_version}/units/verify?cluster_id=slurm-1&uuid=1479763&uuid=11508" > "${fixture_output}"
   elif [ "${scenario}" = "api-demo-units-query" ]
   then
-    get -s -o /dev/null -w "%{http_code}" "127.0.0.1:${port}/api/${api_version}/units/demo" > "${fixture_output}"
+    get -s -o /dev/null -w "%{http_code}" "127.0.0.1:${port}/api/${api_version}/demo/units" > "${fixture_output}"
   elif [ "${scenario}" = "api-demo-usage-query" ]
   then
-    get -s -o /dev/null -w "%{http_code}" "127.0.0.1:${port}/api/${api_version}/usage/demo" > "${fixture_output}"
+    get -s -o /dev/null -w "%{http_code}" "127.0.0.1:${port}/api/${api_version}/demo/usage" > "${fixture_output}"
   fi
 
 elif [[ "${scenario}" =~ ^"lb" ]] 

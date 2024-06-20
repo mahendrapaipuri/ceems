@@ -1,0 +1,17 @@
+#!/bin/bash
+
+echo """root|
+root|root
+acc1|
+acc1|usr1
+acc1|usr8
+acc1|usr15
+acc2|
+acc2|usr2
+acc2|usr1
+acc3|
+acc3|usr3
+acc4|
+acc4|usr4
+testacc|
+testacc|testusr"""

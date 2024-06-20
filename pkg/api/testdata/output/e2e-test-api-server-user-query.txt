@@ -1,0 +1,1 @@
+{"status":"success","data":[{"cluster_id":"slurm-0","resource_manager":"slurm","name":"usr1","projects":["acc1","acc2"]},{"cluster_id":"slurm-1","resource_manager":"slurm","name":"usr1","projects":["acc1","acc2"]}]}
