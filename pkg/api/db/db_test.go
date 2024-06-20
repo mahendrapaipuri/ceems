@@ -130,7 +130,75 @@ var mockUnitsTwo = []models.ClusterUnits{
 	},
 }
 
-// var mockUnits = append(mockUnitsOne, mockUnitsTwo...)
+var mockProjectsOne = []models.ClusterProjects{
+	{
+		Cluster: models.Cluster{
+			ID:       "slurm-0",
+			Updaters: []string{"slurm-00", "slurm-01"},
+		},
+		Projects: []models.Project{
+			{
+				Name:  "fooprj",
+				Users: models.List{"foo1", "foo2"},
+			},
+			{
+				Name:  "barprj",
+				Users: models.List{"bar1", "bar2"},
+			},
+		},
+	},
+	{
+		Cluster: models.Cluster{
+			ID:       "slurm-1",
+			Updaters: []string{"slurm-1"},
+		},
+		Projects: []models.Project{
+			{
+				Name:  "fooprj",
+				Users: models.List{"foo1", "foo2"},
+			},
+			{
+				Name:  "barprj",
+				Users: models.List{"bar1", "bar2"},
+			},
+		},
+	},
+}
+
+var mockUsersOne = []models.ClusterUsers{
+	{
+		Cluster: models.Cluster{
+			ID:       "slurm-0",
+			Updaters: []string{"slurm-00", "slurm-01"},
+		},
+		Users: []models.User{
+			{
+				Name:     "foo1",
+				Projects: models.List{"fooprj"},
+			},
+			{
+				Name:     "bar1",
+				Projects: models.List{"barprj"},
+			},
+		},
+	},
+	{
+		Cluster: models.Cluster{
+			ID:       "slurm-1",
+			Updaters: []string{"slurm-1"},
+		},
+		Users: []models.User{
+			{
+				Name:     "foo1",
+				Projects: models.List{"fooprj"},
+			},
+			{
+				Name:     "bar1",
+				Projects: models.List{"barprj"},
+			},
+		},
+	},
+}
 
 func newMockManager(logger log.Logger) (*resource.Manager, error) {
 	return &resource.Manager{
@@ -142,19 +210,40 @@ func newMockManager(logger log.Logger) (*resource.Manager, error) {
 	}, nil
 }
 
-// GetUnits implements collection units between start and end times
-func (m *mockFetcherOne) Fetch(start time.Time, end time.Time) ([]models.ClusterUnits, error) {
+// FetchUnits implements collection units between start and end times
+func (m *mockFetcherOne) FetchUnits(start time.Time, end time.Time) ([]models.ClusterUnits, error) {
 	return mockUnitsOne, nil
 }
 
-// GetUnits implements collection units between start and end times
-func (m *mockFetcherTwo) Fetch(start time.Time, end time.Time) ([]models.ClusterUnits, error) {
+// FetchUsersProjects implements collection project user association
+func (m *mockFetcherOne) FetchUsersProjects(
+	current time.Time,
+) ([]models.ClusterUsers, []models.ClusterProjects, error) {
+	return mockUsersOne, mockProjectsOne, nil
+}
+
+// FetchUnits implements collection units between start and end times
+func (m *mockFetcherTwo) FetchUnits(start time.Time, end time.Time) ([]models.ClusterUnits, error) {
 	return mockUnitsTwo, nil
 }
 
+// FetchUsersProjects implements collection project user association
+func (m *mockFetcherTwo) FetchUsersProjects(
+	current time.Time,
+) ([]models.ClusterUsers, []models.ClusterProjects, error) {
+	return nil, nil, fmt.Errorf("failed to fetch associations")
+}
+
 // Return error for this mockFetcher
-func (m *mockFetcherThree) Fetch(start time.Time, end time.Time) ([]models.ClusterUnits, error) {
+func (m *mockFetcherThree) FetchUnits(start time.Time, end time.Time) ([]models.ClusterUnits, error) {
 	return nil, fmt.Errorf("failed to fetch units")
+}
+
+// FetchUsersProjects implements collection project user association
+func (m *mockFetcherThree) FetchUsersProjects(
+	current time.Time,
+) ([]models.ClusterUsers, []models.ClusterProjects, error) {
+	return mockUsersOne, mockProjectsOne, nil
 }
 
 var mockUpdatedUnitsSlurm00 = []models.ClusterUnits{
@@ -405,6 +494,9 @@ func prepareMockConfig(tmpDir string) *Config {
 			LastUpdateTime:  time.Now(),
 			RetentionPeriod: model.Duration(24 * time.Hour),
 		},
+		Admin: AdminConfig{
+			Users: []string{"adm1", "adm2"},
+		},
 		ResourceManager: newMockManager,
 		Updater:         newMockUpdater,
 	}
@@ -416,8 +508,8 @@ func populateDBWithMockData(s *statsDB) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	s.execStatements(stmtMap, mockUnitsOne)
-	s.execStatements(stmtMap, mockUnitsTwo)
+	s.execStatements(stmtMap, mockUnitsOne, mockUsersOne, mockProjectsOne)
+	s.execStatements(stmtMap, mockUnitsTwo, nil, nil)
 	tx.Commit()
 }
 
@@ -528,7 +620,7 @@ func TestUnitStatsDBEntries(t *testing.T) {
 	var expectedUnits []models.ClusterUnits
 	expectedUnits = append(expectedUnits, mockUnitsOne...)
 	expectedUnits = append(expectedUnits, mockUnitsTwo...)
-	fetchedUnits, err := s.manager.Fetch(time.Now(), time.Now())
+	fetchedUnits, err := s.manager.FetchUnits(time.Now(), time.Now())
 	if !reflect.DeepEqual(fetchedUnits, expectedUnits) {
 		t.Errorf("expected %#v, got %#v", expectedUnits, fetchedUnits)
 	}
@@ -609,6 +701,25 @@ func TestUnitStatsDBEntries(t *testing.T) {
 
 	if cpuUsage < 15 {
 		t.Errorf("expected 15, \n got %f", cpuUsage)
+	}
+
+	// Make projects query
+	rows, err = s.db.Query(
+		"SELECT users FROM projects WHERE name = 'fooprj' AND cluster_id = 'slurm-0'",
+	)
+	if err != nil {
+		t.Errorf("Failed to make DB query: %s", err)
+	}
+	defer rows.Close()
+
+	var users models.List
+	for rows.Next() {
+		if err = rows.Scan(&users); err != nil {
+			t.Errorf("failed to scan row: %s", err)
+		}
+	}
+	if !reflect.DeepEqual(models.List{"foo1", "foo2"}, users) {
+		t.Errorf("expected users %#v, got %#v", models.List{"foo1", "foo2"}, users)
 	}
 
 	// Close DB
@@ -755,7 +866,7 @@ func TestUnitStatsDeleteOldUnits(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to prepare SQL statements: %s", err)
 	}
-	s.execStatements(stmtMap, units)
+	s.execStatements(stmtMap, units, nil, nil)
 
 	// Now clean up DB for old units
 	err = s.purgeExpiredUnits(tx)

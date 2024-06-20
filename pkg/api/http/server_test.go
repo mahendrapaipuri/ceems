@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"io"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/gorilla/mux"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 )
 
@@ -22,6 +24,7 @@ func setupServer() *CEEMSServer {
 		unit:    unitQuerier,
 		usage:   usageQuerier,
 		project: projectQuerier,
+		user:    userQuerier,
 		cluster: clusterQuerier,
 	}
 	return server
@@ -37,6 +40,10 @@ func usageQuerier(db *sql.DB, q Query, logger log.Logger) ([]models.Usage, error
 
 func projectQuerier(db *sql.DB, q Query, logger log.Logger) ([]models.Project, error) {
 	return []models.Project{{Name: "foo"}, {Name: "bar"}}, nil
+}
+
+func userQuerier(db *sql.DB, q Query, logger log.Logger) ([]models.User, error) {
+	return []models.User{{Name: "foo"}, {Name: "bar"}}, nil
 }
 
 func clusterQuerier(db *sql.DB, q Query, logger log.Logger) ([]models.Cluster, error) {
@@ -87,11 +94,13 @@ func getMockUnits(
 // 	}
 // }
 
-// Test /api/projects
-func TestAccountsHandler(t *testing.T) {
+// Test /projects
+func TestProjectsHandler(t *testing.T) {
 	server := setupServer()
+	defer server.Shutdown(context.Background())
+
 	// Create request
-	req := httptest.NewRequest(http.MethodGet, "/api/projects", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/projects", nil)
 	// Add user header
 	// req.Header.Set("X-Grafana-User", "foo")
 
@@ -117,7 +126,43 @@ func TestAccountsHandler(t *testing.T) {
 		t.Errorf("expected success status got %v", response.Status)
 	}
 	if !reflect.DeepEqual(response.Data, expectedAccounts) {
-		t.Errorf("expected %#v got %#v", expectedAccounts, response.Data)
+		t.Errorf("expected projects %#v got %#v", expectedAccounts, response.Data)
+	}
+}
+
+// Test /users
+func TestUsersHandler(t *testing.T) {
+	server := setupServer()
+	defer server.Shutdown(context.Background())
+
+	// Create request
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/users", nil)
+	// Add user header
+	req.Header.Set("X-Grafana-User", "foo")
+
+	// Start recorder
+	w := httptest.NewRecorder()
+	server.users(w, req)
+	res := w.Result()
+	defer res.Body.Close()
+
+	// Get body
+	data, err := io.ReadAll(res.Body)
+	if err != nil {
+		t.Errorf("expected error to be nil got %v", err)
+	}
+
+	// Expected result
+	expectedUsers, _ := userQuerier(server.db, Query{}, server.logger)
+
+	// Unmarshal byte into structs.
+	var response Response[models.User]
+	json.Unmarshal(data, &response)
+	if response.Status != "success" {
+		t.Errorf("expected success status got %v", response.Status)
+	}
+	if !reflect.DeepEqual(response.Data, expectedUsers) {
+		t.Errorf("expected users %#v got %#v", expectedUsers, response.Data)
 	}
 }
 
@@ -154,11 +199,13 @@ func TestAccountsHandler(t *testing.T) {
 // 	}
 // }
 
-// Test /api/units
+// Test /units
 func TestUnitsHandler(t *testing.T) {
 	server := setupServer()
+	defer server.Shutdown(context.Background())
+
 	// Create request
-	req := httptest.NewRequest(http.MethodGet, "/api/units", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/units", nil)
 	// Add user header
 	currentUser := "foo"
 	req.Header.Set("X-Grafana-User", currentUser)
@@ -186,8 +233,8 @@ func TestUnitsHandler(t *testing.T) {
 		t.Errorf("expected success status got %v", response.Status)
 	}
 
-	if len(response.Data) != len(expectedUnits) {
-		t.Errorf("expected %d units, got %d", len(response.Data), len(expectedUnits))
+	if !reflect.DeepEqual(expectedUnits, response.Data) {
+		t.Errorf("expected units %d units, got %d", len(expectedUnits), len(response.Data))
 	}
 }
 
@@ -228,11 +275,13 @@ func TestUnitsHandler(t *testing.T) {
 // 	}
 // }
 
-// Test /api/units when from/to query parameters are malformed
+// Test /units when from/to query parameters are malformed
 func TestUnitsHandlerWithMalformedQueryParams(t *testing.T) {
 	server := setupServer()
+	defer server.Shutdown(context.Background())
+
 	// Create request
-	req := httptest.NewRequest(http.MethodGet, "/api/units", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/units", nil)
 	// Add user header
 	req.Header.Set("X-Grafana-User", "foo")
 	// Add from query parameter
@@ -267,11 +316,13 @@ func TestUnitsHandlerWithMalformedQueryParams(t *testing.T) {
 	}
 }
 
-// Test /api/units when from/to query parameters exceed max time window
+// Test /units when from/to query parameters exceed max time window
 func TestUnitsHandlerWithQueryWindowExceeded(t *testing.T) {
 	server := setupServer()
+	defer server.Shutdown(context.Background())
+
 	// Create request
-	req := httptest.NewRequest(http.MethodGet, "/api/units", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/units", nil)
 	// Add user header
 	req.Header.Set("X-Grafana-User", "foo")
 	// Add from query parameter
@@ -307,17 +358,21 @@ func TestUnitsHandlerWithQueryWindowExceeded(t *testing.T) {
 	}
 }
 
-// Test /api/units when from/to query parameters exceed max time window but when unituuids
+// Test /units when from/to query parameters exceed max time window but when unit uuids
 // are present
 func TestUnitsHandlerWithUnituuidsQueryParams(t *testing.T) {
 	server := setupServer()
+	defer server.Shutdown(context.Background())
+
 	// Create request
-	req := httptest.NewRequest(http.MethodGet, "/api/units", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/units", nil)
 	// Add user header
 	req.Header.Set("X-Grafana-User", "foo")
 	// Add from query parameter
 	q := req.URL.Query()
-	q.Add("unituuid", "foo-bar")
+	q.Add("from", "1672527600")
+	q.Add("to", "1685570400")
+	q.Add("uuid", "foo-bar")
 	req.URL.RawQuery = q.Encode()
 
 	// Start recorder
@@ -343,24 +398,28 @@ func TestUnitsHandlerWithUnituuidsQueryParams(t *testing.T) {
 		t.Errorf("expected success status got %v", response.Status)
 	}
 
-	var unitData = response.Data
-	if len(unitData) != len(expectedUnits) {
-		t.Errorf("expected %d units, got %d", len(unitData), len(expectedUnits))
+	if !reflect.DeepEqual(expectedUnits, response.Data) {
+		t.Errorf("expected %#v units, got %#v", expectedUnits, response.Data)
 	}
 }
 
-// Test /api/usage
+// Test /usage
 func TestUsageHandler(t *testing.T) {
 	server := setupServer()
+	defer server.Shutdown(context.Background())
+
 	// Create request
-	req := httptest.NewRequest(http.MethodGet, "/api/usage", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/usage/current", nil)
+	// Need to set path variables here
+	req = mux.SetURLVars(req, map[string]string{"mode": "current"})
+
 	// Add user header
 	currentUser := "foo"
 	req.Header.Set("X-Grafana-User", currentUser)
 
 	// Start recorder
 	w := httptest.NewRecorder()
-	server.units(w, req)
+	server.usage(w, req)
 	res := w.Result()
 	defer res.Body.Close()
 
@@ -374,30 +433,32 @@ func TestUsageHandler(t *testing.T) {
 	expectedUsage, _ := usageQuerier(server.db, Query{}, server.logger)
 
 	// Unmarshal byte into structs.
-	var response Response[models.Unit]
+	var response Response[models.Usage]
 	json.Unmarshal(data, &response)
 
 	if response.Status != "success" {
-		t.Errorf("expected success status got %v", response.Status)
+		t.Errorf("expected success status got %#v", response)
 	}
 
-	if len(response.Data) != len(expectedUsage) {
-		t.Errorf("expected %d usage, got %d", len(response.Data), len(expectedUsage))
+	if !reflect.DeepEqual(expectedUsage, response.Data) {
+		t.Errorf("expected usage %#v usage, got %#v", expectedUsage, response.Data)
 	}
 }
 
-// Test /api/clusters
+// Test /clusters
 func TestClustersHandler(t *testing.T) {
 	server := setupServer()
+	defer server.Shutdown(context.Background())
+
 	// Create request
-	req := httptest.NewRequest(http.MethodGet, "/api/clusters/admin", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/clusters/admin", nil)
 	// Add user header
 	currentUser := "foo"
 	req.Header.Set("X-Grafana-User", currentUser)
 
 	// Start recorder
 	w := httptest.NewRecorder()
-	server.units(w, req)
+	server.clustersAdmin(w, req)
 	res := w.Result()
 	defer res.Body.Close()
 
@@ -410,15 +471,15 @@ func TestClustersHandler(t *testing.T) {
 	// Expected result
 	expectedClusters, _ := clusterQuerier(server.db, Query{}, server.logger)
 
-	// Unmarshal byte into structs.
-	var response Response[models.Unit]
+	// Unmarshal byte into structs
+	var response Response[models.Cluster]
 	json.Unmarshal(data, &response)
 
 	if response.Status != "success" {
 		t.Errorf("expected success status got %v", response.Status)
 	}
 
-	if len(response.Data) != len(expectedClusters) {
-		t.Errorf("expected %d clusters, got %d", len(response.Data), len(expectedClusters))
+	if !reflect.DeepEqual(expectedClusters, response.Data) {
+		t.Errorf("expected clusters %#v clusters, got %#v", expectedClusters, response.Data)
 	}
 }

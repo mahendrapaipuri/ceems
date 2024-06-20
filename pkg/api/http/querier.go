@@ -9,6 +9,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/internal/structset"
+	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 )
 
@@ -43,6 +44,30 @@ func (q *Query) subQuery(sq Query) {
 // Get current query string and its parameters
 func (q *Query) get() (string, []string) {
 	return q.builder.String(), q.params
+}
+
+// projectsSubQuery returns a sub query that returns projects of users
+// With my limited SQL skills the best query I came up with is following:
+// SELECT * FROM usage WHERE project IN (SELECT name FROM projects WHERE EXISTS (SELECT 1 FROM json_each(users) WHERE value = 'usr1'))
+// Not sure if it is the most optimal but will do for the time being
+func projectsSubQuery(users []string) Query {
+	// Make a sub query that will fetch projects of users
+	// SELECT name FROM projects WHERE EXISTS (SELECT 1 FROM json_each(users) WHERE value = 'usr1')
+	innerQuery := Query{}
+	innerQuery.query("SELECT 1 FROM json_each(users)")
+
+	// Add conditions to sub query
+	if len(users) > 0 {
+		innerQuery.query(" WHERE value IN ")
+		innerQuery.param(users)
+	}
+
+	// Sub query with inner query
+	qSub := Query{}
+	qSub.query(fmt.Sprintf("SELECT name FROM %s", base.ProjectsDBTableName))
+	qSub.query(" WHERE EXISTS ")
+	qSub.subQuery(innerQuery)
+	return qSub
 }
 
 // Scan rows
@@ -139,6 +164,9 @@ func Querier[T any](dbConn *sql.DB, query Query, logger log.Logger) ([]T, error)
 
 	queryStmt, err := dbConn.Prepare(queryString)
 	if err != nil {
+		level.Error(logger).Log("msg", "Failed prepare query statement",
+			"query", queryString, "queryParams", strings.Join(queryParams, ","), "err", err,
+		)
 		return nil, err
 	}
 	defer queryStmt.Close()

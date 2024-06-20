@@ -10,6 +10,7 @@ import (
 	_ "net/http/pprof"
 	"net/url"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -34,7 +35,9 @@ const (
 	unitsResourceName      = "units"
 	usageResourceName      = "usage"
 	adminUsersResourceName = "admin_users"
+	usersResourceName      = "users"
 	projectsResourceName   = "projects"
+	clustersResourceName   = "clusters"
 )
 
 // WebConfig makes HTTP web config from CLI args
@@ -58,6 +61,7 @@ type Config struct {
 type queriers struct {
 	unit    func(*sql.DB, Query, log.Logger) ([]models.Unit, error)
 	usage   func(*sql.DB, Query, log.Logger) ([]models.Usage, error)
+	user    func(*sql.DB, Query, log.Logger) ([]models.User, error)
 	project func(*sql.DB, Query, log.Logger) ([]models.Project, error)
 	cluster func(*sql.DB, Query, log.Logger) ([]models.Cluster, error)
 }
@@ -140,6 +144,7 @@ func NewCEEMSServer(c *Config) (*CEEMSServer, func(), error) {
 		queriers: queriers{
 			unit:    Querier[models.Unit],
 			usage:   Querier[models.Usage],
+			user:    Querier[models.User],
 			project: Querier[models.Project],
 			cluster: Querier[models.Cluster],
 		},
@@ -178,19 +183,24 @@ func NewCEEMSServer(c *Config) (*CEEMSServer, func(), error) {
 
 	// Allow only GET methods
 	subRouter.HandleFunc("/health", server.health).Methods(http.MethodGet)
-	subRouter.HandleFunc("/projects", server.projects).Methods(http.MethodGet)
-	subRouter.HandleFunc("/clusters/admin", server.clustersAdmin).Methods(http.MethodGet)
+	subRouter.HandleFunc(fmt.Sprintf("/%s", usersResourceName), server.users).Methods(http.MethodGet)
+	subRouter.HandleFunc(fmt.Sprintf("/%s", projectsResourceName), server.projects).Methods(http.MethodGet)
 	subRouter.HandleFunc(fmt.Sprintf("/%s", unitsResourceName), server.units).Methods(http.MethodGet)
-	subRouter.HandleFunc(fmt.Sprintf("/%s/admin", unitsResourceName), server.unitsAdmin).Methods(http.MethodGet)
 	subRouter.HandleFunc(fmt.Sprintf("/%s/{mode:(?:current|global)}", usageResourceName), server.usage).
-		Methods(http.MethodGet)
-	subRouter.HandleFunc(fmt.Sprintf("/%s/{mode:(?:current|global)}/admin", usageResourceName), server.usageAdmin).
 		Methods(http.MethodGet)
 	subRouter.HandleFunc(fmt.Sprintf("/%s/verify", unitsResourceName), server.verifyUnitsOwnership).
 		Methods(http.MethodGet)
 
+	// Admin end points
+	subRouter.HandleFunc(fmt.Sprintf("/%s/admin", usersResourceName), server.usersAdmin).Methods(http.MethodGet)
+	subRouter.HandleFunc(fmt.Sprintf("/%s/admin", projectsResourceName), server.projectsAdmin).Methods(http.MethodGet)
+	subRouter.HandleFunc(fmt.Sprintf("/%s/admin", clustersResourceName), server.clustersAdmin).Methods(http.MethodGet)
+	subRouter.HandleFunc(fmt.Sprintf("/%s/admin", unitsResourceName), server.unitsAdmin).Methods(http.MethodGet)
+	subRouter.HandleFunc(fmt.Sprintf("/%s/{mode:(?:current|global)}/admin", usageResourceName), server.usageAdmin).
+		Methods(http.MethodGet)
+
 	// A demo end point that returns mocked data for units and/or usage tables
-	subRouter.HandleFunc("/{resource:(?:units|usage)}/demo", server.demo).Methods(http.MethodGet)
+	subRouter.HandleFunc("/demo/{resource:(?:units|usage)}", server.demo).Methods(http.MethodGet)
 
 	// pprof debug end points
 	subRouter.PathPrefix("/debug/").Handler(http.DefaultServeMux)
@@ -211,10 +221,11 @@ func NewCEEMSServer(c *Config) (*CEEMSServer, func(), error) {
 	// Add a middleware that verifies headers and pass them in requests
 	// The middleware will fetch admin users from Grafana periodically to update list
 	amw := authenticationMiddleware{
-		logger:       c.Logger,
-		routerPrefix: routePrefix,
-		db:           dbConn,
-		adminUsers:   adminUsers,
+		logger:          c.Logger,
+		routerPrefix:    routePrefix,
+		whitelistedURLs: regexp.MustCompile(fmt.Sprintf("%s(swagger|debug|health|demo)(.*)", routePrefix)),
+		db:              dbConn,
+		adminUsers:      adminUsers,
 	}
 	router.Use(amw.Middleware)
 	return server, func() {}, nil
@@ -321,9 +332,9 @@ func (s *CEEMSServer) getCommonQueryParams(q *Query, URLValues url.Values) Query
 	}
 
 	// Get cluster_id query parameters if any
-	if rmIDs := URLValues["cluster_id"]; len(rmIDs) > 0 {
+	if clusterIDs := URLValues["cluster_id"]; len(clusterIDs) > 0 {
 		q.query(" AND cluster_id IN ")
-		q.param(rmIDs)
+		q.param(clusterIDs)
 	}
 	return *q
 }
@@ -609,7 +620,7 @@ func (s *CEEMSServer) units(w http.ResponseWriter, r *http.Request) {
 //	@Produce		json
 //	@Param			X-Grafana-User	header		string		true	"Current user name"
 //	@Param			uuid			query		[]string	false	"Unit UUID"	collectionFormat(multi)
-//	@Success		200				{object}	Response[models.Ownership]
+//	@Success		200				{object}	Response[any]
 //	@Failure		401				{object}	Response[any]
 //	@Failure		403				{object}	Response[any]
 //	@Failure		500				{object}	Response[any]
@@ -625,23 +636,20 @@ func (s *CEEMSServer) verifyUnitsOwnership(w http.ResponseWriter, r *http.Reques
 	_, dashboardUser := s.getUser(r)
 
 	// Get cluster ID
-	rmID := r.URL.Query()["cluster_id"]
+	clusterID := r.URL.Query()["cluster_id"]
 
 	// Get list of queried uuids
 	uuids := r.URL.Query()["uuid"]
+	if len(uuids) == 0 {
+		errorResponse[any](w, &apiError{errorBadData, fmt.Errorf("uuids missing in the request")}, s.logger, nil)
+		return
+	}
 
 	// Check if user is owner of the queries uuids
-	if VerifyOwnership(dashboardUser, rmID, uuids, s.db, s.logger) {
+	if VerifyOwnership(dashboardUser, clusterID, uuids, s.db, s.logger) {
 		w.WriteHeader(http.StatusOK)
-		response := Response[models.Ownership]{
+		response := Response[string]{
 			Status: "success",
-			Data: []models.Ownership{
-				{
-					User:  dashboardUser,
-					UUIDS: uuids,
-					Owner: true,
-				},
-			},
 		}
 		if err := json.NewEncoder(w).Encode(&response); err != nil {
 			level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
@@ -666,8 +674,7 @@ func (s *CEEMSServer) verifyUnitsOwnership(w http.ResponseWriter, r *http.Reques
 //	@Security	BasicAuth
 //	@Tags		clusters
 //	@Produce	json
-//	@Param		X-Grafana-User	header		string		true	"Current user name"
-//	@Param		cluster_id		query		[]string	false	"cluster ID"	collectionFormat(multi)
+//	@Param		X-Grafana-User	header		string	true	"Current user name"
 //	@Success	200				{object}	Response[models.Cluster]
 //	@Failure	401				{object}	Response[any]
 //	@Failure	500				{object}	Response[any]
@@ -696,64 +703,147 @@ func (s *CEEMSServer) clustersAdmin(w http.ResponseWriter, r *http.Request) {
 
 	// Write response
 	w.WriteHeader(http.StatusOK)
-	rmIDsResponse := Response[models.Cluster]{
+	clusterIDsResponse := Response[models.Cluster]{
 		Status: "success",
 		Data:   clusterIDs,
 	}
-	if err = json.NewEncoder(w).Encode(&rmIDsResponse); err != nil {
+	if err = json.NewEncoder(w).Encode(&clusterIDsResponse); err != nil {
 		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
 		w.Write([]byte("KO"))
 	}
 }
 
-// projects         godoc
-//
-//	@Summary		List projects
-//	@Description	This endpoint will list all the active projects of the current user. The
-//	@Description	current user is always identified by the header `X-Grafana-User` in
-//	@Description	the request.
-//	@Description
-//	@Description	This will list all the projects that the user has ever been a part of
-//	@Description	although if the user loses the membership after.
-//	@Description
-//	@Description	This needs to be improved as it has potential security implications.
-//	@Description	Check the [issue 91](https://github.com/mahendrapaipuri/ceems/issues/91)
-//	@Description
-//	@Security	BasicAuth
-//	@Tags		projects
-//	@Produce	json
-//	@Param		X-Grafana-User	header		string		true	"Current user name"
-//	@Param		cluster_id		query		[]string	false	"cluster ID"	collectionFormat(multi)
-//	@Success	200				{object}	Response[models.Project]
-//	@Failure	401				{object}	Response[any]
-//	@Failure	500				{object}	Response[any]
-//	@Router		/projects [get]
-//
-// GET /projects
-// Get projects list of user
-func (s *CEEMSServer) projects(w http.ResponseWriter, r *http.Request) {
+// Get user details
+func (s *CEEMSServer) usersQuerier(users []string, w http.ResponseWriter, r *http.Request) {
 	// Set headers
 	s.setHeaders(w)
 
+	// Make query
+	q := Query{}
+	q.query(fmt.Sprintf("SELECT * FROM %s", base.UsersDBTableName))
+	q.query(" WHERE name IN ")
+	q.param(users)
+
+	// Get cluster_id query parameters if any
+	if clusterIDs := r.URL.Query()["cluster_id"]; len(clusterIDs) > 0 {
+		q.query(" AND cluster_id IN ")
+		q.param(clusterIDs)
+	}
+
+	// Make query and check for users returned in usage
+	userModels, err := s.queriers.user(s.db, q, s.logger)
+	if err != nil {
+		level.Error(s.logger).Log("msg", "Failed to fetch user details", "users", strings.Join(users, ","), "err", err)
+		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
+		return
+	}
+
+	// Write response
+	w.WriteHeader(http.StatusOK)
+	usersResponse := Response[models.User]{
+		Status: "success",
+		Data:   userModels,
+	}
+	if err = json.NewEncoder(w).Encode(&usersResponse); err != nil {
+		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
+		w.Write([]byte("KO"))
+	}
+}
+
+// users         godoc
+//
+//	@Summary		Show user details
+//	@Description	This endpoint will show details of the current user. The
+//	@Description	current user is always identified by the header `X-Grafana-User` in
+//	@Description	the request.
+//	@Description
+//	@Description	The details include list of projects that user is currently a part of.
+//	@Description
+//	@Security	BasicAuth
+//	@Tags		users
+//	@Produce	json
+//	@Param		X-Grafana-User	header		string		true	"Current user name"
+//	@Param		cluster_id		query		[]string	false	"cluster ID"	collectionFormat(multi)
+//	@Success	200				{object}	Response[models.User]
+//	@Failure	401				{object}	Response[any]
+//	@Failure	500				{object}	Response[any]
+//	@Router		/users [get]
+//
+// GET /users
+// Get users details
+func (s *CEEMSServer) users(w http.ResponseWriter, r *http.Request) {
 	// Get current user from header
 	_, dashboardUser := s.getUser(r)
 
+	// Query for users and write response
+	s.usersQuerier([]string{dashboardUser}, w, r)
+}
+
+// usersAdmin         godoc
+//
+//	@Summary		Admin endpoint for fetching user details of _any_ user.
+//	@Description	This endpoint will show details of the queried user(s). The
+//	@Description	current user is always identified by the header `X-Grafana-User` in
+//	@Description	the request.
+//	@Description
+//	@Description	The user who is making the request must be in the list of admin users
+//	@Description	configured for the server.
+//	@Description
+//	@Description	The details include list of projects that user is currently a part of.
+//	@Description
+//	@Security	BasicAuth
+//	@Tags		users
+//	@Produce	json
+//	@Param		X-Grafana-User	header		string		true	"Current user name"
+//	@Param		user			query		[]string	false	"User name"		collectionFormat(multi)
+//	@Param		cluster_id		query		[]string	false	"cluster ID"	collectionFormat(multi)
+//	@Success	200				{object}	Response[models.User]
+//	@Failure	401				{object}	Response[any]
+//	@Failure	500				{object}	Response[any]
+//	@Router		/users/admin [get]
+//
+// GET /users/admin
+// Get users details
+func (s *CEEMSServer) usersAdmin(w http.ResponseWriter, r *http.Request) {
+	// Query for users and write response
+	s.usersQuerier(r.URL.Query()["user"], w, r)
+}
+
+// Get project details
+func (s *CEEMSServer) projectsQuerier(users []string, w http.ResponseWriter, r *http.Request) {
+	// Set headers
+	s.setHeaders(w)
+
+	// Get sub query for projects
+	qSub := projectsSubQuery(users)
+
 	// Make query
 	q := Query{}
-	q.query(fmt.Sprintf("SELECT DISTINCT project FROM %s", base.UnitsDBTableName))
-	q.query(" WHERE usr IN ")
-	q.param([]string{dashboardUser})
+	q.query(fmt.Sprintf("SELECT * FROM %s", base.ProjectsDBTableName))
 
-	// Get cluster_id query parameters if any
-	if rmIDs := r.URL.Query()["cluster_id"]; len(rmIDs) > 0 {
-		q.query(" AND cluster_id IN ")
-		q.param(rmIDs)
+	// First select all projects that user is part of using subquery
+	q.query(" WHERE name IN ")
+	q.subQuery(qSub)
+
+	// Get project query parameters if any
+	if projects := r.URL.Query()["project"]; len(projects) > 0 {
+		q.query(" AND name IN ")
+		q.param(projects)
 	}
 
-	// Make query and check for projects returned in usage
-	projects, err := s.queriers.project(s.db, q, s.logger)
+	// Get cluster_id query parameters if any
+	if clusterIDs := r.URL.Query()["cluster_id"]; len(clusterIDs) > 0 {
+		q.query(" AND cluster_id IN ")
+		q.param(clusterIDs)
+	}
+
+	// Make query
+	projectModels, err := s.queriers.project(s.db, q, s.logger)
 	if err != nil {
-		level.Error(s.logger).Log("msg", "Failed to fetch projects", "user", dashboardUser, "err", err)
+		level.Error(s.logger).Log(
+			"msg", "Failed to fetch project details",
+			"users", strings.Join(users, ","), "err", err,
+		)
 		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
 		return
 	}
@@ -762,7 +852,7 @@ func (s *CEEMSServer) projects(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	projectsResponse := Response[models.Project]{
 		Status: "success",
-		Data:   projects,
+		Data:   projectModels,
 	}
 	if err = json.NewEncoder(w).Encode(&projectsResponse); err != nil {
 		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
@@ -770,25 +860,75 @@ func (s *CEEMSServer) projects(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Make sub query for fetching projects of users
-func (s *CEEMSServer) projectsSubQuery(users []string) Query {
-	// Make a sub query that will fetch projects of users
-	qSub := Query{}
-	qSub.query(fmt.Sprintf("SELECT DISTINCT project FROM %s", base.UsageDBTableName))
+// projects         godoc
+//
+//	@Summary		Show project details
+//	@Description	This endpoint will show details of the queried project of current user. The
+//	@Description	current user is always identified by the header `X-Grafana-User` in
+//	@Description	the request.
+//	@Description
+//	@Description	The details include list of users in that project. If current user
+//	@Description	attempts to query a project that they are not part of, empty response
+//	@Description	will be returned
+//	@Description
+//	@Security	BasicAuth
+//	@Tags		projects
+//	@Produce	json
+//	@Param		X-Grafana-User	header		string		true	"Current user name"
+//	@Param		project			query		[]string	false	"Project"		collectionFormat(multi)
+//	@Param		cluster_id		query		[]string	false	"cluster ID"	collectionFormat(multi)
+//	@Success	200				{object}	Response[models.Project]
+//	@Failure	401				{object}	Response[any]
+//	@Failure	500				{object}	Response[any]
+//	@Router		/projects [get]
+//
+// GET /projects
+// Get project details
+func (s *CEEMSServer) projects(w http.ResponseWriter, r *http.Request) {
+	// Get current user from header
+	_, dashboardUser := s.getUser(r)
 
-	// Add conditions to sub query
-	if len(users) > 0 {
-		qSub.query(" WHERE usr IN ")
-		qSub.param(users)
-	}
-	return qSub
+	// Make query and write response
+	s.projectsQuerier([]string{dashboardUser}, w, r)
+}
+
+// projectsAdmin         godoc
+//
+//	@Summary		Admin ednpoint to fetch project details
+//	@Description	This endpoint will show details of the queried project. The
+//	@Description	current user is always identified by the header `X-Grafana-User` in
+//	@Description	the request.
+//	@Description
+//	@Description	The user who is making the request must be in the list of admin users
+//	@Description	configured for the server.
+//	@Description
+//	@Description	The details include list of users in that project. If current user
+//	@Description	attempts to query a project that they are not part of, empty response
+//	@Description	will be returned
+//	@Description
+//	@Security	BasicAuth
+//	@Tags		projects
+//	@Produce	json
+//	@Param		X-Grafana-User	header		string		true	"Current user name"
+//	@Param		project			query		[]string	false	"Project"		collectionFormat(multi)
+//	@Param		cluster_id		query		[]string	false	"cluster ID"	collectionFormat(multi)
+//	@Success	200				{object}	Response[models.Project]
+//	@Failure	401				{object}	Response[any]
+//	@Failure	500				{object}	Response[any]
+//	@Router		/projects/admin [get]
+//
+// GET /projects/admin
+// Get project details
+func (s *CEEMSServer) projectsAdmin(w http.ResponseWriter, r *http.Request) {
+	// Make query and write response
+	s.projectsQuerier(nil, w, r)
 }
 
 // GET /usage/current
 // Get current usage statistics
 func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.ResponseWriter, r *http.Request) {
 	// Get sub query for projects
-	qSub := s.projectsSubQuery(users)
+	qSub := projectsSubQuery(users)
 
 	// Get aggUsageCols based on queried fields
 	var queriedFields []string
@@ -854,7 +994,7 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 // Get global usage statistics
 func (s *CEEMSServer) globalUsage(users []string, queriedFields []string, w http.ResponseWriter, r *http.Request) {
 	// Get sub query for projects
-	qSub := s.projectsSubQuery(users)
+	qSub := projectsSubQuery(users)
 
 	// Make query
 	q := Query{}
@@ -1029,7 +1169,7 @@ func (s *CEEMSServer) usageAdmin(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// usage         godoc
+// demo         godoc
 //
 //	@Summary		Demo Units/Usage endpoints
 //	@Description	This endpoint returns sample response for units and usage models. This
@@ -1049,9 +1189,9 @@ func (s *CEEMSServer) usageAdmin(w http.ResponseWriter, r *http.Request) {
 //	@Success		200			{object}	Response[models.Unit]
 //	@Success		200			{object}	Response[models.Usage]
 //	@Failure		500			{object}	Response[any]
-//	@Router			/{resource}/demo [get]
+//	@Router			/demo/{resource} [get]
 //
-// GET /{units,usage}/demo
+// GET /demo/{units,usage}
 // Return mocked data for different models
 func (s *CEEMSServer) demo(w http.ResponseWriter, r *http.Request) {
 	// Set headers

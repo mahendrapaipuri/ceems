@@ -37,16 +37,6 @@
                         "name": "X-Grafana-User",
                         "in": "header",
                         "required": true
-                    },
-                    {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        },
-                        "collectionFormat": "multi",
-                        "description": "cluster ID",
-                        "name": "cluster_id",
-                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -60,6 +50,45 @@
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/http.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/demo/{resource}": {
+            "get": {
+                "description": "This endpoint returns sample response for units and usage models. This\nendpoint do not require the setting of `X-Grafana-User` header as it\nonly returns mock data for each request. This can be used to introspect\nthe response models for different resources.\n\nThe endpoint requires a path parameter `resource` which takes either:\n- `units` which returns a mock units response\n- `usage` which returns a mock usage response.\n\nThe mock data is generated randomly for each request and there is\nno guarantee that the data has logical sense.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "demo"
+                ],
+                "summary": "Demo Units/Usage endpoints",
+                "parameters": [
+                    {
+                        "enum": [
+                            "units",
+                            "usage"
+                        ],
+                        "type": "string",
+                        "description": "Whether to return mock units or usage data",
+                        "name": "resource",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-models_Usage"
                         }
                     },
                     "500": {
@@ -104,14 +133,14 @@
                         "BasicAuth": []
                     }
                 ],
-                "description": "This endpoint will list all the active projects of the current user. The\ncurrent user is always identified by the header `X-Grafana-User` in\nthe request.\n\nThis will list all the projects that the user has ever been a part of\nalthough if the user loses the membership after.\n\nThis needs to be improved as it has potential security implications.\nCheck the [issue 91](https://github.com/mahendrapaipuri/ceems/issues/91)\n",
+                "description": "This endpoint will show details of the queried project of current user. The\ncurrent user is always identified by the header `X-Grafana-User` in\nthe request.\n\nThe details include list of users in that project. If current user\nattempts to query a project that they are not part of, empty response\nwill be returned\n",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "projects"
                 ],
-                "summary": "List projects",
+                "summary": "Show project details",
                 "parameters": [
                     {
                         "type": "string",
@@ -119,6 +148,82 @@
                         "name": "X-Grafana-User",
                         "in": "header",
                         "required": true
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Project",
+                        "name": "project",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "cluster ID",
+                        "name": "cluster_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-models_Project"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/projects/admin": {
+            "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
+                "description": "This endpoint will show details of the queried project. The\ncurrent user is always identified by the header `X-Grafana-User` in\nthe request.\n\nThe user who is making the request must be in the list of admin users\nconfigured for the server.\n\nThe details include list of users in that project. If current user\nattempts to query a project that they are not part of, empty response\nwill be returned\n",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "projects"
+                ],
+                "summary": "Admin ednpoint to fetch project details",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Current user name",
+                        "name": "X-Grafana-User",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Project",
+                        "name": "project",
+                        "in": "query"
                     },
                     {
                         "type": "array",
@@ -421,7 +526,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/http.Response-models_Ownership"
+                            "$ref": "#/definitions/http.Response-any"
                         }
                     },
                     "401": {
@@ -649,34 +754,117 @@
                 }
             }
         },
-        "/{resource}/demo": {
+        "/users": {
             "get": {
-                "description": "This endpoint returns sample response for units and usage models. This\nendpoint do not require the setting of `X-Grafana-User` header as it\nonly returns mock data for each request. This can be used to introspect\nthe response models for different resources.\n\nThe endpoint requires a path parameter `resource` which takes either:\n- `units` which returns a mock units response\n- `usage` which returns a mock usage response.\n\nThe mock data is generated randomly for each request and there is\nno guarantee that the data has logical sense.",
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
+                "description": "This endpoint will show details of the current user. The\ncurrent user is always identified by the header `X-Grafana-User` in\nthe request.\n\nThe details include list of projects that user is currently a part of.\n",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "demo"
+                    "users"
                 ],
-                "summary": "Demo Units/Usage endpoints",
+                "summary": "Show user details",
                 "parameters": [
                     {
-                        "enum": [
-                            "units",
-                            "usage"
-                        ],
                         "type": "string",
-                        "description": "Whether to return mock units or usage data",
-                        "name": "resource",
-                        "in": "path",
+                        "description": "Current user name",
+                        "name": "X-Grafana-User",
+                        "in": "header",
                         "required": true
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "cluster ID",
+                        "name": "cluster_id",
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/http.Response-models_Usage"
+                            "$ref": "#/definitions/http.Response-models_User"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/admin": {
+            "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
+                "description": "This endpoint will show details of the queried user(s). The\ncurrent user is always identified by the header `X-Grafana-User` in\nthe request.\n\nThe user who is making the request must be in the list of admin users\nconfigured for the server.\n\nThe details include list of projects that user is currently a part of.\n",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Admin endpoint for fetching user details of _any_ user.",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Current user name",
+                        "name": "X-Grafana-User",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "User name",
+                        "name": "user",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "cluster ID",
+                        "name": "cluster_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-models_User"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-any"
                         }
                     },
                     "500": {
@@ -721,32 +909,6 @@
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/models.Cluster"
-                    }
-                },
-                "error": {
-                    "type": "string"
-                },
-                "errorType": {
-                    "$ref": "#/definitions/http.errorType"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "warnings": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
-        "http.Response-models_Ownership": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.Ownership"
                     }
                 },
                 "error": {
@@ -844,6 +1006,32 @@
                 }
             }
         },
+        "http.Response-models_User": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.User"
+                    }
+                },
+                "error": {
+                    "type": "string"
+                },
+                "errorType": {
+                    "$ref": "#/definitions/http.errorType"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "http.errorType": {
             "type": "string",
             "enum": [
@@ -888,28 +1076,34 @@
                 }
             }
         },
-        "models.Ownership": {
-            "type": "object",
-            "properties": {
-                "owner": {
-                    "type": "boolean"
-                },
-                "user": {
-                    "type": "string"
-                },
-                "uuids": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
         "models.Project": {
             "type": "object",
             "properties": {
-                "name": {
+                "cluster_id": {
+                    "description": "Identifier of the resource manager that owns project. It is used to differentiate multiple clusters of same resource manager.",
                     "type": "string"
+                },
+                "name": {
+                    "description": "Name of the project",
+                    "type": "string"
+                },
+                "resource_manager": {
+                    "description": "Name of the resource manager that owns project. Eg slurm, openstack, kubernetes, etc",
+                    "type": "string"
+                },
+                "tags": {
+                    "description": "List of meta data tags of the project",
+                    "type": "array",
+                    "items": {}
+                },
+                "uid": {
+                    "description": "Unique identifier of the project provided by cluster",
+                    "type": "string"
+                },
+                "users": {
+                    "description": "List of users of the project",
+                    "type": "array",
+                    "items": {}
                 }
             }
         },
@@ -1163,6 +1357,37 @@
                 },
                 "usr": {
                     "description": "Username",
+                    "type": "string"
+                }
+            }
+        },
+        "models.User": {
+            "type": "object",
+            "properties": {
+                "cluster_id": {
+                    "description": "Identifier of the resource manager that owns user. It is used to differentiate multiple clusters of same resource manager.",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Name of the user",
+                    "type": "string"
+                },
+                "projects": {
+                    "description": "List of projects of the user",
+                    "type": "array",
+                    "items": {}
+                },
+                "resource_manager": {
+                    "description": "Name of the resource manager that owns user. Eg slurm, openstack, kubernetes, etc",
+                    "type": "string"
+                },
+                "tags": {
+                    "description": "List of meta data tags of the user",
+                    "type": "array",
+                    "items": {}
+                },
+                "uid": {
+                    "description": "Unique identifier of the user provided by cluster",
                     "type": "string"
                 }
             }
