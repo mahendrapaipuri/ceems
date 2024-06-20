@@ -5,6 +5,8 @@ import (
 	"os"
 
 	"github.com/mahendrapaipuri/ceems/pkg/api/cli"
+	// We need to import each resource manager package here to call init function
+	_ "github.com/mahendrapaipuri/ceems/pkg/api/resource/slurm"
 )
 
 // Main entry point for `ceems` app

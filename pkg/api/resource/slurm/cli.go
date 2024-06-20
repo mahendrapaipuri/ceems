@@ -1,164 +1,29 @@
-package resource
+package slurm
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"os/user"
 	"path/filepath"
-	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	internal_osexec "github.com/mahendrapaipuri/ceems/internal/osexec"
-	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/helper"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 )
 
-// slurmScheduler is the struct containing the configuration of a given slurm cluster
-type slurmScheduler struct {
-	logger      log.Logger
-	cluster     models.Cluster
-	fetchMode   string // Whether to fetch from REST API or command sacct
-	cmdExecMode string // If sacct mode is chosen, the mode of executing command, ie, sudo or cap or native
-}
-
-const slurmBatchScheduler = "slurm"
-
-var (
-	slurmUserUID    int
-	slurmUserGID    int
-	slurmTimeFormat = fmt.Sprintf("%s-0700", base.DatetimeLayout)
-	jobLock         = sync.RWMutex{}
-	sacctFields     = []string{
-		"jobidraw", "partition", "qos", "account", "group", "gid", "user", "uid",
-		"submit", "start", "end", "elapsed", "elapsedraw", "exitcode", "state",
-		"alloctres", "nodelist", "jobname", "workdir",
-	}
-	sacctFieldMap = make(map[string]int, len(sacctFields))
-
-	// SLURM AllocTRES gives memory as 200M, 250G and we dont know if it gives without
-	// units. So, regex will capture the number and unit (if exists) and we convert it
-	// to bytes
-	memRegex = regexp.MustCompile("([0-9]+)([K|M|G|T]?)")
-	toBytes  = map[string]int64{
-		"K": 1024,
-		"M": 1024 * 1024,
-		"G": 1024 * 1024 * 1024,
-		"T": 1024 * 1024 * 1024 * 1024,
-		"Z": 1024 * 1024 * 1024 * 1024 * 1024,
-	}
-)
-
-func init() {
-	// Register batch scheduler
-	RegisterManager(slurmBatchScheduler, NewSlurmScheduler)
-
-	// Convert slice to map with index as value
-	for idx, field := range sacctFields {
-		sacctFieldMap[field] = idx
-	}
-}
-
-// NewSlurmScheduler returns a new SlurmScheduler that returns batch job stats
-func NewSlurmScheduler(cluster models.Cluster, logger log.Logger) (Fetcher, error) {
-	// Make slurmCluster configs from clusters
-	var slurmScheduler = slurmScheduler{logger: logger, cluster: cluster}
-	if err := preflightChecks(&slurmScheduler); err != nil {
-		return nil, err
-	}
-	level.Info(logger).Log("msg", "Fetching batch jobs from SLURM clusters", "id", cluster.ID)
-	return &slurmScheduler, nil
-}
-
-// Get jobs from slurm
-func (s *slurmScheduler) Fetch(start time.Time, end time.Time) ([]models.ClusterUnits, error) {
-	// Fetch each cluster one by one to reduce memory footprint
-	var jobs []models.Unit
-	var err error
-	if s.fetchMode == "sacct" {
-		if jobs, err = s.fetchFromSacct(start, end); err != nil {
-			level.Error(s.logger).
-				Log("msg", "Failed to execute SLURM sacct command", "cluster_id", s.cluster.ID, "err", err)
-			return nil, err
-		}
-		return []models.ClusterUnits{{Cluster: s.cluster, Units: jobs}}, nil
-	}
-	return nil, fmt.Errorf("unknown fetch mode for SLURM cluster %s", s.cluster.ID)
-}
-
-// Get jobs from slurm sacct command
-func (s *slurmScheduler) fetchFromSacct(start time.Time, end time.Time) ([]models.Unit, error) {
-	startTime := start.Format(base.DatetimeLayout)
-	endTime := end.Format(base.DatetimeLayout)
-
-	// Execute sacct command between start and end times
-	sacctOutput, err := s.runSacctCmd(startTime, endTime)
-	if err != nil {
-		return []models.Unit{}, err
-	}
-
-	// Parse sacct output and create BatchJob structs slice
-	jobs, numJobs := parseSacctCmdOutput(string(sacctOutput), start, end)
-	level.Info(s.logger).
-		Log("msg", "SLURM jobs fetched", "cluster_id", s.cluster.ID, "start", startTime, "end", endTime, "njobs", numJobs)
-	return jobs, nil
-}
-
-// Run sacct command and return output
-func (s *slurmScheduler) runSacctCmd(startTime string, endTime string) ([]byte, error) {
-	// Use jobIDRaw that outputs the array jobs as regular job IDs instead of id_array format
-	args := []string{
-		"-D", "-X", "--allusers", "--parsable2",
-		"--format", strings.Join(sacctFields, ","),
-		"--state", "RUNNING,CANCELLED,COMPLETED,FAILED,NODE_FAIL,PREEMPTED,TIMEOUT",
-		"--starttime", startTime,
-		"--endtime", endTime,
-	}
-
-	// sacct path
-	sacctPath := filepath.Join(s.cluster.CLI.Path, "sacct")
-
-	// Use SLURM_TIME_FORMAT env var to get timezone offset
-	env := []string{"SLURM_TIME_FORMAT=%Y-%m-%dT%H:%M:%S%z"}
-	for name, value := range s.cluster.CLI.EnvVars {
-		env = append(env, fmt.Sprintf("%s=%s", name, value))
-	}
-
-	// Run command as slurm user
-	if s.cmdExecMode == "cap" {
-		return internal_osexec.ExecuteAs(sacctPath, args, slurmUserUID, slurmUserGID, env, s.logger)
-	} else if s.cmdExecMode == "sudo" {
-		// Important that we need to export env as well as we set environment variables in the
-		// command execution
-		args = append([]string{"-E", sacctPath}, args...)
-		return internal_osexec.Execute("sudo", args, env, s.logger)
-	}
-	return internal_osexec.Execute(sacctPath, args, env, s.logger)
-}
-
-// Run basic checks like checking path of executable etc
-func preflightChecks(s *slurmScheduler) error {
-	// // Always prefer REST API mode if configured
-	// if clusterConfig.Web.URL != "" {
-	// 	return checkRESTAPI(clusterConfig, logger)
-	// }
-
-	return preflightsSacct(s)
-}
-
-// Run preflights for sacct execution mode
-func preflightsSacct(slurm *slurmScheduler) error {
+// Run preflights for CLI execution mode
+func preflightsCLI(slurm *slurmScheduler) error {
 	// We hit this only when fetch mode is sacct command
 	// Assume execMode is always native
-	slurm.fetchMode = "sacct"
-	level.Debug(slurm.logger).Log("msg", "SLURM jobs will be fetched using sacct command")
+	slurm.fetchMode = "cli"
 	slurm.cmdExecMode = "native"
+	level.Debug(slurm.logger).Log("msg", "SLURM jobs will be fetched using sacct command")
 
 	// If no sacct path is provided, assume it is available on PATH
 	if slurm.cluster.CLI.Path == "" {
@@ -226,8 +91,8 @@ sudomode:
 
 // Parse sacct command output and return batchjob slice
 func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]models.Unit, int) {
-	// Strip first line
-	sacctOutputLines := strings.Split(string(sacctOutput), "\n")[1:]
+	// No header in output
+	sacctOutputLines := strings.Split(string(sacctOutput), "\n")
 
 	// Update period
 	intStartTS := start.Local().UnixMilli()
@@ -433,4 +298,103 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 	}
 	wg.Wait()
 	return jobs, numJobs
+}
+
+// Parse sacctmgr command output and return association
+func parseSacctMgrCmdOutput(sacctMgrOutput string, currentTime string) ([]models.User, []models.Project) {
+	// No header in output
+	sacctMgrOutputLines := strings.Split(string(sacctMgrOutput), "\n")
+
+	wg := &sync.WaitGroup{}
+	wg.Add(len(sacctMgrOutputLines))
+
+	var projectUserMap = make(map[string][]string)
+	var userProjectMap = make(map[string][]string)
+	var users []string
+	var projects []string
+	for iline, line := range sacctMgrOutputLines {
+		go func(i int, l string) {
+			components := strings.Split(l, "|")
+
+			// Ignore if we cannot get all components
+			if len(components) < 2 {
+				wg.Done()
+				return
+			}
+
+			// Ignore root user/account
+			if components[0] == "root" || components[1] == "root" {
+				wg.Done()
+				return
+			}
+
+			// Ignore empty lines
+			if components[0] == "" || components[1] == "" {
+				wg.Done()
+				return
+			}
+
+			// Add user project association to map
+			assocLock.Lock()
+			userProjectMap[components[1]] = append(userProjectMap[components[1]], components[0])
+			projectUserMap[components[0]] = append(projectUserMap[components[0]], components[1])
+			users = append(users, components[1])
+			projects = append(projects, components[0])
+			assocLock.Unlock()
+			wg.Done()
+		}(iline, line)
+	}
+	wg.Wait()
+
+	// Here we sort projects and users to get deterministic
+	// output as order in Go maps is undefined
+
+	// Sort and compact projects
+	slices.Sort(projects)
+	projects = slices.Compact(projects)
+
+	// Sort and compact users slice to get unique users
+	slices.Sort(users)
+	users = slices.Compact(users)
+
+	// Transform map into slice of projects
+	var projectModels = make([]models.Project, len(projects))
+	for i := 0; i < len(projects); i++ {
+		projectUsers := projectUserMap[projects[i]]
+
+		// Sort users
+		slices.Sort(projectUsers)
+		var usersList models.List
+		for _, u := range slices.Compact(projectUsers) {
+			usersList = append(usersList, u)
+		}
+
+		// Make Association
+		projectModels[i] = models.Project{
+			Name:          projects[i],
+			Users:         usersList,
+			LastUpdatedAt: currentTime,
+		}
+	}
+
+	// Transform map into slice of users
+	var userModels = make([]models.User, len(users))
+	for i := 0; i < len(users); i++ {
+		userProjects := userProjectMap[users[i]]
+
+		// Sort projects
+		slices.Sort(userProjects)
+		var projectsList models.List
+		for _, p := range slices.Compact(userProjects) {
+			projectsList = append(projectsList, p)
+		}
+
+		// Make Association
+		userModels[i] = models.User{
+			Name:          users[i],
+			Projects:      projectsList,
+			LastUpdatedAt: currentTime,
+		}
+	}
+	return userModels, projectModels
 }

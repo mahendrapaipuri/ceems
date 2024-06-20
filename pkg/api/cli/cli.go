@@ -247,7 +247,7 @@ func (b *CEEMSServer) Main() error {
 			// starts instead of waiting for ticker to tick
 			level.Info(logger).Log("msg", "Updating CEEMS DB")
 			if err := collector.Collect(); err != nil {
-				level.Error(logger).Log("msg", "Failed to fetch compute units", "err", err)
+				level.Error(logger).Log("msg", "Failed to fetch data", "err", err)
 			}
 
 			select {

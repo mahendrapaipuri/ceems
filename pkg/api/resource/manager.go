@@ -24,8 +24,10 @@ type Config[T any] struct {
 
 // Fetcher is the interface resource manager has to implement.
 type Fetcher interface {
-	// Fetch compute units between start and end times
-	Fetch(start time.Time, end time.Time) ([]models.ClusterUnits, error)
+	// FetchUnits fetches compute units between start and end times
+	FetchUnits(start time.Time, end time.Time) ([]models.ClusterUnits, error)
+	// FetchUsersProjects fetches latest projects, users and their associations
+	FetchUsersProjects(currentTime time.Time) ([]models.ClusterUsers, []models.ClusterProjects, error)
 }
 
 // Manager implements the interface to fetch compute units from different resource managers.
@@ -137,12 +139,12 @@ func NewManager(logger log.Logger) (*Manager, error) {
 	return &Manager{Fetchers: fetchers, logger: logger}, nil
 }
 
-// Fetch implements collection jobs between start and end times
-func (b Manager) Fetch(start time.Time, end time.Time) ([]models.ClusterUnits, error) {
+// FetchUnits implements collection jobs between start and end times
+func (b Manager) FetchUnits(start time.Time, end time.Time) ([]models.ClusterUnits, error) {
 	var clusterUnits []models.ClusterUnits
 	var errs error
 	for _, fetcher := range b.Fetchers {
-		units, err := fetcher.Fetch(start, end)
+		units, err := fetcher.FetchUnits(start, end)
 		if err != nil {
 			errs = errors.Join(errs, err)
 			continue
@@ -150,4 +152,21 @@ func (b Manager) Fetch(start time.Time, end time.Time) ([]models.ClusterUnits, e
 		clusterUnits = append(clusterUnits, units...)
 	}
 	return clusterUnits, errs
+}
+
+// FetchUsersProjects fetches latest projects and users for each cluster
+func (b Manager) FetchUsersProjects(currentTime time.Time) ([]models.ClusterUsers, []models.ClusterProjects, error) {
+	var clusterUsers []models.ClusterUsers
+	var clusterProjects []models.ClusterProjects
+	var errs error
+	for _, fetcher := range b.Fetchers {
+		users, projects, err := fetcher.FetchUsersProjects(currentTime)
+		if err != nil {
+			errs = errors.Join(errs, err)
+			continue
+		}
+		clusterUsers = append(clusterUsers, users...)
+		clusterProjects = append(clusterProjects, projects...)
+	}
+	return clusterUsers, clusterProjects, errs
 }
