@@ -53,11 +53,12 @@ func NewMockManager(cluster models.Cluster, logger log.Logger) (resource.Fetcher
 	}, nil
 }
 
-// Add the logic here to get compute units from resource manager and return slice of Unit structs
+// Add the logic here to get compute units from resource manager and return slice of
+// ClusterUnits structs
 //
 // When making Unit stucts, ensure to format the datetime using base.DatetimeLayout
 // Also ensure to set StartTS and EndTS fields to start and end times in unix milliseconds epoch
-func (s *mockManager) Fetch(start time.Time, end time.Time) ([]models.ClusterUnits, error) {
+func (s *mockManager) FetchUnits(start time.Time, end time.Time) ([]models.ClusterUnits, error) {
 	return []models.ClusterUnits{
 		{
 			Cluster: models.Cluster{
@@ -73,4 +74,34 @@ func (s *mockManager) Fetch(start time.Time, end time.Time) ([]models.ClusterUni
 			},
 		},
 	}, nil
+}
+
+// Add the logic here to get users and projects/accounts/tenants/namespaces from
+// resource manager
+func (s *mockManager) FetchUsersProjects(current time.Time) ([]models.ClusterUsers, []models.ClusterProjects, error) {
+	return []models.ClusterUsers{
+			{
+				Cluster: models.Cluster{
+					ID: "mock",
+				},
+				Users: []models.User{
+					{
+						Name:     "usr1",
+						Projects: models.List{"prj1", "prj2"},
+					},
+				},
+			},
+		}, []models.ClusterProjects{
+			{
+				Cluster: models.Cluster{
+					ID: "mock",
+				},
+				Projects: []models.Project{
+					{
+						Name:  "usr1",
+						Users: models.List{"prj1", "prj2"},
+					},
+				},
+			},
+		}, nil
 }

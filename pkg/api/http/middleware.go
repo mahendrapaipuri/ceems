@@ -20,6 +20,11 @@ const (
 	ceemsUserHeader     = "X-Ceems-User" // Special header that will be included in requests from CEEMS LB
 )
 
+// Debug end point regex match
+var (
+	debugEndpoints = regexp.MustCompile("/debug/(.*)")
+)
+
 // Define our struct
 type authenticationMiddleware struct {
 	logger          log.Logger
@@ -47,7 +52,8 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 		// unautorised user cannot access these end points
 		if r.URL.Path == "/" ||
 			r.URL.Path == amw.routerPrefix ||
-			amw.whitelistedURLs.MatchString(r.URL.Path) {
+			amw.whitelistedURLs.MatchString(r.URL.Path) ||
+			debugEndpoints.MatchString(r.URL.Path) {
 			goto end
 		}
 
