@@ -39,7 +39,7 @@ func makeDSN(filePath string, opts map[string]string) string {
 func writeTimeStampToFile(filePath string, timeStamp time.Time, logger log.Logger) {
 	timeStampString := timeStamp.Format(base.DatetimeLayout)
 	timeStampByte := []byte(timeStampString)
-	if err := os.WriteFile(filePath, timeStampByte, 0644); err != nil {
+	if err := os.WriteFile(filePath, timeStampByte, 0600); err != nil {
 		level.Error(logger).
 			Log("msg", "Failed to write timestamp to file", "time", timeStampString, "file", filePath, "err", err)
 	}

@@ -3,6 +3,7 @@ package osexec
 
 import (
 	"context"
+	"math"
 	"os"
 	"os/exec"
 	"strings"
@@ -46,9 +47,18 @@ func ExecuteAs(cmd string, args []string, uid int, gid int, env []string, logger
 		Log("msg", "Executing as user", "command", cmd, "args", strings.Join(args, " "), "uid", uid, "gid", gid)
 	execCmd := exec.Command(cmd, args...)
 
+	// Check bounds on uid and gid before converting into int32
+	var uidInt32, gidInt32 uint32
+	if uid > 0 && uid <= math.MaxInt32 {
+		uidInt32 = uint32(uid)
+	}
+	if gid > 0 && gid <= math.MaxInt32 {
+		gidInt32 = uint32(gid)
+	}
+
 	// Set uid and gid for process
 	execCmd.SysProcAttr = &syscall.SysProcAttr{}
-	execCmd.SysProcAttr.Credential = &syscall.Credential{Uid: uint32(uid), Gid: uint32(gid)}
+	execCmd.SysProcAttr.Credential = &syscall.Credential{Uid: uidInt32, Gid: gidInt32}
 
 	// If env is not nil pointer, add env vars into subprocess cmd
 	if env != nil {
@@ -129,9 +139,18 @@ func ExecuteAsWithTimeout(
 		execCmd.Env = append(os.Environ(), env...)
 	}
 
-	// Set uid and gid for the process
+	// Check bounds on uid and gid before converting into int32
+	var uidInt32, gidInt32 uint32
+	if uid > 0 && uid <= math.MaxInt32 {
+		uidInt32 = uint32(uid)
+	}
+	if gid > 0 && gid <= math.MaxInt32 {
+		gidInt32 = uint32(gid)
+	}
+
+	// Set uid and gid for process
 	execCmd.SysProcAttr = &syscall.SysProcAttr{}
-	execCmd.SysProcAttr.Credential = &syscall.Credential{Uid: uint32(uid), Gid: uint32(gid)}
+	execCmd.SysProcAttr.Credential = &syscall.Credential{Uid: uidInt32, Gid: gidInt32}
 
 	// Execute command
 	out, err := execCmd.CombinedOutput()

@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	_ "net/http/pprof"
+	_ "net/http/pprof" // #nosec
 	"net/url"
 	"path/filepath"
 	"regexp"
@@ -129,10 +129,11 @@ func NewCEEMSServer(c *Config) (*CEEMSServer, func(), error) {
 	server := &CEEMSServer{
 		logger: c.Logger,
 		server: &http.Server{
-			Addr:         c.Web.Address,
-			Handler:      router,
-			ReadTimeout:  10 * time.Second,
-			WriteTimeout: 10 * time.Second,
+			Addr:              c.Web.Address,
+			Handler:           router,
+			ReadTimeout:       10 * time.Second,
+			WriteTimeout:      10 * time.Second,
+			ReadHeaderTimeout: 2 * time.Second, // slowloris attack: https://app.deepsource.com/directory/analyzers/go/issues/GO-S2112
 		},
 		webConfig: &web.FlagConfig{
 			WebListenAddresses: &[]string{c.Web.Address},

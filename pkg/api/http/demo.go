@@ -58,7 +58,7 @@ func init() {
 
 // randomFloats returns random float64s in the range
 func randomFloats(min, max float64) models.JSONFloat {
-	return models.JSONFloat(min + rand.Float64()*(max-min))
+	return models.JSONFloat(min + rand.Float64()*(max-min)) // #nosec
 }
 
 // random returns random number between min and max excluding max
@@ -69,11 +69,11 @@ func random(min, max int64) int64 {
 // randomHelper returns max int64 if n is more than max
 func randomHelper(n int64) int64 {
 	if n < maxInt64 {
-		return int64(rand.Int63n(int64(n + 1)))
+		return int64(rand.Int63n(int64(n + 1))) // #nosec
 	}
-	x := int64(rand.Uint64())
+	x := int64(rand.Uint64()) // #nosec
 	for x > n {
-		x = int64(rand.Uint64())
+		x = int64(rand.Uint64()) // #nosec
 	}
 	return x
 }

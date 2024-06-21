@@ -3,10 +3,11 @@ package collector
 import (
 	"fmt"
 	"net/http"
-	_ "net/http/pprof"
+	_ "net/http/pprof" // #nosec
 	"os"
 	"os/user"
 	"runtime"
+	"time"
 
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/log"
@@ -160,7 +161,9 @@ func (b *CEEMSExporter) Main() error {
 		http.Handle("/", landingPage)
 	}
 
-	server := &http.Server{}
+	server := &http.Server{
+		ReadHeaderTimeout: 2 * time.Second, // slowloris attack: https://app.deepsource.com/directory/analyzers/go/issues/GO-S2112
+	}
 	if err := web.ListenAndServe(server, toolkitFlags, logger); err != nil {
 		return fmt.Errorf("failed to start server: %s", err)
 	}

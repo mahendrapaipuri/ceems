@@ -1,6 +1,6 @@
 module github.com/mahendrapaipuri/ceems
 
-go 1.21
+go 1.21.11
 
 require (
 	github.com/alecthomas/kingpin/v2 v2.4.0

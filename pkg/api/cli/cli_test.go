@@ -37,7 +37,7 @@ func queryServer(address string) error {
 
 func makeConfigFile(configFile string, tmpDir string) string {
 	configPath := filepath.Join(tmpDir, "config.yml")
-	os.WriteFile(configPath, []byte(configFile), 0644)
+	os.WriteFile(configPath, []byte(configFile), 0600)
 	return configPath
 }
 

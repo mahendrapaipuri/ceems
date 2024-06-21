@@ -507,18 +507,18 @@ func (s *statsDB) getUnitStats(startTime, endTime time.Time) error {
 
 	// Make prepare statement and defer closing statement
 	level.Debug(s.logger).Log("msg", "Preparing SQL statements")
-	stmtMap, err := s.prepareStatements(tx)
+	sqlStmts, err := s.prepareStatements(tx)
 	if err != nil {
 		return err
 	}
-	for _, stmt := range stmtMap {
+	for _, stmt := range sqlStmts {
 		defer stmt.Close()
 	}
 	level.Debug(s.logger).Log("msg", "Finished preparing SQL statements")
 
 	// Insert data into DB
 	level.Debug(s.logger).Log("msg", "Executing SQL statements")
-	s.execStatements(stmtMap, units, users, projects)
+	s.execStatements(sqlStmts, units, users, projects)
 	level.Debug(s.logger).Log("msg", "Finished executing SQL statements")
 
 	// Commit changes
@@ -539,7 +539,7 @@ func (s *statsDB) purgeExpiredUnits(tx *sql.Tx) error {
 		"DELETE FROM %s WHERE started_at <= date('now', '-%d day')",
 		base.UnitsDBTableName,
 		int(s.storage.retentionPeriod.Hours()/24),
-	)
+	) // #nosec
 	if _, err := tx.Exec(deleteUnitsQuery); err != nil {
 		return err
 	}
@@ -554,7 +554,7 @@ func (s *statsDB) purgeExpiredUnits(tx *sql.Tx) error {
 		"DELETE FROM %s WHERE last_updated_at <= date('now', '-%d day')",
 		base.UsageDBTableName,
 		int(s.storage.retentionPeriod.Hours()/24),
-	)
+	) // #nosec
 	if _, err := tx.Exec(deleteUsageQuery); err != nil {
 		return err
 	}

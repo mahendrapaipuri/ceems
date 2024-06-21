@@ -145,12 +145,12 @@ func TestSLURMFetcherMultiCluster(t *testing.T) {
 	sacctPath := filepath.Join(tmpDir, "sacct")
 	sacctScript := fmt.Sprintf(`#!/bin/bash
 printf """%s"""`, sacctCmdOutput)
-	os.WriteFile(sacctPath, []byte(sacctScript), 0755)
+	os.WriteFile(sacctPath, []byte(sacctScript), 0700) // #nosec
 
 	sacctMgrPath := filepath.Join(tmpDir, "sacctmgr")
 	sacctMgrScript := fmt.Sprintf(`#!/bin/bash
 printf """%s"""`, sacctMgrCmdOutput)
-	os.WriteFile(sacctMgrPath, []byte(sacctMgrScript), 0755)
+	os.WriteFile(sacctMgrPath, []byte(sacctMgrScript), 0700) // #nosec
 
 	sacctMgrDir := filepath.Dir(sacctMgrPath)
 

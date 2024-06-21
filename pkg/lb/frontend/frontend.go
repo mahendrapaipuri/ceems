@@ -114,7 +114,8 @@ outside:
 	return &loadBalancer{
 		logger: c.Logger,
 		server: &http.Server{
-			Addr: c.Address,
+			Addr:              c.Address,
+			ReadHeaderTimeout: 2 * time.Second, // slowloris attack: https://app.deepsource.com/directory/analyzers/go/issues/GO-S2112
 		},
 		webConfig: &web.FlagConfig{
 			WebListenAddresses: &[]string{c.Address},

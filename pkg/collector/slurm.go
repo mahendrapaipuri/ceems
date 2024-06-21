@@ -581,7 +581,12 @@ func (c *slurmCollector) readJobPropsFromProlog(jobid string, jobProps *JobProps
 			level.Error(c.logger).
 				Log("msg", "Failed to get job properties from prolog generated files", "file", slurmJobInfo, "err", err)
 		} else {
-			fmt.Sscanf(string(content), "%s %s %s", &jobProps.jobUser, &jobProps.jobAccount, &jobProps.jobNodelist)
+			if _, err := fmt.Sscanf(
+				string(content), "%s %s %s", &jobProps.jobUser, &jobProps.jobAccount, &jobProps.jobNodelist,
+			); err != nil {
+				level.Error(c.logger).
+					Log("msg", "Failed to scan prolog generated file", "file", slurmJobInfo, "err", err)
+			}
 		}
 	}
 
@@ -612,7 +617,13 @@ func (c *slurmCollector) readJobPropsFromProlog(jobid string, jobProps *JobProps
 				)
 				continue
 			}
-			fmt.Sscanf(string(content), "%s", &gpuJobID)
+			if _, err := fmt.Sscanf(string(content), "%s", &gpuJobID); err != nil {
+				level.Error(c.logger).Log(
+					"msg", "Failed to scan job ID for GPU",
+					"index", dev.index, "uuid", dev.uuid, "err", err,
+				)
+				continue
+			}
 			if gpuJobID == jobid {
 				jobProps.jobGPUOrdinals = append(jobProps.jobGPUOrdinals, dev.index)
 			}

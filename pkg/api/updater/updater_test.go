@@ -77,7 +77,7 @@ updaters:
 
 	configFile := fmt.Sprintf(configFileTmpl, serverURL, "2m")
 	configPath := filepath.Join(tmpDir, "config.yml")
-	os.WriteFile(configPath, []byte(configFile), 0644)
+	os.WriteFile(configPath, []byte(configFile), 0600)
 	return configPath
 }
 

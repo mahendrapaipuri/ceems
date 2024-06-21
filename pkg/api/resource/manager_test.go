@@ -105,7 +105,7 @@ clusters:
 
 	configFile := fmt.Sprintf(configFileTmpl, tmpDir, serverURL)
 	configPath := filepath.Join(tmpDir, "config.yml")
-	os.WriteFile(configPath, []byte(configFile), 0644)
+	os.WriteFile(configPath, []byte(configFile), 0600)
 	return configPath
 }
 

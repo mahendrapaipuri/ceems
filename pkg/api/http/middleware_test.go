@@ -40,9 +40,11 @@ func TestMiddlewareSuccess(t *testing.T) {
 	// call the handler using a mock response recorder (we'll not use that anyway)
 	w := httptest.NewRecorder()
 	handlerToTest.ServeHTTP(w, req)
+	resp := w.Result()
+	defer resp.Body.Close()
 
 	// Should pass test
-	if w.Result().StatusCode != 200 {
+	if resp.StatusCode != 200 {
 		t.Errorf("expected 200 got %d", w.Result().StatusCode)
 	}
 	// Check headers added to req

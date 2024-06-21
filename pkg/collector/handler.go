@@ -41,7 +41,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		level.Warn(h.logger).Log("msg", "Couldn't create filtered metrics handler:", "err", err)
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(fmt.Sprintf("Couldn't create filtered metrics handler: %s", err)))
+		w.Write([]byte("Couldn't create filtered metrics handler"))
 		return
 	}
 	filteredHandler.ServeHTTP(w, r)
