@@ -9,33 +9,29 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
-	ceems_db "github.com/mahendrapaipuri/ceems/pkg/api/db"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 )
 
 // adminUsers returns a slice of admin users fetched from DB
 func adminUsers(dbConn *sql.DB, logger log.Logger) []string {
 	var users []string
-	for _, source := range ceems_db.AdminUsersSources {
-		rows, err := dbConn.Query(
-			fmt.Sprintf("SELECT users FROM %s WHERE source = ?", base.AdminUsersDBTableName),
-			source,
-		)
-		if err != nil {
-			level.Error(logger).Log("msg", "Failed to query for admin users", "source", source, "err", err)
+	rows, err := dbConn.Query(
+		fmt.Sprintf("SELECT users FROM %s", base.AdminUsersDBTableName),
+	)
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to query for admin users", "err", err)
+		return nil
+	}
+
+	// Scan users rows
+	var usersList models.List
+	for rows.Next() {
+		if err := rows.Scan(&usersList); err != nil {
+			level.Error(logger).Log("msg", "Failed to scan row for admin users query", "err", err)
 			continue
 		}
-
-		// Scan users rows
-		var usersList models.List
-		for rows.Next() {
-			if err := rows.Scan(&usersList); err != nil {
-				level.Error(logger).Log("msg", "Failed to scan row for admin users query", "source", source, "err", err)
-				continue
-			}
-			for _, user := range usersList {
-				users = append(users, user.(string))
-			}
+		for _, user := range usersList {
+			users = append(users, user.(string))
 		}
 	}
 	return users
@@ -43,11 +39,6 @@ func adminUsers(dbConn *sql.DB, logger log.Logger) []string {
 
 // VerifyOwnership returns true if user is the owner of queried units
 func VerifyOwnership(user string, clusterIDs []string, uuids []string, db *sql.DB, logger log.Logger) bool {
-	// If current user is in list of admin users, pass the check
-	if slices.Contains(adminUsers(db, logger), user) {
-		return true
-	}
-
 	// If the data is incomplete, forbid the request
 	if db == nil || len(clusterIDs) == 0 || user == "" {
 		level.Debug(logger).Log(
@@ -57,6 +48,10 @@ func VerifyOwnership(user string, clusterIDs []string, uuids []string, db *sql.D
 		return false
 	}
 
+	// If current user is in list of admin users, pass the check
+	if slices.Contains(adminUsers(db, logger), user) {
+		return true
+	}
 	level.Debug(logger).
 		Log("msg", "UUIDs in query", "user", user,
 			"cluster_id", strings.Join(clusterIDs, ","), "queried_uuids", strings.Join(uuids, ","),

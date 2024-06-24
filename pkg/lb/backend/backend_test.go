@@ -13,7 +13,10 @@ import (
 	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
 )
 
-const testURL = "http://localhost:3333"
+const (
+	testURL          = "http://localhost:3333"
+	testURLBasicAuth = "http://foo:bar@localhost:3333" // #nosec
+)
 
 func TestTSDBConfigSuccess(t *testing.T) {
 	// Start test server
@@ -41,6 +44,9 @@ func TestTSDBConfigSuccess(t *testing.T) {
 	}
 	if !b.IsAlive() {
 		t.Errorf("expected backend to be alive")
+	}
+	if b.ActiveConnections() != 0 {
+		t.Errorf("expected zero active connections to backend")
 	}
 
 	// Stop dummy server and query for retention period, we should get last updated value
@@ -105,6 +111,16 @@ func TestTSDBConfigFail(t *testing.T) {
 
 func TestTSDBBackendAlive(t *testing.T) {
 	url, _ := url.Parse(testURL)
+	b := NewTSDBServer(url, httputil.NewSingleHostReverseProxy(url), log.NewNopLogger())
+	b.SetAlive(b.IsAlive())
+
+	if !b.IsAlive() {
+		t.Errorf("expected backend to be alive")
+	}
+}
+
+func TestTSDBBackendAliveWithBasicAuth(t *testing.T) {
+	url, _ := url.Parse(testURLBasicAuth)
 	b := NewTSDBServer(url, httputil.NewSingleHostReverseProxy(url), log.NewNopLogger())
 	b.SetAlive(b.IsAlive())
 

@@ -125,7 +125,7 @@ func NewManager(logger log.Logger) (*Manager, error) {
 	// Return an instance of default manager
 	if len(fetchers) == 0 {
 		level.Warn(logger).Log(
-			"msg", "No resource manager enabled. Using a default resource manager",
+			"msg", "No clusters found in config. Using a default cluster",
 			"available_resource_managers", strings.Join(registeredManagers, ","),
 		)
 

@@ -30,7 +30,7 @@ func NewDefaultResourceManager(cluster models.Cluster, logger log.Logger) (Fetch
 
 // Return empty units response
 func (d *defaultResourceManager) FetchUnits(start time.Time, end time.Time) ([]models.ClusterUnits, error) {
-	level.Info(d.logger).Log("msg", "Empty units fetched from default resource manager")
+	level.Info(d.logger).Log("msg", "Empty units fetched from default NoOp cluster")
 	return []models.ClusterUnits{
 		{
 			Cluster: models.Cluster{ID: "default"},
@@ -42,7 +42,7 @@ func (d *defaultResourceManager) FetchUnits(start time.Time, end time.Time) ([]m
 func (d *defaultResourceManager) FetchUsersProjects(
 	currentTime time.Time,
 ) ([]models.ClusterUsers, []models.ClusterProjects, error) {
-	level.Info(d.logger).Log("msg", "Empty users and projects fetched from default resource manager")
+	level.Info(d.logger).Log("msg", "Empty users and projects fetched from default NoOp cluster")
 	return []models.ClusterUsers{
 			{
 				Cluster: models.Cluster{ID: "default"},

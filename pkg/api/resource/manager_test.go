@@ -5,9 +5,65 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
+	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 )
+
+// mockResourceManager struct
+type mockResourceManager struct {
+	logger log.Logger
+}
+
+// NewMockResourceManager returns a new defaultResourceManager that returns empty compute units
+func NewMockResourceManager(cluster models.Cluster, logger log.Logger) (Fetcher, error) {
+	level.Info(logger).Log("msg", "Default resource manager activated")
+	return &mockResourceManager{
+		logger: logger,
+	}, nil
+}
+
+// Return empty units response
+func (d *mockResourceManager) FetchUnits(start time.Time, end time.Time) ([]models.ClusterUnits, error) {
+	return []models.ClusterUnits{
+		{
+			Cluster: models.Cluster{ID: "mock"},
+			Units: []models.Unit{
+				{
+					UUID: "10000",
+				},
+			},
+		},
+	}, nil
+}
+
+// Return empty projects response
+func (d *mockResourceManager) FetchUsersProjects(
+	currentTime time.Time,
+) ([]models.ClusterUsers, []models.ClusterProjects, error) {
+	return []models.ClusterUsers{
+			{
+				Cluster: models.Cluster{ID: "mock"},
+				Users: []models.User{
+					{
+						Name: "foo",
+					},
+				},
+			},
+		}, []models.ClusterProjects{
+			{
+				Cluster: models.Cluster{ID: "mock"},
+				Projects: []models.Project{
+					{
+						Name: "fooprj",
+					},
+				},
+			},
+		}, nil
+}
 
 func mockConfig(tmpDir string, cfg string, serverURL string) string {
 	var configFileTmpl string
@@ -60,6 +116,21 @@ clusters:
       path: %[1]s
     web:
       url: %[2]s`
+	case "mock_instance":
+		configFileTmpl = `
+---
+clusters:
+  - id: default
+    manager: mock
+    cli:
+      path: %[1]s
+    web:
+      url: %[2]s`
+	case "empty_instance":
+		configFileTmpl = `
+---
+# %[1]s %[2]s
+clusters: []`
 	case "unknown_manager":
 		configFileTmpl = `
 ---
@@ -77,10 +148,10 @@ clusters:
     web:
       url: %[2]s`
 	case "malformed_1":
-		// Missing s in tsbd_instances
+		// Missing s in clusters
 		configFileTmpl = `
 ---
-resource_manager:
+cluster:
   - id: default`
 	case "malformed_2":
 		// Missing manager name
@@ -192,5 +263,71 @@ func TestMixedClusterConfig(t *testing.T) {
 
 	if _, err = checkConfig([]string{"slurm", "openstack"}, cfg); err != nil {
 		t.Errorf("config failed preflight checks to %s", err)
+	}
+}
+
+func TestNewManager(t *testing.T) {
+	// Make mock config
+	base.ConfigFilePath = mockConfig(t.TempDir(), "mock_instance", "")
+
+	// Register mock manager
+	RegisterManager("mock", NewMockResourceManager)
+
+	// Create new manager
+	manager, err := NewManager(log.NewNopLogger())
+	if err != nil {
+		t.Errorf("failed to create new manager: %s", err)
+	}
+
+	// Fetch units
+	units, err := manager.FetchUnits(time.Now(), time.Now())
+	if err != nil {
+		t.Errorf("failed to fetch units: %s", err)
+	}
+	if len(units[0].Units) != 1 {
+		t.Errorf("expected only 1 unit got %d", len(units[0].Units))
+	}
+
+	// Fetch users and projects
+	users, projects, err := manager.FetchUsersProjects(time.Now())
+	if err != nil {
+		t.Errorf("failed to fetch users and projects: %s", err)
+	}
+	// Index 0 seems to be default manager
+	if len(users[0].Users) != 1 || len(projects[0].Projects) != 1 {
+		t.Errorf("expected 1 user and 1 project, got %d, %d", len(users[0].Users), len(projects[0].Projects))
+	}
+}
+
+func TestNewManagerWithNoClusters(t *testing.T) {
+	// Make mock config
+	base.ConfigFilePath = mockConfig(t.TempDir(), "empty_instance", "")
+
+	// Register mock manager
+	RegisterManager("mock", NewMockResourceManager)
+
+	// Create new manager
+	manager, err := NewManager(log.NewNopLogger())
+	if err != nil {
+		t.Errorf("failed to create new manager: %s", err)
+	}
+
+	// Fetch units
+	units, err := manager.FetchUnits(time.Now(), time.Now())
+	if err != nil {
+		t.Errorf("failed to fetch units: %s", err)
+	}
+	if len(units[0].Units) != 0 {
+		t.Errorf("expected only 0 units got %d", len(units[0].Units))
+	}
+
+	// Fetch users and projects
+	users, projects, err := manager.FetchUsersProjects(time.Now())
+	if err != nil {
+		t.Errorf("failed to fetch users and projects: %s", err)
+	}
+	// Index 0 seems to be default manager
+	if len(users[0].Users) != 0 || len(projects[0].Projects) != 0 {
+		t.Errorf("expected 0 users and 0 projects, got %d, %d", len(users[0].Users), len(projects[0].Projects))
 	}
 }

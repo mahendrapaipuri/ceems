@@ -142,6 +142,7 @@ func (lb *loadBalancer) ValidateClusterIDs() error {
 	}
 
 	// If neither CEEMD DB or API server is configured, return
+	// This means LB is used without any access control configured
 	if lb.amw.ceems.db == nil && lb.amw.ceems.clustersEndpoint() == nil {
 		return nil
 	}

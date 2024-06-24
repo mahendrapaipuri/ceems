@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 	"time"
 
@@ -104,7 +105,8 @@ func TestCEEMSServerMain(t *testing.T) {
 ---
 ceems_api_server:
   data:
-    path: %s`
+    path: %[1]s
+    backup_path: %[1]s`
 
 	configFile := fmt.Sprintf(configFileTmpl, dataDir)
 	configFilePath := makeConfigFile(configFile, tmpDir)
@@ -131,4 +133,8 @@ ceems_api_server:
 			t.Errorf("Could not start stats server after %d attempts", i)
 		}
 	}
+
+	// Send INT signal and wait a second to clean up server and DB
+	syscall.Kill(syscall.Getpid(), syscall.SIGINT)
+	time.Sleep(1 * time.Second)
 }

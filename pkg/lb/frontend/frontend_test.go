@@ -2,22 +2,55 @@ package frontend
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
 	"net/url"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/go-kit/log"
+	ceems_api_http "github.com/mahendrapaipuri/ceems/pkg/api/http"
+	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/backend"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/serverpool"
 	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
 )
 
-func dummyTSDBServer(retention string, rmID string) *httptest.Server {
+func setupClusterIDsDB(d string) (*sql.DB, string) {
+	dbPath := filepath.Join(d, "ceems.db")
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		fmt.Printf("failed to create DB")
+	}
+
+	stmts := `
+PRAGMA foreign_keys=OFF;
+BEGIN TRANSACTION;
+CREATE TABLE units (
+	"id" integer not null primary key,
+	"cluster_id" text,
+	"resource_manager" text
+);
+INSERT INTO units VALUES(1, 'slurm-0', 'slurm');
+INSERT INTO units VALUES(2, 'os-0', 'openstack');
+INSERT INTO units VALUES(3, 'os-1', 'openstack');
+INSERT INTO units VALUES(4, 'slurm-1', 'slurm');
+COMMIT;`
+
+	_, err = db.Exec(stmts)
+	if err != nil {
+		fmt.Printf("failed to insert mock data into DB: %s", err)
+	}
+	return db, dbPath
+}
+
+func dummyTSDBServer(retention string, clusterID string) *httptest.Server {
 	// Start test server
 	expected := tsdb.Response{
 		Status: "success",
@@ -31,17 +64,17 @@ func dummyTSDBServer(retention string, rmID string) *httptest.Server {
 				w.Write([]byte("KO"))
 			}
 		} else {
-			w.Write([]byte(rmID))
+			w.Write([]byte(clusterID))
 		}
 	}))
 	return server
 }
 
 func TestNewFrontendSingleGroup(t *testing.T) {
-	rmID := "default"
+	clusterID := "default"
 
 	// Backends
-	dummyServer1 := dummyTSDBServer("30d", rmID)
+	dummyServer1 := dummyTSDBServer("30d", clusterID)
 	defer dummyServer1.Close()
 	backend1URL, err := url.Parse(dummyServer1.URL)
 	if err != nil {
@@ -56,7 +89,7 @@ func TestNewFrontendSingleGroup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	manager.Add(rmID, backend1)
+	manager.Add(clusterID, backend1)
 
 	// make minimal config
 	config := &Config{
@@ -105,7 +138,7 @@ func TestNewFrontendSingleGroup(t *testing.T) {
 			newReq = request.WithContext(
 				context.WithValue(
 					request.Context(), QueryParamsContextKey{},
-					&QueryParams{queryPeriod: period, id: rmID},
+					&QueryParams{queryPeriod: period, id: clusterID},
 				),
 			)
 		} else {
@@ -120,7 +153,7 @@ func TestNewFrontendSingleGroup(t *testing.T) {
 			t.Errorf("%s: expected status %d, got %d", test.name, test.code, responseRecorder.Code)
 		}
 		if test.response {
-			if strings.TrimSpace(responseRecorder.Body.String()) != rmID {
+			if strings.TrimSpace(responseRecorder.Body.String()) != clusterID {
 				t.Errorf("%s: expected dummy-response, got %s", test.name, responseRecorder.Body)
 			}
 		}
@@ -187,39 +220,44 @@ func TestNewFrontendTwoGroups(t *testing.T) {
 		t.Errorf("failed to create load balancer: %s", err)
 	}
 
+	// Validate cluster IDs
+	if err := lb.ValidateClusterIDs(); err != nil {
+		t.Errorf("expected validation to pass, got error: %s", err)
+	}
+
 	tests := []struct {
-		name     string
-		start    int64
-		rmID     string
-		code     int
-		response bool
+		name      string
+		start     int64
+		clusterID string
+		code      int
+		response  bool
 	}{
 		{
-			name:     "query for rm-0 with params in ctx",
-			start:    time.Now().UTC().Unix(),
-			rmID:     "rm-0",
-			code:     200,
-			response: true,
+			name:      "query for rm-0 with params in ctx",
+			start:     time.Now().UTC().Unix(),
+			clusterID: "rm-0",
+			code:      200,
+			response:  true,
 		},
 		{
-			name:     "query for rm-1 with params in ctx",
-			start:    time.Now().UTC().Unix(),
-			rmID:     "rm-1",
-			code:     200,
-			response: true,
+			name:      "query for rm-1 with params in ctx",
+			start:     time.Now().UTC().Unix(),
+			clusterID: "rm-1",
+			code:      200,
+			response:  true,
 		},
 		{
-			name:     "query with no rmID params in ctx",
+			name:     "query with no clusterID params in ctx",
 			start:    time.Now().UTC().Unix(),
 			code:     503,
 			response: false,
 		},
 		{
-			name:     "query with params in ctx and start more than retention period",
-			start:    time.Now().UTC().Add(-time.Duration(31 * 24 * time.Hour)).Unix(),
-			rmID:     "rm-0",
-			code:     503,
-			response: false,
+			name:      "query with params in ctx and start more than retention period",
+			start:     time.Now().UTC().Add(-time.Duration(31 * 24 * time.Hour)).Unix(),
+			clusterID: "rm-0",
+			code:      503,
+			response:  false,
 		},
 	}
 
@@ -233,7 +271,7 @@ func TestNewFrontendTwoGroups(t *testing.T) {
 			newReq = request.WithContext(
 				context.WithValue(
 					request.Context(), QueryParamsContextKey{},
-					&QueryParams{queryPeriod: period, id: test.rmID},
+					&QueryParams{queryPeriod: period, id: test.clusterID},
 				),
 			)
 		} else {
@@ -248,7 +286,7 @@ func TestNewFrontendTwoGroups(t *testing.T) {
 			t.Errorf("%s: expected status %d, got %d", test.name, test.code, responseRecorder.Code)
 		}
 		if test.response {
-			if strings.TrimSpace(responseRecorder.Body.String()) != test.rmID {
+			if strings.TrimSpace(responseRecorder.Body.String()) != test.clusterID {
 				t.Errorf("%s: expected dummy-response, got %s", test.name, responseRecorder.Body)
 			}
 		}
@@ -269,5 +307,197 @@ func TestNewFrontendTwoGroups(t *testing.T) {
 
 	if responseRecorder.Code != 503 {
 		t.Errorf("expected status 503, got %d", responseRecorder.Code)
+	}
+}
+
+func TestValidateClusterIDsWithDBPass(t *testing.T) {
+	tmpDir := t.TempDir()
+	setupClusterIDsDB(tmpDir)
+
+	// Backends for group 1
+	dummyServer := dummyTSDBServer("30d", "slurm-0")
+	defer dummyServer.Close()
+	backendURL, err := url.Parse(dummyServer.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rp := httputil.NewSingleHostReverseProxy(backendURL)
+	backend := backend.NewTSDBServer(backendURL, rp, log.NewNopLogger())
+
+	// Start manager
+	manager, err := serverpool.NewManager("resource-based", log.NewNopLogger())
+	if err != nil {
+		t.Fatal(err)
+	}
+	manager.Add("slurm-0", backend)
+	manager.Add("os-1", backend)
+
+	// make minimal config
+	config := &Config{
+		Logger:  log.NewNopLogger(),
+		Manager: manager,
+	}
+	config.APIServer.Data.Path = tmpDir
+
+	// New load balancer
+	lb, err := NewLoadBalancer(config)
+	if err != nil {
+		t.Errorf("failed to create load balancer: %s", err)
+	}
+
+	// Validate cluster IDs
+	if err := lb.ValidateClusterIDs(); err != nil {
+		t.Errorf("expected validation to pass, got error %s", err)
+	}
+}
+
+func TestValidateClusterIDsWithDBFail(t *testing.T) {
+	tmpDir := t.TempDir()
+	setupClusterIDsDB(tmpDir)
+
+	// Backends for group 1
+	dummyServer := dummyTSDBServer("30d", "slurm-0")
+	defer dummyServer.Close()
+	backendURL, err := url.Parse(dummyServer.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rp := httputil.NewSingleHostReverseProxy(backendURL)
+	backend := backend.NewTSDBServer(backendURL, rp, log.NewNopLogger())
+
+	// Start manager
+	manager, err := serverpool.NewManager("resource-based", log.NewNopLogger())
+	if err != nil {
+		t.Fatal(err)
+	}
+	manager.Add("unknown", backend)
+	manager.Add("os-1", backend)
+
+	// make minimal config
+	config := &Config{
+		Logger:  log.NewNopLogger(),
+		Manager: manager,
+	}
+	config.APIServer.Data.Path = tmpDir
+
+	// New load balancer
+	lb, err := NewLoadBalancer(config)
+	if err != nil {
+		t.Errorf("failed to create load balancer: %s", err)
+	}
+
+	// Validate cluster IDs
+	if err := lb.ValidateClusterIDs(); err == nil {
+		t.Errorf("expected validation error, got none")
+	}
+}
+
+func TestValidateClusterIDsWithAPIPass(t *testing.T) {
+	// Test CEEMS API server
+	expected := ceems_api_http.Response[models.Cluster]{
+		Status: "success",
+		Data: []models.Cluster{
+			{
+				ID: "slurm-0",
+			},
+			{
+				ID: "os-1",
+			},
+		},
+	}
+	ceemsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewEncoder(w).Encode(&expected); err != nil {
+			w.Write([]byte("KO"))
+		}
+	}))
+	defer ceemsServer.Close()
+
+	// Backends for group 1
+	dummyServer := dummyTSDBServer("30d", "slurm-0")
+	defer dummyServer.Close()
+	backendURL, err := url.Parse(dummyServer.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rp := httputil.NewSingleHostReverseProxy(backendURL)
+	backend := backend.NewTSDBServer(backendURL, rp, log.NewNopLogger())
+
+	// Start manager
+	manager, err := serverpool.NewManager("resource-based", log.NewNopLogger())
+	if err != nil {
+		t.Fatal(err)
+	}
+	manager.Add("slurm-0", backend)
+	manager.Add("os-1", backend)
+
+	// make minimal config
+	config := &Config{
+		Logger:  log.NewNopLogger(),
+		Manager: manager,
+	}
+	config.APIServer.Web.URL = ceemsServer.URL
+
+	// New load balancer
+	lb, err := NewLoadBalancer(config)
+	if err != nil {
+		t.Errorf("failed to create load balancer: %s", err)
+	}
+
+	// Validate cluster IDs
+	if err := lb.ValidateClusterIDs(); err != nil {
+		t.Errorf("expected validation to pass, got error %s", err)
+	}
+}
+
+func TestValidateClusterIDsWithAPIFail(t *testing.T) {
+	// Test CEEMS API server
+	expected := ceems_api_http.Response[models.Cluster]{
+		Status: "error",
+	}
+	ceemsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewEncoder(w).Encode(&expected); err != nil {
+			w.Write([]byte("KO"))
+		}
+	}))
+	defer ceemsServer.Close()
+
+	// Backends for group 1
+	dummyServer := dummyTSDBServer("30d", "slurm-0")
+	defer dummyServer.Close()
+	backendURL, err := url.Parse(dummyServer.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rp := httputil.NewSingleHostReverseProxy(backendURL)
+	backend := backend.NewTSDBServer(backendURL, rp, log.NewNopLogger())
+
+	// Start manager
+	manager, err := serverpool.NewManager("resource-based", log.NewNopLogger())
+	if err != nil {
+		t.Fatal(err)
+	}
+	manager.Add("slurm-0", backend)
+	manager.Add("os-1", backend)
+
+	// make minimal config
+	config := &Config{
+		Logger:  log.NewNopLogger(),
+		Manager: manager,
+	}
+	config.APIServer.Web.URL = ceemsServer.URL
+
+	// New load balancer
+	lb, err := NewLoadBalancer(config)
+	if err != nil {
+		t.Errorf("failed to create load balancer: %s", err)
+	}
+
+	// Validate cluster IDs
+	if err := lb.ValidateClusterIDs(); err == nil {
+		t.Errorf("expected validation error, got none")
 	}
 }
