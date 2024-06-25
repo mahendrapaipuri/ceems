@@ -12,7 +12,10 @@
     "serve": "docusaurus serve",
     "write-translations": "docusaurus write-translations",
     "write-heading-ids": "docusaurus write-heading-ids",
-    "typecheck": "tsc"
+    "typecheck": "tsc",
+    "spellcheck": "cspell docs/**/*.md docs/*.md ../README.md",
+    "linkcheck": "markdown-link-check -c md-link-check.json docs/**/*.md docs/*.md ../README.md",
+    "checks": "yarn spellcheck && yarn linkcheck"
   },
   "dependencies": {
     "@docusaurus/core": "3.2.1",
@@ -29,6 +32,8 @@
     "@docusaurus/module-type-aliases": "3.2.1",
     "@docusaurus/tsconfig": "3.2.1",
     "@docusaurus/types": "3.2.1",
+    "cspell": "^8.9.1",
+    "markdown-link-check": "^3.12.2",
     "typescript": "~5.2.2"
   },
   "browserslist": {

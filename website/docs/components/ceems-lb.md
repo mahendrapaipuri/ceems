@@ -4,54 +4,54 @@ sidebar_position: 3
 
 # CEEMS Load Balancer
 
-`ceems_lb` is a basic load balancer meant to provide basic access control for
-TSDB so that one user cannot access metrics of another user.
+## Background
 
-## Objectives
+The motivation behind creating CEEMS load balancer component is that Prometheus TSDB 
+do not enforce any sort of access control over its metrics querying. This means once 
+a user has been given the permissions to query a Prometheus TSDB, they can query _any_ 
+metrics stored in the TSDB. 
 
-The main objectives of the CEEMS load balancer is two-fold:
-
-- To provide access control on the TSDB so that compute units of each project/namespace
-are only accessible to the members of that project/namespace
-- To provide basic load balancing for replicated TSDB instances.
-
-### Access control
-
-CEEMS load balancer is capable of providing basic access control policies of 
-TSDB using CEEMS API server. Let's look into the problem first using a typical scenario
-where Grafana is used for exposing the dashboards to the end users.
-
-Dashboards that are exposed to the end users need to have query access on the underlying 
+Generally, it is not necessary to expose TSDB to end users directly and it is done 
+using Grafana as Prometheus datasource. Dashboards that are exposed to the end users 
+need to have query access on the underlying 
 datasource that the dashboard uses. Although a regular user with 
 [`Viewer`](https://grafana.com/docs/grafana/latest/administration/roles-and-permissions/access-control/#basic-roles) 
 role cannot add more panels to an existing dashboard, in order to _view_ the metrics the 
-user has effectively `query` permissions on the datasource. In the current context, the 
-datasource is a TSDB like Prometheus. 
+user has effectively `query` permissions on the datasource.
 
 This effectively means, the user can make _any_ query to the underlying datasource, _e.g.,_ 
 Prometheus, using the browser cookie that is set by Grafana auth. The consequence is that 
 the user can query the metrics of _any_ user or _any_ compute unit. Straight forward 
 solutions to this problem is to create a Prometheus instance for each project/namespace. 
-However, this is not a scable solution when they are thousands of projects/namespaces 
+However, this is not a scalable solution when they are thousands of projects/namespaces 
 exist. 
+
+This can pose few issues in multi tenant systems like HPC and cloud computing platforms. 
+Ideally, we do not want one user to be able to access the compute unit metrics of 
+other users. CEEMS load balancer component has been created to address this issue.
 
 CEEMS Load Balancer addresses this issue by acting as a gate keeper to introspect the 
 query before deciding whether to proxy the request to TSDB or not. It means when a user 
-makes a TSDB query for a given compute unit identified by a `uuid`, CEEMS load balancer 
-will check if the user owns that compute unit by verfiying with CEEMS API server.
+makes a TSDB query for a given compute unit, CEEMS load balancer will check if the user 
+owns that compute unit by verifying with CEEMS API server.
 
-:::note[NOTE]
+## Objectives
 
-As described in [CEEMS API Server](./ceems-api-server.md#access-control), the current 
-user is identified using header `X-Grafana-User`.
+The main objectives of the CEEMS load balancer are two-fold:
 
-:::
+- To provide access control on the TSDB so that compute units of each project/namespace
+are only accessible to the members of that project/namespace
+- To provide basic load balancing for replicated TSDB instances.
 
-CEEMS Load Balancer can interact with CEEMS API server either by making a API request 
-to verify the compute unit ownership or directly by querying the CEEMS API server's DB 
-if they both deployed on the same host.
+Thus, CEEMS load balancer can be configured as Prometheus data source in Grafana and 
+the load balancer will take care of routing traffic to backend TSDB instances and at 
+the same time enforcing access control.
 
-### Load balancing
+## Load balancing
+
+CEEMS load balancer supports classic load balancing strategies like round-robin and least 
+connection methods. Besides these two, it supports resource based strategy that is 
+based on retention time. Let's take a look at this strategy in-detail.
 
 Taking Prometheus TSDB as an example, Prometheus advises to use local file system to store 
 the data. This ensure performance and data integrity. However, storing data on local 
@@ -74,19 +74,20 @@ one using remote storage ("cold" instance)
 can have longer retention. CEEMS load balancer is capable of introspecting the query and
 then routing the request to either "hot" or "cold" instances of TSDB.
 
-## For Admins/Operators
+## Multi cluster support
 
-CEEMS load balancer supports admin users with privileged access to TSDB. These users can 
-be configured using [configuration file](../configuration/ceems-lb.md). Besides, it is 
-possible to synchornize users from a given Grafana team periodically. This lets the 
-operators to create a dedicated admin team for CEEMS API server and add users dynamically 
-to this team. CEEMS load balancer will synchronize the members of the team and access 
-admin privileges for accessing TSDB for querying data of _any_ compute unit.
+A single deployment of CEEMS load balancer is capable of loading balancing traffic between 
+different replicated TSDB instances of multiple clusters. Imagine there are two different 
+clusters, one for SLURM and one for Openstack, in a DC. Slurm cluster has two dedicated 
+TSDB instances where data is replicated between them and the same for Openstack cluster. 
+Thus, in total, there are four TSDB instances, two for SLURM cluster and two for 
+Openstack cluster. A single instance of CEEMS load balancer can route the traffic 
+between these four different TSDB instances by targeting the correct cluster.
 
-:::important[IMPORTANT]
+However, in the production with heavy traffic a single instance of CEEMS load balancer 
+might not be a optimal solution. In that case, it is however possible to deploy a dedicated 
+CEEMS load balancer for each cluster.
 
-Admin users are also identified by the user header `X-Grafana-User` and if the current 
-user name is in the list of admin users, that user will be able to access admin 
-end points.
-
-:::
+More details on how to configuration of multi-clusters can be found in [Configuration](../configuration/ceems-lb.md) 
+section and some example scenarios are discussed in [Advanced](../advanced/multi-cluster.md) 
+section.

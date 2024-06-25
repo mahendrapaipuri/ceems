@@ -4,6 +4,8 @@ sidebar_position: 1
 
 # CEEMS Exporter
 
+## Background
+
 `ceems_exporter` is the Prometheus exporter that exposes individual compute unit 
 metrics, RAPL energy, IPMI power consumption, emission factor and GPU to compute unit
 mapping.
@@ -20,105 +22,91 @@ Currently, the exporter supports only SLURM resource manager.
 
 ## Slurm collector
 
-`cgroups` created by SLURM do not have any information on job except for its job ID. 
-For the jobs with GPUs, we need to get GPU ordinals of each job during the scrape. 
-This collector must export GPU ordinal index to job ID map to Prometheus. The actual 
-GPU metrics are exported using [dcgm-exporter](https://github.com/NVIDIA/dcgm-exporter). 
-To use `dcgm-exporter`, we need to know which GPU is allocated to which 
-job and this info is not available post job. Thus, similar approaches as used to retrieve 
-SLURM job properties can be used here as well
+Slurm collector exports the job related metrics like usage of CPU, DRAM, RDMA, _etc_. 
+This is done by walking through the cgroups created by SLURM daemon on compute node on 
+every scrape request. As walking through the cgroups pseudo file system is _very cheap_, 
+this will zero zero to negligible impact on the actual job.
 
-Currently the exporter supports few different ways to get these job properties.
+The exporter has been heavily inspired by 
+[cgroups_exporter](https://github.com/treydock/cgroup_exporter) and it supports both 
+cgroups **v1** and **v2**. For jobs with GPUs, we must the GPU ordinals allocated to 
+each job so that we can match GPU metrics scrapped by either 
+[dcgm-exporter](https://github.com/NVIDIA/dcgm-exporter) or 
+[amd-smi-exporter](https://github.com/amd/amd_smi_exporter) to jobs. Unfortunately, 
+this information is not available post-mortem of the job and hence, we need to export 
+the mapping related to job ID to GPU ordinals. 
 
-- Use prolog and epilog scripts to get the GPU to job ID map. Example prolog script 
-is provided in the [repo](./etc/slurm/prolog.d/gpujobmap.sh). Similarly, this approach 
-needs `--collector.slurm.gpu.job.map.path=/run/gpujobmap` command line option.
+Currently, the list of job related metrics exported by SLURM exporter are as follows:
 
-- Reading env vars from `/proc`: If the file created by prolog script cannot be found, 
-the exporter defaults to reading the `/proc` file system and attempt to job properties
-by reading environment variables of processes. However, this needs privileges which 
-can be attributed by assigning `CAP_SYS_PTRACE` and `CAP_DAC_READ_SEARCH` capabilities 
-to the `ceems_exporter` process. Assigning capabilities to process is discussed 
-in [capabilities section](#linux-capabilities).
+- Job current CPU time in user and system mode
+- Job CPUs limit (Number of CPUs allocated to the job)
+- Job current total memory usage
+- Job total memory limit (Memory allocated to the job)
+- Job current RSS memory usage
+- Job current cache memory usage
+- Job current number of memory usage hits limits
+- Job current memory and swap usage
+- Job current memory and swap usage hits limits
+- Job total memory and swap limit
+- Job CPU and memory pressures
+- Job maximum RDMA HCA handles
+- Job maximum RDMA HCA objects
+- Job to GPU ordinal mapping (when GPUs found on the compute node)
+- Current number of jobs on the compute node
 
-- Running exporter as `root`: This will assign all available capabilities for the 
-`ceems_exporter` process and thus the necessary job properties and GPU maps will be
-read from environment variables in `/proc` file system.
-
-It is recommended to use Prolog and Epilog scripts to get job properties and GPU to job ID maps 
-as it does not require any privileges and exporter can run completely in the 
-userland. If the admins would not want to have the burden of maintaining prolog and 
-epilog scripts, it is better to assign capabilities. These two approaches should be 
-always favoured to running the exporter as `root`.
+More information on the metrics can be found in kernel documentation of 
+[cgroups v1](https://www.kernel.org/doc/Documentation/cgroup-v1/memory.txt) and 
+[cgroups v2](https://git.kernel.org/pub/scm/linux/kernel/git/tj/cgroup.git/tree/Documentation/admin-guide/cgroup-v2.rst). 
 
 ## IPMI collector
 
-There are several IPMI implementation available like FreeIPMI, OpenIPMI, IPMIUtil, 
- _etc._ Current exporter is capable of auto detecting the IPMI implementation and using
+The IPMI collector reports the current power usage by the node reported by 
+[IPMI DCMI](https://www.intel.com/content/dam/www/public/us/en/documents/technical-specifications/dcmi-v1-5-rev-spec.pdf) 
+command specification. Generally IPMI DCMI is available on all types of nodes and 
+manufacturers as it is needed for BMC control. There are several IPMI implementation 
+available like FreeIPMI, OpenIPMI, IPMIUtil, _etc._ As IPMI DCMI specification is 
+standardized, different implementations must report the same power usage value of the node.
+
+Currently, the metrics exposed by IPMI collector are:
+
+- Current power consumption
+- Minimum power consumption in the sampling period
+- Maximum power consumption in the sampling period
+- Average power consumption in the sampling period
+
+Current exporter is capable of auto detecting the IPMI implementation and using
 the one that is found.
-
-:::important[IMPORTANT]
-
-In addition to IPMI, the exporter can scrape energy readings
-from Cray's [capmc](https://cray-hpe.github.io/docs-csm/en-10/operations/power_management/cray_advanced_platform_monitoring_and_control_capmc/) interface.
-
-:::
-
-If the host where exporter is running does not use any of the IPMI implementations, 
-it is possible to configure the custom command using CLI flag `--collector.ipmi.dcmi.cmd`. 
-
-:::note[NOTE]
-
-Current auto detection mode is only limited to `ipmi-dcmi` (FreeIPMI), `ipmitool` 
-(OpenIPMI), `ipmitutil` (IPMIUtils) and `capmc` (Cray) implementations. These binaries 
-must be on `PATH` for the exporter to detect them. If a custom IPMI command is used, 
-the command must output the power info in 
-[one of these formats](https://github.com/mahendrapaipuri/ceems/blob/c031e0e5b484c30ad8b6e2b68e35874441e9d167/pkg/collector/ipmi.go#L35-L92). 
-If that is not the case, operators must write a wrapper around the custom IPMI command 
-to output the energy info in one of the supported formats.
-
-:::
-
-The exporter is capable of parsing FreeIPMI, IPMITool and IPMIUtil outputs.
-If your IPMI implementation does not return an output in 
-[one of these formats](https://github.com/mahendrapaipuri/ceems/blob/c031e0e5b484c30ad8b6e2b68e35874441e9d167/pkg/collector/ipmi.go#L35-L92), 
-you can write your own wrapper that parses your IPMI implementation's output and 
-returns output in one of above formats. 
-
-Generally `ipmi` related commands are available for only `root`. Admins can add a sudoers 
-entry to let the user that runs the `ceems_exporter` to execute only necessary 
-command that reports the power usage. For instance, in the case of FreeIPMI 
-implementation, that sudoers entry will be
-
-```
-ceems ALL = NOPASSWD: /usr/sbin/ipmi-dcmi
-```
-The exporter will automatically execute the command with `sudo`.
-
-Another supported approach is to run the subprocess `ipmi-dcmi` command as root. In this 
-approach, the subprocess will be spawned as root to be able to execute the command. 
-This needs `CAP_SETUID` and `CAP_SETGID` capabilities in order to able use `setuid` and
-`setgid` syscalls.
 
 ## RAPL collector
 
-For the kernels that are `<5.3`, there is no special configuration to be done. If the 
-kernel version is `>=5.3`, RAPL metrics are only available for `root`. The capability 
-`CAP_DAC_READ_SEARCH` should be able to circumvent this restriction although this has 
-not been tested. Another approach is to add a ACL rule on the `/sys/fs/class/powercap` 
-directory to give read permissions to the user that is running `ceems_exporter`.
+RAPL collector reports the power consumption of CPU and DRAM (when available) using 
+Running Average Power Limit (RAPL) framework. The exporter uses powercap to fetch the 
+energy counters. 
+
+List of metrics exported by RAPL collector are:
+
+- RAPL package counters
+- RAPL DRAM counters (when available)
+
+If the CPU architecture supports more RAPL domains than CPU and DRAM, they will be 
+exported as well.
 
 ## Emissions collector
 
-The only CLI flag to configure for emissions collector is 
-`--collector.emissions.country.code` and set it to 
-[ISO 2 Country Code](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2). By setting 
-an environment variable `EMAPS_API_TOKEN`, emission factors from 
-[Electricity Maps](https://app.electricitymaps.com/map) data will also be reported.
+Emissions collector exports emissions factors from different sources. Depending on the 
+source, these factors can be static or dynamic, _i.e.,_ varying in time. Currently, 
+different sources supported by the exporter are:
 
-If country is set to France, emission factor data from 
-[RTE eCO2 Mix](https://www.rte-france.com/en/eco2mix/co2-emissions) will also be reported. 
-There is no need to pass any API token.
+- [Electricity Maps](https://app.electricitymaps.com/map) which is capable of providing 
+real time emission factors for different countries.
+- [RTE eCO2 Mix](https://www.rte-france.com/en/eco2mix/co2-emissions) provides real time
+emission factor for **only France**.
+- [OWID](https://ourworldindata.org/co2-and-greenhouse-gas-emissions) provides a static 
+emission factors for different countries based on historical data.
+- A world average value that is based on the data of available data of the world countries.
+
+The exporter will export the emission factors of all available countries from different
+sources.
 
 ## CPU and meminfo collectors
 

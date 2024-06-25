@@ -1,0 +1,8 @@
+{
+  "label": "Deployment",
+  "position": 7,
+  "link": {
+    "type": "generated-index",
+    "description": "This section shows common deployment scenarios of CEEMS."
+  }
+}

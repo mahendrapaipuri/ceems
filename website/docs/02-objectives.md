@@ -1,6 +1,6 @@
 # Objectives
 
-The objective of the current stack is two-fold:
+The objectives of the current stack are two-fold:
 
 - For end users to be able to monitor their compute units in real time. Besides the 
 conventional metrics like CPU usage, memory usage, _etc_, the stack also exposes 
@@ -11,6 +11,12 @@ also capable of showing the aggregate usage metrics of a given project/tenant/na
 CPU usage, memory, energy, _etc_. With the current stack the operators will be able to
 identify the top consumers of the resources in the cluster, users/projects that are 
 under consuming the allocated resources _etc_.
+
+CEEMS has been designed to be modular and extensible, _i.e.,_ CEEMS is meant to support 
+multiple clusters at the same time. For instance, imagine a Data Center (DC) has a SLURM 
+cluster and a Openstack cluster. A single deployment of CEEMS should be able to 
+consolidate the metrics data of SLURM jobs and Openstack VMs and expose it to 
+end users using a single instance of Grafana.
 
 ## End user's perspective
 
