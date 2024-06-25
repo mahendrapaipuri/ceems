@@ -518,7 +518,7 @@ func (s *statsDB) getUnitStats(startTime, endTime time.Time) error {
 
 	// Insert data into DB
 	level.Debug(s.logger).Log("msg", "Executing SQL statements")
-	s.execStatements(sqlStmts, units, users, projects)
+	s.execStatements(sqlStmts, endTime, units, users, projects)
 	level.Debug(s.logger).Log("msg", "Finished executing SQL statements")
 
 	// Commit changes
@@ -583,6 +583,7 @@ func (s *statsDB) prepareStatements(tx *sql.Tx) (map[string]*sql.Stmt, error) {
 // Insert unit stat into DB
 func (s *statsDB) execStatements(
 	statements map[string]*sql.Stmt,
+	currentTime time.Time,
 	clusterUnits []models.ClusterUnits,
 	clusterUsers []models.ClusterUsers,
 	clusterProjects []models.ClusterProjects,
@@ -637,7 +638,7 @@ func (s *statsDB) execStatements(
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["Tags"], unit.Tags),
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["ignore"], ignore),
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["numupdates"], 1),
-				sql.Named(base.UsageDBTableStructFieldColNameMap["lastupdatedat"], time.Now().Format(base.DatetimeLayout)),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["lastupdatedat"], currentTime.Format(base.DatetimeLayout)),
 			); err != nil {
 				level.Error(s.logger).
 					Log("msg", "Failed to insert unit in DB", "cluster_id", cluster.Cluster.ID, "uuid", unit.UUID, "err", err)
@@ -658,7 +659,7 @@ func (s *statsDB) execStatements(
 				sql.Named(base.UsageDBTableStructFieldColNameMap["NumUnits"], unitIncr),
 				sql.Named(base.UsageDBTableStructFieldColNameMap["Project"], unit.Project),
 				sql.Named(base.UsageDBTableStructFieldColNameMap["Usr"], unit.Usr),
-				sql.Named(base.UsageDBTableStructFieldColNameMap["lastupdatedat"], time.Now().Format(base.DatetimeLayout)),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["lastupdatedat"], currentTime.Format(base.DatetimeLayout)),
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalWallTime"], unit.TotalWallTime),
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalCPUTime"], unit.TotalCPUTime),
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalGPUTime"], unit.TotalGPUTime),
@@ -727,7 +728,7 @@ func (s *statsDB) execStatements(
 		if _, err = statements[base.AdminUsersDBTableName].Exec(
 			sql.Named(base.AdminUsersDBTableStructFieldColNameMap["Source"], source),
 			sql.Named(base.AdminUsersDBTableStructFieldColNameMap["Users"], s.admin.users[source]),
-			sql.Named(base.AdminUsersDBTableStructFieldColNameMap["LastUpdatedAt"], time.Now().Format(base.DatetimeLayout)),
+			sql.Named(base.AdminUsersDBTableStructFieldColNameMap["LastUpdatedAt"], currentTime.Format(base.DatetimeLayout)),
 		); err != nil {
 			level.Error(s.logger).
 				Log("msg", "Failed to update admin_users table in DB", "source", source, "err", err)

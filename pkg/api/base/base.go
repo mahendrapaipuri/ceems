@@ -4,6 +4,7 @@ package base
 
 import (
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
@@ -68,3 +69,8 @@ var (
 
 // APIVersion sets the version of API in paths
 const APIVersion = "v1"
+
+// Cluster and Updater ID valid regex
+var (
+	InvalidIDRegex = regexp.MustCompile("[^a-zA-Z0-9-_]")
+)

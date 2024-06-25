@@ -12,12 +12,8 @@ import (
 func TestJobStatsDBPreparation(t *testing.T) {
 	tmpDir := t.TempDir()
 	statDBPath := filepath.Join(tmpDir, "stats.db")
-	s := &storageConfig{
-		dbPath: statDBPath,
-	}
 	j := statsDB{
-		logger:  log.NewNopLogger(),
-		storage: s,
+		logger: log.NewNopLogger(),
 	}
 
 	// Test setupDB function

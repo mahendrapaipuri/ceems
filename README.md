@@ -28,9 +28,13 @@ with Grafana and Prometheus to show statistics to users.
 
 ## Install CEEMS
 
-Installation instructions of CEEMS components can be found in [docs](https://mahendrapaipuri.github.io/ceems/docs/category/installation).
+Installation instructions of CEEMS components can be found in 
+[docs](https://mahendrapaipuri.github.io/ceems/docs/category/installation).
 
 ## Visualizing metrics with Grafana
+
+CEEMS is meant to be used with Grafana for visualization and below are some of the 
+screenshots few possible metrics.
 
 ### Time series compute unit CPU metrics
 
@@ -58,7 +62,7 @@ Installation instructions of CEEMS components can be found in [docs](https://mah
 
 ## Talks and Demos
 
-- [An Introduction to CEEMS at ISC 2024](https://docs.google.com/presentation/d/1e-JFKOuiz9DKVx4F-HRU5cPUKWwWKCh_-6Car7wYfzc/edit#slide=id.g2db43278b8d_0_41)
+- [An Introduction to CEEMS at ISC 2024](https://drive.google.com/file/d/1kUbD3GgDKwzgIuxjrTY95YJN5aSuIejQ/view?usp=drive_link)
 - [CEEMS Architecture and Usage](https://docs.google.com/presentation/d/1xNQTCsmPUz37KDb2BLrpWExuQWxk49NpVN9VDbxSe6Y/edit#slide=id.p)
 
 ## Contributing

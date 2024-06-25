@@ -70,6 +70,9 @@ func checkConfig(updaters []string, config *Config[Instance]) (map[string][]Inst
 		if !slices.Contains(updaters, config.Instances[i].Updater) {
 			return nil, fmt.Errorf("unknown updater found in the config: %s", config.Instances[i].Updater)
 		}
+		if base.InvalidIDRegex.MatchString(config.Instances[i].ID) {
+			return nil, fmt.Errorf("invalid ID %s found in updaters config. It must contain only [a-zA-Z0-9-_]", config.Instances[i].ID)
+		}
 		IDs = append(IDs, config.Instances[i].ID)
 		configMap[config.Instances[i].Updater] = append(configMap[config.Instances[i].Updater], config.Instances[i])
 	}

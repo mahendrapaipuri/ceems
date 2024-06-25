@@ -56,10 +56,13 @@ func checkConfig(managers []string, config *Config[models.Cluster]) (map[string]
 	var configMap = make(map[string][]models.Cluster)
 	for i := 0; i < len(config.Clusters); i++ {
 		if slices.Contains(IDs, config.Clusters[i].ID) {
-			return nil, fmt.Errorf("duplicate ID found in resource managers config")
+			return nil, fmt.Errorf("duplicate ID found in clusters config")
 		}
 		if !slices.Contains(managers, config.Clusters[i].Manager) {
 			return nil, fmt.Errorf("unknown resource manager found in the config: %s", config.Clusters[i].Manager)
+		}
+		if base.InvalidIDRegex.MatchString(config.Clusters[i].ID) {
+			return nil, fmt.Errorf("invalid ID %s found in clusters config. It must contain only [a-zA-Z0-9-_]", config.Clusters[i].ID)
 		}
 		IDs = append(IDs, config.Clusters[i].ID)
 		configMap[config.Clusters[i].Manager] = append(configMap[config.Clusters[i].Manager], config.Clusters[i])
