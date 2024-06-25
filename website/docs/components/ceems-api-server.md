@@ -88,7 +88,7 @@ for fetching users and projects/namespaces/tenants data from the underlying reso
 manager. 
 
 Currently, CEEMS API server ships SLURM support and soon Openstack support 
-will be added. 
+will be added.
 
 ### Aggregate metrics
 
@@ -118,6 +118,6 @@ In the same way, irrespective of each cluster using its own dedicated TSDB or a 
 TSDB with other clusters, Updater sub component of CEEMS API server is capable of 
 estimating aggregate metrics of each compute unit.
 
-More details on how to configuration of multi-clusters can be found in [Configuration](../configuration/ceems-api-server.md) 
-section and some example scenarios are discussed in [Advanced](../advanced/multi-cluster.md) 
-section.
+More details on how to configuration of multi-clusters can be found in 
+[Configuration](../configuration/ceems-api-server.md) section and some example 
+scenarios are discussed in [Advanced](../advanced/multi-cluster.md) section.

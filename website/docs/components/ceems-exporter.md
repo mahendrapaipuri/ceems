@@ -36,6 +36,16 @@ each job so that we can match GPU metrics scrapped by either
 this information is not available post-mortem of the job and hence, we need to export 
 the mapping related to job ID to GPU ordinals. 
 
+:::warning[WARNING]
+
+For SLURM collector to work properly, SLURM needs to be configured well to enable all 
+the available cgroups controllers. At least `cpu` and `memory` controllers must be 
+enabled if not cgroups will not contain any accounting information. Without `cpu` 
+and `memory` accounting information, it is not possible to estimate energy consumption 
+of the job.
+
+:::
+
 Currently, the list of job related metrics exported by SLURM exporter are as follows:
 
 - Job current CPU time in user and system mode
@@ -88,7 +98,7 @@ List of metrics exported by RAPL collector are:
 - RAPL package counters
 - RAPL DRAM counters (when available)
 
-If the CPU architecture supports more RAPL domains than CPU and DRAM, they will be 
+If the CPU architecture supports more RAPL domains otherthan CPU and DRAM, they will be 
 exported as well.
 
 ## Emissions collector
