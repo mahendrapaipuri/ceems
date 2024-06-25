@@ -66,11 +66,11 @@ jobs:
       contents: write
 
   test-e2e:
-    needs: [test-lint]
+    needs: [test-lint, test-unit]
     uses: ./.github/workflows/step_tests-e2e.yml
 
   build:
-    needs: [test-lint, test-unit, test-e2e]
+    needs: [test-lint, test-unit]
     uses: ./.github/workflows/step_build.yml
 
   packaging:
