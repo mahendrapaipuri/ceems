@@ -29,10 +29,9 @@ jobs:
           # Analyzes Go code using manual build
           - language: go
             build-mode: manual
-          # Analyzes Tyepscript using autobuild. Seems like typescript does not allow
-          # manual build
+          # Analyzes Tyepscript using none. Seems like typescript only supports none
           - language: javascript-typescript
-            build-mode: autobuild
+            build-mode: none
 
     steps:
     - name: Checkout repository
