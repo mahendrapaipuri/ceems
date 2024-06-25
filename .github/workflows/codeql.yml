@@ -58,6 +58,8 @@ jobs:
         make build
         echo 'Building cgo binaries'
         CGO_BUILD=1 make build
+        # Run extractor
+        "${CODEQL_EXTRACTOR_GO_ROOT}/tools/linux64/go-extractor" ./...
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
