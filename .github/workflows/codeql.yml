@@ -8,7 +8,7 @@ on:
 
 jobs:
   analyze:
-    name: Analyze Golang
+    name: Analyze Go and TypeScript
     # Runner size impacts CodeQL analysis time. To learn more, please see:
     #   - https://gh.io/recommended-hardware-resources-for-running-codeql
     #   - https://gh.io/supported-runners-and-hardware-resources
@@ -22,6 +22,11 @@ jobs:
       # required to fetch internal or private CodeQL packs
       packages: read
 
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['javascript-typescript', 'go']
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -30,7 +35,7 @@ jobs:
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
       with:
-        languages: go
+        languages: ${{ matrix.language }}
         build-mode: manual
         # If you wish to specify custom queries, you can do so here or in a config file.
         # By default, queries listed here will override any specified in a config file.
@@ -39,13 +44,9 @@ jobs:
         # For more details on CodeQL's query packs, refer to: https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/configuring-code-scanning#using-queries-in-ql-packs
         # queries: security-extended,security-and-quality
 
-    - name: Install promu
-      run: |
-        make promu
-        go mod download
-
     - name: Build
       shell: bash
+      if: ${{ matrix.language }} == go
       run: |
         echo 'Building pure go binaries'
         make build
@@ -55,4 +56,4 @@ jobs:
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
       with:
-        category: /language:go
+        category: /language:${{ matrix.language }}
