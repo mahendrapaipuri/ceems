@@ -25,7 +25,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: ['javascript-typescript', 'go']
+        include:
+          # Analyzes Go code using manual build
+          - language: go
+            build-mode: manual
+          # Analyzes Tyepscript using autobuild. Seems like typescript does not allow
+          # manual build
+          - language: javascript-typescript
+            build-mode: autobuild
 
     steps:
     - name: Checkout repository
@@ -36,7 +43,7 @@ jobs:
       uses: github/codeql-action/init@v3
       with:
         languages: ${{ matrix.language }}
-        build-mode: manual
+        build-mode: ${{ matrix.build-mode }}
         # If you wish to specify custom queries, you can do so here or in a config file.
         # By default, queries listed here will override any specified in a config file.
         # Prefix the list here with "+" to use these queries and those in the config file.
