@@ -32,6 +32,7 @@ on:
       - "go.mod"
       - "**.go"
       - ".github/workflows/**"
+      - "!.github/workflows/codeql.yml"
       - ".golangci.yml"
     branches: [main]
   pull_request:
