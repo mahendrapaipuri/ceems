@@ -508,8 +508,8 @@ func populateDBWithMockData(s *statsDB) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	s.execStatements(stmtMap, mockUnitsOne, mockUsersOne, mockProjectsOne)
-	s.execStatements(stmtMap, mockUnitsTwo, nil, nil)
+	s.execStatements(stmtMap, time.Now(), mockUnitsOne, mockUsersOne, mockProjectsOne)
+	s.execStatements(stmtMap, time.Now(), mockUnitsTwo, nil, nil)
 	tx.Commit()
 }
 
@@ -866,7 +866,7 @@ func TestUnitStatsDeleteOldUnits(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to prepare SQL statements: %s", err)
 	}
-	s.execStatements(stmtMap, units, nil, nil)
+	s.execStatements(stmtMap, time.Now(), units, nil, nil)
 
 	// Now clean up DB for old units
 	err = s.purgeExpiredUnits(tx)

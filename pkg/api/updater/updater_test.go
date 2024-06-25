@@ -39,6 +39,7 @@ updaters:
         avg_cpu_usage: foo
         avg_cpu_mem_usage: foo
   - id: default-1
+    updater: tsdb
     web:
       url: %[1]s
     extra_config:
@@ -50,6 +51,7 @@ updaters:
 		// Missing s in tsbd_instances
 		configFileTmpl = `
 ---
+# %[1]s %[2]s
 updater:
   - id: default
     updater: tsdb`
@@ -57,12 +59,14 @@ updater:
 		// Missing updater name
 		configFileTmpl = `
 ---
+# %[1]s %[2]s
 updaters:
   - id: default`
 	case "malformed_3":
 		// Duplicated IDs
 		configFileTmpl = `
 ---
+# %[1]s %[2]s
 updaters:
   - id: default
   - id: default`
@@ -70,9 +74,18 @@ updaters:
 		// Unknown updater
 		configFileTmpl = `
 ---
+# %[1]s %[2]s
 updaters:
   - id: default
     updater: unknown`
+	case "malformed_5":
+		// invalid ID updater
+		configFileTmpl = `
+---
+# %[1]s %[2]s
+updaters:
+  - id: defau%lt
+    updater: tsdb`
 	}
 
 	configFile := fmt.Sprintf(configFileTmpl, serverURL, "2m")
@@ -117,6 +130,19 @@ func TestUnknownUpdaterConfig(t *testing.T) {
 	}
 	if _, err = checkConfig([]string{"tsdb"}, cfg); err == nil {
 		t.Errorf("expected error due to unknown updater name in config. Got none")
+	}
+}
+
+func TestInvalidIDUpdaterConfig(t *testing.T) {
+	// Make mock config
+	base.ConfigFilePath = mockConfig(t.TempDir(), "malformed_5", "http://localhost:9090")
+
+	cfg, err := updaterConfig()
+	if err != nil {
+		t.Errorf("failed to created updater config: %s", err)
+	}
+	if _, err = checkConfig([]string{"tsdb"}, cfg); err == nil {
+		t.Errorf("expected error due to invalid ID in config. Got none")
 	}
 }
 

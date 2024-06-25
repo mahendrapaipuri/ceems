@@ -151,12 +151,14 @@ clusters:
 		// Missing s in clusters
 		configFileTmpl = `
 ---
+# %[1]s %[2]s
 cluster:
   - id: default`
 	case "malformed_2":
 		// Missing manager name
 		configFileTmpl = `
 ---
+# %[1]s
 clusters:
   - id: default
     web:
@@ -165,11 +167,22 @@ clusters:
 		// Duplicated IDs
 		configFileTmpl = `
 ---
+# %[1]s
 clusters:
   - id: default
     web:
       url: %[2]s
   - id: default
+    web:
+      url: %[2]s`
+	case "malformed_4":
+		// invalid ID
+		configFileTmpl = `
+---
+# %[1]s
+clusters:
+  - id: defau!$lt
+    manager: slurm
     web:
       url: %[2]s`
 	}
@@ -216,6 +229,19 @@ func TestUnknownManagerConfig(t *testing.T) {
 	}
 	if _, err = checkConfig([]string{"slurm"}, cfg); err == nil {
 		t.Errorf("expected error due to unknown manager name in config. Got none")
+	}
+}
+
+func TestInvalidIDManagerConfig(t *testing.T) {
+	// Make mock config
+	base.ConfigFilePath = mockConfig(t.TempDir(), "malformed_4", "")
+
+	cfg, err := managerConfig()
+	if err != nil {
+		t.Errorf("failed to create manager config: %s", err)
+	}
+	if _, err = checkConfig([]string{"slurm"}, cfg); err == nil {
+		t.Errorf("expected error due to invalid ID in config. Got none")
 	}
 }
 
