@@ -65,7 +65,7 @@ jobs:
         run: |
           # Install all CEEMS components
           for app in ceems_exporter ceems_api_server ceems_lb; do
-              GOARCH=amd64 apt-get install .tarballs/${app}-${{ steps.vars.outputs.version }}-${{ steps.vars.outputs.goos }}-amd64.deb
+              GOARCH=amd64 sudo apt-get install .tarballs/${app}-${{ steps.vars.outputs.version }}-${{ steps.vars.outputs.goos }}-amd64.deb
           done 
 
           # Test systemd service of each CEEMS component
