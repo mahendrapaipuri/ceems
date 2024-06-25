@@ -1,0 +1,30 @@
+{
+  "projectBaseUrl": "${workspaceFolder}",
+  "ignorePatterns": [
+    {
+      "pattern": "^/ceems"
+    },
+    {
+      "pattern": "https://www.intel.com/content/dam/www/public/us/en/documents/technical-specifications/dcmi-v1-5-rev-spec.pdf"
+    },
+    {
+      "pattern": "https://github.com/mahendrapaipuri/ceems/tree/main/build/package"
+    }
+  ],
+  "replacementPatterns": [
+    {
+      "pattern": "^/",
+      "replacement": "{{BASEURL}}/static/"
+    },
+    {
+      "pattern": "%20",
+      "replacement": "-",
+      "global": true
+    }
+  ],
+  "timeout": "20s",
+  "retryOn429": true,
+  "retryCount": 5,
+  "fallbackRetryDelay": "30s",
+  "aliveStatusCodes": [200, 206]
+}

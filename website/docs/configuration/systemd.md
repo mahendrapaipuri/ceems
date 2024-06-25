@@ -1,12 +1,12 @@
 ---
-sidebar_position: 7
+sidebar_position: 5
 ---
 
 # Systemd
 
-If CEEMS components are installed using [RPM/DEB packages](os-packages.md), a basic 
+If CEEMS components are installed using [RPM/DEB packages](../installation/os-packages.md), a basic 
 systemd unit file will be installed to start the service. However, when they are 
-installed manually using [pre-compiled binaries](./pre-compiled-binaries.md), it is 
+installed manually using [pre-compiled binaries](../installation/pre-compiled-binaries.md), it is 
 necessary to install and configure `systemd` unit files to manage the service.
 
 ## Privileges
@@ -37,7 +37,7 @@ expose those capabilities to anyone on the system that have execute permissions 
 binary. Although, it does not pose a big security concern, it is better to assign 
 capabilities to a process. 
 
-As admins tend to run the exporter within a `systemd` unit file, we can assign 
+As operators tend to run the exporter within a `systemd` unit file, we can assign 
 capabilities to the process rather than file using `AmbientCapabilities` 
 directive of the `systemd`. An example is as follows:
 
@@ -48,5 +48,5 @@ AmbientCapabilities=CAP_SYS_PTRACE CAP_DAC_READ_SEARCH CAP_SETUID CAP_SETGID
 ```
 
 Note that it is bare minimum service file and it is only to demonstrate on how to use 
-`AmbientCapabilities`. Production ready [service files examples]((https://github.com/mahendrapaipuri/ceems/tree/v0.1.0-rc.6/init/systemd)) 
+`AmbientCapabilities`. Production ready [service files examples]((https://github.com/mahendrapaipuri/ceems/tree/main/build/package)) 
 are provided in repo.

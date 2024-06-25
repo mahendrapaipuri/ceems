@@ -1,0 +1,66 @@
+{
+    // Version of the setting file.  Always 0.2
+    "version": "0.2",
+    // language - current active spelling language
+    "language": "en",
+    // Allow compound words
+    "allowCompoundWords": true,
+    // words - list of words to be always considered correct
+    "words": [
+        "ceems",
+        "CEEMS",
+        "mahendrapaipuri",
+        "managername",
+        "updatername",
+        "lbstrategy",
+        "idname",
+        "SLURM",
+        "slurm",
+        "sacct",
+        "IPMI",
+        "ipmi",
+        "DCMI",
+        "ipmi-dcmi",
+        "ipmitool",
+        "ipmiutil",
+        "capmc",
+        "RAPL",
+        "DCGM",
+        "dcgm",
+        "OWID",
+        "EMAPS",
+        "RDMA",
+        "powercap",
+        "setcap",
+        "setuid",
+        "setgid",
+        "ptrace",
+        "SETUID",
+        "SETGID",
+        "PTRACE",
+        "CUDA",
+        "gpuuuid",
+        "uuid",
+        "NOPASSWD",
+        "syscalls",
+        "BGFS",
+        "kiːms"
+    ],
+    // flagWords - list of words to be always considered incorrect
+    // This is useful for offensive words and common spelling errors.
+    // For example "hte" should be "the"
+    "flagWords": [
+        "hte"
+    ],
+    // Language settings
+    "languageSettings": [
+        {
+            // use with Markdown files
+            "languageId": "markdown",
+            // Exclude code.
+            "ignoreRegExpList": [
+                "/^\\s*```[\\s\\S]*?^\\s*```/gm"
+            ]
+        }
+    ]
+} 

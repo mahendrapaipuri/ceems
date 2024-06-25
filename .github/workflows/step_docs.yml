@@ -24,6 +24,11 @@ jobs:
           cd website
           yarn install --frozen-lockfile --non-interactive
 
+      - name: Do checks
+        run: |
+          cd website
+          yarn checks
+
       - name: Build docs
         run: |
           cd website
