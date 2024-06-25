@@ -52,7 +52,7 @@ jobs:
 
     - name: Build
       shell: bash
-      if: ${{ matrix.language }} == go
+      if: ${{ matrix.language == 'go' }}
       run: |
         echo 'Building pure go binaries'
         make build
