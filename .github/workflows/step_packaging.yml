@@ -25,14 +25,26 @@ jobs:
         with:
           name: build-go-artifacts
 
+      - name: Get version
+        id: vars
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            REF_NAME=$(echo "${GITHUB_REF_NAME//\//-}")
+            CEEMS_VERSION=$(echo "${REF_NAME//v}")
+            echo "version=${CEEMS_VERSION}" >> $GITHUB_OUTPUT
+          else
+            echo "version=$(cat VERSION)" >> $GITHUB_OUTPUT
+          fi
+          echo "goos=linux" >> $GITHUB_OUTPUT
+
       # Build RPM and DEB packages
       - name: Build deb and rpm packages
         run: |
-          # Replace any '/' with '-' for non tag workflows
-          export REF_NAME=$(echo "${GITHUB_REF_NAME//\//-}")
-          # Strip v from tag name, eg v0.1.0 -> 0.1.0
-          export CEEMS_VERSION=$(echo "${REF_NAME//v}")
-          export GOOS=linux
+          # # Replace any '/' with '-' for non tag workflows
+          # export REF_NAME=$(echo "${GITHUB_REF_NAME//\//-}")
+          # # Strip v from tag name, eg v0.1.0 -> 0.1.0
+          # export CEEMS_VERSION=$(echo "${REF_NAME//v}")
+          # export GOOS=linux
 
           # Ensure target directory exists
           mkdir -p .tarballs
@@ -44,13 +56,25 @@ jobs:
           for arch in amd64 arm64; do
             for packager in rpm deb; do
               for app in ceems_exporter ceems_api_server ceems_lb; do
-                  GOARCH=${arch} nfpm pkg --config build/package/${app}/nfpm.yml --packager ${packager} --target .tarballs/${app}-${CEEMS_VERSION}-${GOOS}-${arch}.${packager}
+                  GOARCH=${arch} nfpm pkg --config build/package/${app}/nfpm.yml --packager ${packager} --target .tarballs/${app}-${{ steps.vars.outputs.version }}-${{ steps.vars.outputs.goos }}-${arch}.${packager}
               done 
             done 
           done
 
+      - name: Test deb packages
+        run: |
+          # Install all CEEMS components
+          for app in ceems_exporter ceems_api_server ceems_lb; do
+              GOARCH=amd64 apt-get install .tarballs/${app}-${{ steps.vars.outputs.version }}-${{ steps.vars.outputs.goos }}-amd64.deb
+          done 
+
+          # Test systemd service of each CEEMS component
+          for app in ceems_exporter ceems_api_server ceems_lb; do
+              systemctl is-active --quiet "${app}.service" && echo "${app}" is running
+          done 
+
       - name: Upload release artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: release-artifacts
           path: .tarballs
