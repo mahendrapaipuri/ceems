@@ -38,11 +38,14 @@ the mapping related to job ID to GPU ordinals.
 
 :::warning[WARNING]
 
-For SLURM collector to work properly, SLURM needs to be configured well to enable all 
+For SLURM collector to work properly, SLURM needs to be configured well to use all 
 the available cgroups controllers. At least `cpu` and `memory` controllers must be 
-enabled if not cgroups will not contain any accounting information. Without `cpu` 
+enabled, if not cgroups will not contain any accounting information. Without `cpu` 
 and `memory` accounting information, it is not possible to estimate energy consumption 
 of the job.
+
+More details on how to configure SLURM to get accounting information from cgroups can 
+be found in [Configuration](../configuration/resource-managers.md) section.
 
 :::
 

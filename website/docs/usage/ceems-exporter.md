@@ -8,7 +8,8 @@ sidebar_position: 1
 
 :::important[IMPORTANT]
 
-Currently CEEMS exporter supports only exporting SLURM job metrics. Adding support for 
+Currently CEEMS exporter supports only exporting SLURM job metrics. Consequently, CEEMS
+support only SLURM resource manager. Adding support for 
 Openstack and libvirt is in next milestone.
 
 :::
@@ -19,6 +20,13 @@ To run exporter with default enabled collectors, use the following command:
 ceems_exporter 
 ```
 
+List of collectors that are enabled by default are:
+
+- `cpu`: Node level CPU stats
+- `memory`: Node level memory stats
+- `rapl`: RAPL energy counters
+- `ipmi_dcmi`: Power usage from IPMI DCMI
+
 By default CEEMS exporter exposes metrics on all interfaces, port `9010` and 
 at `/metrics` endpoint. This can be changed by setting `--web.listen-address` CLI flag
 
@@ -28,13 +36,19 @@ ceems_exporter --web.listen-address="localhost:8010"
 
 Above command will run exporter only on `localhost` and on port `8010`. 
 
+In order to enable SLURM collector, we need to add the following CLI flag
+
+```bash
+ceems_exporter --collector.slurm
+```
+
 If there are GPUs on the compute nodes, it is necessary to tell the exporter the type 
 of GPU. Currently only NVIDIA and AMD GPUs are supported.
 
 ```bash
-ceems_exporter --collector.slurm.gpu.type=amd
+ceems_exporter --collector.slurm --collector.slurm.gpu.type=amd
 # or
-ceems_exporter --collector.slurm.gpu.type=nvidia
+ceems_exporter --collector.slurm --collector.slurm.gpu.type=nvidia
 ```
 
 In order to disable default collectors, we need to add `no` prefix to the collector flag. 
