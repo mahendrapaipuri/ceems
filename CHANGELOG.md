@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.1.0 / 2024-06-27
+
+- [DOCS] Improve docs on Slurm collector [#101](https://github.com/mahendrapaipuri/ceems/pull/101) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [CI] Test DEB packages in CI [#100](https://github.com/mahendrapaipuri/ceems/pull/100) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [CI] Extract go code for CodeQL analysis [#99](https://github.com/mahendrapaipuri/ceems/pull/99) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Enforce rules on cluster and updater IDs [#98](https://github.com/mahendrapaipuri/ceems/pull/98) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [DOCS] Update Docs [#97](https://github.com/mahendrapaipuri/ceems/pull/97) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [CI] Add CodeQL workflow [#96](https://github.com/mahendrapaipuri/ceems/pull/96) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Add user and project tables to DB [#95](https://github.com/mahendrapaipuri/ceems/pull/95) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Multicluster support [#94](https://github.com/mahendrapaipuri/ceems/pull/94) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [MAINT] General maintenance and enhancements [#92](https://github.com/mahendrapaipuri/ceems/pull/92) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [DOCS] Add swagger docs [#90](https://github.com/mahendrapaipuri/ceems/pull/90) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [DOCS] Setup docs website [#88](https://github.com/mahendrapaipuri/ceems/pull/88) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [DOCS] Publish README to registries [#87](https://github.com/mahendrapaipuri/ceems/pull/87) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Use weighted mean for agg stats [#86](https://github.com/mahendrapaipuri/ceems/pull/86) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [CI] Make and publish container images [#85](https://github.com/mahendrapaipuri/ceems/pull/85) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Add demo end points [#84](https://github.com/mahendrapaipuri/ceems/pull/84) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Support DB and API modes for access control [#83](https://github.com/mahendrapaipuri/ceems/pull/83) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Enhancement api server [#78](https://github.com/mahendrapaipuri/ceems/pull/78) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Add `cpu_per_core_count` metric to CPU collector [#76](https://github.com/mahendrapaipuri/ceems/pull/76) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Add `last_updated_at` col in usage table [#75](https://github.com/mahendrapaipuri/ceems/pull/75) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [REFACTOR] Use auth middleware for LB [#74](https://github.com/mahendrapaipuri/ceems/pull/74) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Add recording rules for Prometheus [#67](https://github.com/mahendrapaipuri/ceems/pull/67) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [BUGFIX] Ensure non-negative values in agg metrics [#66](https://github.com/mahendrapaipuri/ceems/pull/66) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+
 ## 0.1.0-rc.6 / 2024-04-04
 
 - [REFACTOR] Use generic name in metric names [#65](https://github.com/mahendrapaipuri/ceems/pull/65) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
