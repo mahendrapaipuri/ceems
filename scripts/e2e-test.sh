@@ -275,6 +275,7 @@ then
         --path.sysfs="pkg/collector/testdata/sys" \
         --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
         --path.procfs="pkg/collector/testdata/proc" \
+        --collector.slurm \
         --collector.slurm.create.unique.jobids \
         --collector.slurm.job.props.path="pkg/collector/testdata/slurmjobprops" \
         --collector.slurm.gpu.type="nvidia" \
@@ -292,6 +293,7 @@ then
         --path.sysfs="pkg/collector/testdata/sys" \
         --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
         --path.procfs="pkg/collector/testdata/proc" \
+        --collector.slurm \
         --collector.slurm.job.props.path="pkg/collector/testdata/slurmjobprops" \
         --collector.slurm.gpu.type="nvidia" \
         --collector.slurm.nvidia.smi.path="pkg/collector/testdata/nvidia-smi" \
@@ -307,6 +309,7 @@ then
         --path.sysfs="pkg/collector/testdata/sys" \
         --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
         --path.procfs="pkg/collector/testdata/proc" \
+        --collector.slurm \
         --collector.slurm.create.unique.jobids \
         --collector.slurm.job.props.path="pkg/collector/testdata/slurmjobprops" \
         --collector.slurm.gpu.type="amd" \
@@ -323,6 +326,7 @@ then
         --path.sysfs="pkg/collector/testdata/sys" \
         --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
         --path.procfs="pkg/collector/testdata/proc" \
+        --collector.slurm \
         --collector.slurm.create.unique.jobids \
         --collector.slurm.job.props.path="pkg/collector/testdata/slurmjobprops" \
         --collector.slurm.force.cgroups.version="v2" \
@@ -336,6 +340,7 @@ then
         --path.sysfs="pkg/collector/testdata/sys" \
         --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
         --path.procfs="pkg/collector/testdata/proc" \
+        --collector.slurm \
         --collector.slurm.create.unique.jobids \
         --collector.slurm.gpu.type="nvidia" \
         --collector.slurm.nvidia.smi.path="pkg/collector/testdata/nvidia-smi" \
@@ -351,6 +356,7 @@ then
         --path.sysfs="pkg/collector/testdata/sys" \
         --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
         --path.procfs="pkg/collector/testdata/proc" \
+        --collector.slurm \
         --collector.slurm.create.unique.jobids \
         --collector.slurm.job.props.path="pkg/collector/testdata/slurmjobprops" \
         --collector.slurm.gpu.type="amd" \
