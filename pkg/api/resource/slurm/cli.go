@@ -23,13 +23,13 @@ func preflightsCLI(slurm *slurmScheduler) error {
 	// Assume execMode is always native
 	slurm.fetchMode = "cli"
 	slurm.cmdExecMode = "native"
-	level.Debug(slurm.logger).Log("msg", "SLURM jobs will be fetched using sacct command")
+	level.Debug(slurm.logger).Log("msg", "SLURM jobs will be fetched using CLI commands")
 
 	// If no sacct path is provided, assume it is available on PATH
 	if slurm.cluster.CLI.Path == "" {
 		path, err := exec.LookPath("sacct")
 		if err != nil {
-			level.Error(slurm.logger).Log("msg", "Failed to find sacct executable on PATH", "err", err)
+			level.Error(slurm.logger).Log("msg", "Failed to find SLURM utility executables on PATH", "err", err)
 			return err
 		}
 		slurm.cluster.CLI.Path = filepath.Dir(path)
@@ -46,8 +46,8 @@ func preflightsCLI(slurm *slurmScheduler) error {
 
 	// If current user is slurm or root pass checks
 	if currentUser, err := user.Current(); err == nil && (currentUser.Username == "slurm" || currentUser.Uid == "0") {
-		level.Debug(slurm.logger).
-			Log("msg", "Current user have enough privileges to get job data for all users", "user", currentUser.Username)
+		level.Info(slurm.logger).
+			Log("msg", "Current user have enough privileges to execute SLURM commands", "user", currentUser.Username)
 		return nil
 	}
 
@@ -55,25 +55,28 @@ func preflightsCLI(slurm *slurmScheduler) error {
 	// it will be a success
 	slurmUser, err := user.Lookup("slurm")
 	if err != nil {
-		level.Error(slurm.logger).Log("msg", "Failed to lookup SLURM user for executing sacct cmd", "err", err)
+		level.Debug(slurm.logger).
+			Log("msg", "User slurm not found. Next attempt to execute SLURM commands with sudo", "err", err)
 		goto sudomode
 	}
 
 	slurmUserUID, err = strconv.Atoi(slurmUser.Uid)
 	if err != nil {
-		level.Error(slurm.logger).Log("msg", "Failed to convert SLURM user uid to int", "uid", slurmUserUID, "err", err)
+		level.Debug(slurm.logger).
+			Log("msg", "Failed to convert SLURM user uid to int. Next attempt to execute SLURM commands with sudo", "uid", slurmUserUID, "err", err)
 		goto sudomode
 	}
 
 	slurmUserGID, err = strconv.Atoi(slurmUser.Gid)
 	if err != nil {
-		level.Error(slurm.logger).Log("msg", "Failed to convert SLURM user gid to int", "gid", slurmUserGID, "err", err)
+		level.Debug(slurm.logger).
+			Log("msg", "Failed to convert SLURM user gid to int. Next attempt to execute SLURM commands with sudo", "gid", slurmUserGID, "err", err)
 		goto sudomode
 	}
 
 	if _, err := internal_osexec.ExecuteAs(sacctPath, []string{"--help"}, slurmUserUID, slurmUserGID, nil, slurm.logger); err == nil {
 		slurm.cmdExecMode = "cap"
-		level.Debug(slurm.logger).Log("msg", "Linux capabilities will be used to execute sacct as SLURM user")
+		level.Info(slurm.logger).Log("msg", "Linux capabilities will be used to execute SLURM commands as slurm user")
 		return nil
 	}
 
@@ -81,11 +84,13 @@ sudomode:
 	// Last attempt to run sacct with sudo
 	if _, err := internal_osexec.ExecuteWithTimeout("sudo", []string{sacctPath, "--help"}, 5, nil, slurm.logger); err == nil {
 		slurm.cmdExecMode = "sudo"
-		level.Debug(slurm.logger).Log("msg", "sudo will be used to execute sacct command")
+		level.Info(slurm.logger).Log("msg", "sudo will be used to execute SLURM commands")
 		return nil
 	}
 
 	// If nothing works give up. In the worst case DB will be updated with only jobs from current user
+	level.Warn(slurm.logger).
+		Log("msg", "SLURM commands will be executed as current user. Might not fetch jobs of all users")
 	return nil
 }
 
@@ -210,6 +215,7 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 			if jobStartTS > intStartTS {
 				startMark = jobStartTS
 			}
+
 			// If job has ended before end of interval, we should mark job's end time
 			// as elapsed end time.
 			if jobEndTS > 0 && jobEndTS < intEndTS {

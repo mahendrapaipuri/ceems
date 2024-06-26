@@ -156,7 +156,7 @@ type slurmCollector struct {
 }
 
 func init() {
-	RegisterCollector(slurmCollectorSubsystem, defaultEnabled, NewSlurmCollector)
+	RegisterCollector(slurmCollectorSubsystem, defaultDisabled, NewSlurmCollector)
 }
 
 // NewSlurmCollector returns a new Collector exposing a summary of cgroups.

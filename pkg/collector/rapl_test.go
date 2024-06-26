@@ -6,7 +6,6 @@ package collector
 import (
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/procfs/sysfs"
 )
 
@@ -20,7 +19,7 @@ func TestRaplMetrics(t *testing.T) {
 	if err != nil {
 		t.Errorf("failed to open procfs: %v", err)
 	}
-	c := raplCollector{fs: fs, logger: log.NewNopLogger()}
+	c := raplCollector{fs: fs}
 	zones, err := sysfs.GetRaplZones(c.fs)
 	if err != nil {
 		t.Errorf("failed to get RAPL zones: %v", err)
