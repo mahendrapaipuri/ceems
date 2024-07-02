@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"slices"
+	"time"
 
 	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
 )
@@ -325,8 +326,14 @@ func main() {
 	log.Println("Started on port", portNum)
 	fmt.Println("To close connection CTRL+C :-)")
 
+	// Start server
+	server := &http.Server{
+        Addr:              portNum,
+        ReadHeaderTimeout: 3 * time.Second,
+    }
+
 	// Spinning up the server.
-	err := http.ListenAndServe(portNum, nil)
+	err := server.ListenAndServe()
 	if err != nil {
 		log.Fatal(err)
 	}
