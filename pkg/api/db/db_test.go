@@ -13,7 +13,6 @@ import (
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/mahendrapaipuri/ceems/pkg/api/resource"
 	"github.com/mahendrapaipuri/ceems/pkg/api/updater"
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/prometheus/common/model"
 )
 
@@ -37,22 +36,28 @@ var mockUnitsOne = []models.ClusterUnits{
 		},
 		Units: []models.Unit{
 			{
-				UUID:            "10000",
-				Usr:             "foo1",
-				Project:         "fooprj",
-				TotalCPUTime:    int64(1800),
-				TotalGPUTime:    int64(900),
-				TotalWallTime:   int64(900),
-				TotalCPUMemTime: int64(9000),
-				TotalGPUMemTime: int64(900),
+				UUID:    "10000",
+				User:    "foo1",
+				Project: "fooprj",
+				TotalTime: models.MetricMap{
+					"walltime":         models.JSONFloat(900),
+					"alloc_cputime":    models.JSONFloat(1800),
+					"alloc_gputime":    models.JSONFloat(900),
+					"alloc_cpumemtime": models.JSONFloat(9000),
+					"alloc_gpumemtime": models.JSONFloat(900),
+				},
 			},
 			{
-				UUID:            "10001",
-				Usr:             "foo1",
-				Project:         "fooprj",
-				TotalCPUTime:    int64(900),
-				TotalWallTime:   int64(900),
-				TotalCPUMemTime: int64(4500),
+				UUID:    "10001",
+				User:    "foo1",
+				Project: "fooprj",
+				TotalTime: models.MetricMap{
+					"walltime":         models.JSONFloat(900),
+					"alloc_cputime":    models.JSONFloat(900),
+					"alloc_gputime":    models.JSONFloat(0),
+					"alloc_cpumemtime": models.JSONFloat(4500),
+					"alloc_gpumemtime": models.JSONFloat(0),
+				},
 			},
 		},
 	},
@@ -63,20 +68,28 @@ var mockUnitsOne = []models.ClusterUnits{
 		},
 		Units: []models.Unit{
 			{
-				UUID:            "10002",
-				Usr:             "foo1",
-				Project:         "fooprj",
-				TotalCPUTime:    int64(2700),
-				TotalWallTime:   int64(900),
-				TotalCPUMemTime: int64(9000),
+				UUID:    "10002",
+				User:    "foo1",
+				Project: "fooprj",
+				TotalTime: models.MetricMap{
+					"walltime":         models.JSONFloat(900),
+					"alloc_cputime":    models.JSONFloat(2700),
+					"alloc_gputime":    models.JSONFloat(0),
+					"alloc_cpumemtime": models.JSONFloat(900),
+					"alloc_gpumemtime": models.JSONFloat(0),
+				},
 			},
 			{
-				UUID:            "10003",
-				Usr:             "foo2",
-				Project:         "fooprj",
-				TotalCPUTime:    int64(3600),
-				TotalWallTime:   int64(1800),
-				TotalCPUMemTime: int64(90000),
+				UUID:    "10003",
+				User:    "foo2",
+				Project: "fooprj",
+				TotalTime: models.MetricMap{
+					"walltime":         models.JSONFloat(1800),
+					"alloc_cputime":    models.JSONFloat(3600),
+					"alloc_gputime":    models.JSONFloat(0),
+					"alloc_cpumemtime": models.JSONFloat(90000),
+					"alloc_gpumemtime": models.JSONFloat(0),
+				},
 			},
 		},
 	},
@@ -89,14 +102,16 @@ var mockUnitsTwo = []models.ClusterUnits{
 		},
 		Units: []models.Unit{
 			{
-				UUID:            "20000",
-				Usr:             "bar1",
-				Project:         "barprj",
-				TotalCPUTime:    int64(900),
-				TotalGPUTime:    int64(900),
-				TotalWallTime:   int64(900),
-				TotalCPUMemTime: int64(9000),
-				TotalGPUMemTime: int64(900),
+				UUID:    "20000",
+				User:    "bar1",
+				Project: "barprj",
+				TotalTime: models.MetricMap{
+					"walltime":         models.JSONFloat(900),
+					"alloc_cputime":    models.JSONFloat(900),
+					"alloc_gputime":    models.JSONFloat(900),
+					"alloc_cpumemtime": models.JSONFloat(9000),
+					"alloc_gpumemtime": models.JSONFloat(900),
+				},
 			},
 		},
 	},
@@ -107,24 +122,28 @@ var mockUnitsTwo = []models.ClusterUnits{
 		},
 		Units: []models.Unit{
 			{
-				UUID:            "20001",
-				Usr:             "bar3",
-				Project:         "barprj",
-				TotalCPUTime:    int64(1800),
-				TotalGPUTime:    int64(1800),
-				TotalWallTime:   int64(900),
-				TotalCPUMemTime: int64(90000),
-				TotalGPUMemTime: int64(900),
+				UUID:    "20001",
+				User:    "bar3",
+				Project: "barprj",
+				TotalTime: models.MetricMap{
+					"walltime":         models.JSONFloat(900),
+					"alloc_cputime":    models.JSONFloat(1800),
+					"alloc_gputime":    models.JSONFloat(1800),
+					"alloc_cpumemtime": models.JSONFloat(90000),
+					"alloc_gpumemtime": models.JSONFloat(900),
+				},
 			},
 			{
-				UUID:            "20002",
-				Usr:             "bar3",
-				Project:         "barprj",
-				TotalCPUTime:    int64(2700),
-				TotalGPUTime:    int64(900),
-				TotalWallTime:   int64(900),
-				TotalCPUMemTime: int64(90000),
-				TotalGPUMemTime: int64(900),
+				UUID:    "20002",
+				User:    "bar3",
+				Project: "barprj",
+				TotalTime: models.MetricMap{
+					"walltime":         models.JSONFloat(900),
+					"alloc_cputime":    models.JSONFloat(2700),
+					"alloc_gputime":    models.JSONFloat(900),
+					"alloc_cpumemtime": models.JSONFloat(9000),
+					"alloc_gpumemtime": models.JSONFloat(900),
+				},
 			},
 		},
 	},
@@ -253,24 +272,28 @@ var mockUpdatedUnitsSlurm00 = []models.ClusterUnits{
 		},
 		Units: []models.Unit{
 			{
-				UUID:            "10000",
-				Usr:             "foo1",
-				Project:         "fooprj",
-				TotalCPUTime:    int64(1800),
-				TotalGPUTime:    int64(900),
-				TotalWallTime:   int64(900),
-				TotalCPUMemTime: int64(9000),
-				TotalGPUMemTime: int64(900),
-				AveCPUUsage:     10,
+				UUID:    "10000",
+				User:    "foo1",
+				Project: "fooprj",
+				TotalTime: models.MetricMap{
+					"walltime":         models.JSONFloat(900),
+					"alloc_cputime":    models.JSONFloat(1800),
+					"alloc_gputime":    models.JSONFloat(900),
+					"alloc_cpumemtime": models.JSONFloat(9000),
+					"alloc_gpumemtime": models.JSONFloat(900),
+				},
+				AveCPUUsage: models.MetricMap{"usage": 10},
 			},
 			{
-				UUID:            "10001",
-				Usr:             "foo1",
-				Project:         "fooprj",
-				TotalCPUTime:    int64(900),
-				TotalWallTime:   int64(900),
-				TotalCPUMemTime: int64(4500),
-				AveCPUUsage:     25,
+				UUID:    "10001",
+				User:    "foo1",
+				Project: "fooprj",
+				TotalTime: models.MetricMap{
+					"walltime":         models.JSONFloat(900),
+					"alloc_cputime":    models.JSONFloat(900),
+					"alloc_cpumemtime": models.JSONFloat(4500),
+				},
+				AveCPUUsage: models.MetricMap{"usage": 25},
 			},
 		},
 	},
@@ -283,26 +306,32 @@ var mockUpdatedUnitsSlurm01 = []models.ClusterUnits{
 		},
 		Units: []models.Unit{
 			{
-				UUID:            "10000",
-				Usr:             "foo1",
-				Project:         "fooprj",
-				TotalCPUTime:    int64(1800),
-				TotalGPUTime:    int64(900),
-				TotalWallTime:   int64(900),
-				TotalCPUMemTime: int64(9000),
-				TotalGPUMemTime: int64(900),
-				AveCPUUsage:     10,
-				AveGPUUsage:     20,
+				UUID:    "10000",
+				User:    "foo1",
+				Project: "fooprj",
+				TotalTime: models.MetricMap{
+					"walltime":         models.JSONFloat(900),
+					"alloc_cputime":    models.JSONFloat(1800),
+					"alloc_gputime":    models.JSONFloat(900),
+					"alloc_cpumemtime": models.JSONFloat(9000),
+					"alloc_gpumemtime": models.JSONFloat(900),
+				},
+				AveCPUUsage: models.MetricMap{"usage": 10},
+				AveGPUUsage: models.MetricMap{"usage": 20},
 			},
 			{
-				UUID:                "10001",
-				Usr:                 "foo1",
-				Project:             "fooprj",
-				TotalCPUTime:        int64(900),
-				TotalWallTime:       int64(900),
-				TotalCPUMemTime:     int64(4500),
-				AveCPUUsage:         25,
-				TotalCPUEnergyUsage: 100,
+				UUID:    "10001",
+				User:    "foo1",
+				Project: "fooprj",
+				TotalTime: models.MetricMap{
+					"walltime":         models.JSONFloat(900),
+					"alloc_cputime":    models.JSONFloat(900),
+					"alloc_gputime":    models.JSONFloat(0),
+					"alloc_cpumemtime": models.JSONFloat(4500),
+					"alloc_gpumemtime": models.JSONFloat(0),
+				},
+				AveCPUUsage:         models.MetricMap{"usage": 25},
+				TotalCPUEnergyUsage: models.MetricMap{"usage": 100},
 			},
 		},
 	},
@@ -315,22 +344,30 @@ var mockUpdatedUnitsSlurm1 = []models.ClusterUnits{
 		},
 		Units: []models.Unit{
 			{
-				UUID:              "10002",
-				Usr:               "foo1",
-				Project:           "fooprj",
-				TotalCPUTime:      int64(2700),
-				TotalWallTime:     int64(900),
-				TotalCPUMemTime:   int64(9000),
-				TotalCPUEmissions: 20,
+				UUID:    "10002",
+				User:    "foo1",
+				Project: "fooprj",
+				TotalTime: models.MetricMap{
+					"walltime":         models.JSONFloat(900),
+					"alloc_cputime":    models.JSONFloat(2700),
+					"alloc_gputime":    models.JSONFloat(0),
+					"alloc_cpumemtime": models.JSONFloat(9000),
+					"alloc_gpumemtime": models.JSONFloat(0),
+				},
+				TotalCPUEmissions: models.MetricMap{"rte": 25},
 			},
 			{
-				UUID:              "10003",
-				Usr:               "foo2",
-				Project:           "fooprj",
-				TotalCPUTime:      int64(3600),
-				TotalWallTime:     int64(1800),
-				TotalCPUMemTime:   int64(90000),
-				TotalCPUEmissions: 40,
+				UUID:    "10003",
+				User:    "foo2",
+				Project: "fooprj",
+				TotalTime: models.MetricMap{
+					"walltime":         models.JSONFloat(1800),
+					"alloc_cputime":    models.JSONFloat(3600),
+					"alloc_gputime":    models.JSONFloat(0),
+					"alloc_cpumemtime": models.JSONFloat(90000),
+					"alloc_gpumemtime": models.JSONFloat(0),
+				},
+				TotalCPUEmissions: models.MetricMap{"rte": 40},
 			},
 		},
 	},
@@ -343,15 +380,17 @@ var mockUpdatedUnitsOS0 = []models.ClusterUnits{
 		},
 		Units: []models.Unit{
 			{
-				UUID:                "20000",
-				Usr:                 "bar1",
-				Project:             "barprj",
-				TotalCPUTime:        int64(900),
-				TotalGPUTime:        int64(900),
-				TotalWallTime:       int64(900),
-				TotalCPUMemTime:     int64(9000),
-				TotalGPUMemTime:     int64(900),
-				TotalGPUEnergyUsage: 200,
+				UUID:    "20000",
+				User:    "bar1",
+				Project: "barprj",
+				TotalTime: models.MetricMap{
+					"walltime":         models.JSONFloat(900),
+					"alloc_cputime":    models.JSONFloat(900),
+					"alloc_gputime":    models.JSONFloat(900),
+					"alloc_cpumemtime": models.JSONFloat(9000),
+					"alloc_gpumemtime": models.JSONFloat(900),
+				},
+				TotalGPUEnergyUsage: models.MetricMap{"usage": 200},
 			},
 		},
 	},
@@ -364,27 +403,31 @@ var mockUpdatedUnitsOS1 = []models.ClusterUnits{
 		},
 		Units: []models.Unit{
 			{
-				UUID:            "20001",
-				Usr:             "bar3",
-				Project:         "barprj",
-				TotalCPUTime:    int64(1800),
-				TotalGPUTime:    int64(1800),
-				TotalWallTime:   int64(900),
-				TotalCPUMemTime: int64(90000),
-				TotalGPUMemTime: int64(900),
-				AveCPUUsage:     20,
-				AveGPUMemUsage:  40,
+				UUID:    "20001",
+				User:    "bar3",
+				Project: "barprj",
+				TotalTime: models.MetricMap{
+					"walltime":         models.JSONFloat(900),
+					"alloc_cputime":    models.JSONFloat(1800),
+					"alloc_gputime":    models.JSONFloat(1800),
+					"alloc_cpumemtime": models.JSONFloat(90000),
+					"alloc_gpumemtime": models.JSONFloat(900),
+				},
+				AveCPUUsage:    models.MetricMap{"usage": 20},
+				AveGPUMemUsage: models.MetricMap{"usage": 40},
 			},
 			{
-				UUID:              "20002",
-				Usr:               "bar3",
-				Project:           "barprj",
-				TotalCPUTime:      int64(2700),
-				TotalGPUTime:      int64(900),
-				TotalWallTime:     int64(900),
-				TotalCPUMemTime:   int64(90000),
-				TotalGPUMemTime:   int64(900),
-				TotalGPUEmissions: 40,
+				UUID:    "20002",
+				User:    "bar3",
+				Project: "barprj",
+				TotalTime: models.MetricMap{
+					"walltime":         models.JSONFloat(900),
+					"alloc_cputime":    models.JSONFloat(2700),
+					"alloc_gputime":    models.JSONFloat(900),
+					"alloc_cpumemtime": models.JSONFloat(90000),
+					"alloc_gpumemtime": models.JSONFloat(900),
+				},
+				TotalGPUEmissions: models.MetricMap{"rte": 40},
 			},
 		},
 	},
@@ -636,7 +679,7 @@ func TestUnitStatsDBEntries(t *testing.T) {
 
 	// Make units query
 	rows, err := s.db.Query(
-		"SELECT uuid,usr,project,total_cputime_seconds,total_gputime_seconds,total_walltime_seconds,total_cpumemtime_seconds,total_gpumemtime_seconds,avg_cpu_usage,avg_cpu_mem_usage,total_cpu_energy_usage_kwh,total_cpu_emissions_gms,avg_gpu_usage,avg_gpu_mem_usage,total_gpu_energy_usage_kwh,total_gpu_emissions_gms FROM units ORDER BY uuid",
+		"SELECT uuid,username,project,total_time_seconds,avg_cpu_usage,avg_cpu_mem_usage,total_cpu_energy_usage_kwh,total_cpu_emissions_gms,avg_gpu_usage,avg_gpu_mem_usage,total_gpu_energy_usage_kwh,total_gpu_emissions_gms FROM units ORDER BY uuid",
 	)
 	if err != nil {
 		t.Errorf("Failed to make DB query")
@@ -648,9 +691,7 @@ func TestUnitStatsDBEntries(t *testing.T) {
 		var unit models.Unit
 
 		if err = rows.Scan(
-			&unit.UUID, &unit.Usr, &unit.Project, &unit.TotalCPUTime,
-			&unit.TotalGPUTime, &unit.TotalWallTime, &unit.TotalCPUMemTime,
-			&unit.TotalGPUMemTime,
+			&unit.UUID, &unit.User, &unit.Project, &unit.TotalTime,
 			&unit.AveCPUUsage,
 			&unit.AveCPUMemUsage, &unit.TotalCPUEnergyUsage,
 			&unit.TotalCPUEmissions, &unit.AveGPUUsage, &unit.AveGPUMemUsage,
@@ -676,7 +717,7 @@ func TestUnitStatsDBEntries(t *testing.T) {
 
 	// Make usage query
 	rows, err = s.db.Query(
-		"SELECT avg_cpu_usage,num_updates FROM usage WHERE usr = 'foo1' AND cluster_id = 'slurm-0'",
+		"SELECT avg_cpu_usage,num_updates FROM usage WHERE username = 'foo1' AND cluster_id = 'slurm-0'",
 	)
 	if err != nil {
 		t.Errorf("Failed to make DB query: %s", err)
@@ -691,7 +732,7 @@ func TestUnitStatsDBEntries(t *testing.T) {
 	// nBytes, _ := io.Copy(destination, source)
 	// fmt.Println(nBytes)
 
-	var cpuUsage float64
+	var cpuUsage models.MetricMap
 	var numUpdates int64
 	for rows.Next() {
 		if err = rows.Scan(&cpuUsage, &numUpdates); err != nil {
@@ -699,8 +740,8 @@ func TestUnitStatsDBEntries(t *testing.T) {
 		}
 	}
 
-	if cpuUsage < 15 {
-		t.Errorf("expected 15, \n got %f", cpuUsage)
+	if cpuUsage["usage"] < 15 {
+		t.Errorf("expected 15, \n got %f", cpuUsage["usage"])
 	}
 
 	// Make projects query

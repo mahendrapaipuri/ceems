@@ -149,39 +149,53 @@ func mockUnits() []models.Unit {
 		}
 
 		units[i] = models.Unit{
-			ID:                  int64(i),
-			ResourceManager:     resourceMgr,
-			ClusterID:           clusterID,
-			UUID:                uuid,
-			Name:                name,
-			Project:             project,
-			Usr:                 user,
-			Grp:                 group,
-			CreatedAt:           time.Unix(createTimeTS, 0).Format(time.RFC1123),
-			StartedAt:           startedAt,
-			EndedAt:             endedAt,
-			CreatedAtTS:         createTimeTS,
-			StartedAtTS:         startTimeTS,
-			EndedAtTS:           endTimeTS,
-			Elapsed:             time.Duration(elapsedRaw * int64(time.Second)).String(),
-			State:               state,
-			TotalWallTime:       elapsedRaw,
-			TotalCPUTime:        2 * elapsedRaw,
-			TotalGPUTime:        5 * elapsedRaw,
-			AveCPUUsage:         avgUsageFlag * randomFloats(0, 100),
-			AveCPUMemUsage:      avgUsageFlag * randomFloats(0, 100),
-			TotalCPUEnergyUsage: models.JSONFloat(1.1 * float64(elapsedRaw)),
-			TotalCPUEmissions:   models.JSONFloat(17 * float64(elapsedRaw)),
-			AveGPUUsage:         avgUsageFlag * randomFloats(0, 100),
-			AveGPUMemUsage:      avgUsageFlag * randomFloats(0, 100),
-			TotalGPUEnergyUsage: models.JSONFloat(15 * float64(elapsedRaw)),
-			TotalGPUEmissions:   models.JSONFloat(158 * float64(elapsedRaw)),
-			TotalIOWriteHot:     models.JSONFloat(0.01 * float64(elapsedRaw)),
-			TotalIOReadHot:      models.JSONFloat(0.03 * float64(elapsedRaw)),
-			TotalIOWriteCold:    models.JSONFloat(0.008 * float64(elapsedRaw)),
-			TotalIOReadCold:     models.JSONFloat(0.01 * float64(elapsedRaw)),
-			TotalIngress:        models.JSONFloat(0.05 * float64(elapsedRaw)),
-			TotalOutgress:       models.JSONFloat(0.02 * float64(elapsedRaw)),
+			ID:              int64(i),
+			ResourceManager: resourceMgr,
+			ClusterID:       clusterID,
+			UUID:            uuid,
+			Name:            name,
+			Project:         project,
+			User:            user,
+			Group:           group,
+			CreatedAt:       time.Unix(createTimeTS, 0).Format(time.RFC1123),
+			StartedAt:       startedAt,
+			EndedAt:         endedAt,
+			CreatedAtTS:     createTimeTS,
+			StartedAtTS:     startTimeTS,
+			EndedAtTS:       endTimeTS,
+			Elapsed:         time.Duration(elapsedRaw * int64(time.Second)).String(),
+			State:           state,
+			TotalTime: models.MetricMap{
+				"walltime":         models.JSONFloat(elapsedRaw),
+				"alloc_cputime":    models.JSONFloat(2 * elapsedRaw),
+				"alloc_gputime":    models.JSONFloat(5 * elapsedRaw),
+				"alloc_cpumemtime": models.JSONFloat(2 * 2000 * elapsedRaw),
+				"alloc_gpumemtime": models.JSONFloat(5 * 8000 * elapsedRaw),
+			},
+			AveCPUUsage:         models.MetricMap{"usage": avgUsageFlag * randomFloats(0, 100)},
+			AveCPUMemUsage:      models.MetricMap{"usage": avgUsageFlag * randomFloats(0, 100)},
+			TotalCPUEnergyUsage: models.MetricMap{"usage": models.JSONFloat(1.1 * float64(elapsedRaw))},
+			TotalCPUEmissions:   models.MetricMap{"rte": models.JSONFloat(17 * float64(elapsedRaw))},
+			AveGPUUsage:         models.MetricMap{"usage": avgUsageFlag * randomFloats(0, 100)},
+			AveGPUMemUsage:      models.MetricMap{"usage": avgUsageFlag * randomFloats(0, 100)},
+			TotalGPUEnergyUsage: models.MetricMap{"usage": models.JSONFloat(15 * float64(elapsedRaw))},
+			TotalGPUEmissions:   models.MetricMap{"rte": models.JSONFloat(158 * float64(elapsedRaw))},
+			TotalIOWriteStats: models.MetricMap{
+				"bytes":    models.JSONFloat(random(1000000, 1000000000)),
+				"requests": models.JSONFloat(random(1000000, 1000000000)),
+			},
+			TotalIOReadStats: models.MetricMap{
+				"bytes":    models.JSONFloat(random(1000000, 1000000000)),
+				"requests": models.JSONFloat(random(1000000, 1000000000)),
+			},
+			TotalIngressStats: models.MetricMap{
+				"bytes":   models.JSONFloat(random(1000000, 1000000000)),
+				"packets": models.JSONFloat(random(1000000, 1000000000)),
+			},
+			TotalOutgressStats: models.MetricMap{
+				"bytes":   models.JSONFloat(random(1000000, 1000000000)),
+				"packets": models.JSONFloat(random(1000000, 1000000000)),
+			},
 		}
 	}
 	return units
@@ -189,6 +203,7 @@ func mockUnits() []models.Unit {
 
 // mockUsage will generate usage with randomised data
 func mockUsage() []models.Usage {
+	group := "group"
 	// Set user project map
 	var userProjectMap = make(map[string][]string)
 	for _, user := range users {
@@ -214,27 +229,42 @@ func mockUsage() []models.Usage {
 				resourceMgr = "k8s"
 			}
 			usage = append(usage, models.Usage{
-				ResourceManager:     resourceMgr,
-				Project:             prj,
-				Usr:                 user,
-				NumUnits:            random(0, 1000),
-				TotalWallTime:       random(0, 1e4),
-				TotalCPUTime:        random(0, 1e5),
-				TotalGPUTime:        random(0, 1e4),
-				AveCPUUsage:         randomFloats(0, 100),
-				AveCPUMemUsage:      randomFloats(0, 100),
-				TotalCPUEnergyUsage: randomFloats(0, 5e3),
-				TotalCPUEmissions:   randomFloats(0, 50e3),
-				AveGPUUsage:         randomFloats(0, 100),
-				AveGPUMemUsage:      randomFloats(0, 100),
-				TotalGPUEnergyUsage: randomFloats(0, 50e3),
-				TotalGPUEmissions:   randomFloats(0, 500e3),
-				TotalIOWriteHot:     randomFloats(0, 5e2),
-				TotalIOReadHot:      randomFloats(0, 50e2),
-				TotalIOWriteCold:    randomFloats(0, 100),
-				TotalIOReadCold:     randomFloats(0, 1000),
-				TotalIngress:        randomFloats(0, 5e3),
-				TotalOutgress:       randomFloats(0, 2e3),
+				ResourceManager: resourceMgr,
+				Project:         prj,
+				User:            user,
+				Group:           group,
+				NumUnits:        random(0, 1000),
+				TotalTime: models.MetricMap{
+					"walltime":         models.JSONFloat(random(0, 1e4)),
+					"alloc_cputime":    models.JSONFloat(random(0, 1e5)),
+					"alloc_gputime":    models.JSONFloat(random(0, 1e4)),
+					"alloc_cpumemtime": models.JSONFloat(random(0, 1e8)),
+					"alloc_gpumemtime": models.JSONFloat(random(0, 1e8)),
+				},
+				AveCPUUsage:         models.MetricMap{"usage": randomFloats(0, 100)},
+				AveCPUMemUsage:      models.MetricMap{"usage": randomFloats(0, 100)},
+				TotalCPUEnergyUsage: models.MetricMap{"usage": randomFloats(0, 5e3)},
+				TotalCPUEmissions:   models.MetricMap{"rte": randomFloats(0, 50e3)},
+				AveGPUUsage:         models.MetricMap{"usage": randomFloats(0, 100)},
+				AveGPUMemUsage:      models.MetricMap{"usage": randomFloats(0, 100)},
+				TotalGPUEnergyUsage: models.MetricMap{"usage": randomFloats(0, 50e3)},
+				TotalGPUEmissions:   models.MetricMap{"rte": randomFloats(0, 500e3)},
+				TotalIOWriteStats: models.MetricMap{
+					"bytes":    models.JSONFloat(random(1000000, 1000000000)),
+					"requests": models.JSONFloat(random(1000000, 1000000000)),
+				},
+				TotalIOReadStats: models.MetricMap{
+					"bytes":    models.JSONFloat(random(1000000, 1000000000)),
+					"requests": models.JSONFloat(random(1000000, 1000000000)),
+				},
+				TotalIngressStats: models.MetricMap{
+					"bytes":   models.JSONFloat(random(1000000, 1000000000)),
+					"packets": models.JSONFloat(random(1000000, 1000000000)),
+				},
+				TotalOutgressStats: models.MetricMap{
+					"bytes":   models.JSONFloat(random(1000000, 1000000000)),
+					"packets": models.JSONFloat(random(1000000, 1000000000)),
+				},
 			})
 		}
 	}

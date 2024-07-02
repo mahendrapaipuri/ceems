@@ -28,7 +28,7 @@ func setupTestDB() *sql.DB {
 	return db
 }
 
-func TestJobsQuerier(t *testing.T) {
+func TestUnitsQuerier(t *testing.T) {
 	logger := log.NewNopLogger()
 	db := setupTestDB()
 	defer db.Close()
@@ -37,7 +37,7 @@ func TestJobsQuerier(t *testing.T) {
 	q := Query{}
 	q.query(
 		fmt.Sprintf(
-			"SELECT * FROM %s WHERE ignore = 0 AND usr in ('usr1') AND cluster_id in ('slurm-0')",
+			"SELECT * FROM %s WHERE ignore = 0 AND username in ('usr1') AND cluster_id in ('slurm-0')",
 			base.UnitsDBTableName,
 		),
 	)
@@ -50,8 +50,8 @@ func TestJobsQuerier(t *testing.T) {
 			UUID:            "147973",
 			Name:            "test_script2",
 			Project:         "acc2",
-			Grp:             "gr1",
-			Usr:             "usr1",
+			Group:           "gr1",
+			User:            "usr1",
 			CreatedAt:       "2023-12-21T15:48:20+0100",
 			StartedAt:       "2023-12-21T15:49:06+0100",
 			EndedAt:         "2023-12-21T15:57:23+0100",
@@ -67,11 +67,25 @@ func TestJobsQuerier(t *testing.T) {
 				"mem":     int64(343597383680),
 				"nodes":   int64(2),
 			},
-			TotalWallTime:   int64(497),
-			TotalCPUTime:    int64(7952),
-			TotalGPUTime:    int64(3976),
-			TotalCPUMemTime: int64(162856960),
-			TotalGPUMemTime: int64(497),
+			TotalTime: models.MetricMap{
+				"walltime":         models.JSONFloat(497),
+				"alloc_cputime":    models.JSONFloat(7952),
+				"alloc_cpumemtime": models.JSONFloat(162856960),
+				"alloc_gputime":    models.JSONFloat(3976),
+				"alloc_gpumemtime": models.JSONFloat(497),
+			},
+			AveCPUUsage:         models.MetricMap{},
+			AveCPUMemUsage:      models.MetricMap{},
+			TotalCPUEnergyUsage: models.MetricMap{},
+			TotalCPUEmissions:   models.MetricMap{},
+			AveGPUUsage:         models.MetricMap{},
+			AveGPUMemUsage:      models.MetricMap{},
+			TotalGPUEnergyUsage: models.MetricMap{},
+			TotalGPUEmissions:   models.MetricMap{},
+			TotalIOWriteStats:   models.MetricMap{},
+			TotalIOReadStats:    models.MetricMap{},
+			TotalIngressStats:   models.MetricMap{},
+			TotalOutgressStats:  models.MetricMap{},
 			Tags: models.Generic{
 				"exit_code":   "0:0",
 				"gid":         int64(1002),
@@ -84,7 +98,7 @@ func TestJobsQuerier(t *testing.T) {
 			},
 			Ignore:        0,
 			NumUpdates:    1,
-			LastUpdatedAt: "2024-06-20T13:59:32",
+			LastUpdatedAt: "2024-07-02T14:49:39",
 		},
 		{
 			ID:              1,
@@ -93,8 +107,8 @@ func TestJobsQuerier(t *testing.T) {
 			UUID:            "1479763",
 			Name:            "test_script1",
 			Project:         "acc1",
-			Grp:             "grp1",
-			Usr:             "usr1",
+			Group:           "grp1",
+			User:            "usr1",
 			CreatedAt:       "2022-02-21T14:37:02+0100",
 			StartedAt:       "2022-02-21T14:37:07+0100",
 			EndedAt:         "2022-02-21T15:26:29+0100",
@@ -110,11 +124,27 @@ func TestJobsQuerier(t *testing.T) {
 				"mem":     int64(343597383680),
 				"nodes":   int64(1),
 			},
-			TotalWallTime:   int64(2962),
-			TotalCPUTime:    int64(23696),
-			TotalGPUTime:    int64(23696),
-			TotalCPUMemTime: int64(970588160),
-			TotalGPUMemTime: int64(2962),
+			TotalTime: models.MetricMap{
+				"walltime":         models.JSONFloat(2962),
+				"alloc_cputime":    models.JSONFloat(23696),
+				"alloc_cpumemtime": models.JSONFloat(970588160),
+				"alloc_gputime":    models.JSONFloat(23696),
+				"alloc_gpumemtime": models.JSONFloat(2962),
+			},
+			AveCPUUsage: models.MetricMap{
+				"total": 14.79,
+			},
+			AveCPUMemUsage:      models.MetricMap{"total": 14.79},
+			TotalCPUEnergyUsage: models.MetricMap{"total": 14.79},
+			TotalCPUEmissions:   models.MetricMap{"total": 14.79},
+			AveGPUUsage:         models.MetricMap{"total": 14.79},
+			AveGPUMemUsage:      models.MetricMap{"total": 14.79},
+			TotalGPUEnergyUsage: models.MetricMap{"total": 14.79},
+			TotalGPUEmissions:   models.MetricMap{"total": 14.79},
+			TotalIOWriteStats:   models.MetricMap{"bytes": 1.479763e+06, "requests": 1.479763e+07},
+			TotalIOReadStats:    models.MetricMap{"bytes": 1.479763e+06, "requests": 1.479763e+07},
+			TotalIngressStats:   models.MetricMap{"bytes": 1.479763e+08, "packets": 1.479763e+09},
+			TotalOutgressStats:  models.MetricMap{"bytes": 1.479763e+08, "packets": 1.479763e+09},
 			Tags: models.Generic{
 				"exit_code":   "0:0",
 				"gid":         int64(1001),
@@ -127,15 +157,17 @@ func TestJobsQuerier(t *testing.T) {
 			},
 			Ignore:        0,
 			NumUpdates:    1,
-			LastUpdatedAt: "2024-06-20T13:59:32",
+			LastUpdatedAt: "2024-07-02T14:49:39",
 		},
 	}
 	units, err := Querier[models.Unit](db, q, logger)
 	if err != nil {
 		t.Errorf("failed to query for units: %s", err)
 	}
-	if !reflect.DeepEqual(expectedUnits, units) {
-		t.Errorf("expected units %#v \n, got %#v", expectedUnits, units)
+	for i := 0; i < len(expectedUnits); i++ {
+		if !reflect.DeepEqual(expectedUnits[i], units[i]) {
+			t.Errorf("expected units %#v \n, got %#v", expectedUnits[i], units[i])
+		}
 	}
 }
 
@@ -146,7 +178,12 @@ func TestUsageQuerier(t *testing.T) {
 
 	// Query
 	q := Query{}
-	q.query(fmt.Sprintf("SELECT * FROM %s WHERE usr IN ('usr15') AND cluster_id IN ('slurm-1')", base.UsageDBTableName))
+	q.query(
+		fmt.Sprintf(
+			"SELECT * FROM %s WHERE username IN ('usr15') AND cluster_id IN ('slurm-1')",
+			base.UsageDBTableName,
+		),
+	)
 
 	expectedUsageStats := []models.Usage{
 		{
@@ -155,14 +192,29 @@ func TestUsageQuerier(t *testing.T) {
 			ClusterID:       "slurm-1",
 			NumUnits:        2,
 			Project:         "acc1",
-			Usr:             "usr15",
-			LastUpdatedAt:   "2024-06-20T13:59:32",
-			TotalWallTime:   994,
-			TotalCPUTime:    15904,
-			TotalGPUTime:    7952,
-			TotalCPUMemTime: 325713920,
-			TotalGPUMemTime: 994,
-			NumUpdates:      2,
+			Group:           "grp15",
+			User:            "usr15",
+			LastUpdatedAt:   "2024-07-02T14:49:39",
+			TotalTime: models.MetricMap{
+				"walltime":         models.JSONFloat(994),
+				"alloc_cputime":    models.JSONFloat(15904),
+				"alloc_cpumemtime": models.JSONFloat(325713920),
+				"alloc_gputime":    models.JSONFloat(7952),
+				"alloc_gpumemtime": models.JSONFloat(994),
+			},
+			AveCPUUsage:         models.MetricMap{"total": 46.505},
+			AveCPUMemUsage:      models.MetricMap{"total": 46.505},
+			TotalCPUEnergyUsage: models.MetricMap{"total": 93.01},
+			TotalCPUEmissions:   models.MetricMap{"total": 93.01},
+			AveGPUUsage:         models.MetricMap{"total": 46.505},
+			AveGPUMemUsage:      models.MetricMap{"total": 46.505},
+			TotalGPUEnergyUsage: models.MetricMap{"total": 93.01},
+			TotalGPUEmissions:   models.MetricMap{"total": 93.01},
+			TotalIOWriteStats:   models.MetricMap{"bytes": 93018, "requests": 930180},
+			TotalIOReadStats:    models.MetricMap{"bytes": 93018, "requests": 930180},
+			TotalIngressStats:   models.MetricMap{"bytes": 9.3018e+06, "packets": 9.3018e+07},
+			TotalOutgressStats:  models.MetricMap{"bytes": 9.3018e+06, "packets": 9.3018e+07},
+			NumUpdates:          2,
 		},
 	}
 	usageStats, err := Querier[models.Usage](db, q, logger)
@@ -195,7 +247,7 @@ func TestProjectQuerier(t *testing.T) {
 			ResourceManager: "slurm",
 			ClusterID:       "slurm-1",
 			Users:           models.List{"usr1", "usr15", "usr8"},
-			LastUpdatedAt:   "2024-06-20T13:59:32",
+			LastUpdatedAt:   "2024-07-02T14:49:39",
 		},
 	}
 	projects, err := Querier[models.Project](db, q, logger)
@@ -228,7 +280,7 @@ func TestUserQuerier(t *testing.T) {
 			ResourceManager: "slurm",
 			ClusterID:       "slurm-1",
 			Projects:        models.List{"acc1", "acc2"},
-			LastUpdatedAt:   "2024-06-20T13:59:32",
+			LastUpdatedAt:   "2024-07-02T14:49:39",
 		},
 	}
 	users, err := Querier[models.User](db, q, logger)

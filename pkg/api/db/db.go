@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"time"
 
@@ -16,20 +15,26 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/internal/common"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
+	ceems_sqlite3 "github.com/mahendrapaipuri/ceems/pkg/api/db/sqlite3"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/mahendrapaipuri/ceems/pkg/api/resource"
 	"github.com/mahendrapaipuri/ceems/pkg/api/updater"
 	"github.com/mahendrapaipuri/ceems/pkg/grafana"
 	"github.com/mattn/go-sqlite3"
 	"github.com/prometheus/common/model"
-	"github.com/rotationalio/ensign/pkg/utils/sqlite"
 )
 
-// Directory containing DB migrations
-const migrationsDir = "migrations"
+// Directory containing DB related files
+const (
+	migrationsDir = "migrations"
+	statementsDir = "statements"
+)
 
 //go:embed migrations/*.sql
 var MigrationsFS embed.FS
+
+//go:embed statements/*.sql
+var StatementsFS embed.FS
 
 // AdminConfig is the container for the admin users related config
 type AdminConfig struct {
@@ -85,7 +90,7 @@ type adminConfig struct {
 type statsDB struct {
 	logger  log.Logger
 	db      *sql.DB
-	dbConn  *sqlite.Conn
+	dbConn  *ceems_sqlite3.Conn
 	manager *resource.Manager
 	updater *updater.UnitUpdater
 	storage *storageConfig
@@ -94,14 +99,13 @@ type statsDB struct {
 
 // SQLite DB related constant vars
 const (
-	sqlite3Driver = "ensign_sqlite3"
-	sqlite3Main   = "main"
-	pagesPerStep  = 25
-	stepSleep     = 50 * time.Millisecond
+	sqlite3Main  = "main"
+	pagesPerStep = 25
+	stepSleep    = 50 * time.Millisecond
 )
 
 var (
-	prepareStatements = make(map[string]string, 3)
+	prepareStatements = make(map[string]string)
 
 	// For estimating average values, we do weighted average method using following
 	// values as weight for each DB column
@@ -109,167 +113,25 @@ var (
 	// For memory usage, we use Walltime * Mem for CPU as weight and just walltime
 	// for GPU
 	Weights = map[string]string{
-		"avg_cpu_usage":     "total_cputime_seconds",
-		"avg_gpu_usage":     "total_gputime_seconds",
-		"avg_cpu_mem_usage": "total_cpumemtime_seconds",
-		"avg_gpu_mem_usage": "total_gpumemtime_seconds",
+		"avg_cpu_usage":     "alloc_cputime",
+		"avg_gpu_usage":     "alloc_gputime",
+		"avg_cpu_mem_usage": "alloc_cpumemtime",
+		"avg_gpu_mem_usage": "alloc_gpumemtime",
 	}
 
 	// Admin users sources
 	AdminUsersSources = []string{"ceems", "grafana"}
-
-	// Delimiter used in users list
-	UsersDelimiter = "|"
 )
 
 // Init func to set prepareStatements
 func init() {
-	// Unit update statement placeholders
-	var unitTablePlaceholders []string
-	for _, col := range base.UnitsDBTableColNames {
-		if strings.HasPrefix(col, "num") {
-			unitTablePlaceholders = append(unitTablePlaceholders, fmt.Sprintf("  %[1]s = %[1]s + :%[1]s", col))
-		} else if strings.HasPrefix(col, "avg") {
-			// Update average values only when the new value is non zero
-			unitTablePlaceholders = append(
-				unitTablePlaceholders,
-				fmt.Sprintf("  %[1]s = CASE WHEN :%[1]s > 0 THEN (%[1]s * %[2]s + :%[1]s * :%[2]s) / (%[2]s + :%[2]s) ELSE %[1]s END", col, Weights[col]),
-			)
-		} else if strings.HasPrefix(col, "total") {
-			unitTablePlaceholders = append(unitTablePlaceholders, fmt.Sprintf("  %[1]s = (%[1]s + :%[1]s)", col))
-			// We will need to update end time, elapsed time and state as they change with time
-		} else if slices.Contains([]string{"ended_at", "ended_at_ts", "elapsed", "elapsed_raw", "state", "tags"}, col) {
-			unitTablePlaceholders = append(unitTablePlaceholders, fmt.Sprintf("  %[1]s = :%[1]s", col))
+	for _, tableName := range []string{base.UnitsDBTableName, base.UsageDBTableName, base.AdminUsersDBTableName, base.UsersDBTableName, base.ProjectsDBTableName} {
+		statements, err := StatementsFS.ReadFile(fmt.Sprintf("statements/%s.sql", tableName))
+		if err != nil {
+			panic(fmt.Sprintf("failed to read SQL statements file for table %s: %s", tableName, err))
 		}
+		prepareStatements[tableName] = string(statements)
 	}
-
-	// Unit update statement
-	unitStmt := fmt.Sprintf(
-		"INSERT INTO %s (%s) VALUES (:%s) %s",
-		base.UnitsDBTableName,
-		strings.Join(base.UnitsDBTableColNames, ","),
-		strings.Join(base.UnitsDBTableColNames, ",:"),
-		// Index is defined in 000001_create_unit_table.up.sql
-		// Update: 20240523: Index updated in 000007_alter_units_usage_tables.up.sql
-		"ON CONFLICT(cluster_id,uuid,started_at) DO UPDATE SET",
-	)
-
-	prepareStatements[base.UnitsDBTableName] = strings.Join(
-		[]string{
-			unitStmt,
-			strings.Join(unitTablePlaceholders, ",\n"),
-		},
-		"\n",
-	)
-
-	// Usage update statement placeholders
-	var usageTablePlaceholders []string
-	for _, col := range base.UsageDBTableColNames {
-		if strings.HasPrefix(col, "num") {
-			usageTablePlaceholders = append(usageTablePlaceholders, fmt.Sprintf("  %[1]s = %[1]s + :%[1]s", col))
-		} else if strings.HasPrefix(col, "avg") {
-			// Update average values only when the new value is non zero
-			usageTablePlaceholders = append(
-				usageTablePlaceholders,
-				fmt.Sprintf("  %[1]s = CASE WHEN :%[1]s > 0 THEN (%[1]s * %[2]s + :%[1]s * :%[2]s) / (%[2]s + :%[2]s) ELSE %[1]s END", col, Weights[col]),
-			)
-		} else if strings.HasPrefix(col, "total") {
-			usageTablePlaceholders = append(usageTablePlaceholders, fmt.Sprintf("  %[1]s = (%[1]s + :%[1]s)", col))
-		} else if col == "tags" {
-			usageTablePlaceholders = append(usageTablePlaceholders, fmt.Sprintf("  %[1]s = :%[1]s", col))
-		}
-	}
-
-	// Usage update statement
-	usageStmt := fmt.Sprintf(
-		"INSERT INTO %s (%s) VALUES (:%s) %s",
-		base.UsageDBTableName,
-		strings.Join(base.UsageDBTableColNames, ","),
-		strings.Join(base.UsageDBTableColNames, ",:"),
-		// Index is defined in 000002_create_usage_table.up.sql
-		// Update: 20240523: Index updated in 000007_alter_units_usage_tables.up.sql
-		"ON CONFLICT(cluster_id,usr,project) DO UPDATE SET",
-	)
-	prepareStatements[base.UsageDBTableName] = strings.Join(
-		[]string{
-			usageStmt,
-			strings.Join(usageTablePlaceholders, ",\n"),
-		},
-		"\n",
-	)
-
-	// AdminUsers update statement placeholders
-	var adminUsersTablePlaceholders []string
-	for _, col := range base.AdminUsersDBTableColNames {
-		adminUsersTablePlaceholders = append(adminUsersTablePlaceholders, fmt.Sprintf("  %[1]s = :%[1]s", col))
-	}
-
-	// AdminUsers update statement
-	adminUsersStmt := fmt.Sprintf(
-		"INSERT INTO %s (%s) VALUES (:%s) %s",
-		base.AdminUsersDBTableName,
-		strings.Join(base.AdminUsersDBTableColNames, ","),
-		strings.Join(base.AdminUsersDBTableColNames, ",:"),
-		// Update: 20240523: Index updated in 000008_create_admin_users_tables.up.sql
-		"ON CONFLICT(source) DO UPDATE SET",
-	)
-
-	prepareStatements[base.AdminUsersDBTableName] = strings.Join(
-		[]string{
-			adminUsersStmt,
-			strings.Join(adminUsersTablePlaceholders, ",\n"),
-		},
-		"\n",
-	)
-
-	// Users update statement placeholders
-	var usersTablePlaceholders []string
-	for _, col := range base.UsersDBTableColNames {
-		usersTablePlaceholders = append(usersTablePlaceholders, fmt.Sprintf("  %[1]s = :%[1]s", col))
-	}
-
-	// Users update statement
-	usersStmt := fmt.Sprintf(
-		"INSERT INTO %s (%s) VALUES (:%s) %s",
-		base.UsersDBTableName,
-		strings.Join(base.UsersDBTableColNames, ","),
-		strings.Join(base.UsersDBTableColNames, ",:"),
-		// Update: 20240523: Index updated in 000009_create_users_projects_tables.up.sql
-		"ON CONFLICT(cluster_id,name) DO UPDATE SET",
-	)
-
-	prepareStatements[base.UsersDBTableName] = strings.Join(
-		[]string{
-			usersStmt,
-			strings.Join(usersTablePlaceholders, ",\n"),
-		},
-		"\n",
-	)
-
-	// Projects update statement placeholders
-	var projectsTablePlaceholders []string
-	for _, col := range base.ProjectsDBTableColNames {
-		projectsTablePlaceholders = append(projectsTablePlaceholders, fmt.Sprintf("  %[1]s = :%[1]s", col))
-	}
-
-	// Projects update statement
-	projectsStmt := fmt.Sprintf(
-		"INSERT INTO %s (%s) VALUES (:%s) %s",
-		base.ProjectsDBTableName,
-		strings.Join(base.ProjectsDBTableColNames, ","),
-		strings.Join(base.ProjectsDBTableColNames, ",:"),
-		// Update: 20240523: Index updated in 000009_create_users_projects_tables.up.sql
-		"ON CONFLICT(cluster_id,name) DO UPDATE SET",
-	)
-
-	prepareStatements[base.ProjectsDBTableName] = strings.Join(
-		[]string{
-			projectsStmt,
-			strings.Join(projectsTablePlaceholders, ",\n"),
-		},
-		"\n",
-	)
-	// fmt.Println(prepareStatements)
 }
 
 // NewStatsDB returns a new instance of statsDB struct
@@ -605,8 +467,8 @@ func (s *statsDB) execStatements(
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["UUID"], unit.UUID),
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["Name"], unit.Name),
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["Project"], unit.Project),
-				sql.Named(base.UnitsDBTableStructFieldColNameMap["Grp"], unit.Grp),
-				sql.Named(base.UnitsDBTableStructFieldColNameMap["Usr"], unit.Usr),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["Group"], unit.Group),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["User"], unit.User),
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["CreatedAt"], unit.CreatedAt),
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["StartedAt"], unit.StartedAt),
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["EndedAt"], unit.EndedAt),
@@ -616,11 +478,7 @@ func (s *statsDB) execStatements(
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["Elapsed"], unit.Elapsed),
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["State"], unit.State),
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["Allocation"], unit.Allocation),
-				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalWallTime"], unit.TotalWallTime),
-				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalCPUTime"], unit.TotalCPUTime),
-				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalGPUTime"], unit.TotalGPUTime),
-				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalCPUMemTime"], unit.TotalCPUMemTime),
-				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalGPUMemTime"], unit.TotalGPUMemTime),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalTime"], unit.TotalTime),
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["AveCPUUsage"], unit.AveCPUUsage),
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["AveCPUMemUsage"], unit.AveCPUMemUsage),
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalCPUEnergyUsage"], unit.TotalCPUEnergyUsage),
@@ -629,12 +487,10 @@ func (s *statsDB) execStatements(
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["AveGPUMemUsage"], unit.AveGPUMemUsage),
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalGPUEnergyUsage"], unit.TotalGPUEnergyUsage),
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalGPUEmissions"], unit.TotalGPUEmissions),
-				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalIOWriteHot"], unit.TotalIOWriteHot),
-				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalIOReadHot"], unit.TotalIOReadHot),
-				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalIOWriteCold"], unit.TotalIOWriteCold),
-				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalIOReadCold"], unit.TotalIOReadCold),
-				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalIngress"], unit.TotalIngress),
-				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalOutgress"], unit.TotalOutgress),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalIOWriteStats"], unit.TotalIOWriteStats),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalIOReadStats"], unit.TotalIOReadStats),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalIngressStats"], unit.TotalIngressStats),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalOutgressStats"], unit.TotalOutgressStats),
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["Tags"], unit.Tags),
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["ignore"], ignore),
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["numupdates"], 1),
@@ -658,13 +514,10 @@ func (s *statsDB) execStatements(
 				sql.Named(base.UsageDBTableStructFieldColNameMap["ClusterID"], cluster.Cluster.ID),
 				sql.Named(base.UsageDBTableStructFieldColNameMap["NumUnits"], unitIncr),
 				sql.Named(base.UsageDBTableStructFieldColNameMap["Project"], unit.Project),
-				sql.Named(base.UsageDBTableStructFieldColNameMap["Usr"], unit.Usr),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["User"], unit.User),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["Group"], unit.Group),
 				sql.Named(base.UsageDBTableStructFieldColNameMap["lastupdatedat"], currentTime.Format(base.DatetimeLayout)),
-				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalWallTime"], unit.TotalWallTime),
-				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalCPUTime"], unit.TotalCPUTime),
-				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalGPUTime"], unit.TotalGPUTime),
-				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalCPUMemTime"], unit.TotalCPUMemTime),
-				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalGPUMemTime"], unit.TotalGPUMemTime),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalTime"], unit.TotalTime),
 				sql.Named(base.UsageDBTableStructFieldColNameMap["AveCPUUsage"], unit.AveCPUUsage),
 				sql.Named(base.UsageDBTableStructFieldColNameMap["AveCPUMemUsage"], unit.AveCPUMemUsage),
 				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalCPUEnergyUsage"], unit.TotalCPUEnergyUsage),
@@ -673,12 +526,10 @@ func (s *statsDB) execStatements(
 				sql.Named(base.UsageDBTableStructFieldColNameMap["AveGPUMemUsage"], unit.AveGPUMemUsage),
 				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalGPUEnergyUsage"], unit.TotalGPUEnergyUsage),
 				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalGPUEmissions"], unit.TotalGPUEmissions),
-				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalIOWriteHot"], unit.TotalIOWriteHot),
-				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalIOReadHot"], unit.TotalIOReadHot),
-				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalIOWriteCold"], unit.TotalIOWriteCold),
-				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalIOReadCold"], unit.TotalIOReadCold),
-				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalIngress"], unit.TotalIngress),
-				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalOutgress"], unit.TotalOutgress),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalIOWriteStats"], unit.TotalIOWriteStats),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalIOReadStats"], unit.TotalIOReadStats),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalIngressStats"], unit.TotalIngressStats),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalOutgressStats"], unit.TotalOutgressStats),
 				sql.Named(base.UsageDBTableStructFieldColNameMap["numupdates"], 1),
 			); err != nil {
 				level.Error(s.logger).
