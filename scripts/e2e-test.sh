@@ -386,13 +386,10 @@ then
   fi
 
   export PATH="${GOBIN:-}:${PATH}"
-    prometheus \
-      --config.file pkg/lb/testdata/prometheus.yml \
-      --storage.tsdb.path "${tmpdir}" \
-      --log.level="debug" >> "${logfile}" 2>&1 &
-    PROMETHEUS_PID=$!
+  ./bin/mock_tsdb >> "${logfile}" 2>&1 &
+  PROMETHEUS_PID=$!
 
-    waitport "9090"
+  waitport "9090"
 
   # Copy config file to tmpdir
   cp pkg/api/testdata/config.yml "${tmpdir}/config.yml"
@@ -405,12 +402,12 @@ then
     --test.disable.checks \
     --web.listen-address="127.0.0.1:${port}" \
     --config.file="${tmpdir}/config.yml" \
-    --log.level="debug" > "${logfile}" 2>&1 &
+    --log.level="debug" >> "${logfile}" 2>&1 &
   CEEMS_API=$!
 
   echo "${PROMETHEUS_PID} ${CEEMS_API}" > "${pidfile}"
 
-  # sleep 2
+  sleep 2
   waitport "${port}"
 
   if [ "${scenario}" = "api-project-query" ]
@@ -451,16 +448,16 @@ then
     get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/units/admin" > "${fixture_output}"
   elif [ "${scenario}" = "api-current-usage-query" ]
   then
-    get -H "X-Grafana-User: usr3" "127.0.0.1:${port}/api/${api_version}/usage/current?cluster_id=slurm-1&from=1676934000&to=1677538800" > "${fixture_output}"
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/usage/current?cluster_id=slurm-1&from=1676934000&to=1677538800" > "${fixture_output}"
   elif [ "${scenario}" = "api-global-usage-query" ]
   then
-    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/usage/global?cluster_id=slurm-0&field=usr&field=project&field=num_units" > "${fixture_output}"
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/usage/global?cluster_id=slurm-0&field=username&field=project&field=num_units" > "${fixture_output}"
   elif [ "${scenario}" = "api-current-usage-admin-query" ]
   then
-    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/usage/current/admin?cluster_id=slurm-1&user=usr3&from=1676934000&to=1677538800" > "${fixture_output}"
+    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/usage/current/admin?cluster_id=slurm-1&user=usr15&user=usr3&from=1676934000&to=1677538800" > "${fixture_output}"
   elif [ "${scenario}" = "api-global-usage-admin-query" ]
   then
-    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/usage/global/admin?cluster_id=slurm-0&field=usr&field=project&field=num_units" > "${fixture_output}"
+    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/usage/global/admin?cluster_id=slurm-0&field=username&field=project&field=num_units" > "${fixture_output}"
   elif [ "${scenario}" = "api-current-usage-admin-denied-query" ]
   then
     get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/usage/global/admin?cluster_id=slurm-1&user=usr2" > "${fixture_output}"

@@ -4,6 +4,7 @@ package common
 import (
 	"errors"
 	"fmt"
+	"math"
 	"net"
 	"net/url"
 	"os"
@@ -15,6 +16,15 @@ import (
 	"github.com/zeebo/xxh3"
 	"gopkg.in/yaml.v3"
 )
+
+// SanitizeFloat replaces +/-Inf and NaN with zero
+func SanitizeFloat(v float64) float64 {
+	if math.IsInf(v, 0) || math.IsNaN(v) {
+		// handle infinity, assign desired value to v
+		return 0
+	}
+	return v
+}
 
 // GetUUIDFromString returns a UUID5 for given slice of strings
 func GetUUIDFromString(stringSlice []string) (string, error) {
