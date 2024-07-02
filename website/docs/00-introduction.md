@@ -16,6 +16,13 @@ slug: /
 
 <!-- markdown-link-check-enable -->
 
+:::warning[WARNING]
+
+CEEMS is in early development phase, thus subject to breaking changes with no guarantee 
+of backward compatibility.
+
+:::
+
 CEEMS provide a set of components that enable operators to monitor the consumption of 
 resources of the compute units of different resource managers like SLURM, Openstack and 
 Kubernetes. 

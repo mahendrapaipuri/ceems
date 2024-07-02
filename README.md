@@ -28,6 +28,10 @@ with Grafana and Prometheus to show statistics to users.
 
 ## Install CEEMS
 
+> [!WARNING] 
+> DO NOT USE pre-release versions as the API has changed quite a lot between the 
+pre-release and stable versions.
+
 Installation instructions of CEEMS components can be found in 
 [docs](https://mahendrapaipuri.github.io/ceems/docs/category/installation).
 

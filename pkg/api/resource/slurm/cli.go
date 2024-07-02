@@ -277,8 +277,8 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 				UUID:            jobid,
 				Name:            components[sacctFieldMap["jobname"]],
 				Project:         components[sacctFieldMap["account"]],
-				Grp:             components[sacctFieldMap["group"]],
-				Usr:             components[sacctFieldMap["user"]],
+				Group:           components[sacctFieldMap["group"]],
+				User:            components[sacctFieldMap["user"]],
 				CreatedAt:       components[sacctFieldMap["submit"]],
 				StartedAt:       components[sacctFieldMap["start"]],
 				EndedAt:         components[sacctFieldMap["end"]],
@@ -288,12 +288,14 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 				Elapsed:         components[sacctFieldMap["elapsed"]],
 				State:           components[sacctFieldMap["state"]],
 				Allocation:      allocation,
-				TotalWallTime:   elapsedSeconds,
-				TotalCPUTime:    cpuSeconds,
-				TotalGPUTime:    gpuSeconds,
-				TotalCPUMemTime: cpuMemSeconds,
-				TotalGPUMemTime: gpuMemSeconds,
-				Tags:            tags,
+				TotalTime: models.MetricMap{
+					"walltime":         models.JSONFloat(elapsedSeconds),
+					"alloc_cputime":    models.JSONFloat(cpuSeconds),
+					"alloc_cpumemtime": models.JSONFloat(cpuMemSeconds),
+					"alloc_gputime":    models.JSONFloat(gpuSeconds),
+					"alloc_gpumemtime": models.JSONFloat(gpuMemSeconds),
+				},
+				Tags: tags,
 			}
 			jobLock.Lock()
 			jobs[i] = jobStat

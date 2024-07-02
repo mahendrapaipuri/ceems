@@ -10,7 +10,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
-	"github.com/rotationalio/ensign/pkg/utils/sqlite"
+	ceems_sqlite3 "github.com/mahendrapaipuri/ceems/pkg/api/db/sqlite3"
 )
 
 var (
@@ -46,26 +46,26 @@ func writeTimeStampToFile(filePath string, timeStamp time.Time, logger log.Logge
 }
 
 // Open DB connection and return connection poiner
-func openDBConnection(dbFilePath string) (*sql.DB, *sqlite.Conn, error) {
+func openDBConnection(dbFilePath string) (*sql.DB, *ceems_sqlite3.Conn, error) {
 	var db *sql.DB
-	var dbConn *sqlite.Conn
+	var dbConn *ceems_sqlite3.Conn
 	var err error
 	var ok bool
-	if db, err = sql.Open(sqlite3Driver, makeDSN(dbFilePath, defaultOpts)); err != nil {
+	if db, err = sql.Open(ceems_sqlite3.DriverName, makeDSN(dbFilePath, defaultOpts)); err != nil {
 		return nil, nil, err
 	}
 	if err = db.Ping(); err != nil {
 		return nil, nil, err
 	}
 
-	if dbConn, ok = sqlite.GetLastConn(); !ok {
+	if dbConn, ok = ceems_sqlite3.GetLastConn(); !ok {
 		return nil, nil, err
 	}
 	return db, dbConn, nil
 }
 
 // Setup DB and create table
-func setupDB(dbFilePath string, logger log.Logger) (*sql.DB, *sqlite.Conn, error) {
+func setupDB(dbFilePath string, logger log.Logger) (*sql.DB, *ceems_sqlite3.Conn, error) {
 	if _, err := os.Stat(dbFilePath); err == nil {
 		// Open the created SQLite File
 		db, dbConn, err := openDBConnection(dbFilePath)

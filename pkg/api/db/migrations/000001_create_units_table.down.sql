@@ -1,4 +1,3 @@
-DROP INDEX IF EXISTS uq_uuid_start;
-DROP INDEX IF EXISTS idx_usr_uuid;
-DROP INDEX IF EXISTS idx_usr_project_start;
+DROP INDEX IF EXISTS uq_cluster_id_uuid_start;
+DROP INDEX IF EXISTS idx_cluster_id_usr_uuid;
 DROP TABLE IF EXISTS units;

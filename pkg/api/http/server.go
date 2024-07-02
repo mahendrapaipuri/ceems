@@ -21,9 +21,9 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/db"
+	"github.com/mahendrapaipuri/ceems/pkg/api/db/sqlite3"
 	"github.com/mahendrapaipuri/ceems/pkg/api/http/docs"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/exporter-toolkit/web"
@@ -78,7 +78,7 @@ type CEEMSServer struct {
 	healthCheck    func(*sql.DB, log.Logger) bool
 }
 
-// Response defines the response model of CEEMSServer
+// Response defines the response model of CEEMSAPIServer
 type Response[T any] struct {
 	Status    string    `json:"status"`
 	Data      []T       `json:"data"`
@@ -99,12 +99,16 @@ func init() {
 
 	// Use SQL aggregate functions in query
 	for _, col := range base.UsageDBTableColNames {
-		if strings.HasPrefix(col, "avg") {
-			aggUsageDBCols[col] = fmt.Sprintf("SUM(%[1]s * %[2]s) / SUM(%[2]s) AS %[1]s", col, db.Weights[col])
-		} else if strings.HasPrefix(col, "total") {
-			aggUsageDBCols[col] = fmt.Sprintf("SUM(%[1]s) AS %[1]s", col)
-		} else if strings.HasPrefix(col, "num") {
+		if strings.HasPrefix(col, "num") {
 			aggUsageDBCols[col] = "COUNT(id) AS num_units"
+		} else if strings.HasPrefix(col, "total") {
+			aggUsageDBCols[col] = fmt.Sprintf("sum_metric_map_agg(%[1]s) AS %[1]s", col)
+		} else if strings.HasPrefix(col, "avg") {
+			aggUsageDBCols[col] = fmt.Sprintf(
+				"avg_metric_map_agg(%[1]s, CAST(json_extract(total_time_seconds, '$.%[2]s') AS REAL)) AS %[1]s",
+				col,
+				db.Weights[col],
+			)
 		} else {
 			aggUsageDBCols[col] = col
 		}
@@ -214,7 +218,7 @@ func NewCEEMSServer(c *Config) (*CEEMSServer, func(), error) {
 	)).Methods(http.MethodGet)
 
 	// Open DB connection
-	if dbConn, err = sql.Open("sqlite3", filepath.Join(c.DB.Data.Path, base.CEEMSDBName)); err != nil {
+	if dbConn, err = sql.Open(sqlite3.DriverName, filepath.Join(c.DB.Data.Path, base.CEEMSDBName)); err != nil {
 		return nil, func() {}, err
 	}
 	server.db = dbConn
@@ -348,6 +352,7 @@ func (s *CEEMSServer) getQueriedFields(URLValues url.Values, validFieldNames []s
 	if fields := URLValues["field"]; len(fields) > 0 {
 		// Check if fields are valid field names
 		for _, f := range fields {
+			f = strings.TrimSpace(f)
 			if slices.Contains(validFieldNames, f) {
 				queriedFields = append(queriedFields, f)
 			}
@@ -435,7 +440,7 @@ func (s *CEEMSServer) unitsQuerier(
 
 	// Add condition to query only for current dashboardUser
 	if len(queriedUsers) > 0 {
-		q.query(" AND usr IN ")
+		q.query(" AND username IN ")
 		q.param(queriedUsers)
 	}
 
@@ -527,7 +532,7 @@ queryUnits:
 //	@Tags			units
 //	@Produce		json
 //	@Param			X-Grafana-User	header		string		true	"Current user name"
-//	@Param			cluster_id		query		[]string	false	"cluster ID"	collectionFormat(multi)
+//	@Param			cluster_id		query		[]string	false	"Cluster ID"	collectionFormat(multi)
 //	@Param			uuid			query		[]string	false	"Unit UUID"		collectionFormat(multi)
 //	@Param			project			query		[]string	false	"Project"		collectionFormat(multi)
 //	@Param			user			query		[]string	false	"User name"		collectionFormat(multi)
@@ -572,7 +577,7 @@ func (s *CEEMSServer) unitsAdmin(w http.ResponseWriter, r *http.Request) {
 //	@Tags			units
 //	@Produce		json
 //	@Param			X-Grafana-User	header		string		true	"Current user name"
-//	@Param			cluster_id		query		[]string	false	"cluster ID"	collectionFormat(multi)
+//	@Param			cluster_id		query		[]string	false	"Cluster ID"	collectionFormat(multi)
 //	@Param			uuid			query		[]string	false	"Unit UUID"		collectionFormat(multi)
 //	@Param			project			query		[]string	false	"Project"		collectionFormat(multi)
 //	@Param			running			query		bool		false	"Whether to fetch running units"
@@ -765,7 +770,7 @@ func (s *CEEMSServer) usersQuerier(users []string, w http.ResponseWriter, r *htt
 //	@Tags		users
 //	@Produce	json
 //	@Param		X-Grafana-User	header		string		true	"Current user name"
-//	@Param		cluster_id		query		[]string	false	"cluster ID"	collectionFormat(multi)
+//	@Param		cluster_id		query		[]string	false	"Cluster ID"	collectionFormat(multi)
 //	@Success	200				{object}	Response[models.User]
 //	@Failure	401				{object}	Response[any]
 //	@Failure	500				{object}	Response[any]
@@ -798,7 +803,7 @@ func (s *CEEMSServer) users(w http.ResponseWriter, r *http.Request) {
 //	@Produce	json
 //	@Param		X-Grafana-User	header		string		true	"Current user name"
 //	@Param		user			query		[]string	false	"User name"		collectionFormat(multi)
-//	@Param		cluster_id		query		[]string	false	"cluster ID"	collectionFormat(multi)
+//	@Param		cluster_id		query		[]string	false	"Cluster ID"	collectionFormat(multi)
 //	@Success	200				{object}	Response[models.User]
 //	@Failure	401				{object}	Response[any]
 //	@Failure	500				{object}	Response[any]
@@ -878,7 +883,7 @@ func (s *CEEMSServer) projectsQuerier(users []string, w http.ResponseWriter, r *
 //	@Produce	json
 //	@Param		X-Grafana-User	header		string		true	"Current user name"
 //	@Param		project			query		[]string	false	"Project"		collectionFormat(multi)
-//	@Param		cluster_id		query		[]string	false	"cluster ID"	collectionFormat(multi)
+//	@Param		cluster_id		query		[]string	false	"Cluster ID"	collectionFormat(multi)
 //	@Success	200				{object}	Response[models.Project]
 //	@Failure	401				{object}	Response[any]
 //	@Failure	500				{object}	Response[any]
@@ -913,7 +918,7 @@ func (s *CEEMSServer) projects(w http.ResponseWriter, r *http.Request) {
 //	@Produce	json
 //	@Param		X-Grafana-User	header		string		true	"Current user name"
 //	@Param		project			query		[]string	false	"Project"		collectionFormat(multi)
-//	@Param		cluster_id		query		[]string	false	"cluster ID"	collectionFormat(multi)
+//	@Param		cluster_id		query		[]string	false	"Cluster ID"	collectionFormat(multi)
 //	@Success	200				{object}	Response[models.Project]
 //	@Failure	401				{object}	Response[any]
 //	@Failure	500				{object}	Response[any]
@@ -966,10 +971,17 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 	q.query(" AND ")
 	q.param([]string{queryWindowTS["to"]})
 
-	// Finally add GROUP BY clause
-	if groupby := r.URL.Query()["groupby"]; len(groupby) > 0 {
-		q.query(fmt.Sprintf(" GROUP BY %s", strings.Join(groupby, ",")))
+	// Finally add GROUP BY clause. Always group by username,project
+	groupby := []string{"username", "project"}
+	for _, q := range r.URL.Query()["groupby"] {
+		if q != "" {
+			groupby = append(groupby, q)
+		}
 	}
+	// Remove duplicates values
+	slices.Sort(groupby)
+	groupby = slices.Compact(groupby)
+	q.query(fmt.Sprintf(" GROUP BY %s", strings.Join(groupby, ",")))
 
 	// Make query and check for returned number of rows
 	usage, err := s.queriers.usage(s.db, q, s.logger)

@@ -13,5 +13,7 @@ Installation of Prometheus can be found in its [docs](https://prometheus.io/down
 and it is out of current scope. 
 
 CEEMS API server uses [SQLite](https://www.sqlite.org/) as DB engine and it it 
-shipped by default in most of the OS distributions. Although not compulsory, a 
-more recent version of `>=3.40.0` of SQLite is desirable.
+shipped by default in most of the OS distributions. CEEMS uses 
+[JSON functions](https://www.sqlite.org/json1.html) of SQLite which have been 
+integrated by default from version `3.38.0`. Thus, SQLite `>=3.38.0` is a required 
+dependency for CEEMS to work properly.

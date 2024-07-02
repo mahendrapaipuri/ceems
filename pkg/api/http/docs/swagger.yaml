@@ -136,6 +136,10 @@ definitions:
       manager:
         type: string
     type: object
+  models.MetricMap:
+    additionalProperties:
+      type: number
+    type: object
   models.Project:
     properties:
       cluster_id:
@@ -172,17 +176,21 @@ definitions:
         description: Allocation map of unit. Only string and int64 values are supported
           in map
       avg_cpu_mem_usage:
-        description: Average CPU memory during lifetime of unit
-        type: number
+        allOf:
+        - $ref: '#/definitions/models.MetricMap'
+        description: Average CPU memory usage(s) during lifetime of unit
       avg_cpu_usage:
-        description: Average CPU usage during lifetime of unit
-        type: number
+        allOf:
+        - $ref: '#/definitions/models.MetricMap'
+        description: Average CPU usage(s) during lifetime of unit
       avg_gpu_mem_usage:
-        description: Average GPU memory during lifetime of unit
-        type: number
+        allOf:
+        - $ref: '#/definitions/models.MetricMap'
+        description: Average GPU memory usage(s) during lifetime of unit
       avg_gpu_usage:
-        description: Average GPU usage during lifetime of unit
-        type: number
+        allOf:
+        - $ref: '#/definitions/models.MetricMap'
+        description: Average GPU usage(s) during lifetime of unit
       cluster_id:
         description: Identifier of the resource manager that owns compute unit. It
           is used to differentiate multiple clusters of same resource manager.
@@ -202,7 +210,7 @@ definitions:
       ended_at_ts:
         description: End timestamp
         type: integer
-      grp:
+      group:
         description: User group
         type: string
       name:
@@ -230,45 +238,46 @@ definitions:
         description: A map to store generic info. String and int64 are valid value
           types of map
       total_cpu_emissions_gms:
-        description: Total CPU emissions in grams during lifetime of unit
-        type: number
+        allOf:
+        - $ref: '#/definitions/models.MetricMap'
+        description: Total CPU emissions from source(s) in grams during lifetime of
+          unit
       total_cpu_energy_usage_kwh:
-        description: Total CPU energy usage in kWh during lifetime of unit
-        type: number
-      total_cputime_seconds:
-        description: Total number of CPU seconds consumed by the unit
-        type: integer
+        allOf:
+        - $ref: '#/definitions/models.MetricMap'
+        description: Total CPU energy usage(s) in kWh during lifetime of unit
       total_gpu_emissions_gms:
-        description: Total GPU emissions in grams during lifetime of unit
-        type: number
+        allOf:
+        - $ref: '#/definitions/models.MetricMap'
+        description: Total GPU emissions from source(s) in grams during lifetime of
+          unit
       total_gpu_energy_usage_kwh:
-        description: Total GPU energy usage in kWh during lifetime of unit
-        type: number
-      total_gputime_seconds:
-        description: Total number of GPU seconds consumed by the unit
-        type: integer
-      total_ingress_in_gb:
-        description: Total ingress traffic in GB of unit
-        type: number
-      total_io_read_cold_gb:
-        description: Total IO read on cold storage in GB during lifetime of unit
-        type: number
-      total_io_read_hot_gb:
-        description: Total IO read on hot storage in GB during lifetime of unit
-        type: number
-      total_io_write_cold_gb:
-        description: Total IO write on cold storage in GB during lifetime of unit
-        type: number
-      total_io_write_hot_gb:
-        description: Total IO write on hot storage in GB during lifetime of unit
-        type: number
-      total_outgress_in_gb:
-        description: Total outgress traffic in GB of unit
-        type: number
-      total_walltime_seconds:
-        description: Total elapsed wall time in seconds
-        type: integer
-      usr:
+        allOf:
+        - $ref: '#/definitions/models.MetricMap'
+        description: Total GPU energy usage(s) in kWh during lifetime of unit
+      total_ingress_stats:
+        allOf:
+        - $ref: '#/definitions/models.MetricMap'
+        description: Total Ingress statistics of unit
+      total_io_read_stats:
+        allOf:
+        - $ref: '#/definitions/models.MetricMap'
+        description: Total IO read statistics GB during lifetime of unit
+      total_io_write_stats:
+        allOf:
+        - $ref: '#/definitions/models.MetricMap'
+        description: Total IO write statistics during lifetime of unit
+      total_outgress_stats:
+        allOf:
+        - $ref: '#/definitions/models.MetricMap'
+        description: Total Outgress statistics of unit
+      total_time_seconds:
+        allOf:
+        - $ref: '#/definitions/models.MetricMap'
+        description: Different types of times in seconds consumed by the unit. This
+          map contains at minimum `walltime`, `alloc_cputime`, `alloc_cpumemtime`,
+          `alloc_gputime` and `alloc_gpumem_time` keys.
+      user:
         description: Username
         type: string
       uuid:
@@ -279,20 +288,27 @@ definitions:
   models.Usage:
     properties:
       avg_cpu_mem_usage:
-        description: Average CPU memory during lifetime of project
-        type: number
+        allOf:
+        - $ref: '#/definitions/models.MetricMap'
+        description: Average CPU memory usage(s) during lifetime of project
       avg_cpu_usage:
-        description: Average CPU usage during lifetime of project
-        type: number
+        allOf:
+        - $ref: '#/definitions/models.MetricMap'
+        description: Average CPU usage(s) during lifetime of project
       avg_gpu_mem_usage:
-        description: Average GPU memory during lifetime of project
-        type: number
+        allOf:
+        - $ref: '#/definitions/models.MetricMap'
+        description: Average GPU memory usage(s) during lifetime of project
       avg_gpu_usage:
-        description: Average GPU usage during lifetime of project
-        type: number
+        allOf:
+        - $ref: '#/definitions/models.MetricMap'
+        description: Average GPU usage(s) during lifetime of project
       cluster_id:
         description: Identifier of the resource manager that owns compute unit. It
           is used to differentiate multiple clusters of same resource manager.
+        type: string
+      group:
+        description: User group
         type: string
       num_units:
         description: Number of consumed units
@@ -305,51 +321,46 @@ definitions:
           kubernetes, etc
         type: string
       total_cpu_emissions_gms:
-        description: Total CPU emissions in grams during lifetime of project
-        type: number
+        allOf:
+        - $ref: '#/definitions/models.MetricMap'
+        description: Total CPU emissions from source(s) in grams during lifetime of
+          project
       total_cpu_energy_usage_kwh:
-        description: Total CPU energy usage in kWh during lifetime of project
-        type: number
-      total_cpumemtime_seconds:
-        description: Total number of CPU memory (in MB) seconds consumed by the project
-        type: integer
-      total_cputime_seconds:
-        description: Total number of CPU seconds consumed by the project
-        type: integer
+        allOf:
+        - $ref: '#/definitions/models.MetricMap'
+        description: Total CPU energy usage(s) in kWh during lifetime of project
       total_gpu_emissions_gms:
-        description: Total GPU emissions in grams during lifetime of project
-        type: number
+        allOf:
+        - $ref: '#/definitions/models.MetricMap'
+        description: Total GPU emissions from source(s) in grams during lifetime of
+          project
       total_gpu_energy_usage_kwh:
-        description: Total GPU energy usage in kWh during lifetime of project
-        type: number
-      total_gpumemtime_seconds:
-        description: Total number of GPU memory (in MB) seconds consumed by the project
-        type: integer
-      total_gputime_seconds:
-        description: Total number of GPU seconds consumed by the project
-        type: integer
-      total_ingress_in_gb:
-        description: Total ingress traffic in GB of project
-        type: number
-      total_io_read_cold_gb:
-        description: Total IO read on cold storage in GB during lifetime of project
-        type: number
-      total_io_read_hot_gb:
-        description: Total IO read on hot storage in GB during lifetime of project
-        type: number
-      total_io_write_cold_gb:
-        description: Total IO write on cold storage in GB during lifetime of project
-        type: number
-      total_io_write_hot_gb:
-        description: Total IO write on hot storage in GB during lifetime of project
-        type: number
-      total_outgress_in_gb:
-        description: Total outgress traffic in GB of project
-        type: number
-      total_walltime_seconds:
-        description: Total elapsed wall time in seconds consumed by the project
-        type: integer
-      usr:
+        allOf:
+        - $ref: '#/definitions/models.MetricMap'
+        description: Total GPU energy usage(s) in kWh during lifetime of project
+      total_ingress_stats:
+        allOf:
+        - $ref: '#/definitions/models.MetricMap'
+        description: Total Ingress statistics of unit
+      total_io_read_stats:
+        allOf:
+        - $ref: '#/definitions/models.MetricMap'
+        description: Total IO read statistics GB during lifetime of unit
+      total_io_write_stats:
+        allOf:
+        - $ref: '#/definitions/models.MetricMap'
+        description: Total IO write statistics during lifetime of unit
+      total_outgress_stats:
+        allOf:
+        - $ref: '#/definitions/models.MetricMap'
+        description: Total Outgress statistics of unit
+      total_time_seconds:
+        allOf:
+        - $ref: '#/definitions/models.MetricMap'
+        description: Different times in seconds consumed by the unit. This map must
+          contain `walltime`, `alloc_cputime`, `alloc_cpumemtime`, `alloc_gputime`
+          and `alloc_gpumem_time` keys.
+      user:
         description: Username
         type: string
     type: object
@@ -521,7 +532,7 @@ paths:
         name: project
         type: array
       - collectionFormat: multi
-        description: cluster ID
+        description: Cluster ID
         in: query
         items:
           type: string
@@ -574,7 +585,7 @@ paths:
         name: project
         type: array
       - collectionFormat: multi
-        description: cluster ID
+        description: Cluster ID
         in: query
         items:
           type: string
@@ -627,7 +638,7 @@ paths:
         required: true
         type: string
       - collectionFormat: multi
-        description: cluster ID
+        description: Cluster ID
         in: query
         items:
           type: string
@@ -720,7 +731,7 @@ paths:
         required: true
         type: string
       - collectionFormat: multi
-        description: cluster ID
+        description: Cluster ID
         in: query
         items:
           type: string
@@ -1045,7 +1056,7 @@ paths:
         required: true
         type: string
       - collectionFormat: multi
-        description: cluster ID
+        description: Cluster ID
         in: query
         items:
           type: string
@@ -1096,7 +1107,7 @@ paths:
         name: user
         type: array
       - collectionFormat: multi
-        description: cluster ID
+        description: Cluster ID
         in: query
         items:
           type: string

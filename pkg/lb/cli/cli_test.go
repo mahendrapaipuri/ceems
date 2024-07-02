@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
+	"github.com/mahendrapaipuri/ceems/internal/common"
 )
 
 const mockCEEMSLBAppName = "mockApp"
@@ -114,6 +115,43 @@ func TestCEEMSLBMainFail(t *testing.T) {
 	}
 }
 
+func TestCEEMSLBMissingIDs(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Make config file
+	configFile := `
+---
+ceems_lb:
+  strategy: "round-robin"
+  backends:
+    - tsdb_urls:
+        - http://localhost:9090
+`
+
+	configFilePath := makeConfigFile(configFile, tmpDir)
+	if _, err := common.MakeConfig[CEEMSLBAppConfig](configFilePath); err == nil {
+		t.Errorf("expected error, got none")
+	}
+}
+
+func TestCEEMSLBMissingBackends(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Make config file
+	configFile := `
+---
+ceems_lb:
+  strategy: "round-robin"
+  backends:
+    - id: default
+`
+
+	configFilePath := makeConfigFile(configFile, tmpDir)
+	if _, err := common.MakeConfig[CEEMSLBAppConfig](configFilePath); err == nil {
+		t.Errorf("expected error, got none")
+	}
+}
+
 func TestCEEMSLBMainFailMismatchIDs(t *testing.T) {
 	tmpDir := t.TempDir()
 
@@ -131,16 +169,7 @@ clusters:
   - id: "default-1"`
 
 	configFilePath := makeConfigFile(configFile, tmpDir)
-
-	// Remove test related args and add a dummy arg
-	os.Args = append([]string{os.Args[0]}, "--log.level", "debug", fmt.Sprintf("--config.file=%s", configFilePath))
-	a := CEEMSLoadBalancer{
-		appName: mockCEEMSLBAppName,
-		App:     mockCEEMSLBApp,
-	}
-
-	// Run Main
-	if err := a.Main(); err == nil {
-		t.Errorf("expected error: %s", err)
+	if _, err := common.MakeConfig[CEEMSLBAppConfig](configFilePath); err == nil {
+		t.Errorf("expected error, got none")
 	}
 }

@@ -403,185 +403,257 @@ extra_config:
 A `queries_config` allows configuring PromQL queries for TSDB updater of CEEMS API server.
 
 ```yaml
+#
+# It is possible to define multiple "sub-metrics" for each parent metric.
+# For instance, for the case of `total_cpu_energy_usage_kwh`, we wish to store
+# energy usage from different sources like RAPL, IPMI, we can do so using following
+# config:
+#
+# total_cpu_energy_usage_kwh:
+#   rapl_total: <TSDB query to get energy usage from RAPL for the unit>
+#   ipmi_total: <TSDB query to get energy usage from IPMI for the unit>
+#
+# With the above configuration, the server response from API server will contain
+# energy usage from both RAPL and IPMI using the same keys as we used in the 
+# sub query. For instance, an example response can be:
+#
+# `{"total_cpu_energy_usage_kwh": {"rapl_total": 100, "ipmi_total": 120}}`
+#
+# This approach will let the operators to define the metrics freely according to
+# their deployments. This will also allow to fetch metrics from third party 
+# DBs outside of CEEMS components without hassle.
+#
+# The placeholder queries shown below should work out-of-the-box with CEEMS 
+# exporter and operators are free to deploy more exporters of their own and use
+# the metrics from them to estimate aggregated metrics of each compute unit
+#
 # Average CPU utilisation
 #
 # Example of valid query:
 #
-# avg_over_time(
-#   avg by (uuid) (
-#     (
-#       rate(ceems_compute_unit_cpu_user_seconds_total{uuid=~"{{.UUIDs}}"}[{{.RateInterval}}])
-#       +
-#       rate(ceems_compute_unit_cpu_system_seconds_total{uuid=~"{{.UUIDs}}"}[{{.RateInterval}}])
-#     )
-#     /
-#     ceems_compute_unit_cpus{uuid=~"{{.UUIDs}}"}
-#   )[{{.Range}}:]
-# ) * 100
-[ avg_cpu_usage: <promql_query> ]
+# global:
+#   avg_over_time(
+#     avg by (uuid) (
+#       (
+#         rate(ceems_compute_unit_cpu_user_seconds_total{uuid=~"{{.UUIDs}}"}[{{.RateInterval}}])
+#         +
+#         rate(ceems_compute_unit_cpu_system_seconds_total{uuid=~"{{.UUIDs}}"}[{{.RateInterval}}])
+#       )
+#       /
+#       ceems_compute_unit_cpus{uuid=~"{{.UUIDs}}"}
+#     )[{{.Range}}:]
+#   ) * 100
+avg_cpu_usage:
+  [ <string>: <promql_query> ... ]
   
 
 # Average CPU Memory utilisation
 #
 # Example of valid query:
 #
-# avg_over_time(
-#   avg by (uuid) (
-#     ceems_compute_unit_memory_used_bytes{uuid=~"{{.UUIDs}}"}
-#     /
-#     ceems_compute_unit_memory_total_bytes{uuid=~"{{.UUIDs}}"}
-#   )[{{.Range}}:]
-# ) * 100
-[ avg_cpu_mem_usage: <promql_query> ]
+# global:
+#   avg_over_time(
+#     avg by (uuid) (
+#       ceems_compute_unit_memory_used_bytes{uuid=~"{{.UUIDs}}"}
+#       /
+#       ceems_compute_unit_memory_total_bytes{uuid=~"{{.UUIDs}}"}
+#     )[{{.Range}}:]
+#   ) * 100
+avg_cpu_mem_usage:
+  [ <string>: <promql_query> ... ]
   
 
 # Total CPU energy usage in kWh
 #
 # Example of valid query:
 #
-# sum_over_time(
-#   sum by (uuid) (
-#     unit:ceems_compute_unit_cpu_energy_usage:sum{uuid=~"{{.UUIDs}}"} * {{.ScrapeIntervalMilli}} / 3.6e9
-#   )[{{.Range}}:{{.ScrapeInterval}}]
-# )
-[ total_cpu_energy_usage_kwh: <promql_query> ]
+# total:
+#   sum_over_time(
+#     sum by (uuid) (
+#       unit:ceems_compute_unit_cpu_energy_usage:sum{uuid=~"{{.UUIDs}}"} * {{.ScrapeIntervalMilli}} / 3.6e9
+#     )[{{.Range}}:{{.ScrapeInterval}}]
+#   )
+total_cpu_energy_usage_kwh:
+  [ <string>: <promql_query> ... ]
   
 
 # Total CPU emissions in gms
 #
 # Example of valid query:
 #
-# sum_over_time(
-#   sum by (uuid) (
-#     label_replace(
-#       unit:ceems_compute_unit_cpu_energy_usage:sum{uuid=~"{{.UUIDs}}"} * {{.ScrapeIntervalMilli}} / 3.6e9,
-#       "common_label",
-#       "mock",
-#       "hostname",
-#       "(.*)"
-#     )
-#     * on (common_label) group_left ()
-#     label_replace(
-#       ceems_emissions_gCo2_kWh{provider="rte"},
-#       "common_label",
-#       "mock",
-#       "hostname",
-#       "(.*)"
-#     )
-#   )[{{.Range}}:{{.ScrapeInterval}}]
-# )
-[ total_cpu_emissions_gms: <promql_query> ]
+# rte_total:
+#   sum_over_time(
+#     sum by (uuid) (
+#       label_replace(
+#         unit:ceems_compute_unit_cpu_energy_usage:sum{uuid=~"{{.UUIDs}}"} * {{.ScrapeIntervalMilli}} / 3.6e9,
+#         "common_label",
+#         "mock",
+#         "hostname",
+#         "(.*)"
+#       )
+#       * on (common_label) group_left ()
+#       label_replace(
+#         ceems_emissions_gCo2_kWh{provider="rte",country_code="fr"},
+#         "common_label",
+#         "mock",
+#         "hostname",
+#         "(.*)"
+#       )
+#     )[{{.Range}}:{{.ScrapeInterval}}]
+#   )
+# emaps_total:
+#   sum_over_time(
+#     sum by (uuid) (
+#       label_replace(
+#         unit:ceems_compute_unit_cpu_energy_usage:sum{uuid=~"{{.UUIDs}}"} * {{.ScrapeIntervalMilli}} / 3.6e9,
+#         "common_label",
+#         "mock",
+#         "hostname",
+#         "(.*)"
+#       )
+#       * on (common_label) group_left ()
+#       label_replace(
+#         ceems_emissions_gCo2_kWh{provider="emaps",country_code="fr"},
+#         "common_label",
+#         "mock",
+#         "hostname",
+#         "(.*)"
+#       )
+#     )[{{.Range}}:{{.ScrapeInterval}}]
+#   )
+total_cpu_emissions_gms:
+  [ <string>: <promql_query> ... ]
   
 
 # Average GPU utilization
 #
 # Example of valid query:
 #
-# avg_over_time(
-#   avg by (uuid) (
-#     DCGM_FI_DEV_GPU_UTIL
-#     * on (gpuuuid) group_right ()
-#     ceems_compute_unit_gpu_index_flag{uuid=~"{{.UUIDs}}"}
-#   )[{{.Range}}:{{.ScrapeInterval}}]
-# )
-[ avg_gpu_usage: <promql_query> ]
+# global:
+#   avg_over_time(
+#     avg by (uuid) (
+#       DCGM_FI_DEV_GPU_UTIL
+#       * on (gpuuuid) group_right ()
+#       ceems_compute_unit_gpu_index_flag{uuid=~"{{.UUIDs}}"}
+#     )[{{.Range}}:{{.ScrapeInterval}}]
+#   )
+avg_gpu_usage:
+  [ <string>: <promql_query> ... ]
   
 
 # Average GPU memory utilization
 #
 # Example of valid query:
 #
-# avg_over_time(
-#   avg by (uuid) (
-#     DCGM_FI_DEV_MEM_COPY_UTIL
-#     * on (gpuuuid) group_right ()
-#     ceems_compute_unit_gpu_index_flag{uuid=~"{{.UUIDs}}"}
-#   )[{{.Range}}:{{.ScrapeInterval}}]
-# )
-[ avg_gpu_mem_usage: <promql_query> ]
+# global:
+#   avg_over_time(
+#     avg by (uuid) (
+#       DCGM_FI_DEV_MEM_COPY_UTIL
+#       * on (gpuuuid) group_right ()
+#       ceems_compute_unit_gpu_index_flag{uuid=~"{{.UUIDs}}"}
+#     )[{{.Range}}:{{.ScrapeInterval}}]
+#   )
+avg_gpu_mem_usage:
+  [ <string>: <promql_query> ... ]
   
 
 # Total GPU energy usage in kWh
 #
 # Example of valid query:
 #
-# sum_over_time(
-#   sum by (uuid) (
-#     instance:DCGM_FI_DEV_POWER_USAGE:pue_avg * {{.ScrapeIntervalMilli}} / 3.6e9
-#     * on (gpuuuid) group_right()
-#     ceems_compute_unit_gpu_index_flag{uuid=~"{{.UUIDs}}"}
-#   )[{{.Range}}:{{.ScrapeInterval}}]
-# )
-[ total_gpu_energy_usage_kwh: <promql_query> ]
+# total:
+#   sum_over_time(
+#     sum by (uuid) (
+#       instance:DCGM_FI_DEV_POWER_USAGE:pue_avg * {{.ScrapeIntervalMilli}} / 3.6e9
+#       * on (gpuuuid) group_right()
+#       ceems_compute_unit_gpu_index_flag{uuid=~"{{.UUIDs}}"}
+#     )[{{.Range}}:{{.ScrapeInterval}}]
+#   )
+total_gpu_energy_usage_kwh:
+  [ <string>: <promql_query> ... ]
   
 
 # Total GPU emissions in gms
 #
 # Example of valid query:
 #
-# sum_over_time(
-#   sum by (uuid) (
-#     label_replace(
-#       instance:DCGM_FI_DEV_POWER_USAGE:pue_avg * {{.ScrapeIntervalMilli}} / 3.6e+09
-#       * on (gpuuuid) group_right ()
-#       ceems_compute_unit_gpu_index_flag{uuid=~"{{.UUIDs}}"},
-#       "common_label",
-#       "mock",
-#       "instance",
-#       "(.*)"
-#     )
-#     * on (common_label) group_left ()
-#     label_replace(
-#       ceems_emissions_gCo2_kWh{provider="rte"},
-#       "common_label",
-#       "mock",
-#       "instance",
-#       "(.*)"
-#     )
-#   )[{{.Range}}:{{.ScrapeInterval}}]
-# )
-[ total_gpu_emissions_gms: <promql_query> ]
+# rte_total:
+#   sum_over_time(
+#     sum by (uuid) (
+#       label_replace(
+#         instance:DCGM_FI_DEV_POWER_USAGE:pue_avg * {{.ScrapeIntervalMilli}} / 3.6e+09
+#         * on (gpuuuid) group_right ()
+#         ceems_compute_unit_gpu_index_flag{uuid=~"{{.UUIDs}}"},
+#         "common_label",
+#         "mock",
+#         "instance",
+#         "(.*)"
+#       )
+#       * on (common_label) group_left ()
+#       label_replace(
+#         ceems_emissions_gCo2_kWh{provider="rte",country_code="fr"},
+#         "common_label",
+#         "mock",
+#         "instance",
+#         "(.*)"
+#       )
+#     )[{{.Range}}:{{.ScrapeInterval}}]
+#   )
+# emaps_total:
+#   sum_over_time(
+#     sum by (uuid) (
+#       label_replace(
+#         instance:DCGM_FI_DEV_POWER_USAGE:pue_avg * {{.ScrapeIntervalMilli}} / 3.6e+09
+#         * on (gpuuuid) group_right ()
+#         ceems_compute_unit_gpu_index_flag{uuid=~"{{.UUIDs}}"},
+#         "common_label",
+#         "mock",
+#         "instance",
+#         "(.*)"
+#       )
+#       * on (common_label) group_left ()
+#       label_replace(
+#         ceems_emissions_gCo2_kWh{provider="emaps",country_code="fr"},
+#         "common_label",
+#         "mock",
+#         "instance",
+#         "(.*)"
+#       )
+#     )[{{.Range}}:{{.ScrapeInterval}}]
+#   )
+total_gpu_emissions_gms:
+  [ <string>: <promql_query> ... ]
   
 
-# Total IO write in GB on hot storage
+# Total IO write in GB stats
 #
 # Currently CEEMS exporter do not scrape this metric. Operators can configure
 # this metric from third party exporters, if and when available
 #
-[ total_io_write_hot_gb: <promql_query> ]
+total_io_write_stats:
+  [ <string>: <promql_query> ... ]
 
-# Total IO read in GB on hot storage
+# Total IO read in GB stats
 #
 # Currently CEEMS exporter do not scrape this metric. Operators can configure
 # this metric from third party exporters, if and when available
 #
-[ total_io_read_hot_gb: <promql_query> ]
+total_io_read_stats:
+  [ <string>: <promql_query> ... ]
 
-# Total IO write in GB on cold storage
+# Total ingress traffic stats
 #
 # Currently CEEMS exporter do not scrape this metric. Operators can configure
 # this metric from third party exporters, if and when available
 #
-[ total_io_write_cold_gb: <promql_query> ]
+total_ingress_stats:
+  [ <string>: <promql_query> ... ]
 
-# Total IO read in GB on cold storage
+# Total outgress traffic stats
 #
 # Currently CEEMS exporter do not scrape this metric. Operators can configure
 # this metric from third party exporters, if and when available
 #
-[ total_io_read_cold_gb: <promql_query> ]
-
-# Total ingress traffic in GB
-#
-# Currently CEEMS exporter do not scrape this metric. Operators can configure
-# this metric from third party exporters, if and when available
-#
-[ total_ingress_in_gb: <promql_query> ]
-
-# Total outgress traffic in GB
-#
-# Currently CEEMS exporter do not scrape this metric. Operators can configure
-# this metric from third party exporters, if and when available
-#
-[ total_outgress_in_gb: <promql_query> ]
+total_outgress_stats:
+  [ <string>: <promql_query> ... ]
 ```

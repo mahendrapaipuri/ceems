@@ -40,12 +40,13 @@ else
 endif
 
 # Use CGO for api and GO for ceems_exporter.
+PROMU_TEST_CONF ?= .promu-go-test.yml
 ifeq ($(CGO_BUILD), 1)
 	PROMU_CONF ?= .promu-cgo.yml
 	pkgs := ./pkg/api/cli \
 			./pkg/api/db ./pkg/api/helper \
 			./pkg/api/resource ./pkg/api/resource/slurm \
-			./pkg/api/updater \
+			./pkg/api/updater  ./pkg/api/db/sqlite3 \
 			./pkg/api/http ./cmd/ceems_api_server \
 			./pkg/lb/backend ./pkg/lb/cli \
 			./pkg/lb/frontend ./pkg/lb/serverpool \
@@ -75,6 +76,7 @@ else
 endif
 
 PROMU := $(FIRST_GOPATH)/bin/promu --config $(PROMU_CONF)
+PROMU_TEST := $(FIRST_GOPATH)/bin/promu --config $(PROMU_TEST_CONF)
 
 e2e-out = pkg/collector/testdata/output
 

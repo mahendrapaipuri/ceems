@@ -29,9 +29,9 @@ const (
 
 // config is the container for the configuration of a given TSDB instance
 type tsdbConfig struct {
-	CutoffDuration model.Duration    `yaml:"cutoff_duration"`
-	Queries        map[string]string `yaml:"queries"`
-	LabelsToDrop   []string          `yaml:"labels_to_drop"`
+	CutoffDuration model.Duration               `yaml:"cutoff_duration"`
+	Queries        map[string]map[string]string `yaml:"queries"`
+	LabelsToDrop   []string                     `yaml:"labels_to_drop"`
 }
 
 // Embed TSDB struct into our TSDBUpdater struct
@@ -105,8 +105,8 @@ func (t *tsdbUpdater) fetchAggMetrics(
 	queryTime time.Time,
 	duration time.Duration,
 	uuids string,
-) map[string]tsdb.Metric {
-	var aggMetrics = make(map[string]tsdb.Metric, len(t.config.Queries))
+) map[string]map[string]tsdb.Metric {
+	var aggMetrics = make(map[string]map[string]tsdb.Metric, len(t.config.Queries))
 
 	// Get rate and scrape intervals
 	rateInterval := t.RateInterval()
@@ -128,7 +128,9 @@ func (t *tsdbUpdater) fetchAggMetrics(
 
 	// Start a wait group
 	var wg sync.WaitGroup
-	wg.Add(len(t.config.Queries))
+	for _, queries := range t.config.Queries {
+		wg.Add(len(queries))
+	}
 
 	// Template data
 	tmplData := map[string]interface{}{
@@ -142,33 +144,38 @@ func (t *tsdbUpdater) fetchAggMetrics(
 	}
 
 	// Loop over t.config.queries map and make queries
-	for name, query := range t.config.Queries {
-		go func(n string, q string) {
-			var aggMetric tsdb.Metric
-			var err error
-			tsdbQuery, err := t.queryBuilder(n, q, tmplData)
-			if err != nil {
-				level.Error(t.Logger).Log(
-					"msg", "Failed to build query from template", "metric", n,
-					"query_template", q, "err", err,
-				)
-				wg.Done()
-				return
-			}
+	for metricName, queries := range t.config.Queries {
+		for subMetricName, query := range queries {
+			go func(n string, sn string, q string) {
+				var aggMetric tsdb.Metric
+				var err error
+				tsdbQuery, err := t.queryBuilder(n, q, tmplData)
+				if err != nil {
+					level.Error(t.Logger).Log(
+						"msg", "Failed to build query from template", "metric", n,
+						"query_template", q, "err", err,
+					)
+					wg.Done()
+					return
+				}
 
-			if aggMetric, err = t.Query(tsdbQuery, queryTime); err != nil {
-				level.Error(t.Logger).Log(
-					"msg", "Failed to fetch metrics from TSDB", "metric", n, "duration",
-					duration, "scrape_int", scrapeInterval, "rate_int", rateInterval,
-					"err", err,
-				)
-			} else {
-				metricLock.Lock()
-				aggMetrics[n] = aggMetric
-				metricLock.Unlock()
-			}
-			wg.Done()
-		}(name, query)
+				if aggMetric, err = t.Query(tsdbQuery, queryTime); err != nil {
+					level.Error(t.Logger).Log(
+						"msg", "Failed to fetch metrics from TSDB", "metric", n, "duration",
+						duration, "scrape_int", scrapeInterval, "rate_int", rateInterval,
+						"err", err,
+					)
+				} else {
+					metricLock.Lock()
+					if aggMetrics[n] == nil {
+						aggMetrics[n] = make(map[string]tsdb.Metric)
+					}
+					aggMetrics[n][sn] = aggMetric
+					metricLock.Unlock()
+				}
+				wg.Done()
+			}(metricName, subMetricName, query)
+		}
 	}
 
 	// Wait for all go routines
@@ -206,7 +213,7 @@ func (t *tsdbUpdater) update(startTime time.Time, endTime time.Time, units []mod
 	// that can spread across big time interval
 	uuidChunks := helper.ChunkBy(allUnitUUIDs[:j], chunkSize)
 
-	var aggMetrics = make(map[string]tsdb.Metric)
+	var aggMetrics = make(map[string]map[string]tsdb.Metric)
 
 	// Loop over each chunk
 	for _, chunkUUIDs := range uuidChunks {
@@ -215,12 +222,12 @@ func (t *tsdbUpdater) update(startTime time.Time, endTime time.Time, units []mod
 
 		// Merge metrics map of each metric type. Metric map has uuid as key and hence
 		// merging is safe as UUID is "unique" during the given update interval
-		for name, metrics := range chunkAggMetrics {
+		for metricName, metrics := range chunkAggMetrics {
 			// If inner map has not been initialized yet, do it
-			if aggMetrics[name] == nil {
-				aggMetrics[name] = make(tsdb.Metric)
+			if aggMetrics[metricName] == nil {
+				aggMetrics[metricName] = make(map[string]tsdb.Metric)
 			}
-			maps.Copy(aggMetrics[name], metrics)
+			maps.Copy(aggMetrics[metricName], metrics)
 		}
 	}
 
@@ -232,95 +239,123 @@ func (t *tsdbUpdater) update(startTime time.Time, endTime time.Time, units []mod
 	// after field names. That will allow us to dynamically look up struct
 	// field using query name and set the properties.
 	for i := 0; i < len(units); i++ {
+		uuid := units[i].UUID
 		// Ignore units that ran for less than cutoffPeriod seconds and check if
 		// unit has end time stamp. If we decide to populate DB with running units,
 		// EndTS will be zero as we cannot convert unknown time into time stamp.
 		// Check if we EndTS is not zero before ignoring unit. If it is zero, it means
 		// it must be RUNNING unit
-		if units[i].EndedAtTS > 0 &&
-			units[i].TotalWallTime < int64(time.Duration(t.config.CutoffDuration).Seconds()) {
-			ignoredUnits = append(
-				ignoredUnits,
-				units[i].UUID,
-			)
-			units[i].Ignore = 1
+		if units[i].EndedAtTS > 0 {
+			if walltime, ok := units[i].TotalTime["walltime"]; ok {
+				if walltime < models.JSONFloat(time.Duration(t.config.CutoffDuration).Seconds()) {
+					ignoredUnits = append(ignoredUnits, uuid)
+					units[i].Ignore = 1
+				}
+			}
+
 		}
 
 		// Update with CPU metrics
-		if metric, mExists := aggMetrics["avg_cpu_usage"]; mExists {
-			if value, exists := metric[units[i].UUID]; exists {
-				units[i].AveCPUUsage = sanitizeValue(value)
+		if metrics, mExists := aggMetrics["avg_cpu_usage"]; mExists {
+			units[i].AveCPUUsage = make(models.MetricMap)
+			for name, metric := range metrics {
+				if value, exists := metric[uuid]; exists {
+					units[i].AveCPUUsage[name] = sanitizeValue(value)
+				}
 			}
 		}
-		if metric, mExists := aggMetrics["avg_cpu_mem_usage"]; mExists {
-			if value, exists := metric[units[i].UUID]; exists {
-				units[i].AveCPUMemUsage = sanitizeValue(value)
+		if metrics, mExists := aggMetrics["avg_cpu_mem_usage"]; mExists {
+			units[i].AveCPUMemUsage = make(models.MetricMap)
+			for name, metric := range metrics {
+				if value, exists := metric[uuid]; exists {
+					units[i].AveCPUMemUsage[name] = sanitizeValue(value)
+				}
 			}
 		}
-		if metric, mExists := aggMetrics["total_cpu_energy_usage_kwh"]; mExists {
-			if value, exists := metric[units[i].UUID]; exists {
-				units[i].TotalCPUEnergyUsage = sanitizeValue(value)
+		if metrics, mExists := aggMetrics["total_cpu_energy_usage_kwh"]; mExists {
+			units[i].TotalCPUEnergyUsage = make(models.MetricMap)
+			for name, metric := range metrics {
+				if value, exists := metric[uuid]; exists {
+					units[i].TotalCPUEnergyUsage[name] = sanitizeValue(value)
+				}
 			}
 		}
-		if metric, mExists := aggMetrics["total_cpu_emissions_gms"]; mExists {
-			if value, exists := metric[units[i].UUID]; exists {
-				units[i].TotalCPUEmissions = sanitizeValue(value)
+		if metrics, mExists := aggMetrics["total_cpu_emissions_gms"]; mExists {
+			units[i].TotalCPUEmissions = make(models.MetricMap)
+			for name, metric := range metrics {
+				if value, exists := metric[uuid]; exists {
+					units[i].TotalCPUEmissions[name] = sanitizeValue(value)
+				}
 			}
 		}
 
 		// Update with GPU metrics
-		if metric, mExists := aggMetrics["avg_gpu_usage"]; mExists {
-			if value, exists := metric[units[i].UUID]; exists {
-				units[i].AveGPUUsage = sanitizeValue(value)
+		if metrics, mExists := aggMetrics["avg_gpu_usage"]; mExists {
+			units[i].AveGPUUsage = make(models.MetricMap)
+			for name, metric := range metrics {
+				if value, exists := metric[uuid]; exists {
+					units[i].AveGPUUsage[name] = sanitizeValue(value)
+				}
 			}
 		}
-		if metric, mExists := aggMetrics["avg_gpu_mem_usage"]; mExists {
-			if value, exists := metric[units[i].UUID]; exists {
-				units[i].AveGPUMemUsage = sanitizeValue(value)
+		if metrics, mExists := aggMetrics["avg_gpu_mem_usage"]; mExists {
+			units[i].AveGPUMemUsage = make(models.MetricMap)
+			for name, metric := range metrics {
+				if value, exists := metric[uuid]; exists {
+					units[i].AveGPUMemUsage[name] = sanitizeValue(value)
+				}
 			}
 		}
-		if metric, mExists := aggMetrics["total_gpu_energy_usage_kwh"]; mExists {
-			if value, exists := metric[units[i].UUID]; exists {
-				units[i].TotalGPUEnergyUsage = sanitizeValue(value)
+		if metrics, mExists := aggMetrics["total_gpu_energy_usage_kwh"]; mExists {
+			units[i].TotalGPUEnergyUsage = make(models.MetricMap)
+			for name, metric := range metrics {
+				if value, exists := metric[uuid]; exists {
+					units[i].TotalGPUEnergyUsage[name] = sanitizeValue(value)
+				}
 			}
 		}
-		if metric, mExists := aggMetrics["total_gpu_emissions_gms"]; mExists {
-			if value, exists := metric[units[i].UUID]; exists {
-				units[i].TotalGPUEmissions = sanitizeValue(value)
+		if metrics, mExists := aggMetrics["total_gpu_emissions_gms"]; mExists {
+			units[i].TotalGPUEmissions = make(models.MetricMap)
+			for name, metric := range metrics {
+				if value, exists := metric[uuid]; exists {
+					units[i].TotalGPUEmissions[name] = sanitizeValue(value)
+				}
 			}
 		}
 
 		// Update with IO metrics
-		if metric, mExists := aggMetrics["total_io_write_hot_gb"]; mExists {
-			if value, exists := metric[units[i].UUID]; exists {
-				units[i].TotalIOWriteHot = sanitizeValue(value)
+		if metrics, mExists := aggMetrics["total_io_write_stats"]; mExists {
+			units[i].TotalIOWriteStats = make(models.MetricMap)
+			for name, metric := range metrics {
+				if value, exists := metric[uuid]; exists {
+					units[i].TotalIOWriteStats[name] = sanitizeValue(value)
+				}
 			}
 		}
-		if metric, mExists := aggMetrics["total_io_read_hot_gb"]; mExists {
-			if value, exists := metric[units[i].UUID]; exists {
-				units[i].TotalIOReadHot = sanitizeValue(value)
-			}
-		}
-		if metric, mExists := aggMetrics["total_io_write_cold_gb"]; mExists {
-			if value, exists := metric[units[i].UUID]; exists {
-				units[i].TotalIOWriteCold = sanitizeValue(value)
-			}
-		}
-		if metric, mExists := aggMetrics["total_io_read_cold_gb"]; mExists {
-			if value, exists := metric[units[i].UUID]; exists {
-				units[i].TotalIOReadCold = sanitizeValue(value)
+		if metrics, mExists := aggMetrics["total_io_read_stats"]; mExists {
+			units[i].TotalIOReadStats = make(models.MetricMap)
+			for name, metric := range metrics {
+				if value, exists := metric[uuid]; exists {
+					units[i].TotalIOReadStats[name] = sanitizeValue(value)
+				}
 			}
 		}
 
 		// Update with network metrics
-		if metric, mExists := aggMetrics["total_ingress_in_gb"]; mExists {
-			if value, exists := metric[units[i].UUID]; exists {
-				units[i].TotalIngress = sanitizeValue(value)
+		if metrics, mExists := aggMetrics["total_ingress_stats"]; mExists {
+			units[i].TotalIngressStats = make(models.MetricMap)
+			for name, metric := range metrics {
+				if value, exists := metric[uuid]; exists {
+					units[i].TotalIngressStats[name] = sanitizeValue(value)
+				}
 			}
 		}
-		if metric, mExists := aggMetrics["total_outgress_in_gb"]; mExists {
-			if value, exists := metric[units[i].UUID]; exists {
-				units[i].TotalOutgress = sanitizeValue(value)
+		if metrics, mExists := aggMetrics["total_outgress_stats"]; mExists {
+			units[i].TotalOutgressStats = make(models.MetricMap)
+			for name, metric := range metrics {
+				if value, exists := metric[uuid]; exists {
+					units[i].TotalOutgressStats[name] = sanitizeValue(value)
+				}
 			}
 		}
 	}

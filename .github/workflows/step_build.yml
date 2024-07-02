@@ -35,7 +35,7 @@ jobs:
       - name: Upload go build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: build-go-artifacts
+          name: build-artifacts
           path: |
             .build
             .tarballs

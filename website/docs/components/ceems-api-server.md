@@ -90,7 +90,7 @@ manager.
 Currently, CEEMS API server ships SLURM support and soon Openstack support 
 will be added.
 
-### Aggregate metrics
+### Updaters
 
 As CEEMS API server must store aggregate metrics of each compute unit, it must query 
 some sort of external DB that stores time series metrics of the compute units to 

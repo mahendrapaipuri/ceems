@@ -30,8 +30,8 @@ type testCase struct {
 
 var (
 	mockServerUnits = []models.Unit{
-		{UUID: "1000", ClusterID: "slurm-0", ResourceManager: "slurm", Usr: "foousr"},
-		{UUID: "10001", ClusterID: "os-0", ResourceManager: "openstack", Usr: "barusr"},
+		{UUID: "1000", ClusterID: "slurm-0", ResourceManager: "slurm", User: "foousr"},
+		{UUID: "10001", ClusterID: "os-0", ResourceManager: "openstack", User: "barusr"},
 	}
 	mockServerUsage = []models.Usage{
 		{Project: "foo", ClusterID: "slurm-0", ResourceManager: "slurm"},

@@ -173,7 +173,7 @@ const docTemplate = `{
                             "type": "string"
                         },
                         "collectionFormat": "multi",
-                        "description": "cluster ID",
+                        "description": "Cluster ID",
                         "name": "cluster_id",
                         "in": "query"
                     }
@@ -239,7 +239,7 @@ const docTemplate = `{
                             "type": "string"
                         },
                         "collectionFormat": "multi",
-                        "description": "cluster ID",
+                        "description": "Cluster ID",
                         "name": "cluster_id",
                         "in": "query"
                     }
@@ -295,7 +295,7 @@ const docTemplate = `{
                             "type": "string"
                         },
                         "collectionFormat": "multi",
-                        "description": "cluster ID",
+                        "description": "Cluster ID",
                         "name": "cluster_id",
                         "in": "query"
                     },
@@ -405,7 +405,7 @@ const docTemplate = `{
                             "type": "string"
                         },
                         "collectionFormat": "multi",
-                        "description": "cluster ID",
+                        "description": "Cluster ID",
                         "name": "cluster_id",
                         "in": "query"
                     },
@@ -791,7 +791,7 @@ const docTemplate = `{
                             "type": "string"
                         },
                         "collectionFormat": "multi",
-                        "description": "cluster ID",
+                        "description": "Cluster ID",
                         "name": "cluster_id",
                         "in": "query"
                     }
@@ -857,7 +857,7 @@ const docTemplate = `{
                             "type": "string"
                         },
                         "collectionFormat": "multi",
-                        "description": "cluster ID",
+                        "description": "Cluster ID",
                         "name": "cluster_id",
                         "in": "query"
                     }
@@ -1084,6 +1084,12 @@ const docTemplate = `{
                 }
             }
         },
+        "models.MetricMap": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "number"
+            }
+        },
         "models.Project": {
             "type": "object",
             "properties": {
@@ -1131,20 +1137,36 @@ const docTemplate = `{
                     ]
                 },
                 "avg_cpu_mem_usage": {
-                    "description": "Average CPU memory during lifetime of unit",
-                    "type": "number"
+                    "description": "Average CPU memory usage(s) during lifetime of unit",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.MetricMap"
+                        }
+                    ]
                 },
                 "avg_cpu_usage": {
-                    "description": "Average CPU usage during lifetime of unit",
-                    "type": "number"
+                    "description": "Average CPU usage(s) during lifetime of unit",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.MetricMap"
+                        }
+                    ]
                 },
                 "avg_gpu_mem_usage": {
-                    "description": "Average GPU memory during lifetime of unit",
-                    "type": "number"
+                    "description": "Average GPU memory usage(s) during lifetime of unit",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.MetricMap"
+                        }
+                    ]
                 },
                 "avg_gpu_usage": {
-                    "description": "Average GPU usage during lifetime of unit",
-                    "type": "number"
+                    "description": "Average GPU usage(s) during lifetime of unit",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.MetricMap"
+                        }
+                    ]
                 },
                 "cluster_id": {
                     "description": "Identifier of the resource manager that owns compute unit. It is used to differentiate multiple clusters of same resource manager.",
@@ -1170,7 +1192,7 @@ const docTemplate = `{
                     "description": "End timestamp",
                     "type": "integer"
                 },
-                "grp": {
+                "group": {
                     "description": "User group",
                     "type": "string"
                 },
@@ -1207,58 +1229,78 @@ const docTemplate = `{
                     ]
                 },
                 "total_cpu_emissions_gms": {
-                    "description": "Total CPU emissions in grams during lifetime of unit",
-                    "type": "number"
+                    "description": "Total CPU emissions from source(s) in grams during lifetime of unit",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.MetricMap"
+                        }
+                    ]
                 },
                 "total_cpu_energy_usage_kwh": {
-                    "description": "Total CPU energy usage in kWh during lifetime of unit",
-                    "type": "number"
-                },
-                "total_cputime_seconds": {
-                    "description": "Total number of CPU seconds consumed by the unit",
-                    "type": "integer"
+                    "description": "Total CPU energy usage(s) in kWh during lifetime of unit",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.MetricMap"
+                        }
+                    ]
                 },
                 "total_gpu_emissions_gms": {
-                    "description": "Total GPU emissions in grams during lifetime of unit",
-                    "type": "number"
+                    "description": "Total GPU emissions from source(s) in grams during lifetime of unit",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.MetricMap"
+                        }
+                    ]
                 },
                 "total_gpu_energy_usage_kwh": {
-                    "description": "Total GPU energy usage in kWh during lifetime of unit",
-                    "type": "number"
+                    "description": "Total GPU energy usage(s) in kWh during lifetime of unit",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.MetricMap"
+                        }
+                    ]
                 },
-                "total_gputime_seconds": {
-                    "description": "Total number of GPU seconds consumed by the unit",
-                    "type": "integer"
+                "total_ingress_stats": {
+                    "description": "Total Ingress statistics of unit",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.MetricMap"
+                        }
+                    ]
                 },
-                "total_ingress_in_gb": {
-                    "description": "Total ingress traffic in GB of unit",
-                    "type": "number"
+                "total_io_read_stats": {
+                    "description": "Total IO read statistics GB during lifetime of unit",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.MetricMap"
+                        }
+                    ]
                 },
-                "total_io_read_cold_gb": {
-                    "description": "Total IO read on cold storage in GB during lifetime of unit",
-                    "type": "number"
+                "total_io_write_stats": {
+                    "description": "Total IO write statistics during lifetime of unit",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.MetricMap"
+                        }
+                    ]
                 },
-                "total_io_read_hot_gb": {
-                    "description": "Total IO read on hot storage in GB during lifetime of unit",
-                    "type": "number"
+                "total_outgress_stats": {
+                    "description": "Total Outgress statistics of unit",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.MetricMap"
+                        }
+                    ]
                 },
-                "total_io_write_cold_gb": {
-                    "description": "Total IO write on cold storage in GB during lifetime of unit",
-                    "type": "number"
+                "total_time_seconds": {
+                    "description": "Different types of times in seconds consumed by the unit. This map contains at minimum ` + "`" + `walltime` + "`" + `, ` + "`" + `alloc_cputime` + "`" + `, ` + "`" + `alloc_cpumemtime` + "`" + `, ` + "`" + `alloc_gputime` + "`" + ` and ` + "`" + `alloc_gpumem_time` + "`" + ` keys.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.MetricMap"
+                        }
+                    ]
                 },
-                "total_io_write_hot_gb": {
-                    "description": "Total IO write on hot storage in GB during lifetime of unit",
-                    "type": "number"
-                },
-                "total_outgress_in_gb": {
-                    "description": "Total outgress traffic in GB of unit",
-                    "type": "number"
-                },
-                "total_walltime_seconds": {
-                    "description": "Total elapsed wall time in seconds",
-                    "type": "integer"
-                },
-                "usr": {
+                "user": {
                     "description": "Username",
                     "type": "string"
                 },
@@ -1272,23 +1314,43 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "avg_cpu_mem_usage": {
-                    "description": "Average CPU memory during lifetime of project",
-                    "type": "number"
+                    "description": "Average CPU memory usage(s) during lifetime of project",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.MetricMap"
+                        }
+                    ]
                 },
                 "avg_cpu_usage": {
-                    "description": "Average CPU usage during lifetime of project",
-                    "type": "number"
+                    "description": "Average CPU usage(s) during lifetime of project",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.MetricMap"
+                        }
+                    ]
                 },
                 "avg_gpu_mem_usage": {
-                    "description": "Average GPU memory during lifetime of project",
-                    "type": "number"
+                    "description": "Average GPU memory usage(s) during lifetime of project",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.MetricMap"
+                        }
+                    ]
                 },
                 "avg_gpu_usage": {
-                    "description": "Average GPU usage during lifetime of project",
-                    "type": "number"
+                    "description": "Average GPU usage(s) during lifetime of project",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.MetricMap"
+                        }
+                    ]
                 },
                 "cluster_id": {
                     "description": "Identifier of the resource manager that owns compute unit. It is used to differentiate multiple clusters of same resource manager.",
+                    "type": "string"
+                },
+                "group": {
+                    "description": "User group",
                     "type": "string"
                 },
                 "num_units": {
@@ -1304,66 +1366,78 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "total_cpu_emissions_gms": {
-                    "description": "Total CPU emissions in grams during lifetime of project",
-                    "type": "number"
+                    "description": "Total CPU emissions from source(s) in grams during lifetime of project",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.MetricMap"
+                        }
+                    ]
                 },
                 "total_cpu_energy_usage_kwh": {
-                    "description": "Total CPU energy usage in kWh during lifetime of project",
-                    "type": "number"
-                },
-                "total_cpumemtime_seconds": {
-                    "description": "Total number of CPU memory (in MB) seconds consumed by the project",
-                    "type": "integer"
-                },
-                "total_cputime_seconds": {
-                    "description": "Total number of CPU seconds consumed by the project",
-                    "type": "integer"
+                    "description": "Total CPU energy usage(s) in kWh during lifetime of project",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.MetricMap"
+                        }
+                    ]
                 },
                 "total_gpu_emissions_gms": {
-                    "description": "Total GPU emissions in grams during lifetime of project",
-                    "type": "number"
+                    "description": "Total GPU emissions from source(s) in grams during lifetime of project",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.MetricMap"
+                        }
+                    ]
                 },
                 "total_gpu_energy_usage_kwh": {
-                    "description": "Total GPU energy usage in kWh during lifetime of project",
-                    "type": "number"
+                    "description": "Total GPU energy usage(s) in kWh during lifetime of project",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.MetricMap"
+                        }
+                    ]
                 },
-                "total_gpumemtime_seconds": {
-                    "description": "Total number of GPU memory (in MB) seconds consumed by the project",
-                    "type": "integer"
+                "total_ingress_stats": {
+                    "description": "Total Ingress statistics of unit",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.MetricMap"
+                        }
+                    ]
                 },
-                "total_gputime_seconds": {
-                    "description": "Total number of GPU seconds consumed by the project",
-                    "type": "integer"
+                "total_io_read_stats": {
+                    "description": "Total IO read statistics GB during lifetime of unit",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.MetricMap"
+                        }
+                    ]
                 },
-                "total_ingress_in_gb": {
-                    "description": "Total ingress traffic in GB of project",
-                    "type": "number"
+                "total_io_write_stats": {
+                    "description": "Total IO write statistics during lifetime of unit",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.MetricMap"
+                        }
+                    ]
                 },
-                "total_io_read_cold_gb": {
-                    "description": "Total IO read on cold storage in GB during lifetime of project",
-                    "type": "number"
+                "total_outgress_stats": {
+                    "description": "Total Outgress statistics of unit",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.MetricMap"
+                        }
+                    ]
                 },
-                "total_io_read_hot_gb": {
-                    "description": "Total IO read on hot storage in GB during lifetime of project",
-                    "type": "number"
+                "total_time_seconds": {
+                    "description": "Different times in seconds consumed by the unit. This map must contain ` + "`" + `walltime` + "`" + `, ` + "`" + `alloc_cputime` + "`" + `, ` + "`" + `alloc_cpumemtime` + "`" + `, ` + "`" + `alloc_gputime` + "`" + ` and ` + "`" + `alloc_gpumem_time` + "`" + ` keys.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.MetricMap"
+                        }
+                    ]
                 },
-                "total_io_write_cold_gb": {
-                    "description": "Total IO write on cold storage in GB during lifetime of project",
-                    "type": "number"
-                },
-                "total_io_write_hot_gb": {
-                    "description": "Total IO write on hot storage in GB during lifetime of project",
-                    "type": "number"
-                },
-                "total_outgress_in_gb": {
-                    "description": "Total outgress traffic in GB of project",
-                    "type": "number"
-                },
-                "total_walltime_seconds": {
-                    "description": "Total elapsed wall time in seconds consumed by the project",
-                    "type": "integer"
-                },
-                "usr": {
+                "user": {
                     "description": "Username",
                     "type": "string"
                 }
