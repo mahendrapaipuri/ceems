@@ -328,9 +328,9 @@ func main() {
 
 	// Start server
 	server := &http.Server{
-        Addr:              portNum,
-        ReadHeaderTimeout: 3 * time.Second,
-    }
+		Addr:              portNum,
+		ReadHeaderTimeout: 3 * time.Second,
+	}
 
 	// Spinning up the server.
 	err := server.ListenAndServe()
