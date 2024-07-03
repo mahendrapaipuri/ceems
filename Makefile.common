@@ -190,6 +190,8 @@ ifeq ($(CGO_BUILD), 1)
 endif
 	@echo ">> building binaries"
 	$(PROMU) build --prefix $(PREFIX) $(PROMU_BINARIES)
+	@echo ">> building test binaries"
+	$(PROMU_TEST) build --prefix $(PREFIX) $(PROMU_BINARIES)
 
 .PHONY: common-tarball
 common-tarball: promu

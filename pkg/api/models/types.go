@@ -6,9 +6,23 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"slices"
+	"strconv"
 
 	"github.com/prometheus/common/config"
 	"gopkg.in/yaml.v3"
+)
+
+// Infinity and NaN representations
+var (
+	infNaNRepr = []string{
+		"+Inf", "\"+Inf\"", "-Inf", "\"-Inf\"", "+inf", "\"+inf\"",
+		"-inf", "\"-inf\"", "Inf", "\"Inf\"", "inf", "\"inf\"",
+		"Infinity", "\"Infinity\"", "infinity", "\"infinity\"",
+		"-Infinity", "\"-Infinity\"", "-infinity", "\"-infinity\"",
+		"+Infinity", "\"+Infinity\"", "+infinity", "\"+infinity\"",
+		"NaN", "\"NaN\"", "nan", "\"nan\"",
+	}
 )
 
 // Generic is map to store any mixed data types. Only string and int are supported.
@@ -42,7 +56,7 @@ func (g *Generic) Scan(v interface{}) error {
 	case []byte:
 		d = json.NewDecoder(bytes.NewReader(data))
 	default:
-		return fmt.Errorf("cannot scan type %t into Map", v)
+		return fmt.Errorf("cannot scan type %T! into Generic", v)
 	}
 
 	// Ref: Improvable, see https://groups.google.com/g/golang-nuts/c/TDuGDJAIuVM?pli=1
@@ -72,8 +86,137 @@ type Tag = Generic
 // Allocation is a type alias to Generic that stores allocation data of compute units
 type Allocation = Generic
 
+// MetricMap is a type alias to Generic that stores arbritrary metrics as a map
+type MetricMap map[string]JSONFloat
+
+// Value implements Valuer interface
+func (m MetricMap) Value() (driver.Value, error) {
+	var generic []byte
+	var err error
+	if generic, err = json.Marshal(m); err != nil {
+		return nil, err
+	}
+	return driver.Value(string(generic)), nil
+}
+
+// Scan implements Scanner interface
+func (m *MetricMap) Scan(v interface{}) error {
+	if v == nil {
+		return nil
+	}
+
+	// Initialise a json decoder
+	var d *json.Decoder
+
+	switch data := v.(type) {
+	case string:
+		d = json.NewDecoder(bytes.NewReader([]byte(data)))
+	case []byte:
+		d = json.NewDecoder(bytes.NewReader(data))
+	default:
+		return fmt.Errorf("cannot scan type %T! into MetricMap", v)
+	}
+
+	// Ref: Improvable, see https://groups.google.com/g/golang-nuts/c/TDuGDJAIuVM?pli=1
+	// Decode into a tmp var
+	var tmp map[string]JSONFloat
+	if err := d.Decode(&tmp); err != nil {
+		return err
+	}
+	*m = tmp
+	return nil
+}
+
+// // MarshalJSON marshals JSONFloat into byte array
+// func (m *MetricMap) MarshalJSON() ([]byte, error) {
+// 	newMetricMap := *m
+// 	for k, v := range newMetricMap {
+// 		vFloat := v.(float64)
+// 		if math.IsInf(vFloat, 0) || math.IsNaN(vFloat) {
+// 			newMetricMap[k] = vFloat
+// 		}
+// 	}
+// 	return json.Marshal(newMetricMap) // marshal result
+// }
+
+// // UnmarshalJSON unmarshals byte array into MetricMap after converting string to
+// // float64
+// func (m *MetricMap) UnmarshalJSON(v []byte) error {
+// 	// just a regular float value
+// 	var mv map[string]interface{}
+// 	if err := json.Unmarshal(v, &mv); err != nil {
+// 		return err
+// 	}
+
+// 	// Iterate over map and convert all non floats to zero
+// 	for key, valueInt := range mv {
+// 		switch value := valueInt.(type) {
+// 		case float64:
+// 			mv[key] = value
+// 		case string:
+// 			if vFloat, err := strconv.ParseFloat(value, 64); err != nil {
+// 				mv[key] = float64(0)
+// 			} else {
+// 				mv[key] = common.SanitizeFloat(vFloat)
+// 			}
+// 		default:
+// 			mv[key] = 0
+// 		}
+// 	}
+// 	*m = mv
+// 	return nil
+// }
+
 // JSONFloat is a custom float64 that can handle Inf and NaN during JSON (un)marshalling
 type JSONFloat float64
+
+// Value implements Valuer interface
+func (j JSONFloat) Value() (driver.Value, error) {
+	var generic []byte
+	var err error
+	if generic, err = json.Marshal(j); err != nil {
+		return nil, err
+	}
+	return driver.Value(string(generic)), nil
+}
+
+// Scan implements Scanner interface
+func (j *JSONFloat) Scan(v interface{}) error {
+	if v == nil {
+		return nil
+	}
+
+	// Initialise a json decoder
+	var d *json.Decoder
+
+	switch data := v.(type) {
+	case string:
+		if slices.Contains(infNaNRepr, data) {
+			d = json.NewDecoder(bytes.NewReader([]byte("0")))
+		} else {
+			d = json.NewDecoder(bytes.NewReader([]byte(data)))
+		}
+	case []byte:
+		d = json.NewDecoder(bytes.NewReader(data))
+	case float64:
+		if math.IsInf(data, 0) || math.IsNaN(data) {
+			d = json.NewDecoder(bytes.NewReader([]byte("0")))
+		} else {
+			d = json.NewDecoder(bytes.NewReader([]byte(strconv.FormatFloat(data, 'E', -1, 64))))
+		}
+	default:
+		return fmt.Errorf("cannot scan type %T! into JSONFloat", v)
+	}
+
+	// Ref: Improvable, see https://groups.google.com/g/golang-nuts/c/TDuGDJAIuVM?pli=1
+	// Decode into a tmp var
+	var tmp JSONFloat
+	if err := d.Decode(&tmp); err != nil {
+		return err
+	}
+	*j = tmp
+	return nil
+}
 
 // MarshalJSON marshals JSONFloat into byte array
 func (j JSONFloat) MarshalJSON() ([]byte, error) {
@@ -88,16 +231,8 @@ func (j JSONFloat) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON unmarshals byte array into JSONFloat
 func (j *JSONFloat) UnmarshalJSON(v []byte) error {
-	if s := string(v); s == "+Inf" || s == "-Inf" || s == "NaN" {
-		// if +Inf/-Inf indiciates infinity
-		if s == "+Inf" {
-			*j = JSONFloat(math.Inf(1))
-			return nil
-		} else if s == "-Inf" {
-			*j = JSONFloat(math.Inf(-1))
-			return nil
-		}
-		*j = JSONFloat(math.NaN())
+	if s := string(v); slices.Contains(infNaNRepr, s) {
+		*j = JSONFloat(0)
 		return nil
 	}
 	// just a regular float value
@@ -138,7 +273,7 @@ func (l *List) Scan(v interface{}) error {
 	case []byte:
 		d = json.NewDecoder(bytes.NewReader(data))
 	default:
-		return fmt.Errorf("cannot scan type %t into Map", v)
+		return fmt.Errorf("cannot scan type %T! into List", v)
 	}
 
 	// Ref: Improvable, see https://groups.google.com/g/golang-nuts/c/TDuGDJAIuVM?pli=1

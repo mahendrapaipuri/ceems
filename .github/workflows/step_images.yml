@@ -51,7 +51,7 @@ jobs:
       - name: Download go build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: build-go-artifacts
+          name: build-artifacts
 
       - name: Setup build environment
         run: |

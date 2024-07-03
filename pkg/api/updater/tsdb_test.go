@@ -54,20 +54,38 @@ func mockInstanceConfig(url string) Instance {
 ---
 cutoff_duration: 2m
 queries:
-    avg_cpu_usage: foo
-    avg_cpu_mem_usage: foo
-    total_cpu_energy_usage_kwh: foo
-    total_cpu_emissions_gms: foo
-    avg_gpu_usage: foo
-    avg_gpu_mem_usage: foo
-    total_gpu_energy_usage_kwh: foo
-    total_gpu_emissions_gms: foo
-    total_io_write_hot_gb: foo
-    total_io_read_hot_gb: foo
-    total_io_write_cold_gb: foo
-    total_io_read_cold_gb: foo
-    total_ingress_in_gb: foo
-    total_outgress_in_gb: foo`
+    avg_cpu_usage: 
+      usage: foo
+    avg_cpu_mem_usage:
+      usage: foo
+    total_cpu_energy_usage_kwh:
+      usage: foo
+    total_cpu_emissions_gms:
+      usage: foo
+    avg_gpu_usage:
+      usage: foo
+    avg_gpu_mem_usage:
+      usage: foo
+    total_gpu_energy_usage_kwh:
+      usage: foo
+    total_gpu_emissions_gms:
+      usage: foo
+    total_io_write_stats:
+      bytes: foo
+      requests: bar
+    total_io_read_stats:
+      bytes: foo
+      requests: bar
+    total_ingress_stats:
+      bytes: foo
+      packets: bar
+      drops: foo
+      errors: bar
+    total_outgress_stats:
+      bytes: foo
+      packets: bar
+      drops: foo
+      errors: bar`
 	var extraConfig yaml.Node
 	if err := yaml.Unmarshal([]byte(config), &extraConfig); err != nil {
 		fmt.Printf("failed to unmarshall config: %s\n", err)
@@ -103,73 +121,137 @@ func TestTSDBUpdateSuccessSingleInstance(t *testing.T) {
 			},
 			Units: []models.Unit{
 				{
-					UUID:          "1",
-					StartedAtTS:   currTime.Add(-3000 * time.Second).UnixMilli(),
-					EndedAtTS:     currTime.UnixMilli(),
-					TotalWallTime: int64(3000),
+					UUID:        "1",
+					StartedAtTS: currTime.Add(-3000 * time.Second).UnixMilli(),
+					EndedAtTS:   currTime.UnixMilli(),
+					TotalTime: models.MetricMap{
+						"walltime":         models.JSONFloat(3000),
+						"alloc_cputime":    models.JSONFloat(0),
+						"alloc_cpumemtime": models.JSONFloat(0),
+						"alloc_gputime":    models.JSONFloat(0),
+						"alloc_gpumemtime": models.JSONFloat(0),
+					},
 				},
 				{
-					UUID:          "2",
-					StartedAtTS:   currTime.Add(-3000 * time.Second).UnixMilli(),
-					EndedAtTS:     currTime.UnixMilli(),
-					TotalWallTime: int64(3000),
+					UUID:        "2",
+					StartedAtTS: currTime.Add(-3000 * time.Second).UnixMilli(),
+					EndedAtTS:   currTime.UnixMilli(),
+					TotalTime: models.MetricMap{
+						"walltime":         models.JSONFloat(3000),
+						"alloc_cputime":    models.JSONFloat(0),
+						"alloc_cpumemtime": models.JSONFloat(0),
+						"alloc_gputime":    models.JSONFloat(0),
+						"alloc_gpumemtime": models.JSONFloat(0),
+					},
 				},
 				{
-					UUID:          "3",
-					StartedAtTS:   currTime.Add(-30 * time.Second).UnixMilli(),
-					EndedAtTS:     currTime.UnixMilli(),
-					TotalWallTime: int64(30),
+					UUID:        "3",
+					StartedAtTS: currTime.Add(-30 * time.Second).UnixMilli(),
+					EndedAtTS:   currTime.UnixMilli(),
+					TotalTime: models.MetricMap{
+						"walltime":         models.JSONFloat(30),
+						"alloc_cputime":    models.JSONFloat(0),
+						"alloc_cpumemtime": models.JSONFloat(0),
+						"alloc_gputime":    models.JSONFloat(0),
+						"alloc_gpumemtime": models.JSONFloat(0),
+					},
 				},
 			},
 		},
 	}
 	expectedUnits := []models.Unit{
 		{
-			UUID:                "1",
-			StartedAtTS:         currTime.Add(-3000 * time.Second).UnixMilli(),
-			EndedAtTS:           currTime.UnixMilli(),
-			TotalWallTime:       int64(3000),
-			AveCPUUsage:         1.1,
-			AveCPUMemUsage:      1.1,
-			TotalCPUEnergyUsage: 1.1,
-			TotalCPUEmissions:   1.1,
-			AveGPUUsage:         1.1,
-			AveGPUMemUsage:      1.1,
-			TotalGPUEnergyUsage: 1.1,
-			TotalGPUEmissions:   1.1,
-			TotalIOWriteHot:     1.1,
-			TotalIOWriteCold:    1.1,
-			TotalIOReadHot:      1.1,
-			TotalIOReadCold:     1.1,
-			TotalIngress:        1.1,
-			TotalOutgress:       1.1,
+			UUID:        "1",
+			StartedAtTS: currTime.Add(-3000 * time.Second).UnixMilli(),
+			EndedAtTS:   currTime.UnixMilli(),
+			TotalTime: models.MetricMap{
+				"walltime":         models.JSONFloat(3000),
+				"alloc_cputime":    models.JSONFloat(0),
+				"alloc_cpumemtime": models.JSONFloat(0),
+				"alloc_gputime":    models.JSONFloat(0),
+				"alloc_gpumemtime": models.JSONFloat(0),
+			},
+			AveCPUUsage:         models.MetricMap{"usage": models.JSONFloat(1.1)},
+			AveCPUMemUsage:      models.MetricMap{"usage": models.JSONFloat(1.1)},
+			TotalCPUEnergyUsage: models.MetricMap{"usage": models.JSONFloat(1.1)},
+			TotalCPUEmissions:   models.MetricMap{"usage": models.JSONFloat(1.1)},
+			AveGPUUsage:         models.MetricMap{"usage": models.JSONFloat(1.1)},
+			AveGPUMemUsage:      models.MetricMap{"usage": models.JSONFloat(1.1)},
+			TotalGPUEnergyUsage: models.MetricMap{"usage": models.JSONFloat(1.1)},
+			TotalGPUEmissions:   models.MetricMap{"usage": models.JSONFloat(1.1)},
+			TotalIOWriteStats:   models.MetricMap{"bytes": models.JSONFloat(1.1), "requests": models.JSONFloat(1.1)},
+			TotalIOReadStats:    models.MetricMap{"bytes": models.JSONFloat(1.1), "requests": models.JSONFloat(1.1)},
+			TotalIngressStats: models.MetricMap{
+				"bytes":   models.JSONFloat(1.1),
+				"packets": models.JSONFloat(1.1),
+				"drops":   models.JSONFloat(1.1),
+				"errors":  models.JSONFloat(1.1),
+			},
+			TotalOutgressStats: models.MetricMap{
+				"bytes":   models.JSONFloat(1.1),
+				"packets": models.JSONFloat(1.1),
+				"drops":   models.JSONFloat(1.1),
+				"errors":  models.JSONFloat(1.1),
+			},
 		},
 		{
-			UUID:                "2",
-			StartedAtTS:         currTime.Add(-3000 * time.Second).UnixMilli(),
-			EndedAtTS:           currTime.UnixMilli(),
-			TotalWallTime:       int64(3000),
-			AveCPUUsage:         2.2,
-			AveCPUMemUsage:      2.2,
-			TotalCPUEnergyUsage: 2.2,
-			TotalCPUEmissions:   2.2,
-			AveGPUUsage:         2.2,
-			AveGPUMemUsage:      2.2,
-			TotalGPUEnergyUsage: 2.2,
-			TotalGPUEmissions:   2.2,
-			TotalIOWriteHot:     2.2,
-			TotalIOWriteCold:    2.2,
-			TotalIOReadHot:      2.2,
-			TotalIOReadCold:     2.2,
-			TotalIngress:        2.2,
-			TotalOutgress:       2.2,
+			UUID:        "2",
+			StartedAtTS: currTime.Add(-3000 * time.Second).UnixMilli(),
+			EndedAtTS:   currTime.UnixMilli(),
+			TotalTime: models.MetricMap{
+				"walltime":         models.JSONFloat(3000),
+				"alloc_cputime":    models.JSONFloat(0),
+				"alloc_cpumemtime": models.JSONFloat(0),
+				"alloc_gputime":    models.JSONFloat(0),
+				"alloc_gpumemtime": models.JSONFloat(0),
+			},
+			AveCPUUsage:         models.MetricMap{"usage": models.JSONFloat(2.2)},
+			AveCPUMemUsage:      models.MetricMap{"usage": models.JSONFloat(2.2)},
+			TotalCPUEnergyUsage: models.MetricMap{"usage": models.JSONFloat(2.2)},
+			TotalCPUEmissions:   models.MetricMap{"usage": models.JSONFloat(2.2)},
+			AveGPUUsage:         models.MetricMap{"usage": models.JSONFloat(2.2)},
+			AveGPUMemUsage:      models.MetricMap{"usage": models.JSONFloat(2.2)},
+			TotalGPUEnergyUsage: models.MetricMap{"usage": models.JSONFloat(2.2)},
+			TotalGPUEmissions:   models.MetricMap{"usage": models.JSONFloat(2.2)},
+			TotalIOWriteStats:   models.MetricMap{"bytes": models.JSONFloat(2.2), "requests": models.JSONFloat(2.2)},
+			TotalIOReadStats:    models.MetricMap{"bytes": models.JSONFloat(2.2), "requests": models.JSONFloat(2.2)},
+			TotalIngressStats: models.MetricMap{
+				"bytes":   models.JSONFloat(2.2),
+				"packets": models.JSONFloat(2.2),
+				"drops":   models.JSONFloat(2.2),
+				"errors":  models.JSONFloat(2.2),
+			},
+			TotalOutgressStats: models.MetricMap{
+				"bytes":   models.JSONFloat(2.2),
+				"packets": models.JSONFloat(2.2),
+				"drops":   models.JSONFloat(2.2),
+				"errors":  models.JSONFloat(2.2),
+			},
 		},
 		{
-			UUID:          "3",
-			StartedAtTS:   currTime.Add(-30 * time.Second).UnixMilli(),
-			EndedAtTS:     currTime.UnixMilli(),
-			TotalWallTime: int64(30),
-			Ignore:        1,
+			UUID:        "3",
+			StartedAtTS: currTime.Add(-30 * time.Second).UnixMilli(),
+			EndedAtTS:   currTime.UnixMilli(),
+			TotalTime: models.MetricMap{
+				"walltime":         models.JSONFloat(30),
+				"alloc_cputime":    models.JSONFloat(0),
+				"alloc_cpumemtime": models.JSONFloat(0),
+				"alloc_gputime":    models.JSONFloat(0),
+				"alloc_gpumemtime": models.JSONFloat(0),
+			},
+			Ignore:              1,
+			AveCPUUsage:         models.MetricMap{},
+			AveCPUMemUsage:      models.MetricMap{},
+			TotalCPUEnergyUsage: models.MetricMap{},
+			TotalCPUEmissions:   models.MetricMap{},
+			AveGPUUsage:         models.MetricMap{},
+			AveGPUMemUsage:      models.MetricMap{},
+			TotalGPUEnergyUsage: models.MetricMap{},
+			TotalGPUEmissions:   models.MetricMap{},
+			TotalIOWriteStats:   models.MetricMap{},
+			TotalIOReadStats:    models.MetricMap{},
+			TotalIngressStats:   models.MetricMap{},
+			TotalOutgressStats:  models.MetricMap{},
 		},
 	}
 
@@ -179,8 +261,10 @@ func TestTSDBUpdateSuccessSingleInstance(t *testing.T) {
 	}
 
 	updatedUnits := tsdb.Update(time.Now().Add(-5*time.Minute), time.Now(), units)
-	if !reflect.DeepEqual(updatedUnits[0].Units, expectedUnits) {
-		t.Errorf("expected %#v \n got %#v", expectedUnits, updatedUnits[0].Units)
+	for i := 0; i < len(expectedUnits); i++ {
+		if !reflect.DeepEqual(updatedUnits[0].Units[i], expectedUnits[i]) {
+			t.Errorf("expected %#v \n got %#v", expectedUnits[i], updatedUnits[0].Units[i])
+		}
 	}
 }
 
@@ -202,45 +286,81 @@ func TestTSDBUpdateFailMaxDuration(t *testing.T) {
 			},
 			Units: []models.Unit{
 				{
-					UUID:          "1",
-					StartedAtTS:   currTime.Add(-3 * time.Second).UnixMilli(),
-					EndedAtTS:     currTime.UnixMilli(),
-					TotalWallTime: int64(3000),
+					UUID:        "1",
+					StartedAtTS: currTime.Add(-3 * time.Second).UnixMilli(),
+					EndedAtTS:   currTime.UnixMilli(),
+					TotalTime: models.MetricMap{
+						"walltime":         models.JSONFloat(3000),
+						"alloc_cputime":    models.JSONFloat(0),
+						"alloc_cpumemtime": models.JSONFloat(0),
+						"alloc_gputime":    models.JSONFloat(0),
+						"alloc_gpumemtime": models.JSONFloat(0),
+					},
 				},
 				{
-					UUID:          "2",
-					StartedAtTS:   currTime.Add(-3 * time.Second).UnixMilli(),
-					EndedAtTS:     currTime.UnixMilli(),
-					TotalWallTime: int64(3000),
+					UUID:        "2",
+					StartedAtTS: currTime.Add(-3 * time.Second).UnixMilli(),
+					EndedAtTS:   currTime.UnixMilli(),
+					TotalTime: models.MetricMap{
+						"walltime":         models.JSONFloat(3000),
+						"alloc_cputime":    models.JSONFloat(0),
+						"alloc_cpumemtime": models.JSONFloat(0),
+						"alloc_gputime":    models.JSONFloat(0),
+						"alloc_gpumemtime": models.JSONFloat(0),
+					},
 				},
 				{
-					UUID:          "3",
-					StartedAtTS:   currTime.Add(-3 * time.Second).UnixMilli(),
-					EndedAtTS:     currTime.UnixMilli(),
-					TotalWallTime: int64(3),
+					UUID:        "3",
+					StartedAtTS: currTime.Add(-3 * time.Second).UnixMilli(),
+					EndedAtTS:   currTime.UnixMilli(),
+					TotalTime: models.MetricMap{
+						"walltime":         models.JSONFloat(3),
+						"alloc_cputime":    models.JSONFloat(0),
+						"alloc_cpumemtime": models.JSONFloat(0),
+						"alloc_gputime":    models.JSONFloat(0),
+						"alloc_gpumemtime": models.JSONFloat(0),
+					},
 				},
 			},
 		},
 	}
 	expectedUnits := []models.Unit{
 		{
-			UUID:          "1",
-			StartedAtTS:   currTime.Add(-3 * time.Second).UnixMilli(),
-			EndedAtTS:     currTime.UnixMilli(),
-			TotalWallTime: int64(3000),
+			UUID:        "1",
+			StartedAtTS: currTime.Add(-3 * time.Second).UnixMilli(),
+			EndedAtTS:   currTime.UnixMilli(),
+			TotalTime: models.MetricMap{
+				"walltime":         models.JSONFloat(3000),
+				"alloc_cputime":    models.JSONFloat(0),
+				"alloc_cpumemtime": models.JSONFloat(0),
+				"alloc_gputime":    models.JSONFloat(0),
+				"alloc_gpumemtime": models.JSONFloat(0),
+			},
 		},
 		{
-			UUID:          "2",
-			StartedAtTS:   currTime.Add(-3 * time.Second).UnixMilli(),
-			EndedAtTS:     currTime.UnixMilli(),
-			TotalWallTime: int64(3000),
+			UUID:        "2",
+			StartedAtTS: currTime.Add(-3 * time.Second).UnixMilli(),
+			EndedAtTS:   currTime.UnixMilli(),
+			TotalTime: models.MetricMap{
+				"walltime":         models.JSONFloat(3000),
+				"alloc_cputime":    models.JSONFloat(0),
+				"alloc_cpumemtime": models.JSONFloat(0),
+				"alloc_gputime":    models.JSONFloat(0),
+				"alloc_gpumemtime": models.JSONFloat(0),
+			},
 		},
 		{
-			UUID:          "3",
-			StartedAtTS:   currTime.Add(-3 * time.Second).UnixMilli(),
-			EndedAtTS:     currTime.UnixMilli(),
-			TotalWallTime: int64(3),
-			Ignore:        1,
+			UUID:        "3",
+			StartedAtTS: currTime.Add(-3 * time.Second).UnixMilli(),
+			EndedAtTS:   currTime.UnixMilli(),
+			TotalTime: models.MetricMap{
+				"walltime":         models.JSONFloat(3),
+				"alloc_cputime":    models.JSONFloat(0),
+				"alloc_cpumemtime": models.JSONFloat(0),
+				"alloc_gputime":    models.JSONFloat(0),
+				"alloc_gpumemtime": models.JSONFloat(0),
+			},
+			Ignore: 1,
 		},
 	}
 
@@ -298,9 +418,27 @@ func TestTSDBUpdateFailNoTSDB(t *testing.T) {
 				Updaters: []string{"default"},
 			},
 			Units: []models.Unit{
-				{UUID: "1", EndedAtTS: int64(10000), TotalWallTime: int64(3000)},
-				{UUID: "2", EndedAtTS: int64(10000), TotalWallTime: int64(3000)},
-				{UUID: "3", EndedAtTS: int64(10000), TotalWallTime: int64(30)},
+				{UUID: "1", EndedAtTS: int64(10000), TotalTime: models.MetricMap{
+					"walltime":         models.JSONFloat(3000),
+					"alloc_cputime":    models.JSONFloat(0),
+					"alloc_cpumemtime": models.JSONFloat(0),
+					"alloc_gputime":    models.JSONFloat(0),
+					"alloc_gpumemtime": models.JSONFloat(0),
+				}},
+				{UUID: "2", EndedAtTS: int64(10000), TotalTime: models.MetricMap{
+					"walltime":         models.JSONFloat(3000),
+					"alloc_cputime":    models.JSONFloat(0),
+					"alloc_cpumemtime": models.JSONFloat(0),
+					"alloc_gputime":    models.JSONFloat(0),
+					"alloc_gpumemtime": models.JSONFloat(0),
+				}},
+				{UUID: "3", EndedAtTS: int64(10000), TotalTime: models.MetricMap{
+					"walltime":         models.JSONFloat(30),
+					"alloc_cputime":    models.JSONFloat(0),
+					"alloc_cpumemtime": models.JSONFloat(0),
+					"alloc_gputime":    models.JSONFloat(0),
+					"alloc_gpumemtime": models.JSONFloat(0),
+				}},
 			},
 		},
 	}

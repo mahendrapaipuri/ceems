@@ -39,12 +39,8 @@ jobs:
     needs: [test-lint]
     uses: ./.github/workflows/step_tests-e2e.yml
 
-  build:
-    needs: [test-unit, test-e2e]
-    uses: ./.github/workflows/step_build.yml
-
   cross-build:
-    needs: [build]
+    needs: [test-unit, test-e2e]
     uses: ./.github/workflows/step_cross-build.yml
 
   packaging:

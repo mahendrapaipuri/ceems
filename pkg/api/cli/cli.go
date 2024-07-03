@@ -21,6 +21,7 @@ import (
 	"github.com/mahendrapaipuri/ceems/pkg/api/http"
 	"github.com/mahendrapaipuri/ceems/pkg/api/resource"
 	"github.com/mahendrapaipuri/ceems/pkg/api/updater"
+	"github.com/mattn/go-sqlite3"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/common/promlog"
@@ -150,6 +151,14 @@ func (b *CEEMSServer) Main() error {
 	_, err := b.App.Parse(os.Args[1:])
 	if err != nil {
 		return fmt.Errorf("failed to parse CLI flags: %s", err)
+	}
+
+	// Check SQLite version. Only versions >= 3.38.0 are supported as we are using
+	// JSON functions.
+	// Version number ref: https://www.sqlite.org/versionnumbers.html
+	sqliteVersion, sqliteVersionNumber, _ := sqlite3.Version()
+	if sqliteVersionNumber < 3038000 {
+		return fmt.Errorf("require SQLite >= 3.38.0. Current version is %s", sqliteVersion)
 	}
 
 	// Get absolute config file path global variable that will be used in resource manager

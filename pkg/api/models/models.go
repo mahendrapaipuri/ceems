@@ -21,8 +21,8 @@ type Unit struct {
 	UUID                string     `json:"uuid"                                 sql:"uuid"                       sqlitetype:"text"`    // Unique identifier of unit. It can be Job ID for batch jobs, UUID for pods in k8s or VMs in Openstack
 	Name                string     `json:"name,omitempty"                       sql:"name"                       sqlitetype:"text"`    // Name of compute unit
 	Project             string     `json:"project,omitempty"                    sql:"project"                    sqlitetype:"text"`    // Account in batch systems, Tenant in Openstack, Namespace in k8s
-	Grp                 string     `json:"grp,omitempty"                        sql:"grp"                        sqlitetype:"text"`    // User group
-	Usr                 string     `json:"usr,omitempty"                        sql:"usr"                        sqlitetype:"text"`    // Username
+	Group               string     `json:"group,omitempty"                      sql:"groupname"                  sqlitetype:"text"`    // User group
+	User                string     `json:"user,omitempty"                       sql:"username"                   sqlitetype:"text"`    // Username
 	CreatedAt           string     `json:"created_at,omitempty"                 sql:"created_at"                 sqlitetype:"text"`    // Creation time
 	StartedAt           string     `json:"started_at,omitempty"                 sql:"started_at"                 sqlitetype:"text"`    // Start time
 	EndedAt             string     `json:"ended_at,omitempty"                   sql:"ended_at"                   sqlitetype:"text"`    // End time
@@ -32,25 +32,19 @@ type Unit struct {
 	Elapsed             string     `json:"elapsed,omitempty"                    sql:"elapsed"                    sqlitetype:"text"`    // Human readable total elapsed time string
 	State               string     `json:"state,omitempty"                      sql:"state"                      sqlitetype:"text"`    // Current state of unit
 	Allocation          Allocation `json:"allocation,omitempty"                 sql:"allocation"                 sqlitetype:"text"`    // Allocation map of unit. Only string and int64 values are supported in map
-	TotalWallTime       int64      `json:"total_walltime_seconds,omitempty"     sql:"total_walltime_seconds"     sqlitetype:"integer"` // Total elapsed wall time in seconds
-	TotalCPUTime        int64      `json:"total_cputime_seconds,omitempty"      sql:"total_cputime_seconds"      sqlitetype:"integer"` // Total number of CPU seconds consumed by the unit
-	TotalGPUTime        int64      `json:"total_gputime_seconds,omitempty"      sql:"total_gputime_seconds"      sqlitetype:"integer"` // Total number of GPU seconds consumed by the unit
-	TotalCPUMemTime     int64      `json:"-"                                    sql:"total_cpumemtime_seconds"   sqlitetype:"integer"` // Total number of CPU memory (in MB) seconds consumed by the unit. This is used internally to update aggregate metrics
-	TotalGPUMemTime     int64      `json:"-"                                    sql:"total_gpumemtime_seconds"   sqlitetype:"integer"` // Total number of GPU memory (in MB) seconds consumed by the unit. This is used internally to update aggregate metrics
-	AveCPUUsage         JSONFloat  `json:"avg_cpu_usage,omitempty"              sql:"avg_cpu_usage"              sqlitetype:"real"`    // Average CPU usage during lifetime of unit
-	AveCPUMemUsage      JSONFloat  `json:"avg_cpu_mem_usage,omitempty"          sql:"avg_cpu_mem_usage"          sqlitetype:"real"`    // Average CPU memory during lifetime of unit
-	TotalCPUEnergyUsage JSONFloat  `json:"total_cpu_energy_usage_kwh,omitempty" sql:"total_cpu_energy_usage_kwh" sqlitetype:"real"`    // Total CPU energy usage in kWh during lifetime of unit
-	TotalCPUEmissions   JSONFloat  `json:"total_cpu_emissions_gms,omitempty"    sql:"total_cpu_emissions_gms"    sqlitetype:"real"`    // Total CPU emissions in grams during lifetime of unit
-	AveGPUUsage         JSONFloat  `json:"avg_gpu_usage,omitempty"              sql:"avg_gpu_usage"              sqlitetype:"real"`    // Average GPU usage during lifetime of unit
-	AveGPUMemUsage      JSONFloat  `json:"avg_gpu_mem_usage,omitempty"          sql:"avg_gpu_mem_usage"          sqlitetype:"real"`    // Average GPU memory during lifetime of unit
-	TotalGPUEnergyUsage JSONFloat  `json:"total_gpu_energy_usage_kwh,omitempty" sql:"total_gpu_energy_usage_kwh" sqlitetype:"real"`    // Total GPU energy usage in kWh during lifetime of unit
-	TotalGPUEmissions   JSONFloat  `json:"total_gpu_emissions_gms,omitempty"    sql:"total_gpu_emissions_gms"    sqlitetype:"real"`    // Total GPU emissions in grams during lifetime of unit
-	TotalIOWriteHot     JSONFloat  `json:"total_io_write_hot_gb,omitempty"      sql:"total_io_write_hot_gb"      sqlitetype:"real"`    // Total IO write on hot storage in GB during lifetime of unit
-	TotalIOReadHot      JSONFloat  `json:"total_io_read_hot_gb,omitempty"       sql:"total_io_read_hot_gb"       sqlitetype:"real"`    // Total IO read on hot storage in GB during lifetime of unit
-	TotalIOWriteCold    JSONFloat  `json:"total_io_write_cold_gb,omitempty"     sql:"total_io_write_cold_gb"     sqlitetype:"real"`    // Total IO write on cold storage in GB during lifetime of unit
-	TotalIOReadCold     JSONFloat  `json:"total_io_read_cold_gb,omitempty"      sql:"total_io_read_cold_gb"      sqlitetype:"real"`    // Total IO read on cold storage in GB during lifetime of unit
-	TotalIngress        JSONFloat  `json:"total_ingress_in_gb,omitempty"        sql:"total_ingress_in_gb"        sqlitetype:"real"`    // Total ingress traffic in GB of unit
-	TotalOutgress       JSONFloat  `json:"total_outgress_in_gb,omitempty"       sql:"total_outgress_in_gb"       sqlitetype:"real"`    // Total outgress traffic in GB of unit
+	TotalTime           MetricMap  `json:"total_time_seconds,omitempty"         sql:"total_time_seconds"         sqlitetype:"text"`    // Different types of times in seconds consumed by the unit. This map contains at minimum `walltime`, `alloc_cputime`, `alloc_cpumemtime`, `alloc_gputime` and `alloc_gpumem_time` keys.
+	AveCPUUsage         MetricMap  `json:"avg_cpu_usage,omitempty"              sql:"avg_cpu_usage"              sqlitetype:"text"`    // Average CPU usage(s) during lifetime of unit
+	AveCPUMemUsage      MetricMap  `json:"avg_cpu_mem_usage,omitempty"          sql:"avg_cpu_mem_usage"          sqlitetype:"text"`    // Average CPU memory usage(s) during lifetime of unit
+	TotalCPUEnergyUsage MetricMap  `json:"total_cpu_energy_usage_kwh,omitempty" sql:"total_cpu_energy_usage_kwh" sqlitetype:"text"`    // Total CPU energy usage(s) in kWh during lifetime of unit
+	TotalCPUEmissions   MetricMap  `json:"total_cpu_emissions_gms,omitempty"    sql:"total_cpu_emissions_gms"    sqlitetype:"text"`    // Total CPU emissions from source(s) in grams during lifetime of unit
+	AveGPUUsage         MetricMap  `json:"avg_gpu_usage,omitempty"              sql:"avg_gpu_usage"              sqlitetype:"text"`    // Average GPU usage(s) during lifetime of unit
+	AveGPUMemUsage      MetricMap  `json:"avg_gpu_mem_usage,omitempty"          sql:"avg_gpu_mem_usage"          sqlitetype:"text"`    // Average GPU memory usage(s) during lifetime of unit
+	TotalGPUEnergyUsage MetricMap  `json:"total_gpu_energy_usage_kwh,omitempty" sql:"total_gpu_energy_usage_kwh" sqlitetype:"text"`    // Total GPU energy usage(s) in kWh during lifetime of unit
+	TotalGPUEmissions   MetricMap  `json:"total_gpu_emissions_gms,omitempty"    sql:"total_gpu_emissions_gms"    sqlitetype:"text"`    // Total GPU emissions from source(s) in grams during lifetime of unit
+	TotalIOWriteStats   MetricMap  `json:"total_io_write_stats,omitempty"       sql:"total_io_write_stats"       sqlitetype:"text"`    // Total IO write statistics during lifetime of unit
+	TotalIOReadStats    MetricMap  `json:"total_io_read_stats,omitempty"        sql:"total_io_read_stats"        sqlitetype:"text"`    // Total IO read statistics GB during lifetime of unit
+	TotalIngressStats   MetricMap  `json:"total_ingress_stats,omitempty"        sql:"total_ingress_stats"        sqlitetype:"text"`    // Total Ingress statistics of unit
+	TotalOutgressStats  MetricMap  `json:"total_outgress_stats,omitempty"       sql:"total_outgress_stats"       sqlitetype:"text"`    // Total Outgress statistics of unit
 	Tags                Tag        `json:"tags,omitempty"                       sql:"tags"                       sqlitetype:"text"`    // A map to store generic info. String and int64 are valid value types of map
 	Ignore              int        `json:"-"                                    sql:"ignore"                     sqlitetype:"integer"` // Whether to ignore unit
 	NumUpdates          int64      `json:"-"                                    sql:"num_updates"                sqlitetype:"integer"` // Number of updates. This is used internally to update aggregate metrics
@@ -76,32 +70,27 @@ func (u Unit) TagMap(keyTag string, valueTag string) map[string]string {
 // Usage statistics of each project/tenant/namespace
 type Usage struct {
 	ID                  int64     `json:"-"                                    sql:"id"                         sqlitetype:"integer not null primary key"`
-	ClusterID           string    `json:"cluster_id,omitempty"                 sql:"cluster_id"                 sqlitetype:"text"`    // Identifier of the resource manager that owns compute unit. It is used to differentiate multiple clusters of same resource manager.
-	ResourceManager     string    `json:"resource_manager,omitempty"           sql:"resource_manager"           sqlitetype:"text"`    // Name of the resource manager that owns project. Eg slurm, openstack, kubernetes, etc
+	ClusterID           string    `json:"cluster_id"                           sql:"cluster_id"                 sqlitetype:"text"`    // Identifier of the resource manager that owns compute unit. It is used to differentiate multiple clusters of same resource manager.
+	ResourceManager     string    `json:"resource_manager"                     sql:"resource_manager"           sqlitetype:"text"`    // Name of the resource manager that owns project. Eg slurm, openstack, kubernetes, etc
 	NumUnits            int64     `json:"num_units"                            sql:"num_units"                  sqlitetype:"integer"` // Number of consumed units
 	Project             string    `json:"project"                              sql:"project"                    sqlitetype:"text"`    // Account in batch systems, Tenant in Openstack, Namespace in k8s
-	Usr                 string    `json:"usr"                                  sql:"usr"                        sqlitetype:"text"`    // Username
+	Group               string    `json:"group"                                sql:"groupname"                  sqlitetype:"text"`    // User group
+	User                string    `json:"user"                                 sql:"username"                   sqlitetype:"text"`    // Username
 	LastUpdatedAt       string    `json:"-"                                    sql:"last_updated_at"            sqlitetype:"text"`    // Last updated time. It can be used to clean up DB
-	TotalWallTime       int64     `json:"total_walltime_seconds,omitempty"     sql:"total_walltime_seconds"     sqlitetype:"integer"` // Total elapsed wall time in seconds consumed by the project
-	TotalCPUTime        int64     `json:"total_cputime_seconds,omitempty"      sql:"total_cputime_seconds"      sqlitetype:"integer"` // Total number of CPU seconds consumed by the project
-	TotalGPUTime        int64     `json:"total_gputime_seconds,omitempty"      sql:"total_gputime_seconds"      sqlitetype:"integer"` // Total number of GPU seconds consumed by the project
-	TotalCPUMemTime     int64     `json:"total_cpumemtime_seconds,omitempty"   sql:"total_cpumemtime_seconds"   sqlitetype:"integer"` // Total number of CPU memory (in MB) seconds consumed by the project
-	TotalGPUMemTime     int64     `json:"total_gpumemtime_seconds,omitempty"   sql:"total_gpumemtime_seconds"   sqlitetype:"integer"` // Total number of GPU memory (in MB) seconds consumed by the project
-	AveCPUUsage         JSONFloat `json:"avg_cpu_usage,omitempty"              sql:"avg_cpu_usage"              sqlitetype:"real"`    // Average CPU usage during lifetime of project
-	AveCPUMemUsage      JSONFloat `json:"avg_cpu_mem_usage,omitempty"          sql:"avg_cpu_mem_usage"          sqlitetype:"real"`    // Average CPU memory during lifetime of project
-	TotalCPUEnergyUsage JSONFloat `json:"total_cpu_energy_usage_kwh,omitempty" sql:"total_cpu_energy_usage_kwh" sqlitetype:"real"`    // Total CPU energy usage in kWh during lifetime of project
-	TotalCPUEmissions   JSONFloat `json:"total_cpu_emissions_gms,omitempty"    sql:"total_cpu_emissions_gms"    sqlitetype:"real"`    // Total CPU emissions in grams during lifetime of project
-	AveGPUUsage         JSONFloat `json:"avg_gpu_usage,omitempty"              sql:"avg_gpu_usage"              sqlitetype:"real"`    // Average GPU usage during lifetime of project
-	AveGPUMemUsage      JSONFloat `json:"avg_gpu_mem_usage,omitempty"          sql:"avg_gpu_mem_usage"          sqlitetype:"real"`    // Average GPU memory during lifetime of project
-	TotalGPUEnergyUsage JSONFloat `json:"total_gpu_energy_usage_kwh,omitempty" sql:"total_gpu_energy_usage_kwh" sqlitetype:"real"`    // Total GPU energy usage in kWh during lifetime of project
-	TotalGPUEmissions   JSONFloat `json:"total_gpu_emissions_gms,omitempty"    sql:"total_gpu_emissions_gms"    sqlitetype:"real"`    // Total GPU emissions in grams during lifetime of project
-	TotalIOWriteHot     JSONFloat `json:"total_io_write_hot_gb,omitempty"      sql:"total_io_write_hot_gb"      sqlitetype:"real"`    // Total IO write on hot storage in GB during lifetime of project
-	TotalIOReadHot      JSONFloat `json:"total_io_read_hot_gb,omitempty"       sql:"total_io_read_hot_gb"       sqlitetype:"real"`    // Total IO read on hot storage in GB during lifetime of project
-	TotalIOWriteCold    JSONFloat `json:"total_io_write_cold_gb,omitempty"     sql:"total_io_write_cold_gb"     sqlitetype:"real"`    // Total IO write on cold storage in GB during lifetime of project
-	TotalIOReadCold     JSONFloat `json:"total_io_read_cold_gb,omitempty"      sql:"total_io_read_cold_gb"      sqlitetype:"real"`    // Total IO read on cold storage in GB during lifetime of project
-	TotalIngress        JSONFloat `json:"total_ingress_in_gb,omitempty"        sql:"total_ingress_in_gb"        sqlitetype:"real"`    // Total ingress traffic in GB of project
-	TotalOutgress       JSONFloat `json:"total_outgress_in_gb,omitempty"       sql:"total_outgress_in_gb"       sqlitetype:"real"`    // Total outgress traffic in GB of project
-	NumUpdates          int64     `json:"-"                                    sql:"num_updates"                sqlitetype:"integer"` // Number of updates. This is used internally to update aggregate metrics
+	TotalTime           MetricMap `json:"total_time_seconds,omitempty"         sql:"total_time_seconds"         sqlitetype:"text"`    // Different times in seconds consumed by the unit. This map must contain `walltime`, `alloc_cputime`, `alloc_cpumemtime`, `alloc_gputime` and `alloc_gpumem_time` keys.
+	AveCPUUsage         MetricMap `json:"avg_cpu_usage,omitempty"              sql:"avg_cpu_usage"              sqlitetype:"text"`    // Average CPU usage(s) during lifetime of project
+	AveCPUMemUsage      MetricMap `json:"avg_cpu_mem_usage,omitempty"          sql:"avg_cpu_mem_usage"          sqlitetype:"text"`    // Average CPU memory usage(s) during lifetime of project
+	TotalCPUEnergyUsage MetricMap `json:"total_cpu_energy_usage_kwh,omitempty" sql:"total_cpu_energy_usage_kwh" sqlitetype:"text"`    // Total CPU energy usage(s) in kWh during lifetime of project
+	TotalCPUEmissions   MetricMap `json:"total_cpu_emissions_gms,omitempty"    sql:"total_cpu_emissions_gms"    sqlitetype:"text"`    // Total CPU emissions from source(s) in grams during lifetime of project
+	AveGPUUsage         MetricMap `json:"avg_gpu_usage,omitempty"              sql:"avg_gpu_usage"              sqlitetype:"text"`    // Average GPU usage(s) during lifetime of project
+	AveGPUMemUsage      MetricMap `json:"avg_gpu_mem_usage,omitempty"          sql:"avg_gpu_mem_usage"          sqlitetype:"text"`    // Average GPU memory usage(s) during lifetime of project
+	TotalGPUEnergyUsage MetricMap `json:"total_gpu_energy_usage_kwh,omitempty" sql:"total_gpu_energy_usage_kwh" sqlitetype:"text"`    // Total GPU energy usage(s) in kWh during lifetime of project
+	TotalGPUEmissions   MetricMap `json:"total_gpu_emissions_gms,omitempty"    sql:"total_gpu_emissions_gms"    sqlitetype:"text"`    // Total GPU emissions from source(s) in grams during lifetime of project
+	TotalIOWriteStats   MetricMap `json:"total_io_write_stats,omitempty"       sql:"total_io_write_stats"       sqlitetype:"text"`    // Total IO write statistics during lifetime of unit
+	TotalIOReadStats    MetricMap `json:"total_io_read_stats,omitempty"        sql:"total_io_read_stats"        sqlitetype:"text"`    // Total IO read statistics GB during lifetime of unit
+	TotalIngressStats   MetricMap `json:"total_ingress_stats,omitempty"        sql:"total_ingress_stats"        sqlitetype:"text"`    // Total Ingress statistics of unit
+	TotalOutgressStats  MetricMap `json:"total_outgress_stats,omitempty"       sql:"total_outgress_stats"       sqlitetype:"text"`    // Total Outgress statistics of unit
+	NumUpdates          int64     `json:"-"                                    sql:"num_updates"                sqlitetype:"text"`    // Number of updates. This is used internally to update aggregate metrics
 }
 
 // TableName returns the table which usage stats are stored into.
