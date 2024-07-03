@@ -39,7 +39,7 @@ type TSDB struct {
 	Logger             log.Logger
 	scrapeInterval     time.Duration
 	evaluationInterval time.Duration
-	lastConfigUpdate   time.Time
+	lastUpdate         time.Time
 	available          bool
 }
 
@@ -100,6 +100,11 @@ func (t *TSDB) configEndpoint() *url.URL {
 	return t.URL.JoinPath("/api/v1/status/config")
 }
 
+// CLI flags endpoint
+func (t *TSDB) flagsEndpoint() *url.URL {
+	return t.URL.JoinPath("/api/v1/status/flags")
+}
+
 // String implements stringer method for TSDB
 func (t *TSDB) String() string {
 	return fmt.Sprintf("TSDB{URL: %s, available: %t}", t.URL.Redacted(), t.available)
@@ -156,10 +161,20 @@ func (t *TSDB) GlobalConfig() (map[string]interface{}, error) {
 	return nil, fmt.Errorf("global config not found in TSDB config")
 }
 
+// Flags returns CLI flags of TSDB
+func (t *TSDB) Flags() (map[string]interface{}, error) {
+	// Make a API request to TSDB
+	data, err := Request(t.flagsEndpoint().String(), t.Client)
+	if err != nil {
+		return nil, err
+	}
+	return data.(map[string]interface{}), nil
+}
+
 // Intervals returns scrape and evaluation intervals of TSDB
 func (t *TSDB) Intervals() map[string]time.Duration {
-	// Check if lastConfigUpdate time is more than 3 hrs
-	if time.Since(t.lastConfigUpdate) < time.Duration(3*time.Hour) {
+	// Check if lastUpdate time is more than 3 hrs
+	if time.Since(t.lastUpdate) < time.Duration(3*time.Hour) {
 		return map[string]time.Duration{
 			"scrape_interval":     t.scrapeInterval,
 			"evaluation_interval": t.evaluationInterval,
@@ -168,7 +183,7 @@ func (t *TSDB) Intervals() map[string]time.Duration {
 
 	// Set scrapeInterval and evaluationInterval cache values to
 	// default and we will override it if found from config
-	t.lastConfigUpdate = time.Now()
+	t.lastUpdate = time.Now()
 	t.scrapeInterval = defaultScrapeInterval
 	t.evaluationInterval = defaultEvaluationInterval
 
@@ -262,7 +277,8 @@ func (t *TSDB) Query(query string, queryTime time.Time) (Metric, error) {
 	// Parse data
 	var queriedValues = make(Metric)
 	queryData := data.Data.(map[string]interface{})
-	if results, exists := queryData["result"]; exists {
+	// Check if results is not nil before converting it to slice of interfaces
+	if results, exists := queryData["result"]; exists && results != nil {
 		for _, result := range results.([]interface{}) {
 			// Check if metric exists on result. If it does, check for uuid and value
 			var uuid, value string

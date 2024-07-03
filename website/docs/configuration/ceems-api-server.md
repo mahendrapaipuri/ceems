@@ -366,6 +366,26 @@ web:
 # will be used to aggregate the compute unit metrics.
 #
 extra_config:
+  # Query batch size when making TSDB queries.
+  # CEEMS making queries in batches in order to avoid OOM errors on TSDB.
+  # This parameter can be used to configure the number of compute units queried
+  # in a single query. 
+  #
+  # Set this value based on your `--query.max-samples` parameter set to TSDB and 
+  # scrape interval. For instance, at a given time, if there are 80k compute units
+  # running, TSDB is scrapping at a rate of 5sec and CEEMS is updating for every 
+  # 60 min. In this case, a given metric for 20k compute units will have 
+  # 80,000 * (60 * 60) / 5 = 57600000 samples in the query. The default value 
+  # used by Prometheus for `--query.max-samples` is 50000000 which is less than
+  # what we got in the calculation in the example. Thus, we need to make multiple
+  # queries by batching the compute units. In the current example, using a batch
+  # size of 40k should work, however, we recommend using much lesser batch sizes
+  # to protect TSDB from over consuming the memory.
+  #
+  # Default value is 1000 and it should work in most of the cases
+  #
+  [ query_batch_size: <int>  | default: 1000 ]
+
   # Compute units that have total life time less than this value will be deleted from 
   # TSDB to reduce number of labels and cardinality
   #

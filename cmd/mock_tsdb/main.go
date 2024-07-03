@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"regexp"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
@@ -13,6 +15,28 @@ import (
 
 // Default port Prometheus listens on.
 const portNum string = ":9090"
+
+// Regex to capture query
+var (
+	queryRegex = regexp.MustCompile("^(.*){")
+	regexpUUID = regexp.MustCompile("(?:.+?)[^gpu]uuid=[~]{0,1}\"(?P<uuid>[a-zA-Z0-9-|]+)\"(?:.*)")
+)
+
+// filterResults returns the filtered results based on uuids slice
+func filterResults(uuids []string, allResults []interface{}) []interface{} {
+	// Return results corresponding to UUIDs
+	var responseResults []interface{}
+	for _, result := range allResults {
+		if m, ok := result.(map[string]interface{})["metric"]; ok {
+			if uuid, ok := m.(map[string]string)["uuid"]; ok {
+				if slices.Contains(uuids, uuid) {
+					responseResults = append(responseResults, result)
+				}
+			}
+		}
+	}
+	return responseResults
+}
 
 // QueryHandler handles queries
 func QueryHandler(w http.ResponseWriter, r *http.Request) {
@@ -33,59 +57,74 @@ func QueryHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("Query", query)
+	// Extract UUIDs from query
+	var uuids []string
+	uuidMatches := regexpUUID.FindAllStringSubmatch(query, -1)
+	for _, match := range uuidMatches {
+		if len(match) > 1 {
+			for _, uuid := range strings.Split(match[1], "|") {
+				// Ignore empty strings
+				if strings.TrimSpace(uuid) != "" && !slices.Contains(uuids, uuid) {
+					uuids = append(uuids, uuid)
+				}
+			}
+		}
+	}
 
+	// Extract only query without any labels
+	matches := queryRegex.FindStringSubmatch(query)
+	if len(matches) == 2 {
+		query = matches[1]
+	}
+
+	// log.Println("Query", query, "UUIDs", uuids)
+
+	var allResults []interface{}
 	if slices.Contains(
 		[]string{
 			"avg_cpu_usage", "avg_cpu_mem_usage", "avg_gpu_usage",
 			"avg_gpu_mem_usage", "total_cpu_energy_usage_kwh", "total_gpu_energy_usage_kwh",
 			"total_cpu_emissions_gms", "total_gpu_emissions_gms",
 		}, query) {
-		response = tsdb.Response{
-			Status: "success",
-			Data: map[string]interface{}{
-				"resultType": "vector",
-				"result": []interface{}{
-					map[string]interface{}{
-						"metric": map[string]string{
-							"uuid": "1479763",
-						},
-						"value": []interface{}{
-							12345, "14.79",
-						},
-					},
-					map[string]interface{}{
-						"metric": map[string]string{
-							"uuid": "1481508",
-						},
-						"value": []interface{}{
-							12345, "14.58",
-						},
-					},
-					map[string]interface{}{
-						"metric": map[string]string{
-							"uuid": "147975",
-						},
-						"value": []interface{}{
-							12345, "14.79",
-						},
-					},
-					map[string]interface{}{
-						"metric": map[string]string{
-							"uuid": "11508",
-						},
-						"value": []interface{}{
-							12345, "11.50",
-						},
-					},
-					map[string]interface{}{
-						"metric": map[string]string{
-							"uuid": "81510",
-						},
-						"value": []interface{}{
-							12345, "81.51",
-						},
-					},
+		allResults = []interface{}{
+			map[string]interface{}{
+				"metric": map[string]string{
+					"uuid": "1479763",
+				},
+				"value": []interface{}{
+					12345, "14.79",
+				},
+			},
+			map[string]interface{}{
+				"metric": map[string]string{
+					"uuid": "1481508",
+				},
+				"value": []interface{}{
+					12345, "14.58",
+				},
+			},
+			map[string]interface{}{
+				"metric": map[string]string{
+					"uuid": "147975",
+				},
+				"value": []interface{}{
+					12345, "14.79",
+				},
+			},
+			map[string]interface{}{
+				"metric": map[string]string{
+					"uuid": "11508",
+				},
+				"value": []interface{}{
+					12345, "11.50",
+				},
+			},
+			map[string]interface{}{
+				"metric": map[string]string{
+					"uuid": "81510",
+				},
+				"value": []interface{}{
+					12345, "81.51",
 				},
 			},
 		}
@@ -93,51 +132,45 @@ func QueryHandler(w http.ResponseWriter, r *http.Request) {
 		[]string{
 			"total_io_read_stats_bytes", "total_io_write_stats_bytes",
 		}, query) {
-		response = tsdb.Response{
-			Status: "success",
-			Data: map[string]interface{}{
-				"resultType": "vector",
-				"result": []interface{}{
-					map[string]interface{}{
-						"metric": map[string]string{
-							"uuid": "1479763",
-						},
-						"value": []interface{}{
-							12345, "1479763",
-						},
-					},
-					map[string]interface{}{
-						"metric": map[string]string{
-							"uuid": "1481508",
-						},
-						"value": []interface{}{
-							12345, "1481508",
-						},
-					},
-					map[string]interface{}{
-						"metric": map[string]string{
-							"uuid": "147975",
-						},
-						"value": []interface{}{
-							12345, "147975",
-						},
-					},
-					map[string]interface{}{
-						"metric": map[string]string{
-							"uuid": "11508",
-						},
-						"value": []interface{}{
-							12345, "11508",
-						},
-					},
-					map[string]interface{}{
-						"metric": map[string]string{
-							"uuid": "81510",
-						},
-						"value": []interface{}{
-							12345, "81510",
-						},
-					},
+		allResults = []interface{}{
+			map[string]interface{}{
+				"metric": map[string]string{
+					"uuid": "1479763",
+				},
+				"value": []interface{}{
+					12345, "1479763",
+				},
+			},
+			map[string]interface{}{
+				"metric": map[string]string{
+					"uuid": "1481508",
+				},
+				"value": []interface{}{
+					12345, "1481508",
+				},
+			},
+			map[string]interface{}{
+				"metric": map[string]string{
+					"uuid": "147975",
+				},
+				"value": []interface{}{
+					12345, "147975",
+				},
+			},
+			map[string]interface{}{
+				"metric": map[string]string{
+					"uuid": "11508",
+				},
+				"value": []interface{}{
+					12345, "11508",
+				},
+			},
+			map[string]interface{}{
+				"metric": map[string]string{
+					"uuid": "81510",
+				},
+				"value": []interface{}{
+					12345, "81510",
 				},
 			},
 		}
@@ -145,51 +178,45 @@ func QueryHandler(w http.ResponseWriter, r *http.Request) {
 		[]string{
 			"total_io_read_stats_requests", "total_io_write_stats_requests",
 		}, query) {
-		response = tsdb.Response{
-			Status: "success",
-			Data: map[string]interface{}{
-				"resultType": "vector",
-				"result": []interface{}{
-					map[string]interface{}{
-						"metric": map[string]string{
-							"uuid": "1479763",
-						},
-						"value": []interface{}{
-							12345, "14797630",
-						},
-					},
-					map[string]interface{}{
-						"metric": map[string]string{
-							"uuid": "1481508",
-						},
-						"value": []interface{}{
-							12345, "14815080",
-						},
-					},
-					map[string]interface{}{
-						"metric": map[string]string{
-							"uuid": "147975",
-						},
-						"value": []interface{}{
-							12345, "1479750",
-						},
-					},
-					map[string]interface{}{
-						"metric": map[string]string{
-							"uuid": "11508",
-						},
-						"value": []interface{}{
-							12345, "115080",
-						},
-					},
-					map[string]interface{}{
-						"metric": map[string]string{
-							"uuid": "81510",
-						},
-						"value": []interface{}{
-							12345, "815100",
-						},
-					},
+		allResults = []interface{}{
+			map[string]interface{}{
+				"metric": map[string]string{
+					"uuid": "1479763",
+				},
+				"value": []interface{}{
+					12345, "14797630",
+				},
+			},
+			map[string]interface{}{
+				"metric": map[string]string{
+					"uuid": "1481508",
+				},
+				"value": []interface{}{
+					12345, "14815080",
+				},
+			},
+			map[string]interface{}{
+				"metric": map[string]string{
+					"uuid": "147975",
+				},
+				"value": []interface{}{
+					12345, "1479750",
+				},
+			},
+			map[string]interface{}{
+				"metric": map[string]string{
+					"uuid": "11508",
+				},
+				"value": []interface{}{
+					12345, "115080",
+				},
+			},
+			map[string]interface{}{
+				"metric": map[string]string{
+					"uuid": "81510",
+				},
+				"value": []interface{}{
+					12345, "815100",
 				},
 			},
 		}
@@ -197,51 +224,45 @@ func QueryHandler(w http.ResponseWriter, r *http.Request) {
 		[]string{
 			"total_ingress_stats_bytes", "total_outgress_stats_bytes",
 		}, query) {
-		response = tsdb.Response{
-			Status: "success",
-			Data: map[string]interface{}{
-				"resultType": "vector",
-				"result": []interface{}{
-					map[string]interface{}{
-						"metric": map[string]string{
-							"uuid": "1479763",
-						},
-						"value": []interface{}{
-							12345, "147976300",
-						},
-					},
-					map[string]interface{}{
-						"metric": map[string]string{
-							"uuid": "1481508",
-						},
-						"value": []interface{}{
-							12345, "148150800",
-						},
-					},
-					map[string]interface{}{
-						"metric": map[string]string{
-							"uuid": "147975",
-						},
-						"value": []interface{}{
-							12345, "14797500",
-						},
-					},
-					map[string]interface{}{
-						"metric": map[string]string{
-							"uuid": "11508",
-						},
-						"value": []interface{}{
-							12345, "1150800",
-						},
-					},
-					map[string]interface{}{
-						"metric": map[string]string{
-							"uuid": "81510",
-						},
-						"value": []interface{}{
-							12345, "8151000",
-						},
-					},
+		allResults = []interface{}{
+			map[string]interface{}{
+				"metric": map[string]string{
+					"uuid": "1479763",
+				},
+				"value": []interface{}{
+					12345, "147976300",
+				},
+			},
+			map[string]interface{}{
+				"metric": map[string]string{
+					"uuid": "1481508",
+				},
+				"value": []interface{}{
+					12345, "148150800",
+				},
+			},
+			map[string]interface{}{
+				"metric": map[string]string{
+					"uuid": "147975",
+				},
+				"value": []interface{}{
+					12345, "14797500",
+				},
+			},
+			map[string]interface{}{
+				"metric": map[string]string{
+					"uuid": "11508",
+				},
+				"value": []interface{}{
+					12345, "1150800",
+				},
+			},
+			map[string]interface{}{
+				"metric": map[string]string{
+					"uuid": "81510",
+				},
+				"value": []interface{}{
+					12345, "8151000",
 				},
 			},
 		}
@@ -249,54 +270,56 @@ func QueryHandler(w http.ResponseWriter, r *http.Request) {
 		[]string{
 			"total_ingress_stats_packets", "total_outgress_stats_packets",
 		}, query) {
-		response = tsdb.Response{
-			Status: "success",
-			Data: map[string]interface{}{
-				"resultType": "vector",
-				"result": []interface{}{
-					map[string]interface{}{
-						"metric": map[string]string{
-							"uuid": "1479763",
-						},
-						"value": []interface{}{
-							12345, "1479763000",
-						},
-					},
-					map[string]interface{}{
-						"metric": map[string]string{
-							"uuid": "1481508",
-						},
-						"value": []interface{}{
-							12345, "1481508000",
-						},
-					},
-					map[string]interface{}{
-						"metric": map[string]string{
-							"uuid": "147975",
-						},
-						"value": []interface{}{
-							12345, "147975000",
-						},
-					},
-					map[string]interface{}{
-						"metric": map[string]string{
-							"uuid": "11508",
-						},
-						"value": []interface{}{
-							12345, "11508000",
-						},
-					},
-					map[string]interface{}{
-						"metric": map[string]string{
-							"uuid": "81510",
-						},
-						"value": []interface{}{
-							12345, "81510000",
-						},
-					},
+		allResults = []interface{}{
+			map[string]interface{}{
+				"metric": map[string]string{
+					"uuid": "1479763",
+				},
+				"value": []interface{}{
+					12345, "1479763000",
+				},
+			},
+			map[string]interface{}{
+				"metric": map[string]string{
+					"uuid": "1481508",
+				},
+				"value": []interface{}{
+					12345, "1481508000",
+				},
+			},
+			map[string]interface{}{
+				"metric": map[string]string{
+					"uuid": "147975",
+				},
+				"value": []interface{}{
+					12345, "147975000",
+				},
+			},
+			map[string]interface{}{
+				"metric": map[string]string{
+					"uuid": "11508",
+				},
+				"value": []interface{}{
+					12345, "11508000",
+				},
+			},
+			map[string]interface{}{
+				"metric": map[string]string{
+					"uuid": "81510",
+				},
+				"value": []interface{}{
+					12345, "81510000",
 				},
 			},
 		}
+	}
+	responseResults := filterResults(uuids, allResults)
+	response = tsdb.Response{
+		Status: "success",
+		Data: map[string]interface{}{
+			"resultType": "vector",
+			"result":     responseResults,
+		},
 	}
 	if err := json.NewEncoder(w).Encode(&response); err != nil {
 		w.Write([]byte("KO"))
