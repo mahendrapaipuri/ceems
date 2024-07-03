@@ -29,55 +29,58 @@ updaters:
       url: http://localhost:9090
     extra_config:
       cutoff_duration: 0s
+      query_batch_size: 1
       queries:
-        # Avgerage CPU utilisation
+        # Average CPU utilisation
         avg_cpu_usage: 
-          total: avg_cpu_usage
+          global: avg_cpu_usage{uuid=~"{{.UUIDs}}"}
 
-        # Avgerage CPU Memory utilisation
+        # Average CPU Memory utilisation
         avg_cpu_mem_usage: 
-          total: avg_cpu_mem_usage
+          global: avg_cpu_mem_usage{uuid=~"{{.UUIDs}}"}
 
         # Total CPU energy usage in kWh
         total_cpu_energy_usage_kwh: 
-          total: total_cpu_energy_usage_kwh
+          total: total_cpu_energy_usage_kwh{uuid=~"{{.UUIDs}}"}
 
         # Total CPU emissions in gms
         total_cpu_emissions_gms: 
-          total: total_cpu_emissions_gms
+          rte_total: total_cpu_emissions_gms{uuid=~"{{.UUIDs}}",provider="rte"}
+          emaps_total: total_cpu_emissions_gms{uuid=~"{{.UUIDs}}",provider="emaps"}
 
         # Average GPU utilization
         avg_gpu_usage: 
-          total: avg_gpu_usage
+          global: avg_gpu_usage{uuid=~"{{.UUIDs}}"}
 
         # Average GPU memory utilization
         avg_gpu_mem_usage: 
-          total: avg_gpu_mem_usage
+          global: avg_gpu_mem_usage{uuid=~"{{.UUIDs}}"}
 
         # Total GPU energy usage in kWh
         total_gpu_energy_usage_kwh: 
-          total: total_gpu_energy_usage_kwh
+          total: total_gpu_energy_usage_kwh{uuid=~"{{.UUIDs}}"}
 
         # Total GPU emissions in gms
         total_gpu_emissions_gms: 
-          total: total_gpu_emissions_gms
+          rte_total: total_cpu_emissions_gms{uuid=~"{{.UUIDs}}",provider="rte"}
+          emaps_total: total_cpu_emissions_gms{uuid=~"{{.UUIDs}}",provider="emaps"}
 
         # Total IO Read stats
         total_io_read_stats: 
-          bytes: total_io_read_stats_bytes
-          requests: total_io_read_stats_requests
+          bytes: total_io_read_stats_bytes{uuid=~"{{.UUIDs}}"}
+          requests: total_io_read_stats_requests{uuid=~"{{.UUIDs}}"}
 
         # Total IO Write stats
         total_io_write_stats: 
-          bytes: total_io_write_stats_bytes
-          requests: total_io_write_stats_requests
+          bytes: total_io_write_stats_bytes{uuid=~"{{.UUIDs}}"}
+          requests: total_io_write_stats_requests{uuid=~"{{.UUIDs}}"}
 
         # Total Ingress stats
         total_ingress_stats: 
-          bytes: total_ingress_stats_bytes
-          packets: total_ingress_stats_packets
+          bytes: total_ingress_stats_bytes{uuid=~"{{.UUIDs}}"}
+          packets: total_ingress_stats_packets{uuid=~"{{.UUIDs}}"}
 
         # Total Outgress stats
         total_outgress_stats: 
-          bytes: total_outgress_stats_bytes
-          packets: total_outgress_stats_packets
+          bytes: total_outgress_stats_bytes{uuid=~"{{.UUIDs}}"}
+          packets: total_outgress_stats_packets{uuid=~"{{.UUIDs}}"}

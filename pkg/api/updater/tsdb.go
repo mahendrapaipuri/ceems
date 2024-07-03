@@ -17,9 +17,9 @@ import (
 	"github.com/prometheus/common/model"
 )
 
-// Size of each chunk of UUIDs to make request to TSDB
+// Size of each batch of UUIDs to make request to TSDB
 const (
-	chunkSize = 1000
+	queryBatchSize = 1000
 )
 
 // Name of the TSDB updater
@@ -29,6 +29,7 @@ const (
 
 // config is the container for the configuration of a given TSDB instance
 type tsdbConfig struct {
+	QueryBatchSize int                          `yaml:"query_batch_size"`
 	CutoffDuration model.Duration               `yaml:"cutoff_duration"`
 	Queries        map[string]map[string]string `yaml:"queries"`
 	LabelsToDrop   []string                     `yaml:"labels_to_drop"`
@@ -55,7 +56,9 @@ func init() {
 // NewTSDBUpdater create a new updater interface
 func NewTSDBUpdater(instance Instance, logger log.Logger) (Updater, error) {
 	// Make TSDB config from instances extra config
-	config := tsdbConfig{}
+	config := tsdbConfig{
+		QueryBatchSize: queryBatchSize,
+	}
 	if err := instance.Extra.Decode(&config); err != nil {
 		level.Error(logger).Log("msg", "Failed to setup TSDB updater", "id", instance.ID, "err", err)
 		return nil, err
@@ -104,7 +107,7 @@ func (t *tsdbUpdater) queryBuilder(name string, queryTemplate string, data map[s
 func (t *tsdbUpdater) fetchAggMetrics(
 	queryTime time.Time,
 	duration time.Duration,
-	uuids string,
+	uuids []string,
 ) map[string]map[string]tsdb.Metric {
 	var aggMetrics = make(map[string]map[string]tsdb.Metric, len(t.config.Queries))
 
@@ -134,7 +137,7 @@ func (t *tsdbUpdater) fetchAggMetrics(
 
 	// Template data
 	tmplData := map[string]interface{}{
-		"UUIDs":                   uuids,
+		"UUIDs":                   strings.Join(uuids, "|"),
 		"ScrapeInterval":          scrapeInterval,
 		"ScrapeIntervalMilli":     scrapeInterval.Milliseconds(),
 		"EvaluationInterval":      evaluationInterval,
@@ -149,7 +152,7 @@ func (t *tsdbUpdater) fetchAggMetrics(
 			go func(n string, sn string, q string) {
 				var aggMetric tsdb.Metric
 				var err error
-				tsdbQuery, err := t.queryBuilder(n, q, tmplData)
+				tsdbQuery, err := t.queryBuilder(fmt.Sprintf("%s_%s", n, sn), q, tmplData)
 				if err != nil {
 					level.Error(t.Logger).Log(
 						"msg", "Failed to build query from template", "metric", n,
@@ -195,51 +198,20 @@ func (t *tsdbUpdater) update(startTime time.Time, endTime time.Time, units []mod
 	// metric type
 	duration := endTime.Sub(startTime).Truncate(time.Minute)
 
+	// Initialize ignored units slice
+	var ignoredUnits []string
 	var allUnitUUIDs = make([]string, len(units))
+	var uuid string
 
 	// Loop over all units and find earliest start time of a unit
 	j := 0
 	for i := 0; i < len(units); i++ {
+		uuid = units[i].UUID
 		// If unit is empty struct ignore
-		if units[i].UUID == "" {
+		if uuid == "" {
 			continue
 		}
-		allUnitUUIDs[j] = units[i].UUID
-		j++
-	}
 
-	// Chunk UUIDs into slices of 1000 so that we make TSDB requests for each 1000 units
-	// This is to safeguard against OOM errors due to a very large number of units
-	// that can spread across big time interval
-	uuidChunks := helper.ChunkBy(allUnitUUIDs[:j], chunkSize)
-
-	var aggMetrics = make(map[string]map[string]tsdb.Metric)
-
-	// Loop over each chunk
-	for _, chunkUUIDs := range uuidChunks {
-		// Get aggregate metrics of present chunk
-		chunkAggMetrics := t.fetchAggMetrics(endTime, duration, strings.Join(chunkUUIDs, "|"))
-
-		// Merge metrics map of each metric type. Metric map has uuid as key and hence
-		// merging is safe as UUID is "unique" during the given update interval
-		for metricName, metrics := range chunkAggMetrics {
-			// If inner map has not been initialized yet, do it
-			if aggMetrics[metricName] == nil {
-				aggMetrics[metricName] = make(map[string]tsdb.Metric)
-			}
-			maps.Copy(aggMetrics[metricName], metrics)
-		}
-	}
-
-	// Initialize ignored units slice
-	var ignoredUnits []string
-
-	// Update all units
-	// NOTE: We can improve this by using reflect package by naming queries
-	// after field names. That will allow us to dynamically look up struct
-	// field using query name and set the properties.
-	for i := 0; i < len(units); i++ {
-		uuid := units[i].UUID
 		// Ignore units that ran for less than cutoffPeriod seconds and check if
 		// unit has end time stamp. If we decide to populate DB with running units,
 		// EndTS will be zero as we cannot convert unknown time into time stamp.
@@ -250,10 +222,56 @@ func (t *tsdbUpdater) update(startTime time.Time, endTime time.Time, units []mod
 				if walltime < models.JSONFloat(time.Duration(t.config.CutoffDuration).Seconds()) {
 					ignoredUnits = append(ignoredUnits, uuid)
 					units[i].Ignore = 1
+					continue
 				}
 			}
 
 		}
+		allUnitUUIDs[j] = uuid
+		j++
+	}
+
+	// Batch UUIDs into slices of 1000 so that we make TSDB requests for each 1000 units
+	// This is to safeguard against OOM errors due to a very large number of units
+	// that can spread across big time interval
+	uuidBatches := helper.ChunkBy(allUnitUUIDs[:j], t.config.QueryBatchSize)
+	numBatches := len(uuidBatches)
+
+	var aggMetrics = make(map[string]map[string]tsdb.Metric)
+
+	// Loop over each chunk
+	for iBatch, batchUUIDs := range uuidBatches {
+		// Get aggregate metrics of present chunk
+		batchedAggMetrics := t.fetchAggMetrics(endTime, duration, batchUUIDs)
+
+		// Merge metrics map of each metric type. Metric map has uuid as key and hence
+		// merging is safe as UUID is "unique" during the given update interval
+		for metricName, metrics := range batchedAggMetrics {
+			// If inner map has not been initialized yet, do it
+			// These are parent metrics like avg_cpu_usage, avg_gpu_usage
+			if aggMetrics[metricName] == nil {
+				aggMetrics[metricName] = make(map[string]tsdb.Metric, len(metrics))
+			}
+			// Each parent metric has sub metrics that operator chooses and we loop
+			// over them here
+			for subMetricName, subMetrics := range metrics {
+				if aggMetrics[metricName][subMetricName] == nil {
+					aggMetrics[metricName][subMetricName] = make(tsdb.Metric, len(subMetrics))
+				}
+				maps.Copy(aggMetrics[metricName][subMetricName], subMetrics)
+			}
+		}
+		level.Debug(t.Logger).Log(
+			"msg", "TSDB updater progress", "batch_id", iBatch, "total_batches", numBatches,
+		)
+	}
+
+	// Update all units
+	// NOTE: We can improve this by using reflect package by naming queries
+	// after field names. That will allow us to dynamically look up struct
+	// field using query name and set the properties.
+	for i := 0; i < len(units); i++ {
+		uuid := units[i].UUID
 
 		// Update with CPU metrics
 		if metrics, mExists := aggMetrics["avg_cpu_usage"]; mExists {
