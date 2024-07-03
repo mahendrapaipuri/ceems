@@ -9,13 +9,21 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
 	"github.com/mahendrapaipuri/ceems/pkg/grafana"
 	"github.com/zeebo/xxh3"
 	"gopkg.in/yaml.v3"
 )
+
+// TimeTrack tracks execution time of each function
+func TimeTrack(start time.Time, name string, logger log.Logger) {
+	elapsed := time.Since(start)
+	level.Debug(logger).Log("msg", name, "elapsed_time", elapsed)
+}
 
 // SanitizeFloat replaces +/-Inf and NaN with zero
 func SanitizeFloat(v float64) float64 {
