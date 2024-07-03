@@ -146,6 +146,9 @@ func (u UnitUpdater) Update(
 	endTime time.Time,
 	clusterUnits []models.ClusterUnits,
 ) []models.ClusterUnits {
+	// Measure elapsed time
+	defer common.TimeTrack(time.Now(), "updater", u.Logger)
+
 	// If there are no registered updaters, return
 	if len(u.Updaters) == 0 {
 		return clusterUnits

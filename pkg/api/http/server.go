@@ -19,6 +19,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/gorilla/mux"
+	"github.com/mahendrapaipuri/ceems/internal/common"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/db"
 	"github.com/mahendrapaipuri/ceems/pkg/api/db/sqlite3"
@@ -549,6 +550,9 @@ queryUnits:
 // GET /units/admin
 // Get any unit of any user
 func (s *CEEMSServer) unitsAdmin(w http.ResponseWriter, r *http.Request) {
+	// Measure elapsed time
+	defer common.TimeTrack(time.Now(), "units admin endpoint", s.logger)
+
 	// Query for units and write response
 	s.unitsQuerier(r.URL.Query()["user"], w, r)
 }
@@ -593,6 +597,9 @@ func (s *CEEMSServer) unitsAdmin(w http.ResponseWriter, r *http.Request) {
 // GET /units
 // Get unit of dashboard user
 func (s *CEEMSServer) units(w http.ResponseWriter, r *http.Request) {
+	// Measure elapsed time
+	defer common.TimeTrack(time.Now(), "units endpoint", s.logger)
+
 	// Get current logged user and dashboard user from headers
 	_, dashboardUser := s.getUser(r)
 
@@ -636,6 +643,9 @@ func (s *CEEMSServer) units(w http.ResponseWriter, r *http.Request) {
 // GET /units/verify
 // Verify the user ownership for queried units
 func (s *CEEMSServer) verifyUnitsOwnership(w http.ResponseWriter, r *http.Request) {
+	// Measure elapsed time
+	defer common.TimeTrack(time.Now(), "verify endpoint", s.logger)
+
 	// Set headers
 	s.setHeaders(w)
 
@@ -690,6 +700,9 @@ func (s *CEEMSServer) verifyUnitsOwnership(w http.ResponseWriter, r *http.Reques
 // GET /clusters/admin
 // Get clusters list in the DB
 func (s *CEEMSServer) clustersAdmin(w http.ResponseWriter, r *http.Request) {
+	// Measure elapsed time
+	defer common.TimeTrack(time.Now(), "clusters admin endpoint", s.logger)
+
 	// Set headers
 	s.setHeaders(w)
 
@@ -779,6 +792,9 @@ func (s *CEEMSServer) usersQuerier(users []string, w http.ResponseWriter, r *htt
 // GET /users
 // Get users details
 func (s *CEEMSServer) users(w http.ResponseWriter, r *http.Request) {
+	// Measure elapsed time
+	defer common.TimeTrack(time.Now(), "users endpoint", s.logger)
+
 	// Get current user from header
 	_, dashboardUser := s.getUser(r)
 
@@ -812,6 +828,9 @@ func (s *CEEMSServer) users(w http.ResponseWriter, r *http.Request) {
 // GET /users/admin
 // Get users details
 func (s *CEEMSServer) usersAdmin(w http.ResponseWriter, r *http.Request) {
+	// Measure elapsed time
+	defer common.TimeTrack(time.Now(), "users admin endpoint", s.logger)
+
 	// Query for users and write response
 	s.usersQuerier(r.URL.Query()["user"], w, r)
 }
@@ -892,6 +911,9 @@ func (s *CEEMSServer) projectsQuerier(users []string, w http.ResponseWriter, r *
 // GET /projects
 // Get project details
 func (s *CEEMSServer) projects(w http.ResponseWriter, r *http.Request) {
+	// Measure elapsed time
+	defer common.TimeTrack(time.Now(), "projects endpoint", s.logger)
+
 	// Get current user from header
 	_, dashboardUser := s.getUser(r)
 
@@ -927,6 +949,9 @@ func (s *CEEMSServer) projects(w http.ResponseWriter, r *http.Request) {
 // GET /projects/admin
 // Get project details
 func (s *CEEMSServer) projectsAdmin(w http.ResponseWriter, r *http.Request) {
+	// Measure elapsed time
+	defer common.TimeTrack(time.Now(), "projects admin endpoint", s.logger)
+
 	// Make query and write response
 	s.projectsQuerier(nil, w, r)
 }
@@ -1084,6 +1109,9 @@ func (s *CEEMSServer) globalUsage(users []string, queriedFields []string, w http
 // GET /usage/{mode}
 // Get current/global usage statistics
 func (s *CEEMSServer) usage(w http.ResponseWriter, r *http.Request) {
+	// Measure elapsed time
+	defer common.TimeTrack(time.Now(), "usage endpoint", s.logger)
+
 	// Set headers
 	s.setHeaders(w)
 
@@ -1158,6 +1186,9 @@ func (s *CEEMSServer) usage(w http.ResponseWriter, r *http.Request) {
 // GET /usage/{mode}/admin
 // Get current/global usage statistics of any user
 func (s *CEEMSServer) usageAdmin(w http.ResponseWriter, r *http.Request) {
+	// Measure elapsed time
+	defer common.TimeTrack(time.Now(), "usage admin endpoint", s.logger)
+
 	// Set headers
 	s.setHeaders(w)
 
@@ -1208,6 +1239,9 @@ func (s *CEEMSServer) usageAdmin(w http.ResponseWriter, r *http.Request) {
 // GET /demo/{units,usage}
 // Return mocked data for different models
 func (s *CEEMSServer) demo(w http.ResponseWriter, r *http.Request) {
+	// Measure elapsed time
+	defer common.TimeTrack(time.Now(), "demo endpoint", s.logger)
+
 	// Set headers
 	s.setHeaders(w)
 

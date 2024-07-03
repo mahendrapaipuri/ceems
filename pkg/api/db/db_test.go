@@ -221,6 +221,7 @@ var mockUsersOne = []models.ClusterUsers{
 
 func newMockManager(logger log.Logger) (*resource.Manager, error) {
 	return &resource.Manager{
+		Logger: logger,
 		Fetchers: []resource.Fetcher{
 			&mockFetcherOne{logger: logger},
 			&mockFetcherTwo{logger: logger},

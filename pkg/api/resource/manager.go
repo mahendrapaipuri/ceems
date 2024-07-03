@@ -33,7 +33,7 @@ type Fetcher interface {
 // Manager implements the interface to fetch compute units from different resource managers.
 type Manager struct {
 	Fetchers []Fetcher
-	logger   log.Logger
+	Logger   log.Logger
 }
 
 var (
@@ -142,11 +142,14 @@ func NewManager(logger log.Logger) (*Manager, error) {
 		}
 		fetchers = append(fetchers, fetcher)
 	}
-	return &Manager{Fetchers: fetchers, logger: logger}, nil
+	return &Manager{Fetchers: fetchers, Logger: logger}, nil
 }
 
 // FetchUnits implements collection jobs between start and end times
 func (b Manager) FetchUnits(start time.Time, end time.Time) ([]models.ClusterUnits, error) {
+	// Measure elapsed time
+	defer common.TimeTrack(time.Now(), "resource manager units", b.Logger)
+
 	var clusterUnits []models.ClusterUnits
 	var errs error
 	for _, fetcher := range b.Fetchers {
@@ -162,6 +165,9 @@ func (b Manager) FetchUnits(start time.Time, end time.Time) ([]models.ClusterUni
 
 // FetchUsersProjects fetches latest projects and users for each cluster
 func (b Manager) FetchUsersProjects(currentTime time.Time) ([]models.ClusterUsers, []models.ClusterProjects, error) {
+	// Measure elapsed time
+	defer common.TimeTrack(time.Now(), "resource manager users and projects", b.Logger)
+
 	var clusterUsers []models.ClusterUsers
 	var clusterProjects []models.ClusterProjects
 	var errs error

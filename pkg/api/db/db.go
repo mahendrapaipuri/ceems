@@ -169,6 +169,7 @@ updatetime:
 setup:
 	// Setup manager struct that retrieves unit data
 	manager, err := c.ResourceManager(c.Logger)
+	fmt.Printf("%#v\n", manager)
 	if err != nil {
 		level.Error(c.Logger).Log("msg", "Resource manager setup failed", "err", err)
 		return nil, err
@@ -450,6 +451,9 @@ func (s *statsDB) execStatements(
 	clusterUsers []models.ClusterUsers,
 	clusterProjects []models.ClusterProjects,
 ) {
+	// Measure elapsed time
+	defer common.TimeTrack(time.Now(), "DB insertions", s.logger)
+
 	var ignore = 0
 	var err error
 	for _, cluster := range clusterUnits {
@@ -651,6 +655,9 @@ func (s *statsDB) vacuum() error {
 
 // Creates backup of DB after vacuuming DB
 func (s *statsDB) createBackup() error {
+	// Measure elapsed time
+	defer common.TimeTrack(time.Now(), "DB backup", s.logger)
+
 	// First vacuum DB to reduce size
 	if err := s.vacuum(); err != nil {
 		level.Warn(s.logger).Log("msg", "Failed to vacuum DB", "err", err)
