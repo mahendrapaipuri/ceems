@@ -3,6 +3,9 @@ run-name: Docs
 
 on:
   workflow_call:
+  push:
+    paths:
+      - "website/**"
 
 jobs:
   build-docs:
