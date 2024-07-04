@@ -262,7 +262,7 @@ func (t *tsdbUpdater) update(startTime time.Time, endTime time.Time, units []mod
 			}
 		}
 		level.Debug(t.Logger).Log(
-			"msg", "TSDB updater progress", "batch_id", iBatch, "total_batches", numBatches,
+			"msg", "progress", "batch_id", iBatch, "total_batches", numBatches,
 		)
 	}
 

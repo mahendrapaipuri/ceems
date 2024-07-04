@@ -485,6 +485,8 @@ func (s *CEEMSServer) unitsQuerier(
 	q.param([]string{queryWindowTS["to"]})
 
 queryUnits:
+	// Sort by uuid
+	q.query(" ORDER BY cluster_id ASC, uuid ASC ")
 
 	// Get all user units in the given time window
 	units, err := s.queriers.unit(s.db, q, s.logger)
@@ -711,7 +713,12 @@ func (s *CEEMSServer) clustersAdmin(w http.ResponseWriter, r *http.Request) {
 
 	// Make query
 	q := Query{}
-	q.query(fmt.Sprintf("SELECT DISTINCT cluster_id, resource_manager FROM %s", base.UnitsDBTableName))
+	q.query(
+		fmt.Sprintf(
+			"SELECT DISTINCT cluster_id, resource_manager FROM %s ORDER BY cluster_id ASC",
+			base.UnitsDBTableName,
+		),
+	)
 
 	// Make query and get list of cluster ids
 	clusterIDs, err := s.queriers.cluster(s.db, q, s.logger)
@@ -749,6 +756,9 @@ func (s *CEEMSServer) usersQuerier(users []string, w http.ResponseWriter, r *htt
 		q.query(" AND cluster_id IN ")
 		q.param(clusterIDs)
 	}
+
+	// Sort by cluster_id and name
+	q.query(" ORDER BY cluster_id ASC, name ASC ")
 
 	// Make query and check for users returned in usage
 	userModels, err := s.queriers.user(s.db, q, s.logger)
@@ -862,6 +872,9 @@ func (s *CEEMSServer) projectsQuerier(users []string, w http.ResponseWriter, r *
 		q.query(" AND cluster_id IN ")
 		q.param(clusterIDs)
 	}
+
+	// Sort by cluster_id and name
+	q.query(" ORDER BY cluster_id ASC, name ASC ")
 
 	// Make query
 	projectModels, err := s.queriers.project(s.db, q, s.logger)
@@ -1008,6 +1021,9 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 	groupby = slices.Compact(groupby)
 	q.query(fmt.Sprintf(" GROUP BY %s", strings.Join(groupby, ",")))
 
+	// Sort by cluster_id, username and project
+	q.query(" ORDER BY cluster_id ASC, username ASC, project ASC ")
+
 	// Make query and check for returned number of rows
 	usage, err := s.queriers.usage(s.db, q, s.logger)
 	if err != nil {
@@ -1045,6 +1061,9 @@ func (s *CEEMSServer) globalUsage(users []string, queriedFields []string, w http
 
 	// Add common query parameters
 	q = s.getCommonQueryParams(&q, r.URL.Query())
+
+	// Sort by cluster_id, username and project
+	q.query(" ORDER BY cluster_id ASC, username ASC, project ASC ")
 
 	// Make query and check for returned number of rows
 	usage, err := s.queriers.usage(s.db, q, s.logger)

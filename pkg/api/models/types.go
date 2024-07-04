@@ -127,46 +127,6 @@ func (m *MetricMap) Scan(v interface{}) error {
 	return nil
 }
 
-// // MarshalJSON marshals JSONFloat into byte array
-// func (m *MetricMap) MarshalJSON() ([]byte, error) {
-// 	newMetricMap := *m
-// 	for k, v := range newMetricMap {
-// 		vFloat := v.(float64)
-// 		if math.IsInf(vFloat, 0) || math.IsNaN(vFloat) {
-// 			newMetricMap[k] = vFloat
-// 		}
-// 	}
-// 	return json.Marshal(newMetricMap) // marshal result
-// }
-
-// // UnmarshalJSON unmarshals byte array into MetricMap after converting string to
-// // float64
-// func (m *MetricMap) UnmarshalJSON(v []byte) error {
-// 	// just a regular float value
-// 	var mv map[string]interface{}
-// 	if err := json.Unmarshal(v, &mv); err != nil {
-// 		return err
-// 	}
-
-// 	// Iterate over map and convert all non floats to zero
-// 	for key, valueInt := range mv {
-// 		switch value := valueInt.(type) {
-// 		case float64:
-// 			mv[key] = value
-// 		case string:
-// 			if vFloat, err := strconv.ParseFloat(value, 64); err != nil {
-// 				mv[key] = float64(0)
-// 			} else {
-// 				mv[key] = common.SanitizeFloat(vFloat)
-// 			}
-// 		default:
-// 			mv[key] = 0
-// 		}
-// 	}
-// 	*m = mv
-// 	return nil
-// }
-
 // JSONFloat is a custom float64 that can handle Inf and NaN during JSON (un)marshalling
 type JSONFloat float64
 
@@ -219,6 +179,8 @@ func (j *JSONFloat) Scan(v interface{}) error {
 }
 
 // MarshalJSON marshals JSONFloat into byte array
+// The custom marshal interface will truncate the float64 to 2 decimals as storing
+// all decimals will bring a very low value and high DB storage
 func (j JSONFloat) MarshalJSON() ([]byte, error) {
 	v := float64(j)
 	if math.IsInf(v, 0) || math.IsNaN(v) {
@@ -226,7 +188,14 @@ func (j JSONFloat) MarshalJSON() ([]byte, error) {
 		s := "0"
 		return []byte(s), nil
 	}
-	return json.Marshal(v) // marshal result as standard float64
+
+	// If v is actually a int, use json.Marshal else truncate the decimals to 2
+	if v == float64(int(v)) {
+		return json.Marshal(v)
+	} else {
+		// Convert to bytes by truncating to 2 decimals
+		return []byte(fmt.Sprintf("%.2f", v)), nil
+	}
 }
 
 // UnmarshalJSON unmarshals byte array into JSONFloat
