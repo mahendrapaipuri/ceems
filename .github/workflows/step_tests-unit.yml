@@ -52,22 +52,26 @@ jobs:
 
           # Create/Update badge
           gobadge -target README.md -filename coverage.out -link https://github.com/mahendrapaipuri/ceems/actions/workflows/ci.yml?query=branch%3Amain
+          gobadge -target website/docs/00-introduction.md -filename coverage.out -link https://github.com/mahendrapaipuri/ceems/actions/workflows/ci.yml?query=branch%3Amain
 
           # Check diff on README
           git diff README.md
+          git diff website/docs/00-introduction.md
 
       - name: Verify Changed files
         uses: tj-actions/verify-changed-files@v19
         id: verify-changed-files
         with:
-          files: README.md
+          files: |
+            README.md
+            website/docs/00-introduction.md
 
       - name: Commit changes
         if: steps.verify-changed-files.outputs.files_changed == 'true' && github.ref == 'refs/heads/main'
         run: |
           git config --local user.email "bot@ceems.com"
           git config --local user.name "CEEMS Bot"
-          git add README.md
+          git add README.md website/docs/00-introduction.md
           git commit -m "chore: Updated coverage badge" -s
 
       - name: Push changes
