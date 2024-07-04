@@ -1,7 +1,10 @@
 # Changelog
 
-## 0.1.0 / 2024-06-27
+## 0.1.0 / 2024-07-04
 
+- [BUGFIX] Fix tsdb updater [#104](https://github.com/mahendrapaipuri/ceems/pull/104) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [DOCS] Store metrics as map in DB [#102](https://github.com/mahendrapaipuri/ceems/pull/102) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Improve docs on Slurm collector [#101](https://github.com/mahendrapaipuri/ceems/pull/101) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
 - [DOCS] Improve docs on Slurm collector [#101](https://github.com/mahendrapaipuri/ceems/pull/101) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
 - [CI] Test DEB packages in CI [#100](https://github.com/mahendrapaipuri/ceems/pull/100) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
 - [CI] Extract go code for CodeQL analysis [#99](https://github.com/mahendrapaipuri/ceems/pull/99) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
