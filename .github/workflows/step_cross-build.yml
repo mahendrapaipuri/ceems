@@ -34,6 +34,7 @@ jobs:
       - name: Cross compile CGo packages
         run: |
           sed -i -e 's/CGO_BUILD               ?= 0/CGO_BUILD               ?= 1/g' Makefile
+          sed -i -e 's/RELEASE_BUILD           ?= 0/RELEASE_BUILD           ?= 1/g' Makefile
           promu --config .promu-cgo.yml crossbuild -v
       
       - name: Create tarballs and checksums

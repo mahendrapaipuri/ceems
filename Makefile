@@ -6,8 +6,6 @@ all::
 # Needs to be defined before including Makefile.common to auto-generate targets
 DOCKER_ARCHS ?= amd64 arm64
 
-include Makefile.common
-
 PROMTOOL_VERSION ?= 2.50.0
 PROMTOOL_URL     ?= https://github.com/prometheus/prometheus/releases/download/v$(PROMTOOL_VERSION)/prometheus-$(PROMTOOL_VERSION).$(GO_BUILD_PLATFORM).tar.gz
 PROMTOOL         ?= $(FIRST_GOPATH)/bin/promtool
@@ -22,10 +20,13 @@ CGROUPS_MODE            ?= $([ $(stat -fc %T /sys/fs/cgroup/) = "cgroup2fs" ] &&
 STATICCHECK_IGNORE =
 
 CGO_BUILD               ?= 0
+RELEASE_BUILD           ?= 0
 
 # Swagger docs
 SWAGGER_DIR     ?= pkg/api/http
 SWAGGER_MAIN    ?= server.go
+
+include Makefile.common
 
 ifeq ($(GOHOSTOS), linux)
 	test-e2e := test-e2e
