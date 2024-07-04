@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"reflect"
 	"testing"
 	"time"
 
@@ -14,6 +13,9 @@ import (
 	"github.com/mahendrapaipuri/ceems/pkg/api/resource"
 	"github.com/mahendrapaipuri/ceems/pkg/api/updater"
 	"github.com/prometheus/common/model"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type mockFetcherOne struct {
@@ -560,94 +562,67 @@ func populateDBWithMockData(s *statsDB) {
 func TestNewUnitStatsDB(t *testing.T) {
 	tmpDir := t.TempDir()
 	c := prepareMockConfig(tmpDir)
+	var err error
 
 	lastUnitsUpdateTimeFile := filepath.Join(c.Data.Path, "lastupdatetime")
 
 	// Make new stats DB
 	c.Data.LastUpdateTime, _ = time.Parse("2006-01-02", "2023-12-20")
-	_, err := NewStatsDB(c)
-	if err != nil {
-		t.Errorf("Failed to create new statsDB struct due to %s", err)
-	}
+	_, err = NewStatsDB(c)
+	require.NoError(t, err, "Failed to create new statsDB")
 
 	// Check if last update time file has been written
-	if _, err := os.Stat(lastUnitsUpdateTimeFile); err != nil {
-		t.Errorf("Last update time file not created")
-	}
+	_, err = os.Stat(lastUnitsUpdateTimeFile)
+	require.NoError(t, err, "Last update time file not created")
 
 	// Check content of last update time file
-	if timeString, _ := os.ReadFile(lastUnitsUpdateTimeFile); string(timeString) != "2023-12-20T00:00:00" {
-		t.Errorf("Last update time string test failed. Expected %s got %s", "2023-12-20T00:00:00", string(timeString))
-	}
+	timeString, _ := os.ReadFile(lastUnitsUpdateTimeFile)
+	assert.Equal(t, string(timeString), "2023-12-20T00:00:00", "Expected last update time string is 2023-12-20T00:00:00")
 
 	// Check DB file exists
-	if _, err := os.Stat(c.Data.Path); err != nil {
-		t.Errorf("DB file not created")
-	}
+	_, err = os.Stat(c.Data.Path)
+	require.NoError(t, err, "DB file not created")
 
 	// Make again a new stats DB with new lastUpdateTime
 	c.Data.LastUpdateTime, _ = time.Parse("2006-01-02", "2023-12-21")
 	_, err = NewStatsDB(c)
-	if err != nil {
-		t.Errorf("Failed to create new statsDB struct due to %s", err)
-	}
+	require.NoError(t, err, "Failed to create new statsDB")
 
 	// Check content of last update time file. It should not change
-	if timeString, _ := os.ReadFile(lastUnitsUpdateTimeFile); string(timeString) != "2023-12-20T00:00:00" {
-		t.Errorf("Last update time string test failed. Expected %s got %s", "2023-12-20T00:00:00", string(timeString))
-	}
+	timeString, _ = os.ReadFile(lastUnitsUpdateTimeFile)
+	assert.Equal(t, string(timeString), "2023-12-20T00:00:00", "Expected last update time is 2023-12-20T00:00:00")
 
 	// Remove read permissions on lastupdatetimefile
 	err = os.Chmod(lastUnitsUpdateTimeFile, 0200)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Make again a new stats DB with new lastUpdateTime
 	c.Data.LastUpdateTime, _ = time.Parse("2006-01-02", "2023-12-21")
 	_, err = NewStatsDB(c)
-	if err != nil {
-		t.Errorf("Failed to create new statsDB struct due to %s", err)
-	}
+	require.NoError(t, err, "Failed to create new statsDB")
 
 	// Add back read permissions on lastupdatetimefile
 	err = os.Chmod(lastUnitsUpdateTimeFile, 0644)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Check content of last update time file. It should change
-	if timeString, err := os.ReadFile(lastUnitsUpdateTimeFile); string(timeString) != "2023-12-21T00:00:00" {
-		t.Errorf(
-			"Last update time string test failed. Expected %s got %s %s",
-			"2023-12-21T00:00:00",
-			string(timeString),
-			err,
-		)
-	}
+	timeString, err = os.ReadFile(lastUnitsUpdateTimeFile)
+	require.NoError(t, err)
+	assert.Equal(t, string(timeString), "2023-12-21T00:00:00", "Expected last update time string is 2023-12-21T00:00:00")
 
 	// Remove last update time file
 	err = os.Remove(lastUnitsUpdateTimeFile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Make again a new stats DB with new lastUpdateTime
 	c.Data.LastUpdateTime, _ = time.Parse("2006-01-02", "2023-12-22")
 	_, err = NewStatsDB(c)
-	if err != nil {
-		t.Errorf("Failed to create new statsDB struct due to %s", err)
-	}
+	require.NoError(t, err, "Failed to create new statsDB")
 
 	// Check content of last update time file. It should change
-	if timeString, err := os.ReadFile(lastUnitsUpdateTimeFile); string(timeString) != "2023-12-22T00:00:00" {
-		t.Errorf(
-			"Last update time string test failed. Expected %s got %s %s",
-			"2023-12-22T00:00:00",
-			string(timeString),
-			err,
-		)
-	}
+	timeString, err = os.ReadFile(lastUnitsUpdateTimeFile)
+	require.NoError(t, err)
+	assert.Equal(t, string(timeString), "2023-12-22T00:00:00", "Expected last update time string is 2023-12-22T00:00:00")
 }
 
 func TestUnitStatsDBEntries(t *testing.T) {
@@ -656,35 +631,25 @@ func TestUnitStatsDBEntries(t *testing.T) {
 
 	// Make new stats DB
 	s, err := NewStatsDB(c)
-	if err != nil {
-		t.Errorf("Failed to create new statsDB struct due to %s", err)
-	}
+	require.NoError(t, err, "Failed to create new statsDB")
 
 	// Fetch units
 	var expectedUnits []models.ClusterUnits
 	expectedUnits = append(expectedUnits, mockUnitsOne...)
 	expectedUnits = append(expectedUnits, mockUnitsTwo...)
 	fetchedUnits, err := s.manager.FetchUnits(time.Now(), time.Now())
-	if !reflect.DeepEqual(fetchedUnits, expectedUnits) {
-		t.Errorf("expected %#v, got %#v", expectedUnits, fetchedUnits)
-	}
-	if err == nil {
-		t.Errorf("expected one err from fetcher got none")
-	}
+	require.Error(t, err, "expected one error from fetching units")
+	assert.ElementsMatch(t, fetchedUnits, expectedUnits, "expected and got cluster units differ")
 
 	// Try to insert data
 	err = s.Collect()
-	if err != nil {
-		t.Errorf("Failed to collect units data: %s", err)
-	}
+	require.NoError(t, err, "Failed to collect units data")
 
 	// Make units query
 	rows, err := s.db.Query(
 		"SELECT uuid,username,project,total_time_seconds,avg_cpu_usage,avg_cpu_mem_usage,total_cpu_energy_usage_kwh,total_cpu_emissions_gms,avg_gpu_usage,avg_gpu_mem_usage,total_gpu_energy_usage_kwh,total_gpu_emissions_gms FROM units ORDER BY uuid",
 	)
-	if err != nil {
-		t.Errorf("Failed to make DB query")
-	}
+	require.NoError(t, err, "Failed to make DB query")
 	defer rows.Close()
 
 	var units []models.Unit
@@ -711,18 +676,13 @@ func TestUnitStatsDBEntries(t *testing.T) {
 	for _, units := range mockUpdatedUnits {
 		expectedUpdatedUnits = append(expectedUpdatedUnits, units.Units...)
 	}
-
-	if !reflect.DeepEqual(units, expectedUpdatedUnits) {
-		t.Errorf("expected %#v, \n\n\n got %#v", expectedUpdatedUnits, units)
-	}
+	assert.ElementsMatch(t, units, expectedUpdatedUnits, "expected and got updated cluster units differ")
 
 	// Make usage query
 	rows, err = s.db.Query(
 		"SELECT avg_cpu_usage,num_updates FROM usage WHERE username = 'foo1' AND cluster_id = 'slurm-0'",
 	)
-	if err != nil {
-		t.Errorf("Failed to make DB query: %s", err)
-	}
+	require.NoError(t, err, "Failed to make DB query")
 	defer rows.Close()
 
 	// // For debugging
@@ -741,17 +701,13 @@ func TestUnitStatsDBEntries(t *testing.T) {
 		}
 	}
 
-	if cpuUsage["usage"] < 15 {
-		t.Errorf("expected 15, \n got %f", cpuUsage["usage"])
-	}
+	assert.Equal(t, cpuUsage["usage"], models.JSONFloat(15), "expected cpuUsage = 15")
 
 	// Make projects query
 	rows, err = s.db.Query(
 		"SELECT users FROM projects WHERE name = 'fooprj' AND cluster_id = 'slurm-0'",
 	)
-	if err != nil {
-		t.Errorf("Failed to make DB query: %s", err)
-	}
+	require.NoError(t, err, "Failed to make DB query")
 	defer rows.Close()
 
 	var users models.List
@@ -760,9 +716,7 @@ func TestUnitStatsDBEntries(t *testing.T) {
 			t.Errorf("failed to scan row: %s", err)
 		}
 	}
-	if !reflect.DeepEqual(models.List{"foo1", "foo2"}, users) {
-		t.Errorf("expected users %#v, got %#v", models.List{"foo1", "foo2"}, users)
-	}
+	assert.ElementsMatch(t, models.List{"foo1", "foo2"}, users, "expected and got users differ")
 
 	// Close DB
 	s.Stop()
@@ -774,21 +728,15 @@ func TestUnitStatsDBLock(t *testing.T) {
 
 	// Make new stats DB
 	s, err := NewStatsDB(c)
-	if err != nil {
-		t.Errorf("Failed to create new statsDB struct due to %s", err)
-	}
+	require.NoError(t, err, "Failed to create new statsDB")
 
 	// Beging exclusive transcation to lock DB
 	_, err = s.db.Exec("BEGIN EXCLUSIVE;")
-	if err != nil {
-		t.Errorf("Failed to lock DB due to %s", err)
-	}
+	require.NoError(t, err)
 
 	// Try to insert data. It should fail
 	err = s.Collect()
-	if err == nil {
-		t.Errorf("Failed to skip data insertion when DB is locked")
-	}
+	require.Error(t, err, "expected error due to DB lock")
 	s.db.Exec("COMMIT;")
 
 	// Close DB
@@ -801,18 +749,14 @@ func TestUnitStatsDBVacuum(t *testing.T) {
 
 	// Make new stats DB
 	s, err := NewStatsDB(c)
-	if err != nil {
-		t.Errorf("Failed to create new statsDB struct due to %s", err)
-	}
+	require.NoError(t, err, "Failed to create new statsDB")
 
 	// Populate DB with data
 	populateDBWithMockData(s)
 
 	// Run vacuum
 	err = s.vacuum()
-	if err != nil {
-		t.Errorf("Failed to vacuum DB due to %s", err)
-	}
+	require.NoError(t, err, "failed to vacuum DB")
 }
 
 func TestUnitStatsDBBackup(t *testing.T) {
@@ -821,9 +765,7 @@ func TestUnitStatsDBBackup(t *testing.T) {
 
 	// Make new stats DB
 	s, err := NewStatsDB(c)
-	if err != nil {
-		t.Errorf("Failed to create new statsDB struct due to %s", err)
-	}
+	require.NoError(t, err, "Failed to create new statsDB")
 
 	// Populate DB with data
 	populateDBWithMockData(s)
@@ -831,13 +773,10 @@ func TestUnitStatsDBBackup(t *testing.T) {
 	// Run backup
 	expectedBackupFile := filepath.Join(c.Data.BackupPath, "backup.db")
 	err = s.backup(expectedBackupFile)
-	if err != nil {
-		t.Errorf("Failed to backup DB %s", err)
-	}
+	require.NoError(t, err, "failed to backup DB")
 
-	if _, err := os.Stat(expectedBackupFile); err != nil {
-		t.Errorf("Backup DB file not found")
-	}
+	_, err = os.Stat(expectedBackupFile)
+	require.NoError(t, err, "Backup DB file not found")
 
 	// Check contents of backed up DB
 	var numRows int
@@ -849,9 +788,7 @@ func TestUnitStatsDBBackup(t *testing.T) {
 	for rows.Next() {
 		numRows += 1
 	}
-	if numRows != 7 {
-		t.Errorf("Backup DB check failed. Expected rows 7 , Got %d.", numRows)
-	}
+	assert.Equal(t, numRows, 7, "Backup DB check failed. Expected rows 7")
 }
 
 func TestStatsDBBackup(t *testing.T) {
@@ -860,9 +797,7 @@ func TestStatsDBBackup(t *testing.T) {
 
 	// Make new stats DB
 	s, err := NewStatsDB(c)
-	if err != nil {
-		t.Errorf("Failed to create new statsDB struct due to %s", err)
-	}
+	require.NoError(t, err, "failed to create new statsDB")
 
 	// Make backup dir non existent
 	s.storage.dbBackupPath = tmpDir
@@ -871,9 +806,8 @@ func TestStatsDBBackup(t *testing.T) {
 	populateDBWithMockData(s)
 
 	// Run backup
-	if err := s.createBackup(); err != nil {
-		t.Errorf("Failed to backup DB: %s", err)
-	}
+	err = s.createBackup()
+	require.NoError(t, err, "failed to backup DB")
 }
 
 func TestUnitStatsDeleteOldUnits(t *testing.T) {
@@ -883,9 +817,7 @@ func TestUnitStatsDeleteOldUnits(t *testing.T) {
 
 	// Make new stats DB
 	s, err := NewStatsDB(c)
-	if err != nil {
-		t.Errorf("Failed to create new statsDB struct due to %s", err)
-	}
+	require.NoError(t, err, "failed to create new statsDB")
 
 	// Add new row that should be deleted
 	units := []models.ClusterUnits{
@@ -905,31 +837,22 @@ func TestUnitStatsDeleteOldUnits(t *testing.T) {
 	}
 	tx, _ := s.db.Begin()
 	stmtMap, err := s.prepareStatements(tx)
-	if err != nil {
-		t.Errorf("Failed to prepare SQL statements: %s", err)
-	}
+	require.NoError(t, err)
 	s.execStatements(stmtMap, time.Now(), units, nil, nil)
 
 	// Now clean up DB for old units
 	err = s.purgeExpiredUnits(tx)
-	if err != nil {
-		t.Errorf("Failed to delete old entries in DB")
-	}
+	require.NoError(t, err, "failed to delete old netries in DB")
 	tx.Commit()
 
 	// Query for deleted unit
 	result, err := s.db.Prepare(
 		fmt.Sprintf("SELECT COUNT(uuid) FROM %s WHERE uuid = ?;", base.UnitsDBTableName),
 	)
-	if err != nil {
-		t.Errorf("Failed to prepare SQL statement")
-	}
+	require.NoError(t, err)
+
 	var numRows string
 	err = result.QueryRow(unitID).Scan(&numRows)
-	if err != nil {
-		t.Errorf("Failed to get query result due to %s.", err)
-	}
-	if numRows != "0" {
-		t.Errorf("Deleting old units failed. Expected 0 rows. Returned %s", numRows)
-	}
+	require.NoError(t, err, "failed to query DB")
+	assert.Equal(t, numRows, "0", "expected 0 rows after deletion")
 }

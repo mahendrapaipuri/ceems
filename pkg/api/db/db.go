@@ -169,7 +169,6 @@ updatetime:
 setup:
 	// Setup manager struct that retrieves unit data
 	manager, err := c.ResourceManager(c.Logger)
-	fmt.Printf("%#v\n", manager)
 	if err != nil {
 		level.Error(c.Logger).Log("msg", "Resource manager setup failed", "err", err)
 		return nil, err
@@ -259,6 +258,9 @@ setup:
 
 // Collect unit stats
 func (s *statsDB) Collect() error {
+	// Measure elapsed time
+	defer common.TimeTrack(time.Now(), "Data collection", s.logger)
+
 	var currentTime = time.Now()
 
 	// If duration is less than 1 day do single update
@@ -452,7 +454,7 @@ func (s *statsDB) execStatements(
 	clusterProjects []models.ClusterProjects,
 ) {
 	// Measure elapsed time
-	defer common.TimeTrack(time.Now(), "DB insertions", s.logger)
+	defer common.TimeTrack(time.Now(), "DB insertion", s.logger)
 
 	var ignore = 0
 	var err error

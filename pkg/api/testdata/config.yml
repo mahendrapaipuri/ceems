@@ -12,6 +12,7 @@ clusters:
     manager: slurm
     updaters:
       - tsdb-0
+      - tsdb-1
     cli: 
       path: pkg/api/testdata
 
@@ -65,6 +66,14 @@ updaters:
           rte_total: total_cpu_emissions_gms{uuid=~"{{.UUIDs}}",provider="rte"}
           emaps_total: total_cpu_emissions_gms{uuid=~"{{.UUIDs}}",provider="emaps"}
 
+  - id: tsdb-1
+    updater: tsdb
+    web:
+      url: http://localhost:9090
+    extra_config:
+      cutoff_duration: 0s
+      query_batch_size: 1
+      queries:
         # Total IO Read stats
         total_io_read_stats: 
           bytes: total_io_read_stats_bytes{uuid=~"{{.UUIDs}}"}

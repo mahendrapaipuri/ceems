@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-kit/log"
@@ -38,6 +39,12 @@ type Manager struct {
 
 var (
 	factories = make(map[string]func(cluster models.Cluster, logger log.Logger) (Fetcher, error))
+)
+
+// Mutex lock
+var (
+	unitFetcherLock = sync.RWMutex{}
+	userFetcherLock = sync.RWMutex{}
 )
 
 // RegisterManager registers the resource manager into factory
@@ -148,37 +155,59 @@ func NewManager(logger log.Logger) (*Manager, error) {
 // FetchUnits implements collection jobs between start and end times
 func (b Manager) FetchUnits(start time.Time, end time.Time) ([]models.ClusterUnits, error) {
 	// Measure elapsed time
-	defer common.TimeTrack(time.Now(), "resource manager units", b.Logger)
+	defer common.TimeTrack(time.Now(), "units fetcher", b.Logger)
 
 	var clusterUnits []models.ClusterUnits
 	var errs error
+	var wg sync.WaitGroup
+	wg.Add((len(b.Fetchers)))
 	for _, fetcher := range b.Fetchers {
-		units, err := fetcher.FetchUnits(start, end)
-		if err != nil {
-			errs = errors.Join(errs, err)
-			continue
-		}
-		clusterUnits = append(clusterUnits, units...)
+		go func(f Fetcher) {
+			units, err := f.FetchUnits(start, end)
+			if err != nil {
+				unitFetcherLock.Lock()
+				errs = errors.Join(errs, err)
+				unitFetcherLock.Unlock()
+				wg.Done()
+				return
+			}
+			unitFetcherLock.Lock()
+			clusterUnits = append(clusterUnits, units...)
+			unitFetcherLock.Unlock()
+			wg.Done()
+		}(fetcher)
 	}
+	wg.Wait()
 	return clusterUnits, errs
 }
 
 // FetchUsersProjects fetches latest projects and users for each cluster
 func (b Manager) FetchUsersProjects(currentTime time.Time) ([]models.ClusterUsers, []models.ClusterProjects, error) {
 	// Measure elapsed time
-	defer common.TimeTrack(time.Now(), "resource manager users and projects", b.Logger)
+	defer common.TimeTrack(time.Now(), "users and projects fetcher", b.Logger)
 
 	var clusterUsers []models.ClusterUsers
 	var clusterProjects []models.ClusterProjects
 	var errs error
+	var wg sync.WaitGroup
+	wg.Add((len(b.Fetchers)))
 	for _, fetcher := range b.Fetchers {
-		users, projects, err := fetcher.FetchUsersProjects(currentTime)
-		if err != nil {
-			errs = errors.Join(errs, err)
-			continue
-		}
-		clusterUsers = append(clusterUsers, users...)
-		clusterProjects = append(clusterProjects, projects...)
+		go func(f Fetcher) {
+			users, projects, err := f.FetchUsersProjects(currentTime)
+			if err != nil {
+				userFetcherLock.Lock()
+				errs = errors.Join(errs, err)
+				userFetcherLock.Unlock()
+				wg.Done()
+				return
+			}
+			userFetcherLock.Lock()
+			clusterUsers = append(clusterUsers, users...)
+			clusterProjects = append(clusterProjects, projects...)
+			userFetcherLock.Unlock()
+			wg.Done()
+		}(fetcher)
 	}
+	wg.Wait()
 	return clusterUsers, clusterProjects, errs
 }

@@ -3,10 +3,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
 	"log"
+	"math"
 	"net/http"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -22,20 +25,24 @@ var (
 	regexpUUID = regexp.MustCompile("(?:.+?)[^gpu]uuid=[~]{0,1}\"(?P<uuid>[a-zA-Z0-9-|]+)\"(?:.*)")
 )
 
-// filterResults returns the filtered results based on uuids slice
-func filterResults(uuids []string, allResults []interface{}) []interface{} {
-	// Return results corresponding to UUIDs
-	var responseResults []interface{}
-	for _, result := range allResults {
-		if m, ok := result.(map[string]interface{})["metric"]; ok {
-			if uuid, ok := m.(map[string]string)["uuid"]; ok {
-				if slices.Contains(uuids, uuid) {
-					responseResults = append(responseResults, result)
-				}
-			}
-		}
+// hash returns hash of a given string
+func hash(s string) uint32 {
+	h := fnv.New32a()
+	h.Write([]byte(s))
+	return h.Sum32()
+}
+
+// lenLoop returns number of digits in an integer
+func lenLoop(i uint32) int {
+	if i == 0 {
+		return 1
 	}
-	return responseResults
+	count := 0
+	for i != 0 {
+		i /= 10
+		count++
+	}
+	return count
 }
 
 // QueryHandler handles queries
@@ -79,246 +86,99 @@ func QueryHandler(w http.ResponseWriter, r *http.Request) {
 
 	// log.Println("Query", query, "UUIDs", uuids)
 
-	var allResults []interface{}
+	var results []interface{}
 	if slices.Contains(
 		[]string{
 			"avg_cpu_usage", "avg_cpu_mem_usage", "avg_gpu_usage",
 			"avg_gpu_mem_usage", "total_cpu_energy_usage_kwh", "total_gpu_energy_usage_kwh",
 			"total_cpu_emissions_gms", "total_gpu_emissions_gms",
 		}, query) {
-		allResults = []interface{}{
-			map[string]interface{}{
-				"metric": map[string]string{
-					"uuid": "1479763",
-				},
-				"value": []interface{}{
-					12345, "14.79",
-				},
-			},
-			map[string]interface{}{
-				"metric": map[string]string{
-					"uuid": "1481508",
-				},
-				"value": []interface{}{
-					12345, "14.58",
-				},
-			},
-			map[string]interface{}{
-				"metric": map[string]string{
-					"uuid": "147975",
-				},
-				"value": []interface{}{
-					12345, "14.79",
-				},
-			},
-			map[string]interface{}{
-				"metric": map[string]string{
-					"uuid": "11508",
-				},
-				"value": []interface{}{
-					12345, "11.50",
-				},
-			},
-			map[string]interface{}{
-				"metric": map[string]string{
-					"uuid": "81510",
-				},
-				"value": []interface{}{
-					12345, "81.51",
-				},
-			},
+		// Convert uuid into hash and transform that hash number into float64 between 0 and 100
+		for _, uuid := range uuids {
+			h := hash(uuid)
+			numDigits := lenLoop(h)
+			value := float64(h) / math.Pow(10, float64(numDigits)-2)
+			results = append(results,
+				map[string]interface{}{
+					"metric": map[string]string{
+						"uuid": uuid,
+					},
+					"value": []interface{}{
+						12345, strconv.FormatFloat(value, 'f', -1, 64),
+					},
+				})
 		}
 	} else if slices.Contains(
 		[]string{
 			"total_io_read_stats_bytes", "total_io_write_stats_bytes",
 		}, query) {
-		allResults = []interface{}{
-			map[string]interface{}{
-				"metric": map[string]string{
-					"uuid": "1479763",
-				},
-				"value": []interface{}{
-					12345, "1479763",
-				},
-			},
-			map[string]interface{}{
-				"metric": map[string]string{
-					"uuid": "1481508",
-				},
-				"value": []interface{}{
-					12345, "1481508",
-				},
-			},
-			map[string]interface{}{
-				"metric": map[string]string{
-					"uuid": "147975",
-				},
-				"value": []interface{}{
-					12345, "147975",
-				},
-			},
-			map[string]interface{}{
-				"metric": map[string]string{
-					"uuid": "11508",
-				},
-				"value": []interface{}{
-					12345, "11508",
-				},
-			},
-			map[string]interface{}{
-				"metric": map[string]string{
-					"uuid": "81510",
-				},
-				"value": []interface{}{
-					12345, "81510",
-				},
-			},
+		for _, uuid := range uuids {
+			h := hash(uuid)
+			results = append(results,
+				map[string]interface{}{
+					"metric": map[string]string{
+						"uuid": uuid,
+					},
+					"value": []interface{}{
+						12345, strconv.FormatUint(uint64(h), 10),
+					},
+				})
 		}
 	} else if slices.Contains(
 		[]string{
 			"total_io_read_stats_requests", "total_io_write_stats_requests",
 		}, query) {
-		allResults = []interface{}{
-			map[string]interface{}{
-				"metric": map[string]string{
-					"uuid": "1479763",
-				},
-				"value": []interface{}{
-					12345, "14797630",
-				},
-			},
-			map[string]interface{}{
-				"metric": map[string]string{
-					"uuid": "1481508",
-				},
-				"value": []interface{}{
-					12345, "14815080",
-				},
-			},
-			map[string]interface{}{
-				"metric": map[string]string{
-					"uuid": "147975",
-				},
-				"value": []interface{}{
-					12345, "1479750",
-				},
-			},
-			map[string]interface{}{
-				"metric": map[string]string{
-					"uuid": "11508",
-				},
-				"value": []interface{}{
-					12345, "115080",
-				},
-			},
-			map[string]interface{}{
-				"metric": map[string]string{
-					"uuid": "81510",
-				},
-				"value": []interface{}{
-					12345, "815100",
-				},
-			},
+		for _, uuid := range uuids {
+			h := hash(uuid)
+			results = append(results,
+				map[string]interface{}{
+					"metric": map[string]string{
+						"uuid": uuid,
+					},
+					"value": []interface{}{
+						12345, strconv.FormatUint(uint64(h)*10, 10),
+					},
+				})
 		}
 	} else if slices.Contains(
 		[]string{
 			"total_ingress_stats_bytes", "total_outgress_stats_bytes",
 		}, query) {
-		allResults = []interface{}{
-			map[string]interface{}{
-				"metric": map[string]string{
-					"uuid": "1479763",
-				},
-				"value": []interface{}{
-					12345, "147976300",
-				},
-			},
-			map[string]interface{}{
-				"metric": map[string]string{
-					"uuid": "1481508",
-				},
-				"value": []interface{}{
-					12345, "148150800",
-				},
-			},
-			map[string]interface{}{
-				"metric": map[string]string{
-					"uuid": "147975",
-				},
-				"value": []interface{}{
-					12345, "14797500",
-				},
-			},
-			map[string]interface{}{
-				"metric": map[string]string{
-					"uuid": "11508",
-				},
-				"value": []interface{}{
-					12345, "1150800",
-				},
-			},
-			map[string]interface{}{
-				"metric": map[string]string{
-					"uuid": "81510",
-				},
-				"value": []interface{}{
-					12345, "8151000",
-				},
-			},
+		for _, uuid := range uuids {
+			h := hash(uuid)
+			results = append(results,
+				map[string]interface{}{
+					"metric": map[string]string{
+						"uuid": uuid,
+					},
+					"value": []interface{}{
+						12345, strconv.FormatUint(uint64(h)*100, 10),
+					},
+				})
 		}
 	} else if slices.Contains(
 		[]string{
 			"total_ingress_stats_packets", "total_outgress_stats_packets",
 		}, query) {
-		allResults = []interface{}{
-			map[string]interface{}{
-				"metric": map[string]string{
-					"uuid": "1479763",
-				},
-				"value": []interface{}{
-					12345, "1479763000",
-				},
-			},
-			map[string]interface{}{
-				"metric": map[string]string{
-					"uuid": "1481508",
-				},
-				"value": []interface{}{
-					12345, "1481508000",
-				},
-			},
-			map[string]interface{}{
-				"metric": map[string]string{
-					"uuid": "147975",
-				},
-				"value": []interface{}{
-					12345, "147975000",
-				},
-			},
-			map[string]interface{}{
-				"metric": map[string]string{
-					"uuid": "11508",
-				},
-				"value": []interface{}{
-					12345, "11508000",
-				},
-			},
-			map[string]interface{}{
-				"metric": map[string]string{
-					"uuid": "81510",
-				},
-				"value": []interface{}{
-					12345, "81510000",
-				},
-			},
+		for _, uuid := range uuids {
+			h := hash(uuid)
+			results = append(results,
+				map[string]interface{}{
+					"metric": map[string]string{
+						"uuid": uuid,
+					},
+					"value": []interface{}{
+						12345, strconv.FormatUint(uint64(h)*1000, 10),
+					},
+				})
 		}
 	}
-	responseResults := filterResults(uuids, allResults)
+	// responseResults := filterResults(uuids, esults)
 	response = tsdb.Response{
 		Status: "success",
 		Data: map[string]interface{}{
 			"resultType": "vector",
-			"result":     responseResults,
+			"result":     results,
 		},
 	}
 	if err := json.NewEncoder(w).Encode(&response); err != nil {
