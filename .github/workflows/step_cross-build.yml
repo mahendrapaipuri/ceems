@@ -29,12 +29,13 @@ jobs:
           docker run --privileged linuxkit/binfmt:v0.8
 
       - name: Cross compile Go packages
-        run: promu --config .promu-go.yml crossbuild -v
+        run: |
+          sed -i -e 's/RELEASE_BUILD           ?= 0/RELEASE_BUILD           ?= 1/g' Makefile
+          promu --config .promu-go.yml crossbuild -v
 
       - name: Cross compile CGo packages
         run: |
           sed -i -e 's/CGO_BUILD               ?= 0/CGO_BUILD               ?= 1/g' Makefile
-          sed -i -e 's/RELEASE_BUILD           ?= 0/RELEASE_BUILD           ?= 1/g' Makefile
           promu --config .promu-cgo.yml crossbuild -v
       
       - name: Create tarballs and checksums
