@@ -242,7 +242,9 @@ $(PROMU):
 .PHONY: swag
 swag: $(SWAG)
 $(SWAG):
+ifeq ($(CGO_BUILD), 1)
 	$(GO) install github.com/swaggo/swag/cmd/swag@latest
+endif
 
 .PHONY: proto
 proto:

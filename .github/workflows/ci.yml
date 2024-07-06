@@ -71,7 +71,7 @@ jobs:
 
   build:
     needs: [test-lint, test-unit]
-    uses: ./.github/workflows/step_build.yml
+    uses: ./.github/workflows/step_cross-build.yml
 
   packaging:
     needs: [build]
