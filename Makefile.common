@@ -42,8 +42,10 @@ ifneq ($(shell command -v gotestsum > /dev/null),)
 endif
 endif
 
-PROMU_VERSION ?= 0.15.0
+PROMU_VERSION ?= 0.17.0
+SWAG_VERSION  ?= 1.16.3
 PROMU_URL     := https://github.com/prometheus/promu/releases/download/v$(PROMU_VERSION)/promu-$(PROMU_VERSION).$(GO_BUILD_PLATFORM).tar.gz
+SWAG_URL      := https://github.com/swaggo/swag/releases/download/v$(SWAG_VERSION)/swag_$(SWAG_VERSION)_Linux_$(GOHOSTARCH).tar.gz
 
 SKIP_GOLANGCI_LINT :=
 GOLANGCI_LINT :=
@@ -186,6 +188,7 @@ common-build: promu swag
 ifeq ($(CGO_BUILD), 1)
 	@echo ">> updating swagger docs"
 	ls -la $(FIRST_GOPATH)/bin
+	$(GO) env
 	$(SWAG) init -d $(SWAGGER_DIR) -g $(SWAGGER_MAIN) -o $(SWAGGER_DIR)/docs --pd --quiet
 	$(SWAG) fmt -d $(SWAGGER_DIR) -g $(SWAGGER_MAIN)
 endif
@@ -244,6 +247,11 @@ $(PROMU):
 swag: $(SWAG)
 $(SWAG):
 ifeq ($(CGO_BUILD), 1)
+	# $(eval SWAG_TMP := $(shell mktemp -d))
+	# curl -s -L $(SWAG_URL) | tar -xvzf - -C $(SWAG_TMP)
+	# mkdir -p $(FIRST_GOPATH)/bin
+	# cp $(SWAG_TMP)/swag $(FIRST_GOPATH)/bin/swag
+	# rm -r $(SWAG_TMP)
 	$(GO) install github.com/swaggo/swag/cmd/swag@latest
 endif
 
