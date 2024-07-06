@@ -31,7 +31,7 @@ jobs:
       - name: Cross compile Go packages
         run: |
           sed -i -e 's/RELEASE_BUILD           ?= 0/RELEASE_BUILD           ?= 1/g' Makefile
-          # promu --config .promu-go.yml crossbuild -v
+          promu --config .promu-go.yml crossbuild -v
 
       - name: Cross compile CGo packages
         run: |
