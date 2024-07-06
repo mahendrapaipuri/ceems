@@ -185,6 +185,7 @@ common-unused:
 common-build: promu swag
 ifeq ($(CGO_BUILD), 1)
 	@echo ">> updating swagger docs"
+	ls -la $(FIRST_GOPATH)/bin
 	$(SWAG) init -d $(SWAGGER_DIR) -g $(SWAGGER_MAIN) -o $(SWAGGER_DIR)/docs --pd --quiet
 	$(SWAG) fmt -d $(SWAGGER_DIR) -g $(SWAGGER_MAIN)
 endif
