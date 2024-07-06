@@ -247,12 +247,12 @@ $(PROMU):
 swag: $(SWAG)
 $(SWAG):
 ifeq ($(CGO_BUILD), 1)
-	# $(eval SWAG_TMP := $(shell mktemp -d))
-	# curl -s -L $(SWAG_URL) | tar -xvzf - -C $(SWAG_TMP)
-	# mkdir -p $(FIRST_GOPATH)/bin
-	# cp $(SWAG_TMP)/swag $(FIRST_GOPATH)/bin/swag
-	# rm -r $(SWAG_TMP)
-	$(GO) install github.com/swaggo/swag/cmd/swag@latest
+	$(eval SWAG_TMP := $(shell mktemp -d))
+	curl -s -L $(SWAG_URL) | tar -xvzf - -C $(SWAG_TMP)
+	mkdir -p $(FIRST_GOPATH)/bin
+	cp $(SWAG_TMP)/swag $(FIRST_GOPATH)/bin/swag
+	rm -r $(SWAG_TMP)
+	# $(GO) install -v -n -a github.com/swaggo/swag/cmd/swag@latest
 endif
 
 .PHONY: proto
