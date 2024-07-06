@@ -26,12 +26,12 @@ jobs:
       - name: Setup build environment
         run: |
           docker version
-          docker run --privileged linuxkit/binfmt:v0.8
+          # docker run --privileged linuxkit/binfmt:v0.8
 
       - name: Cross compile Go packages
         run: |
           sed -i -e 's/RELEASE_BUILD           ?= 0/RELEASE_BUILD           ?= 1/g' Makefile
-          promu --config .promu-go.yml crossbuild -v
+          # promu --config .promu-go.yml crossbuild -v
 
       - name: Cross compile CGo packages
         run: |
