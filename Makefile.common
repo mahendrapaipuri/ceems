@@ -42,7 +42,7 @@ ifneq ($(shell command -v gotestsum > /dev/null),)
 endif
 endif
 
-PROMU_VERSION ?= 0.15.0
+PROMU_VERSION ?= 0.17.0
 PROMU_URL     := https://github.com/prometheus/promu/releases/download/v$(PROMU_VERSION)/promu-$(PROMU_VERSION).$(GO_BUILD_PLATFORM).tar.gz
 
 SKIP_GOLANGCI_LINT :=
@@ -239,10 +239,15 @@ $(PROMU):
 	cp $(PROMU_TMP)/promu-$(PROMU_VERSION).$(GO_BUILD_PLATFORM)/promu $(FIRST_GOPATH)/bin/promu
 	rm -r $(PROMU_TMP)
 
+# Set CC and CXX vars here else during cross compilation swag will be built in ARCH
+# specific bin folder like $(GOPATH)/bin/linux_386/swag. By setting CC and CXX we are
+# explicitly saying it to build as default arch and bin will be placed in $(GOPATH)/bin
 .PHONY: swag
 swag: $(SWAG)
 $(SWAG):
-	$(GO) install github.com/swaggo/swag/cmd/swag@latest
+ifeq ($(CGO_BUILD), 1)
+	cc='gcc' cxx='g++' GOARCH='amd64' $(GO) install github.com/swaggo/swag/cmd/swag@v1.16.3
+endif
 
 .PHONY: proto
 proto:
