@@ -1,7 +1,8 @@
 # Changelog
 
-## 0.1.0 / 2024-07-04
+## 0.1.0 / 2024-07-06
 
+- [CI] Avoid building test bins for release workflows [#106](https://github.com/mahendrapaipuri/ceems/pull/106) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
 - [BUGFIX] Fix tsdb updater [#104](https://github.com/mahendrapaipuri/ceems/pull/104) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
 - [DOCS] Store metrics as map in DB [#102](https://github.com/mahendrapaipuri/ceems/pull/102) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
 - [FEATURE] Improve docs on Slurm collector [#101](https://github.com/mahendrapaipuri/ceems/pull/101) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
