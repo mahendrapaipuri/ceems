@@ -188,10 +188,12 @@ ifeq ($(CGO_BUILD), 1)
 	$(SWAG) init -d $(SWAGGER_DIR) -g $(SWAGGER_MAIN) -o $(SWAGGER_DIR)/docs --pd --quiet
 	$(SWAG) fmt -d $(SWAGGER_DIR) -g $(SWAGGER_MAIN)
 endif
-	@echo ">> building binaries"
-	$(PROMU) build --prefix $(PREFIX) $(PROMU_BINARIES)
+ifeq ($(RELEASE_BUILD), 0)
 	@echo ">> building test binaries"
 	$(PROMU_TEST) build --prefix $(PREFIX) $(PROMU_BINARIES)
+endif
+	@echo ">> building binaries"
+	$(PROMU) build --prefix $(PREFIX) $(PROMU_BINARIES)
 
 .PHONY: common-tarball
 common-tarball: promu

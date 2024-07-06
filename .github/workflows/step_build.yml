@@ -10,10 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: 1.21.x
 
@@ -25,7 +25,9 @@ jobs:
       # Cross compile for only AMD and ARM archs in CI to reduce CI time and artifacts size
       # We will compile for all supported archs in release workflow
       - name: Cross compile Go packages
-        run: promu --config .promu-go.yml crossbuild -v -p linux/amd64 -p linux/arm64
+        run: |
+          sed -i -e 's/RELEASE_BUILD           ?= 0/RELEASE_BUILD           ?= 1/g' Makefile
+          promu --config .promu-go.yml crossbuild -v -p linux/amd64 -p linux/arm64
 
       - name: Cross compile CGo packages
         run: |
