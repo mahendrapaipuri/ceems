@@ -26,7 +26,7 @@ jobs:
       - name: Setup build environment
         run: |
           docker version
-          # docker run --privileged linuxkit/binfmt:v0.8
+          docker run --privileged linuxkit/binfmt:v0.8
 
       - name: Cross compile Go packages
         run: |
