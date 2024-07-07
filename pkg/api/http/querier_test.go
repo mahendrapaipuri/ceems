@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"reflect"
 	"testing"
 
 	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func setupTestDB() *sql.DB {
@@ -161,14 +162,8 @@ func TestUnitsQuerier(t *testing.T) {
 		},
 	}
 	units, err := Querier[models.Unit](db, q, logger)
-	if err != nil {
-		t.Errorf("failed to query for units: %s", err)
-	}
-	for i := 0; i < len(expectedUnits); i++ {
-		if !reflect.DeepEqual(expectedUnits[i], units[i]) {
-			t.Errorf("expected units %#v \n, got %#v", expectedUnits[i], units[i])
-		}
-	}
+	require.NoError(t, err)
+	assert.Equal(t, expectedUnits, units)
 }
 
 func TestUsageQuerier(t *testing.T) {
@@ -218,12 +213,8 @@ func TestUsageQuerier(t *testing.T) {
 		},
 	}
 	usageStats, err := Querier[models.Usage](db, q, logger)
-	if err != nil {
-		t.Errorf("failed to query for usage: %s", err)
-	}
-	if !reflect.DeepEqual(expectedUsageStats, usageStats) {
-		t.Errorf("expected usage %#v \n, got %#v", expectedUsageStats, usageStats)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, expectedUsageStats, usageStats)
 }
 
 func TestProjectQuerier(t *testing.T) {
@@ -251,12 +242,8 @@ func TestProjectQuerier(t *testing.T) {
 		},
 	}
 	projects, err := Querier[models.Project](db, q, logger)
-	if err != nil {
-		t.Errorf("failed to query for projects: %s", err)
-	}
-	if !reflect.DeepEqual(expectedProjects, projects) {
-		t.Errorf("expected projects %#v \n, got %#v", expectedProjects, projects)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, expectedProjects, projects)
 }
 
 func TestUserQuerier(t *testing.T) {
@@ -284,12 +271,8 @@ func TestUserQuerier(t *testing.T) {
 		},
 	}
 	users, err := Querier[models.User](db, q, logger)
-	if err != nil {
-		t.Errorf("failed to query for users: %s", err)
-	}
-	if !reflect.DeepEqual(expectedUsers, users) {
-		t.Errorf("expected users %#v \n, got %#v", expectedUsers, users)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, expectedUsers, users)
 }
 
 func TestClusterQuerier(t *testing.T) {
@@ -312,12 +295,8 @@ func TestClusterQuerier(t *testing.T) {
 		},
 	}
 	clusters, err := Querier[models.Cluster](db, q, logger)
-	if err != nil {
-		t.Errorf("failed to query for clusters: %s", err)
-	}
-	if !reflect.DeepEqual(expectedClusters, clusters) {
-		t.Errorf("expected clusters %#v \n, got %#v", expectedClusters, clusters)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, expectedClusters, clusters)
 }
 
 func TestQueryBuilder(t *testing.T) {
@@ -340,12 +319,8 @@ func TestQueryBuilder(t *testing.T) {
 
 	// Get built query
 	queryString, queryParams := q.get()
-	if queryString != expectedQueryString {
-		t.Errorf("expected query string %s, got %s", expectedQueryString, queryString)
-	}
-	if !reflect.DeepEqual(expectedQueryParams, queryParams) {
-		t.Errorf("expected query parameters %v, got %v", expectedQueryParams, queryParams)
-	}
+	require.Equal(t, queryString, expectedQueryString)
+	assert.Equal(t, expectedQueryParams, queryParams)
 }
 
 func TestSubQueryBuilder(t *testing.T) {
@@ -369,10 +344,6 @@ func TestSubQueryBuilder(t *testing.T) {
 
 	// Get built query
 	queryString, queryParams := q.get()
-	if queryString != expectedQueryString {
-		t.Errorf("expected query string %s, got %s", expectedQueryString, queryString)
-	}
-	if !reflect.DeepEqual(expectedQueryParams, queryParams) {
-		t.Errorf("expected query parameters %v, got %v", expectedQueryParams, queryParams)
-	}
+	require.Equal(t, queryString, expectedQueryString)
+	assert.Equal(t, expectedQueryParams, queryParams)
 }

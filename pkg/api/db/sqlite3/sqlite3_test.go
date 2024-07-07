@@ -6,44 +6,31 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
-	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDriver(t *testing.T) {
 	db, err := sql.Open(DriverName, filepath.Join(t.TempDir(), "test.db"))
-	if err != nil {
-		t.Errorf("failed to open DB: %s", err)
-	}
+	require.NoError(t, err)
 
 	conn, err := db.Conn(context.Background())
-	if err != nil {
-		t.Errorf("could not create connection with custom driver: %s", err)
-	}
-	if NumConns() != 1 {
-		t.Errorf("expected 1 connection, got %d", NumConns())
-	}
+	require.NoError(t, err)
+	assert.Equal(t, NumConns(), 1)
 
 	// Get the underlying sqlite3 connection
-	_, ok := GetLastConn()
-	if !ok {
-		t.Errorf("connection was not in connection map")
-	}
-	// require.IsType(t, &sqlite.Conn{}, sqlc, "connection of wrong type returned")
+	sqlc, ok := GetLastConn()
+	require.True(t, ok, "connection was not in connection map")
+	require.IsType(t, &Conn{}, sqlc, "connection of wrong type returned")
 
 	err = conn.Close()
-	if err != nil {
-		t.Errorf("failed to close connection: %s", err)
-	}
+	require.NoError(t, err, "could not close connection")
 
 	err = db.Close()
-	if err != nil {
-		t.Errorf("failed to close DB: %s", err)
-	}
-
-	if NumConns() != 0 {
-		t.Errorf("expected 0 connections, got %d", NumConns())
-	}
+	require.NoError(t, err, "could not close database")
+	require.Equal(t, 0, NumConns())
 }
 
 func TestOpenMany(t *testing.T) {
@@ -54,48 +41,30 @@ func TestOpenMany(t *testing.T) {
 
 	for i := 0; i < expectedConnections; i++ {
 		db, err := sql.Open(DriverName, filepath.Join(tmpdir, fmt.Sprintf("test-%d.db", i+1)))
-		if err != nil {
-			t.Errorf("could not open connection to database: %s", err)
-		}
-		if err := db.Ping(); err != nil {
-			t.Errorf("could not ping database to establish a connection: %s", err)
-		}
+		require.NoError(t, err, "could not open connection to database")
+		require.NoError(t, db.Ping(), "could not ping database to establish a connection")
 		closers[i] = db
 
 		var ok bool
 		conns[i], ok = GetLastConn()
-		if !ok {
-			t.Errorf("expected new connection")
-		}
+		require.True(t, ok, "expected new connection")
 	}
 
 	// Ensure that we created the expected number of connections
-	if expectedConnections != NumConns() {
-		t.Errorf("expected DB connecttions %d, got %d", expectedConnections, NumConns())
-	}
-	if expectedConnections != len(closers) {
-		t.Errorf("expected closers %d, got %d", expectedConnections, len(closers))
-	}
-	if expectedConnections != len(conns) {
-		t.Errorf("expected conns %d, got %d", expectedConnections, len(conns))
-	}
+	require.Equal(t, expectedConnections, NumConns())
+	require.Len(t, closers, expectedConnections)
+	require.Len(t, conns, expectedConnections)
 
 	// Should have different connnections
 	for i := 1; i < len(conns); i++ {
-		if reflect.DeepEqual(conns[i-1], conns[i]) {
-			t.Errorf("expected connections to be different")
-		}
+		require.NotSame(t, conns[i-1], conns[i], "expected connections to be different")
 	}
 
 	// Close each connection
 	for _, closer := range closers {
-		if err := closer.Close(); err != nil {
-			t.Errorf("expected no error during close: %s", err)
-		}
+		require.NoError(t, closer.Close(), "expected no error during close")
 		expectedConnections--
-		if expectedConnections != NumConns() {
-			t.Errorf("expected connections %d, got %d", expectedConnections, NumConns())
-		}
+		require.Equal(t, expectedConnections, NumConns())
 	}
 }
 
@@ -152,9 +121,7 @@ func TestAddMetricMap(t *testing.T) {
 
 	for _, test := range tests {
 		got := addMetricMap(test.existing, test.new)
-		if test.expected != got {
-			t.Errorf("%s: expected %s, got %s", test.name, test.expected, got)
-		}
+		assert.Equal(t, test.expected, got)
 	}
 }
 
@@ -219,9 +186,7 @@ func TestAvgMetricMap(t *testing.T) {
 
 	for _, test := range tests {
 		got := avgMetricMap(test.existing, test.new, test.existingWeight, test.newWeight)
-		if test.expected != got {
-			t.Errorf("%s: expected %s, got %s", test.name, test.expected, got)
-		}
+		assert.Equal(t, test.expected, got)
 	}
 }
 
@@ -239,9 +204,7 @@ func TestSumMetricMap(t *testing.T) {
 
 	// Finally do the aggregation
 	aggMap := gMap.Done()
-	if aggMap != expectedMap {
-		t.Errorf("expected sum %s, got %s", expectedMap, aggMap)
-	}
+	assert.Equal(t, expectedMap, aggMap)
 }
 
 func TestAvgMetricMapAgg(t *testing.T) {
@@ -259,7 +222,5 @@ func TestAvgMetricMapAgg(t *testing.T) {
 
 	// Finally do the aggregation
 	aggMap := gMap.Done()
-	if aggMap != expectedMap {
-		t.Errorf("expected avg %s, got %s", expectedMap, aggMap)
-	}
+	assert.Equal(t, expectedMap, aggMap)
 }

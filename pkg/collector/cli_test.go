@@ -10,6 +10,8 @@ import (
 
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/log"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const mockCEEMSExporterAppName = "mockApp"
@@ -45,9 +47,7 @@ func TestCEEMSExporterAppHandler(t *testing.T) {
 
 	// Create handler
 	handler := a.newHandler(false, 1, log.NewNopLogger())
-	if handler.maxRequests != 1 {
-		t.Errorf("Expected maxRequests to %d. Got %d", 1, handler.maxRequests)
-	}
+	assert.Equal(t, handler.maxRequests, 1)
 }
 
 func TestCEEMSExporterMain(t *testing.T) {
@@ -56,14 +56,11 @@ func TestCEEMSExporterMain(t *testing.T) {
 
 	// Create new instance of exporter CLI app
 	a, err := NewCEEMSExporter()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Add procfs path
-	if _, err := a.App.Parse([]string{"--path.procfs", "testdata/proc"}); err != nil {
-		t.Fatal(err)
-	}
+	_, err = a.App.Parse([]string{"--path.procfs", "testdata/proc"})
+	require.NoError(t, err)
 
 	// Start Main
 	go func() {

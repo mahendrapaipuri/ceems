@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/backend"
+	"github.com/stretchr/testify/assert"
 )
 
 func SleepHandler(w http.ResponseWriter, r *http.Request) {
@@ -28,15 +29,11 @@ func TestNewManager(t *testing.T) {
 		b := backend.NewTSDBServer(url, httputil.NewSingleHostReverseProxy(url), log.NewNopLogger())
 		m.Add("default", b)
 
-		if m.Size("default") != 1 {
-			t.Errorf("expected 1 backend TSDB servers, got %d", m.Size("default"))
-		}
+		assert.Equal(t, 1, m.Size("default"))
 	}
 }
 
 func TestNewManagerUnknownStrategy(t *testing.T) {
 	_, err := NewManager("unknown", log.NewNopLogger())
-	if err == nil {
-		t.Errorf("expected error in creating a manager with unknown strategy")
-	}
+	assert.Error(t, err)
 }

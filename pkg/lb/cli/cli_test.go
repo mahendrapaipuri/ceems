@@ -12,6 +12,7 @@ import (
 
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/mahendrapaipuri/ceems/internal/common"
+	"github.com/stretchr/testify/require"
 )
 
 const mockCEEMSLBAppName = "mockApp"
@@ -105,14 +106,10 @@ func TestCEEMSLBMainFail(t *testing.T) {
 	// Remove test related args and add a dummy arg
 	os.Args = []string{os.Args[0]}
 	a, err := NewCEEMSLoadBalancer()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Run Main
-	if err := a.Main(); err == nil {
-		t.Errorf("expected error: %s", err)
-	}
+	require.Error(t, a.Main())
 }
 
 func TestCEEMSLBMissingIDs(t *testing.T) {
@@ -129,9 +126,8 @@ ceems_lb:
 `
 
 	configFilePath := makeConfigFile(configFile, tmpDir)
-	if _, err := common.MakeConfig[CEEMSLBAppConfig](configFilePath); err == nil {
-		t.Errorf("expected error, got none")
-	}
+	_, err := common.MakeConfig[CEEMSLBAppConfig](configFilePath)
+	require.Error(t, err, "missing IDs")
 }
 
 func TestCEEMSLBMissingBackends(t *testing.T) {
@@ -147,9 +143,8 @@ ceems_lb:
 `
 
 	configFilePath := makeConfigFile(configFile, tmpDir)
-	if _, err := common.MakeConfig[CEEMSLBAppConfig](configFilePath); err == nil {
-		t.Errorf("expected error, got none")
-	}
+	_, err := common.MakeConfig[CEEMSLBAppConfig](configFilePath)
+	require.Error(t, err, "missing backends")
 }
 
 func TestCEEMSLBMainFailMismatchIDs(t *testing.T) {
@@ -169,7 +164,6 @@ clusters:
   - id: "default-1"`
 
 	configFilePath := makeConfigFile(configFile, tmpDir)
-	if _, err := common.MakeConfig[CEEMSLBAppConfig](configFilePath); err == nil {
-		t.Errorf("expected error, got none")
-	}
+	_, err := common.MakeConfig[CEEMSLBAppConfig](configFilePath)
+	require.Error(t, err)
 }

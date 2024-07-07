@@ -1,8 +1,9 @@
 package structset
 
 import (
-	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // testStruct is a test struct that will be used in tests
@@ -17,17 +18,13 @@ type testStruct struct {
 func TestGetStructFieldNames(t *testing.T) {
 	fields := GetStructFieldNames(testStruct{})
 	expectedFields := []string{"ID", "Field1", "Field2", "Field3", "Field4"}
-	if !reflect.DeepEqual(fields, expectedFields) {
-		t.Errorf("expected %v, got %v", expectedFields, fields)
-	}
+	assert.ElementsMatch(t, fields, expectedFields)
 }
 
 func TestGetStructFieldValues(t *testing.T) {
 	tags := GetStructFieldTagValues(testStruct{}, "json")
 	expectedTags := []string{"field1", "field2", "field3", "field4"}
-	if !reflect.DeepEqual(tags, expectedTags) {
-		t.Errorf("expected %v, got %v", expectedTags, tags)
-	}
+	assert.ElementsMatch(t, tags, expectedTags)
 }
 
 func TestGetStructFieldTagMap(t *testing.T) {
@@ -39,7 +36,5 @@ func TestGetStructFieldTagMap(t *testing.T) {
 		"field3": "f3",
 		"field4": "f4",
 	}
-	if !reflect.DeepEqual(tagMap, expectedTagMap) {
-		t.Errorf("expected %v, got %v", expectedTagMap, tagMap)
-	}
+	assert.Equal(t, tagMap, expectedTagMap)
 }

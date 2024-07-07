@@ -5,11 +5,12 @@ package collector
 
 import (
 	"fmt"
-	"reflect"
 	"strconv"
 	"testing"
 
 	"github.com/go-kit/log"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var expectedSlurmMetrics CgroupMetric
@@ -23,17 +24,32 @@ func mockGPUDevices() map[int]Device {
 	return devs
 }
 
-func TestCgroupsV2SlurmJobMetrics(t *testing.T) {
-	if _, err := CEEMSExporterApp.Parse(
+func TestNewSlurmCollector(t *testing.T) {
+	_, err := CEEMSExporterApp.Parse(
 		[]string{
 			"--path.cgroupfs", "testdata/sys/fs/cgroup",
 			"--collector.slurm.create.unique.jobids",
 			"--collector.slurm.job.props.path", "testdata/slurmjobprops",
 			"--collector.slurm.gpu.job.map.path", "testdata/gpujobmap",
 		},
-	); err != nil {
-		t.Fatal(err)
-	}
+	)
+	require.NoError(t, err)
+
+	_, err = NewSlurmCollector(log.NewNopLogger())
+	assert.NoError(t, err)
+}
+
+func TestCgroupsV2SlurmJobMetrics(t *testing.T) {
+	_, err := CEEMSExporterApp.Parse(
+		[]string{
+			"--path.cgroupfs", "testdata/sys/fs/cgroup",
+			"--collector.slurm.create.unique.jobids",
+			"--collector.slurm.job.props.path", "testdata/slurmjobprops",
+			"--collector.slurm.gpu.job.map.path", "testdata/gpujobmap",
+		},
+	)
+	require.NoError(t, err)
+
 	c := slurmCollector{
 		cgroups:          "v2",
 		gpuDevs:          mockGPUDevices(),
@@ -68,24 +84,20 @@ func TestCgroupsV2SlurmJobMetrics(t *testing.T) {
 		jobgpuordinals:  []string{"0"},
 		err:             false,
 	}
-	if err != nil {
-		t.Fatalf("Cannot fetch data from getJobsMetrics function: %v ", err)
-	}
-	if !reflect.DeepEqual(metrics["1009249"], expectedSlurmMetrics) {
-		t.Fatalf("Expected metrics data is %#v: \nGot %#v", expectedSlurmMetrics, metrics["1009249"])
-	}
+	require.NoError(t, err)
+	assert.Equal(t, metrics["1009249"], expectedSlurmMetrics)
 }
 
 func TestCgroupsV2SlurmJobMetricsWithProcFs(t *testing.T) {
-	if _, err := CEEMSExporterApp.Parse(
+	_, err := CEEMSExporterApp.Parse(
 		[]string{
 			"--path.cgroupfs", "testdata/sys/fs/cgroup",
 			"--collector.slurm.create.unique.jobids",
 			"--path.procfs", "testdata/proc",
 		},
-	); err != nil {
-		t.Fatal(err)
-	}
+	)
+	require.NoError(t, err)
+
 	c := slurmCollector{
 		cgroups:          "v2",
 		cgroupsRootPath:  *cgroupfsPath,
@@ -120,23 +132,19 @@ func TestCgroupsV2SlurmJobMetricsWithProcFs(t *testing.T) {
 		jobgpuordinals:  []string{"2", "3"},
 		err:             false,
 	}
-	if err != nil {
-		t.Fatalf("Cannot fetch data from getJobsMetrics function: %v ", err)
-	}
-	if !reflect.DeepEqual(metrics["1009248"], expectedSlurmMetrics) {
-		t.Fatalf("Expected metrics data is %+v: \nGot %+v", expectedSlurmMetrics, metrics["1009248"])
-	}
+	require.NoError(t, err)
+	assert.Equal(t, metrics["1009248"], expectedSlurmMetrics)
 }
 
 func TestCgroupsV2SlurmJobMetricsNoJobProps(t *testing.T) {
-	if _, err := CEEMSExporterApp.Parse(
+	_, err := CEEMSExporterApp.Parse(
 		[]string{
 			"--path.cgroupfs", "testdata/sys/fs/cgroup",
 			"--collector.slurm.create.unique.jobids",
 		},
-	); err != nil {
-		t.Fatal(err)
-	}
+	)
+	require.NoError(t, err)
+
 	c := slurmCollector{
 		cgroups:          "v2",
 		cgroupsRootPath:  *cgroupfsPath,
@@ -169,25 +177,21 @@ func TestCgroupsV2SlurmJobMetricsNoJobProps(t *testing.T) {
 		jobuuid:         "a0523e93-a037-c2b1-8b34-410c9996399c",
 		err:             false,
 	}
-	if err != nil {
-		t.Fatalf("Cannot fetch data from getJobsMetrics function: %v ", err)
-	}
-	if !reflect.DeepEqual(metrics["1009248"], expectedSlurmMetrics) {
-		t.Fatalf("Expected metrics data is %+v: \nGot %+v", expectedSlurmMetrics, metrics["1009248"])
-	}
+	require.NoError(t, err)
+	assert.Equal(t, metrics["1009248"], expectedSlurmMetrics)
 }
 
 func TestCgroupsV1SlurmJobMetrics(t *testing.T) {
-	if _, err := CEEMSExporterApp.Parse(
+	_, err := CEEMSExporterApp.Parse(
 		[]string{
 			"--path.cgroupfs", "testdata/sys/fs/cgroup",
 			"--path.procfs", "testdata/proc",
 			"--collector.slurm.create.unique.jobids",
 			"--collector.slurm.job.props.path", "testdata/slurmjobprops",
 		},
-	); err != nil {
-		t.Fatal(err)
-	}
+	)
+	require.NoError(t, err)
+
 	c := slurmCollector{
 		cgroups:          "v1",
 		logger:           log.NewNopLogger(),
@@ -221,10 +225,6 @@ func TestCgroupsV1SlurmJobMetrics(t *testing.T) {
 		jobgpuordinals:  []string{"2", "3"},
 		err:             false,
 	}
-	if err != nil {
-		t.Fatalf("Cannot fetch data from getJobsMetrics function: %v ", err)
-	}
-	if !reflect.DeepEqual(metrics["1009248"], expectedSlurmMetrics) {
-		t.Fatalf("Expected metrics data is %#v: \nGot %#v", expectedSlurmMetrics, metrics["1009248"])
-	}
+	require.NoError(t, err)
+	assert.Equal(t, metrics["1009248"], expectedSlurmMetrics)
 }

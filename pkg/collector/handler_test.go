@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/go-kit/log"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestInnerHandlerCreation(t *testing.T) {
@@ -13,7 +14,5 @@ func TestInnerHandlerCreation(t *testing.T) {
 
 	// Create handler
 	_, err := h.innerHandler()
-	if err != nil {
-		t.Errorf("Failed to create inner handler %s", err)
-	}
+	assert.NoError(t, err)
 }

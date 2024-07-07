@@ -10,6 +10,8 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/backend"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -19,9 +21,7 @@ var (
 func TestRoundRobinIteration(t *testing.T) {
 	d := time.Duration(0 * time.Second)
 	manager, err := NewManager("round-robin", log.NewNopLogger())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Make dummy backend servers
 	backendURLs := make(map[string][]*url.URL, 3)
@@ -29,9 +29,7 @@ func TestRoundRobinIteration(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		for j, id := range rrIDs {
 			backendURL, err := url.Parse(fmt.Sprintf("http://localhost:%d", 3333*(i+1)+j))
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			if _, ok := backendURLs[id]; !ok {
 				backendURLs[id] = make([]*url.URL, 3)
@@ -71,13 +69,9 @@ func TestRoundRobinIteration(t *testing.T) {
 	// This should be backends[0] as next round is multiple of 3 for rrID[0]
 	// and backends[2] for rrIDs[1]
 	for i, id := range rrIDs {
-		if backends[id][i].URL().String() != manager.Target(id, d).URL().String() {
-			t.Errorf("expected %s, got %s", backends[id][i].URL().String(), manager.Target(id, d).URL().String())
-		}
+		assert.Equal(t, backends[id][i].URL().String(), manager.Target(id, d).URL().String())
 	}
 
 	// For unknown ID expect nil
-	if manager.Target("unknown", d) != nil {
-		t.Errorf("expected nil, got %v", manager.Target("unknown", d))
-	}
+	assert.Empty(t, manager.Target("unknown", d))
 }

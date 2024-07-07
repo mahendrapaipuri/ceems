@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -179,16 +180,12 @@ printf """%s"""`, sacctMgrCmdOutput)
 
 	for _, cluster := range clusters {
 		slurm, err := NewSlurmScheduler(cluster, log.NewNopLogger())
-		if err != nil {
-			t.Errorf("Failed to create SLURM instance: %s", err)
-		}
+		require.NoError(t, err)
 
-		if _, err := slurm.FetchUnits(start, end); err != nil {
-			t.Errorf("Failed to fetch SLURM jobs: %s", err)
-		}
+		_, err = slurm.FetchUnits(start, end)
+		require.NoError(t, err)
 
-		if _, _, err := slurm.FetchUsersProjects(current); err != nil {
-			t.Errorf("Failed to fetch SLURM user account association: %s", err)
-		}
+		_, _, err = slurm.FetchUsersProjects(current)
+		require.NoError(t, err)
 	}
 }

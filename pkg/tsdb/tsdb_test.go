@@ -4,22 +4,19 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
 	"testing"
 	"time"
 
 	"github.com/go-kit/log"
 	config_util "github.com/prometheus/common/config"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewTSDBWithNoURL(t *testing.T) {
 	tsdb, err := NewTSDB("", config_util.HTTPClientConfig{}, log.NewNopLogger())
-	if err != nil {
-		t.Errorf("Failed to create TSDB instance")
-	}
-	if tsdb.Available() {
-		t.Errorf("Expected TSDB to not available")
-	}
+	require.NoError(t, err)
+	assert.False(t, tsdb.Available())
 }
 
 func TestNewTSDBWithURL(t *testing.T) {
@@ -31,17 +28,11 @@ func TestNewTSDBWithURL(t *testing.T) {
 	defer server.Close()
 
 	tsdb, err := NewTSDB(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
-	if err != nil {
-		t.Errorf("Failed to create TSDB instance")
-	}
-	if !tsdb.Available() {
-		t.Errorf("Expected TSDB to available")
-	}
+	require.NoError(t, err)
+	assert.True(t, tsdb.Available())
 
 	// Check if Ping is working
-	if err := tsdb.Ping(); err != nil {
-		t.Errorf("Could not ping TSDB")
-	}
+	assert.NoError(t, tsdb.Ping())
 }
 
 func TestTSDBConfigSuccess(t *testing.T) {
@@ -60,45 +51,28 @@ func TestTSDBConfigSuccess(t *testing.T) {
 	defer server.Close()
 
 	tsdb, err := NewTSDB(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
-	if err != nil {
-		t.Errorf("Failed to create TSDB instance")
-	}
+	require.NoError(t, err)
 
 	// Check if Ping is working
-	if !tsdb.Available() {
-		t.Errorf("Expected TSDB to available")
-	}
+	assert.True(t, tsdb.Available())
 
 	// Check global config
 	var globalConfig map[string]interface{}
-	if globalConfig, err = tsdb.GlobalConfig(); err != nil {
-		t.Errorf("Could not get TSDB config: %s", err)
-	}
-	if v, exists := globalConfig["scrape_interval"]; !exists {
-		t.Errorf("scrape_interval expected to exist in config")
-	} else {
-		if v.(string) != "15s" {
-			t.Errorf("expected scrape_interval 15s got %s", v.(string))
-		}
-	}
+	globalConfig, err = tsdb.GlobalConfig()
+	require.NoError(t, err)
+	assert.Equal(t, "15s", globalConfig["scrape_interval"].(string))
 
 	// Check scrape interval
 	scrapeInterval := tsdb.Intervals()["scrape_interval"]
-	if scrapeInterval != time.Duration(15*time.Second) {
-		t.Errorf("expected scrape_interval 15s got %s", scrapeInterval)
-	}
+	assert.Equal(t, time.Duration(15*time.Second), scrapeInterval)
 
 	// Check evaluation interval
 	evaluationInterval := tsdb.Intervals()["evaluation_interval"]
-	if evaluationInterval != time.Duration(10*time.Second) {
-		t.Errorf("expected evaluation_interval 10s got %s", evaluationInterval)
-	}
+	assert.Equal(t, time.Duration(10*time.Second), evaluationInterval)
 
 	// Check rate interval
 	rateInterval := tsdb.RateInterval()
-	if rateInterval != time.Duration(60*time.Second) {
-		t.Errorf("expected rate_interval 60s got %s", rateInterval)
-	}
+	assert.Equal(t, time.Duration(60*time.Second), rateInterval)
 }
 
 func TestTSDBConfigFail(t *testing.T) {
@@ -114,33 +88,22 @@ func TestTSDBConfigFail(t *testing.T) {
 	defer server.Close()
 
 	tsdb, err := NewTSDB(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
-	if err != nil {
-		t.Errorf("Failed to create TSDB instance")
-	}
-	if !tsdb.Available() {
-		t.Errorf("Expected TSDB to available")
-	}
+	require.NoError(t, err)
+	assert.True(t, tsdb.Available())
 
 	// Check if config is working
-	if _, err := tsdb.Config(); err == nil {
-		t.Errorf("Expected TSDB config error")
-	}
+	_, err = tsdb.Config()
+	assert.Error(t, err)
 
 	scrapeInterval := tsdb.Intervals()["scrape_interval"]
-	if scrapeInterval != time.Duration(defaultScrapeInterval) {
-		t.Errorf("Expected default scrape interval, got %s", scrapeInterval)
-	}
+	assert.Equal(t, time.Duration(defaultScrapeInterval), scrapeInterval)
 
 	// Check evaluation interval
 	evaluationInterval := tsdb.Intervals()["evaluation_interval"]
-	if evaluationInterval != time.Duration(defaultEvaluationInterval) {
-		t.Errorf("expected default scrape interval got %s", evaluationInterval)
-	}
+	assert.Equal(t, time.Duration(defaultEvaluationInterval), evaluationInterval)
 
 	rateInterval := tsdb.RateInterval()
-	if rateInterval != time.Duration(defaultScrapeInterval)*4 {
-		t.Errorf("Expected default rate interval, got %s", rateInterval)
-	}
+	assert.Equal(t, time.Duration(defaultScrapeInterval)*4, rateInterval)
 }
 
 func TestTSDBQuerySuccess(t *testing.T) {
@@ -177,20 +140,12 @@ func TestTSDBQuerySuccess(t *testing.T) {
 	defer server.Close()
 
 	tsdb, err := NewTSDB(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
-	if err != nil {
-		t.Errorf("Failed to create TSDB instance")
-	}
-	if !tsdb.Available() {
-		t.Errorf("Expected TSDB to available")
-	}
+	require.NoError(t, err)
+	assert.True(t, tsdb.Available())
 
-	if m, err := tsdb.Query("", time.Now()); err != nil {
-		t.Errorf("Expected TSDB query to return value")
-	} else {
-		if !reflect.DeepEqual(m, Metric{"1": 1.1, "2": 2.2}) {
-			t.Errorf("Expected {1: 1.1, 2: 2.2}, got %v", m)
-		}
-	}
+	m, err := tsdb.Query("", time.Now())
+	require.NoError(t, err)
+	assert.Equal(t, Metric{"1": 1.1, "2": 2.2}, m)
 }
 
 func TestTSDBQueryFail(t *testing.T) {
@@ -206,14 +161,9 @@ func TestTSDBQueryFail(t *testing.T) {
 	defer server.Close()
 
 	tsdb, err := NewTSDB(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
-	if err != nil {
-		t.Errorf("Failed to create TSDB instance")
-	}
-	if !tsdb.Available() {
-		t.Errorf("Expected TSDB to available")
-	}
+	require.NoError(t, err)
+	assert.True(t, tsdb.Available())
 
-	if _, err := tsdb.Query("", time.Now()); err == nil {
-		t.Errorf("Expected TSDB query to return error")
-	}
+	_, err = tsdb.Query("", time.Now())
+	assert.Error(t, err)
 }

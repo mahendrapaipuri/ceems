@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
 	"testing"
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -53,32 +54,22 @@ func TestEMapsDataProvider(t *testing.T) {
 
 	// Get current emission factor
 	factor, err := s.Update()
-	if err != nil {
-		t.Errorf("failed update emission factor for electricity maps: %v", err)
-	}
-	if !reflect.DeepEqual(factor, expectedEMapsFactor[0]) {
-		t.Errorf("Expected first factor %v got %v for electricity maps", factor, factor)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, factor, expectedEMapsFactor[0])
 
 	// Make a second request and it should be same as first factor
 	nextFactor, _ := s.Update()
-	if !reflect.DeepEqual(nextFactor, expectedEMapsFactor[0]) {
-		t.Errorf("Expected %v due to caching got %v for electricity maps", factor, nextFactor)
-	}
+	assert.Equal(t, nextFactor, expectedEMapsFactor[0])
 
 	// Sleep for 1 second and make a request again and it should change
 	time.Sleep(20 * time.Millisecond)
 	lastFactor, _ := s.Update()
-	if !reflect.DeepEqual(lastFactor, expectedEMapsFactor[1]) {
-		t.Errorf("Expected %v got %v for electricity maps", expectedEMapsFactor[1], lastFactor)
-	}
+	assert.Equal(t, lastFactor, expectedEMapsFactor[1])
 
 	// Sleep for 1 more second and make a request again and we should get last non null value
 	time.Sleep(20 * time.Millisecond)
 	lastFactor, _ = s.Update()
-	if !reflect.DeepEqual(lastFactor, expectedEMapsFactor[1]) {
-		t.Errorf("Expected %v got %v for electricity maps", expectedEMapsFactor[1], lastFactor)
-	}
+	assert.Equal(t, lastFactor, expectedEMapsFactor[1])
 }
 
 func TestEMapsDataProviderError(t *testing.T) {
@@ -90,10 +81,8 @@ func TestEMapsDataProviderError(t *testing.T) {
 	}
 
 	// Get current emission factor
-	factor, err := s.Update()
-	if err == nil {
-		t.Errorf("Expected error for electricity maps. But request succeeded with factor %v", factor)
-	}
+	_, err := s.Update()
+	assert.Error(t, err)
 }
 
 func TestNewEMapsProvider(t *testing.T) {
@@ -117,9 +106,7 @@ func TestNewEMapsProvider(t *testing.T) {
 	t.Setenv("__EMAPS_BASE_URL", server.URL)
 
 	_, err := NewEMapsProvider(log.NewNopLogger())
-	if err != nil {
-		t.Errorf("failed to create a new instance of EMaps provider: %s", err)
-	}
+	assert.NoError(t, err)
 }
 
 func TestNewEMapsProviderFail(t *testing.T) {
@@ -137,9 +124,7 @@ func TestNewEMapsProviderFail(t *testing.T) {
 	t.Setenv("__EMAPS_BASE_URL", server.URL)
 
 	_, err := NewEMapsProvider(log.NewNopLogger())
-	if err == nil {
-		t.Errorf("expected error to create a EMaps provider due to missing zones")
-	}
+	assert.Error(t, err)
 }
 
 func TestEMapsAPIRequest(t *testing.T) {
@@ -155,12 +140,8 @@ func TestEMapsAPIRequest(t *testing.T) {
 
 	// Make request to test server
 	factor, err := eMapsAPIRequest[eMapsCarbonIntensityResponse](server.URL, "token")
-	if err != nil {
-		t.Errorf("failed to make API request to test EMaps server: %s", err)
-	}
-	if factor.CarbonIntensity != expectedFactor {
-		t.Errorf("expected RTE factor %d, got %d", expectedFactor, factor.CarbonIntensity)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, factor.CarbonIntensity, expectedFactor)
 }
 
 func TestEMapsAPIRequestFail(t *testing.T) {
@@ -175,9 +156,7 @@ func TestEMapsAPIRequestFail(t *testing.T) {
 
 	// Make request to test server
 	_, err := eMapsAPIRequest[eMapsCarbonIntensityResponse](server.URL, "")
-	if err == nil {
-		t.Errorf("expected a failed response from emaps server due to malformed response")
-	}
+	assert.Error(t, err)
 }
 
 func TestEMapsAPIRequestZones(t *testing.T) {
@@ -201,10 +180,6 @@ func TestEMapsAPIRequestZones(t *testing.T) {
 		"DE": "Germany",
 	}
 	factors, err := makeEMapsAPIRequest(server.URL, "", zones, log.NewNopLogger())
-	if err != nil {
-		t.Errorf("failed to make zones API request to test EMaps server: %s", err)
-	}
-	if !reflect.DeepEqual(expectedFactors, factors) {
-		t.Errorf("expected EMaps factors %v, got %v", expectedFactors, factors)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, expectedFactors, factors)
 }

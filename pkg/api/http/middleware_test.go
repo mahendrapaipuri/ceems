@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/go-kit/log"
+	"github.com/stretchr/testify/assert"
 )
 
 func mockAdminUsers(db *sql.DB, logger log.Logger) []string {
@@ -44,16 +45,11 @@ func TestMiddlewareSuccess(t *testing.T) {
 	defer resp.Body.Close()
 
 	// Should pass test
-	if resp.StatusCode != 200 {
-		t.Errorf("expected 200 got %d", w.Result().StatusCode)
-	}
+	assert.Equal(t, resp.StatusCode, 200)
+
 	// Check headers added to req
-	if req.Header.Get(loggedUserHeader) != "usr1" {
-		t.Errorf("expected %s header to be adm1, got %s", loggedUserHeader, req.Header.Get(loggedUserHeader))
-	}
-	if req.Header.Get(dashboardUserHeader) != "usr1" {
-		t.Errorf("expected %s header to be adm1, got %s", dashboardUserHeader, req.Header.Get(dashboardUserHeader))
-	}
+	assert.Equal(t, req.Header.Get(loggedUserHeader), "usr1")
+	assert.Equal(t, req.Header.Get(dashboardUserHeader), "usr1")
 }
 
 func TestMiddlewareFailure(t *testing.T) {
@@ -68,9 +64,7 @@ func TestMiddlewareFailure(t *testing.T) {
 	handlerToTest.ServeHTTP(w, req)
 
 	// Should pass test
-	if w.Result().StatusCode != 401 {
-		t.Errorf("expected 401 got %d", w.Result().StatusCode)
-	}
+	assert.Equal(t, w.Result().StatusCode, 401)
 }
 
 func TestMiddlewareAdminSuccess(t *testing.T) {
@@ -86,13 +80,10 @@ func TestMiddlewareAdminSuccess(t *testing.T) {
 	handlerToTest.ServeHTTP(w, req)
 
 	// Should pass test
-	if w.Result().StatusCode != 200 {
-		t.Errorf("expected 200 got %d", w.Result().StatusCode)
-	}
+	assert.Equal(t, w.Result().StatusCode, 200)
+
 	// Check headers added to req
-	if req.Header.Get(adminUserHeader) != "adm1" {
-		t.Errorf("expected %s header to be adm1, got %s", adminUserHeader, req.Header.Get(adminUserHeader))
-	}
+	assert.Equal(t, req.Header.Get(adminUserHeader), "adm1")
 }
 
 func TestMiddlewareAdminFailure(t *testing.T) {
@@ -108,9 +99,7 @@ func TestMiddlewareAdminFailure(t *testing.T) {
 	handlerToTest.ServeHTTP(w, req)
 
 	// Should pass test
-	if w.Result().StatusCode != 403 {
-		t.Errorf("expected 403 got %d", w.Result().StatusCode)
-	}
+	assert.Equal(t, w.Result().StatusCode, 403)
 }
 
 func TestMiddlewareAdminFailurePresetHeader(t *testing.T) {
@@ -127,11 +116,8 @@ func TestMiddlewareAdminFailurePresetHeader(t *testing.T) {
 	handlerToTest.ServeHTTP(w, req)
 
 	// Should pass test
-	if w.Result().StatusCode != 403 {
-		t.Errorf("expected 403 got %d", w.Result().StatusCode)
-	}
+	assert.Equal(t, w.Result().StatusCode, 403)
+
 	// Should not contain adminHeader
-	if req.Header.Get(adminUserHeader) != "" {
-		t.Errorf("expected no %s header got %s", adminUserHeader, req.Header.Get(adminUserHeader))
-	}
+	assert.Equal(t, req.Header.Get(adminUserHeader), "")
 }

@@ -20,6 +20,8 @@ import (
 	"github.com/mahendrapaipuri/ceems/pkg/lb/backend"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/serverpool"
 	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func setupClusterIDsDB(d string) (*sql.DB, string) {
@@ -77,18 +79,15 @@ func TestNewFrontendSingleGroup(t *testing.T) {
 	dummyServer1 := dummyTSDBServer("30d", clusterID)
 	defer dummyServer1.Close()
 	backend1URL, err := url.Parse(dummyServer1.URL)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	rp1 := httputil.NewSingleHostReverseProxy(backend1URL)
 	backend1 := backend.NewTSDBServer(backend1URL, rp1, log.NewNopLogger())
 
 	// Start manager
 	manager, err := serverpool.NewManager("resource-based", log.NewNopLogger())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	manager.Add(clusterID, backend1)
 
 	// make minimal config
@@ -99,9 +98,7 @@ func TestNewFrontendSingleGroup(t *testing.T) {
 
 	// New load balancer
 	lb, err := NewLoadBalancer(config)
-	if err != nil {
-		t.Errorf("failed to create load balancer: %s", err)
-	}
+	require.NoError(t, err)
 
 	tests := []struct {
 		name     string
@@ -146,16 +143,11 @@ func TestNewFrontendSingleGroup(t *testing.T) {
 		}
 
 		responseRecorder := httptest.NewRecorder()
-
 		http.HandlerFunc(lb.Serve).ServeHTTP(responseRecorder, newReq)
 
-		if responseRecorder.Code != test.code {
-			t.Errorf("%s: expected status %d, got %d", test.name, test.code, responseRecorder.Code)
-		}
+		assert.Equal(t, responseRecorder.Code, test.code)
 		if test.response {
-			if strings.TrimSpace(responseRecorder.Body.String()) != clusterID {
-				t.Errorf("%s: expected dummy-response, got %s", test.name, responseRecorder.Body)
-			}
+			assert.Equal(t, responseRecorder.Body.String(), clusterID)
 		}
 	}
 
@@ -169,12 +161,9 @@ func TestNewFrontendSingleGroup(t *testing.T) {
 		),
 	)
 	responseRecorder := httptest.NewRecorder()
-
 	http.HandlerFunc(lb.Serve).ServeHTTP(responseRecorder, newReq)
 
-	if responseRecorder.Code != 503 {
-		t.Errorf("expected status 503, got %d", responseRecorder.Code)
-	}
+	assert.Equal(t, responseRecorder.Code, 503)
 }
 
 func TestNewFrontendTwoGroups(t *testing.T) {
@@ -182,9 +171,7 @@ func TestNewFrontendTwoGroups(t *testing.T) {
 	dummyServer1 := dummyTSDBServer("30d", "rm-0")
 	defer dummyServer1.Close()
 	backend1URL, err := url.Parse(dummyServer1.URL)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	rp1 := httputil.NewSingleHostReverseProxy(backend1URL)
 	backend1 := backend.NewTSDBServer(backend1URL, rp1, log.NewNopLogger())
@@ -193,18 +180,15 @@ func TestNewFrontendTwoGroups(t *testing.T) {
 	dummyServer2 := dummyTSDBServer("30d", "rm-1")
 	defer dummyServer2.Close()
 	backend2URL, err := url.Parse(dummyServer2.URL)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	rp2 := httputil.NewSingleHostReverseProxy(backend2URL)
 	backend2 := backend.NewTSDBServer(backend2URL, rp2, log.NewNopLogger())
 
 	// Start manager
 	manager, err := serverpool.NewManager("resource-based", log.NewNopLogger())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	manager.Add("rm-0", backend1)
 	manager.Add("rm-1", backend2)
 
@@ -216,14 +200,10 @@ func TestNewFrontendTwoGroups(t *testing.T) {
 
 	// New load balancer
 	lb, err := NewLoadBalancer(config)
-	if err != nil {
-		t.Errorf("failed to create load balancer: %s", err)
-	}
+	require.NoError(t, err)
 
 	// Validate cluster IDs
-	if err := lb.ValidateClusterIDs(); err != nil {
-		t.Errorf("expected validation to pass, got error: %s", err)
-	}
+	require.NoError(t, lb.ValidateClusterIDs())
 
 	tests := []struct {
 		name      string
@@ -279,16 +259,11 @@ func TestNewFrontendTwoGroups(t *testing.T) {
 		}
 
 		responseRecorder := httptest.NewRecorder()
-
 		http.HandlerFunc(lb.Serve).ServeHTTP(responseRecorder, newReq)
 
-		if responseRecorder.Code != test.code {
-			t.Errorf("%s: expected status %d, got %d", test.name, test.code, responseRecorder.Code)
-		}
+		assert.Equal(t, responseRecorder.Code, test.code)
 		if test.response {
-			if strings.TrimSpace(responseRecorder.Body.String()) != test.clusterID {
-				t.Errorf("%s: expected dummy-response, got %s", test.name, responseRecorder.Body)
-			}
+			assert.Equal(t, responseRecorder.Body.String(), test.clusterID)
 		}
 	}
 
@@ -302,12 +277,9 @@ func TestNewFrontendTwoGroups(t *testing.T) {
 		),
 	)
 	responseRecorder := httptest.NewRecorder()
-
 	http.HandlerFunc(lb.Serve).ServeHTTP(responseRecorder, newReq)
 
-	if responseRecorder.Code != 503 {
-		t.Errorf("expected status 503, got %d", responseRecorder.Code)
-	}
+	assert.Equal(t, responseRecorder.Code, 503)
 }
 
 func TestValidateClusterIDsWithDBPass(t *testing.T) {
@@ -318,18 +290,15 @@ func TestValidateClusterIDsWithDBPass(t *testing.T) {
 	dummyServer := dummyTSDBServer("30d", "slurm-0")
 	defer dummyServer.Close()
 	backendURL, err := url.Parse(dummyServer.URL)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	rp := httputil.NewSingleHostReverseProxy(backendURL)
 	backend := backend.NewTSDBServer(backendURL, rp, log.NewNopLogger())
 
 	// Start manager
 	manager, err := serverpool.NewManager("resource-based", log.NewNopLogger())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	manager.Add("slurm-0", backend)
 	manager.Add("os-1", backend)
 
@@ -342,14 +311,10 @@ func TestValidateClusterIDsWithDBPass(t *testing.T) {
 
 	// New load balancer
 	lb, err := NewLoadBalancer(config)
-	if err != nil {
-		t.Errorf("failed to create load balancer: %s", err)
-	}
+	require.NoError(t, err)
 
 	// Validate cluster IDs
-	if err := lb.ValidateClusterIDs(); err != nil {
-		t.Errorf("expected validation to pass, got error %s", err)
-	}
+	require.NoError(t, lb.ValidateClusterIDs())
 }
 
 func TestValidateClusterIDsWithDBFail(t *testing.T) {
@@ -360,18 +325,15 @@ func TestValidateClusterIDsWithDBFail(t *testing.T) {
 	dummyServer := dummyTSDBServer("30d", "slurm-0")
 	defer dummyServer.Close()
 	backendURL, err := url.Parse(dummyServer.URL)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	rp := httputil.NewSingleHostReverseProxy(backendURL)
 	backend := backend.NewTSDBServer(backendURL, rp, log.NewNopLogger())
 
 	// Start manager
 	manager, err := serverpool.NewManager("resource-based", log.NewNopLogger())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	manager.Add("unknown", backend)
 	manager.Add("os-1", backend)
 
@@ -384,14 +346,10 @@ func TestValidateClusterIDsWithDBFail(t *testing.T) {
 
 	// New load balancer
 	lb, err := NewLoadBalancer(config)
-	if err != nil {
-		t.Errorf("failed to create load balancer: %s", err)
-	}
+	require.NoError(t, err)
 
 	// Validate cluster IDs
-	if err := lb.ValidateClusterIDs(); err == nil {
-		t.Errorf("expected validation error, got none")
-	}
+	require.Error(t, lb.ValidateClusterIDs())
 }
 
 func TestValidateClusterIDsWithAPIPass(t *testing.T) {
@@ -418,18 +376,15 @@ func TestValidateClusterIDsWithAPIPass(t *testing.T) {
 	dummyServer := dummyTSDBServer("30d", "slurm-0")
 	defer dummyServer.Close()
 	backendURL, err := url.Parse(dummyServer.URL)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	rp := httputil.NewSingleHostReverseProxy(backendURL)
 	backend := backend.NewTSDBServer(backendURL, rp, log.NewNopLogger())
 
 	// Start manager
 	manager, err := serverpool.NewManager("resource-based", log.NewNopLogger())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	manager.Add("slurm-0", backend)
 	manager.Add("os-1", backend)
 
@@ -442,14 +397,10 @@ func TestValidateClusterIDsWithAPIPass(t *testing.T) {
 
 	// New load balancer
 	lb, err := NewLoadBalancer(config)
-	if err != nil {
-		t.Errorf("failed to create load balancer: %s", err)
-	}
+	require.NoError(t, err)
 
 	// Validate cluster IDs
-	if err := lb.ValidateClusterIDs(); err != nil {
-		t.Errorf("expected validation to pass, got error %s", err)
-	}
+	require.NoError(t, lb.ValidateClusterIDs())
 }
 
 func TestValidateClusterIDsWithAPIFail(t *testing.T) {
@@ -468,18 +419,15 @@ func TestValidateClusterIDsWithAPIFail(t *testing.T) {
 	dummyServer := dummyTSDBServer("30d", "slurm-0")
 	defer dummyServer.Close()
 	backendURL, err := url.Parse(dummyServer.URL)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	rp := httputil.NewSingleHostReverseProxy(backendURL)
 	backend := backend.NewTSDBServer(backendURL, rp, log.NewNopLogger())
 
 	// Start manager
 	manager, err := serverpool.NewManager("resource-based", log.NewNopLogger())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	manager.Add("slurm-0", backend)
 	manager.Add("os-1", backend)
 
@@ -492,12 +440,8 @@ func TestValidateClusterIDsWithAPIFail(t *testing.T) {
 
 	// New load balancer
 	lb, err := NewLoadBalancer(config)
-	if err != nil {
-		t.Errorf("failed to create load balancer: %s", err)
-	}
+	require.NoError(t, err)
 
 	// Validate cluster IDs
-	if err := lb.ValidateClusterIDs(); err == nil {
-		t.Errorf("expected validation error, got none")
-	}
+	require.Error(t, lb.ValidateClusterIDs())
 }

@@ -4,60 +4,51 @@ package collector
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDefaultSysPath(t *testing.T) {
-	if _, err := CEEMSExporterApp.Parse([]string{"--path.sysfs", "/sys"}); err != nil {
-		t.Fatal(err)
-	}
+	_, err := CEEMSExporterApp.Parse([]string{"--path.sysfs", "/sys"})
+	require.NoError(t, err)
 
-	if got, want := sysFilePath("somefile"), "/sys/somefile"; got != want {
-		t.Errorf("Expected: %s, Got: %s", want, got)
-	}
+	got, want := sysFilePath("somefile"), "/sys/somefile"
+	assert.Equal(t, got, want)
 
-	if got, want := sysFilePath("some/file"), "/sys/some/file"; got != want {
-		t.Errorf("Expected: %s, Got: %s", want, got)
-	}
+	got, want = sysFilePath("some/file"), "/sys/some/file"
+	assert.Equal(t, got, want)
 }
 
 func TestCustomSysPath(t *testing.T) {
-	if _, err := CEEMSExporterApp.Parse([]string{"--path.sysfs", "./../some/./place/"}); err != nil {
-		t.Fatal(err)
-	}
+	_, err := CEEMSExporterApp.Parse([]string{"--path.sysfs", "./../some/./place/"})
+	require.NoError(t, err)
 
-	if got, want := sysFilePath("somefile"), "../some/place/somefile"; got != want {
-		t.Errorf("Expected: %s, Got: %s", want, got)
-	}
+	got, want := sysFilePath("somefile"), "../some/place/somefile"
+	assert.Equal(t, got, want)
 
-	if got, want := sysFilePath("some/file"), "../some/place/some/file"; got != want {
-		t.Errorf("Expected: %s, Got: %s", want, got)
-	}
+	got, want = sysFilePath("some/file"), "../some/place/some/file"
+	assert.Equal(t, got, want)
 }
 
 func TestDefaultCgroupPath(t *testing.T) {
-	if _, err := CEEMSExporterApp.Parse([]string{"--path.cgroupfs", "/sys/fs/cgroup"}); err != nil {
-		t.Fatal(err)
-	}
+	_, err := CEEMSExporterApp.Parse([]string{"--path.cgroupfs", "/sys/fs/cgroup"})
+	require.NoError(t, err)
 
-	if got, want := cgroupFilePath("somefile"), "/sys/fs/cgroup/somefile"; got != want {
-		t.Errorf("Expected: %s, Got: %s", want, got)
-	}
+	got, want := cgroupFilePath("somefile"), "/sys/fs/cgroup/somefile"
+	assert.Equal(t, got, want)
 
-	if got, want := cgroupFilePath("some/file"), "/sys/fs/cgroup/some/file"; got != want {
-		t.Errorf("Expected: %s, Got: %s", want, got)
-	}
+	got, want = cgroupFilePath("some/file"), "/sys/fs/cgroup/some/file"
+	assert.Equal(t, got, want)
 }
 
 func TestCustomCgroupPath(t *testing.T) {
-	if _, err := CEEMSExporterApp.Parse([]string{"--path.cgroupfs", "./../some/./place/"}); err != nil {
-		t.Fatal(err)
-	}
+	_, err := CEEMSExporterApp.Parse([]string{"--path.cgroupfs", "./../some/./place/"})
+	require.NoError(t, err)
 
-	if got, want := cgroupFilePath("somefile"), "../some/place/somefile"; got != want {
-		t.Errorf("Expected: %s, Got: %s", want, got)
-	}
+	got, want := cgroupFilePath("somefile"), "../some/place/somefile"
+	assert.Equal(t, got, want)
 
-	if got, want := cgroupFilePath("some/file"), "../some/place/some/file"; got != want {
-		t.Errorf("Expected: %s, Got: %s", want, got)
-	}
+	got, want = cgroupFilePath("some/file"), "../some/place/some/file"
+	assert.Equal(t, got, want)
 }

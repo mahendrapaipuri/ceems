@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
 	"testing"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
 
@@ -256,15 +257,11 @@ func TestTSDBUpdateSuccessSingleInstance(t *testing.T) {
 	}
 
 	tsdb, err := NewTSDBUpdater(instance, log.NewNopLogger())
-	if err != nil {
-		t.Errorf("Failed to create TSDB updater instance: %s", err)
-	}
+	require.NoError(t, err)
 
 	updatedUnits := tsdb.Update(time.Now().Add(-5*time.Minute), time.Now(), units)
 	for i := 0; i < len(expectedUnits); i++ {
-		if !reflect.DeepEqual(updatedUnits[0].Units[i], expectedUnits[i]) {
-			t.Errorf("expected %#v \n got %#v", expectedUnits[i], updatedUnits[0].Units[i])
-		}
+		assert.Equal(t, expectedUnits[i], updatedUnits[0].Units[i])
 	}
 }
 
@@ -365,14 +362,13 @@ func TestTSDBUpdateFailMaxDuration(t *testing.T) {
 	}
 
 	tsdb, err := NewTSDBUpdater(instance, log.NewNopLogger())
-	if err != nil {
-		t.Errorf("Failed to create TSDB updater instance")
-	}
+	require.NoError(t, err)
 
 	updatedUnits := tsdb.Update(time.Now().Add(-1*time.Minute), time.Now(), units)
-	if !reflect.DeepEqual(updatedUnits[0].Units, expectedUnits) {
-		t.Errorf("expected %#v \n got %#v", expectedUnits, updatedUnits[0].Units)
-	}
+	assert.Equal(t, updatedUnits[0].Units, expectedUnits)
+	// if !reflect.DeepEqual(updatedUnits[0].Units, expectedUnits) {
+	// 	t.Errorf("expected %#v \n got %#v", expectedUnits, updatedUnits[0].Units)
+	// }
 }
 
 func TestTSDBUpdateFailNoUnits(t *testing.T) {
@@ -391,17 +387,15 @@ func TestTSDBUpdateFailNoUnits(t *testing.T) {
 			},
 		},
 	}
-	expectedUnits := []models.Unit{}
 
 	tsdb, err := NewTSDBUpdater(instance, log.NewNopLogger())
+	require.NoError(t, err)
 	if err != nil {
 		t.Errorf("Failed to create TSDB updater instance")
 	}
 
 	updatedUnits := tsdb.Update(time.Now().Add(-5*time.Minute), time.Now(), units)
-	if len(updatedUnits[0].Units) > 0 {
-		t.Errorf("expected %#v \n got %#v", expectedUnits, updatedUnits[0].Units)
-	}
+	assert.Len(t, updatedUnits[0].Units, 0)
 }
 
 func TestTSDBUpdateFailNoTSDB(t *testing.T) {
@@ -442,17 +436,15 @@ func TestTSDBUpdateFailNoTSDB(t *testing.T) {
 			},
 		},
 	}
+
 	expectedUnits := units
 
 	tsdb, err := NewTSDBUpdater(instance, log.NewNopLogger())
-	if err != nil {
-		t.Errorf("Failed to create TSDB updater instance")
-	}
+	require.NoError(t, err)
+
 	// Stop TSDB server
 	server.Close()
 
 	updatedUnits := tsdb.Update(time.Now().Add(-5*time.Minute), time.Now(), units)
-	if !reflect.DeepEqual(updatedUnits, expectedUnits) {
-		t.Errorf("expected %#v \n got %#v", expectedUnits, updatedUnits)
-	}
+	assert.Equal(t, updatedUnits, expectedUnits)
 }

@@ -4,11 +4,11 @@
 package collector
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/procfs"
+	"github.com/stretchr/testify/assert"
 )
 
 func makeTestCPUCollector(s procfs.CPUStat) *cpuCollector {
@@ -47,9 +47,7 @@ func TestCPU(t *testing.T) {
 		GuestNice: 101.0}
 	c.updateCPUStats(want)
 	got := c.cpuStats
-	if !reflect.DeepEqual(want, got) {
-		t.Fatalf("should have %v CPU Stat: got %v", want, got)
-	}
+	assert.Equal(t, want, got)
 
 	c = makeTestCPUCollector(firstCPUStat)
 	jumpBack := procfs.CPUStat{
@@ -66,9 +64,7 @@ func TestCPU(t *testing.T) {
 	}
 	c.updateCPUStats(jumpBack)
 	got = c.cpuStats
-	if reflect.DeepEqual(jumpBack, got) {
-		t.Fatalf("should have %v CPU Stat: got %v", firstCPUStat, got)
-	}
+	assert.NotEqual(t, jumpBack, got)
 
 	c = makeTestCPUCollector(firstCPUStat)
 	resetIdle := procfs.CPUStat{
@@ -85,7 +81,5 @@ func TestCPU(t *testing.T) {
 	}
 	c.updateCPUStats(resetIdle)
 	got = c.cpuStats
-	if !reflect.DeepEqual(resetIdle, got) {
-		t.Fatalf("should have %v CPU Stat: got %v", resetIdle, got)
-	}
+	assert.Equal(t, resetIdle, got)
 }

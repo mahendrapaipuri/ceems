@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -17,6 +16,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type testCase struct {
@@ -134,22 +135,14 @@ func TestUsersHandlers(t *testing.T) {
 
 		// Get body
 		data, err := io.ReadAll(res.Body)
-		if err != nil {
-			t.Errorf("expected error to be nil got %v", err)
-		}
+		require.NoError(t, err)
 
 		// Unmarshal byte into structs.
 		var response Response[models.User]
 		json.Unmarshal(data, &response)
-		if w.Code != test.code {
-			t.Errorf("%s: expected status code %d, got %d", test.name, test.code, w.Code)
-		}
-		if response.Status != "success" {
-			t.Errorf("%s: expected success status got %v", test.name, response.Status)
-		}
-		if !reflect.DeepEqual(response.Data, mockServerUsers) {
-			t.Errorf("%s: expected data %#v got %#v", test.name, mockServerUsers, response.Data)
-		}
+		assert.Equal(t, w.Code, test.code)
+		assert.Equal(t, response.Status, "success")
+		assert.Equal(t, response.Data, mockServerUsers)
 	}
 }
 
@@ -195,22 +188,14 @@ func TestProjectsHandler(t *testing.T) {
 
 		// Get body
 		data, err := io.ReadAll(res.Body)
-		if err != nil {
-			t.Errorf("expected error to be nil got %v", err)
-		}
+		require.NoError(t, err)
 
 		// Unmarshal byte into structs.
 		var response Response[models.Project]
 		json.Unmarshal(data, &response)
-		if w.Code != test.code {
-			t.Errorf("%s: expected status code %d, got %d", test.name, test.code, w.Code)
-		}
-		if response.Status != "success" {
-			t.Errorf("%s: expected success status got %v", test.name, response.Status)
-		}
-		if !reflect.DeepEqual(response.Data, mockServerProjects) {
-			t.Errorf("%s: expected data %#v got %#v", test.name, mockServerProjects, response.Data)
-		}
+		assert.Equal(t, w.Code, test.code)
+		assert.Equal(t, response.Status, "success")
+		assert.Equal(t, response.Data, mockServerProjects)
 	}
 }
 
@@ -256,22 +241,14 @@ func TestUnitsHandler(t *testing.T) {
 
 		// Get body
 		data, err := io.ReadAll(res.Body)
-		if err != nil {
-			t.Errorf("expected error to be nil got %v", err)
-		}
+		require.NoError(t, err)
 
 		// Unmarshal byte into structs.
 		var response Response[models.Unit]
 		json.Unmarshal(data, &response)
-		if w.Code != test.code {
-			t.Errorf("%s: expected status code %d, got %d", test.name, test.code, w.Code)
-		}
-		if response.Status != "success" {
-			t.Errorf("%s: expected success status got %v", test.name, response.Status)
-		}
-		if !reflect.DeepEqual(response.Data, mockServerUnits) {
-			t.Errorf("%s: expected data %#v got %#v", test.name, mockServerUnits, response.Data)
-		}
+		assert.Equal(t, w.Code, test.code)
+		assert.Equal(t, response.Status, "success")
+		assert.Equal(t, response.Data, mockServerUnits)
 	}
 }
 
@@ -338,22 +315,14 @@ func TestUsageHandlers(t *testing.T) {
 
 		// Get body
 		data, err := io.ReadAll(res.Body)
-		if err != nil {
-			t.Errorf("expected error to be nil got %v", err)
-		}
+		require.NoError(t, err)
 
 		// Unmarshal byte into structs.
 		var response Response[models.Usage]
 		json.Unmarshal(data, &response)
-		if w.Code != test.code {
-			t.Errorf("%s: expected status code %d, got %d", test.name, test.code, w.Code)
-		}
-		if response.Status != "success" {
-			t.Errorf("%s: expected success status got %v", test.name, response.Status)
-		}
-		if !reflect.DeepEqual(response.Data, mockServerUsage) {
-			t.Errorf("%s: expected data %#v got %#v", test.name, mockServerUsage, response.Data)
-		}
+		assert.Equal(t, w.Code, test.code)
+		assert.Equal(t, response.Status, "success")
+		assert.Equal(t, response.Data, mockServerUsage)
 	}
 }
 
@@ -391,9 +360,7 @@ func TestVerifyHandler(t *testing.T) {
 		res := w.Result()
 		defer res.Body.Close()
 
-		if w.Code != test.code {
-			t.Errorf("%s: expected status code %d, got %d", test.name, test.code, w.Code)
-		}
+		assert.Equal(t, w.Code, test.code)
 	}
 }
 
@@ -437,9 +404,7 @@ func TestDemoHandlers(t *testing.T) {
 		res := w.Result()
 		defer res.Body.Close()
 
-		if w.Code != test.code {
-			t.Errorf("%s: expected status code %d, got %d", test.name, test.code, w.Code)
-		}
+		assert.Equal(t, w.Code, test.code)
 	}
 }
 
@@ -462,9 +427,7 @@ func TestClustersHandler(t *testing.T) {
 
 	// Get body
 	data, err := io.ReadAll(res.Body)
-	if err != nil {
-		t.Errorf("expected error to be nil got %v", err)
-	}
+	require.NoError(t, err)
 
 	// Expected result
 	expectedClusters, _ := clusterQuerier(server.db, Query{}, server.logger)
@@ -473,13 +436,8 @@ func TestClustersHandler(t *testing.T) {
 	var response Response[models.Cluster]
 	json.Unmarshal(data, &response)
 
-	if response.Status != "success" {
-		t.Errorf("expected success status got %v", response.Status)
-	}
-
-	if !reflect.DeepEqual(expectedClusters, response.Data) {
-		t.Errorf("expected clusters %#v clusters, got %#v", expectedClusters, response.Data)
-	}
+	assert.Equal(t, response.Status, "success")
+	assert.Equal(t, expectedClusters, response.Data)
 }
 
 // Test /units when from/to query parameters are malformed
@@ -504,23 +462,15 @@ func TestUnitsHandlerWithMalformedQueryParams(t *testing.T) {
 
 	// Get body
 	data, err := io.ReadAll(res.Body)
-	if err != nil {
-		t.Errorf("expected error to be nil got %v", err)
-	}
+	require.NoError(t, err)
 
 	// Unmarshal byte into structs.
 	var response Response[any]
 	json.Unmarshal(data, &response)
 
-	if response.Status != "error" {
-		t.Errorf("expected error status got %v", response.Status)
-	}
-	if response.ErrorType != "bad_data" {
-		t.Errorf("expected data_error type got %v", response.ErrorType)
-	}
-	if response.Data != nil {
-		t.Errorf("expected nil data got %v", response.Data)
-	}
+	assert.Equal(t, response.Status, "error")
+	assert.Equal(t, response.ErrorType, errorType("bad_data"))
+	assert.Empty(t, response.Data)
 }
 
 // Test /units when from/to query parameters exceed max time window
@@ -546,23 +496,15 @@ func TestUnitsHandlerWithQueryWindowExceeded(t *testing.T) {
 
 	// Get body
 	data, err := io.ReadAll(res.Body)
-	if err != nil {
-		t.Errorf("expected error to be nil got %v", err)
-	}
+	require.NoError(t, err)
 
 	// Unmarshal byte into structs.
 	var response Response[any]
 	json.Unmarshal(data, &response)
 
-	if response.Status != "error" {
-		t.Errorf("expected error status got %v", response.Status)
-	}
-	if response.Error != "maximum query window exceeded" {
-		t.Errorf("expected Maximum time window exceeded got %v", response.Error)
-	}
-	if response.Data != nil {
-		t.Errorf("expected nil data got %v", response.Data)
-	}
+	assert.Equal(t, response.Status, "error")
+	assert.Equal(t, response.Error, "maximum query window exceeded")
+	assert.Empty(t, response.Data)
 }
 
 // Test /units when from/to query parameters exceed max time window but when unit uuids
@@ -590,9 +532,7 @@ func TestUnitsHandlerWithUnituuidsQueryParams(t *testing.T) {
 
 	// Get body
 	data, err := io.ReadAll(res.Body)
-	if err != nil {
-		t.Errorf("expected error to be nil got %v", err)
-	}
+	require.NoError(t, err)
 
 	// Expected result
 	expectedUnits, _ := getMockUnits(Query{}, server.logger)
@@ -601,13 +541,8 @@ func TestUnitsHandlerWithUnituuidsQueryParams(t *testing.T) {
 	var response Response[models.Unit]
 	json.Unmarshal(data, &response)
 
-	if response.Status != "success" {
-		t.Errorf("expected success status got %v", response.Status)
-	}
-
-	if !reflect.DeepEqual(expectedUnits, response.Data) {
-		t.Errorf("expected %#v units, got %#v", expectedUnits, response.Data)
-	}
+	assert.Equal(t, response.Status, "success")
+	assert.Equal(t, expectedUnits, response.Data)
 }
 
 // // Test /usage

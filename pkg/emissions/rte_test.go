@@ -6,11 +6,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"reflect"
 	"testing"
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -44,32 +45,22 @@ func TestRTEDataSource(t *testing.T) {
 
 	// Get current emission factor
 	factor, err := s.Update()
-	if err != nil {
-		t.Errorf("failed update emission factor for rte: %v", err)
-	}
-	if !reflect.DeepEqual(factor, expectedRTEFactors[0]) {
-		t.Errorf("Expected first factor %v got %v for rte", expectedRTEFactors[0], factor)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, factor, expectedRTEFactors[0])
 
 	// Make a second request and it should be same as first factor
 	nextFactor, _ := s.Update()
-	if !reflect.DeepEqual(nextFactor, expectedRTEFactors[0]) {
-		t.Errorf("Expected %v due to caching got %v for rte", factor, nextFactor)
-	}
+	assert.Equal(t, nextFactor, expectedRTEFactors[0])
 
 	// Sleep for 2 seconds and make a request again and it should change
 	time.Sleep(20 * time.Millisecond)
 	lastFactor, _ := s.Update()
-	if !reflect.DeepEqual(lastFactor, expectedRTEFactors[1]) {
-		t.Errorf("Expected %v got %v for rte", expectedRTEFactors[1], lastFactor)
-	}
+	assert.Equal(t, lastFactor, expectedRTEFactors[1])
 
 	// Sleep for 1 more second and make a request again and we should get last non null value
 	time.Sleep(20 * time.Millisecond)
 	lastFactor, _ = s.Update()
-	if !reflect.DeepEqual(lastFactor, expectedRTEFactors[1]) {
-		t.Errorf("Expected %v got %v for rte", expectedRTEFactors[1], lastFactor)
-	}
+	assert.Equal(t, lastFactor, expectedRTEFactors[1])
 }
 
 func TestRTEDataSourceError(t *testing.T) {
@@ -81,30 +72,22 @@ func TestRTEDataSourceError(t *testing.T) {
 	}
 
 	// Get current emission factor
-	factor, err := s.Update()
-	if err == nil {
-		t.Errorf("Expected error for rte. But request succeeded with factor %v", factor["FR"])
-	}
+	_, err := s.Update()
+	assert.Error(t, err)
 }
 
 func TestNewRTEProvider(t *testing.T) {
 	_, err := NewRTEProvider(log.NewNopLogger())
-	if err != nil {
-		t.Errorf("failed to create a new instance of RTE provider: %s", err)
-	}
+	require.NoError(t, err)
 }
 
 func TestMakeRTEURL(t *testing.T) {
 	fullURL := makeRTEURL("http://localhost")
 	// Parse URL and check for query params
 	parsedURL, err := url.Parse(fullURL)
-	if err != nil {
-		t.Errorf("failed to parse URL: %s", err)
-	}
+	require.NoError(t, err)
 
-	if parsedURL.Query()["where"][0] == "" {
-		t.Errorf("parsed RTE URL missing where query parameter")
-	}
+	assert.NotEmpty(t, parsedURL.Query()["where"][0], "parsed RTE URL missing where query parameter")
 }
 
 func TestRTEAPIRequest(t *testing.T) {
@@ -120,12 +103,8 @@ func TestRTEAPIRequest(t *testing.T) {
 
 	// Make request to test server
 	factor, err := makeRTEAPIRequest(server.URL, log.NewNopLogger())
-	if err != nil {
-		t.Errorf("failed to make API request to test RTE server: %s", err)
-	}
-	if factor["FR"].Factor != float64(expectedFactor) {
-		t.Errorf("expected RTE factor %f, got %f", float64(expectedFactor), factor["FR"].Factor)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, factor["FR"].Factor, float64(expectedFactor))
 }
 
 func TestRTEAPIRequestFail(t *testing.T) {
@@ -140,7 +119,5 @@ func TestRTEAPIRequestFail(t *testing.T) {
 
 	// Make request to test server
 	_, err := makeRTEAPIRequest(server.URL, log.NewNopLogger())
-	if err == nil {
-		t.Errorf("expected failed RTE API request")
-	}
+	assert.Error(t, err)
 }

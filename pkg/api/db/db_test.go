@@ -577,7 +577,12 @@ func TestNewUnitStatsDB(t *testing.T) {
 
 	// Check content of last update time file
 	timeString, _ := os.ReadFile(lastUnitsUpdateTimeFile)
-	assert.Equal(t, string(timeString), "2023-12-20T00:00:00", "Expected last update time string is 2023-12-20T00:00:00")
+	assert.Equal(
+		t,
+		string(timeString),
+		"2023-12-20T00:00:00",
+		"Expected last update time string is 2023-12-20T00:00:00",
+	)
 
 	// Check DB file exists
 	_, err = os.Stat(c.Data.Path)
@@ -608,7 +613,12 @@ func TestNewUnitStatsDB(t *testing.T) {
 	// Check content of last update time file. It should change
 	timeString, err = os.ReadFile(lastUnitsUpdateTimeFile)
 	require.NoError(t, err)
-	assert.Equal(t, string(timeString), "2023-12-21T00:00:00", "Expected last update time string is 2023-12-21T00:00:00")
+	assert.Equal(
+		t,
+		string(timeString),
+		"2023-12-21T00:00:00",
+		"Expected last update time string is 2023-12-21T00:00:00",
+	)
 
 	// Remove last update time file
 	err = os.Remove(lastUnitsUpdateTimeFile)
@@ -622,7 +632,12 @@ func TestNewUnitStatsDB(t *testing.T) {
 	// Check content of last update time file. It should change
 	timeString, err = os.ReadFile(lastUnitsUpdateTimeFile)
 	require.NoError(t, err)
-	assert.Equal(t, string(timeString), "2023-12-22T00:00:00", "Expected last update time string is 2023-12-22T00:00:00")
+	assert.Equal(
+		t,
+		string(timeString),
+		"2023-12-22T00:00:00",
+		"Expected last update time string is 2023-12-22T00:00:00",
+	)
 }
 
 func TestUnitStatsDBEntries(t *testing.T) {
