@@ -12,6 +12,8 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/backend"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -23,9 +25,7 @@ func TestUnAvailableBackends(t *testing.T) {
 
 	// Start manager
 	manager, err := NewManager("least-connection", log.NewNopLogger())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Make dummy backend servers
 	backendURLs := make(map[string][]*url.URL, 2)
@@ -33,9 +33,7 @@ func TestUnAvailableBackends(t *testing.T) {
 	for i := 0; i < 2; i++ {
 		for j, id := range lcIDs {
 			backendURL, err := url.Parse(fmt.Sprintf("http://localhost:%d", 3333*(i+1)+j))
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			if _, ok := backendURLs[id]; !ok {
 				backendURLs[id] = make([]*url.URL, 2)
@@ -53,9 +51,7 @@ func TestUnAvailableBackends(t *testing.T) {
 
 	// Check manager size
 	for _, id := range lcIDs {
-		if manager.Size(id) != 2 {
-			t.Errorf("expected 2 backend TSDB servers, got %d", manager.Size(id))
-		}
+		assert.Equal(t, manager.Size(id), 2)
 	}
 
 	// Set one backend to dead
@@ -64,9 +60,8 @@ func TestUnAvailableBackends(t *testing.T) {
 
 	// Get target and it should be backend2
 	for i, id := range lcIDs {
-		if target := manager.Target(id, d); target.URL() != backendURLs[id][i] {
-			t.Errorf("expected %s, got %s", backendURLs[id][i], target.URL().String())
-		}
+		target := manager.Target(id, d)
+		assert.Equal(t, target.URL(), backendURLs[id][i])
 	}
 
 	// Set other backend to dead as well
@@ -75,9 +70,7 @@ func TestUnAvailableBackends(t *testing.T) {
 
 	// Get target and it should be nil
 	for _, id := range lcIDs {
-		if target := manager.Target(id, d); target != nil {
-			t.Errorf("expected nil, got %s", target)
-		}
+		assert.Empty(t, manager.Target(id, d))
 	}
 }
 
@@ -86,9 +79,7 @@ func TestLeastConnectionLB(t *testing.T) {
 
 	// Start manager
 	manager, err := NewManager("least-connection", log.NewNopLogger())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	backendURLs := make(map[string][]*url.URL, 2)
 	backends := make(map[string][]backend.TSDBServer, 2)
@@ -97,9 +88,8 @@ func TestLeastConnectionLB(t *testing.T) {
 			dummyServer := httptest.NewServer(h)
 			defer dummyServer.Close()
 			backendURL, err := url.Parse(dummyServer.URL)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
+
 			if _, ok := backendURLs[id]; !ok {
 				backendURLs[id] = make([]*url.URL, 2)
 				backends[id] = make([]backend.TSDBServer, 2)
@@ -115,9 +105,7 @@ func TestLeastConnectionLB(t *testing.T) {
 
 	// Check manager size
 	for _, id := range lcIDs {
-		if manager.Size(id) != 2 {
-			t.Errorf("expected 2 backend TSDB servers, got %d", manager.Size(id))
-		}
+		assert.Equal(t, 2, manager.Size(id))
 	}
 
 	// Start wait group
@@ -127,9 +115,7 @@ func TestLeastConnectionLB(t *testing.T) {
 	// Check if we get non nil target
 	var target = make(map[string]backend.TSDBServer)
 	for _, id := range lcIDs {
-		if target[id] = manager.Target(id, d); target[id] == nil {
-			t.Errorf("expected a target, got nil for %s", id)
-		}
+		assert.NotEmpty(t, manager.Target(id, d))
 	}
 
 	// Serve a long request
@@ -149,24 +135,14 @@ func TestLeastConnectionLB(t *testing.T) {
 
 	// Check new target is not nil
 	for _, id := range lcIDs {
-		if newTarget := manager.Target(id, d); newTarget == nil {
-			t.Errorf("expected a new target, got nil for %s", id)
-		} else {
-			if connTwo := newTarget.ActiveConnections(); connTwo != 0 {
-				t.Errorf("expected 0 connections for two, got %d for %s", connTwo, id)
-			}
-
-			// New target must not be old one
-			if target[id] == newTarget {
-				t.Errorf("expected target and newTarget to be different for %s", id)
-			}
-		}
+		newTarget := manager.Target(id, d)
+		require.NotEmpty(t, newTarget)
+		assert.Equal(t, 0, newTarget.ActiveConnections())
+		assert.NotEqual(t, target[id], newTarget)
 	}
 
 	// For unknown ID expect nil
-	if manager.Target("unknown", d) != nil {
-		t.Errorf("expected nil, got %v", manager.Target("unknown", d))
-	}
+	assert.Empty(t, manager.Target("unknown", d))
 
 	// Wait for go routines
 	wg.Wait()

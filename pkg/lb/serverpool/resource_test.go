@@ -14,6 +14,8 @@ import (
 	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/backend"
 	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -43,9 +45,7 @@ func dummyTSDBServer(retention string) *httptest.Server {
 func TestResourceBasedLB(t *testing.T) {
 	// Create a manager
 	manager, err := NewManager("resource-based", log.NewNopLogger())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Retention periods
 	periods := []string{"30d", "180d or 100GiB", "180d or 100GiB"}
@@ -58,9 +58,8 @@ func TestResourceBasedLB(t *testing.T) {
 			dummyServer := dummyTSDBServer(p)
 			defer dummyServer.Close()
 			backendURL, err := url.Parse(dummyServer.URL)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
+
 			if _, ok := backendURLs[id]; !ok {
 				backendURLs[id] = make([]*url.URL, len(periods))
 				backends[id] = make([]backend.TSDBServer, len(periods))
@@ -77,9 +76,7 @@ func TestResourceBasedLB(t *testing.T) {
 
 	// Manager size should be three
 	for _, id := range rbIDs {
-		if manager.Size(id) != len(periods) {
-			t.Errorf("expected %d backend TSDB servers, got %d for %s", len(periods), manager.Size(id), id)
-		}
+		assert.Equal(t, len(periods), manager.Size(id))
 	}
 
 	// Start wait group
@@ -88,9 +85,7 @@ func TestResourceBasedLB(t *testing.T) {
 	// Target should be backend[0]
 	for _, id := range rbIDs {
 		target := manager.Target(id, time.Duration(10*time.Hour))
-		if target.URL() != backendURLs[id][0] {
-			t.Errorf("expected a backend1, got %s for %s", target.URL().String(), id)
-		}
+		assert.Equal(t, target.URL(), backendURLs[id][0])
 	}
 
 	// Backend[1] is serving a long request
@@ -111,17 +106,13 @@ func TestResourceBasedLB(t *testing.T) {
 	// This request should be proxied to backend[2] as backend[1] is busy with request
 	for _, id := range rbIDs {
 		target := manager.Target(id, time.Duration(100*24*time.Hour))
-		if target.URL().String() != backendURLs[id][2].String() {
-			t.Errorf("expected backend3, got %s for %s", target.URL().String(), id)
-		}
+		assert.Equal(t, target.URL().String(), backendURLs[id][2].String())
 	}
 
 	// Check if backend[1] has one active connection
 	for _, id := range rbIDs {
 		connTwo := backends[id][1].ActiveConnections()
-		if connTwo != 1 {
-			t.Errorf("expected 1 connections for backends[1], got %d for %s", connTwo, id)
-		}
+		assert.Equal(t, 1, connTwo)
 	}
 
 	// Just to check for any race conditions
@@ -147,8 +138,6 @@ func TestResourceBasedLB(t *testing.T) {
 
 	// Should return nil target
 	for _, id := range rbIDs {
-		if target := manager.Target(id, time.Duration(100*24*time.Hour)); target != nil {
-			t.Errorf("expected nil target, got %s", target.URL().String())
-		}
+		assert.Empty(t, manager.Target(id, time.Duration(100*24*time.Hour)))
 	}
 }

@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-kit/log"
 	http_api "github.com/mahendrapaipuri/ceems/pkg/api/http"
+	"github.com/stretchr/testify/assert"
 )
 
 func setupTestDB(d string) (*sql.DB, string) {
@@ -252,21 +253,12 @@ func TestMiddlewareWithDB(t *testing.T) {
 		dbRequest := request.Clone(request.Context())
 		responseRecorderDB := httptest.NewRecorder()
 		handlerToTestDB.ServeHTTP(responseRecorderDB, dbRequest)
-		if responseRecorderDB.Result().StatusCode != test.code {
-			t.Errorf("DB %s: expected status %d, got %d", test.name, test.code, responseRecorderDB.Result().StatusCode)
-		}
+		assert.Equal(t, responseRecorderDB.Result().StatusCode, test.code, "DB")
 
 		// Tests with CEEMS API
 		apiRequest := request.Clone(request.Context())
 		responseRecorderAPI := httptest.NewRecorder()
 		handlerToTestAPI.ServeHTTP(responseRecorderAPI, apiRequest)
-		if responseRecorderAPI.Result().StatusCode != test.code {
-			t.Errorf(
-				"API %s: expected status %d, got %d",
-				test.name,
-				test.code,
-				responseRecorderAPI.Result().StatusCode,
-			)
-		}
+		assert.Equal(t, responseRecorderAPI.Result().StatusCode, test.code, "API")
 	}
 }

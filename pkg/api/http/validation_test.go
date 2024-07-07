@@ -4,10 +4,10 @@ import (
 	"database/sql"
 	"fmt"
 	"path/filepath"
-	"reflect"
 	"testing"
 
 	"github.com/go-kit/log"
+	"github.com/stretchr/testify/assert"
 )
 
 // Same as the one in lb/frontend/middleware_test.go
@@ -159,10 +159,7 @@ func TestVerifyOwnership(t *testing.T) {
 
 	for _, test := range tests {
 		result := VerifyOwnership(test.user, []string{test.rmID}, test.uuids, db, log.NewNopLogger())
-
-		if result != test.verify {
-			t.Errorf("%s: expected %t, got %t", test.name, test.verify, result)
-		}
+		assert.Equal(t, result, test.verify)
 	}
 }
 
@@ -173,7 +170,5 @@ func TestAdminUsers(t *testing.T) {
 	expectedUsers := []string{"adm1", "adm2", "adm3", "adm4", "adm5", "adm6"}
 
 	users := adminUsers(db, log.NewNopLogger())
-	if !reflect.DeepEqual(users, expectedUsers) {
-		t.Errorf("expected users %v got %v", expectedUsers, users)
-	}
+	assert.Equal(t, users, expectedUsers)
 }

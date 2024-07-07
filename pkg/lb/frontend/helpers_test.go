@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseTimeParam(t *testing.T) {
@@ -19,9 +20,7 @@ func TestParseTimeParam(t *testing.T) {
 	}
 
 	ts, err := parseTime("1582468023986")
-	if err != nil {
-		t.Fatal("failed to parse time")
-	}
+	require.NoError(t, err)
 
 	tests := []struct {
 		paramName    string
@@ -63,28 +62,20 @@ func TestParseTimeParam(t *testing.T) {
 
 	for _, test := range tests {
 		req, err := http.NewRequest("GET", "localhost:42/foo?"+test.paramName+"="+test.paramValue, nil)
-		if err != nil {
-			t.Fatal("failed to create request")
-		}
+		require.NoError(t, err)
 
 		result := test.result
 		if asTime, err := parseTimeParam(req, test.paramName, test.defaultValue); err != nil {
-			if err.Error() != result.asError().Error() {
-				t.Errorf("expected %s, got %s", result.asError(), err)
-			}
+			assert.Equal(t, err.Error(), result.asError().Error())
 		} else {
-			if result.asTime != asTime {
-				t.Errorf("%s: expected %s, got %s", test.paramValue, result.asTime, asTime)
-			}
+			assert.Equal(t, result.asTime, asTime)
 		}
 	}
 }
 
 func TestParseTime(t *testing.T) {
 	ts, err := time.Parse(time.RFC3339Nano, "2015-06-03T13:21:58.555Z")
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
 	tests := []struct {
 		input  string
@@ -137,17 +128,14 @@ func TestParseTime(t *testing.T) {
 	for _, test := range tests {
 		ts, err := parseTime(test.input)
 		if !test.fail {
-			if err != nil {
-				t.Errorf("unexpected error: %s", err)
-			}
+			require.NoError(t, err)
+			// assert.Equal(t, test.result, ts)
 			if !ts.Equal(test.result) {
 				t.Errorf("%s: expected %s, got %s", test.input, test.result, ts)
 			}
 			continue
 		}
-		if err == nil {
-			t.Errorf("expected error %s", test.input)
-		}
+		assert.Error(t, err)
 	}
 }
 
@@ -198,9 +186,7 @@ func TestParseQueryParams(t *testing.T) {
 			body = strings.NewReader("hello")
 		}
 		req, err := http.NewRequest(test.method, "http://localhost:9090", body)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		// For GET request add query to URL
 		if test.method == "GET" {
@@ -211,26 +197,15 @@ func TestParseQueryParams(t *testing.T) {
 
 		newReq := parseQueryParams(req, test.rmIDs, log.NewNopLogger())
 		queryParams := newReq.Context().Value(QueryParamsContextKey{}).(*QueryParams)
-		if !reflect.DeepEqual(queryParams.uuids, test.uuids) {
-			t.Errorf("%s: expected %v, got %v", test.query, test.uuids, queryParams.uuids)
-			continue
-		}
-
-		if queryParams.id != test.rmID {
-			t.Errorf("%s: expected %s, got %s", test.query, test.rmID, queryParams.id)
-			continue
-		}
+		assert.Equal(t, queryParams.uuids, test.uuids)
+		assert.Equal(t, queryParams.id, test.rmID)
 
 		if test.method == "POST" {
 			// Check the new request body can still be parsed
-			if err = newReq.ParseForm(); err != nil {
-				t.Errorf("%s: cannot parse new request: %s", test.query, err)
-			}
+			require.NoError(t, newReq.ParseForm())
 
 			// Check if form value can be retrieved
-			if val := newReq.FormValue("query"); val == "" {
-				t.Errorf("%s: expected query found none", test.query)
-			}
+			require.NotEmpty(t, newReq.FormValue("query"))
 		}
 	}
 }

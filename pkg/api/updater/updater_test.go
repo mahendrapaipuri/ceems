@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func mockConfig(tmpDir string, cfg string, serverURL string) string {
@@ -99,12 +101,8 @@ func TestMalformedConfig(t *testing.T) {
 	base.ConfigFilePath = mockConfig(t.TempDir(), "malformed_1", "http://localhost:9090")
 
 	cfg, err := updaterConfig()
-	if err != nil {
-		t.Errorf("failed to created updater config: %s", err)
-	}
-	if len(cfg.Instances) != 0 {
-		t.Errorf("expected no updater instances, got %#v", cfg.Instances)
-	}
+	require.NoError(t, err)
+	assert.Len(t, cfg.Instances, 0)
 }
 
 func TestMissingUpdaterConfig(t *testing.T) {
@@ -112,12 +110,10 @@ func TestMissingUpdaterConfig(t *testing.T) {
 	base.ConfigFilePath = mockConfig(t.TempDir(), "malformed_2", "http://localhost:9090")
 
 	cfg, err := updaterConfig()
-	if err != nil {
-		t.Errorf("failed to created updater config: %s", err)
-	}
-	if _, err = checkConfig([]string{"tsdb"}, cfg); err == nil {
-		t.Errorf("expected error due to missing updater name in config. Got none")
-	}
+	require.NoError(t, err)
+
+	_, err = checkConfig([]string{"tsdb"}, cfg)
+	require.Error(t, err, "missing updater name")
 }
 
 func TestUnknownUpdaterConfig(t *testing.T) {
@@ -125,12 +121,10 @@ func TestUnknownUpdaterConfig(t *testing.T) {
 	base.ConfigFilePath = mockConfig(t.TempDir(), "malformed_4", "http://localhost:9090")
 
 	cfg, err := updaterConfig()
-	if err != nil {
-		t.Errorf("failed to created updater config: %s", err)
-	}
-	if _, err = checkConfig([]string{"tsdb"}, cfg); err == nil {
-		t.Errorf("expected error due to unknown updater name in config. Got none")
-	}
+	require.NoError(t, err)
+
+	_, err = checkConfig([]string{"tsdb"}, cfg)
+	assert.Error(t, err, "unknown updater name")
 }
 
 func TestInvalidIDUpdaterConfig(t *testing.T) {
@@ -138,12 +132,10 @@ func TestInvalidIDUpdaterConfig(t *testing.T) {
 	base.ConfigFilePath = mockConfig(t.TempDir(), "malformed_5", "http://localhost:9090")
 
 	cfg, err := updaterConfig()
-	if err != nil {
-		t.Errorf("failed to created updater config: %s", err)
-	}
-	if _, err = checkConfig([]string{"tsdb"}, cfg); err == nil {
-		t.Errorf("expected error due to invalid ID in config. Got none")
-	}
+	require.NoError(t, err)
+
+	_, err = checkConfig([]string{"tsdb"}, cfg)
+	assert.Error(t, err, "invalid ID")
 }
 
 func TestDuplicatedIDsConfig(t *testing.T) {
@@ -151,12 +143,10 @@ func TestDuplicatedIDsConfig(t *testing.T) {
 	base.ConfigFilePath = mockConfig(t.TempDir(), "malformed_3", "http://localhost:9090")
 
 	cfg, err := updaterConfig()
-	if err != nil {
-		t.Errorf("failed to created updater config: %s", err)
-	}
-	if _, err = checkConfig([]string{"tsdb"}, cfg); err == nil {
-		t.Errorf("expected error due to duplicated IDs in config. Got none")
-	}
+	require.NoError(t, err)
+
+	_, err = checkConfig([]string{"tsdb"}, cfg)
+	assert.Error(t, err, "duplicated IDs")
 }
 
 func TestOneInstanceConfig(t *testing.T) {
@@ -164,14 +154,9 @@ func TestOneInstanceConfig(t *testing.T) {
 	base.ConfigFilePath = mockConfig(t.TempDir(), "one_instance", "")
 
 	cfg, err := updaterConfig()
-	if err != nil {
-		t.Errorf("Failed to create updater config: %s", err)
-	}
-	if len(cfg.Instances) != 1 {
-		t.Errorf("expected one instance, got %#v", cfg.Instances)
-	}
+	require.NoError(t, err)
+	require.Len(t, cfg.Instances, 1)
 
-	if _, err = checkConfig([]string{"tsdb"}, cfg); err != nil {
-		t.Errorf("config failed preflight checks to %s", err)
-	}
+	_, err = checkConfig([]string{"tsdb"}, cfg)
+	assert.NoError(t, err)
 }

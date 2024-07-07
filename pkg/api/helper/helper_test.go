@@ -2,10 +2,10 @@ package helper
 
 import (
 	"fmt"
-	"reflect"
 	"testing"
 
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
+	"github.com/stretchr/testify/assert"
 )
 
 type nodelistParserTest struct {
@@ -126,9 +126,8 @@ var nodelistParserTests = []nodelistParserTest{
 
 func TestNodelistParser(t *testing.T) {
 	for _, test := range nodelistParserTests {
-		if output := NodelistParser(test.nodelist); !reflect.DeepEqual(output, test.expected) {
-			t.Errorf("Expected %q not equal to output %q", test.expected, output)
-		}
+		output := NodelistParser(test.nodelist)
+		assert.Equal(t, output, test.expected)
 	}
 }
 
@@ -136,22 +135,16 @@ func TestTimeToTimestamp(t *testing.T) {
 	expectedTimeStamp := 1136239445000
 	timeFormat := fmt.Sprintf("%s-0700", base.DatetimeLayout)
 	timeStamp := TimeToTimestamp(timeFormat, "2006-01-02T15:04:05-0700")
-	if timeStamp != int64(expectedTimeStamp) {
-		t.Errorf("expected timestamp %d, got %d", expectedTimeStamp, timeStamp)
-	}
+	assert.Equal(t, timeStamp, int64(expectedTimeStamp))
 
 	// Check failure case
 	timeStamp = TimeToTimestamp(timeFormat, "2006-01-0215:04:05-0700")
-	if timeStamp != 0 {
-		t.Errorf("expected timestamp 0, got %d", timeStamp)
-	}
+	assert.Equal(t, timeStamp, int64(0))
 }
 
 func TestChunkBy(t *testing.T) {
 	expectedChunks := [][]int{{1, 2, 3}, {4, 5, 6}}
 	inputSlice := []int{1, 2, 3, 4, 5, 6}
 	chunks := ChunkBy(inputSlice, 3)
-	if !reflect.DeepEqual(expectedChunks, chunks) {
-		t.Errorf("expected chunks %v, got %v", expectedChunks, chunks)
-	}
+	assert.Equal(t, expectedChunks, chunks)
 }

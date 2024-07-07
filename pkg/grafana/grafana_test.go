@@ -4,21 +4,18 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
 	"testing"
 
 	"github.com/go-kit/log"
 	config_util "github.com/prometheus/common/config"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewGrafanaWithNoURL(t *testing.T) {
 	grafana, err := NewGrafana("", config_util.HTTPClientConfig{}, log.NewNopLogger())
-	if err != nil {
-		t.Errorf("Failed to create Grafana instance")
-	}
-	if grafana.Available() {
-		t.Errorf("Expected Grafana to not available")
-	}
+	require.NoError(t, err)
+	assert.False(t, grafana.Available())
 }
 
 func TestNewGrafanaWithURL(t *testing.T) {
@@ -31,17 +28,11 @@ func TestNewGrafanaWithURL(t *testing.T) {
 	defer server.Close()
 
 	grafana, err := NewGrafana(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
-	if err != nil {
-		t.Errorf("Failed to create Grafana instance")
-	}
-	if !grafana.Available() {
-		t.Errorf("Expected Grafana to available")
-	}
+	require.NoError(t, err)
+	assert.True(t, grafana.Available())
 
 	// Check if Ping is working
-	if err := grafana.Ping(); err != nil {
-		t.Errorf("Could not ping Grafana")
-	}
+	assert.NoError(t, grafana.Ping())
 }
 
 func TestGrafanaTeamMembersQuerySuccess(t *testing.T) {
@@ -58,20 +49,12 @@ func TestGrafanaTeamMembersQuerySuccess(t *testing.T) {
 	defer server.Close()
 
 	grafana, err := NewGrafana(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
-	if err != nil {
-		t.Errorf("Failed to create Grafana instance")
-	}
-	if !grafana.Available() {
-		t.Errorf("Expected Grafana to available")
-	}
+	require.NoError(t, err)
+	assert.True(t, grafana.Available())
 
-	if m, err := grafana.TeamMembers([]string{"0"}); err != nil {
-		t.Errorf("Expected Grafana query to return value: %s", err)
-	} else {
-		if !reflect.DeepEqual(m, []string{"foo", "bar"}) {
-			t.Errorf("Expected {foo, bar}, got %v", m)
-		}
-	}
+	m, err := grafana.TeamMembers([]string{"0"})
+	require.NoError(t, err)
+	assert.Equal(t, m, []string{"foo", "bar"})
 }
 
 func TestGrafanaTeamMembersQueryFailNoTeamID(t *testing.T) {
@@ -88,14 +71,9 @@ func TestGrafanaTeamMembersQueryFailNoTeamID(t *testing.T) {
 	defer server.Close()
 
 	grafana, err := NewGrafana(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
-	if err != nil {
-		t.Errorf("Failed to create Grafana instance")
-	}
-	if !grafana.Available() {
-		t.Errorf("Expected Grafana to available")
-	}
+	require.NoError(t, err)
+	assert.True(t, grafana.Available())
 
-	if _, err := grafana.teamMembers(""); err == nil {
-		t.Errorf("Expected Grafana query to return error")
-	}
+	_, err = grafana.teamMembers("")
+	assert.Error(t, err)
 }

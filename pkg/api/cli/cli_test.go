@@ -13,6 +13,8 @@ import (
 	"github.com/mahendrapaipuri/ceems/internal/common"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/db"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func queryServer(address string) error {
@@ -58,22 +60,16 @@ func TestCEEMSConfigNestedDataDirs(t *testing.T) {
 
 	// Setup data directories
 	var err error
-	if config, err = createDirs(config); err != nil {
-		t.Errorf("failed to create data directories")
-	}
+	config, err = createDirs(config)
+	require.NoError(t, err, "failed to create data directories")
 
-	// Check data dir exists
-	if _, err := os.Stat(dataDir); err != nil {
-		t.Errorf("Data directory does not exist")
-	}
-	if _, err := os.Stat(backupDataDir); err != nil {
-		t.Errorf("Backup data directory does not exist")
-	}
+	// Check data dirs exists
+	assert.DirExists(t, dataDir, "data directory does not exist")
+	assert.DirExists(t, backupDataDir, "backup data directory does not exist")
 
 	// Check if paths are absolute
-	if !filepath.IsAbs(config.Server.Data.Path) || !filepath.IsAbs(config.Server.Data.BackupPath) {
-		t.Errorf("Data paths are not absolute")
-	}
+	assert.True(t, filepath.IsAbs(config.Server.Data.Path), "data path is not absolute")
+	assert.True(t, filepath.IsAbs(config.Server.Data.BackupPath), "backup path is not absolute")
 }
 
 func TestCEEMSConfigMalformedData(t *testing.T) {
@@ -91,9 +87,8 @@ ceems_api_server:
 	configFile := fmt.Sprintf(configFileTmpl, dataDir)
 	configFilePath := makeConfigFile(configFile, tmpDir)
 
-	if _, err := common.MakeConfig[CEEMSAPIAppConfig](configFilePath); err == nil {
-		t.Errorf("Expected config parsing error")
-	}
+	_, err := common.MakeConfig[CEEMSAPIAppConfig](configFilePath)
+	assert.Error(t, err)
 }
 
 func TestCEEMSServerMain(t *testing.T) {
@@ -130,7 +125,7 @@ ceems_api_server:
 		}
 		time.Sleep(500 * time.Millisecond)
 		if i == 9 {
-			t.Errorf("Could not start stats server after %d attempts", i)
+			assert.Errorf(t, fmt.Errorf("Could not start stats server after %d attempts", i), "failed to start server")
 		}
 	}
 

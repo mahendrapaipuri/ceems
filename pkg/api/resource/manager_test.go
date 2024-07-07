@@ -11,6 +11,8 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // mockResourceManager struct
@@ -198,12 +200,8 @@ func TestMalformedConfig(t *testing.T) {
 	base.ConfigFilePath = mockConfig(t.TempDir(), "malformed_1", "")
 
 	cfg, err := managerConfig()
-	if err != nil {
-		t.Errorf("failed to create manager config: %s", err)
-	}
-	if len(cfg.Clusters) != 0 {
-		t.Errorf("expected no clusters, got %#v", cfg.Clusters)
-	}
+	require.NoError(t, err)
+	assert.Len(t, cfg.Clusters, 0)
 }
 
 func TestMissingManagerConfig(t *testing.T) {
@@ -211,12 +209,10 @@ func TestMissingManagerConfig(t *testing.T) {
 	base.ConfigFilePath = mockConfig(t.TempDir(), "malformed_2", "")
 
 	cfg, err := managerConfig()
-	if err != nil {
-		t.Errorf("failed to create manager config: %s", err)
-	}
-	if _, err = checkConfig([]string{"slurm"}, cfg); err == nil {
-		t.Errorf("expected error due to missing manager name in config. Got none")
-	}
+	require.NoError(t, err)
+
+	_, err = checkConfig([]string{"slurm"}, cfg)
+	assert.Error(t, err, "missing manager")
 }
 
 func TestUnknownManagerConfig(t *testing.T) {
@@ -224,12 +220,10 @@ func TestUnknownManagerConfig(t *testing.T) {
 	base.ConfigFilePath = mockConfig(t.TempDir(), "unknown_manager", "")
 
 	cfg, err := managerConfig()
-	if err != nil {
-		t.Errorf("failed to create manager config: %s", err)
-	}
-	if _, err = checkConfig([]string{"slurm"}, cfg); err == nil {
-		t.Errorf("expected error due to unknown manager name in config. Got none")
-	}
+	require.NoError(t, err)
+
+	_, err = checkConfig([]string{"slurm"}, cfg)
+	assert.Error(t, err, "unknown manager")
 }
 
 func TestInvalidIDManagerConfig(t *testing.T) {
@@ -237,12 +231,10 @@ func TestInvalidIDManagerConfig(t *testing.T) {
 	base.ConfigFilePath = mockConfig(t.TempDir(), "malformed_4", "")
 
 	cfg, err := managerConfig()
-	if err != nil {
-		t.Errorf("failed to create manager config: %s", err)
-	}
-	if _, err = checkConfig([]string{"slurm"}, cfg); err == nil {
-		t.Errorf("expected error due to invalid ID in config. Got none")
-	}
+	require.NoError(t, err)
+
+	_, err = checkConfig([]string{"slurm"}, cfg)
+	assert.Error(t, err, "invalid ID")
 }
 
 func TestDuplicatedIDsConfig(t *testing.T) {
@@ -250,12 +242,10 @@ func TestDuplicatedIDsConfig(t *testing.T) {
 	base.ConfigFilePath = mockConfig(t.TempDir(), "malformed_3", "")
 
 	cfg, err := managerConfig()
-	if err != nil {
-		t.Errorf("failed to create manager config: %s", err)
-	}
-	if _, err = checkConfig([]string{"slurm"}, cfg); err == nil {
-		t.Errorf("expected error due to duplicated IDs in config. Got none")
-	}
+	require.NoError(t, err)
+
+	_, err = checkConfig([]string{"slurm"}, cfg)
+	assert.Error(t, err, "duplicated IDs")
 }
 
 func TestOneClusterConfig(t *testing.T) {
@@ -263,16 +253,12 @@ func TestOneClusterConfig(t *testing.T) {
 	base.ConfigFilePath = mockConfig(t.TempDir(), "one_instance", "")
 
 	cfg, err := managerConfig()
-	if err != nil {
-		t.Errorf("Failed to create manager config: %s", err)
-	}
-	if len(cfg.Clusters) != 1 {
-		t.Errorf("expected one cluster, got %#v", cfg.Clusters)
-	}
+	require.NoError(t, err)
 
-	if _, err = checkConfig([]string{"slurm"}, cfg); err != nil {
-		t.Errorf("config failed preflight checks to %s", err)
-	}
+	assert.Len(t, cfg.Clusters, 1)
+
+	_, err = checkConfig([]string{"slurm"}, cfg)
+	assert.NoError(t, err)
 }
 
 func TestMixedClusterConfig(t *testing.T) {
@@ -280,16 +266,12 @@ func TestMixedClusterConfig(t *testing.T) {
 	base.ConfigFilePath = mockConfig(t.TempDir(), "mixed_instances", "")
 
 	cfg, err := managerConfig()
-	if err != nil {
-		t.Errorf("Failed to create manager config: %s", err)
-	}
-	if len(cfg.Clusters) != 3 {
-		t.Errorf("expected mixed clusters, got %#v", cfg.Clusters)
-	}
+	require.NoError(t, err)
 
-	if _, err = checkConfig([]string{"slurm", "openstack"}, cfg); err != nil {
-		t.Errorf("config failed preflight checks to %s", err)
-	}
+	assert.Len(t, cfg.Clusters, 3)
+
+	_, err = checkConfig([]string{"slurm", "openstack"}, cfg)
+	assert.NoError(t, err)
 }
 
 func TestNewManager(t *testing.T) {
@@ -301,28 +283,20 @@ func TestNewManager(t *testing.T) {
 
 	// Create new manager
 	manager, err := NewManager(log.NewNopLogger())
-	if err != nil {
-		t.Errorf("failed to create new manager: %s", err)
-	}
+	require.NoError(t, err)
 
 	// Fetch units
 	units, err := manager.FetchUnits(time.Now(), time.Now())
-	if err != nil {
-		t.Errorf("failed to fetch units: %s", err)
-	}
-	if len(units[0].Units) != 1 {
-		t.Errorf("expected only 1 unit got %d", len(units[0].Units))
-	}
+	require.NoError(t, err)
+	require.Len(t, units[0].Units, 1)
 
 	// Fetch users and projects
 	users, projects, err := manager.FetchUsersProjects(time.Now())
-	if err != nil {
-		t.Errorf("failed to fetch users and projects: %s", err)
-	}
+	require.NoError(t, err)
+
 	// Index 0 seems to be default manager
-	if len(users[0].Users) != 1 || len(projects[0].Projects) != 1 {
-		t.Errorf("expected 1 user and 1 project, got %d, %d", len(users[0].Users), len(projects[0].Projects))
-	}
+	assert.Len(t, users[0].Users, 1)
+	assert.Len(t, projects[0].Projects, 1)
 }
 
 func TestNewManagerWithNoClusters(t *testing.T) {
@@ -334,26 +308,18 @@ func TestNewManagerWithNoClusters(t *testing.T) {
 
 	// Create new manager
 	manager, err := NewManager(log.NewNopLogger())
-	if err != nil {
-		t.Errorf("failed to create new manager: %s", err)
-	}
+	require.NoError(t, err)
 
 	// Fetch units
 	units, err := manager.FetchUnits(time.Now(), time.Now())
-	if err != nil {
-		t.Errorf("failed to fetch units: %s", err)
-	}
-	if len(units[0].Units) != 0 {
-		t.Errorf("expected only 0 units got %d", len(units[0].Units))
-	}
+	require.NoError(t, err)
+	require.Len(t, units[0].Units, 0)
 
 	// Fetch users and projects
 	users, projects, err := manager.FetchUsersProjects(time.Now())
-	if err != nil {
-		t.Errorf("failed to fetch users and projects: %s", err)
-	}
+	require.NoError(t, err)
+
 	// Index 0 seems to be default manager
-	if len(users[0].Users) != 0 || len(projects[0].Projects) != 0 {
-		t.Errorf("expected 0 users and 0 projects, got %d, %d", len(users[0].Users), len(projects[0].Projects))
-	}
+	assert.Len(t, users[0].Users, 0)
+	assert.Len(t, projects[0].Projects, 0)
 }

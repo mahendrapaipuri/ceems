@@ -1,10 +1,11 @@
 package emissions
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/go-kit/log"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestReadOWIDData(t *testing.T) {
@@ -29,17 +30,11 @@ Algeria,DZA,2000,495.18628
 Algeria,DZA,2001,494.60645
 `
 	gotFactors, err := readOWIDData([]byte(testData))
-	if err != nil {
-		t.Errorf("failed to read test data: %s", err)
-	}
-	if !reflect.DeepEqual(gotFactors, expectedFactors) {
-		t.Errorf("expected factors %#v, got %#v", expectedFactors, gotFactors)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, gotFactors, expectedFactors)
 }
 
 func TestNewOWIDProvider(t *testing.T) {
 	_, err := NewOWIDProvider(log.NewNopLogger())
-	if err != nil {
-		t.Errorf("failed to create a new instance of OWID provider: %s", err)
-	}
+	require.NoError(t, err)
 }

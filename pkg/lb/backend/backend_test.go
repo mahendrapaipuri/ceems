@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -35,25 +36,14 @@ func TestTSDBConfigSuccess(t *testing.T) {
 
 	url, _ := url.Parse(server.URL)
 	b := NewTSDBServer(url, httputil.NewSingleHostReverseProxy(url), log.NewNopLogger())
-
-	if b.URL().String() != server.URL {
-		t.Errorf("expected URL %s, got %s", server.URL, b.URL().String())
-	}
-	if b.RetentionPeriod() != time.Duration(30*24*time.Hour) {
-		t.Errorf("expected retention period 30d, got %s", b.RetentionPeriod())
-	}
-	if !b.IsAlive() {
-		t.Errorf("expected backend to be alive")
-	}
-	if b.ActiveConnections() != 0 {
-		t.Errorf("expected zero active connections to backend")
-	}
+	require.Equal(t, b.URL().String(), server.URL)
+	require.Equal(t, b.RetentionPeriod(), time.Duration(30*24*time.Hour))
+	require.True(t, b.IsAlive())
+	require.Equal(t, b.ActiveConnections(), 0)
 
 	// Stop dummy server and query for retention period, we should get last updated value
 	server.Close()
-	if b.RetentionPeriod() != time.Duration(30*24*time.Hour) {
-		t.Errorf("expected retention period 30d, got %s", b.RetentionPeriod())
-	}
+	require.Equal(t, b.RetentionPeriod(), time.Duration(30*24*time.Hour))
 }
 
 func TestTSDBConfigSuccessWithTwoRetentions(t *testing.T) {
@@ -73,16 +63,9 @@ func TestTSDBConfigSuccessWithTwoRetentions(t *testing.T) {
 
 	url, _ := url.Parse(server.URL)
 	b := NewTSDBServer(url, httputil.NewSingleHostReverseProxy(url), log.NewNopLogger())
-
-	if b.URL().String() != server.URL {
-		t.Errorf("expected URL %s, got %s", server.URL, b.URL().String())
-	}
-	if b.RetentionPeriod() != time.Duration(30*24*time.Hour) {
-		t.Errorf("expected retention period 30d, got %s", b.RetentionPeriod())
-	}
-	if !b.IsAlive() {
-		t.Errorf("expected backend to be alive")
-	}
+	require.Equal(t, b.URL().String(), server.URL)
+	require.Equal(t, b.RetentionPeriod(), time.Duration(30*24*time.Hour))
+	require.True(t, b.IsAlive())
 }
 
 func TestTSDBConfigFail(t *testing.T) {
@@ -97,16 +80,9 @@ func TestTSDBConfigFail(t *testing.T) {
 
 	url, _ := url.Parse(server.URL)
 	b := NewTSDBServer(url, httputil.NewSingleHostReverseProxy(url), log.NewNopLogger())
-
-	if b.URL().String() != server.URL {
-		t.Errorf("expected URL %s, got %s", server.URL, b.URL().String())
-	}
-	if b.RetentionPeriod() != time.Duration(0*time.Hour) {
-		t.Errorf("expected retention period 0s, got %s", b.RetentionPeriod())
-	}
-	if !b.IsAlive() {
-		t.Errorf("expected backend to be alive")
-	}
+	require.Equal(t, b.URL().String(), server.URL)
+	require.Equal(t, b.RetentionPeriod(), time.Duration(0*time.Hour))
+	require.True(t, b.IsAlive())
 }
 
 func TestTSDBBackendAlive(t *testing.T) {
@@ -114,9 +90,7 @@ func TestTSDBBackendAlive(t *testing.T) {
 	b := NewTSDBServer(url, httputil.NewSingleHostReverseProxy(url), log.NewNopLogger())
 	b.SetAlive(b.IsAlive())
 
-	if !b.IsAlive() {
-		t.Errorf("expected backend to be alive")
-	}
+	require.True(t, b.IsAlive())
 }
 
 func TestTSDBBackendAliveWithBasicAuth(t *testing.T) {
@@ -124,7 +98,5 @@ func TestTSDBBackendAliveWithBasicAuth(t *testing.T) {
 	b := NewTSDBServer(url, httputil.NewSingleHostReverseProxy(url), log.NewNopLogger())
 	b.SetAlive(b.IsAlive())
 
-	if !b.IsAlive() {
-		t.Errorf("expected backend to be alive")
-	}
+	require.True(t, b.IsAlive())
 }

@@ -3,10 +3,14 @@
 package collector
 
 import (
-	"reflect"
+	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/go-kit/log"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -81,17 +85,25 @@ func getExpectedAmdDevs() map[int]Device {
 }
 
 func TestParseNvidiaSmiOutput(t *testing.T) {
-	gpuDevices := parseNvidiaSmiOutput(expectedNvidiaSmiOutput, log.NewNopLogger())
-
-	if !reflect.DeepEqual(gpuDevices, getExpectedNvidiaDevs()) {
-		t.Errorf("Expected: %v, Got: %v", getExpectedNvidiaDevs(), gpuDevices)
-	}
+	tempDir := t.TempDir()
+	nvidiaSMIPath := filepath.Join(tempDir, "nvidia-smi")
+	content := fmt.Sprintf(`#!/bin/bash
+echo """%s"""	
+`, expectedNvidiaSmiOutput)
+	os.WriteFile(nvidiaSMIPath, []byte(content), 0700) // #nosec
+	gpuDevices, err := GetNvidiaGPUDevices(nvidiaSMIPath, log.NewNopLogger())
+	require.NoError(t, err)
+	assert.Equal(t, gpuDevices, getExpectedNvidiaDevs())
 }
 
 func TestParseAmdSmiOutput(t *testing.T) {
-	gpuDevices := parseAmdSmioutput(expectedAmdSmiOutput, log.NewNopLogger())
-
-	if !reflect.DeepEqual(gpuDevices, getExpectedAmdDevs()) {
-		t.Errorf("Expected: %v, Got: %v", getExpectedAmdDevs(), gpuDevices)
-	}
+	tempDir := t.TempDir()
+	amdSMIPath := filepath.Join(tempDir, "amd-smi")
+	content := fmt.Sprintf(`#!/bin/bash
+echo """%s"""	
+`, expectedAmdSmiOutput)
+	os.WriteFile(amdSMIPath, []byte(content), 0700) // #nosec
+	gpuDevices, err := GetAMDGPUDevices(amdSMIPath, log.NewNopLogger())
+	require.NoError(t, err)
+	assert.Equal(t, gpuDevices, getExpectedAmdDevs())
 }

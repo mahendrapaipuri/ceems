@@ -7,10 +7,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"reflect"
 	"testing"
 
 	"github.com/go-kit/log"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -103,12 +104,8 @@ func TestIpmiMetrics(t *testing.T) {
 		} else {
 			value, err = c.parseIPMIOutput([]byte(testString))
 		}
-		if err != nil {
-			t.Errorf("failed to parse %s output: %v", testName, err)
-		}
-		if !reflect.DeepEqual(value, expectedOutput) {
-			t.Fatalf("%s: expected power %v. Got %v", testName, expectedOutput, value)
-		}
+		require.NoError(t, err)
+		assert.Equal(t, value, expectedOutput)
 	}
 }
 
@@ -121,9 +118,10 @@ func TestIpmiMetricsDisactive(t *testing.T) {
 		} else {
 			value, _ = c.parseIPMIOutput([]byte(testString))
 		}
-		if value != nil {
-			t.Errorf("%s: expected nil output. Got %v", testName, value)
-		}
+		assert.Empty(t, value)
+		// if value != nil {
+		// 	t.Errorf("%s: expected nil output. Got %v", testName, value)
+		// }
 	}
 }
 
@@ -135,18 +133,14 @@ func TestIpmiDcmiFinder(t *testing.T) {
 	t.Setenv("PATH", fmt.Sprintf("%s:%s", tmpDir, os.Getenv("PATH")))
 
 	ipmiDcmiPath, err := filepath.Abs("testdata/ipmi/freeipmi/ipmi-dcmi")
-	if err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, err)
+
 	err = os.Link(ipmiDcmiPath, tmpIPMIPath)
-	if err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, err)
 
 	// findIPMICmd() should give ipmi-dcmi command
-	if ipmiCmdSlice := findIPMICmd(); ipmiCmdSlice[0] != "ipmi-dcmi" {
-		t.Errorf("expected ipmi-dcmi command. Got %v", ipmiCmdSlice[0])
-	}
+	ipmiCmdSlice := findIPMICmd()
+	assert.Equal(t, ipmiCmdSlice[0], "ipmi-dcmi")
 }
 
 func TestIpmiToolFinder(t *testing.T) {
@@ -157,18 +151,14 @@ func TestIpmiToolFinder(t *testing.T) {
 	t.Setenv("PATH", fmt.Sprintf("%s:%s", tmpDir, os.Getenv("PATH")))
 
 	ipmiDcmiPath, err := filepath.Abs("testdata/ipmi/openipmi/ipmitool")
-	if err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, err)
+
 	err = os.Link(ipmiDcmiPath, tmpIPMIPath)
-	if err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, err)
 
 	// findIPMICmd() should give ipmitool command
-	if ipmiCmdSlice := findIPMICmd(); ipmiCmdSlice[0] != "ipmitool" {
-		t.Errorf("expected ipmitool command. Got %v", ipmiCmdSlice[0])
-	}
+	ipmiCmdSlice := findIPMICmd()
+	assert.Equal(t, ipmiCmdSlice[0], "ipmitool")
 }
 
 func TestIpmiUtilFinder(t *testing.T) {
@@ -179,16 +169,12 @@ func TestIpmiUtilFinder(t *testing.T) {
 	t.Setenv("PATH", fmt.Sprintf("%s:%s", tmpDir, os.Getenv("PATH")))
 
 	ipmiDcmiPath, err := filepath.Abs("testdata/ipmi/ipmiutils/ipmiutil")
-	if err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, err)
+
 	err = os.Link(ipmiDcmiPath, tmpIPMIPath)
-	if err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, err)
 
 	// findIPMICmd() should give ipmiutil command
-	if ipmiCmdSlice := findIPMICmd(); ipmiCmdSlice[0] != "ipmiutil" {
-		t.Errorf("expected ipmiutil command. Got %v", ipmiCmdSlice[0])
-	}
+	ipmiCmdSlice := findIPMICmd()
+	assert.Equal(t, ipmiCmdSlice[0], "ipmiutil")
 }
