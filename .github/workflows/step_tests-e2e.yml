@@ -15,7 +15,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.21.x
+          go-version: 1.22.x
 
       - name: Run e2e tests for Go packages
         run: make test-e2e

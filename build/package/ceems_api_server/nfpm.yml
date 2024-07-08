@@ -44,7 +44,7 @@ vendor: GoReleaser
 homepage: https://github.com/mahendrapaipuri/ceems
 
 # License.
-license: BSD-3-Clause
+license: GPL-3.0
 
 # Contents to add to the package
 # This can be binaries or any other files.
