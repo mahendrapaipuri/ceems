@@ -18,7 +18,7 @@ type globalProvider struct {
 
 func init() {
 	// Register emissions provider
-	RegisterProvider(globalEmissionsProvider, "Global Average", NewGlobalProvider)
+	RegisterProvider(globalEmissionsProvider, "World Average", NewGlobalProvider)
 }
 
 // NewGlobalProvider returns a new Provider that returns a constant global average emission factor
@@ -33,5 +33,5 @@ func (s *globalProvider) Update() (EmissionFactors, error) {
 	// Use empty string as map key as there should not be a code
 	// for global factor
 	// Promtheus, by default, drops the empty labels and thus it wont appear
-	return EmissionFactors{"": EmissionFactor{"Global", float64(globalEmissionFactor)}}, nil
+	return EmissionFactors{"": EmissionFactor{"World", float64(globalEmissionFactor)}}, nil
 }
