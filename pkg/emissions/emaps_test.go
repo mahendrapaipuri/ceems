@@ -87,40 +87,6 @@ func TestEMapsDataProviderError(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// func TestEMapsDataProviderIntermittentError(t *testing.T) {
-// 	s := emapsProvider{
-// 		logger:          log.NewNopLogger(),
-// 		cacheDuration:   10,
-// 		lastRequestTime: time.Now().Unix(),
-// 		fetch:           mockEMapsAPIRequest,
-// 	}
-
-// 	// Get current emission factor
-// 	factor, err := s.Update()
-// 	require.NoError(t, err)
-// 	assert.Equal(t, factor, expectedEMapsFactor[0])
-// 	lastUpdateTime := s.lastRequestTime
-
-// 	// Swap fetch to function that fails request
-// 	s.fetch = mockEMapsAPIFailRequest
-
-// 	// Sleep for cache duration and make a request again and it should return same value as
-// 	// first value
-// 	time.Sleep(20 * time.Millisecond)
-// 	lastFactor, _ := s.Update()
-// 	assert.Equal(t, lastFactor, expectedEMapsFactor[0])
-// 	assert.Equal(t, lastUpdateTime, s.lastRequestTime)
-
-// 	// Swap fetch back to success funtion
-// 	s.fetch = mockEMapsAPIRequest
-
-// 	// Sleep for 1 more second and make a request again and we should get last non null value
-// 	time.Sleep(20 * time.Millisecond)
-// 	lastFactor, _ = s.Update()
-// 	assert.Equal(t, lastFactor, expectedEMapsFactor[1])
-// 	assert.NotEqual(t, lastUpdateTime, s.lastRequestTime)
-// }
-
 func TestNewEMapsProvider(t *testing.T) {
 	// // First attempt to create new instance without token env var. Should return error
 	// _, err := NewEMapsProvider(log.NewNopLogger())
