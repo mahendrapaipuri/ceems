@@ -825,7 +825,7 @@ const docTemplate = `{
                         "BasicAuth": []
                     }
                 ],
-                "description": "This endpoint will show details of the queried user(s). The\ncurrent user is always identified by the header ` + "`" + `X-Grafana-User` + "`" + ` in\nthe request.\n\nThe user who is making the request must be in the list of admin users\nconfigured for the server.\n\nThe details include list of projects that user is currently a part of.\n",
+                "description": "This endpoint will show details of the queried user(s). The\ncurrent user is always identified by the header ` + "`" + `X-Grafana-User` + "`" + ` in\nthe request.\n\nThe user who is making the request must be in the list of admin users\nconfigured for the server.\n\nWhen the query parameter ` + "`" + `user` + "`" + ` is empty, all users will be returned\nin the response.\n\nThe details include list of projects that user is currently a part of.\n",
                 "produces": [
                     "application/json"
                 ],

@@ -1092,6 +1092,9 @@ paths:
         The user who is making the request must be in the list of admin users
         configured for the server.
 
+        When the query parameter `user` is empty, all users will be returned
+        in the response.
+
         The details include list of projects that user is currently a part of.
       parameters:
       - description: Current user name

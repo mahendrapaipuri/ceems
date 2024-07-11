@@ -833,6 +833,9 @@ func (s *CEEMSServer) users(w http.ResponseWriter, r *http.Request) {
 //	@Description	The user who is making the request must be in the list of admin users
 //	@Description	configured for the server.
 //	@Description
+//	@Description	When the query parameter `user` is empty, all users will be returned
+//	@Description	in the response.
+//	@Description
 //	@Description	The details include list of projects that user is currently a part of.
 //	@Description
 //	@Security	BasicAuth
