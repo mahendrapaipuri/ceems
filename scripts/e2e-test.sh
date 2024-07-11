@@ -104,6 +104,10 @@ then
   then
     desc="/users/admin end point test"
     fixture='pkg/api/testdata/output/e2e-test-api-server-user-admin-query.txt'
+  elif [ "${scenario}" = "api-user-admin-all-query" ]
+  then
+    desc="/users/admin end point test that queries all users"
+    fixture='pkg/api/testdata/output/e2e-test-api-server-user-admin-all-query.txt'
   elif [ "${scenario}" = "api-cluster-admin-query" ]
   then
     desc="/clusters/admin end point test"
@@ -112,6 +116,10 @@ then
   then
     desc="/units end point test with uuid query param"
     fixture='pkg/api/testdata/output/e2e-test-api-server-uuid-query.txt'
+   elif [ "${scenario}" = "api-units-invalid-query" ]
+  then
+    desc="/units end point test with invalid field query"
+    fixture='pkg/api/testdata/output/e2e-test-api-server-units-invalid-query.txt'
   elif [ "${scenario}" = "api-running-query" ]
   then
     desc="/units end point test with running query param"
@@ -425,12 +433,18 @@ then
   elif [ "${scenario}" = "api-user-admin-query" ]
   then
     get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/users/admin?user=usr1" > "${fixture_output}"
+  elif [ "${scenario}" = "api-user-admin-all-query" ]
+  then
+    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/users/admin" > "${fixture_output}"
   elif [ "${scenario}" = "api-cluster-admin-query" ]
   then
     get -H "X-Ceems-User: usr1" "127.0.0.1:${port}/api/${api_version}/clusters/admin" > "${fixture_output}"
   elif [ "${scenario}" = "api-uuid-query" ]
   then
     get -H "X-Grafana-User: usr2" "127.0.0.1:${port}/api/${api_version}/units?uuid=1481508&project=acc2&cluster_id=slurm-0" > "${fixture_output}"
+  elif [ "${scenario}" = "api-units-invalid-query" ]
+  then
+    get -H "X-Grafana-User: usr2" "127.0.0.1:${port}/api/${api_version}/units?cluster_id=slurm-0&from=1676934000&to=1677538800&field=uuiid" > "${fixture_output}"
   elif [ "${scenario}" = "api-running-query" ]
   then
     get -H "X-Grafana-User: usr3" "127.0.0.1:${port}/api/${api_version}/units?running&cluster_id=slurm-1&from=1676934000&to=1677538800&field=uuid&field=state&field=started_at&field=allocation&field=tags" > "${fixture_output}"
