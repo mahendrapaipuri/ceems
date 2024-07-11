@@ -30,8 +30,7 @@ func NewGlobalProvider(logger log.Logger) (Provider, error) {
 
 // Get emission factor for a given country
 func (s *globalProvider) Update() (EmissionFactors, error) {
-	// Use empty string as map key as there should not be a code
-	// for global factor
-	// Promtheus, by default, drops the empty labels and thus it wont appear
-	return EmissionFactors{"": EmissionFactor{"World", float64(globalEmissionFactor)}}, nil
+	// We use a fake country code for world as we will need to setup Grafana 
+	// dashboards properly
+	return EmissionFactors{"ZZ": EmissionFactor{"World", float64(globalEmissionFactor)}}, nil
 }
