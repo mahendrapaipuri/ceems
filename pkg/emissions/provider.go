@@ -55,6 +55,8 @@ func (e FactorProviders) Collect() map[string]PayLoad {
 			factor, err := s.Update()
 			if err != nil {
 				level.Error(e.logger).Log("msg", "Failed to fetch emission factor", "provider", name, "err", err)
+				wg.Done()
+				return
 			}
 			emissionsLock.Lock()
 			emissionFactors[name] = PayLoad{Factor: factor, Name: e.ProviderNames[name]}

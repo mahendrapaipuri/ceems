@@ -30,7 +30,7 @@ func mockEMapsAPIRequest(
 ) (EmissionFactors, error) {
 	emapsIdx++
 	if emapsIdx > 2 {
-		return nil, fmt.Errorf("some random while fetching stuff")
+		return nil, fmt.Errorf("some random error while fetching stuff")
 	}
 	return expectedEMapsFactor[emapsIdx-1], nil
 }
@@ -65,11 +65,13 @@ func TestEMapsDataProvider(t *testing.T) {
 	time.Sleep(20 * time.Millisecond)
 	lastFactor, _ := s.Update()
 	assert.Equal(t, lastFactor, expectedEMapsFactor[1])
+	lastUpdateTime := s.lastRequestTime
 
 	// Sleep for 1 more second and make a request again and we should get last non null value
 	time.Sleep(20 * time.Millisecond)
 	lastFactor, _ = s.Update()
 	assert.Equal(t, lastFactor, expectedEMapsFactor[1])
+	assert.Equal(t, lastUpdateTime, s.lastRequestTime)
 }
 
 func TestEMapsDataProviderError(t *testing.T) {

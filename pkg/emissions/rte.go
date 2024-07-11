@@ -60,8 +60,10 @@ func (s *rteProvider) Update() (EmissionFactors, error) {
 
 			// Check if last emission factor is valid and if it is use the same for current
 			if s.lastEmissionFactor != nil {
-				currentEmissionFactor = s.lastEmissionFactor
-				err = nil
+				level.Debug(s.logger).Log("msg", "Using cached emission factor for RTE provider", "factor", s.lastEmissionFactor["FR"].Factor)
+				return s.lastEmissionFactor, nil
+			} else {
+				return nil, err
 			}
 		}
 

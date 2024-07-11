@@ -18,7 +18,7 @@ type globalProvider struct {
 
 func init() {
 	// Register emissions provider
-	RegisterProvider(globalEmissionsProvider, "Global Average", NewGlobalProvider)
+	RegisterProvider(globalEmissionsProvider, "World Average", NewGlobalProvider)
 }
 
 // NewGlobalProvider returns a new Provider that returns a constant global average emission factor
@@ -30,8 +30,7 @@ func NewGlobalProvider(logger log.Logger) (Provider, error) {
 
 // Get emission factor for a given country
 func (s *globalProvider) Update() (EmissionFactors, error) {
-	// Use empty string as map key as there should not be a code
-	// for global factor
-	// Promtheus, by default, drops the empty labels and thus it wont appear
-	return EmissionFactors{"": EmissionFactor{"Global", float64(globalEmissionFactor)}}, nil
+	// We use a fake country code for world as we will need to setup Grafana
+	// dashboards properly
+	return EmissionFactors{"ZZ": EmissionFactor{"World", float64(globalEmissionFactor)}}, nil
 }

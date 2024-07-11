@@ -98,13 +98,15 @@ func (s *emapsProvider) Update() (EmissionFactors, error) {
 	if time.Now().UnixMilli()-s.lastRequestTime > s.cacheDuration || s.lastEmissionFactor == nil {
 		currentEmissionFactor, err := s.fetch(eMapAPIBaseURL, s.apiToken, s.zones, s.logger)
 		if err != nil {
-			level.Warn(s.logger).
+			level.Error(s.logger).
 				Log("msg", "Failed to fetch emission factor from Electricity maps provider", "err", err)
 
 			// Check if last emission factor is valid and if it is use the same for current
 			if s.lastEmissionFactor != nil {
-				currentEmissionFactor = s.lastEmissionFactor
-				err = nil
+				level.Debug(s.logger).Log("msg", "Using cached emission factor for Electricity maps provider")
+				return s.lastEmissionFactor, nil
+			} else {
+				return nil, err
 			}
 		}
 
@@ -145,6 +147,8 @@ func makeEMapsAPIRequest(
 			if err != nil {
 				level.Error(logger).
 					Log("msg", "Failed to fetch factor for Electricity maps provider", "zone", z, "err", err)
+				wg.Done()
+				return
 			}
 
 			// Set emission factor only when returned value is non zero

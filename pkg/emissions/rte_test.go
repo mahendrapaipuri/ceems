@@ -56,11 +56,13 @@ func TestRTEDataSource(t *testing.T) {
 	time.Sleep(20 * time.Millisecond)
 	lastFactor, _ := s.Update()
 	assert.Equal(t, lastFactor, expectedRTEFactors[1])
+	lastUpdateTime := s.lastRequestTime
 
 	// Sleep for 1 more second and make a request again and we should get last non null value
 	time.Sleep(20 * time.Millisecond)
 	lastFactor, _ = s.Update()
 	assert.Equal(t, lastFactor, expectedRTEFactors[1])
+	assert.Equal(t, lastUpdateTime, s.lastRequestTime)
 }
 
 func TestRTEDataSourceError(t *testing.T) {
