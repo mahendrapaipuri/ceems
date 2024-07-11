@@ -431,6 +431,11 @@ func (s *CEEMSServer) unitsQuerier(
 
 	// Get fields query parameters if any
 	queriedFields := s.getQueriedFields(r.URL.Query(), base.UnitsDBTableColNames)
+	if len(queriedFields) == 0 {
+		level.Error(s.logger).Log("msg", "Invalid query fields", "loggedUser", loggedUser, "err", errInvalidQueryField)
+		errorResponse[any](w, &apiError{errorBadData, errInvalidQueryField}, s.logger, nil)
+		return
+	}
 
 	// Initialise query builder
 	q := Query{}
@@ -748,8 +753,14 @@ func (s *CEEMSServer) usersQuerier(users []string, w http.ResponseWriter, r *htt
 	// Make query
 	q := Query{}
 	q.query(fmt.Sprintf("SELECT * FROM %s", base.UsersDBTableName))
-	q.query(" WHERE name IN ")
-	q.param(users)
+	// If no user is queried, return all users. This can happen only for admin
+	// end points
+	if len(users) == 0 {
+		q.query(" WHERE name LIKE '%' ")
+	} else {
+		q.query(" WHERE name IN ")
+		q.param(users)
+	}
 
 	// Get cluster_id query parameters if any
 	if clusterIDs := r.URL.Query()["cluster_id"]; len(clusterIDs) > 0 {
@@ -1147,6 +1158,11 @@ func (s *CEEMSServer) usage(w http.ResponseWriter, r *http.Request) {
 
 	// Get fields query parameters if any
 	queriedFields := s.getQueriedFields(r.URL.Query(), base.UsageDBTableColNames)
+	if len(queriedFields) == 0 {
+		level.Error(s.logger).Log("msg", "Invalid query fields", "loggedUser", dashboardUser)
+		errorResponse[any](w, &apiError{errorBadData, errInvalidQueryField}, s.logger, nil)
+		return
+	}
 
 	// handle current usage query
 	if mode == "current" {
@@ -1211,6 +1227,9 @@ func (s *CEEMSServer) usageAdmin(w http.ResponseWriter, r *http.Request) {
 	// Set headers
 	s.setHeaders(w)
 
+	// Get current user from header
+	_, dashboardUser := s.getUser(r)
+
 	// Get path parameter type
 	var mode string
 	var exists bool
@@ -1221,6 +1240,11 @@ func (s *CEEMSServer) usageAdmin(w http.ResponseWriter, r *http.Request) {
 
 	// Get fields query parameters if any
 	queriedFields := s.getQueriedFields(r.URL.Query(), base.UsageDBTableColNames)
+	if len(queriedFields) == 0 {
+		level.Error(s.logger).Log("msg", "Invalid query fields", "loggedUser", dashboardUser)
+		errorResponse[any](w, &apiError{errorBadData, errInvalidQueryField}, s.logger, nil)
+		return
+	}
 
 	// handle current usage query
 	if mode == "current" {

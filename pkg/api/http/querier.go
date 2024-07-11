@@ -108,12 +108,6 @@ func countRows(dbConn *sql.DB, query Query) (int, error) {
 	}
 	defer countStmt.Close()
 
-	queryStmt, err := dbConn.Prepare(queryString)
-	if err != nil {
-		return 0, err
-	}
-	defer queryStmt.Close()
-
 	// queryParams has to be an inteface. Do casting here
 	qParams := make([]interface{}, len(queryParams))
 	for i, v := range queryParams {
