@@ -218,14 +218,11 @@ func (t *tsdbUpdater) update(startTime time.Time, endTime time.Time, units []mod
 		// Check if we EndTS is not zero before ignoring unit. If it is zero, it means
 		// it must be RUNNING unit
 		if units[i].EndedAtTS > 0 {
-			if walltime, ok := units[i].TotalTime["walltime"]; ok {
-				if walltime < models.JSONFloat(time.Duration(t.config.CutoffDuration).Seconds()) {
-					ignoredUnits = append(ignoredUnits, uuid)
-					units[i].Ignore = 1
-					continue
-				}
+			if units[i].EndedAtTS-units[i].StartedAtTS < time.Duration(t.config.CutoffDuration).Milliseconds() {
+				ignoredUnits = append(ignoredUnits, uuid)
+				units[i].Ignore = 1
+				continue
 			}
-
 		}
 		allUnitUUIDs[j] = uuid
 		j++
