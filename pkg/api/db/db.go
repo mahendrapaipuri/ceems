@@ -15,11 +15,11 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/internal/common"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
-	ceems_sqlite3 "github.com/mahendrapaipuri/ceems/pkg/api/db/sqlite3"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/mahendrapaipuri/ceems/pkg/api/resource"
 	"github.com/mahendrapaipuri/ceems/pkg/api/updater"
 	"github.com/mahendrapaipuri/ceems/pkg/grafana"
+	ceems_sqlite3 "github.com/mahendrapaipuri/ceems/pkg/sqlite3"
 	"github.com/mattn/go-sqlite3"
 	"github.com/prometheus/common/model"
 )

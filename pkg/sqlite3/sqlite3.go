@@ -195,7 +195,7 @@ func avgMetricMap(existing, new string, existingWeight, newWeight float64) strin
 	var metricMaps = []models.MetricMap{existingMetricMap, newMetricMap}
 	var weights = []float64{existingWeight, newWeight}
 
-	// Intialize vars
+	// Initialize vars
 	var avgMetricMap = make(models.MetricMap)
 	var totalWeights = make(map[string]models.JSONFloat)
 	for imetricMap, metricMap := range metricMaps {
