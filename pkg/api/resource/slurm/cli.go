@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -15,6 +16,20 @@ import (
 	internal_osexec "github.com/mahendrapaipuri/ceems/internal/osexec"
 	"github.com/mahendrapaipuri/ceems/pkg/api/helper"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
+)
+
+var (
+	// SLURM AllocTRES gives memory as 200M, 250.5G and we dont know if it gives without
+	// units. So, regex will capture the number and unit (if exists) and we convert it
+	// to bytes
+	memRegex = regexp.MustCompile("([0-9.]+)([K|M|G|T]?)")
+	toBytes  = map[string]int64{
+		"K": 1024,
+		"M": 1024 * 1024,
+		"G": 1024 * 1024 * 1024,
+		"T": 1024 * 1024 * 1024 * 1024,
+		"Z": 1024 * 1024 * 1024 * 1024 * 1024,
+	}
 )
 
 // Run preflights for CLI execution mode
@@ -171,17 +186,16 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 			}
 
 			// If mem is not empty string, convert the units [K|M|G|T] into numeric bytes
-			// The following logic covers the cases when memory is of form 200M, 250G
+			// The following logic covers the cases when memory is of form 200M, 250.5G
 			// and also without unit eg 20000, 40000. When there is no unit we assume
 			// it is already in bytes
 			matches := memRegex.FindStringSubmatch(memString)
 			var mem int64
-			var err error
 			if len(matches) >= 2 {
-				if mem, err = strconv.ParseInt(matches[1], 10, 64); err == nil {
+				if memFloat, err := strconv.ParseFloat(matches[1], 64); err == nil {
 					if len(matches) == 3 {
 						if unitConv, ok := toBytes[matches[2]]; ok {
-							mem = mem * unitConv
+							mem = int64(memFloat) * unitConv
 						}
 					}
 				}
@@ -234,9 +248,9 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 			// Get cpuMemSeconds and gpuMemSeconds of current interval in MB
 			var cpuMemSeconds, gpuMemSeconds int64
 			if mem > 0 {
-				cpuMemSeconds = mem * elapsedSeconds / toBytes["M"]
+				cpuMemSeconds = int64(mem) * elapsedSeconds / toBytes["M"]
 			} else {
-				cpuMemSeconds = elapsedSeconds / toBytes["M"]
+				cpuMemSeconds = elapsedSeconds
 			}
 
 			// Currently we use walltime as GPU mem time. This wont be a correct proxy
@@ -244,7 +258,9 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 			// allocated
 			// NOTE: Not sure how SLURM outputs the gres/gpu when MIG is activated.
 			// We need to check it and update this part to take GPU memory into account
-			gpuMemSeconds = elapsedSeconds
+			if ngpus > 0 {
+				gpuMemSeconds = elapsedSeconds
+			}
 
 			// Expand nodelist range expressions
 			allNodes := helper.NodelistParser(components[sacctFieldMap["nodelist"]])

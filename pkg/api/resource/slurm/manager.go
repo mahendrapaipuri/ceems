@@ -5,7 +5,6 @@ package slurm
 import (
 	"fmt"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -40,18 +39,6 @@ var (
 		"alloctres", "nodelist", "jobname", "workdir",
 	}
 	sacctFieldMap = make(map[string]int, len(sacctFields))
-
-	// SLURM AllocTRES gives memory as 200M, 250G and we dont know if it gives without
-	// units. So, regex will capture the number and unit (if exists) and we convert it
-	// to bytes
-	memRegex = regexp.MustCompile("([0-9]+)([K|M|G|T]?)")
-	toBytes  = map[string]int64{
-		"K": 1024,
-		"M": 1024 * 1024,
-		"G": 1024 * 1024 * 1024,
-		"T": 1024 * 1024 * 1024 * 1024,
-		"Z": 1024 * 1024 * 1024 * 1024 * 1024,
-	}
 )
 
 func init() {
