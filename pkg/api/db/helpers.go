@@ -10,7 +10,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
-	ceems_sqlite3 "github.com/mahendrapaipuri/ceems/pkg/api/db/sqlite3"
+	ceems_sqlite3 "github.com/mahendrapaipuri/ceems/pkg/sqlite3"
 )
 
 var (

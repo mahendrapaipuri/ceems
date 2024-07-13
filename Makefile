@@ -44,10 +44,10 @@ endif
 PROMU_TEST_CONF ?= .promu-go-test.yml
 ifeq ($(CGO_BUILD), 1)
 	PROMU_CONF ?= .promu-cgo.yml
-	pkgs := ./pkg/api/cli \
+	pkgs := ./pkg/sqlite3 ./pkg/api/cli \
 			./pkg/api/db ./pkg/api/helper \
 			./pkg/api/resource ./pkg/api/resource/slurm \
-			./pkg/api/updater  ./pkg/api/db/sqlite3 \
+			./pkg/api/updater \
 			./pkg/api/http ./cmd/ceems_api_server \
 			./pkg/lb/backend ./pkg/lb/cli \
 			./pkg/lb/frontend ./pkg/lb/serverpool \
