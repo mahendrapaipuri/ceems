@@ -261,7 +261,7 @@ func TestTSDBUpdateSuccessSingleInstance(t *testing.T) {
 
 	updatedUnits := tsdb.Update(time.Now().Add(-5*time.Minute), time.Now(), units)
 	for i := 0; i < len(expectedUnits); i++ {
-		assert.Equal(t, expectedUnits[i], updatedUnits[0].Units[i])
+		assert.Equal(t, expectedUnits[i], updatedUnits[0].Units[i], fmt.Sprintf("Unit: %d", i))
 	}
 }
 
@@ -333,6 +333,7 @@ func TestTSDBUpdateFailMaxDuration(t *testing.T) {
 				"alloc_gputime":    models.JSONFloat(0),
 				"alloc_gpumemtime": models.JSONFloat(0),
 			},
+			Ignore: 1,
 		},
 		{
 			UUID:        "2",
@@ -345,6 +346,7 @@ func TestTSDBUpdateFailMaxDuration(t *testing.T) {
 				"alloc_gputime":    models.JSONFloat(0),
 				"alloc_gpumemtime": models.JSONFloat(0),
 			},
+			Ignore: 1,
 		},
 		{
 			UUID:        "3",
@@ -366,9 +368,6 @@ func TestTSDBUpdateFailMaxDuration(t *testing.T) {
 
 	updatedUnits := tsdb.Update(time.Now().Add(-1*time.Minute), time.Now(), units)
 	assert.Equal(t, updatedUnits[0].Units, expectedUnits)
-	// if !reflect.DeepEqual(updatedUnits[0].Units, expectedUnits) {
-	// 	t.Errorf("expected %#v \n got %#v", expectedUnits, updatedUnits[0].Units)
-	// }
 }
 
 func TestTSDBUpdateFailNoUnits(t *testing.T) {
