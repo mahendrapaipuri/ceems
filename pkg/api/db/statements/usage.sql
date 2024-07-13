@@ -13,4 +13,5 @@ INSERT INTO usage (cluster_id,resource_manager,num_units,project,groupname,usern
   total_io_read_stats = add_metric_map(total_io_read_stats, :total_io_read_stats),
   total_ingress_stats = add_metric_map(total_ingress_stats, :total_ingress_stats),
   total_outgress_stats = add_metric_map(total_outgress_stats, :total_outgress_stats),
-  num_updates = num_updates + :num_updates  
+  num_updates = num_updates + :num_updates,
+  last_updated_at = :last_updated_at
