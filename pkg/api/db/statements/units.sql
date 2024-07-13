@@ -17,4 +17,6 @@ INSERT INTO units (cluster_id,resource_manager,uuid,name,project,groupname,usern
   total_ingress_stats = add_metric_map(total_ingress_stats, :total_ingress_stats),
   total_outgress_stats = add_metric_map(total_outgress_stats, :total_outgress_stats),
   tags = :tags,
-  num_updates = num_updates + :num_updates  
+  ignore = :ignore,
+  num_updates = num_updates + :num_updates,
+  last_updated_at = :last_updated_at

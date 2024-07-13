@@ -179,8 +179,8 @@ func (j *JSONFloat) Scan(v interface{}) error {
 }
 
 // MarshalJSON marshals JSONFloat into byte array
-// The custom marshal interface will truncate the float64 to 2 decimals as storing
-// all decimals will bring a very low value and high DB storage
+// The custom marshal interface will truncate the float64 to 8 decimals as storing
+// all decimals will bring a very low added value and high DB storage
 func (j JSONFloat) MarshalJSON() ([]byte, error) {
 	v := float64(j)
 	if math.IsInf(v, 0) || math.IsNaN(v) {
@@ -189,12 +189,12 @@ func (j JSONFloat) MarshalJSON() ([]byte, error) {
 		return []byte(s), nil
 	}
 
-	// If v is actually a int, use json.Marshal else truncate the decimals to 2
+	// If v is actually a int, use json.Marshal else truncate the decimals to 8
 	if v == float64(int(v)) {
 		return json.Marshal(v)
 	} else {
-		// Convert to bytes by truncating to 2 decimals
-		return []byte(fmt.Sprintf("%.2f", v)), nil
+		// Convert to bytes by truncating to 8 decimals
+		return []byte(fmt.Sprintf("%.8f", v)), nil
 	}
 }
 
