@@ -191,39 +191,32 @@ func avgMetricMap(existing, new string, existingWeight, newWeight float64) strin
 		panic(err)
 	}
 
-	// Make a deep copy of existingMetricMap into updatedMetricMap
-	var updatedMetricMap = make(models.MetricMap)
-	for metricName, metricValue := range existingMetricMap {
-		updatedMetricMap[metricName] = metricValue
-	}
+	// Make slice of maps and weights
+	var metricMaps = []models.MetricMap{existingMetricMap, newMetricMap}
+	var weights = []float64{existingWeight, newWeight}
 
-	// Walk through new map and update existing with new
-	for metricName, newMetricValue := range newMetricMap {
-		if existingMetricValue, ok := existingMetricMap[metricName]; ok {
-			updatedMetricMap[metricName] = existingMetricValue*models.JSONFloat(
-				existingWeight,
-			) + newMetricValue*models.JSONFloat(
-				newWeight,
-			)
-		} else {
-			updatedMetricMap[metricName] = newMetricValue
+	// Intialize vars
+	var avgMetricMap = make(models.MetricMap)
+	var totalWeights = make(map[string]models.JSONFloat)
+	for imetricMap, metricMap := range metricMaps {
+		for metricName, metricValue := range metricMap {
+			weight := models.JSONFloat(weights[imetricMap])
+			avgMetricMap[metricName] += metricValue * weight
+			totalWeights[metricName] += weight
 		}
 	}
 
-	// Divide by sum of weights to get new average.
-	// Divide by weights only for existing metric values as new values are not multiplied
-	// weights and they should be left as such
-	totalWeight := models.JSONFloat(newWeight) + models.JSONFloat(existingWeight)
-	for metricName, metricValue := range updatedMetricMap {
-		if _, ok := existingMetricMap[metricName]; ok {
-			if newWeight > 0 {
-				updatedMetricMap[metricName] = metricValue / totalWeight
+	// Divide weighted sum by counts to get weighted average
+	for metricName := range avgMetricMap {
+		if totalWeight, ok := totalWeights[metricName]; ok {
+			if totalWeight > 0 {
+				avgMetricMap[metricName] = avgMetricMap[metricName] / totalWeight
 			}
 		}
 	}
 
 	// Finally, marshal the type into string and return
-	updatedMetricMapBytes, err := json.Marshal(updatedMetricMap)
+	updatedMetricMapBytes, err := json.Marshal(avgMetricMap)
 	if err != nil {
 		panic(err)
 	}
