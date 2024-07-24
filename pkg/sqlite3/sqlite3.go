@@ -227,9 +227,7 @@ func avgMetricMap(existing, new string, existingWeight, newWeight float64) strin
 // For int or float types, they will be summed up
 // String types will be ignored and treated as zero
 type sumMetricMap struct {
-	metricMaps   []models.MetricMap
 	aggMetricMap models.MetricMap
-	n            int64
 }
 
 // newSumMetricMap returns an instance of sumMetricMap
@@ -239,22 +237,22 @@ func newSumMetricMap() *sumMetricMap {
 
 // Step adds the element to slice
 func (g *sumMetricMap) Step(m string) {
+	// On empty map return
+	if m == "{}" {
+		return
+	}
+
 	var metricMap models.MetricMap
 	if err := json.Unmarshal([]byte(m), &metricMap); err != nil {
 		panic(err)
 	}
-	g.metricMaps = append(g.metricMaps, metricMap)
-	g.n++
+	for metricName, metricValue := range metricMap {
+		g.aggMetricMap[metricName] += metricValue
+	}
 }
 
 // Done aggregates all the elements added to slice
 func (g *sumMetricMap) Done() string {
-	for _, metricMap := range g.metricMaps {
-		for metricName, metricValue := range metricMap {
-			g.aggMetricMap[metricName] += metricValue
-		}
-	}
-
 	// Finally, marshal the type into string and return
 	aggMetricMapBytes, err := json.Marshal(g.aggMetricMap)
 	if err != nil {
@@ -267,11 +265,8 @@ func (g *sumMetricMap) Done() string {
 // For int or float types, they will be weighed averaged
 // For string types, they will be ignored
 type avgMetricMapAgg struct {
-	metricMaps   []models.MetricMap
-	weights      []float64
 	avgMetricMap models.MetricMap
 	totalWeights map[string]models.JSONFloat
-	n            int64
 }
 
 // newAvgMetricMap returns an instance of avgMetricMap
@@ -284,26 +279,24 @@ func newAvgMetricMapAgg() *avgMetricMapAgg {
 
 // Step adds the element to slice
 func (g *avgMetricMapAgg) Step(m string, w float64) {
+	// On empty map return
+	if m == "{}" || w == 0 {
+		return
+	}
+
 	var metricMap models.MetricMap
 	if err := json.Unmarshal([]byte(m), &metricMap); err != nil {
 		panic(err)
 	}
-	g.metricMaps = append(g.metricMaps, metricMap)
-	g.weights = append(g.weights, w)
-	g.n++
+	for metricName, metricValue := range metricMap {
+		weight := models.JSONFloat(w)
+		g.avgMetricMap[metricName] += metricValue * weight
+		g.totalWeights[metricName] += weight
+	}
 }
 
 // Done aggregates all the elements added to slice
 func (g *avgMetricMapAgg) Done() string {
-	// Get weighed sum of all metric maps
-	for imetricMap, metricMap := range g.metricMaps {
-		for metricName, metricValue := range metricMap {
-			weight := models.JSONFloat(g.weights[imetricMap])
-			g.avgMetricMap[metricName] += metricValue * weight
-			g.totalWeights[metricName] += weight
-		}
-	}
-
 	// Divide weighted sum by counts to get weighted average
 	for metricName := range g.avgMetricMap {
 		if totalWeight, ok := g.totalWeights[metricName]; ok {
