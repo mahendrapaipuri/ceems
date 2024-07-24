@@ -214,7 +214,7 @@ const docTemplate = `{
                 "tags": [
                     "projects"
                 ],
-                "summary": "Admin ednpoint to fetch project details",
+                "summary": "Admin endpoint to fetch project details",
                 "parameters": [
                     {
                         "type": "string",
@@ -706,9 +706,19 @@ const docTemplate = `{
                         "items": {
                             "type": "string"
                         },
-                        "collectionFormat": "multi",
+                        "collectionFormat": "csv",
                         "description": "Project",
                         "name": "project",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Username",
+                        "name": "user",
                         "in": "query"
                     },
                     {

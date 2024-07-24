@@ -608,7 +608,7 @@ paths:
             $ref: '#/definitions/http.Response-any'
       security:
       - BasicAuth: []
-      summary: Admin ednpoint to fetch project details
+      summary: Admin endpoint to fetch project details
       tags:
       - projects
   /units:
@@ -995,12 +995,19 @@ paths:
           type: string
         name: cluster_id
         type: array
-      - collectionFormat: multi
+      - collectionFormat: csv
         description: Project
         in: query
         items:
           type: string
         name: project
+        type: array
+      - collectionFormat: multi
+        description: Username
+        in: query
+        items:
+          type: string
+        name: user
         type: array
       - description: From timestamp
         in: query

@@ -106,6 +106,14 @@ ceems_api_server:
 	configFile := fmt.Sprintf(configFileTmpl, dataDir)
 	configFilePath := makeConfigFile(configFile, tmpDir)
 
+	// Create sample DB file
+	os.MkdirAll(dataDir, os.ModePerm)
+	f, err := os.Create(filepath.Join(dataDir, base.CEEMSDBName))
+	if err != nil {
+		require.NoError(t, err)
+	}
+	f.Close()
+
 	// Remove test related args
 	os.Args = append([]string{os.Args[0]}, fmt.Sprintf("--config.file=%s", configFilePath))
 	os.Args = append(os.Args, "--log.level=debug")

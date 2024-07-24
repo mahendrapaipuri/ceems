@@ -101,7 +101,11 @@ func init() {
 	// Use SQL aggregate functions in query
 	for _, col := range base.UsageDBTableColNames {
 		if strings.HasPrefix(col, "num") {
-			aggUsageDBCols[col] = "COUNT(id) AS num_units"
+			if col == "num_units" {
+				aggUsageDBCols[col] = "COUNT(id) AS num_units"
+			} else {
+				aggUsageDBCols[col] = "SUM(num_updates) AS num_updates"
+			}
 		} else if strings.HasPrefix(col, "total") {
 			aggUsageDBCols[col] = fmt.Sprintf("sum_metric_map_agg(%[1]s) AS %[1]s", col)
 		} else if strings.HasPrefix(col, "avg") {
@@ -127,7 +131,6 @@ func getDBStatus(dbConn *sql.DB, logger log.Logger) bool {
 
 // NewCEEMSServer creates new CEEMSServer struct instance
 func NewCEEMSServer(c *Config) (*CEEMSServer, func(), error) {
-	var dbConn *sql.DB
 	var err error
 
 	router := mux.NewRouter()
@@ -137,7 +140,7 @@ func NewCEEMSServer(c *Config) (*CEEMSServer, func(), error) {
 			Addr:              c.Web.Address,
 			Handler:           router,
 			ReadTimeout:       10 * time.Second,
-			WriteTimeout:      10 * time.Second,
+			WriteTimeout:      300 * time.Second,
 			ReadHeaderTimeout: 2 * time.Second, // slowloris attack: https://app.deepsource.com/directory/analyzers/go/issues/GO-S2112
 		},
 		webConfig: &web.FlagConfig{
@@ -219,10 +222,29 @@ func NewCEEMSServer(c *Config) (*CEEMSServer, func(), error) {
 	)).Methods(http.MethodGet)
 
 	// Open DB connection
-	if dbConn, err = sql.Open(sqlite3.DriverName, filepath.Join(c.DB.Data.Path, base.CEEMSDBName)); err != nil {
-		return nil, func() {}, err
+	dsn := fmt.Sprintf("file:%s?%s", filepath.Join(c.DB.Data.Path, base.CEEMSDBName), "_mutex=no&mode=ro")
+	if server.db, err = sql.Open(sqlite3.DriverName, dsn); err != nil {
+		return nil, func() {}, fmt.Errorf("failed to open DB: %s", err)
 	}
-	server.db = dbConn
+
+	// // Ping DB to establish first connection in the pool
+	// // Make repetitive connection attempts until timeout as DB might be created with a
+	// // latency
+	// ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	// defer cancel()
+	// ticker := time.NewTicker(time.Second)
+	// defer ticker.Stop()
+	// for loop := true; loop; {
+	// 	err := server.db.Ping()
+	// 	select {
+	// 	case <-ctx.Done():
+	// 		return nil, func() {}, fmt.Errorf("failed to ping DB: %s", err)
+	// 	case <-ticker.C:
+	// 		if err == nil {
+	// 			loop = false
+	// 		}
+	// 	}
+	// }
 
 	// Add a middleware that verifies headers and pass them in requests
 	// The middleware will fetch admin users from Grafana periodically to update list
@@ -230,7 +252,7 @@ func NewCEEMSServer(c *Config) (*CEEMSServer, func(), error) {
 		logger:          c.Logger,
 		routerPrefix:    routePrefix,
 		whitelistedURLs: regexp.MustCompile(fmt.Sprintf("%s(swagger|health|demo)(.*)", routePrefix)),
-		db:              dbConn,
+		db:              server.db,
 		adminUsers:      adminUsers,
 	}
 	router.Use(amw.Middleware)
@@ -271,7 +293,7 @@ func (s *CEEMSServer) Start() error {
 
 	level.Info(s.logger).Log("msg", fmt.Sprintf("Starting %s", base.CEEMSServerAppName))
 	if err := web.ListenAndServe(s.server, s.webConfig, s.logger); err != nil && err != http.ErrServerClosed {
-		level.Error(s.logger).Log("msg", "Failed to Listen and Server HTTP server", "err", err)
+		level.Error(s.logger).Log("msg", "Failed to Listen and Serve HTTP server", "err", err)
 		return err
 	}
 	return nil
@@ -495,7 +517,7 @@ queryUnits:
 
 	// Get all user units in the given time window
 	units, err := s.queriers.unit(s.db, q, s.logger)
-	if err != nil {
+	if units == nil && err != nil {
 		level.Error(s.logger).Log("msg", "Failed to fetch units", "loggedUser", loggedUser, "err", err)
 		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
 		return
@@ -506,6 +528,9 @@ queryUnits:
 	response := Response[models.Unit]{
 		Status: "success",
 		Data:   units,
+	}
+	if err != nil {
+		response.Warnings = append(response.Warnings, err.Error())
 	}
 	if err = json.NewEncoder(w).Encode(&response); err != nil {
 		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
@@ -727,7 +752,7 @@ func (s *CEEMSServer) clustersAdmin(w http.ResponseWriter, r *http.Request) {
 
 	// Make query and get list of cluster ids
 	clusterIDs, err := s.queriers.cluster(s.db, q, s.logger)
-	if err != nil {
+	if clusterIDs == nil && err != nil {
 		level.Error(s.logger).Log("msg", "Failed to fetch cluster IDs", "user", dashboardUser, "err", err)
 		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
 		return
@@ -738,6 +763,9 @@ func (s *CEEMSServer) clustersAdmin(w http.ResponseWriter, r *http.Request) {
 	clusterIDsResponse := Response[models.Cluster]{
 		Status: "success",
 		Data:   clusterIDs,
+	}
+	if err != nil {
+		clusterIDsResponse.Warnings = append(clusterIDsResponse.Warnings, err.Error())
 	}
 	if err = json.NewEncoder(w).Encode(&clusterIDsResponse); err != nil {
 		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
@@ -773,7 +801,7 @@ func (s *CEEMSServer) usersQuerier(users []string, w http.ResponseWriter, r *htt
 
 	// Make query and check for users returned in usage
 	userModels, err := s.queriers.user(s.db, q, s.logger)
-	if err != nil {
+	if userModels == nil && err != nil {
 		level.Error(s.logger).Log("msg", "Failed to fetch user details", "users", strings.Join(users, ","), "err", err)
 		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
 		return
@@ -784,6 +812,9 @@ func (s *CEEMSServer) usersQuerier(users []string, w http.ResponseWriter, r *htt
 	usersResponse := Response[models.User]{
 		Status: "success",
 		Data:   userModels,
+	}
+	if err != nil {
+		usersResponse.Warnings = append(usersResponse.Warnings, err.Error())
 	}
 	if err = json.NewEncoder(w).Encode(&usersResponse); err != nil {
 		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
@@ -892,7 +923,7 @@ func (s *CEEMSServer) projectsQuerier(users []string, w http.ResponseWriter, r *
 
 	// Make query
 	projectModels, err := s.queriers.project(s.db, q, s.logger)
-	if err != nil {
+	if projectModels == nil && err != nil {
 		level.Error(s.logger).Log(
 			"msg", "Failed to fetch project details",
 			"users", strings.Join(users, ","), "err", err,
@@ -906,6 +937,9 @@ func (s *CEEMSServer) projectsQuerier(users []string, w http.ResponseWriter, r *
 	projectsResponse := Response[models.Project]{
 		Status: "success",
 		Data:   projectModels,
+	}
+	if err != nil {
+		projectsResponse.Warnings = append(projectsResponse.Warnings, err.Error())
 	}
 	if err = json.NewEncoder(w).Encode(&projectsResponse); err != nil {
 		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
@@ -950,7 +984,7 @@ func (s *CEEMSServer) projects(w http.ResponseWriter, r *http.Request) {
 
 // projectsAdmin         godoc
 //
-//	@Summary		Admin ednpoint to fetch project details
+//	@Summary		Admin endpoint to fetch project details
 //	@Description	This endpoint will show details of the queried project. The
 //	@Description	current user is always identified by the header `X-Grafana-User` in
 //	@Description	the request.
@@ -1040,7 +1074,7 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 
 	// Make query and check for returned number of rows
 	usage, err := s.queriers.usage(s.db, q, s.logger)
-	if err != nil {
+	if usage == nil && err != nil {
 		level.Error(s.logger).
 			Log("msg", "Failed to fetch current usage statistics", "users", strings.Join(users, ","), "err", err)
 		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
@@ -1052,6 +1086,9 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 	projectsResponse := Response[models.Usage]{
 		Status: "success",
 		Data:   usage,
+	}
+	if err != nil {
+		projectsResponse.Warnings = append(projectsResponse.Warnings, err.Error())
 	}
 	if err = json.NewEncoder(w).Encode(&projectsResponse); err != nil {
 		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
@@ -1081,7 +1118,7 @@ func (s *CEEMSServer) globalUsage(users []string, queriedFields []string, w http
 
 	// Make query and check for returned number of rows
 	usage, err := s.queriers.usage(s.db, q, s.logger)
-	if err != nil {
+	if usage == nil && err != nil {
 		level.Error(s.logger).
 			Log("msg", "Failed to fetch global usage statistics", "users", strings.Join(users, ","), "err", err)
 		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
@@ -1093,6 +1130,9 @@ func (s *CEEMSServer) globalUsage(users []string, queriedFields []string, w http
 	projectsResponse := Response[models.Usage]{
 		Status: "success",
 		Data:   usage,
+	}
+	if err != nil {
+		projectsResponse.Warnings = append(projectsResponse.Warnings, err.Error())
 	}
 	if err = json.NewEncoder(w).Encode(&projectsResponse); err != nil {
 		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
@@ -1211,7 +1251,8 @@ func (s *CEEMSServer) usage(w http.ResponseWriter, r *http.Request) {
 //	@Param			X-Grafana-User	header		string		true	"Current user name"
 //	@Param			mode			path		string		true	"Whether to get usage stats within a period or global"	Enums(current, global)
 //	@Param			cluster_id		query		[]string	false	"cluster ID"											collectionFormat(multi)
-//	@Param			project			query		[]string	false	"Project"												collectionFormat(multi)
+//	@Param			project			query		[]string	false	"Project"
+//	@Param			user			query		[]string	false	"Username"	collectionFormat(multi)
 //	@Param			from			query		string		false	"From timestamp"
 //	@Param			to				query		string		false	"To timestamp"
 //	@Param			field			query		[]string	false	"Fields to return in response"	collectionFormat(multi)
