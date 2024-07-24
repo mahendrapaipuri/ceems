@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.1 / 2024-07-24
+
+- [MAINT] DB query performance improvements [#113](https://github.com/mahendrapaipuri/ceems/pull/113) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [BUGFIX] Fix metric aggregation [#112](https://github.com/mahendrapaipuri/ceems/pull/112) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Incremental improvements on API server [#111](https://github.com/mahendrapaipuri/ceems/pull/111) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [BUGFIX] Dont cache failed requests for emissions [#110](https://github.com/mahendrapaipuri/ceems/pull/110) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [MAINT] Upgrade to Go 1.22.x [#109](https://github.com/mahendrapaipuri/ceems/pull/109) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [TEST] Migrate to testify for unit tests [#108](https://github.com/mahendrapaipuri/ceems/pull/108) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+
 ## 0.1.0 / 2024-07-06
 
 - [BUGFIX] Build swag using native arch in cross build [#107](https://github.com/mahendrapaipuri/ceems/pull/107) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
