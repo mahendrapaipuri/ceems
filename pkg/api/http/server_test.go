@@ -4,10 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -15,6 +18,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
+	"github.com/mahendrapaipuri/ceems/pkg/api/db"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -50,11 +54,12 @@ var (
 		{ID: "slurm-0", Manager: "slurm"},
 		{ID: "os-0", Manager: "openstack"},
 	}
+	errTest = fmt.Errorf("failed to query 10 rows")
 )
 
-func setupServer() *CEEMSServer {
+func setupServer(d string) *CEEMSServer {
 	logger := log.NewNopLogger()
-	server, _, _ := NewCEEMSServer(&Config{Logger: logger})
+	server, _, _ := NewCEEMSServer(&Config{Logger: logger, DB: db.Config{Data: db.DataConfig{Path: d}}})
 	server.maxQueryPeriod = time.Duration(time.Hour * 168)
 	server.queriers = queriers{
 		unit:    unitQuerier,
@@ -75,7 +80,7 @@ func usageQuerier(db *sql.DB, q Query, logger log.Logger) ([]models.Usage, error
 }
 
 func projectQuerier(db *sql.DB, q Query, logger log.Logger) ([]models.Project, error) {
-	return mockServerProjects, nil
+	return mockServerProjects, errTest
 }
 
 func userQuerier(db *sql.DB, q Query, logger log.Logger) ([]models.User, error) {
@@ -95,7 +100,13 @@ func getMockUnits(
 
 // Test users and users admin handlers
 func TestUsersHandlers(t *testing.T) {
-	server := setupServer()
+	tmpDir := t.TempDir()
+	f, err := os.Create(filepath.Join(tmpDir, base.CEEMSDBName))
+	if err != nil {
+		require.NoError(t, err)
+	}
+	defer f.Close()
+	server := setupServer(tmpDir)
 	defer server.Shutdown(context.Background())
 
 	// Test cases
@@ -148,7 +159,13 @@ func TestUsersHandlers(t *testing.T) {
 
 // Test projects and projects admin handlers
 func TestProjectsHandler(t *testing.T) {
-	server := setupServer()
+	tmpDir := t.TempDir()
+	f, err := os.Create(filepath.Join(tmpDir, base.CEEMSDBName))
+	if err != nil {
+		require.NoError(t, err)
+	}
+	defer f.Close()
+	server := setupServer(tmpDir)
 	defer server.Shutdown(context.Background())
 
 	// Test cases
@@ -196,12 +213,19 @@ func TestProjectsHandler(t *testing.T) {
 		assert.Equal(t, w.Code, test.code)
 		assert.Equal(t, response.Status, "success")
 		assert.Equal(t, response.Data, mockServerProjects)
+		assert.Equal(t, response.Warnings, []string{errTest.Error()})
 	}
 }
 
 // Test units and units admin handlers
 func TestUnitsHandler(t *testing.T) {
-	server := setupServer()
+	tmpDir := t.TempDir()
+	f, err := os.Create(filepath.Join(tmpDir, base.CEEMSDBName))
+	if err != nil {
+		require.NoError(t, err)
+	}
+	defer f.Close()
+	server := setupServer(tmpDir)
 	defer server.Shutdown(context.Background())
 
 	// Test cases
@@ -254,7 +278,13 @@ func TestUnitsHandler(t *testing.T) {
 
 // Test usage and usage admin handlers
 func TestUsageHandlers(t *testing.T) {
-	server := setupServer()
+	tmpDir := t.TempDir()
+	f, err := os.Create(filepath.Join(tmpDir, base.CEEMSDBName))
+	if err != nil {
+		require.NoError(t, err)
+	}
+	defer f.Close()
+	server := setupServer(tmpDir)
 	defer server.Shutdown(context.Background())
 
 	// Test cases
@@ -328,7 +358,13 @@ func TestUsageHandlers(t *testing.T) {
 
 // Test verify handler
 func TestVerifyHandler(t *testing.T) {
-	server := setupServer()
+	tmpDir := t.TempDir()
+	f, err := os.Create(filepath.Join(tmpDir, base.CEEMSDBName))
+	if err != nil {
+		require.NoError(t, err)
+	}
+	defer f.Close()
+	server := setupServer(tmpDir)
 	defer server.Shutdown(context.Background())
 
 	tests := []testCase{
@@ -366,7 +402,13 @@ func TestVerifyHandler(t *testing.T) {
 
 // Test demo handlers
 func TestDemoHandlers(t *testing.T) {
-	server := setupServer()
+	tmpDir := t.TempDir()
+	f, err := os.Create(filepath.Join(tmpDir, base.CEEMSDBName))
+	if err != nil {
+		require.NoError(t, err)
+	}
+	defer f.Close()
+	server := setupServer(tmpDir)
 	defer server.Shutdown(context.Background())
 
 	// Test cases
@@ -410,7 +452,13 @@ func TestDemoHandlers(t *testing.T) {
 
 // Test clusters handlers
 func TestClustersHandler(t *testing.T) {
-	server := setupServer()
+	tmpDir := t.TempDir()
+	f, err := os.Create(filepath.Join(tmpDir, base.CEEMSDBName))
+	if err != nil {
+		require.NoError(t, err)
+	}
+	defer f.Close()
+	server := setupServer(tmpDir)
 	defer server.Shutdown(context.Background())
 
 	// Create request
@@ -442,7 +490,13 @@ func TestClustersHandler(t *testing.T) {
 
 // Test /units when from/to query parameters are malformed
 func TestUnitsHandlerWithMalformedQueryParams(t *testing.T) {
-	server := setupServer()
+	tmpDir := t.TempDir()
+	f, err := os.Create(filepath.Join(tmpDir, base.CEEMSDBName))
+	if err != nil {
+		require.NoError(t, err)
+	}
+	defer f.Close()
+	server := setupServer(tmpDir)
 	defer server.Shutdown(context.Background())
 
 	// Create request
@@ -475,9 +529,14 @@ func TestUnitsHandlerWithMalformedQueryParams(t *testing.T) {
 
 // Test /units when from/to query parameters exceed max time window
 func TestUnitsHandlerWithQueryWindowExceeded(t *testing.T) {
-	server := setupServer()
+	tmpDir := t.TempDir()
+	f, err := os.Create(filepath.Join(tmpDir, base.CEEMSDBName))
+	if err != nil {
+		require.NoError(t, err)
+	}
+	defer f.Close()
+	server := setupServer(tmpDir)
 	defer server.Shutdown(context.Background())
-
 	// Create request
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/units", nil)
 	// Add user header
@@ -510,7 +569,13 @@ func TestUnitsHandlerWithQueryWindowExceeded(t *testing.T) {
 // Test /units when from/to query parameters exceed max time window but when unit uuids
 // are present
 func TestUnitsHandlerWithUnituuidsQueryParams(t *testing.T) {
-	server := setupServer()
+	tmpDir := t.TempDir()
+	f, err := os.Create(filepath.Join(tmpDir, base.CEEMSDBName))
+	if err != nil {
+		require.NoError(t, err)
+	}
+	defer f.Close()
+	server := setupServer(tmpDir)
 	defer server.Shutdown(context.Background())
 
 	// Create request

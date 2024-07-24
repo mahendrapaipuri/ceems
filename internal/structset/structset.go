@@ -3,8 +3,6 @@ package structset
 
 import (
 	"database/sql"
-	"errors"
-	"fmt"
 	"reflect"
 	"strings"
 	"sync"
@@ -81,34 +79,24 @@ func GetStructFieldTagMap(Struct interface{}, keyTag string, valueTag string) ma
 // ScanRow is a cut-down version of the proposed Rows.ScanRow method. It
 // currently only handles dest being a (pointer to) struct, and does not
 // handle embedded fields. See https://github.com/golang/go/issues/61637
-func ScanRow(rows *sql.Rows, dest any) error {
-	rv := reflect.ValueOf(dest)
-	if rv.Kind() != reflect.Pointer || rv.IsNil() {
-		return errors.New("dest must be a non-nil pointer")
-	}
+func ScanRow(rows *sql.Rows, columns []string, indexes map[string]int, dest any) error {
+	// elem := reflect.ValueOf(dest).Elem()
+	// if rv.Kind() != reflect.Pointer || rv.IsNil() {
+	// 	return errors.New("dest must be a non-nil pointer")
+	// }
 
-	elem := rv.Elem()
-	if elem.Kind() != reflect.Struct {
-		return errors.New("dest must point to a struct")
-	}
-	indexes := cachedFieldIndexes(reflect.TypeOf(dest).Elem())
-
-	columns, err := rows.Columns()
-	if err != nil {
-		return fmt.Errorf("cannot fetch columns: %w", err)
-	}
+	// elem := rv.Elem()
+	// if elem.Kind() != reflect.Struct {
+	// 	return errors.New("dest must point to a struct")
+	// }
 
 	var scanArgs []any
 	for _, column := range columns {
 		index, ok := indexes[column]
 		if ok {
 			// We have a column to field mapping, scan the value.
-			field := elem.Field(index)
+			field := reflect.ValueOf(dest).Elem().Field(index)
 			scanArgs = append(scanArgs, field.Addr().Interface())
-		} else {
-			// Unassigned column, throw away the scanned value.
-			var throwAway any
-			scanArgs = append(scanArgs, &throwAway)
 		}
 	}
 	return rows.Scan(scanArgs...)
@@ -131,8 +119,8 @@ func fieldIndexes(structType reflect.Type) map[string]int {
 	return indexes
 }
 
-// cachedFieldIndexes is like fieldIndexes, but cached per struct type.
-func cachedFieldIndexes(structType reflect.Type) map[string]int {
+// CachedFieldIndexes is like fieldIndexes, but cached per struct type.
+func CachedFieldIndexes(structType reflect.Type) map[string]int {
 	if f, ok := fieldIndexesCache.Load(structType); ok {
 		return f.(map[string]int)
 	}

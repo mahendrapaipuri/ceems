@@ -3,6 +3,7 @@ package http
 import (
 	"database/sql"
 	"fmt"
+	"reflect"
 	"regexp"
 	"strings"
 
@@ -76,13 +77,26 @@ func projectsSubQuery(users []string) Query {
 // Ref: https://oilbeater.com/en/2024/03/04/golang-slice-performance/
 // For the rest of queries, they should return fewer rows and hence, we can live with
 // dynamic allocation
-func scanRows[T any](rows *sql.Rows, numRows int) []T {
+func scanRows[T any](rows *sql.Rows, numRows int) ([]T, error) {
+	var columns []string
 	var values = make([]T, numRows)
 	var value T
+	var err error
+	scanErrs := 0
 	rowIdx := 0
+
+	// Get indexes
+	indexes := structset.CachedFieldIndexes(reflect.TypeOf(&value).Elem())
+
+	// Get columns
+	if columns, err = rows.Columns(); err != nil {
+		return nil, fmt.Errorf("cannot fetch columns: %w", err)
+	}
+
+	// Scan each row
 	for rows.Next() {
-		if err := structset.ScanRow(rows, &value); err != nil {
-			continue
+		if err := structset.ScanRow(rows, columns, indexes, &value); err != nil {
+			scanErrs++
 		}
 		if numRows > 0 {
 			values[rowIdx] = value
@@ -91,7 +105,13 @@ func scanRows[T any](rows *sql.Rows, numRows int) []T {
 		}
 		rowIdx++
 	}
-	return values
+
+	// If we failed to scan any rows, return error which will be included in warnings
+	// in the response
+	if scanErrs > 0 {
+		err = fmt.Errorf("failed to scan %d rows", scanErrs)
+	}
+	return values, err
 }
 
 func countRows(dbConn *sql.DB, query Query) (int, error) {
@@ -181,10 +201,9 @@ func Querier[T any](dbConn *sql.DB, query Query, logger log.Logger) ([]T, error)
 	defer rows.Close()
 
 	// Loop through rows, using Scan to assign column data to struct fields.
-	var values = scanRows[T](rows, numRows)
 	level.Debug(logger).Log(
 		"msg", "Rows", "query", queryString, "queryParams", strings.Join(queryParams, ","),
-		"num_rows", numRows,
+		"num_rows", numRows, "error", err,
 	)
-	return values, nil
+	return scanRows[T](rows, numRows)
 }
