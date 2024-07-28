@@ -303,7 +303,8 @@ INSERT INTO units (uuid,total_time_seconds,avg_cpu_usage) VALUES(:uuid,:total_ti
 	// Make units query
 	var cpuUsage, totalTimes models.MetricMap
 	if aggMetric {
-		_ = db.QueryRow("SELECT avg_metric_map_agg(avg_cpu_usage, CAST(json_extract(total_time_seconds, '$.alloc_cputime') AS REAL)) AS avg_cpu_usage, sum_metric_map_agg(total_time_seconds) AS total_time_seconds FROM units").Scan(&cpuUsage, &totalTimes)
+		_ = db.QueryRow("SELECT avg_metric_map_agg(avg_cpu_usage, CAST(json_extract(total_time_seconds, '$.alloc_cputime') AS REAL)) AS avg_cpu_usage, sum_metric_map_agg(total_time_seconds) AS total_time_seconds FROM units").
+			Scan(&cpuUsage, &totalTimes)
 	} else {
 		_ = db.QueryRow("SELECT avg_cpu_usage, total_time_seconds FROM units").Scan(&cpuUsage, &totalTimes)
 	}

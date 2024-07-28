@@ -16,9 +16,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-chi/httprate"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/gorilla/mux"
+	"github.com/jellydator/ttlcache/v3"
 	"github.com/mahendrapaipuri/ceems/internal/common"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/db"
@@ -48,6 +50,7 @@ type WebConfig struct {
 	WebConfigFile    string
 	RoutePrefix      string                  `yaml:"route_prefix"`
 	MaxQueryPeriod   model.Duration          `yaml:"max_query"`
+	RequestsLimit    int                     `yaml:"requests_limit"`
 	URL              string                  `yaml:"url"`
 	HTTPClientConfig config.HTTPClientConfig `yaml:",inline"`
 }
@@ -76,6 +79,7 @@ type CEEMSServer struct {
 	dbConfig       db.Config
 	maxQueryPeriod time.Duration
 	queriers       queriers
+	usageCache     *ttlcache.Cache[uint64, []models.Usage] // Cache that stores usage query results
 	healthCheck    func(*sql.DB, log.Logger) bool
 }
 
@@ -90,6 +94,7 @@ type Response[T any] struct {
 
 var (
 	aggUsageDBCols     = make(map[string]string, len(base.UsageDBTableColNames))
+	cacheTTL           = time.Duration(15 * time.Minute)
 	defaultQueryWindow = time.Duration(24 * time.Hour) // One day
 )
 
@@ -140,7 +145,7 @@ func NewCEEMSServer(c *Config) (*CEEMSServer, func(), error) {
 			Addr:              c.Web.Address,
 			Handler:           router,
 			ReadTimeout:       10 * time.Second,
-			WriteTimeout:      300 * time.Second,
+			WriteTimeout:      10 * time.Second,
 			ReadHeaderTimeout: 2 * time.Second, // slowloris attack: https://app.deepsource.com/directory/analyzers/go/issues/GO-S2112
 		},
 		webConfig: &web.FlagConfig{
@@ -227,24 +232,11 @@ func NewCEEMSServer(c *Config) (*CEEMSServer, func(), error) {
 		return nil, func() {}, fmt.Errorf("failed to open DB: %s", err)
 	}
 
-	// // Ping DB to establish first connection in the pool
-	// // Make repetitive connection attempts until timeout as DB might be created with a
-	// // latency
-	// ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	// defer cancel()
-	// ticker := time.NewTicker(time.Second)
-	// defer ticker.Stop()
-	// for loop := true; loop; {
-	// 	err := server.db.Ping()
-	// 	select {
-	// 	case <-ctx.Done():
-	// 		return nil, func() {}, fmt.Errorf("failed to ping DB: %s", err)
-	// 	case <-ticker.C:
-	// 		if err == nil {
-	// 			loop = false
-	// 		}
-	// 	}
-	// }
+	// Rate limit requests by RealIP
+	if c.Web.RequestsLimit > 0 {
+		level.Debug(c.Logger).Log("msg", "Rate limiting settings", "reqs_per_minute", c.Web.RequestsLimit)
+		router.Use(httprate.LimitByRealIP(c.Web.RequestsLimit, time.Minute))
+	}
 
 	// Add a middleware that verifies headers and pass them in requests
 	// The middleware will fetch admin users from Grafana periodically to update list
@@ -256,6 +248,13 @@ func NewCEEMSServer(c *Config) (*CEEMSServer, func(), error) {
 		adminUsers:      adminUsers,
 	}
 	router.Use(amw.Middleware)
+
+	// Instantiate new cache for storing current usage query results with TTL of 15 min
+	server.usageCache = ttlcache.New(
+		ttlcache.WithTTL[uint64, []models.Usage](cacheTTL),
+	)
+	// starts automatic expired item deletion
+	go server.usageCache.Start()
 	return server, func() {}, nil
 }
 
@@ -320,10 +319,21 @@ func (s *CEEMSServer) getUser(r *http.Request) (string, string) {
 	return r.Header.Get(loggedUserHeader), r.Header.Get(dashboardUserHeader)
 }
 
-// Set response headers
+// setHeaders sets common response headers
 func (s *CEEMSServer) setHeaders(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
+}
+
+// setWriteDeadline sets write deadline to the request
+func (s *CEEMSServer) setWriteDeadline(deadline time.Duration, w http.ResponseWriter) {
+	// Response controller
+	rc := http.NewResponseController(w)
+
+	// Set write deadline to this request
+	if err := rc.SetWriteDeadline(time.Now().Add(deadline)); err != nil {
+		level.Error(s.logger).Log("msg", "Failed to set write deadline", "err", err)
+	}
 }
 
 // health godoc
@@ -352,7 +362,7 @@ func (s *CEEMSServer) health(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Fetch project and running query parameters and add them to query
+// getCommonQueryParams fetches project and running query parameters and add them to query
 func (s *CEEMSServer) getCommonQueryParams(q *Query, URLValues url.Values) Query {
 	// Get project query parameters if any
 	if projects := URLValues["project"]; len(projects) > 0 {
@@ -368,7 +378,7 @@ func (s *CEEMSServer) getCommonQueryParams(q *Query, URLValues url.Values) Query
 	return *q
 }
 
-// Fetch queried fields
+// getQueriedFields returns a slice of queried fields
 func (s *CEEMSServer) getQueriedFields(URLValues url.Values, validFieldNames []string) []string {
 	// Get fields query parameters if any
 	var queriedFields []string
@@ -386,7 +396,8 @@ func (s *CEEMSServer) getQueriedFields(URLValues url.Values, validFieldNames []s
 	return queriedFields
 }
 
-// Get from and to time stamps from query vars and cast them into proper format
+// getQueryWindow returns `from` and `to` time stamps from query vars and
+// cast them into proper format
 func (s *CEEMSServer) getQueryWindow(r *http.Request) (map[string]string, error) {
 	var fromTime, toTime time.Time
 	// Get to and from query parameters and do checks on them
@@ -395,11 +406,11 @@ func (s *CEEMSServer) getQueryWindow(r *http.Request) (map[string]string, error)
 		fromTime = time.Now().Add(-defaultQueryWindow)
 	} else {
 		// Return error response if from is not a timestamp
-		if ts, err := strconv.Atoi(f); err != nil {
+		if ts, err := strconv.ParseInt(f, 10, 64); err != nil {
 			level.Error(s.logger).Log("msg", "Failed to parse from timestamp", "from", f, "err", err)
 			return nil, fmt.Errorf("malformed 'from' timestamp")
 		} else {
-			fromTime = time.Unix(int64(ts), 0)
+			fromTime = time.Unix(ts, 0)
 		}
 	}
 	if t := r.URL.Query().Get("to"); t == "" {
@@ -407,11 +418,11 @@ func (s *CEEMSServer) getQueryWindow(r *http.Request) (map[string]string, error)
 		toTime = time.Now()
 	} else {
 		// Return error response if to is not a timestamp
-		if ts, err := strconv.Atoi(t); err != nil {
+		if ts, err := strconv.ParseInt(t, 10, 64); err != nil {
 			level.Error(s.logger).Log("msg", "Failed to parse to timestamp", "to", t, "err", err)
 			return nil, fmt.Errorf("malformed 'to' timestamp")
 		} else {
-			toTime = time.Unix(int64(ts), 0)
+			toTime = time.Unix(ts, 0)
 		}
 	}
 
@@ -421,9 +432,9 @@ func (s *CEEMSServer) getQueryWindow(r *http.Request) (map[string]string, error)
 	if s.maxQueryPeriod > time.Duration(0*time.Second) && toTime.Sub(fromTime) > s.maxQueryPeriod {
 		level.Error(s.logger).Log(
 			"msg", "Exceeded maximum query time window",
-			"maxQueryWindow", s.maxQueryPeriod,
+			"max_query_window", s.maxQueryPeriod,
 			"from", fromTime.Format(time.DateTime), "to", toTime.Format(time.DateTime),
-			"queryWindow", toTime.Sub(fromTime).String(),
+			"query_window", toTime.Sub(fromTime).String(),
 		)
 		return nil, fmt.Errorf("maximum query window exceeded")
 	}
@@ -433,7 +444,43 @@ func (s *CEEMSServer) getQueryWindow(r *http.Request) (map[string]string, error)
 	}, nil
 }
 
-// Get units of users
+// roundQueryWindow rounds `to` and `from` query parameters to nearest multiple of
+// `cacheTTL`
+func (s *CEEMSServer) roundQueryWindow(r *http.Request) error {
+	cacheTTLSeconds := int64(cacheTTL.Seconds())
+	q := r.URL.Query()
+
+	// Get to and from query parameters and do checks on them
+	if f := q.Get("from"); f == "" {
+		q.Set(
+			"from",
+			strconv.FormatInt(common.Round(time.Now().Add(-defaultQueryWindow).Local().Unix(), cacheTTLSeconds), 10),
+		)
+	} else {
+		// Return error response if from is not a timestamp
+		if ts, err := strconv.ParseInt(f, 10, 64); err != nil {
+			level.Error(s.logger).Log("msg", "Failed to parse from timestamp", "from", f, "err", err)
+			return fmt.Errorf("malformed 'from' timestamp")
+		} else {
+			q.Set("from", strconv.FormatInt(common.Round(ts, cacheTTLSeconds), 10))
+		}
+	}
+	if t := q.Get("to"); t == "" {
+		q.Set("to", strconv.FormatInt(common.Round(time.Now().Local().Unix(), cacheTTLSeconds), 10))
+	} else {
+		// Return error response if from is not a timestamp
+		if ts, err := strconv.ParseInt(t, 10, 64); err != nil {
+			level.Error(s.logger).Log("msg", "Failed to parse from timestamp", "to", t, "err", err)
+			return fmt.Errorf("malformed 'from' timestamp")
+		} else {
+			q.Set("to", strconv.FormatInt(common.Round(ts, cacheTTLSeconds), 10))
+		}
+	}
+	r.URL.RawQuery = q.Encode()
+	return nil
+}
+
+// unitsQuerier queries for compute units and write response
 func (s *CEEMSServer) unitsQuerier(
 	queriedUsers []string,
 	w http.ResponseWriter,
@@ -447,6 +494,9 @@ func (s *CEEMSServer) unitsQuerier(
 
 	// Set headers
 	s.setHeaders(w)
+
+	// Set write deadline
+	s.setWriteDeadline(5*time.Minute, w)
 
 	// Initialise utility vars
 	checkQueryWindow := true // Check query window size
@@ -1020,11 +1070,37 @@ func (s *CEEMSServer) projectsAdmin(w http.ResponseWriter, r *http.Request) {
 // GET /usage/current
 // Get current usage statistics
 func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.ResponseWriter, r *http.Request) {
+	var usage []models.Usage
+	var groupby []string
+	var queryWindowTS map[string]string
+	var queriedFields []string
+	var q, qSub Query
+	var err error
+
+	// Round `to` and `from` query parameters to cacheTTL
+	if err := s.roundQueryWindow(r); err != nil {
+		errorResponse[any](w, &apiError{errorBadData, err}, s.logger, nil)
+		return
+	}
+
+	// Attempt to retrieve from cache if present
+	// Use URL as cache key
+	// Add Expires header when cached value is being returned
+	cacheKey := common.GenerateKey(r.URL.String())
+	if present := s.usageCache.Has(cacheKey); present {
+		cacheValue := s.usageCache.Get(cacheKey)
+		usage = cacheValue.Value()
+		w.Header().Set("Expires", cacheValue.ExpiresAt().Format(time.RFC1123))
+		goto writer
+	}
+
+	// Set write deadline
+	s.setWriteDeadline(5*time.Minute, w)
+
 	// Get sub query for projects
-	qSub := projectsSubQuery(users)
+	qSub = projectsSubQuery(users)
 
 	// Get aggUsageCols based on queried fields
-	var queriedFields []string
 	for _, field := range fields {
 		// Ignore last_updated_at col
 		if slices.Contains([]string{"last_updated_at"}, field) {
@@ -1034,7 +1110,7 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 	}
 
 	// Make query
-	q := Query{}
+	q = Query{}
 	q.query(fmt.Sprintf("SELECT %s FROM %s", strings.Join(queriedFields, ","), base.UnitsDBTableName))
 
 	// First select all projects that user is part of using subquery
@@ -1045,7 +1121,7 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 	q = s.getCommonQueryParams(&q, r.URL.Query())
 
 	// Get query window time stamps
-	queryWindowTS, err := s.getQueryWindow(r)
+	queryWindowTS, err = s.getQueryWindow(r)
 	if err != nil {
 		errorResponse[any](w, &apiError{errorBadData, err}, s.logger, nil)
 		return
@@ -1058,7 +1134,7 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 	q.param([]string{queryWindowTS["to"]})
 
 	// Finally add GROUP BY clause. Always group by username,project
-	groupby := []string{"username", "project"}
+	groupby = []string{"username", "project"}
 	for _, q := range r.URL.Query()["groupby"] {
 		if q != "" {
 			groupby = append(groupby, q)
@@ -1073,7 +1149,7 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 	q.query(" ORDER BY cluster_id ASC, username ASC, project ASC ")
 
 	// Make query and check for returned number of rows
-	usage, err := s.queriers.usage(s.db, q, s.logger)
+	usage, err = s.queriers.usage(s.db, q, s.logger)
 	if usage == nil && err != nil {
 		level.Error(s.logger).
 			Log("msg", "Failed to fetch current usage statistics", "users", strings.Join(users, ","), "err", err)
@@ -1081,6 +1157,10 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 		return
 	}
 
+	// Push to cache
+	s.usageCache.Set(cacheKey, usage, ttlcache.DefaultTTL)
+
+writer:
 	// Write response
 	w.WriteHeader(http.StatusOK)
 	projectsResponse := Response[models.Usage]{
@@ -1164,6 +1244,20 @@ func (s *CEEMSServer) globalUsage(users []string, queriedFields []string, w http
 //	@Description
 //	@Description	To limit the number of fields in the response, use `field` query parameter. By default, all
 //	@Description	fields will be included in the response if they are _non-empty_.
+//	@Description
+//	@Description	The `current` usage mode can be slow query depending the requested
+//	@Description	window interval. This is mostly due to the fact that the CEEMS DB
+//	@Description	uses custom JSON types to store metric data and usage statistics
+//	@Description	needs to aggregate metrics over these JSON types using custom aggregate
+//	@Description	functions which can be slow.
+//	@Description
+//	@Description	Therefore the query results are cached for 15 min to avoid load on server.
+//	@Description	URL string is used as the cache key. Thus, the query parameters
+//	@Description	`from` and `to` are rounded to the nearest timestamp that are
+//	@Description	multiple of 900 sec (15 min). The first query will make a DB query and
+//	@Description	cache results and subsequent queries, for a given user and same URL
+//	@Description	query parameters, will return the same cached result until the cache
+//	@Description	is invalidated after 15 min.
 //	@Security		BasicAuth
 //	@Tags			usage
 //	@Produce		json
@@ -1245,6 +1339,20 @@ func (s *CEEMSServer) usage(w http.ResponseWriter, r *http.Request) {
 //	@Description
 //	@Description	To limit the number of fields in the response, use `field` query parameter. By default, all
 //	@Description	fields will be included in the response if they are _non-empty_.
+//	@Description
+//	@Description	The `current` usage mode can be slow query depending the requested
+//	@Description	window interval. This is mostly due to the fact that the CEEMS DB
+//	@Description	uses custom JSON types to store metric data and usage statistics
+//	@Description	needs to aggregate metrics over these JSON types using custom aggregate
+//	@Description	functions which can be slow.
+//	@Description
+//	@Description	Therefore the query results are cached for 15 min to avoid load on server.
+//	@Description	URL string is used as the cache key. Thus, the query parameters
+//	@Description	`from` and `to` are rounded to the nearest timestamp that are
+//	@Description	multiple of 900 sec (15 min). The first query will make a DB query and
+//	@Description	cache results and subsequent queries, for a given user and same URL
+//	@Description	query parameters, will return the same cached result until the cache
+//	@Description	is invalidated after 15 min.
 //	@Security		BasicAuth
 //	@Tags			usage
 //	@Produce		json

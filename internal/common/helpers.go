@@ -4,6 +4,7 @@ package common
 import (
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"math"
 	"net"
 	"net/url"
@@ -18,6 +19,18 @@ import (
 	"github.com/zeebo/xxh3"
 	"gopkg.in/yaml.v3"
 )
+
+// GenerateKey generates a reproducible key from a given URL string
+func GenerateKey(url string) uint64 {
+	hash := fnv.New64a()
+	hash.Write([]byte(url))
+	return hash.Sum64()
+}
+
+// Round returns a value less than or equal to value that is multiple of nearest
+func Round(value int64, nearest int64) int64 {
+	return (value / nearest) * nearest
+}
 
 // TimeTrack tracks execution time of each function
 func TimeTrack(start time.Time, name string, logger log.Logger) {

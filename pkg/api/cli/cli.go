@@ -220,6 +220,7 @@ func (b *CEEMSServer) Main() error {
 			WebSystemdSocket: *systemdSocket,
 			WebConfigFile:    *webConfigFile,
 			RoutePrefix:      config.Server.Web.RoutePrefix,
+			RequestsLimit:    config.Server.Web.RequestsLimit,
 			MaxQueryPeriod:   config.Server.Web.MaxQueryPeriod,
 		},
 		DB: *dbConfig,

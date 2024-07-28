@@ -7,6 +7,8 @@ ceems_api_server:
   admin:
     users:
       - grafana
+  web:
+    requests_limit: 30
 clusters:
   - id: slurm-0
     manager: slurm

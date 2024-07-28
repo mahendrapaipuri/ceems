@@ -3,6 +3,7 @@ package http
 import (
 	"database/sql"
 	"net/http"
+	"net/url"
 	"regexp"
 	"slices"
 	"strings"
@@ -39,6 +40,7 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var loggedUser string
 		var admUsers []string
+		var q url.Values
 
 		// If requested URI is one of the following, skip checking for user header
 		//  - Root document
@@ -63,9 +65,6 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 			goto end
 		}
 
-		// Fetch admin users from DB
-		admUsers = amw.adminUsers(amw.db, amw.logger)
-
 		// Remove any X-Admin-User header or X-Logged-User if passed
 		r.Header.Del(adminUserHeader)
 		r.Header.Del(loggedUserHeader)
@@ -84,6 +83,14 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 
 		// Set logged user header
 		r.Header.Set(loggedUserHeader, loggedUser)
+
+		// Set user in URL query as well as we will use it as key for caching
+		q = r.URL.Query()
+		q.Add("logged_user", loggedUser)
+		r.URL.RawQuery = q.Encode()
+
+		// Fetch admin users from DB
+		admUsers = amw.adminUsers(amw.db, amw.logger)
 
 		// If current user is in list of admin users, get "actual" user from
 		// X-Dashboard-User header. For normal users, this header will be exactly same

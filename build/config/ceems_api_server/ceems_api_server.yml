@@ -209,6 +209,21 @@ ceems_api_server:
     #
     max_query: 0s
 
+    # Number of requests allowed in ONE MINUTE per client identified by Real IP address.
+    # Request headers `True-Client-IP`, `X-Real-IP` and `X-Forwarded-For` are looked up
+    # to get the real IP address.
+    #
+    # This is to effectively impose a rate limit for the entire CEEMS server irrespective
+    # of URL path. We advise to set it to a value based on your needs to avoid DoS/DDoS
+    # attacks.
+    #
+    # Rate limiting is done using the Sliding Window Counter pattern inspired by 
+    # CloudFlare https://blog.cloudflare.com/counting-things-a-lot-of-different-things/
+    #
+    # Default value `0` means no rate limiting is applied.
+    #
+    requests_limit: 0
+
     # It will be used to prefix all HTTP endpoints served by CEEMS API server. 
     # For example, if CEEMS API server is served via a reverse proxy. 
     # 
