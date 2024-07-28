@@ -18,7 +18,7 @@ require (
 	github.com/swaggo/http-swagger/v2 v2.0.2
 	github.com/swaggo/swag v1.16.3
 	github.com/zeebo/xxh3 v1.0.2
-	golang.org/x/sys v0.20.0
+	golang.org/x/sys v0.22.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
