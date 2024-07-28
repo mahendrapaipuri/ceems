@@ -51,6 +51,59 @@ func TestSanitizeFloat(t *testing.T) {
 	}
 }
 
+func TestGenerateKey(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected uint64
+	}{
+		{
+			name:     "Regular URL",
+			input:    "/foo",
+			expected: 0xf9be0e9c9154425e,
+		},
+		{
+			name:     "URL with query params",
+			input:    "/foo?q1=bar&q2=bar2",
+			expected: 0xe71d223b0fec69f4,
+		},
+		{
+			name:     "URL with special characters",
+			input:    "/?^1234567890ßqwertzuiopü+asdfghjklöä#<yxcvbnm",
+			expected: 0x19a8532cae702ffa,
+		},
+	}
+
+	for _, test := range tests {
+		got := GenerateKey(test.input)
+		assert.Equal(t, test.expected, got, test.name)
+	}
+}
+
+func TestRound(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    int64
+		expected int64
+	}{
+		{
+			name:     "Floor",
+			input:    400,
+			expected: 0,
+		},
+		{
+			name:     "Ceil",
+			input:    897,
+			expected: 0,
+		},
+	}
+
+	for _, test := range tests {
+		got := Round(test.input, 900)
+		assert.Equal(t, test.expected, got, test.name)
+	}
+}
+
 func TestGetUuid(t *testing.T) {
 	expected := "d808af89-684c-6f3f-a474-8d22b566dd12"
 	got, err := GetUUIDFromString([]string{"foo", "1234", "bar567"})

@@ -59,7 +59,7 @@ var (
 
 func setupServer(d string) *CEEMSServer {
 	logger := log.NewNopLogger()
-	server, _, _ := NewCEEMSServer(&Config{Logger: logger, DB: db.Config{Data: db.DataConfig{Path: d}}})
+	server, _, _ := NewCEEMSServer(&Config{Logger: logger, DB: db.Config{Data: db.DataConfig{Path: d}}, Web: WebConfig{RequestsLimit: 10}})
 	server.maxQueryPeriod = time.Duration(time.Hour * 168)
 	server.queriers = queriers{
 		unit:    unitQuerier,
@@ -298,6 +298,14 @@ func TestUsageHandlers(t *testing.T) {
 			code:    200,
 		},
 		{
+			name:    "current usage cached",
+			req:     "/api/" + base.APIVersion + "/usage/current",
+			user:    "foousr",
+			admin:   false,
+			handler: server.usage,
+			code:    200,
+		},
+		{
 			name:    "global usage",
 			req:     "/api/" + base.APIVersion + "/usage/global",
 			user:    "foousr",
@@ -308,7 +316,15 @@ func TestUsageHandlers(t *testing.T) {
 		{
 			name:    "current usage admin",
 			req:     "/api/" + base.APIVersion + "/usage/current/admin",
-			user:    "foousr",
+			user:    "adm1",
+			admin:   true,
+			handler: server.usageAdmin,
+			code:    200,
+		},
+		{
+			name:    "current usage admin cached",
+			req:     "/api/" + base.APIVersion + "/usage/current/admin",
+			user:    "adm1",
 			admin:   true,
 			handler: server.usageAdmin,
 			code:    200,
@@ -316,7 +332,7 @@ func TestUsageHandlers(t *testing.T) {
 		{
 			name:    "global usage admin",
 			req:     "/api/" + base.APIVersion + "/usage/global/admin",
-			user:    "foousr",
+			user:    "adm1",
 			admin:   true,
 			handler: server.usageAdmin,
 			code:    200,
@@ -353,6 +369,11 @@ func TestUsageHandlers(t *testing.T) {
 		assert.Equal(t, w.Code, test.code)
 		assert.Equal(t, response.Status, "success")
 		assert.Equal(t, response.Data, mockServerUsage)
+		if strings.Contains(test.name, "cached") {
+			assert.NotEmpty(t, res.Header["Expires"])
+		} else {
+			assert.Empty(t, res.Header["Expires"])
+		}
 	}
 }
 

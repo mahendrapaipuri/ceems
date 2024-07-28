@@ -884,6 +884,20 @@ paths:
 
         To limit the number of fields in the response, use `field` query parameter. By default, all
         fields will be included in the response if they are _non-empty_.
+
+        The `current` usage mode can be slow query depending the requested
+        window interval. This is mostly due to the fact that the CEEMS DB
+        uses custom JSON types to store metric data and usage statistics
+        needs to aggregate metrics over these JSON types using custom aggregate
+        functions which can be slow.
+
+        Therefore the query results are cached for 15 min to avoid load on server.
+        URL string is used as the cache key. Thus, the query parameters
+        `from` and `to` are rounded to the nearest timestamp that are
+        multiple of 900 sec (15 min). The first query will make a DB query and
+        cache results and subsequent queries, for a given user and same URL
+        query parameters, will return the same cached result until the cache
+        is invalidated after 15 min.
       parameters:
       - description: Current user name
         in: header
@@ -974,6 +988,20 @@ paths:
 
         To limit the number of fields in the response, use `field` query parameter. By default, all
         fields will be included in the response if they are _non-empty_.
+
+        The `current` usage mode can be slow query depending the requested
+        window interval. This is mostly due to the fact that the CEEMS DB
+        uses custom JSON types to store metric data and usage statistics
+        needs to aggregate metrics over these JSON types using custom aggregate
+        functions which can be slow.
+
+        Therefore the query results are cached for 15 min to avoid load on server.
+        URL string is used as the cache key. Thus, the query parameters
+        `from` and `to` are rounded to the nearest timestamp that are
+        multiple of 900 sec (15 min). The first query will make a DB query and
+        cache results and subsequent queries, for a given user and same URL
+        query parameters, will return the same cached result until the cache
+        is invalidated after 15 min.
       parameters:
       - description: Current user name
         in: header
