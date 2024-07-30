@@ -227,7 +227,8 @@ func avgMetricMap(existing, new string, existingWeight, newWeight float64) strin
 // For int or float types, they will be summed up
 // String types will be ignored and treated as zero
 type sumMetricMap struct {
-	aggMetricMap models.MetricMap
+	aggMetricMap     models.MetricMap
+	currentMetricMap models.MetricMap
 }
 
 // newSumMetricMap returns an instance of sumMetricMap
@@ -238,15 +239,14 @@ func newSumMetricMap() *sumMetricMap {
 // Step adds the element to slice
 func (g *sumMetricMap) Step(m string) {
 	// On empty map return
-	if m == "{}" {
+	if m == "{}" || m == "null" {
 		return
 	}
 
-	var metricMap models.MetricMap
-	if err := json.Unmarshal([]byte(m), &metricMap); err != nil {
+	if err := json.Unmarshal([]byte(m), &g.currentMetricMap); err != nil {
 		panic(err)
 	}
-	for metricName, metricValue := range metricMap {
+	for metricName, metricValue := range g.currentMetricMap {
 		g.aggMetricMap[metricName] += metricValue
 	}
 }
@@ -265,8 +265,9 @@ func (g *sumMetricMap) Done() string {
 // For int or float types, they will be weighed averaged
 // For string types, they will be ignored
 type avgMetricMapAgg struct {
-	avgMetricMap models.MetricMap
-	totalWeights map[string]models.JSONFloat
+	avgMetricMap     models.MetricMap
+	currentMetricMap models.MetricMap
+	totalWeights     map[string]models.JSONFloat
 }
 
 // newAvgMetricMap returns an instance of avgMetricMap
@@ -280,15 +281,14 @@ func newAvgMetricMapAgg() *avgMetricMapAgg {
 // Step adds the element to slice
 func (g *avgMetricMapAgg) Step(m string, w float64) {
 	// On empty map return
-	if m == "{}" || w == 0 {
+	if m == "{}" || m == "null" || w == 0 {
 		return
 	}
 
-	var metricMap models.MetricMap
-	if err := json.Unmarshal([]byte(m), &metricMap); err != nil {
+	if err := json.Unmarshal([]byte(m), &g.currentMetricMap); err != nil {
 		panic(err)
 	}
-	for metricName, metricValue := range metricMap {
+	for metricName, metricValue := range g.currentMetricMap {
 		weight := models.JSONFloat(w)
 		g.avgMetricMap[metricName] += metricValue * weight
 		g.totalWeights[metricName] += weight
