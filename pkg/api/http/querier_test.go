@@ -325,6 +325,34 @@ func TestStatsQuerier(t *testing.T) {
 	assert.Equal(t, expectedStats, stats)
 }
 
+func TestKeysQuerier(t *testing.T) {
+	logger := log.NewNopLogger()
+	db := setupTestDB()
+	defer db.Close()
+
+	// Query
+	q := Query{}
+	q.query(
+		fmt.Sprintf(
+			"SELECT DISTINCT json_each.key AS name FROM %s, json_each(%s)",
+			base.UnitsDBTableName,
+			"total_io_read_stats",
+		),
+	)
+
+	expectedKeys := []models.Key{
+		{
+			Name: "bytes",
+		},
+		{
+			Name: "requests",
+		},
+	}
+	keys, err := Querier[models.Key](context.Background(), db, q, logger)
+	require.NoError(t, err)
+	assert.Equal(t, expectedKeys, keys)
+}
+
 func TestQueryBuilder(t *testing.T) {
 	expectedQueryString := "SELECT * FROM table WHERE a IN (?,?) AND b IN (?,?) AND c BETWEEN (?) AND (?)"
 	expectedQueryParams := []string{"a1", "a2", "10", "20", "2023-01-01", "2023-02-01"}

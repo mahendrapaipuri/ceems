@@ -2,10 +2,13 @@
 package http
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"html/template"
 	"net/http"
 	_ "net/http/pprof" // #nosec
 	"net/url"
@@ -14,6 +17,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-chi/httprate"
@@ -70,6 +74,7 @@ type queriers struct {
 	project func(context.Context, *sql.DB, Query, log.Logger) ([]models.Project, error)
 	cluster func(context.Context, *sql.DB, Query, log.Logger) ([]models.Cluster, error)
 	stat    func(context.Context, *sql.DB, Query, log.Logger) ([]models.Stat, error)
+	key     func(context.Context, *sql.DB, Query, log.Logger) ([]models.Key, error)
 }
 
 // CEEMSServer struct implements HTTP server for stats
@@ -95,38 +100,38 @@ type Response[T any] struct {
 }
 
 var (
-	aggUsageDBCols     = make(map[string]string, len(base.UsageDBTableColNames))
+	aggUsageQueries    = make(map[string]string, len(base.UsageDBTableColNames))
 	cacheTTL           = time.Duration(15 * time.Minute)
 	defaultQueryWindow = time.Duration(24 * time.Hour) // One day
+	ignoredColumns     = []string{"last_updated_at"}   // Columns to ignore in DB queries
 )
 
 const (
+	// Query to get quick stats like active projects, groups, jobs, etc
 	statsQuery = `cluster_id,resource_manager,COUNT(*) AS num_units,COUNT(CASE WHEN ended_at_ts > 0 THEN 1 END) as num_inactive_units,COUNT(CASE WHEN ended_at_ts = 0 THEN 1 END) as num_active_units,COUNT(DISTINCT project) AS num_projects,COUNT(DISTINCT username) AS num_users`
 )
 
 // Make summary DB col names by using aggregate SQL functions
 func init() {
 	// Add primary field manually as it is ignored in UsageDBColNames
-	aggUsageDBCols["id"] = "id"
+	aggUsageQueries["id"] = "id"
 
 	// Use SQL aggregate functions in query
+	// For metrics involving total and averages, we use templates to build query
+	// after fectching all the keys in each metric map
 	for _, col := range base.UsageDBTableColNames {
 		if strings.HasPrefix(col, "num") {
 			if col == "num_units" {
-				aggUsageDBCols[col] = "COUNT(id) AS num_units"
+				aggUsageQueries[col] = "COUNT(id) AS num_units"
 			} else {
-				aggUsageDBCols[col] = "SUM(num_updates) AS num_updates"
+				aggUsageQueries[col] = "SUM(num_updates) AS num_updates"
 			}
 		} else if strings.HasPrefix(col, "total") {
-			aggUsageDBCols[col] = fmt.Sprintf("sum_metric_map_agg(%[1]s) AS %[1]s", col)
+			aggUsageQueries[col] = `{{- $mn := .MetricName -}}json_object({{range $i, $r := .MetricKeys}}{{if $i}},{{end}}'{{$r.Name}}', SUM((SELECT json_each.value FROM json_each({{$mn}}, '$.{{$r.Name}}'))){{end}}) AS {{.MetricName}}`
 		} else if strings.HasPrefix(col, "avg") {
-			aggUsageDBCols[col] = fmt.Sprintf(
-				"avg_metric_map_agg(%[1]s, CAST(json_extract(total_time_seconds, '$.%[2]s') AS REAL)) AS %[1]s",
-				col,
-				db.Weights[col],
-			)
+			aggUsageQueries[col] = `{{- $mn := .MetricName -}}{{- $mw := .MetricWeight -}}{{- $tmn := .TimesMetricName -}}json_object({{range $i, $r := .MetricKeys}}{{if $i}},{{end}}'{{$r.Name}}', (SUM((SELECT v.value * k.value FROM json_each({{$mn}}, '$.{{$r.Name}}') AS v, json_each({{$tmn}}, '$.{{$mw}}') AS k WHERE v.value > 0)) / SUM((SELECT k.value FROM json_each({{$mn}}, '$.{{$r.Name}}') AS v, json_each({{$tmn}}, '$.{{$mw}}') AS k WHERE v.value > 0))){{end}}) AS {{.MetricName}}`
 		} else {
-			aggUsageDBCols[col] = col
+			aggUsageQueries[col] = col
 		}
 	}
 }
@@ -168,6 +173,7 @@ func NewCEEMSServer(c *Config) (*CEEMSServer, func(), error) {
 			project: Querier[models.Project],
 			cluster: Querier[models.Cluster],
 			stat:    Querier[models.Stat],
+			key:     Querier[models.Key],
 		},
 		healthCheck: getDBStatus,
 	}
@@ -395,6 +401,11 @@ func (s *CEEMSServer) getQueriedFields(URLValues url.Values, validFieldNames []s
 		// Check if fields are valid field names
 		for _, f := range fields {
 			f = strings.TrimSpace(f)
+			// Ignore any fields that are in ignored columns slice
+			if slices.Contains(ignoredColumns, f) {
+				continue
+			}
+
 			if slices.Contains(validFieldNames, f) {
 				queriedFields = append(queriedFields, f)
 			}
@@ -754,7 +765,7 @@ func (s *CEEMSServer) verifyUnitsOwnership(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Check if user is owner of the queries uuids
-	if VerifyOwnership(dashboardUser, clusterID, uuids, s.db, s.logger) {
+	if VerifyOwnership(r.Context(), dashboardUser, clusterID, uuids, s.db, s.logger) {
 		w.WriteHeader(http.StatusOK)
 		response := Response[string]{
 			Status: "success",
@@ -1076,18 +1087,77 @@ func (s *CEEMSServer) projectsAdmin(w http.ResponseWriter, r *http.Request) {
 	s.projectsQuerier(nil, w, r)
 }
 
+// aggQueryBuilder builds the aggregate queries for current usage
+func (s *CEEMSServer) aggQueryBuilder(
+	r *http.Request,
+	metric string,
+	queryWindow map[string]string,
+) string {
+	// Query to return all unqiue json keys
+	q := Query{}
+	q.query(fmt.Sprintf("SELECT DISTINCT json_each.key AS name FROM %s, json_each(%s)", base.UnitsDBTableName, metric))
+
+	// Ignore null values
+	q.query(" WHERE json_each.key IS NOT NULL ")
+
+	// Add common query parameters
+	q = s.getCommonQueryParams(&q, r.URL.Query())
+
+	// Get keys only within the requested period
+	q.query(" AND ended_at BETWEEN ")
+	q.param([]string{queryWindow["from"]})
+	q.query(" AND ")
+	q.param([]string{queryWindow["to"]})
+
+	// Make query and get keys
+	keys, err := s.queriers.key(r.Context(), s.db, q, s.logger)
+	if keys == nil && err != nil {
+		level.Error(s.logger).
+			Log("msg", "Failed to fetch metric keys", "metric", metric, "err", err)
+		return ""
+	}
+
+	// Template data
+	data := map[string]interface{}{
+		"MetricName":      metric,
+		"TimesMetricName": "total_time_seconds",
+		"MetricWeight":    db.Weights[metric],
+		"MetricKeys":      keys,
+	}
+
+	// Execute template and get query
+	tmpl := template.Must(template.New(metric).Parse(aggUsageQueries[metric]))
+	query := &bytes.Buffer{}
+	if err := tmpl.Execute(query, data); err != nil {
+		level.Error(s.logger).
+			Log("msg", "Failed to execute query template", "metric", metric, "err", err)
+		return ""
+	}
+	return query.String()
+}
+
 // GET /usage/current
 // Get current usage statistics
 func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.ResponseWriter, r *http.Request) {
 	var usage []models.Usage
 	var groupby []string
 	var queryWindowTS map[string]string
-	var queriedFields []string
-	var q, qSub Query
-	var err error
+	var queries = make([]string, len(fields))
+	var filteredQueries []string
+	var wg sync.WaitGroup
+	var mu sync.RWMutex
+	var q Query
+	var err, qErrs error
 
 	// Round `to` and `from` query parameters to cacheTTL
 	if err := s.roundQueryWindow(r); err != nil {
+		errorResponse[any](w, &apiError{errorBadData, err}, s.logger, nil)
+		return
+	}
+
+	// Get query window time stamps
+	queryWindowTS, err = s.getQueryWindow(r)
+	if err != nil {
 		errorResponse[any](w, &apiError{errorBadData, err}, s.logger, nil)
 		return
 	}
@@ -1106,35 +1176,48 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 	// Set write deadline
 	s.setWriteDeadline(5*time.Minute, w)
 
-	// Get sub query for projects
-	qSub = projectsSubQuery(users)
+	// Start a wait group
+	wg = sync.WaitGroup{}
 
 	// Get aggUsageCols based on queried fields
-	for _, field := range fields {
-		// Ignore last_updated_at col
-		if slices.Contains([]string{"last_updated_at"}, field) {
-			continue
+	for iField, field := range fields {
+		if strings.HasPrefix(field, "avg") || strings.HasPrefix(field, "total") {
+			wg.Add(1)
+			go func(i int, f string) {
+				defer wg.Done()
+				if query := s.aggQueryBuilder(r, f, queryWindowTS); query != "" {
+					queries[i] = query
+				} else {
+					mu.Lock()
+					qErrs = errors.Join(fmt.Errorf("failed to build query for %s", field), qErrs)
+					mu.Unlock()
+				}
+			}(iField, field)
+		} else {
+			queries[iField] = aggUsageQueries[field]
 		}
-		queriedFields = append(queriedFields, aggUsageDBCols[field])
+	}
+
+	// Wait for all go routines
+	wg.Wait()
+
+	// Filter queries by removing empty ones
+	for _, query := range queries {
+		if query != "" {
+			filteredQueries = append(filteredQueries, query)
+		}
 	}
 
 	// Make query
 	q = Query{}
-	q.query(fmt.Sprintf("SELECT %s FROM %s", strings.Join(queriedFields, ","), base.UnitsDBTableName))
+	q.query(fmt.Sprintf("SELECT %s FROM %s", strings.Join(filteredQueries, ","), base.UnitsDBTableName))
 
 	// First select all projects that user is part of using subquery
 	q.query(" WHERE project IN ")
-	q.subQuery(qSub)
+	q.subQuery(projectsSubQuery(users)) // Get sub query for projects
 
 	// Add common query parameters
 	q = s.getCommonQueryParams(&q, r.URL.Query())
-
-	// Get query window time stamps
-	queryWindowTS, err = s.getQueryWindow(r)
-	if err != nil {
-		errorResponse[any](w, &apiError{errorBadData, err}, s.logger, nil)
-		return
-	}
 
 	// Add from and to to query only when checkQueryWindow is true
 	q.query(" AND ended_at BETWEEN ")
@@ -1174,14 +1257,17 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 writer:
 	// Write response
 	w.WriteHeader(http.StatusOK)
-	projectsResponse := Response[models.Usage]{
+	usageResponse := Response[models.Usage]{
 		Status: "success",
 		Data:   usage,
 	}
-	if err != nil {
-		projectsResponse.Warnings = append(projectsResponse.Warnings, err.Error())
+	if qErrs != nil {
+		usageResponse.Warnings = append(usageResponse.Warnings, qErrs.Error())
 	}
-	if err = json.NewEncoder(w).Encode(&projectsResponse); err != nil {
+	if err != nil {
+		usageResponse.Warnings = append(usageResponse.Warnings, err.Error())
+	}
+	if err = json.NewEncoder(w).Encode(&usageResponse); err != nil {
 		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
 		w.Write([]byte("KO"))
 	}
@@ -1218,14 +1304,14 @@ func (s *CEEMSServer) globalUsage(users []string, queriedFields []string, w http
 
 	// Write response
 	w.WriteHeader(http.StatusOK)
-	projectsResponse := Response[models.Usage]{
+	usageResponse := Response[models.Usage]{
 		Status: "success",
 		Data:   usage,
 	}
 	if err != nil {
-		projectsResponse.Warnings = append(projectsResponse.Warnings, err.Error())
+		usageResponse.Warnings = append(usageResponse.Warnings, err.Error())
 	}
-	if err = json.NewEncoder(w).Encode(&projectsResponse); err != nil {
+	if err = json.NewEncoder(w).Encode(&usageResponse); err != nil {
 		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
 		w.Write([]byte("KO"))
 	}
@@ -1567,10 +1653,10 @@ func (s *CEEMSServer) globalStats(users []string, w http.ResponseWriter, r *http
 //	@Description	It means if `to` is provided, `from` will be calculated as `to` - 24hrs.
 //	@Description
 //	@Security	BasicAuth
-//	@Tags		usage
+//	@Tags		stats
 //	@Produce	json
 //	@Param		X-Grafana-User	header		string		true	"Current user name"
-//	@Param		mode			path		string		true	"Whether to get usage stats within a period or global"	Enums(current, global)
+//	@Param		mode			path		string		true	"Whether to get quick stats within a period or global"	Enums(current, global)
 //	@Param		cluster_id		query		[]string	false	"cluster ID"											collectionFormat(multi)
 //	@Param		from			query		string		false	"From timestamp"
 //	@Param		to				query		string		false	"To timestamp"

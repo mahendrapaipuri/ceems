@@ -58,6 +58,9 @@ var (
 		{ClusterID: "slurm-0", ResourceManager: "slurm", NumUnits: 10, NumInActiveUnits: 2, NumActiveUnits: 8},
 		{ClusterID: "os-0", ResourceManager: "openstack", NumUnits: 10, NumInActiveUnits: 8, NumActiveUnits: 2},
 	}
+	mockKeys = []models.Key{
+		{Name: "global"},
+	}
 	errTest = fmt.Errorf("failed to query 10 rows")
 )
 
@@ -74,6 +77,7 @@ func setupServer(d string) *CEEMSServer {
 		user:    userQuerier,
 		cluster: clusterQuerier,
 		stat:    statQuerier,
+		key:     keyQuerier,
 	}
 	return server
 }
@@ -100,6 +104,14 @@ func clusterQuerier(ctx context.Context, db *sql.DB, q Query, logger log.Logger)
 
 func statQuerier(ctx context.Context, db *sql.DB, q Query, logger log.Logger) ([]models.Stat, error) {
 	return mockStats, nil
+}
+
+func keyQuerier(ctx context.Context, db *sql.DB, q Query, logger log.Logger) ([]models.Key, error) {
+	return mockKeys, nil
+}
+
+func keyQuerierErr(ctx context.Context, db *sql.DB, q Query, logger log.Logger) ([]models.Key, error) {
+	return nil, fmt.Errorf("failed query")
 }
 
 func getMockUnits(
@@ -385,6 +397,74 @@ func TestUsageHandlers(t *testing.T) {
 		} else {
 			assert.Empty(t, res.Header["Expires"])
 		}
+	}
+}
+
+// Test usage and usage admin handlers
+func TestUsageErrorHandlers(t *testing.T) {
+	tmpDir := t.TempDir()
+	f, err := os.Create(filepath.Join(tmpDir, base.CEEMSDBName))
+	if err != nil {
+		require.NoError(t, err)
+	}
+	defer f.Close()
+	server := setupServer(tmpDir)
+	defer server.Shutdown(context.Background())
+
+	// Return errors for intermediate queries
+	server.queriers.key = keyQuerierErr
+
+	// Test cases
+	tests := []testCase{
+		{
+			name:    "current usage",
+			req:     "/api/" + base.APIVersion + "/usage/current",
+			user:    "foousr",
+			admin:   false,
+			handler: server.usage,
+			code:    200,
+		},
+		{
+			name:    "current usage admin",
+			req:     "/api/" + base.APIVersion + "/usage/current/admin",
+			user:    "adm1",
+			admin:   true,
+			handler: server.usageAdmin,
+			code:    200,
+		},
+	}
+
+	for _, test := range tests {
+		request := httptest.NewRequest("GET", test.req, nil)
+		request.Header.Set("X-Grafana-User", test.user)
+		if test.admin {
+			q := url.Values{}
+			q.Add("user", "foousr")
+			request.URL.RawQuery = q.Encode()
+		}
+		if strings.Contains(test.name, "current") {
+			request = mux.SetURLVars(request, map[string]string{"mode": "current"})
+		} else {
+			request = mux.SetURLVars(request, map[string]string{"mode": "global"})
+		}
+
+		// Start recorder
+		w := httptest.NewRecorder()
+		test.handler(w, request)
+		res := w.Result()
+		defer res.Body.Close()
+
+		// Get body
+		data, err := io.ReadAll(res.Body)
+		require.NoError(t, err)
+
+		// Unmarshal byte into structs.
+		var response Response[models.Usage]
+		json.Unmarshal(data, &response)
+		assert.Equal(t, w.Code, test.code)
+		assert.Equal(t, response.Status, "success")
+		assert.Equal(t, response.Data, mockServerUsage)
+		assert.NotEmpty(t, response.Warnings)
 	}
 }
 
