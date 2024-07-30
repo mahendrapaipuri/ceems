@@ -160,6 +160,14 @@ then
   then
     desc="/usage/current/admin end point test"
     fixture='pkg/api/testdata/output/e2e-test-api-server-current-usage-admin-denied-query.txt'
+  elif [ "${scenario}" = "api-current-stats-admin-query" ]
+  then
+    desc="/stats/current/admin end point test"
+    fixture='pkg/api/testdata/output/e2e-test-api-server-current-stats-admin-query.txt'
+  elif [ "${scenario}" = "api-global-stats-admin-query" ]
+  then
+    desc="/stats/global/admin end point test"
+    fixture='pkg/api/testdata/output/e2e-test-api-server-global-stats-admin-query.txt'
   elif [ "${scenario}" = "api-verify-pass-query" ]
   then
     desc="/units/verify end point test with pass request"
@@ -472,6 +480,12 @@ then
   elif [ "${scenario}" = "api-global-usage-admin-query" ]
   then
     get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/usage/global/admin?cluster_id=slurm-0&field=username&field=project&field=num_units" > "${fixture_output}"
+  elif [ "${scenario}" = "api-current-stats-admin-query" ]
+  then
+    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/stats/current/admin?cluster_id=slurm-1&from=1676934000&to=1677538800" > "${fixture_output}"
+  elif [ "${scenario}" = "api-global-stats-admin-query" ]
+  then
+    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/stats/global/admin" > "${fixture_output}"
   elif [ "${scenario}" = "api-current-usage-admin-denied-query" ]
   then
     get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/usage/global/admin?cluster_id=slurm-1&user=usr2" > "${fixture_output}"

@@ -165,6 +165,8 @@ test-e2e: $(PROMTOOL) build pkg/collector/testdata/sys/.unpacked pkg/collector/t
 	./scripts/e2e-test.sh -s api-current-usage-admin-query
 	./scripts/e2e-test.sh -s api-global-usage-admin-query
 	./scripts/e2e-test.sh -s api-current-usage-admin-denied-query
+	./scripts/e2e-test.sh -s api-current-stats-admin-query
+	./scripts/e2e-test.sh -s api-global-stats-admin-query
 	./scripts/e2e-test.sh -s api-verify-pass-query
 	./scripts/e2e-test.sh -s api-verify-fail-query
 	./scripts/e2e-test.sh -s api-demo-units-query
@@ -209,6 +211,8 @@ test-e2e-update: $(PROMTOOL) build pkg/collector/testdata/sys/.unpacked pkg/coll
 	./scripts/e2e-test.sh -s api-current-usage-admin-query -u || true
 	./scripts/e2e-test.sh -s api-global-usage-admin-query -u || true
 	./scripts/e2e-test.sh -s api-current-usage-admin-denied-query -u || true
+	./scripts/e2e-test.sh -s api-current-stats-admin-query -u || true
+	./scripts/e2e-test.sh -s api-global-stats-admin-query -u || true
 	./scripts/e2e-test.sh -s api-verify-pass-query -u || true
 	./scripts/e2e-test.sh -s api-verify-fail-query -u || true
 	./scripts/e2e-test.sh -s api-demo-units-query -u || true
