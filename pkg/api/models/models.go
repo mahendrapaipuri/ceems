@@ -109,7 +109,7 @@ func (u Usage) TagMap(keyTag string, valueTag string) map[string]string {
 	return structset.GetStructFieldTagMap(u, keyTag, valueTag)
 }
 
-// Stat represent quick statistics of each cluster
+// Stat represents high level statistics of each cluster
 type Stat struct {
 	ClusterID        string `json:"cluster_id"         sql:"cluster_id"         sqlitetype:"text"`    // Identifier of the resource manager that owns compute unit. It is used to differentiate multiple clusters of same resource manager.
 	ResourceManager  string `json:"resource_manager"   sql:"resource_manager"   sqlitetype:"text"`    // Name of the resource manager that owns project. Eg slurm, openstack, kubernetes, etc
@@ -209,6 +209,22 @@ func (a AdminUsers) TagNames(tag string) []string {
 // field names are used as map keys.
 func (a AdminUsers) TagMap(keyTag string, valueTag string) map[string]string {
 	return structset.GetStructFieldTagMap(a, keyTag, valueTag)
+}
+
+// Key represents arbritrary keys used in metric maps
+type Key struct {
+	Name string `json:"name" sql:"name" sqlitetype:"text"` // Name of the metric key
+}
+
+// TagNames returns a slice of all tag names.
+func (k Key) TagNames(tag string) []string {
+	return structset.GetStructFieldTagValues(k, tag)
+}
+
+// TagMap returns a map of tags based on keyTag and valueTag. If keyTag is empty,
+// field names are used as map keys.
+func (k Key) TagMap(keyTag string, valueTag string) map[string]string {
+	return structset.GetStructFieldTagMap(k, keyTag, valueTag)
 }
 
 // // Ownership mode for a given compute unit
