@@ -9,6 +9,9 @@
     },
     {
       "pattern": "https://github.com/mahendrapaipuri/ceems/tree/main/build/package"
+    },
+    {
+      "pattern": "https://www.rte-france.com/en/eco2mix/co2-emissions"
     }
   ],
   "replacementPatterns": [
