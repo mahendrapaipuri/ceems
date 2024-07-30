@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"os"
@@ -161,7 +162,7 @@ func TestUnitsQuerier(t *testing.T) {
 			LastUpdatedAt: "2024-07-02T14:49:39",
 		},
 	}
-	units, err := Querier[models.Unit](db, q, logger)
+	units, err := Querier[models.Unit](context.Background(), db, q, logger)
 	require.NoError(t, err)
 	assert.Equal(t, expectedUnits, units)
 }
@@ -212,7 +213,7 @@ func TestUsageQuerier(t *testing.T) {
 			NumUpdates:          2,
 		},
 	}
-	usageStats, err := Querier[models.Usage](db, q, logger)
+	usageStats, err := Querier[models.Usage](context.Background(), db, q, logger)
 	require.NoError(t, err)
 	assert.Equal(t, expectedUsageStats, usageStats)
 }
@@ -241,7 +242,7 @@ func TestProjectQuerier(t *testing.T) {
 			LastUpdatedAt:   "2024-07-02T14:49:39",
 		},
 	}
-	projects, err := Querier[models.Project](db, q, logger)
+	projects, err := Querier[models.Project](context.Background(), db, q, logger)
 	require.NoError(t, err)
 	assert.Equal(t, expectedProjects, projects)
 }
@@ -270,7 +271,7 @@ func TestUserQuerier(t *testing.T) {
 			LastUpdatedAt:   "2024-07-02T14:49:39",
 		},
 	}
-	users, err := Querier[models.User](db, q, logger)
+	users, err := Querier[models.User](context.Background(), db, q, logger)
 	require.NoError(t, err)
 	assert.Equal(t, expectedUsers, users)
 }
@@ -294,9 +295,34 @@ func TestClusterQuerier(t *testing.T) {
 			Manager: "slurm",
 		},
 	}
-	clusters, err := Querier[models.Cluster](db, q, logger)
+	clusters, err := Querier[models.Cluster](context.Background(), db, q, logger)
 	require.NoError(t, err)
 	assert.Equal(t, expectedClusters, clusters)
+}
+
+func TestStatsQuerier(t *testing.T) {
+	logger := log.NewNopLogger()
+	db := setupTestDB()
+	defer db.Close()
+
+	// Query
+	q := Query{}
+	q.query(fmt.Sprintf("SELECT %s FROM %s", statsQuery, base.UnitsDBTableName))
+
+	expectedStats := []models.Stat{
+		{
+			ClusterID:        "slurm-0",
+			ResourceManager:  "slurm",
+			NumUnits:         24,
+			NumInActiveUnits: 20,
+			NumActiveUnits:   4,
+			NumProjects:      5,
+			NumUsers:         7,
+		},
+	}
+	stats, err := Querier[models.Stat](context.Background(), db, q, logger)
+	require.NoError(t, err)
+	assert.Equal(t, expectedStats, stats)
 }
 
 func TestQueryBuilder(t *testing.T) {

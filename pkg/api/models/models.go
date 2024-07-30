@@ -109,6 +109,28 @@ func (u Usage) TagMap(keyTag string, valueTag string) map[string]string {
 	return structset.GetStructFieldTagMap(u, keyTag, valueTag)
 }
 
+// Stat represent quick statistics of each cluster
+type Stat struct {
+	ClusterID        string `json:"cluster_id"         sql:"cluster_id"         sqlitetype:"text"`    // Identifier of the resource manager that owns compute unit. It is used to differentiate multiple clusters of same resource manager.
+	ResourceManager  string `json:"resource_manager"   sql:"resource_manager"   sqlitetype:"text"`    // Name of the resource manager that owns project. Eg slurm, openstack, kubernetes, etc
+	NumUnits         int64  `json:"num_units"          sql:"num_units"          sqlitetype:"integer"` // Number of active and terminated units
+	NumInActiveUnits int64  `json:"num_inactive_units" sql:"num_inactive_units" sqlitetype:"integer"` // Number of inactive units that are in terminated/cancelled/error state
+	NumActiveUnits   int64  `json:"num_active_units"   sql:"num_active_units"   sqlitetype:"integer"` // Number of active units that are in running state
+	NumProjects      int64  `json:"num_projects"       sql:"num_projects"       sqlitetype:"integer"` // Number of projects
+	NumUsers         int64  `json:"num_users"          sql:"num_users"          sqlitetype:"integer"` // Number of users
+}
+
+// TagNames returns a slice of all tag names.
+func (s Stat) TagNames(tag string) []string {
+	return structset.GetStructFieldTagValues(s, tag)
+}
+
+// TagMap returns a map of tags based on keyTag and valueTag. If keyTag is empty,
+// field names are used as map keys.
+func (s Stat) TagMap(keyTag string, valueTag string) map[string]string {
+	return structset.GetStructFieldTagMap(s, keyTag, valueTag)
+}
+
 // Project is the container for a given account/tenant/namespace of cluster
 type Project struct {
 	ID              int64  `json:"-"                sql:"id"               sqlitetype:"integer not null primary key"`

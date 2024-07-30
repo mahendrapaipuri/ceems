@@ -258,6 +258,91 @@
                 }
             }
         },
+        "/stats/{mode}/admin": {
+            "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
+                "description": "This admin endpoint will return the quick stats of _queried_ cluster. The\ncurrent user is always identified by the header `X-Grafana-User` in\nthe request.\n\nThe user who is making the request must be in the list of admin users\nconfigured for the server.\n\nA path parameter `mode` is required to return the kind of usage statistics.\nCurrently, two modes of statistics are supported:\n- `current`: In this mode the usage between two time periods is returned\nbased on `from` and `to` query parameters.\n- `global`: In this mode the _total_ usage statistics are returned. For\ninstance, if the retention period of the DB is set to 2 years, usage\nstatistics of last 2 years will be returned.\n\nThe statistics include current number of active users, projects, jobs, _etc_.\n\nIf `to` query parameter is not provided, current time will be used. If `from`\nquery parameter is not used, a default query window of 24 hours will be used.\nIt means if `to` is provided, `from` will be calculated as `to` - 24hrs.\n",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "usage"
+                ],
+                "summary": "Admin Stats",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Current user name",
+                        "name": "X-Grafana-User",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "enum": [
+                            "current",
+                            "global"
+                        ],
+                        "type": "string",
+                        "description": "Whether to get usage stats within a period or global",
+                        "name": "mode",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "cluster ID",
+                        "name": "cluster_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "From timestamp",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "To timestamp",
+                        "name": "to",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-models_Stat"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/http.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/units": {
             "get": {
                 "security": [
@@ -964,6 +1049,32 @@
                 }
             }
         },
+        "http.Response-models_Stat": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Stat"
+                    }
+                },
+                "error": {
+                    "type": "string"
+                },
+                "errorType": {
+                    "$ref": "#/definitions/http.errorType"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "http.Response-models_Unit": {
             "type": "object",
             "properties": {
@@ -1120,6 +1231,39 @@
                     "description": "List of users of the project",
                     "type": "array",
                     "items": {}
+                }
+            }
+        },
+        "models.Stat": {
+            "type": "object",
+            "properties": {
+                "cluster_id": {
+                    "description": "Identifier of the resource manager that owns compute unit. It is used to differentiate multiple clusters of same resource manager.",
+                    "type": "string"
+                },
+                "num_active_units": {
+                    "description": "Number of active units that are in running state",
+                    "type": "integer"
+                },
+                "num_inactive_units": {
+                    "description": "Number of inactive units that are in terminated/cancelled/error state",
+                    "type": "integer"
+                },
+                "num_projects": {
+                    "description": "Number of projects",
+                    "type": "integer"
+                },
+                "num_units": {
+                    "description": "Number of active and terminated units",
+                    "type": "integer"
+                },
+                "num_users": {
+                    "description": "Number of users",
+                    "type": "integer"
+                },
+                "resource_manager": {
+                    "description": "Name of the resource manager that owns project. Eg slurm, openstack, kubernetes, etc",
+                    "type": "string"
                 }
             }
         },
