@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"reflect"
@@ -114,7 +115,7 @@ func scanRows[T any](rows *sql.Rows, numRows int) ([]T, error) {
 	return values, err
 }
 
-func countRows(dbConn *sql.DB, query Query) (int, error) {
+func countRows(ctx context.Context, dbConn *sql.DB, query Query) (int, error) {
 	var numRows int
 
 	// Get query string and params
@@ -135,7 +136,7 @@ func countRows(dbConn *sql.DB, query Query) (int, error) {
 	}
 
 	// First make a query to get number of rows that will be returned by query
-	countRows, err := countStmt.Query(qParams...)
+	countRows, err := countStmt.QueryContext(ctx, qParams...)
 	if err != nil {
 		return 0, err
 	}
@@ -158,14 +159,14 @@ func countRows(dbConn *sql.DB, query Query) (int, error) {
 }
 
 // Querier queries the DB and return the response
-func Querier[T any](dbConn *sql.DB, query Query, logger log.Logger) ([]T, error) {
+func Querier[T any](ctx context.Context, dbConn *sql.DB, query Query, logger log.Logger) ([]T, error) {
 	var numRows int
 	var err error
 
 	// If requested model is units, get number of rows
 	switch any(*new(T)).(type) {
 	case models.Unit:
-		if numRows, err = countRows(dbConn, query); err != nil {
+		if numRows, err = countRows(ctx, dbConn, query); err != nil {
 			level.Error(logger).Log("msg", "Failed to get rows count", "err", err)
 			return nil, err
 		}
@@ -191,7 +192,7 @@ func Querier[T any](dbConn *sql.DB, query Query, logger log.Logger) ([]T, error)
 		qParams[i] = v
 	}
 
-	rows, err := queryStmt.Query(qParams...)
+	rows, err := queryStmt.QueryContext(ctx, qParams...)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to get rows",
 			"query", queryString, "queryParams", strings.Join(queryParams, ","), "err", err,

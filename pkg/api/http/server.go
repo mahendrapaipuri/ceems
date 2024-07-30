@@ -41,6 +41,7 @@ const (
 	usersResourceName      = "users"
 	projectsResourceName   = "projects"
 	clustersResourceName   = "clusters"
+	statsResourceName      = "stats"
 )
 
 // WebConfig makes HTTP web config from CLI args
@@ -63,11 +64,12 @@ type Config struct {
 }
 
 type queriers struct {
-	unit    func(*sql.DB, Query, log.Logger) ([]models.Unit, error)
-	usage   func(*sql.DB, Query, log.Logger) ([]models.Usage, error)
-	user    func(*sql.DB, Query, log.Logger) ([]models.User, error)
-	project func(*sql.DB, Query, log.Logger) ([]models.Project, error)
-	cluster func(*sql.DB, Query, log.Logger) ([]models.Cluster, error)
+	unit    func(context.Context, *sql.DB, Query, log.Logger) ([]models.Unit, error)
+	usage   func(context.Context, *sql.DB, Query, log.Logger) ([]models.Usage, error)
+	user    func(context.Context, *sql.DB, Query, log.Logger) ([]models.User, error)
+	project func(context.Context, *sql.DB, Query, log.Logger) ([]models.Project, error)
+	cluster func(context.Context, *sql.DB, Query, log.Logger) ([]models.Cluster, error)
+	stat    func(context.Context, *sql.DB, Query, log.Logger) ([]models.Stat, error)
 }
 
 // CEEMSServer struct implements HTTP server for stats
@@ -96,6 +98,10 @@ var (
 	aggUsageDBCols     = make(map[string]string, len(base.UsageDBTableColNames))
 	cacheTTL           = time.Duration(15 * time.Minute)
 	defaultQueryWindow = time.Duration(24 * time.Hour) // One day
+)
+
+const (
+	statsQuery = `cluster_id,resource_manager,COUNT(*) AS num_units,COUNT(CASE WHEN ended_at_ts > 0 THEN 1 END) as num_inactive_units,COUNT(CASE WHEN ended_at_ts = 0 THEN 1 END) as num_active_units,COUNT(DISTINCT project) AS num_projects,COUNT(DISTINCT username) AS num_users`
 )
 
 // Make summary DB col names by using aggregate SQL functions
@@ -161,6 +167,7 @@ func NewCEEMSServer(c *Config) (*CEEMSServer, func(), error) {
 			user:    Querier[models.User],
 			project: Querier[models.Project],
 			cluster: Querier[models.Cluster],
+			stat:    Querier[models.Stat],
 		},
 		healthCheck: getDBStatus,
 	}
@@ -211,6 +218,8 @@ func NewCEEMSServer(c *Config) (*CEEMSServer, func(), error) {
 	subRouter.HandleFunc(fmt.Sprintf("/%s/admin", clustersResourceName), server.clustersAdmin).Methods(http.MethodGet)
 	subRouter.HandleFunc(fmt.Sprintf("/%s/admin", unitsResourceName), server.unitsAdmin).Methods(http.MethodGet)
 	subRouter.HandleFunc(fmt.Sprintf("/%s/{mode:(?:current|global)}/admin", usageResourceName), server.usageAdmin).
+		Methods(http.MethodGet)
+	subRouter.HandleFunc(fmt.Sprintf("/%s/{mode:(?:current|global)}/admin", statsResourceName), server.statsAdmin).
 		Methods(http.MethodGet)
 
 	// A demo end point that returns mocked data for units and/or usage tables
@@ -566,7 +575,7 @@ queryUnits:
 	q.query(" ORDER BY cluster_id ASC, uuid ASC ")
 
 	// Get all user units in the given time window
-	units, err := s.queriers.unit(s.db, q, s.logger)
+	units, err := s.queriers.unit(r.Context(), s.db, q, s.logger)
 	if units == nil && err != nil {
 		level.Error(s.logger).Log("msg", "Failed to fetch units", "loggedUser", loggedUser, "err", err)
 		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
@@ -801,7 +810,7 @@ func (s *CEEMSServer) clustersAdmin(w http.ResponseWriter, r *http.Request) {
 	)
 
 	// Make query and get list of cluster ids
-	clusterIDs, err := s.queriers.cluster(s.db, q, s.logger)
+	clusterIDs, err := s.queriers.cluster(r.Context(), s.db, q, s.logger)
 	if clusterIDs == nil && err != nil {
 		level.Error(s.logger).Log("msg", "Failed to fetch cluster IDs", "user", dashboardUser, "err", err)
 		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
@@ -850,7 +859,7 @@ func (s *CEEMSServer) usersQuerier(users []string, w http.ResponseWriter, r *htt
 	q.query(" ORDER BY cluster_id ASC, name ASC ")
 
 	// Make query and check for users returned in usage
-	userModels, err := s.queriers.user(s.db, q, s.logger)
+	userModels, err := s.queriers.user(r.Context(), s.db, q, s.logger)
 	if userModels == nil && err != nil {
 		level.Error(s.logger).Log("msg", "Failed to fetch user details", "users", strings.Join(users, ","), "err", err)
 		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
@@ -972,7 +981,7 @@ func (s *CEEMSServer) projectsQuerier(users []string, w http.ResponseWriter, r *
 	q.query(" ORDER BY cluster_id ASC, name ASC ")
 
 	// Make query
-	projectModels, err := s.queriers.project(s.db, q, s.logger)
+	projectModels, err := s.queriers.project(r.Context(), s.db, q, s.logger)
 	if projectModels == nil && err != nil {
 		level.Error(s.logger).Log(
 			"msg", "Failed to fetch project details",
@@ -1149,7 +1158,7 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 	q.query(" ORDER BY cluster_id ASC, username ASC, project ASC ")
 
 	// Make query and check for returned number of rows
-	usage, err = s.queriers.usage(s.db, q, s.logger)
+	usage, err = s.queriers.usage(r.Context(), s.db, q, s.logger)
 	if usage == nil && err != nil {
 		level.Error(s.logger).
 			Log("msg", "Failed to fetch current usage statistics", "users", strings.Join(users, ","), "err", err)
@@ -1158,7 +1167,9 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 	}
 
 	// Push to cache
-	s.usageCache.Set(cacheKey, usage, ttlcache.DefaultTTL)
+	if len(usage) > 0 {
+		s.usageCache.Set(cacheKey, usage, ttlcache.DefaultTTL)
+	}
 
 writer:
 	// Write response
@@ -1197,7 +1208,7 @@ func (s *CEEMSServer) globalUsage(users []string, queriedFields []string, w http
 	q.query(" ORDER BY cluster_id ASC, username ASC, project ASC ")
 
 	// Make query and check for returned number of rows
-	usage, err := s.queriers.usage(s.db, q, s.logger)
+	usage, err := s.queriers.usage(r.Context(), s.db, q, s.logger)
 	if usage == nil && err != nil {
 		level.Error(s.logger).
 			Log("msg", "Failed to fetch global usage statistics", "users", strings.Join(users, ","), "err", err)
@@ -1406,6 +1417,194 @@ func (s *CEEMSServer) usageAdmin(w http.ResponseWriter, r *http.Request) {
 	// handle global usage query
 	if mode == "global" {
 		s.globalUsage(r.URL.Query()["user"], queriedFields, w, r)
+	}
+}
+
+// GET /stats/current
+// Get current quick stats
+func (s *CEEMSServer) currentStats(users []string, w http.ResponseWriter, r *http.Request) {
+	var stats []models.Stat
+	var queryWindowTS map[string]string
+	var q, qSub Query
+	var err error
+
+	// Set write deadline
+	s.setWriteDeadline(1*time.Minute, w)
+
+	// Make query
+	q = Query{}
+	q.query(fmt.Sprintf("SELECT %s FROM %s WHERE 1=1", statsQuery, base.UnitsDBTableName))
+
+	// Get query window time stamps
+	queryWindowTS, err = s.getQueryWindow(r)
+	if err != nil {
+		errorResponse[any](w, &apiError{errorBadData, err}, s.logger, nil)
+		return
+	}
+
+	// Add from and to to query in a sub query so that we can check for both running
+	// and terminates units
+	qSub = Query{}
+	qSub.query("ended_at BETWEEN ")
+	qSub.param([]string{queryWindowTS["from"]})
+	qSub.query(" AND ")
+	qSub.param([]string{queryWindowTS["to"]})
+	qSub.query(" OR ended_at_ts IN ")
+	qSub.param([]string{"0"})
+
+	// Add sub query to main query
+	q.query(" AND ")
+	q.subQuery(qSub)
+
+	// Get cluster_id query parameters if any
+	if clusterIDs := r.URL.Query()["cluster_id"]; len(clusterIDs) > 0 {
+		q.query(" AND cluster_id IN ")
+		q.param(clusterIDs)
+	}
+
+	// Finally add GROUP BY clause. Always group by cluster_id
+	q.query(" GROUP BY cluster_id")
+
+	// Sort by cluster_id, username and project
+	q.query(" ORDER BY cluster_id ASC")
+
+	// Make query and check for returned number of rows
+	stats, err = s.queriers.stat(r.Context(), s.db, q, s.logger)
+	if stats == nil && err != nil {
+		level.Error(s.logger).
+			Log("msg", "Failed to fetch current quick stats", "users", strings.Join(users, ","), "err", err)
+		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
+		return
+	}
+
+	// Write response
+	w.WriteHeader(http.StatusOK)
+	projectsResponse := Response[models.Stat]{
+		Status: "success",
+		Data:   stats,
+	}
+	if err != nil {
+		projectsResponse.Warnings = append(projectsResponse.Warnings, err.Error())
+	}
+	if err = json.NewEncoder(w).Encode(&projectsResponse); err != nil {
+		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
+		w.Write([]byte("KO"))
+	}
+}
+
+// GET /stats/global
+// Get global usage statistics
+func (s *CEEMSServer) globalStats(users []string, w http.ResponseWriter, r *http.Request) {
+	var stats []models.Stat
+	var q Query
+	var err error
+
+	// Set write deadline
+	s.setWriteDeadline(1*time.Minute, w)
+
+	// Make query
+	q = Query{}
+	q.query(fmt.Sprintf("SELECT %s FROM %s WHERE 1=1", statsQuery, base.UnitsDBTableName))
+
+	// Get cluster_id query parameters if any
+	if clusterIDs := r.URL.Query()["cluster_id"]; len(clusterIDs) > 0 {
+		q.query(" AND cluster_id IN ")
+		q.param(clusterIDs)
+	}
+
+	// Finally add GROUP BY clause. Always group by cluster_id
+	q.query(" GROUP BY cluster_id")
+
+	// Sort by cluster_id, username and project
+	q.query(" ORDER BY cluster_id ASC")
+
+	// Make query and check for returned number of rows
+	stats, err = s.queriers.stat(r.Context(), s.db, q, s.logger)
+	if stats == nil && err != nil {
+		level.Error(s.logger).
+			Log("msg", "Failed to fetch global quick stats", "users", strings.Join(users, ","), "err", err)
+		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
+		return
+	}
+
+	// Write response
+	w.WriteHeader(http.StatusOK)
+	projectsResponse := Response[models.Stat]{
+		Status: "success",
+		Data:   stats,
+	}
+	if err != nil {
+		projectsResponse.Warnings = append(projectsResponse.Warnings, err.Error())
+	}
+	if err = json.NewEncoder(w).Encode(&projectsResponse); err != nil {
+		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
+		w.Write([]byte("KO"))
+	}
+}
+
+// usage         godoc
+//
+//	@Summary		Admin Stats
+//	@Description	This admin endpoint will return the quick stats of _queried_ cluster. The
+//	@Description	current user is always identified by the header `X-Grafana-User` in
+//	@Description	the request.
+//	@Description
+//	@Description	The user who is making the request must be in the list of admin users
+//	@Description	configured for the server.
+//	@Description
+//	@Description	A path parameter `mode` is required to return the kind of usage statistics.
+//	@Description	Currently, two modes of statistics are supported:
+//	@Description	- `current`: In this mode the usage between two time periods is returned
+//	@Description	based on `from` and `to` query parameters.
+//	@Description	- `global`: In this mode the _total_ usage statistics are returned. For
+//	@Description	instance, if the retention period of the DB is set to 2 years, usage
+//	@Description	statistics of last 2 years will be returned.
+//	@Description
+//	@Description	The statistics include current number of active users, projects, jobs, _etc_.
+//	@Description
+//	@Description	If `to` query parameter is not provided, current time will be used. If `from`
+//	@Description	query parameter is not used, a default query window of 24 hours will be used.
+//	@Description	It means if `to` is provided, `from` will be calculated as `to` - 24hrs.
+//	@Description
+//	@Security	BasicAuth
+//	@Tags		usage
+//	@Produce	json
+//	@Param		X-Grafana-User	header		string		true	"Current user name"
+//	@Param		mode			path		string		true	"Whether to get usage stats within a period or global"	Enums(current, global)
+//	@Param		cluster_id		query		[]string	false	"cluster ID"											collectionFormat(multi)
+//	@Param		from			query		string		false	"From timestamp"
+//	@Param		to				query		string		false	"To timestamp"
+//	@Success	200				{object}	Response[models.Stat]
+//	@Failure	401				{object}	Response[any]
+//	@Failure	403				{object}	Response[any]
+//	@Failure	500				{object}	Response[any]
+//	@Router		/stats/{mode}/admin [get]
+//
+// GET /stats/{mode}/admin
+// Get current/global stats
+func (s *CEEMSServer) statsAdmin(w http.ResponseWriter, r *http.Request) {
+	// Measure elapsed time
+	defer common.TimeTrack(time.Now(), "stats admin endpoint", s.logger)
+
+	// Set headers
+	s.setHeaders(w)
+
+	// Get path parameter type
+	var mode string
+	var exists bool
+	if mode, exists = mux.Vars(r)["mode"]; !exists {
+		errorResponse[any](w, &apiError{errorBadData, errInvalidRequest}, s.logger, nil)
+		return
+	}
+
+	// handle current usage query
+	if mode == "current" {
+		s.currentStats(r.URL.Query()["user"], w, r)
+	}
+
+	// handle global usage query
+	if mode == "global" {
+		s.globalStats(r.URL.Query()["user"], w, r)
 	}
 }
 

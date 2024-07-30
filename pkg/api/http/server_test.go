@@ -54,12 +54,18 @@ var (
 		{ID: "slurm-0", Manager: "slurm"},
 		{ID: "os-0", Manager: "openstack"},
 	}
+	mockStats = []models.Stat{
+		{ClusterID: "slurm-0", ResourceManager: "slurm", NumUnits: 10, NumInActiveUnits: 2, NumActiveUnits: 8},
+		{ClusterID: "os-0", ResourceManager: "openstack", NumUnits: 10, NumInActiveUnits: 8, NumActiveUnits: 2},
+	}
 	errTest = fmt.Errorf("failed to query 10 rows")
 )
 
 func setupServer(d string) *CEEMSServer {
 	logger := log.NewNopLogger()
-	server, _, _ := NewCEEMSServer(&Config{Logger: logger, DB: db.Config{Data: db.DataConfig{Path: d}}, Web: WebConfig{RequestsLimit: 10}})
+	server, _, _ := NewCEEMSServer(
+		&Config{Logger: logger, DB: db.Config{Data: db.DataConfig{Path: d}}, Web: WebConfig{RequestsLimit: 10}},
+	)
 	server.maxQueryPeriod = time.Duration(time.Hour * 168)
 	server.queriers = queriers{
 		unit:    unitQuerier,
@@ -67,28 +73,33 @@ func setupServer(d string) *CEEMSServer {
 		project: projectQuerier,
 		user:    userQuerier,
 		cluster: clusterQuerier,
+		stat:    statQuerier,
 	}
 	return server
 }
 
-func unitQuerier(db *sql.DB, q Query, logger log.Logger) ([]models.Unit, error) {
+func unitQuerier(ctx context.Context, db *sql.DB, q Query, logger log.Logger) ([]models.Unit, error) {
 	return mockServerUnits, nil
 }
 
-func usageQuerier(db *sql.DB, q Query, logger log.Logger) ([]models.Usage, error) {
+func usageQuerier(ctx context.Context, db *sql.DB, q Query, logger log.Logger) ([]models.Usage, error) {
 	return mockServerUsage, nil
 }
 
-func projectQuerier(db *sql.DB, q Query, logger log.Logger) ([]models.Project, error) {
+func projectQuerier(ctx context.Context, db *sql.DB, q Query, logger log.Logger) ([]models.Project, error) {
 	return mockServerProjects, errTest
 }
 
-func userQuerier(db *sql.DB, q Query, logger log.Logger) ([]models.User, error) {
+func userQuerier(ctx context.Context, db *sql.DB, q Query, logger log.Logger) ([]models.User, error) {
 	return mockServerUsers, nil
 }
 
-func clusterQuerier(db *sql.DB, q Query, logger log.Logger) ([]models.Cluster, error) {
+func clusterQuerier(ctx context.Context, db *sql.DB, q Query, logger log.Logger) ([]models.Cluster, error) {
 	return mockServerClusters, nil
+}
+
+func statQuerier(ctx context.Context, db *sql.DB, q Query, logger log.Logger) ([]models.Stat, error) {
+	return mockStats, nil
 }
 
 func getMockUnits(
@@ -377,6 +388,70 @@ func TestUsageHandlers(t *testing.T) {
 	}
 }
 
+// Test stats admin handlers
+func TestStatsHandlers(t *testing.T) {
+	tmpDir := t.TempDir()
+	f, err := os.Create(filepath.Join(tmpDir, base.CEEMSDBName))
+	if err != nil {
+		require.NoError(t, err)
+	}
+	defer f.Close()
+	server := setupServer(tmpDir)
+	defer server.Shutdown(context.Background())
+
+	// Test cases
+	tests := []testCase{
+		{
+			name:    "current stats",
+			req:     "/api/" + base.APIVersion + "/stats/current",
+			user:    "adm1",
+			admin:   true,
+			handler: server.statsAdmin,
+			code:    200,
+		},
+		{
+			name:    "global stats",
+			req:     "/api/" + base.APIVersion + "/stats/global",
+			user:    "adm1",
+			admin:   true,
+			handler: server.statsAdmin,
+			code:    200,
+		},
+	}
+
+	for _, test := range tests {
+		request := httptest.NewRequest("GET", test.req, nil)
+		request.Header.Set("X-Grafana-User", test.user)
+		if test.admin {
+			q := url.Values{}
+			q.Add("user", "foousr")
+			request.URL.RawQuery = q.Encode()
+		}
+		if strings.Contains(test.name, "current") {
+			request = mux.SetURLVars(request, map[string]string{"mode": "current"})
+		} else {
+			request = mux.SetURLVars(request, map[string]string{"mode": "global"})
+		}
+
+		// Start recorder
+		w := httptest.NewRecorder()
+		test.handler(w, request)
+		res := w.Result()
+		defer res.Body.Close()
+
+		// Get body
+		data, err := io.ReadAll(res.Body)
+		require.NoError(t, err)
+
+		// Unmarshal byte into structs.
+		var response Response[models.Stat]
+		json.Unmarshal(data, &response)
+		assert.Equal(t, w.Code, test.code)
+		assert.Equal(t, response.Status, "success")
+		assert.Equal(t, response.Data, mockStats)
+	}
+}
+
 // Test verify handler
 func TestVerifyHandler(t *testing.T) {
 	tmpDir := t.TempDir()
@@ -499,7 +574,7 @@ func TestClustersHandler(t *testing.T) {
 	require.NoError(t, err)
 
 	// Expected result
-	expectedClusters, _ := clusterQuerier(server.db, Query{}, server.logger)
+	expectedClusters, _ := clusterQuerier(context.Background(), server.db, Query{}, server.logger)
 
 	// Unmarshal byte into structs
 	var response Response[models.Cluster]

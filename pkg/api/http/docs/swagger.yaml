@@ -49,6 +49,23 @@ definitions:
           type: string
         type: array
     type: object
+  http.Response-models_Stat:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/models.Stat'
+        type: array
+      error:
+        type: string
+      errorType:
+        $ref: '#/definitions/http.errorType'
+      status:
+        type: string
+      warnings:
+        items:
+          type: string
+        type: array
+    type: object
   http.Response-models_Unit:
     properties:
       data:
@@ -164,6 +181,33 @@ definitions:
         description: List of users of the project
         items: {}
         type: array
+    type: object
+  models.Stat:
+    properties:
+      cluster_id:
+        description: Identifier of the resource manager that owns compute unit. It
+          is used to differentiate multiple clusters of same resource manager.
+        type: string
+      num_active_units:
+        description: Number of active units that are in running state
+        type: integer
+      num_inactive_units:
+        description: Number of inactive units that are in terminated/cancelled/error
+          state
+        type: integer
+      num_projects:
+        description: Number of projects
+        type: integer
+      num_units:
+        description: Number of active and terminated units
+        type: integer
+      num_users:
+        description: Number of users
+        type: integer
+      resource_manager:
+        description: Name of the resource manager that owns project. Eg slurm, openstack,
+          kubernetes, etc
+        type: string
     type: object
   models.Tag:
     additionalProperties: true
@@ -611,6 +655,82 @@ paths:
       summary: Admin endpoint to fetch project details
       tags:
       - projects
+  /stats/{mode}/admin:
+    get:
+      description: |
+        This admin endpoint will return the quick stats of _queried_ cluster. The
+        current user is always identified by the header `X-Grafana-User` in
+        the request.
+
+        The user who is making the request must be in the list of admin users
+        configured for the server.
+
+        A path parameter `mode` is required to return the kind of usage statistics.
+        Currently, two modes of statistics are supported:
+        - `current`: In this mode the usage between two time periods is returned
+        based on `from` and `to` query parameters.
+        - `global`: In this mode the _total_ usage statistics are returned. For
+        instance, if the retention period of the DB is set to 2 years, usage
+        statistics of last 2 years will be returned.
+
+        The statistics include current number of active users, projects, jobs, _etc_.
+
+        If `to` query parameter is not provided, current time will be used. If `from`
+        query parameter is not used, a default query window of 24 hours will be used.
+        It means if `to` is provided, `from` will be calculated as `to` - 24hrs.
+      parameters:
+      - description: Current user name
+        in: header
+        name: X-Grafana-User
+        required: true
+        type: string
+      - description: Whether to get usage stats within a period or global
+        enum:
+        - current
+        - global
+        in: path
+        name: mode
+        required: true
+        type: string
+      - collectionFormat: multi
+        description: cluster ID
+        in: query
+        items:
+          type: string
+        name: cluster_id
+        type: array
+      - description: From timestamp
+        in: query
+        name: from
+        type: string
+      - description: To timestamp
+        in: query
+        name: to
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.Response-models_Stat'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.Response-any'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.Response-any'
+      security:
+      - BasicAuth: []
+      summary: Admin Stats
+      tags:
+      - usage
   /units:
     get:
       description: |-

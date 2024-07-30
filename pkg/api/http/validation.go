@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"slices"
@@ -77,7 +78,7 @@ func VerifyOwnership(user string, clusterIDs []string, uuids []string, db *sql.D
 	q.param(uuids)
 
 	// Run query and get response
-	units, err := Querier[models.Unit](db, q, logger)
+	units, err := Querier[models.Unit](context.Background(), db, q, logger)
 	if err != nil {
 		level.Error(logger).
 			Log("msg", "Failed to check uuid ownership. Query unauthorized", "user", user,
