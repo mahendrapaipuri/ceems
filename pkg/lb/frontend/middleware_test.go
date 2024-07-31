@@ -1,6 +1,7 @@
 package frontend
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"net/http"
@@ -149,7 +150,7 @@ func setupCEEMSAPI(db *sql.DB) *httptest.Server {
 		rmIDs := r.URL.Query()["cluster_id"]
 
 		// Check if user is owner of the queries uuids
-		if http_api.VerifyOwnership(user, rmIDs, uuids, db, log.NewNopLogger()) {
+		if http_api.VerifyOwnership(context.Background(), user, rmIDs, uuids, db, log.NewNopLogger()) {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("success"))
 		} else {

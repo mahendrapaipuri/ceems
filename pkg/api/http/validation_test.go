@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"path/filepath"
@@ -158,7 +159,14 @@ func TestVerifyOwnership(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		result := VerifyOwnership(test.user, []string{test.rmID}, test.uuids, db, log.NewNopLogger())
+		result := VerifyOwnership(
+			context.Background(),
+			test.user,
+			[]string{test.rmID},
+			test.uuids,
+			db,
+			log.NewNopLogger(),
+		)
 		assert.Equal(t, result, test.verify)
 	}
 }
