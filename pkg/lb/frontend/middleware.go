@@ -1,6 +1,7 @@
 package frontend
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"net/http"
@@ -63,11 +64,16 @@ type authenticationMiddleware struct {
 }
 
 // Check UUIDs in query belong to user or not
-func (amw *authenticationMiddleware) isUserUnit(user string, clusterIDs []string, uuids []string) bool {
+func (amw *authenticationMiddleware) isUserUnit(
+	ctx context.Context,
+	user string,
+	clusterIDs []string,
+	uuids []string,
+) bool {
 	// Always prefer checking with DB connection directly if it is available
 	// As DB query is way more faster than HTTP API request
 	if amw.ceems.db != nil {
-		return ceems_api.VerifyOwnership(user, clusterIDs, uuids, amw.ceems.db, amw.logger)
+		return ceems_api.VerifyOwnership(ctx, user, clusterIDs, uuids, amw.ceems.db, amw.logger)
 	}
 
 	// If CEEMS URL is available make a API request
@@ -178,7 +184,12 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 		}
 
 		// Check if user is querying for his/her own compute units by looking to DB
-		if !amw.isUserUnit(loggedUser, []string{queryParams.(*QueryParams).id}, queryParams.(*QueryParams).uuids) {
+		if !amw.isUserUnit(
+			r.Context(),
+			loggedUser,
+			[]string{queryParams.(*QueryParams).id},
+			queryParams.(*QueryParams).uuids,
+		) {
 			// Write an error and stop the handler chain
 			w.WriteHeader(http.StatusForbidden)
 			response := ceems_api.Response[any]{

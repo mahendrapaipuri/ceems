@@ -39,7 +39,14 @@ func adminUsers(dbConn *sql.DB, logger log.Logger) []string {
 }
 
 // VerifyOwnership returns true if user is the owner of queried units
-func VerifyOwnership(user string, clusterIDs []string, uuids []string, db *sql.DB, logger log.Logger) bool {
+func VerifyOwnership(
+	ctx context.Context,
+	user string,
+	clusterIDs []string,
+	uuids []string,
+	db *sql.DB,
+	logger log.Logger,
+) bool {
 	// If the data is incomplete, forbid the request
 	if db == nil || len(clusterIDs) == 0 || user == "" {
 		level.Debug(logger).Log(
@@ -78,7 +85,7 @@ func VerifyOwnership(user string, clusterIDs []string, uuids []string, db *sql.D
 	q.param(uuids)
 
 	// Run query and get response
-	units, err := Querier[models.Unit](context.Background(), db, q, logger)
+	units, err := Querier[models.Unit](ctx, db, q, logger)
 	if err != nil {
 		level.Error(logger).
 			Log("msg", "Failed to check uuid ownership. Query unauthorized", "user", user,
