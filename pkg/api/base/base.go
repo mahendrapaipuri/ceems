@@ -50,14 +50,14 @@ var (
 	AdminUsersDBTableStructFieldColNameMap = models.AdminUsers{}.TagMap("", "sql")
 )
 
-// Map of DB column names to DB column type
-var (
-	UnitsDBTableColTypeMap      = models.Unit{}.TagMap("sql", "sqlitetype")
-	UsageDBTableColTypeMap      = models.Usage{}.TagMap("sql", "sqlitetype")
-	ProjectsDBTableColTypeMap   = models.Project{}.TagMap("sql", "sqlitetype")
-	UsersDBTableColTypeMap      = models.User{}.TagMap("sql", "sqlitetype")
-	AdminUsersDBTableColTypeMap = models.AdminUsers{}.TagMap("sql", "sqlitetype")
-)
+// // Map of DB column names to DB column type
+// var (
+// 	UnitsDBTableColTypeMap      = models.Unit{}.TagMap("sql", "sqlitetype")
+// 	UsageDBTableColTypeMap      = models.Usage{}.TagMap("sql", "sqlitetype")
+// 	ProjectsDBTableColTypeMap   = models.Project{}.TagMap("sql", "sqlitetype")
+// 	UsersDBTableColTypeMap      = models.User{}.TagMap("sql", "sqlitetype")
+// 	AdminUsersDBTableColTypeMap = models.AdminUsers{}.TagMap("sql", "sqlitetype")
+// )
 
 // DatetimeLayout to be used in the package
 var DatetimeLayout = fmt.Sprintf("%sT%s", time.DateOnly, time.TimeOnly)

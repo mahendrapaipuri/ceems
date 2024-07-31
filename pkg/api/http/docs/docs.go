@@ -278,7 +278,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "usage"
+                    "stats"
                 ],
                 "summary": "Admin Stats",
                 "parameters": [
@@ -295,7 +295,7 @@ const docTemplate = `{
                             "global"
                         ],
                         "type": "string",
-                        "description": "Whether to get usage stats within a period or global",
+                        "description": "Whether to get quick stats within a period or global",
                         "name": "mode",
                         "in": "path",
                         "required": true

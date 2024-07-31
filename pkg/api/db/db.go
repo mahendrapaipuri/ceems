@@ -256,7 +256,7 @@ setup:
 	}, nil
 }
 
-// Collect unit stats
+// Collect stats
 func (s *statsDB) Collect() error {
 	// Measure elapsed time
 	defer common.TimeTrack(time.Now(), "Data collection", s.logger)
@@ -265,7 +265,7 @@ func (s *statsDB) Collect() error {
 
 	// If duration is less than 1 day do single update
 	if currentTime.Sub(s.storage.lastUpdateTime) < time.Duration(24*time.Hour) {
-		return s.getUnitStats(s.storage.lastUpdateTime, currentTime)
+		return s.collect(s.storage.lastUpdateTime, currentTime)
 	}
 	level.Info(s.logger).
 		Log("msg", "DB update duration is more than 1 day. Doing incremental update. This may take a while...")
@@ -277,14 +277,14 @@ func (s *statsDB) Collect() error {
 		if nextUpdateTime.Compare(currentTime) == -1 {
 			level.Debug(s.logger).
 				Log("msg", "Incremental DB update step", "from", s.storage.lastUpdateTime, "to", nextUpdateTime)
-			if err := s.getUnitStats(s.storage.lastUpdateTime, nextUpdateTime); err != nil {
+			if err := s.collect(s.storage.lastUpdateTime, nextUpdateTime); err != nil {
 				level.Error(s.logger).
 					Log("msg", "Failed incremental update", "from", s.storage.lastUpdateTime, "to", nextUpdateTime, "err", err)
 				return err
 			}
 		} else {
 			level.Debug(s.logger).Log("msg", "Final incremental DB update step", "from", s.storage.lastUpdateTime, "to", currentTime)
-			return s.getUnitStats(s.storage.lastUpdateTime, currentTime)
+			return s.collect(s.storage.lastUpdateTime, currentTime)
 		}
 
 		// Sleep for couple of seconds before making next update
@@ -321,8 +321,8 @@ func (s *statsDB) updateAdminUsers() error {
 	return nil
 }
 
-// Get unit stats and insert them into DB
-func (s *statsDB) getUnitStats(startTime, endTime time.Time) error {
+// collect fetches unit, user and project stats and insert them into DB
+func (s *statsDB) collect(startTime, endTime time.Time) error {
 	// Retrieve units from underlying resource manager(s)
 	// Return error only if **all** resource manager(s) failed
 	units, err := s.manager.FetchUnits(startTime, endTime)
@@ -399,6 +399,9 @@ func (s *statsDB) getUnitStats(startTime, endTime time.Time) error {
 
 // Delete old entries in DB
 func (s *statsDB) purgeExpiredUnits(tx *sql.Tx) error {
+	// Measure elapsed time
+	defer common.TimeTrack(time.Now(), "DB cleanup", s.logger)
+
 	// Purge expired units
 	deleteUnitsQuery := fmt.Sprintf(
 		"DELETE FROM %s WHERE started_at <= date('now', '-%d day')",
@@ -456,7 +459,6 @@ func (s *statsDB) execStatements(
 	// Measure elapsed time
 	defer common.TimeTrack(time.Now(), "DB insertion", s.logger)
 
-	var ignore = 0
 	var err error
 	for _, cluster := range clusterUnits {
 		for _, unit := range cluster.Units {
@@ -498,9 +500,9 @@ func (s *statsDB) execStatements(
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalIngressStats"], unit.TotalIngressStats),
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalOutgressStats"], unit.TotalOutgressStats),
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["Tags"], unit.Tags),
-				sql.Named(base.UnitsDBTableStructFieldColNameMap["ignore"], ignore),
-				sql.Named(base.UnitsDBTableStructFieldColNameMap["numupdates"], 1),
-				sql.Named(base.UsageDBTableStructFieldColNameMap["lastupdatedat"], currentTime.Format(base.DatetimeLayout)),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["Ignore"], unit.Ignore),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["NumUpdates"], 1),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["LastUpdatedAt"], currentTime.Format(base.DatetimeLayout)),
 			); err != nil {
 				level.Error(s.logger).
 					Log("msg", "Failed to insert unit in DB", "cluster_id", cluster.Cluster.ID, "uuid", unit.UUID, "err", err)
@@ -522,8 +524,8 @@ func (s *statsDB) execStatements(
 				sql.Named(base.UsageDBTableStructFieldColNameMap["Project"], unit.Project),
 				sql.Named(base.UsageDBTableStructFieldColNameMap["User"], unit.User),
 				sql.Named(base.UsageDBTableStructFieldColNameMap["Group"], unit.Group),
-				sql.Named(base.UsageDBTableStructFieldColNameMap["lastupdatedat"], currentTime.Format(base.DatetimeLayout)),
-				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalTime"], unit.TotalTime),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["LastUpdatedAt"], currentTime.Format(base.DatetimeLayout)),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalTime"], unit.TotalTime),
 				sql.Named(base.UsageDBTableStructFieldColNameMap["AveCPUUsage"], unit.AveCPUUsage),
 				sql.Named(base.UsageDBTableStructFieldColNameMap["AveCPUMemUsage"], unit.AveCPUMemUsage),
 				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalCPUEnergyUsage"], unit.TotalCPUEnergyUsage),
@@ -536,7 +538,7 @@ func (s *statsDB) execStatements(
 				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalIOReadStats"], unit.TotalIOReadStats),
 				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalIngressStats"], unit.TotalIngressStats),
 				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalOutgressStats"], unit.TotalOutgressStats),
-				sql.Named(base.UsageDBTableStructFieldColNameMap["numupdates"], 1),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["NumUpdates"], 1),
 			); err != nil {
 				level.Error(s.logger).
 					Log("msg", "Failed to update usage table in DB", "cluster_id", cluster.Cluster.ID, "uuid", unit.UUID, "err", err)
@@ -593,7 +595,7 @@ func (s *statsDB) execStatements(
 	}
 }
 
-// Backup executes the sqlite3 backup strategy
+// backup executes the sqlite3 backup strategy
 // Based on https://gist.github.com/bbengfort/452a9d5e74a63d88e5a34a580d6cb6d3
 // Ref: https://github.com/rotationalio/ensign/pull/529/files
 func (s *statsDB) backup(backupDBPath string) error {
@@ -655,7 +657,7 @@ func (s *statsDB) vacuum() error {
 	return nil
 }
 
-// Creates backup of DB after vacuuming DB
+// createBackup creates backup of DB after vacuuming DB
 func (s *statsDB) createBackup() error {
 	// Measure elapsed time
 	defer common.TimeTrack(time.Now(), "DB backup", s.logger)
