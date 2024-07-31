@@ -684,7 +684,7 @@ paths:
         name: X-Grafana-User
         required: true
         type: string
-      - description: Whether to get usage stats within a period or global
+      - description: Whether to get quick stats within a period or global
         enum:
         - current
         - global
@@ -730,7 +730,7 @@ paths:
       - BasicAuth: []
       summary: Admin Stats
       tags:
-      - usage
+      - stats
   /units:
     get:
       description: |-
