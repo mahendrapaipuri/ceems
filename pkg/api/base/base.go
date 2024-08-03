@@ -32,13 +32,14 @@ var (
 	AdminUsersDBTableName = models.AdminUsers{}.TableName()
 )
 
-// Slice of all field names of Unit struct
+// Slice of field names of all tables
+// This slice will not contain the DB columns that are ignored in the query
 var (
-	UnitsDBTableColNames      = models.Unit{}.TagNames("sql")
-	UsageDBTableColNames      = models.Usage{}.TagNames("sql")
-	ProjectsDBTableColNames   = models.Project{}.TagNames("sql")
-	UsersDBTableColNames      = models.User{}.TagNames("sql")
-	AdminUsersDBTableColNames = models.AdminUsers{}.TagNames("sql")
+	UnitsDBTableColNames      = models.Unit{}.TagNames("json")
+	UsageDBTableColNames      = models.Usage{}.TagNames("json")
+	ProjectsDBTableColNames   = models.Project{}.TagNames("json")
+	UsersDBTableColNames      = models.User{}.TagNames("json")
+	AdminUsersDBTableColNames = models.AdminUsers{}.TagNames("json")
 )
 
 // Map of struct field name to DB column name

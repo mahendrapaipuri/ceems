@@ -37,27 +37,26 @@ func GetStructFieldNames(Struct interface{}) []string {
 // 	return values
 // }
 
-// Get tag value of field. If tag value is "-", return lower case value of field name
-// If tag is empty, return name of field in map key
+// Get tag value of field. If tag value is "-", empty string will be returned
+// If tag is empty, return name of field
 func getTagValue(field reflect.StructField, tag string) string {
 	if field.Tag.Get(tag) == "-" {
-		return strings.ToLower(field.Name)
+		return ""
 	} else if field.Tag.Get(tag) == "" {
 		return field.Name
 	} else {
-		return field.Tag.Get(tag)
+		return strings.Split(field.Tag.Get(tag), ",")[0]
 	}
 }
 
 // GetStructFieldTagValues returns all tag names in a given struct for a given tag
-// Note: id tag which is auto increment column in DB will not be returned
 func GetStructFieldTagValues(Struct interface{}, tag string) []string {
 	v := reflect.ValueOf(Struct)
 	typeOfS := v.Type()
 
 	var values []string
 	for i := 0; i < v.NumField(); i++ {
-		if value := getTagValue(typeOfS.Field(i), tag); value != "id" {
+		if value := getTagValue(typeOfS.Field(i), tag); value != "" {
 			values = append(values, value)
 		}
 	}

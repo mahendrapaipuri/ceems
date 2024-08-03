@@ -254,7 +254,7 @@ definitions:
       ended_at_ts:
         description: End timestamp
         type: integer
-      group:
+      groupname:
         description: User group
         type: string
       name:
@@ -321,7 +321,7 @@ definitions:
         description: Different types of times in seconds consumed by the unit. This
           map contains at minimum `walltime`, `alloc_cputime`, `alloc_cpumemtime`,
           `alloc_gputime` and `alloc_gpumem_time` keys.
-      user:
+      username:
         description: Username
         type: string
       uuid:
@@ -351,7 +351,7 @@ definitions:
         description: Identifier of the resource manager that owns compute unit. It
           is used to differentiate multiple clusters of same resource manager.
         type: string
-      group:
+      groupname:
         description: User group
         type: string
       num_units:
@@ -404,7 +404,7 @@ definitions:
         description: Different times in seconds consumed by the unit. This map must
           contain `walltime`, `alloc_cputime`, `alloc_cpumemtime`, `alloc_gputime`
           and `alloc_gpumem_time` keys.
-      user:
+      username:
         description: Username
         type: string
     type: object

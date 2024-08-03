@@ -716,7 +716,7 @@ func TestUnitStatsDBEntries(t *testing.T) {
 		}
 	}
 
-	assert.Equal(t, cpuUsage["usage"], models.JSONFloat(15), "expected cpuUsage = 15")
+	assert.Equal(t, models.JSONFloat(15), cpuUsage["usage"], "expected cpuUsage = 15")
 
 	// Make projects query
 	rows, err = s.db.Query(

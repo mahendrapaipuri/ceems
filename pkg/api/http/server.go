@@ -103,7 +103,6 @@ var (
 	aggUsageQueries    = make(map[string]string, len(base.UsageDBTableColNames))
 	cacheTTL           = time.Duration(15 * time.Minute)
 	defaultQueryWindow = time.Duration(24 * time.Hour) // One day
-	ignoredColumns     = []string{"last_updated_at"}   // Columns to ignore in DB queries
 )
 
 const (
@@ -113,9 +112,6 @@ const (
 
 // Make summary DB col names by using aggregate SQL functions
 func init() {
-	// Add primary field manually as it is ignored in UsageDBColNames
-	aggUsageQueries["id"] = "id"
-
 	// Use SQL aggregate functions in query
 	// For metrics involving total and averages, we use templates to build query
 	// after fectching all the keys in each metric map
@@ -401,11 +397,6 @@ func (s *CEEMSServer) getQueriedFields(URLValues url.Values, validFieldNames []s
 		// Check if fields are valid field names
 		for _, f := range fields {
 			f = strings.TrimSpace(f)
-			// Ignore any fields that are in ignored columns slice
-			if slices.Contains(ignoredColumns, f) {
-				continue
-			}
-
 			if slices.Contains(validFieldNames, f) {
 				queriedFields = append(queriedFields, f)
 			}
