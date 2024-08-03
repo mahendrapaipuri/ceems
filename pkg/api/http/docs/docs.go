@@ -1346,7 +1346,7 @@ const docTemplate = `{
                     "description": "End timestamp",
                     "type": "integer"
                 },
-                "group": {
+                "groupname": {
                     "description": "User group",
                     "type": "string"
                 },
@@ -1454,7 +1454,7 @@ const docTemplate = `{
                         }
                     ]
                 },
-                "user": {
+                "username": {
                     "description": "Username",
                     "type": "string"
                 },
@@ -1503,7 +1503,7 @@ const docTemplate = `{
                     "description": "Identifier of the resource manager that owns compute unit. It is used to differentiate multiple clusters of same resource manager.",
                     "type": "string"
                 },
-                "group": {
+                "groupname": {
                     "description": "User group",
                     "type": "string"
                 },
@@ -1591,7 +1591,7 @@ const docTemplate = `{
                         }
                     ]
                 },
-                "user": {
+                "username": {
                     "description": "Username",
                     "type": "string"
                 }

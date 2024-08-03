@@ -21,8 +21,8 @@ type Unit struct {
 	UUID                string     `json:"uuid"                                 sql:"uuid"                       sqlitetype:"text"`    // Unique identifier of unit. It can be Job ID for batch jobs, UUID for pods in k8s or VMs in Openstack
 	Name                string     `json:"name,omitempty"                       sql:"name"                       sqlitetype:"text"`    // Name of compute unit
 	Project             string     `json:"project,omitempty"                    sql:"project"                    sqlitetype:"text"`    // Account in batch systems, Tenant in Openstack, Namespace in k8s
-	Group               string     `json:"group,omitempty"                      sql:"groupname"                  sqlitetype:"text"`    // User group
-	User                string     `json:"user,omitempty"                       sql:"username"                   sqlitetype:"text"`    // Username
+	Group               string     `json:"groupname,omitempty"                  sql:"groupname"                  sqlitetype:"text"`    // User group
+	User                string     `json:"username,omitempty"                   sql:"username"                   sqlitetype:"text"`    // Username
 	CreatedAt           string     `json:"created_at,omitempty"                 sql:"created_at"                 sqlitetype:"text"`    // Creation time
 	StartedAt           string     `json:"started_at,omitempty"                 sql:"started_at"                 sqlitetype:"text"`    // Start time
 	EndedAt             string     `json:"ended_at,omitempty"                   sql:"ended_at"                   sqlitetype:"text"`    // End time
@@ -74,8 +74,8 @@ type Usage struct {
 	ResourceManager     string    `json:"resource_manager"                     sql:"resource_manager"           sqlitetype:"text"`    // Name of the resource manager that owns project. Eg slurm, openstack, kubernetes, etc
 	NumUnits            int64     `json:"num_units"                            sql:"num_units"                  sqlitetype:"integer"` // Number of consumed units
 	Project             string    `json:"project"                              sql:"project"                    sqlitetype:"text"`    // Account in batch systems, Tenant in Openstack, Namespace in k8s
-	Group               string    `json:"group"                                sql:"groupname"                  sqlitetype:"text"`    // User group
-	User                string    `json:"user"                                 sql:"username"                   sqlitetype:"text"`    // Username
+	Group               string    `json:"groupname"                            sql:"groupname"                  sqlitetype:"text"`    // User group
+	User                string    `json:"username"                             sql:"username"                   sqlitetype:"text"`    // Username
 	LastUpdatedAt       string    `json:"-"                                    sql:"last_updated_at"            sqlitetype:"text"`    // Last updated time. It can be used to clean up DB
 	TotalTime           MetricMap `json:"total_time_seconds,omitempty"         sql:"total_time_seconds"         sqlitetype:"text"`    // Different times in seconds consumed by the unit. This map must contain `walltime`, `alloc_cputime`, `alloc_cpumemtime`, `alloc_gputime` and `alloc_gpumem_time` keys.
 	AveCPUUsage         MetricMap `json:"avg_cpu_usage,omitempty"              sql:"avg_cpu_usage"              sqlitetype:"text"`    // Average CPU usage(s) during lifetime of project
