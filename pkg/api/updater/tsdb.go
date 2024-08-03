@@ -217,11 +217,14 @@ func (t *tsdbUpdater) update(startTime time.Time, endTime time.Time, units []mod
 		// EndTS will be zero as we cannot convert unknown time into time stamp.
 		// Check if we EndTS is not zero before ignoring unit. If it is zero, it means
 		// it must be RUNNING unit
+		//
+		// We get the aggregate metrics of these "ignored" comput units as well but
+		// we will remove time series of metrics from TSDB as they might be not realiable
+		// for small durations
 		if units[i].EndedAtTS > 0 {
 			if units[i].EndedAtTS-units[i].StartedAtTS < time.Duration(t.config.CutoffDuration).Milliseconds() {
 				ignoredUnits = append(ignoredUnits, uuid)
 				units[i].Ignore = 1
-				continue
 			}
 		}
 		allUnitUUIDs[j] = uuid
