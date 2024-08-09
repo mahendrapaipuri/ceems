@@ -114,18 +114,18 @@ const (
 func init() {
 	// Use SQL aggregate functions in query
 	// For metrics involving total and averages, we use templates to build query
-	// after fectching all the keys in each metric map
+	// after fetching all the keys in each metric map
 	for _, col := range base.UsageDBTableColNames {
 		if strings.HasPrefix(col, "num") {
 			if col == "num_units" {
-				aggUsageQueries[col] = "COUNT(id) AS num_units"
+				aggUsageQueries[col] = "COUNT(u.id) AS num_units"
 			} else {
-				aggUsageQueries[col] = "SUM(num_updates) AS num_updates"
+				aggUsageQueries[col] = "SUM(u.num_updates) AS num_updates"
 			}
 		} else if strings.HasPrefix(col, "total") {
-			aggUsageQueries[col] = `{{- $mn := .MetricName -}}json_object({{range $i, $r := .MetricKeys}}{{if $i}},{{end}}'{{$r.Name}}', SUM((SELECT json_each.value FROM json_each({{$mn}}, '$.{{$r.Name}}'))){{end}}) AS {{.MetricName}}`
+			aggUsageQueries[col] = `{{- $mn := .MetricName -}}json_object({{range $i, $r := .MetricKeys}}{{if $i}},{{end}}'{{$r.Name}}',(SUM({{$mn}}_{{$r.Name}}.value)){{end}}) AS {{.MetricName}}||{{range $i, $r := .MetricKeys}}{{if $i}}|{{end}}json_each({{$mn}},'$.{{$r.Name}}') AS {{$mn}}_{{$r.Name}}{{end}}`
 		} else if strings.HasPrefix(col, "avg") {
-			aggUsageQueries[col] = `{{- $mn := .MetricName -}}{{- $mw := .MetricWeight -}}{{- $tmn := .TimesMetricName -}}json_object({{range $i, $r := .MetricKeys}}{{if $i}},{{end}}'{{$r.Name}}', (SUM((SELECT v.value * k.value FROM json_each({{$mn}}, '$.{{$r.Name}}') AS v, json_each({{$tmn}}, '$.{{$mw}}') AS k WHERE v.value > 0)) / SUM((SELECT k.value FROM json_each({{$mn}}, '$.{{$r.Name}}') AS v, json_each({{$tmn}}, '$.{{$mw}}') AS k WHERE v.value > 0))){{end}}) AS {{.MetricName}}`
+			aggUsageQueries[col] = `{{- $mn := .MetricName -}}{{- $mw := .MetricWeight -}}{{- $tmn := .TimesMetricName -}}json_object({{range $i, $r := .MetricKeys}}{{if $i}},{{end}}'{{$r.Name}}',(SUM({{$mn}}_{{$r.Name}}.value*{{$tmn}}_{{$mw}}.value) / SUM({{$tmn}}_{{$mw}}.value)){{end}}) AS {{.MetricName}}||{{range $i, $r := .MetricKeys}}{{if $i}}|{{end}}json_each({{$mn}},'$.{{$r.Name}}') AS {{$mn}}_{{$r.Name}}{{end}}|json_each({{$tmn}},'$.{{$mw}}') AS {{$tmn}}_{{$mw}}`
 		} else {
 			aggUsageQueries[col] = col
 		}
@@ -1132,9 +1132,10 @@ func (s *CEEMSServer) aggQueryBuilder(
 func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.ResponseWriter, r *http.Request) {
 	var usage []models.Usage
 	var groupby []string
+	var targetTable, targetCol string
 	var queryWindowTS map[string]string
-	var queries = make([]string, len(fields))
-	var filteredQueries []string
+	var queryParts = make([]string, len(fields))
+	var queries, virtualTables []string
 	var wg sync.WaitGroup
 	var mu sync.RWMutex
 	var q Query
@@ -1177,7 +1178,7 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 			go func(i int, f string) {
 				defer wg.Done()
 				if query := s.aggQueryBuilder(r, f, queryWindowTS); query != "" {
-					queries[i] = query
+					queryParts[i] = query
 				} else {
 					mu.Lock()
 					qErrs = errors.Join(fmt.Errorf("failed to build query for %s", field), qErrs)
@@ -1185,23 +1186,56 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 				}
 			}(iField, field)
 		} else {
-			queries[iField] = aggUsageQueries[field]
+			queryParts[iField] = aggUsageQueries[field]
 		}
 	}
 
 	// Wait for all go routines
 	wg.Wait()
 
-	// Filter queries by removing empty ones
-	for _, query := range queries {
-		if query != "" {
-			filteredQueries = append(filteredQueries, query)
+	// Each templated query will have two parts delimited by "||".
+	// First part is SELECT query that forms JSON object from aggregated metrics
+	// Second part is the CTE that makes a virtual table by iterating using json_each
+	// Second part is delimited by "|" so that we can get individual virtual tables
+	// and remove any duplicates and join them using LEFT JOIN
+	// Ignore any empty parts
+	for _, query := range queryParts {
+		parts := strings.Split(query, "||")
+		queries = append(queries, parts[0])
+		if len(parts) == 1 || (len(parts) > 1 && parts[1] == "") {
+			continue
 		}
+		for _, p := range strings.Split(parts[1], "|") {
+			if p == "" || slices.Contains(virtualTables, p) {
+				continue
+			}
+			virtualTables = append(virtualTables, p)
+		}
+	}
+
+	if _, ok := r.URL.Query()["experimental"]; ok {
+		targetTable = base.DailyUsageDBTableName
+		targetCol = "last_updated_at"
+		for iQuery, query := range queries {
+			if strings.Contains(query, "COUNT") {
+				queries[iQuery] = "SUM(u.num_units) AS num_units"
+			}
+		}
+	} else {
+		targetTable = base.UnitsDBTableName
+		targetCol = "ended_at"
 	}
 
 	// Make query
 	q = Query{}
-	q.query(fmt.Sprintf("SELECT %s FROM %s", strings.Join(filteredQueries, ","), base.UnitsDBTableName))
+	q.query(
+		fmt.Sprintf(
+			"SELECT %s FROM (%s AS u LEFT JOIN %s)",
+			strings.Join(queries, ","),
+			targetTable,
+			strings.Join(virtualTables, " LEFT JOIN "),
+		),
+	)
 
 	// First select all projects that user is part of using subquery
 	q.query(" WHERE project IN ")
@@ -1211,7 +1245,7 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 	q = s.getCommonQueryParams(&q, r.URL.Query())
 
 	// Add from and to to query only when checkQueryWindow is true
-	q.query(" AND ended_at BETWEEN ")
+	q.query(fmt.Sprintf(" AND %s BETWEEN ", targetCol))
 	q.param([]string{queryWindowTS["from"]})
 	q.query(" AND ")
 	q.param([]string{queryWindowTS["to"]})

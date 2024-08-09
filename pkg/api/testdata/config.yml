@@ -4,6 +4,7 @@ ceems_api_server:
   data:
     path: TO_REPLACE
     backup_path: TO_REPLACE
+    # update_from: '2024-09-08T00:00:00Z'
   admin:
     users:
       - grafana
