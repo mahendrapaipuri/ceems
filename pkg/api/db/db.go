@@ -14,6 +14,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/internal/common"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
+	db_migrator "github.com/mahendrapaipuri/ceems/pkg/api/db/migrator"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/mahendrapaipuri/ceems/pkg/api/resource"
 	"github.com/mahendrapaipuri/ceems/pkg/api/updater"
@@ -23,7 +24,7 @@ import (
 	"github.com/prometheus/common/model"
 )
 
-// Directory containing DB related files
+// Directory containing DB related files.
 const (
 	migrationsDir = "migrations"
 	statementsDir = "statements"
@@ -35,13 +36,13 @@ var MigrationsFS embed.FS
 //go:embed statements/*.sql
 var StatementsFS embed.FS
 
-// AdminConfig is the container for the admin users related config
+// AdminConfig is the container for the admin users related config.
 type AdminConfig struct {
 	Users   []string                `yaml:"users"`
 	Grafana common.GrafanaWebConfig `yaml:"grafana"`
 }
 
-// DataConfig is the container for the data related config
+// DataConfig is the container for the data related config.
 type DataConfig struct {
 	Path               string         `yaml:"path"`
 	BackupPath         string         `yaml:"backup_path"`
@@ -52,7 +53,7 @@ type DataConfig struct {
 	SkipDeleteOldUnits bool
 }
 
-// Config makes a DB config from config file
+// Config makes a DB config from config file.
 type Config struct {
 	Logger          log.Logger
 	Data            DataConfig
@@ -61,7 +62,7 @@ type Config struct {
 	Updater         func(log.Logger) (*updater.UnitUpdater, error)
 }
 
-// storageConfig is the container for storage related config
+// storageConfig is the container for storage related config.
 type storageConfig struct {
 	dbPath             string
 	dbBackupPath       string
@@ -70,7 +71,7 @@ type storageConfig struct {
 	skipDeleteOldUnits bool
 }
 
-// String implements Stringer interface for storageConfig
+// String implements Stringer interface for storageConfig.
 func (s *storageConfig) String() string {
 	return fmt.Sprintf(
 		"DB File Path: %s; Retention Period: %s; Last Updated At: %s",
@@ -84,8 +85,8 @@ type adminConfig struct {
 	grafanaAdminTeamsIDs []string
 }
 
-// statsDB struct
-type statsDB struct {
+// stats struct implements fetching compute units, users and project data.
+type stats struct {
 	logger  log.Logger
 	db      *sql.DB
 	dbConn  *ceems_sqlite3.Conn
@@ -95,7 +96,7 @@ type statsDB struct {
 	admin   *adminConfig
 }
 
-// SQLite DB related constant vars
+// SQLite DB related constant vars.
 const (
 	sqlite3Main  = "main"
 	pagesPerStep = 25
@@ -109,7 +110,7 @@ var (
 	// values as weight for each DB column
 	// For CPU and GPU, we use CPU time and GPU time as weights
 	// For memory usage, we use Walltime * Mem for CPU as weight and just walltime
-	// for GPU
+	// for GPU.
 	Weights = map[string]string{
 		"avg_cpu_usage":     "alloc_cputime",
 		"avg_gpu_usage":     "alloc_gputime",
@@ -117,23 +118,24 @@ var (
 		"avg_gpu_mem_usage": "alloc_gpumemtime",
 	}
 
-	// Admin users sources
+	// Admin users sources.
 	AdminUsersSources = []string{"ceems", "grafana"}
 )
 
-// Init func to set prepareStatements
+// Init func to set prepareStatements.
 func init() {
 	for _, tableName := range []string{base.UnitsDBTableName, base.UsageDBTableName, base.DailyUsageDBTableName, base.AdminUsersDBTableName, base.UsersDBTableName, base.ProjectsDBTableName} {
 		statements, err := StatementsFS.ReadFile(fmt.Sprintf("statements/%s.sql", tableName))
 		if err != nil {
 			panic(fmt.Sprintf("failed to read SQL statements file for table %s: %s", tableName, err))
 		}
+
 		prepareStatements[tableName] = string(statements)
 	}
 }
 
-// NewStatsDB returns a new instance of statsDB struct
-func NewStatsDB(c *Config) (*statsDB, error) {
+// New returns a new instance of stats struct.
+func New(c *Config) (*stats, error) {
 	var err error
 
 	// Get file paths
@@ -143,11 +145,12 @@ func NewStatsDB(c *Config) (*statsDB, error) {
 	db, dbConn, err := setupDB(dbPath, c.Logger)
 	if err != nil {
 		level.Error(c.Logger).Log("msg", "DB setup failed", "err", err)
+
 		return nil, err
 	}
 
 	// Setup Migrator
-	migrator, err := NewMigrator(MigrationsFS, migrationsDir, c.Logger)
+	migrator, err := db_migrator.New(MigrationsFS, migrationsDir, c.Logger)
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +163,7 @@ func NewStatsDB(c *Config) (*statsDB, error) {
 	// Get last_updated_at time from DB and overwrite the one provided from config.
 	// DB should be the single source of truth.
 	var lastUpdatedAt string
-	if err = db.QueryRow(fmt.Sprintf("SELECT MAX(last_updated_at) FROM %s", base.UsageDBTableName)).Scan(&lastUpdatedAt); err == nil {
+	if err = db.QueryRow("SELECT MAX(last_updated_at) FROM " + base.UsageDBTableName).Scan(&lastUpdatedAt); err == nil {
 		// Parse date time string
 		c.Data.LastUpdateTime, err = time.Parse(base.DatetimeLayout, lastUpdatedAt)
 		if err != nil {
@@ -182,9 +185,9 @@ func NewStatsDB(c *Config) (*statsDB, error) {
 	level.Info(c.Logger).Log("msg", "DB will be updated from", "time", c.Data.LastUpdateTime)
 
 	// Create a new instance of Grafana client
-	grafanaClient, err := common.CreateGrafanaClient(&c.Admin.Grafana, c.Logger)
+	grafanaClient, err := common.NewGrafanaClient(&c.Admin.Grafana, c.Logger)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create Grafana client: %w", err)
 	}
 
 	// Make admin users map
@@ -213,6 +216,7 @@ func NewStatsDB(c *Config) (*statsDB, error) {
 	manager, err := c.ResourceManager(c.Logger)
 	if err != nil {
 		level.Error(c.Logger).Log("msg", "Resource manager setup failed", "err", err)
+
 		return nil, err
 	}
 
@@ -220,12 +224,14 @@ func NewStatsDB(c *Config) (*statsDB, error) {
 	updater, err := c.Updater(c.Logger)
 	if err != nil {
 		level.Error(c.Logger).Log("msg", "Updater setup failed", "err", err)
+
 		return nil, err
 	}
 
 	// Emit debug logs
 	level.Debug(c.Logger).Log("msg", "Storage config", "cfg", storageConfig)
-	return &statsDB{
+
+	return &stats{
 		logger:  c.Logger,
 		db:      db,
 		dbConn:  dbConn,
@@ -236,34 +242,39 @@ func NewStatsDB(c *Config) (*statsDB, error) {
 	}, nil
 }
 
-// Collect stats
-func (s *statsDB) Collect() error {
+// Collect stats.
+func (s *stats) Collect() error {
 	// Measure elapsed time
 	defer common.TimeTrack(time.Now(), "Data collection", s.logger)
 
-	var currentTime = time.Now()
+	currentTime := time.Now()
 
 	// If duration is less than 1 day do single update
-	if currentTime.Sub(s.storage.lastUpdateTime) < time.Duration(24*time.Hour) {
+	if currentTime.Sub(s.storage.lastUpdateTime) < 24*time.Hour {
 		return s.collect(s.storage.lastUpdateTime, currentTime)
 	}
+
 	level.Info(s.logger).
 		Log("msg", "DB update duration is more than 1 day. Doing incremental update. This may take a while...")
 
 	// If duration is more than 1 day, do incremental update
 	var nextUpdateTime time.Time
+
 	for {
 		nextUpdateTime = s.storage.lastUpdateTime.Add(24 * time.Hour)
 		if nextUpdateTime.Compare(currentTime) == -1 {
 			level.Debug(s.logger).
 				Log("msg", "Incremental DB update step", "from", s.storage.lastUpdateTime, "to", nextUpdateTime)
+
 			if err := s.collect(s.storage.lastUpdateTime, nextUpdateTime); err != nil {
 				level.Error(s.logger).
 					Log("msg", "Failed incremental update", "from", s.storage.lastUpdateTime, "to", nextUpdateTime, "err", err)
+
 				return err
 			}
 		} else {
 			level.Debug(s.logger).Log("msg", "Final incremental DB update step", "from", s.storage.lastUpdateTime, "to", currentTime)
+
 			return s.collect(s.storage.lastUpdateTime, currentTime)
 		}
 
@@ -273,19 +284,19 @@ func (s *statsDB) Collect() error {
 	}
 }
 
-// Backup DB
-func (s *statsDB) Backup() error {
+// Backup DB.
+func (s *stats) Backup() error {
 	return s.createBackup()
 }
 
-// Close DB connection
-func (s *statsDB) Stop() error {
+// Close DB connection.
+func (s *stats) Stop() error {
 	return s.db.Close()
 }
 
 // updateAdminUsers updates the static list of admin users with the ones fetched
-// from Grafana teams
-func (s *statsDB) updateAdminUsers() error {
+// from Grafana teams.
+func (s *stats) updateAdminUsers() error {
 	// If no teams IDs are configured or Grafana is not online, return
 	if s.admin.grafanaAdminTeamsIDs == nil || !s.admin.grafana.Available() {
 		return nil
@@ -295,14 +306,16 @@ func (s *statsDB) updateAdminUsers() error {
 	if err != nil {
 		return err
 	}
+
 	for _, u := range users {
 		s.admin.users["grafana"] = append(s.admin.users["grafana"], u)
 	}
+
 	return nil
 }
 
-// collect fetches unit, user and project stats and insert them into DB
-func (s *statsDB) collect(startTime, endTime time.Time) error {
+// collect fetches unit, user and project stats and insert them into DB.
+func (s *stats) collect(startTime, endTime time.Time) error {
 	// Retrieve units from underlying resource manager(s)
 	// Return error only if **all** resource manager(s) failed
 	units, err := s.manager.FetchUnits(startTime, endTime)
@@ -336,13 +349,14 @@ func (s *statsDB) collect(startTime, endTime time.Time) error {
 	// Begin transcation
 	tx, err := s.db.Begin()
 	if err != nil {
-		return fmt.Errorf("failed to begin SQL transcation: %s", err)
+		return fmt.Errorf("failed to begin SQL transcation: %w", err)
 	}
 
 	// Delete older entries and free up DB pages
 	// In testing we want to skip this
 	if !s.storage.skipDeleteOldUnits {
 		level.Debug(s.logger).Log("msg", "Cleaning up old entries in DB")
+
 		if err = s.purgeExpiredUnits(tx); err != nil {
 			level.Error(s.logger).Log("msg", "Failed to clean up old entries", "err", err)
 		} else {
@@ -352,13 +366,16 @@ func (s *statsDB) collect(startTime, endTime time.Time) error {
 
 	// Make prepare statement and defer closing statement
 	level.Debug(s.logger).Log("msg", "Preparing SQL statements")
+
 	sqlStmts, err := s.prepareStatements(tx)
 	if err != nil {
 		return err
 	}
+
 	for _, stmt := range sqlStmts {
 		defer stmt.Close()
 	}
+
 	level.Debug(s.logger).Log("msg", "Finished preparing SQL statements")
 
 	// Insert data into DB
@@ -368,16 +385,17 @@ func (s *statsDB) collect(startTime, endTime time.Time) error {
 
 	// Commit changes
 	if err = tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit SQL transcation: %s", err)
+		return fmt.Errorf("failed to commit SQL transcation: %w", err)
 	}
 
 	// Write endTime to file to keep track upon successful insertion of data
 	s.storage.lastUpdateTime = endTime
+
 	return nil
 }
 
-// Delete old entries in DB
-func (s *statsDB) purgeExpiredUnits(tx *sql.Tx) error {
+// Delete old entries in DB.
+func (s *stats) purgeExpiredUnits(tx *sql.Tx) error {
 	// Measure elapsed time
 	defer common.TimeTrack(time.Now(), "DB cleanup", s.logger)
 
@@ -410,25 +428,28 @@ func (s *statsDB) purgeExpiredUnits(tx *sql.Tx) error {
 	var usageDeleted int
 	_ = tx.QueryRow("SELECT changes();").Scan(&usageDeleted)
 	level.Debug(s.logger).Log("usage_deleted", usageDeleted)
+
 	return nil
 }
 
 // Make and return a map of prepare statements for inserting entries into different
-// DB tables. The key of map is DB table name and value will be pointer to statement
-func (s *statsDB) prepareStatements(tx *sql.Tx) (map[string]*sql.Stmt, error) {
-	var stmts = make(map[string]*sql.Stmt, len(prepareStatements))
+// DB tables. The key of map is DB table name and value will be pointer to statement.
+func (s *stats) prepareStatements(tx *sql.Tx) (map[string]*sql.Stmt, error) {
+	stmts := make(map[string]*sql.Stmt, len(prepareStatements))
+
 	var err error
 	for dbTable, stmt := range prepareStatements {
-		stmts[dbTable], err = tx.Prepare(stmt)
+		stmts[dbTable], err = tx.Prepare(stmt) //nolint:sqlclosecheck
 		if err != nil {
-			return nil, fmt.Errorf("failed to prepare statement for table %s: %s", dbTable, err)
+			return nil, fmt.Errorf("failed to prepare statement for table %s: %w", dbTable, err)
 		}
 	}
+
 	return stmts, nil
 }
 
-// Insert unit stat into DB
-func (s *statsDB) execStatements(
+// Insert unit stat into DB.
+func (s *stats) execStatements(
 	statements map[string]*sql.Stmt,
 	currentTime time.Time,
 	clusterUnits []models.ClusterUnits,
@@ -438,10 +459,16 @@ func (s *statsDB) execStatements(
 	// Measure elapsed time
 	defer common.TimeTrack(time.Now(), "DB insertion", s.logger)
 
+	// Close prepared statement
+	for _, stmt := range statements {
+		defer stmt.Close()
+	}
+
 	// Get current day midnight
 	todayMidnight := currentTime.Truncate(24 * time.Hour).Format(base.DatetimeLayout)
 
 	var err error
+
 	for _, cluster := range clusterUnits {
 		for _, unit := range cluster.Units {
 			// Empty unit
@@ -609,13 +636,15 @@ func (s *statsDB) execStatements(
 // backup executes the sqlite3 backup strategy
 // Based on https://gist.github.com/bbengfort/452a9d5e74a63d88e5a34a580d6cb6d3
 // Ref: https://github.com/rotationalio/ensign/pull/529/files
-func (s *statsDB) backup(backupDBPath string) error {
+func (s *stats) backup(backupDBPath string) error {
 	var backupDBFile *os.File
+
 	var err error
 	// Create a backup DB file
 	if backupDBFile, err = os.Create(backupDBPath); err != nil {
 		return err
 	}
+
 	backupDBFile.Close()
 
 	// Open a second sqlite3 database at the backup location
@@ -631,6 +660,7 @@ func (s *statsDB) backup(backupDBPath string) error {
 	// Create the backup manager into the destination db from the src connection.
 	// NOTE: backup.Finish() MUST be called to prevent panics.
 	var backup *sqlite3.SQLiteBackup
+
 	if backup, err = destConn.Backup(sqlite3Main, s.dbConn, sqlite3Main); err != nil {
 		return err
 	}
@@ -645,8 +675,9 @@ func (s *statsDB) backup(backupDBPath string) error {
 		// doing online backups and also allow write transactions to make progress.
 		if isDone, err = backup.Step(pagesPerStep); err != nil {
 			if finishErr := backup.Finish(); finishErr != nil {
-				return fmt.Errorf("errors: %s, %s", err, finishErr)
+				return fmt.Errorf("errors: %w, %w", err, finishErr)
 			}
+
 			return err
 		}
 
@@ -656,20 +687,23 @@ func (s *statsDB) backup(backupDBPath string) error {
 		// This sleep allows other transactions to write during backups.
 		time.Sleep(stepSleep)
 	}
+
 	return backup.Finish()
 }
 
-// vacuum executes sqlite3 vacuum command
-func (s *statsDB) vacuum() error {
+// vacuum executes sqlite3 vacuum command.
+func (s *stats) vacuum() error {
 	level.Debug(s.logger).Log("msg", "Starting to vacuum DB")
+
 	if _, err := s.db.Exec("VACUUM;"); err != nil {
 		return err
 	}
+
 	return nil
 }
 
-// createBackup creates backup of DB after vacuuming DB
-func (s *statsDB) createBackup() error {
+// createBackup creates backup of DB after vacuuming DB.
+func (s *stats) createBackup() error {
 	// Measure elapsed time
 	defer common.TimeTrack(time.Now(), "DB backup", s.logger)
 
@@ -677,11 +711,13 @@ func (s *statsDB) createBackup() error {
 	if err := s.vacuum(); err != nil {
 		level.Warn(s.logger).Log("msg", "Failed to vacuum DB", "err", err)
 	}
+
 	level.Debug(s.logger).Log("msg", "DB vacuumed")
 
 	// Attempt to create in-place DB backup
 	// Make a unique backup file name using current time
 	backupDBFileName := fmt.Sprintf("%s-%s.bak.db", base.CEEMSServerAppName, time.Now().Format("200601021504"))
+
 	backupDBFilePath := filepath.Join(filepath.Dir(s.storage.dbPath), backupDBFileName)
 	if err := s.backup(backupDBFilePath); err != nil {
 		return err
@@ -690,8 +726,10 @@ func (s *statsDB) createBackup() error {
 	// If back is successful, move it to dbBackupPath
 	err := os.Rename(backupDBFilePath, filepath.Join(s.storage.dbBackupPath, backupDBFileName))
 	if err != nil {
-		return fmt.Errorf("failed to move backup DB file: %s", err)
+		return fmt.Errorf("failed to move backup DB file: %w", err)
 	}
+
 	level.Info(s.logger).Log("msg", "DB backed up", "file", backupDBFileName)
+
 	return nil
 }

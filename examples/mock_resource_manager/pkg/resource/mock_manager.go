@@ -28,7 +28,7 @@ var (
 
 func init() {
 	// Register manager
-	resource.RegisterManager(mockResourceManager, NewMockManager)
+	resource.Register(mockResourceManager, NewMockManager)
 }
 
 // Do all basic checks here
@@ -37,6 +37,7 @@ func preflightChecks(logger log.Logger) error {
 		level.Error(logger).Log("msg", "Failed to open executable", "path", *macctPath, "err", err)
 		return err
 	}
+
 	return nil
 }
 
@@ -47,7 +48,9 @@ func NewMockManager(cluster models.Cluster, logger log.Logger) (resource.Fetcher
 		level.Error(logger).Log("msg", "Failed to create mock manager.", "err", err)
 		return nil, err
 	}
+
 	level.Info(logger).Log("msg", "Compute units from mock resource manager will be retrieved.")
+
 	return &mockManager{
 		logger: logger,
 	}, nil

@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
-
-	"regexp"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -26,16 +25,17 @@ var (
 	reParens        = regexp.MustCompile(`\((.*)\)`)
 )
 
-// Check if file exists
+// Check if file exists.
 func fileExists(filename string) bool {
 	info, err := os.Stat(filename)
 	if os.IsNotExist(err) {
 		return false
 	}
+
 	return !info.IsDir()
 }
 
-// Find named matches in regex groups and return a map
+// Find named matches in regex groups and return a map.
 func findNamedMatches(regex *regexp.Regexp, str string) map[string]string {
 	match := regex.FindStringSubmatch(str)
 
@@ -43,6 +43,7 @@ func findNamedMatches(regex *regexp.Regexp, str string) map[string]string {
 	for i, name := range match {
 		results[regex.SubexpNames()[i]] = name
 	}
+
 	return results
 }
 
@@ -61,7 +62,7 @@ func SanitizeMetricName(metricName string) string {
 	return metricNameRegex.ReplaceAllString(metricName, "_")
 }
 
-// LoadCgroupsV2Metrics returns cgroup metrics from a given path
+// LoadCgroupsV2Metrics returns cgroup metrics from a given path.
 func LoadCgroupsV2Metrics(
 	name string,
 	cgroupfsPath string,
@@ -74,16 +75,19 @@ func LoadCgroupsV2Metrics(
 		if err != nil {
 			return data, err
 		}
+
 		for _, line := range strings.Split(string(contents), "\n") {
 			// Some of the above have a single value and others have a "data_name 123"
 			parts := strings.Fields(line)
 			indName := fName
 			indData := 0
+
 			if len(parts) == 1 || len(parts) == 2 {
 				if len(parts) == 2 {
 					indName += "." + parts[0]
 					indData = 1
 				}
+
 				if parts[indData] == "max" {
 					data[indName] = -1.0
 				} else {
@@ -97,24 +101,27 @@ func LoadCgroupsV2Metrics(
 			}
 		}
 	}
+
 	return data, nil
 }
 
-// GetGPUDevices returns GPU devices
+// GetGPUDevices returns GPU devices.
 func GetGPUDevices(gpuType string, logger log.Logger) (map[int]Device, error) {
 	if gpuType == "nvidia" {
 		return GetNvidiaGPUDevices(*nvidiaSmiPath, logger)
 	} else if gpuType == "amd" {
 		return GetAMDGPUDevices(*rocmSmiPath, logger)
 	}
+
 	return nil, fmt.Errorf("unknown GPU Type %s. Only nVIDIA and AMD GPU devices are supported", gpuType)
 }
 
-// Parse nvidia-smi output and return GPU Devices map
+// Parse nvidia-smi output and return GPU Devices map.
 func parseNvidiaSmiOutput(cmdOutput string, logger log.Logger) map[int]Device {
 	// Get all devices
 	gpuDevices := map[int]Device{}
 	devIndxInt := 0
+
 	for _, line := range strings.Split(strings.TrimSpace(cmdOutput), "\n") {
 		// Header line, empty line and newlines are ignored
 		if line == "" || line == "\n" || strings.HasPrefix(line, "index") {
@@ -125,6 +132,7 @@ func parseNvidiaSmiOutput(cmdOutput string, logger log.Logger) map[int]Device {
 		if len(devDetails) < 3 {
 			level.Error(logger).
 				Log("msg", "Cannot parse output from nvidia-smi command", "output", line)
+
 			continue
 		}
 
@@ -138,12 +146,14 @@ func parseNvidiaSmiOutput(cmdOutput string, logger log.Logger) map[int]Device {
 		if strings.HasPrefix(devUUID, "MIG") {
 			isMig = true
 		}
+
 		level.Debug(logger).
 			Log("msg", "Found nVIDIA GPU", "name", devName, "UUID", devUUID, "isMig:", isMig)
 
 		gpuDevices[devIndxInt] = Device{index: devIndx, name: devName, uuid: devUUID, isMig: isMig}
 		devIndxInt++
 	}
+
 	return gpuDevices
 }
 
@@ -158,15 +168,18 @@ func parseNvidiaSmiOutput(cmdOutput string, logger log.Logger) map[int]Device {
 // nvml go bindings. This way we dont have deps on nvidia stuff and keep
 // exporter simple.
 //
-// NOTE: Hoping this command returns MIG devices too
+// NOTE: Hoping this command returns MIG devices too.
 func GetNvidiaGPUDevices(nvidiaSmiPath string, logger log.Logger) (map[int]Device, error) {
 	// Check if nvidia-smi binary exists
 	var nvidiaSmiCmd string
+
 	if nvidiaSmiPath != "" {
 		if _, err := os.Stat(nvidiaSmiPath); err != nil {
 			level.Error(logger).Log("msg", "Failed to open nvidia-smi executable", "path", nvidiaSmiPath, "err", err)
+
 			return nil, err
 		}
+
 		nvidiaSmiCmd = nvidiaSmiPath
 	} else {
 		nvidiaSmiCmd = "nvidia-smi"
@@ -174,10 +187,12 @@ func GetNvidiaGPUDevices(nvidiaSmiPath string, logger log.Logger) (map[int]Devic
 
 	// Execute nvidia-smi command to get available GPUs
 	args := []string{"--query-gpu=index,name,uuid", "--format=csv"}
+
 	nvidiaSmiOutput, err := osexec.Execute(nvidiaSmiCmd, args, nil, logger)
 	if err != nil {
 		level.Error(logger).
 			Log("msg", "nvidia-smi command to get list of devices failed", "err", err)
+
 		return nil, err
 	}
 	// Get all devices
@@ -187,6 +202,7 @@ func GetNvidiaGPUDevices(nvidiaSmiPath string, logger log.Logger) (map[int]Devic
 func parseAmdSmioutput(cmdOutput string, logger log.Logger) map[int]Device {
 	gpuDevices := map[int]Device{}
 	devIndxInt := 0
+
 	for _, line := range strings.Split(strings.TrimSpace(cmdOutput), "\n") {
 		// Header line, empty line and newlines are ignored
 		if line == "" || line == "\n" || strings.HasPrefix(line, "device") {
@@ -197,6 +213,7 @@ func parseAmdSmioutput(cmdOutput string, logger log.Logger) map[int]Device {
 		if len(devDetails) < 6 {
 			level.Error(logger).
 				Log("msg", "Cannot parse output from rocm-smi command", "output", line)
+
 			continue
 		}
 
@@ -207,12 +224,14 @@ func parseAmdSmioutput(cmdOutput string, logger log.Logger) map[int]Device {
 
 		// Set isMig to false as it does not apply for AMD GPUs
 		isMig := false
+
 		level.Debug(logger).
 			Log("msg", "Found AMD GPU", "name", devName, "UUID", devUUID)
 
 		gpuDevices[devIndxInt] = Device{index: devIndx, name: devName, uuid: devUUID, isMig: isMig}
 		devIndxInt++
 	}
+
 	return gpuDevices
 }
 
@@ -222,15 +241,18 @@ func parseAmdSmioutput(cmdOutput string, logger log.Logger) map[int]Device {
 // device,Serial Number,Card series,Card model,Card vendor,Card SKU
 // card0,20170000800c,deon Instinct MI50 32GB,0x0834,Advanced Micro Devices Inc. [AMD/ATI],D16317
 // card1,20170003580c,deon Instinct MI50 32GB,0x0834,Advanced Micro Devices Inc. [AMD/ATI],D16317
-// card2,20180003050c,deon Instinct MI50 32GB,0x0834,Advanced Micro Devices Inc. [AMD/ATI],D16317
+// card2,20180003050c,deon Instinct MI50 32GB,0x0834,Advanced Micro Devices Inc. [AMD/ATI],D16317.
 func GetAMDGPUDevices(rocmSmiPath string, logger log.Logger) (map[int]Device, error) {
 	// Check if rocm-smi binary exists
 	var rocmSmiCmd string
+
 	if rocmSmiPath != "" {
 		if _, err := os.Stat(rocmSmiPath); err != nil {
 			level.Error(logger).Log("msg", "Failed to open rocm-smi executable", "path", rocmSmiPath, "err", err)
+
 			return nil, err
 		}
+
 		rocmSmiCmd = rocmSmiPath
 	} else {
 		rocmSmiCmd = "rocm-smi"
@@ -238,10 +260,12 @@ func GetAMDGPUDevices(rocmSmiPath string, logger log.Logger) (map[int]Device, er
 
 	// Execute nvidia-smi command to get available GPUs
 	args := []string{"--showproductname", "--showserial", "--csv"}
+
 	rocmSmiOutput, err := osexec.Execute(rocmSmiCmd, args, nil, logger)
 	if err != nil {
 		level.Error(logger).
 			Log("msg", "rocm-smi command to get list of devices failed", "err", err)
+
 		return nil, err
 	}
 	// Get all devices

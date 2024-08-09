@@ -9,9 +9,7 @@ import (
 	"time"
 )
 
-var (
-	binary, _ = filepath.Abs("../../bin/ceems_lb")
-)
+var binary, _ = filepath.Abs("../../bin/ceems_lb")
 
 const (
 	address = "localhost:19030"
@@ -29,6 +27,7 @@ func TestCEEMSLBExecutable(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+
 	err = os.Link(configPath, tmpConfigPath)
 	if err != nil {
 		t.Error(err)
@@ -46,12 +45,13 @@ func TestCEEMSLBExecutable(t *testing.T) {
 
 func runCommandAndTests(cmd *exec.Cmd) error {
 	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("failed to start command: %s", err)
+		return fmt.Errorf("failed to start command: %w", err)
 	}
 
 	// Sleep for a while and kill process
 	time.Sleep(1 * time.Second)
 
 	cmd.Process.Kill()
+
 	return nil
 }

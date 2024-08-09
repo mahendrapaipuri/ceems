@@ -37,7 +37,7 @@ import (
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
 
-// API Resources names
+// API Resources names.
 const (
 	unitsResourceName      = "units"
 	usageResourceName      = "usage"
@@ -48,7 +48,13 @@ const (
 	statsResourceName      = "stats"
 )
 
-// WebConfig makes HTTP web config from CLI args
+// Usage modes.
+const (
+	currentUsage = "current"
+	globalUsage  = "global"
+)
+
+// WebConfig makes HTTP web config from CLI args.
 type WebConfig struct {
 	Address          string
 	WebSystemdSocket bool
@@ -60,7 +66,7 @@ type WebConfig struct {
 	HTTPClientConfig config.HTTPClientConfig `yaml:",inline"`
 }
 
-// Config makes a server config
+// Config makes a server config.
 type Config struct {
 	Logger log.Logger
 	Web    WebConfig
@@ -77,7 +83,7 @@ type queriers struct {
 	key     func(context.Context, *sql.DB, Query, log.Logger) ([]models.Key, error)
 }
 
-// CEEMSServer struct implements HTTP server for stats
+// CEEMSServer struct implements HTTP server for stats.
 type CEEMSServer struct {
 	logger         log.Logger
 	server         *http.Server
@@ -90,7 +96,7 @@ type CEEMSServer struct {
 	healthCheck    func(*sql.DB, log.Logger) bool
 }
 
-// Response defines the response model of CEEMSAPIServer
+// Response defines the response model of CEEMSAPIServer.
 type Response[T any] struct {
 	Status    string    `json:"status"`
 	Data      []T       `json:"data"`
@@ -101,48 +107,51 @@ type Response[T any] struct {
 
 var (
 	aggUsageQueries    = make(map[string]string, len(base.UsageDBTableColNames))
-	cacheTTL           = time.Duration(15 * time.Minute)
-	defaultQueryWindow = time.Duration(24 * time.Hour) // One day
+	cacheTTL           = 15 * time.Minute
+	defaultQueryWindow = 24 * time.Hour // One day
 )
 
 const (
-	// Query to get quick stats like active projects, groups, jobs, etc
+	// Query to get quick stats like active projects, groups, jobs, etc.
 	statsQuery = `cluster_id,resource_manager,COUNT(*) AS num_units,COUNT(CASE WHEN ended_at_ts > 0 THEN 1 END) as num_inactive_units,COUNT(CASE WHEN ended_at_ts = 0 THEN 1 END) as num_active_units,COUNT(DISTINCT project) AS num_projects,COUNT(DISTINCT username) AS num_users`
 )
 
-// Make summary DB col names by using aggregate SQL functions
+// Make summary DB col names by using aggregate SQL functions.
 func init() {
 	// Use SQL aggregate functions in query
 	// For metrics involving total and averages, we use templates to build query
 	// after fetching all the keys in each metric map
 	for _, col := range base.UsageDBTableColNames {
-		if strings.HasPrefix(col, "num") {
+		switch {
+		case strings.HasPrefix(col, "num"):
 			if col == "num_units" {
 				aggUsageQueries[col] = "COUNT(u.id) AS num_units"
 			} else {
 				aggUsageQueries[col] = "SUM(u.num_updates) AS num_updates"
 			}
-		} else if strings.HasPrefix(col, "total") {
+		case strings.HasPrefix(col, "total"):
 			aggUsageQueries[col] = `{{- $mn := .MetricName -}}json_object({{range $i, $r := .MetricKeys}}{{if $i}},{{end}}'{{$r.Name}}',(SUM({{$mn}}_{{$r.Name}}.value)){{end}}) AS {{.MetricName}}||{{range $i, $r := .MetricKeys}}{{if $i}}|{{end}}json_each({{$mn}},'$.{{$r.Name}}') AS {{$mn}}_{{$r.Name}}{{end}}`
-		} else if strings.HasPrefix(col, "avg") {
+		case strings.HasPrefix(col, "avg"):
 			aggUsageQueries[col] = `{{- $mn := .MetricName -}}{{- $mw := .MetricWeight -}}{{- $tmn := .TimesMetricName -}}json_object({{range $i, $r := .MetricKeys}}{{if $i}},{{end}}'{{$r.Name}}',(SUM({{$mn}}_{{$r.Name}}.value*{{$tmn}}_{{$mw}}.value) / SUM({{$tmn}}_{{$mw}}.value)){{end}}) AS {{.MetricName}}||{{range $i, $r := .MetricKeys}}{{if $i}}|{{end}}json_each({{$mn}},'$.{{$r.Name}}') AS {{$mn}}_{{$r.Name}}{{end}}|json_each({{$tmn}},'$.{{$mw}}') AS {{$tmn}}_{{$mw}}`
-		} else {
+		default:
 			aggUsageQueries[col] = col
 		}
 	}
 }
 
-// Ping DB for connection test
+// Ping DB for connection test.
 func getDBStatus(dbConn *sql.DB, logger log.Logger) bool {
 	if err := dbConn.Ping(); err != nil {
 		level.Error(logger).Log("msg", "DB Ping failed", "err", err)
+
 		return false
 	}
+
 	return true
 }
 
-// NewCEEMSServer creates new CEEMSServer struct instance
-func NewCEEMSServer(c *Config) (*CEEMSServer, func(), error) {
+// New creates new CEEMSServer struct instance.
+func New(c *Config) (*CEEMSServer, func(), error) {
 	var err error
 
 	router := mux.NewRouter()
@@ -206,9 +215,9 @@ func NewCEEMSServer(c *Config) (*CEEMSServer, func(), error) {
 
 	// Allow only GET methods
 	subRouter.HandleFunc("/health", server.health).Methods(http.MethodGet)
-	subRouter.HandleFunc(fmt.Sprintf("/%s", usersResourceName), server.users).Methods(http.MethodGet)
-	subRouter.HandleFunc(fmt.Sprintf("/%s", projectsResourceName), server.projects).Methods(http.MethodGet)
-	subRouter.HandleFunc(fmt.Sprintf("/%s", unitsResourceName), server.units).Methods(http.MethodGet)
+	subRouter.HandleFunc("/"+usersResourceName, server.users).Methods(http.MethodGet)
+	subRouter.HandleFunc("/"+projectsResourceName, server.projects).Methods(http.MethodGet)
+	subRouter.HandleFunc("/"+unitsResourceName, server.units).Methods(http.MethodGet)
 	subRouter.HandleFunc(fmt.Sprintf("/%s/{mode:(?:current|global)}", usageResourceName), server.usage).
 		Methods(http.MethodGet)
 	subRouter.HandleFunc(fmt.Sprintf("/%s/verify", unitsResourceName), server.verifyUnitsOwnership).
@@ -240,7 +249,7 @@ func NewCEEMSServer(c *Config) (*CEEMSServer, func(), error) {
 	// Open DB connection
 	dsn := fmt.Sprintf("file:%s?%s", filepath.Join(c.DB.Data.Path, base.CEEMSDBName), "_mutex=no&mode=ro")
 	if server.db, err = sql.Open(sqlite3.DriverName, dsn); err != nil {
-		return nil, func() {}, fmt.Errorf("failed to open DB: %s", err)
+		return nil, func() {}, fmt.Errorf("failed to open DB: %w", err)
 	}
 
 	// Rate limit requests by RealIP
@@ -254,7 +263,7 @@ func NewCEEMSServer(c *Config) (*CEEMSServer, func(), error) {
 	amw := authenticationMiddleware{
 		logger:          c.Logger,
 		routerPrefix:    routePrefix,
-		whitelistedURLs: regexp.MustCompile(fmt.Sprintf("%s(swagger|health|demo)(.*)", routePrefix)),
+		whitelistedURLs: regexp.MustCompile(routePrefix + "(swagger|health|demo)(.*)"),
 		db:              server.db,
 		adminUsers:      adminUsers,
 	}
@@ -266,6 +275,7 @@ func NewCEEMSServer(c *Config) (*CEEMSServer, func(), error) {
 	)
 	// starts automatic expired item deletion
 	go server.usageCache.Start()
+
 	return server, func() {}, nil
 }
 
@@ -297,49 +307,55 @@ func NewCEEMSServer(c *Config) (*CEEMSServer, func(), error) {
 //	@externalDocs.url			https://mahendrapaipuri.github.io/ceems/
 func (s *CEEMSServer) Start() error {
 	// Set swagger info
-	docs.SwaggerInfo.BasePath = fmt.Sprintf("/api/%s", base.APIVersion)
+	docs.SwaggerInfo.BasePath = "/api/" + base.APIVersion
 	docs.SwaggerInfo.Schemes = []string{"http", "https"}
 	docs.SwaggerInfo.Host = s.server.Addr
 
-	level.Info(s.logger).Log("msg", fmt.Sprintf("Starting %s", base.CEEMSServerAppName))
-	if err := web.ListenAndServe(s.server, s.webConfig, s.logger); err != nil && err != http.ErrServerClosed {
+	level.Info(s.logger).Log("msg", "Starting "+base.CEEMSServerAppName)
+
+	if err := web.ListenAndServe(s.server, s.webConfig, s.logger); err != nil && errors.Is(err, http.ErrServerClosed) {
 		level.Error(s.logger).Log("msg", "Failed to Listen and Serve HTTP server", "err", err)
+
 		return err
 	}
+
 	return nil
 }
 
-// Shutdown server
+// Shutdown server.
 func (s *CEEMSServer) Shutdown(ctx context.Context) error {
 	// Close DB connection
 	if err := s.db.Close(); err != nil {
 		level.Error(s.logger).Log("msg", "Failed to close DB connection", "err", err)
+
 		return err
 	}
 
 	// Shutdown the server
 	if err := s.server.Shutdown(ctx); err != nil {
 		level.Error(s.logger).Log("msg", "Failed to shutdown HTTP server", "err", err)
+
 		return err
 	}
+
 	return nil
 }
 
-// Get current user from the header
+// Get current user from the header.
 func (s *CEEMSServer) getUser(r *http.Request) (string, string) {
 	return r.Header.Get(loggedUserHeader), r.Header.Get(dashboardUserHeader)
 }
 
-// setHeaders sets common response headers
+// setHeaders sets common response headers.
 func (s *CEEMSServer) setHeaders(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 }
 
-// setWriteDeadline sets write deadline to the request
+// setWriteDeadline sets write deadline to the request.
 func (s *CEEMSServer) setWriteDeadline(deadline time.Duration, w http.ResponseWriter) {
 	// Response controller
-	rc := http.NewResponseController(w)
+	rc := http.NewResponseController(w) //nolint:bodyclose
 
 	// Set write deadline to this request
 	if err := rc.SetWriteDeadline(time.Now().Add(deadline)); err != nil {
@@ -360,7 +376,7 @@ func (s *CEEMSServer) setWriteDeadline(deadline time.Duration, w http.ResponseWr
 //	@Failure		503	{string}	KO
 //	@Router			/health [get]
 //
-// Check status of server
+// Check status of server.
 func (s *CEEMSServer) health(w http.ResponseWriter, r *http.Request) {
 	if !s.healthCheck(s.db, s.logger) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
@@ -373,27 +389,29 @@ func (s *CEEMSServer) health(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// getCommonQueryParams fetches project and running query parameters and add them to query
-func (s *CEEMSServer) getCommonQueryParams(q *Query, URLValues url.Values) Query {
+// getCommonQueryParams fetches project and running query parameters and add them to query.
+func (s *CEEMSServer) getCommonQueryParams(q *Query, urlValues url.Values) Query {
 	// Get project query parameters if any
-	if projects := URLValues["project"]; len(projects) > 0 {
+	if projects := urlValues["project"]; len(projects) > 0 {
 		q.query(" AND project IN ")
 		q.param(projects)
 	}
 
 	// Get cluster_id query parameters if any
-	if clusterIDs := URLValues["cluster_id"]; len(clusterIDs) > 0 {
+	if clusterIDs := urlValues["cluster_id"]; len(clusterIDs) > 0 {
 		q.query(" AND cluster_id IN ")
 		q.param(clusterIDs)
 	}
+
 	return *q
 }
 
-// getQueriedFields returns a slice of queried fields
-func (s *CEEMSServer) getQueriedFields(URLValues url.Values, validFieldNames []string) []string {
+// getQueriedFields returns a slice of queried fields.
+func (s *CEEMSServer) getQueriedFields(urlValues url.Values, validFieldNames []string) []string {
 	// Get fields query parameters if any
 	var queriedFields []string
-	if fields := URLValues["field"]; len(fields) > 0 {
+
+	if fields := urlValues["field"]; len(fields) > 0 {
 		// Check if fields are valid field names
 		for _, f := range fields {
 			f = strings.TrimSpace(f)
@@ -404,11 +422,12 @@ func (s *CEEMSServer) getQueriedFields(URLValues url.Values, validFieldNames []s
 	} else {
 		queriedFields = validFieldNames
 	}
+
 	return queriedFields
 }
 
 // getQueryWindow returns `from` and `to` time stamps from query vars and
-// cast them into proper format
+// cast them into proper format.
 func (s *CEEMSServer) getQueryWindow(r *http.Request) (map[string]string, error) {
 	var fromTime, toTime time.Time
 	// Get to and from query parameters and do checks on them
@@ -419,11 +438,13 @@ func (s *CEEMSServer) getQueryWindow(r *http.Request) (map[string]string, error)
 		// Return error response if from is not a timestamp
 		if ts, err := strconv.ParseInt(f, 10, 64); err != nil {
 			level.Error(s.logger).Log("msg", "Failed to parse from timestamp", "from", f, "err", err)
-			return nil, fmt.Errorf("malformed 'from' timestamp")
+
+			return nil, fmt.Errorf("query parameter 'from': %w", ErrMalformedTimeStamp)
 		} else {
 			fromTime = time.Unix(ts, 0)
 		}
 	}
+
 	if t := r.URL.Query().Get("to"); t == "" {
 		// Use current time as default to
 		toTime = time.Now()
@@ -431,7 +452,8 @@ func (s *CEEMSServer) getQueryWindow(r *http.Request) (map[string]string, error)
 		// Return error response if to is not a timestamp
 		if ts, err := strconv.ParseInt(t, 10, 64); err != nil {
 			level.Error(s.logger).Log("msg", "Failed to parse to timestamp", "to", t, "err", err)
-			return nil, fmt.Errorf("malformed 'to' timestamp")
+
+			return nil, fmt.Errorf("query parameter 'to': %w", ErrMalformedTimeStamp)
 		} else {
 			toTime = time.Unix(ts, 0)
 		}
@@ -440,15 +462,17 @@ func (s *CEEMSServer) getQueryWindow(r *http.Request) (map[string]string, error)
 	// If difference between from and to is more than max query period, return with empty
 	// response. This is to prevent users from making "big" requests that can "potentially"
 	// choke server and end up in OOM errors
-	if s.maxQueryPeriod > time.Duration(0*time.Second) && toTime.Sub(fromTime) > s.maxQueryPeriod {
+	if s.maxQueryPeriod > 0*time.Second && toTime.Sub(fromTime) > s.maxQueryPeriod {
 		level.Error(s.logger).Log(
 			"msg", "Exceeded maximum query time window",
 			"max_query_window", s.maxQueryPeriod,
 			"from", fromTime.Format(time.DateTime), "to", toTime.Format(time.DateTime),
 			"query_window", toTime.Sub(fromTime).String(),
 		)
-		return nil, fmt.Errorf("maximum query window exceeded")
+
+		return nil, ErrMaxQueryWindow
 	}
+
 	return map[string]string{
 		"from": fromTime.Format(base.DatetimeLayout),
 		"to":   toTime.Format(base.DatetimeLayout),
@@ -456,7 +480,7 @@ func (s *CEEMSServer) getQueryWindow(r *http.Request) (map[string]string, error)
 }
 
 // roundQueryWindow rounds `to` and `from` query parameters to nearest multiple of
-// `cacheTTL`
+// `cacheTTL`.
 func (s *CEEMSServer) roundQueryWindow(r *http.Request) error {
 	cacheTTLSeconds := int64(cacheTTL.Seconds())
 	q := r.URL.Query()
@@ -471,33 +495,39 @@ func (s *CEEMSServer) roundQueryWindow(r *http.Request) error {
 		// Return error response if from is not a timestamp
 		if ts, err := strconv.ParseInt(f, 10, 64); err != nil {
 			level.Error(s.logger).Log("msg", "Failed to parse from timestamp", "from", f, "err", err)
-			return fmt.Errorf("malformed 'from' timestamp")
+
+			return fmt.Errorf("query parameter 'from': %w", ErrMalformedTimeStamp)
 		} else {
 			q.Set("from", strconv.FormatInt(common.Round(ts, cacheTTLSeconds), 10))
 		}
 	}
+
 	if t := q.Get("to"); t == "" {
 		q.Set("to", strconv.FormatInt(common.Round(time.Now().Local().Unix(), cacheTTLSeconds), 10))
 	} else {
 		// Return error response if from is not a timestamp
 		if ts, err := strconv.ParseInt(t, 10, 64); err != nil {
 			level.Error(s.logger).Log("msg", "Failed to parse from timestamp", "to", t, "err", err)
-			return fmt.Errorf("malformed 'from' timestamp")
+
+			return fmt.Errorf("query parameter 'to': %w", ErrMalformedTimeStamp)
 		} else {
 			q.Set("to", strconv.FormatInt(common.Round(ts, cacheTTLSeconds), 10))
 		}
 	}
+
 	r.URL.RawQuery = q.Encode()
+
 	return nil
 }
 
-// unitsQuerier queries for compute units and write response
+// unitsQuerier queries for compute units and write response.
 func (s *CEEMSServer) unitsQuerier(
 	queriedUsers []string,
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
 	var queryWindowTS map[string]string
+
 	var err error
 
 	// Get current logged user and dashboard user from headers
@@ -517,6 +547,7 @@ func (s *CEEMSServer) unitsQuerier(
 	if len(queriedFields) == 0 {
 		level.Error(s.logger).Log("msg", "Invalid query fields", "loggedUser", loggedUser, "err", errInvalidQueryField)
 		errorResponse[any](w, &apiError{errorBadData, errInvalidQueryField}, s.logger, nil)
+
 		return
 	}
 
@@ -550,6 +581,7 @@ func (s *CEEMSServer) unitsQuerier(
 	if uuids := r.URL.Query()["uuid"]; len(uuids) > 0 {
 		q.query(" AND uuid IN ")
 		q.param(uuids)
+
 		checkQueryWindow = false
 	}
 
@@ -563,6 +595,7 @@ func (s *CEEMSServer) unitsQuerier(
 	queryWindowTS, err = s.getQueryWindow(r)
 	if err != nil {
 		errorResponse[any](w, &apiError{errorBadData, err}, s.logger, nil)
+
 		return
 	}
 
@@ -581,11 +614,13 @@ queryUnits:
 	if units == nil && err != nil {
 		level.Error(s.logger).Log("msg", "Failed to fetch units", "loggedUser", loggedUser, "err", err)
 		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
+
 		return
 	}
 
 	// Write response
 	w.WriteHeader(http.StatusOK)
+
 	response := Response[models.Unit]{
 		Status: "success",
 		Data:   units,
@@ -593,6 +628,7 @@ queryUnits:
 	if err != nil {
 		response.Warnings = append(response.Warnings, err.Error())
 	}
+
 	if err = json.NewEncoder(w).Encode(&response); err != nil {
 		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
 		w.Write([]byte("KO"))
@@ -641,7 +677,7 @@ queryUnits:
 //	@Router			/units/admin [get]
 //
 // GET /units/admin
-// Get any unit of any user
+// Get any unit of any user.
 func (s *CEEMSServer) unitsAdmin(w http.ResponseWriter, r *http.Request) {
 	// Measure elapsed time
 	defer common.TimeTrack(time.Now(), "units admin endpoint", s.logger)
@@ -688,7 +724,7 @@ func (s *CEEMSServer) unitsAdmin(w http.ResponseWriter, r *http.Request) {
 //	@Router			/units [get]
 //
 // GET /units
-// Get unit of dashboard user
+// Get unit of dashboard user.
 func (s *CEEMSServer) units(w http.ResponseWriter, r *http.Request) {
 	// Measure elapsed time
 	defer common.TimeTrack(time.Now(), "units endpoint", s.logger)
@@ -734,7 +770,7 @@ func (s *CEEMSServer) units(w http.ResponseWriter, r *http.Request) {
 //	@Router			/units/verify [get]
 //
 // GET /units/verify
-// Verify the user ownership for queried units
+// Verify the user ownership for queried units.
 func (s *CEEMSServer) verifyUnitsOwnership(w http.ResponseWriter, r *http.Request) {
 	// Measure elapsed time
 	defer common.TimeTrack(time.Now(), "verify endpoint", s.logger)
@@ -751,13 +787,15 @@ func (s *CEEMSServer) verifyUnitsOwnership(w http.ResponseWriter, r *http.Reques
 	// Get list of queried uuids
 	uuids := r.URL.Query()["uuid"]
 	if len(uuids) == 0 {
-		errorResponse[any](w, &apiError{errorBadData, fmt.Errorf("uuids missing in the request")}, s.logger, nil)
+		errorResponse[any](w, &apiError{errorBadData, errMissingUIDs}, s.logger, nil)
+
 		return
 	}
 
 	// Check if user is owner of the queries uuids
 	if VerifyOwnership(r.Context(), dashboardUser, clusterID, uuids, s.db, s.logger) {
 		w.WriteHeader(http.StatusOK)
+
 		response := Response[string]{
 			Status: "success",
 		}
@@ -766,7 +804,7 @@ func (s *CEEMSServer) verifyUnitsOwnership(w http.ResponseWriter, r *http.Reques
 			w.Write([]byte("KO"))
 		}
 	} else {
-		errorResponse[any](w, &apiError{errorForbidden, fmt.Errorf("user do not have permissions on uuids")}, s.logger, nil)
+		errorResponse[any](w, &apiError{errorForbidden, errNoAuth}, s.logger, nil)
 	}
 }
 
@@ -791,7 +829,7 @@ func (s *CEEMSServer) verifyUnitsOwnership(w http.ResponseWriter, r *http.Reques
 //	@Router		/clusters/admin [get]
 //
 // GET /clusters/admin
-// Get clusters list in the DB
+// Get clusters list in the DB.
 func (s *CEEMSServer) clustersAdmin(w http.ResponseWriter, r *http.Request) {
 	// Measure elapsed time
 	defer common.TimeTrack(time.Now(), "clusters admin endpoint", s.logger)
@@ -816,11 +854,13 @@ func (s *CEEMSServer) clustersAdmin(w http.ResponseWriter, r *http.Request) {
 	if clusterIDs == nil && err != nil {
 		level.Error(s.logger).Log("msg", "Failed to fetch cluster IDs", "user", dashboardUser, "err", err)
 		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
+
 		return
 	}
 
 	// Write response
 	w.WriteHeader(http.StatusOK)
+
 	clusterIDsResponse := Response[models.Cluster]{
 		Status: "success",
 		Data:   clusterIDs,
@@ -828,20 +868,21 @@ func (s *CEEMSServer) clustersAdmin(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		clusterIDsResponse.Warnings = append(clusterIDsResponse.Warnings, err.Error())
 	}
+
 	if err = json.NewEncoder(w).Encode(&clusterIDsResponse); err != nil {
 		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
 		w.Write([]byte("KO"))
 	}
 }
 
-// Get user details
+// Get user details.
 func (s *CEEMSServer) usersQuerier(users []string, w http.ResponseWriter, r *http.Request) {
 	// Set headers
 	s.setHeaders(w)
 
 	// Make query
 	q := Query{}
-	q.query(fmt.Sprintf("SELECT * FROM %s", base.UsersDBTableName))
+	q.query("SELECT * FROM " + base.UsersDBTableName)
 	// If no user is queried, return all users. This can happen only for admin
 	// end points
 	if len(users) == 0 {
@@ -865,11 +906,13 @@ func (s *CEEMSServer) usersQuerier(users []string, w http.ResponseWriter, r *htt
 	if userModels == nil && err != nil {
 		level.Error(s.logger).Log("msg", "Failed to fetch user details", "users", strings.Join(users, ","), "err", err)
 		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
+
 		return
 	}
 
 	// Write response
 	w.WriteHeader(http.StatusOK)
+
 	usersResponse := Response[models.User]{
 		Status: "success",
 		Data:   userModels,
@@ -877,6 +920,7 @@ func (s *CEEMSServer) usersQuerier(users []string, w http.ResponseWriter, r *htt
 	if err != nil {
 		usersResponse.Warnings = append(usersResponse.Warnings, err.Error())
 	}
+
 	if err = json.NewEncoder(w).Encode(&usersResponse); err != nil {
 		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
 		w.Write([]byte("KO"))
@@ -903,7 +947,7 @@ func (s *CEEMSServer) usersQuerier(users []string, w http.ResponseWriter, r *htt
 //	@Router		/users [get]
 //
 // GET /users
-// Get users details
+// Get users details.
 func (s *CEEMSServer) users(w http.ResponseWriter, r *http.Request) {
 	// Measure elapsed time
 	defer common.TimeTrack(time.Now(), "users endpoint", s.logger)
@@ -942,7 +986,7 @@ func (s *CEEMSServer) users(w http.ResponseWriter, r *http.Request) {
 //	@Router		/users/admin [get]
 //
 // GET /users/admin
-// Get users details
+// Get users details.
 func (s *CEEMSServer) usersAdmin(w http.ResponseWriter, r *http.Request) {
 	// Measure elapsed time
 	defer common.TimeTrack(time.Now(), "users admin endpoint", s.logger)
@@ -951,7 +995,7 @@ func (s *CEEMSServer) usersAdmin(w http.ResponseWriter, r *http.Request) {
 	s.usersQuerier(r.URL.Query()["user"], w, r)
 }
 
-// Get project details
+// Get project details.
 func (s *CEEMSServer) projectsQuerier(users []string, w http.ResponseWriter, r *http.Request) {
 	// Set headers
 	s.setHeaders(w)
@@ -961,7 +1005,7 @@ func (s *CEEMSServer) projectsQuerier(users []string, w http.ResponseWriter, r *
 
 	// Make query
 	q := Query{}
-	q.query(fmt.Sprintf("SELECT * FROM %s", base.ProjectsDBTableName))
+	q.query("SELECT * FROM " + base.ProjectsDBTableName)
 
 	// First select all projects that user is part of using subquery
 	q.query(" WHERE name IN ")
@@ -990,11 +1034,13 @@ func (s *CEEMSServer) projectsQuerier(users []string, w http.ResponseWriter, r *
 			"users", strings.Join(users, ","), "err", err,
 		)
 		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
+
 		return
 	}
 
 	// Write response
 	w.WriteHeader(http.StatusOK)
+
 	projectsResponse := Response[models.Project]{
 		Status: "success",
 		Data:   projectModels,
@@ -1002,6 +1048,7 @@ func (s *CEEMSServer) projectsQuerier(users []string, w http.ResponseWriter, r *
 	if err != nil {
 		projectsResponse.Warnings = append(projectsResponse.Warnings, err.Error())
 	}
+
 	if err = json.NewEncoder(w).Encode(&projectsResponse); err != nil {
 		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
 		w.Write([]byte("KO"))
@@ -1031,7 +1078,7 @@ func (s *CEEMSServer) projectsQuerier(users []string, w http.ResponseWriter, r *
 //	@Router		/projects [get]
 //
 // GET /projects
-// Get project details
+// Get project details.
 func (s *CEEMSServer) projects(w http.ResponseWriter, r *http.Request) {
 	// Measure elapsed time
 	defer common.TimeTrack(time.Now(), "projects endpoint", s.logger)
@@ -1069,7 +1116,7 @@ func (s *CEEMSServer) projects(w http.ResponseWriter, r *http.Request) {
 //	@Router		/projects/admin [get]
 //
 // GET /projects/admin
-// Get project details
+// Get project details.
 func (s *CEEMSServer) projectsAdmin(w http.ResponseWriter, r *http.Request) {
 	// Measure elapsed time
 	defer common.TimeTrack(time.Now(), "projects admin endpoint", s.logger)
@@ -1078,7 +1125,7 @@ func (s *CEEMSServer) projectsAdmin(w http.ResponseWriter, r *http.Request) {
 	s.projectsQuerier(nil, w, r)
 }
 
-// aggQueryBuilder builds the aggregate queries for current usage
+// aggQueryBuilder builds the aggregate queries for current usage.
 func (s *CEEMSServer) aggQueryBuilder(
 	r *http.Request,
 	metric string,
@@ -1105,6 +1152,7 @@ func (s *CEEMSServer) aggQueryBuilder(
 	if keys == nil && err != nil {
 		level.Error(s.logger).
 			Log("msg", "Failed to fetch metric keys", "metric", metric, "err", err)
+
 		return ""
 	}
 
@@ -1119,31 +1167,44 @@ func (s *CEEMSServer) aggQueryBuilder(
 	// Execute template and get query
 	tmpl := template.Must(template.New(metric).Parse(aggUsageQueries[metric]))
 	query := &bytes.Buffer{}
+
 	if err := tmpl.Execute(query, data); err != nil {
 		level.Error(s.logger).
 			Log("msg", "Failed to execute query template", "metric", metric, "err", err)
+
 		return ""
 	}
+
 	return query.String()
 }
 
 // GET /usage/current
-// Get current usage statistics
+// Get current usage statistics.
 func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.ResponseWriter, r *http.Request) {
 	var usage []models.Usage
+
 	var groupby []string
+
 	var targetTable, targetCol string
+
 	var queryWindowTS map[string]string
-	var queryParts = make([]string, len(fields))
+
+	queryParts := make([]string, len(fields))
+
 	var queries, virtualTables []string
+
 	var wg sync.WaitGroup
+
 	var mu sync.RWMutex
+
 	var q Query
+
 	var err, qErrs error
 
 	// Round `to` and `from` query parameters to cacheTTL
 	if err := s.roundQueryWindow(r); err != nil {
 		errorResponse[any](w, &apiError{errorBadData, err}, s.logger, nil)
+
 		return
 	}
 
@@ -1151,6 +1212,7 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 	queryWindowTS, err = s.getQueryWindow(r)
 	if err != nil {
 		errorResponse[any](w, &apiError{errorBadData, err}, s.logger, nil)
+
 		return
 	}
 
@@ -1162,6 +1224,7 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 		cacheValue := s.usageCache.Get(cacheKey)
 		usage = cacheValue.Value()
 		w.Header().Set("Expires", cacheValue.ExpiresAt().Format(time.RFC1123))
+
 		goto writer
 	}
 
@@ -1175,8 +1238,10 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 	for iField, field := range fields {
 		if strings.HasPrefix(field, "avg") || strings.HasPrefix(field, "total") {
 			wg.Add(1)
+
 			go func(i int, f string) {
 				defer wg.Done()
+
 				if query := s.aggQueryBuilder(r, f, queryWindowTS); query != "" {
 					queryParts[i] = query
 				} else {
@@ -1202,13 +1267,16 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 	for _, query := range queryParts {
 		parts := strings.Split(query, "||")
 		queries = append(queries, parts[0])
+
 		if len(parts) == 1 || (len(parts) > 1 && parts[1] == "") {
 			continue
 		}
+
 		for _, p := range strings.Split(parts[1], "|") {
 			if p == "" || slices.Contains(virtualTables, p) {
 				continue
 			}
+
 			virtualTables = append(virtualTables, p)
 		}
 	}
@@ -1216,6 +1284,7 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 	if _, ok := r.URL.Query()["experimental"]; ok {
 		targetTable = base.DailyUsageDBTableName
 		targetCol = "last_updated_at"
+
 		for iQuery, query := range queries {
 			if strings.Contains(query, "COUNT") {
 				queries[iQuery] = "SUM(u.num_units) AS num_units"
@@ -1252,6 +1321,7 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 
 	// Finally add GROUP BY clause. Always group by username,project
 	groupby = []string{"username", "project"}
+
 	for _, q := range r.URL.Query()["groupby"] {
 		if q != "" {
 			groupby = append(groupby, q)
@@ -1260,7 +1330,7 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 	// Remove duplicates values
 	slices.Sort(groupby)
 	groupby = slices.Compact(groupby)
-	q.query(fmt.Sprintf(" GROUP BY %s", strings.Join(groupby, ",")))
+	q.query(" GROUP BY " + strings.Join(groupby, ","))
 
 	// Sort by cluster_id, username and project
 	q.query(" ORDER BY cluster_id ASC, username ASC, project ASC ")
@@ -1271,6 +1341,7 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 		level.Error(s.logger).
 			Log("msg", "Failed to fetch current usage statistics", "users", strings.Join(users, ","), "err", err)
 		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
+
 		return
 	}
 
@@ -1282,6 +1353,7 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 writer:
 	// Write response
 	w.WriteHeader(http.StatusOK)
+
 	usageResponse := Response[models.Usage]{
 		Status: "success",
 		Data:   usage,
@@ -1289,9 +1361,11 @@ writer:
 	if qErrs != nil {
 		usageResponse.Warnings = append(usageResponse.Warnings, qErrs.Error())
 	}
+
 	if err != nil {
 		usageResponse.Warnings = append(usageResponse.Warnings, err.Error())
 	}
+
 	if err = json.NewEncoder(w).Encode(&usageResponse); err != nil {
 		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
 		w.Write([]byte("KO"))
@@ -1299,7 +1373,7 @@ writer:
 }
 
 // GET /usage/global
-// Get global usage statistics
+// Get global usage statistics.
 func (s *CEEMSServer) globalUsage(users []string, queriedFields []string, w http.ResponseWriter, r *http.Request) {
 	// Get sub query for projects
 	qSub := projectsSubQuery(users)
@@ -1324,11 +1398,13 @@ func (s *CEEMSServer) globalUsage(users []string, queriedFields []string, w http
 		level.Error(s.logger).
 			Log("msg", "Failed to fetch global usage statistics", "users", strings.Join(users, ","), "err", err)
 		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
+
 		return
 	}
 
 	// Write response
 	w.WriteHeader(http.StatusOK)
+
 	usageResponse := Response[models.Usage]{
 		Status: "success",
 		Data:   usage,
@@ -1336,6 +1412,7 @@ func (s *CEEMSServer) globalUsage(users []string, queriedFields []string, w http
 	if err != nil {
 		usageResponse.Warnings = append(usageResponse.Warnings, err.Error())
 	}
+
 	if err = json.NewEncoder(w).Encode(&usageResponse); err != nil {
 		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
 		w.Write([]byte("KO"))
@@ -1396,7 +1473,7 @@ func (s *CEEMSServer) globalUsage(users []string, queriedFields []string, w http
 //	@Router			/usage/{mode} [get]
 //
 // GET /usage/{mode}
-// Get current/global usage statistics
+// Get current/global usage statistics.
 func (s *CEEMSServer) usage(w http.ResponseWriter, r *http.Request) {
 	// Measure elapsed time
 	defer common.TimeTrack(time.Now(), "usage endpoint", s.logger)
@@ -1409,9 +1486,11 @@ func (s *CEEMSServer) usage(w http.ResponseWriter, r *http.Request) {
 
 	// Get path parameter type
 	var mode string
+
 	var exists bool
 	if mode, exists = mux.Vars(r)["mode"]; !exists {
 		errorResponse[any](w, &apiError{errorBadData, errInvalidRequest}, s.logger, nil)
+
 		return
 	}
 
@@ -1420,16 +1499,17 @@ func (s *CEEMSServer) usage(w http.ResponseWriter, r *http.Request) {
 	if len(queriedFields) == 0 {
 		level.Error(s.logger).Log("msg", "Invalid query fields", "loggedUser", dashboardUser)
 		errorResponse[any](w, &apiError{errorBadData, errInvalidQueryField}, s.logger, nil)
+
 		return
 	}
 
 	// handle current usage query
-	if mode == "current" {
+	if mode == currentUsage {
 		s.currentUsage([]string{dashboardUser}, queriedFields, w, r)
 	}
 
 	// handle global usage query
-	if mode == "global" {
+	if mode == globalUsage {
 		s.globalUsage([]string{dashboardUser}, queriedFields, w, r)
 	}
 }
@@ -1493,7 +1573,7 @@ func (s *CEEMSServer) usage(w http.ResponseWriter, r *http.Request) {
 //	@Router			/usage/{mode}/admin [get]
 //
 // GET /usage/{mode}/admin
-// Get current/global usage statistics of any user
+// Get current/global usage statistics of any user.
 func (s *CEEMSServer) usageAdmin(w http.ResponseWriter, r *http.Request) {
 	// Measure elapsed time
 	defer common.TimeTrack(time.Now(), "usage admin endpoint", s.logger)
@@ -1506,9 +1586,11 @@ func (s *CEEMSServer) usageAdmin(w http.ResponseWriter, r *http.Request) {
 
 	// Get path parameter type
 	var mode string
+
 	var exists bool
 	if mode, exists = mux.Vars(r)["mode"]; !exists {
 		errorResponse[any](w, &apiError{errorBadData, errInvalidRequest}, s.logger, nil)
+
 		return
 	}
 
@@ -1517,26 +1599,30 @@ func (s *CEEMSServer) usageAdmin(w http.ResponseWriter, r *http.Request) {
 	if len(queriedFields) == 0 {
 		level.Error(s.logger).Log("msg", "Invalid query fields", "loggedUser", dashboardUser)
 		errorResponse[any](w, &apiError{errorBadData, errInvalidQueryField}, s.logger, nil)
+
 		return
 	}
 
 	// handle current usage query
-	if mode == "current" {
+	if mode == currentUsage {
 		s.currentUsage(r.URL.Query()["user"], queriedFields, w, r)
 	}
 
 	// handle global usage query
-	if mode == "global" {
+	if mode == globalUsage {
 		s.globalUsage(r.URL.Query()["user"], queriedFields, w, r)
 	}
 }
 
 // GET /stats/current
-// Get current quick stats
+// Get current quick stats.
 func (s *CEEMSServer) currentStats(users []string, w http.ResponseWriter, r *http.Request) {
 	var stats []models.Stat
+
 	var queryWindowTS map[string]string
+
 	var q, qSub Query
+
 	var err error
 
 	// Set write deadline
@@ -1550,6 +1636,7 @@ func (s *CEEMSServer) currentStats(users []string, w http.ResponseWriter, r *htt
 	queryWindowTS, err = s.getQueryWindow(r)
 	if err != nil {
 		errorResponse[any](w, &apiError{errorBadData, err}, s.logger, nil)
+
 		return
 	}
 
@@ -1585,11 +1672,13 @@ func (s *CEEMSServer) currentStats(users []string, w http.ResponseWriter, r *htt
 		level.Error(s.logger).
 			Log("msg", "Failed to fetch current quick stats", "users", strings.Join(users, ","), "err", err)
 		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
+
 		return
 	}
 
 	// Write response
 	w.WriteHeader(http.StatusOK)
+
 	projectsResponse := Response[models.Stat]{
 		Status: "success",
 		Data:   stats,
@@ -1597,6 +1686,7 @@ func (s *CEEMSServer) currentStats(users []string, w http.ResponseWriter, r *htt
 	if err != nil {
 		projectsResponse.Warnings = append(projectsResponse.Warnings, err.Error())
 	}
+
 	if err = json.NewEncoder(w).Encode(&projectsResponse); err != nil {
 		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
 		w.Write([]byte("KO"))
@@ -1604,10 +1694,12 @@ func (s *CEEMSServer) currentStats(users []string, w http.ResponseWriter, r *htt
 }
 
 // GET /stats/global
-// Get global usage statistics
+// Get global usage statistics.
 func (s *CEEMSServer) globalStats(users []string, w http.ResponseWriter, r *http.Request) {
 	var stats []models.Stat
+
 	var q Query
+
 	var err error
 
 	// Set write deadline
@@ -1635,11 +1727,13 @@ func (s *CEEMSServer) globalStats(users []string, w http.ResponseWriter, r *http
 		level.Error(s.logger).
 			Log("msg", "Failed to fetch global quick stats", "users", strings.Join(users, ","), "err", err)
 		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
+
 		return
 	}
 
 	// Write response
 	w.WriteHeader(http.StatusOK)
+
 	projectsResponse := Response[models.Stat]{
 		Status: "success",
 		Data:   stats,
@@ -1647,6 +1741,7 @@ func (s *CEEMSServer) globalStats(users []string, w http.ResponseWriter, r *http
 	if err != nil {
 		projectsResponse.Warnings = append(projectsResponse.Warnings, err.Error())
 	}
+
 	if err = json.NewEncoder(w).Encode(&projectsResponse); err != nil {
 		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
 		w.Write([]byte("KO"))
@@ -1692,7 +1787,7 @@ func (s *CEEMSServer) globalStats(users []string, w http.ResponseWriter, r *http
 //	@Router		/stats/{mode}/admin [get]
 //
 // GET /stats/{mode}/admin
-// Get current/global stats
+// Get current/global stats.
 func (s *CEEMSServer) statsAdmin(w http.ResponseWriter, r *http.Request) {
 	// Measure elapsed time
 	defer common.TimeTrack(time.Now(), "stats admin endpoint", s.logger)
@@ -1702,19 +1797,21 @@ func (s *CEEMSServer) statsAdmin(w http.ResponseWriter, r *http.Request) {
 
 	// Get path parameter type
 	var mode string
+
 	var exists bool
 	if mode, exists = mux.Vars(r)["mode"]; !exists {
 		errorResponse[any](w, &apiError{errorBadData, errInvalidRequest}, s.logger, nil)
+
 		return
 	}
 
 	// handle current usage query
-	if mode == "current" {
+	if mode == currentUsage {
 		s.currentStats(r.URL.Query()["user"], w, r)
 	}
 
 	// handle global usage query
-	if mode == "global" {
+	if mode == globalUsage {
 		s.globalStats(r.URL.Query()["user"], w, r)
 	}
 }
@@ -1742,7 +1839,7 @@ func (s *CEEMSServer) statsAdmin(w http.ResponseWriter, r *http.Request) {
 //	@Router			/demo/{resource} [get]
 //
 // GET /demo/{units,usage}
-// Return mocked data for different models
+// Return mocked data for different models.
 func (s *CEEMSServer) demo(w http.ResponseWriter, r *http.Request) {
 	// Measure elapsed time
 	defer common.TimeTrack(time.Now(), "demo endpoint", s.logger)
@@ -1752,9 +1849,11 @@ func (s *CEEMSServer) demo(w http.ResponseWriter, r *http.Request) {
 
 	// Get path parameter type
 	var resourceType string
+
 	var exists bool
 	if resourceType, exists = mux.Vars(r)["resource"]; !exists {
 		errorResponse[any](w, &apiError{errorBadData, errInvalidRequest}, s.logger, nil)
+
 		return
 	}
 
@@ -1763,6 +1862,7 @@ func (s *CEEMSServer) demo(w http.ResponseWriter, r *http.Request) {
 		units := mockUnits()
 		// Write response
 		w.WriteHeader(http.StatusOK)
+
 		unitsResponse := Response[models.Unit]{
 			Status: "success",
 			Data:   units,
@@ -1778,6 +1878,7 @@ func (s *CEEMSServer) demo(w http.ResponseWriter, r *http.Request) {
 		usage := mockUsage()
 		// Write response
 		w.WriteHeader(http.StatusOK)
+
 		usageResponse := Response[models.Usage]{
 			Status: "success",
 			Data:   usage,

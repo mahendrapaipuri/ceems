@@ -3,23 +3,28 @@
 package serverpool
 
 import (
-	"fmt"
+	"errors"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/backend"
 )
 
-// Manager is the interface every strategy must implement
+// Custom errors.
+var (
+	ErrInvalidStrategy = errors.New("invalid strategy")
+)
+
+// Manager is the interface every strategy must implement.
 type Manager interface {
 	Backends() map[string][]backend.TSDBServer
-	Target(string, time.Duration) backend.TSDBServer
-	Add(string, backend.TSDBServer)
-	Size(string) int
+	Target(id string, d time.Duration) backend.TSDBServer
+	Add(id string, b backend.TSDBServer)
+	Size(id string) int
 }
 
-// NewManager returns a new instance of server pool manager
-func NewManager(strategy string, logger log.Logger) (Manager, error) {
+// New returns a new instance of server pool manager.
+func New(strategy string, logger log.Logger) (Manager, error) {
 	switch strategy {
 	case "round-robin":
 		return &roundRobin{
@@ -38,6 +43,6 @@ func NewManager(strategy string, logger log.Logger) (Manager, error) {
 			logger:   logger,
 		}, nil
 	default:
-		return nil, fmt.Errorf("invalid strategy")
+		return nil, ErrInvalidStrategy
 	}
 }

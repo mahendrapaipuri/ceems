@@ -29,28 +29,28 @@ import (
 	"github.com/prometheus/exporter-toolkit/web"
 )
 
-// RetryContextKey is the key used to set context value for retry
+// RetryContextKey is the key used to set context value for retry.
 type RetryContextKey struct{}
 
-// QueryParamsContextKey is the key used to set context value for query params
+// QueryParamsContextKey is the key used to set context value for query params.
 type QueryParamsContextKey struct{}
 
-// QueryParams is the context value
+// QueryParams is the context value.
 type QueryParams struct {
 	id          string
 	uuids       []string
 	queryPeriod time.Duration
 }
 
-// LoadBalancer is the interface to implement
+// LoadBalancer is the interface to implement.
 type LoadBalancer interface {
-	Serve(http.ResponseWriter, *http.Request)
+	Serve(w http.ResponseWriter, r *http.Request)
 	Start() error
-	Shutdown(context.Context) error
+	Shutdown(ctx context.Context) error
 	ValidateClusterIDs() error
 }
 
-// Config makes a server config from CLI args
+// Config makes a server config from CLI args.
 type Config struct {
 	Logger           log.Logger
 	Address          string
@@ -60,7 +60,7 @@ type Config struct {
 	Manager          serverpool.Manager
 }
 
-// loadBalancer struct
+// loadBalancer struct.
 type loadBalancer struct {
 	logger    log.Logger
 	manager   serverpool.Manager
@@ -69,11 +69,14 @@ type loadBalancer struct {
 	amw       authenticationMiddleware
 }
 
-// NewLoadBalancer returns a new instance of load balancer
-func NewLoadBalancer(c *Config) (LoadBalancer, error) {
+// New returns a new instance of load balancer.
+func New(c *Config) (LoadBalancer, error) {
 	var db *sql.DB
+
 	var ceemsClient *http.Client
+
 	var ceemsWebURL *url.URL
+
 	var err error
 
 	// Check if DB path exists and get pointer to DB connection
@@ -134,7 +137,7 @@ outside:
 	}, nil
 }
 
-// ValidateClusterIDs validates the cluster IDs by checking them against DB
+// ValidateClusterIDs validates the cluster IDs by checking them against DB.
 func (lb *loadBalancer) ValidateClusterIDs() error {
 	// Fetch all cluster IDs set in config file
 	for id := range lb.manager.Backends() {
@@ -149,21 +152,24 @@ func (lb *loadBalancer) ValidateClusterIDs() error {
 
 	// If DB file is accessible, check directly from DB
 	var clusters []models.Cluster
+
 	if lb.amw.ceems.db != nil {
-		rows, err := lb.amw.ceems.db.Query(
-			fmt.Sprintf("SELECT DISTINCT cluster_id, resource_manager FROM %s", ceems_api_base.UnitsDBTableName),
-		)
-		if err != nil {
+		//nolint:gosec
+		rows, err := lb.amw.ceems.db.Query("SELECT DISTINCT cluster_id, resource_manager FROM " + ceems_api_base.UnitsDBTableName)
+		if err != nil || rows.Err() != nil {
 			return err
 		}
+		defer rows.Close()
 
 		var cluster models.Cluster
 		for rows.Next() {
 			if err := rows.Scan(&cluster.ID, &cluster.Manager); err != nil {
 				continue
 			}
+
 			clusters = append(clusters, cluster)
 		}
+
 		goto validate
 	}
 
@@ -183,8 +189,10 @@ func (lb *loadBalancer) ValidateClusterIDs() error {
 		if resp, err := lb.amw.ceems.client.Do(req); err != nil {
 			return err
 		} else {
+			defer resp.Body.Close()
+
 			// Any status code other than 200 should be treated as check failure
-			if resp.StatusCode != 200 {
+			if resp.StatusCode != http.StatusOK {
 				return fmt.Errorf("error response code %d from CEEMS API server", resp.StatusCode)
 			}
 
@@ -209,6 +217,7 @@ func (lb *loadBalancer) ValidateClusterIDs() error {
 			if data.Data == nil {
 				return fmt.Errorf("CEEMS API server response returned no data: %v", data)
 			}
+
 			clusters = data.Data
 		}
 	}
@@ -216,6 +225,7 @@ func (lb *loadBalancer) ValidateClusterIDs() error {
 validate:
 	// Gather all IDs in clusters
 	var actualClusterIDs []string
+
 	for _, cluster := range clusters {
 		actualClusterIDs = append(actualClusterIDs, cluster.ID)
 	}
@@ -229,29 +239,33 @@ validate:
 			)
 		}
 	}
+
 	return nil
 }
 
-// Start server
+// Start server.
 func (lb *loadBalancer) Start() error {
 	// Apply middleware
 	lb.server.Handler = lb.amw.Middleware(http.HandlerFunc(lb.Serve))
-	level.Info(lb.logger).Log("msg", fmt.Sprintf("Starting %s", base.CEEMSLoadBalancerAppName))
+	level.Info(lb.logger).Log("msg", "Starting "+base.CEEMSLoadBalancerAppName)
 
 	// Listen for requests
-	if err := web.ListenAndServe(lb.server, lb.webConfig, lb.logger); err != nil && err != http.ErrServerClosed {
+	if err := web.ListenAndServe(lb.server, lb.webConfig, lb.logger); err != nil && errors.Is(err, http.ErrServerClosed) {
 		level.Error(lb.logger).Log("msg", "Failed to Listen and Serve HTTP server", "err", err)
+
 		return err
 	}
+
 	return nil
 }
 
-// Shutdown server
+// Shutdown server.
 func (lb *loadBalancer) Shutdown(ctx context.Context) error {
 	// Close DB connection only if DB file is provided
 	if lb.amw.ceems.db != nil {
 		if err := lb.amw.ceems.db.Close(); err != nil {
 			level.Error(lb.logger).Log("msg", "Failed to close DB connection", "err", err)
+
 			return err
 		}
 	}
@@ -259,12 +273,14 @@ func (lb *loadBalancer) Shutdown(ctx context.Context) error {
 	// Shutdown the server
 	if err := lb.server.Shutdown(ctx); err != nil {
 		level.Error(lb.logger).Log("msg", "Failed to shutdown HTTP server", "err", err)
+
 		return err
 	}
+
 	return nil
 }
 
-// Serve serves the request using a backend TSDB server from the pool
+// Serve serves the request using a backend TSDB server from the pool.
 func (lb *loadBalancer) Serve(w http.ResponseWriter, r *http.Request) {
 	// Retrieve query params from context
 	queryParams := r.Context().Value(QueryParamsContextKey{})
@@ -272,17 +288,30 @@ func (lb *loadBalancer) Serve(w http.ResponseWriter, r *http.Request) {
 	// Check if queryParams is nil which could happen in edge cases
 	if queryParams == nil {
 		http.Error(w, "Query parameters not found", http.StatusBadRequest)
+
 		return
 	}
 
 	// Middleware ensures that query parameters are always set in request's context
-	queryPeriod := queryParams.(*QueryParams).queryPeriod
-	id := queryParams.(*QueryParams).id
+	var queryPeriod time.Duration
+
+	var id string
+
+	if v, ok := queryParams.(*QueryParams); ok {
+		queryPeriod = v.queryPeriod
+		id = v.id
+	} else {
+		http.Error(w, "Invalid query parameters", http.StatusBadRequest)
+
+		return
+	}
 
 	// Choose target based on query Period
 	if target := lb.manager.Target(id, queryPeriod); target != nil {
 		target.Serve(w, r)
+
 		return
 	}
+
 	http.Error(w, "Service not available", http.StatusServiceUnavailable)
 }

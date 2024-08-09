@@ -54,6 +54,7 @@ func TestParseTimeParam(t *testing.T) {
 				asTime: time.Time{},
 				asError: func() error {
 					_, err := parseTime("baz")
+
 					return fmt.Errorf("invalid time value for '%s': %w", "foo", err)
 				},
 			},
@@ -61,7 +62,7 @@ func TestParseTimeParam(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		req, err := http.NewRequest("GET", "localhost:42/foo?"+test.paramName+"="+test.paramValue, nil)
+		req, err := http.NewRequest(http.MethodGet, "localhost:42/foo?"+test.paramName+"="+test.paramValue, nil)
 		require.NoError(t, err)
 
 		result := test.result
@@ -133,8 +134,10 @@ func TestParseTime(t *testing.T) {
 			if !ts.Equal(test.result) {
 				t.Errorf("%s: expected %s, got %s", test.input, test.result, ts)
 			}
+
 			continue
 		}
+
 		assert.Error(t, err)
 	}
 }
@@ -180,11 +183,13 @@ func TestParseQueryParams(t *testing.T) {
 		// Query params
 		data := url.Values{}
 		data.Set("query", test.query)
+
 		if test.method == "POST" {
 			body = strings.NewReader(data.Encode())
 		} else {
 			body = strings.NewReader("hello")
 		}
+
 		req, err := http.NewRequest(test.method, "http://localhost:9090", body)
 		require.NoError(t, err)
 
@@ -196,7 +201,7 @@ func TestParseQueryParams(t *testing.T) {
 		}
 
 		newReq := parseQueryParams(req, test.rmIDs, log.NewNopLogger())
-		queryParams := newReq.Context().Value(QueryParamsContextKey{}).(*QueryParams)
+		queryParams := newReq.Context().Value(QueryParamsContextKey{}).(*QueryParams) //nolint:forcetypeassert
 		assert.Equal(t, queryParams.uuids, test.uuids)
 		assert.Equal(t, queryParams.id, test.rmID)
 

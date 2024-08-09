@@ -14,7 +14,7 @@ import (
 	"github.com/go-kit/log/level"
 )
 
-// Execute command and return stdout/stderr
+// Execute command and return stdout/stderr.
 func Execute(cmd string, args []string, env []string, logger log.Logger) ([]byte, error) {
 	level.Debug(logger).Log("msg", "Executing", "command", cmd, "args", strings.Join(args, " "))
 
@@ -38,13 +38,15 @@ func Execute(cmd string, args []string, env []string, logger log.Logger) ([]byte
 		level.Error(logger).
 			Log("msg", "Error executing command", "command", cmd, "args", strings.Join(args, " "), "err", err)
 	}
+
 	return out, err
 }
 
-// ExecuteAs executes a command as a given UID and GID and return stdout/stderr
+// ExecuteAs executes a command as a given UID and GID and return stdout/stderr.
 func ExecuteAs(cmd string, args []string, uid int, gid int, env []string, logger log.Logger) ([]byte, error) {
 	level.Debug(logger).
 		Log("msg", "Executing as user", "command", cmd, "args", strings.Join(args, " "), "uid", uid, "gid", gid)
+
 	execCmd := exec.Command(cmd, args...)
 
 	// Check bounds on uid and gid before converting into int32
@@ -52,6 +54,7 @@ func ExecuteAs(cmd string, args []string, uid int, gid int, env []string, logger
 	if uid > 0 && uid <= math.MaxInt32 {
 		uidInt32 = uint32(uid)
 	}
+
 	if gid > 0 && gid <= math.MaxInt32 {
 		gidInt32 = uint32(gid)
 	}
@@ -71,15 +74,17 @@ func ExecuteAs(cmd string, args []string, uid int, gid int, env []string, logger
 		level.Error(logger).
 			Log("msg", "Error executing command as user", "command", cmd, "args", strings.Join(args, " "), "uid", uid, "gid", gid, "err", err)
 	}
+
 	return out, err
 }
 
-// ExecuteWithTimeout exwecutes a command with timeout and return stdout/stderr
+// ExecuteWithTimeout exwecutes a command with timeout and return stdout/stderr.
 func ExecuteWithTimeout(cmd string, args []string, timeout int, env []string, logger log.Logger) ([]byte, error) {
 	level.Debug(logger).
 		Log("msg", "Executing with timeout", "command", cmd, "args", strings.Join(args, " "), "timeout", timeout)
 
 	ctx := context.Background()
+
 	if timeout > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
@@ -109,10 +114,11 @@ func ExecuteWithTimeout(cmd string, args []string, timeout int, env []string, lo
 		level.Error(logger).
 			Log("msg", "Error executing command", "command", cmd, "args", strings.Join(args, " "), "err", err)
 	}
+
 	return out, err
 }
 
-// ExecuteAsWithTimeout executes a command with timeout as a given UID and GID and return stdout/stderr
+// ExecuteAsWithTimeout executes a command with timeout as a given UID and GID and return stdout/stderr.
 func ExecuteAsWithTimeout(
 	cmd string,
 	args []string,
@@ -123,9 +129,10 @@ func ExecuteAsWithTimeout(
 	logger log.Logger,
 ) ([]byte, error) {
 	level.Debug(logger).
-		Log("msg", "Executing with timeout as user", "command", cmd, "args", strings.Join(args, " "), "uid", uid, "gid", gid, "timout")
+		Log("msg", "Executing with timeout as user", "command", cmd, "args", strings.Join(args, " "), "uid", uid, "gid", gid, "timout", timeout)
 
 	ctx := context.Background()
+
 	if timeout > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
@@ -144,6 +151,7 @@ func ExecuteAsWithTimeout(
 	if uid > 0 && uid <= math.MaxInt32 {
 		uidInt32 = uint32(uid)
 	}
+
 	if gid > 0 && gid <= math.MaxInt32 {
 		gidInt32 = uint32(gid)
 	}
@@ -158,5 +166,6 @@ func ExecuteAsWithTimeout(
 		level.Error(logger).
 			Log("msg", "Error executing command as user", "command", cmd, "args", strings.Join(args, " "), "uid", uid, "gid", gid, "err", err)
 	}
+
 	return out, err
 }

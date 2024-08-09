@@ -26,16 +26,20 @@ func queryExporter(address string) error {
 	if err != nil {
 		return err
 	}
+
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
+
 	if err := resp.Body.Close(); err != nil {
 		return err
 	}
+
 	if want, have := http.StatusOK, resp.StatusCode; want != have {
 		return fmt.Errorf("want /metrics status code %d, have %d. Body:\n%s", want, have, b)
 	}
+
 	return nil
 }
 
@@ -47,7 +51,7 @@ func TestCEEMSExporterAppHandler(t *testing.T) {
 
 	// Create handler
 	handler := a.newHandler(false, 1, log.NewNopLogger())
-	assert.Equal(t, handler.maxRequests, 1)
+	assert.Equal(t, 1, handler.maxRequests)
 }
 
 func TestCEEMSExporterMain(t *testing.T) {
@@ -68,11 +72,13 @@ func TestCEEMSExporterMain(t *testing.T) {
 	}()
 
 	// Query exporter
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		if err := queryExporter("localhost:9010"); err == nil {
 			break
 		}
+
 		time.Sleep(500 * time.Millisecond)
+
 		if i == 9 {
 			t.Errorf("Could not start exporter after %d attempts", i)
 		}

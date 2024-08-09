@@ -1,4 +1,4 @@
-package updater
+package tsdb
 
 import (
 	"encoding/json"
@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
+	"github.com/mahendrapaipuri/ceems/pkg/api/updater"
 	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -47,10 +48,11 @@ func mockTSDBServer() *httptest.Server {
 			w.Write([]byte("KO"))
 		}
 	}))
+
 	return server
 }
 
-func mockInstanceConfig(url string) Instance {
+func mockInstanceConfig(url string) (updater.Instance, error) {
 	config := `
 ---
 cutoff_duration: 2m
@@ -87,20 +89,22 @@ queries:
       packets: bar
       drops: foo
       errors: bar`
+
 	var extraConfig yaml.Node
+
 	if err := yaml.Unmarshal([]byte(config), &extraConfig); err != nil {
-		fmt.Printf("failed to unmarshall config: %s\n", err)
+		return updater.Instance{}, fmt.Errorf("failed to unmarshall config: %w\n", err)
 	}
 
 	// Make mock config
-	return Instance{
+	return updater.Instance{
 		ID:      "default",
 		Updater: "tsdb",
 		Web: models.WebConfig{
 			URL: url,
 		},
 		Extra: extraConfig,
-	}
+	}, nil
 }
 
 func TestTSDBUpdateSuccessSingleInstance(t *testing.T) {
@@ -109,7 +113,8 @@ func TestTSDBUpdateSuccessSingleInstance(t *testing.T) {
 	defer server.Close()
 
 	// Make mock instance config
-	instance := mockInstanceConfig(server.URL)
+	instance, err := mockInstanceConfig(server.URL)
+	require.NoError(t, err)
 
 	// Current time
 	currTime := time.Now()
@@ -256,11 +261,11 @@ func TestTSDBUpdateSuccessSingleInstance(t *testing.T) {
 		},
 	}
 
-	tsdb, err := NewTSDBUpdater(instance, log.NewNopLogger())
+	tsdb, err := New(instance, log.NewNopLogger())
 	require.NoError(t, err)
 
 	updatedUnits := tsdb.Update(time.Now().Add(-5*time.Minute), time.Now(), units)
-	for i := 0; i < len(expectedUnits); i++ {
+	for i := range len(expectedUnits) {
 		assert.Equal(t, expectedUnits[i], updatedUnits[0].Units[i], fmt.Sprintf("Unit: %d", i))
 	}
 }
@@ -271,7 +276,8 @@ func TestTSDBUpdateFailMaxDuration(t *testing.T) {
 	defer server.Close()
 
 	// Make mock instance config
-	instance := mockInstanceConfig(server.URL)
+	instance, err := mockInstanceConfig(server.URL)
+	require.NoError(t, err)
 
 	// Current time
 	currTime := time.Now()
@@ -363,11 +369,11 @@ func TestTSDBUpdateFailMaxDuration(t *testing.T) {
 		},
 	}
 
-	tsdb, err := NewTSDBUpdater(instance, log.NewNopLogger())
+	tsdb, err := New(instance, log.NewNopLogger())
 	require.NoError(t, err)
 
 	updatedUnits := tsdb.Update(time.Now().Add(-1*time.Minute), time.Now(), units)
-	assert.Equal(t, updatedUnits[0].Units, expectedUnits)
+	assert.Equal(t, expectedUnits, updatedUnits[0].Units)
 }
 
 func TestTSDBUpdateFailNoUnits(t *testing.T) {
@@ -376,7 +382,8 @@ func TestTSDBUpdateFailNoUnits(t *testing.T) {
 	defer server.Close()
 
 	// Make mock instance config
-	instance := mockInstanceConfig(server.URL)
+	instance, err := mockInstanceConfig(server.URL)
+	require.NoError(t, err)
 
 	units := []models.ClusterUnits{
 		{
@@ -387,14 +394,15 @@ func TestTSDBUpdateFailNoUnits(t *testing.T) {
 		},
 	}
 
-	tsdb, err := NewTSDBUpdater(instance, log.NewNopLogger())
+	tsdb, err := New(instance, log.NewNopLogger())
 	require.NoError(t, err)
+
 	if err != nil {
 		t.Errorf("Failed to create TSDB updater instance")
 	}
 
 	updatedUnits := tsdb.Update(time.Now().Add(-5*time.Minute), time.Now(), units)
-	assert.Len(t, updatedUnits[0].Units, 0)
+	assert.Empty(t, updatedUnits[0].Units)
 }
 
 func TestTSDBUpdateFailNoTSDB(t *testing.T) {
@@ -402,7 +410,8 @@ func TestTSDBUpdateFailNoTSDB(t *testing.T) {
 	server := mockTSDBServer()
 
 	// Make mock instance config
-	instance := mockInstanceConfig(server.URL)
+	instance, err := mockInstanceConfig(server.URL)
+	require.NoError(t, err)
 
 	units := []models.ClusterUnits{
 		{
@@ -438,12 +447,12 @@ func TestTSDBUpdateFailNoTSDB(t *testing.T) {
 
 	expectedUnits := units
 
-	tsdb, err := NewTSDBUpdater(instance, log.NewNopLogger())
+	tsdb, err := New(instance, log.NewNopLogger())
 	require.NoError(t, err)
 
 	// Stop TSDB server
 	server.Close()
 
 	updatedUnits := tsdb.Update(time.Now().Add(-5*time.Minute), time.Now(), units)
-	assert.Equal(t, updatedUnits, expectedUnits)
+	assert.Equal(t, expectedUnits, updatedUnits)
 }

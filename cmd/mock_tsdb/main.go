@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"hash/fnv"
 	"log"
 	"math"
@@ -19,53 +18,63 @@ import (
 // Default port Prometheus listens on.
 const portNum string = ":9090"
 
-// Regex to capture query
+// Regex to capture query.
 var (
 	queryRegex = regexp.MustCompile("^(.*){")
 	regexpUUID = regexp.MustCompile("(?:.+?)[^gpu]uuid=[~]{0,1}\"(?P<uuid>[a-zA-Z0-9-|]+)\"(?:.*)")
 )
 
-// hash returns hash of a given string
+// hash returns hash of a given string.
 func hash(s string) uint32 {
 	h := fnv.New32a()
 	h.Write([]byte(s))
+
 	return h.Sum32()
 }
 
-// lenLoop returns number of digits in an integer
+// lenLoop returns number of digits in an integer.
 func lenLoop(i uint32) int {
 	if i == 0 {
 		return 1
 	}
+
 	count := 0
+
 	for i != 0 {
 		i /= 10
 		count++
 	}
+
 	return count
 }
 
-// QueryHandler handles queries
+// QueryHandler handles queries.
 func QueryHandler(w http.ResponseWriter, r *http.Request) {
 	var response tsdb.Response
+
 	var query string
+
 	switch r.Method {
-	case "GET":
+	case http.MethodGet:
 		query = r.URL.Query()["query"][0]
-	case "POST":
+	case http.MethodPost:
 		// Call ParseForm() to parse the raw query and update r.PostForm and r.Form.
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, "ParseForm error", http.StatusInternalServerError)
+
 			return
 		}
+
 		query = r.FormValue("query")
 	default:
 		http.Error(w, "Only GET and POST are allowed", http.StatusForbidden)
+
 		return
 	}
 
 	// Extract UUIDs from query
 	var uuids []string
+
 	uuidMatches := regexpUUID.FindAllStringSubmatch(query, -1)
 	for _, match := range uuidMatches {
 		if len(match) > 1 {
@@ -87,12 +96,14 @@ func QueryHandler(w http.ResponseWriter, r *http.Request) {
 	// log.Println("Query", query, "UUIDs", uuids)
 
 	var results []interface{}
-	if slices.Contains(
+
+	switch {
+	case slices.Contains(
 		[]string{
 			"avg_cpu_usage", "avg_cpu_mem_usage", "avg_gpu_usage",
 			"avg_gpu_mem_usage", "total_cpu_energy_usage_kwh", "total_gpu_energy_usage_kwh",
 			"total_cpu_emissions_gms", "total_gpu_emissions_gms",
-		}, query) {
+		}, query):
 		// Convert uuid into hash and transform that hash number into float64 between 0 and 100
 		for _, uuid := range uuids {
 			h := hash(uuid)
@@ -108,10 +119,10 @@ func QueryHandler(w http.ResponseWriter, r *http.Request) {
 					},
 				})
 		}
-	} else if slices.Contains(
+	case slices.Contains(
 		[]string{
 			"total_io_read_stats_bytes", "total_io_write_stats_bytes",
-		}, query) {
+		}, query):
 		for _, uuid := range uuids {
 			h := hash(uuid)
 			results = append(results,
@@ -124,10 +135,10 @@ func QueryHandler(w http.ResponseWriter, r *http.Request) {
 					},
 				})
 		}
-	} else if slices.Contains(
+	case slices.Contains(
 		[]string{
 			"total_io_read_stats_requests", "total_io_write_stats_requests",
-		}, query) {
+		}, query):
 		for _, uuid := range uuids {
 			h := hash(uuid)
 			results = append(results,
@@ -140,10 +151,10 @@ func QueryHandler(w http.ResponseWriter, r *http.Request) {
 					},
 				})
 		}
-	} else if slices.Contains(
+	case slices.Contains(
 		[]string{
 			"total_ingress_stats_bytes", "total_outgress_stats_bytes",
-		}, query) {
+		}, query):
 		for _, uuid := range uuids {
 			h := hash(uuid)
 			results = append(results,
@@ -156,10 +167,10 @@ func QueryHandler(w http.ResponseWriter, r *http.Request) {
 					},
 				})
 		}
-	} else if slices.Contains(
+	case slices.Contains(
 		[]string{
 			"total_ingress_stats_packets", "total_outgress_stats_packets",
-		}, query) {
+		}, query):
 		for _, uuid := range uuids {
 			h := hash(uuid)
 			results = append(results,
@@ -172,6 +183,7 @@ func QueryHandler(w http.ResponseWriter, r *http.Request) {
 					},
 				})
 		}
+	default:
 	}
 	// responseResults := filterResults(uuids, esults)
 	response = tsdb.Response{
@@ -186,7 +198,7 @@ func QueryHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// ConfigHandler handles Promtheus config
+// ConfigHandler handles Promtheus config.
 func ConfigHandler(w http.ResponseWriter, r *http.Request) {
 	response := tsdb.Response{
 		Status: "success",
@@ -207,7 +219,7 @@ func main() {
 	http.HandleFunc("/api/v1/status/config", ConfigHandler)
 
 	log.Println("Started on port", portNum)
-	fmt.Println("To close connection CTRL+C :-)")
+	log.Println("To close connection CTRL+C :-)")
 
 	// Start server
 	server := &http.Server{

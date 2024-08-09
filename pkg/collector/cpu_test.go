@@ -13,6 +13,7 @@ import (
 
 func makeTestCPUCollector(s procfs.CPUStat) *cpuCollector {
 	dupStat := s
+
 	return &cpuCollector{
 		logger:   log.NewNopLogger(),
 		cpuStats: dupStat,
@@ -44,7 +45,8 @@ func TestCPU(t *testing.T) {
 		SoftIRQ:   101.0,
 		Steal:     101.0,
 		Guest:     101.0,
-		GuestNice: 101.0}
+		GuestNice: 101.0,
+	}
 	c.updateCPUStats(want)
 	got := c.cpuStats
 	assert.Equal(t, want, got)

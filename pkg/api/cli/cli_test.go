@@ -19,28 +19,34 @@ import (
 
 func queryServer(address string) error {
 	client := &http.Client{}
-	req, _ := http.NewRequest("GET", fmt.Sprintf("http://%s/api/%s/health", address, base.APIVersion), nil)
+	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s/api/%s/health", address, base.APIVersion), nil)
 	req.Header.Set("X-Grafana-User", "usr1")
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}
+
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
+
 	if err := resp.Body.Close(); err != nil {
 		return err
 	}
+
 	if want, have := http.StatusOK, resp.StatusCode; want != have {
 		return fmt.Errorf("want /metrics status code %d, have %d. Body:\n%s", want, have, b)
 	}
+
 	return nil
 }
 
 func makeConfigFile(configFile string, tmpDir string) string {
 	configPath := filepath.Join(tmpDir, "config.yml")
-	os.WriteFile(configPath, []byte(configFile), 0600)
+	os.WriteFile(configPath, []byte(configFile), 0o600)
+
 	return configPath
 }
 
@@ -108,14 +114,16 @@ ceems_api_server:
 
 	// Create sample DB file
 	os.MkdirAll(dataDir, os.ModePerm)
+
 	f, err := os.Create(filepath.Join(dataDir, base.CEEMSDBName))
 	if err != nil {
 		require.NoError(t, err)
 	}
+
 	f.Close()
 
 	// Remove test related args
-	os.Args = append([]string{os.Args[0]}, fmt.Sprintf("--config.file=%s", configFilePath))
+	os.Args = append([]string{os.Args[0]}, "--config.file="+configFilePath)
 	os.Args = append(os.Args, "--log.level=debug")
 	a, _ := NewCEEMSServer()
 
@@ -125,15 +133,15 @@ ceems_api_server:
 	}()
 
 	// Query exporter
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		if err := queryServer("localhost:9020"); err == nil {
 			break
-		} else {
-			fmt.Printf("err %s", err)
 		}
+
 		time.Sleep(500 * time.Millisecond)
+
 		if i == 9 {
-			assert.Errorf(t, fmt.Errorf("Could not start stats server after %d attempts", i), "failed to start server")
+			require.Errorf(t, fmt.Errorf("Could not start stats server after %d attempts", i), "failed to start server")
 		}
 	}
 

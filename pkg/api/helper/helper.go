@@ -8,24 +8,26 @@ import (
 	"time"
 )
 
-var (
-	nodelistRegExp = regexp.MustCompile(`\[(.*?)\]`)
-)
+var nodelistRegExp = regexp.MustCompile(`\[(.*?)\]`)
 
 // Replace delimiter in nodelist
 // The default delimiter "," is used to separate nodes and ranges. So we first
-// replace the delimiter of nodes to | and call parser function
+// replace the delimiter of nodes to | and call parser function.
 func replaceNodelistDelimiter(nodelistExp string) string {
 	// Split expression into slice
 	// This will split both nodes and ranges
 	// Eg a[0-1,3,5-6],b[2-3,4] will be split into "a[0-1", "3", "5-6]", "b[2-3", "4]"
 	// We need the rejoin the resulting slice to get node ranges together
-	var nodelistExpSlice = strings.Split(nodelistExp, ",")
+	nodelistExpSlice := strings.Split(nodelistExp, ",")
+
 	var nodelist []string
-	var idxEnd = 0
+
+	idxEnd := 0
+
 	for idx, nodeexp := range nodelistExpSlice {
 		// If string contains only "[", it was split in the range as well
-		if strings.Contains(nodeexp, "[") && !strings.Contains(nodeexp, "]") {
+		switch {
+		case strings.Contains(nodeexp, "[") && !strings.Contains(nodeexp, "]"):
 			idxEnd = idx
 			// Keep matching until we find "]" and not "["
 			for {
@@ -34,19 +36,22 @@ func replaceNodelistDelimiter(nodelistExp string) string {
 					break
 				}
 			}
+
 			nodelist = append(nodelist, strings.Join(nodelistExpSlice[idx:idxEnd+1], ","))
-		} else if idx != 0 && idx <= idxEnd {
+		case idx != 0 && idx <= idxEnd:
 			// Ignore all the indices that we already sweeped in above loop
 			continue
-		} else {
+		default:
 			idxEnd = idx
+
 			nodelist = append(nodelist, nodeexp)
 		}
 	}
+
 	return strings.Join(nodelist, "|")
 }
 
-// Expand nodelist range string into slice of node names recursively
+// Expand nodelist range string into slice of node names recursively.
 func expandNodelist(nodelistExp string) []string {
 	var nodeNames []string
 	// First split by | to get individual nodes
@@ -74,6 +79,7 @@ func expandNodelist(nodelistExp string) []string {
 					if err != nil {
 						continue
 					}
+
 					endIdx, err := strconv.Atoi(subMatch[1])
 					if err != nil {
 						continue
@@ -81,7 +87,7 @@ func expandNodelist(nodelistExp string) []string {
 
 					// Append node names to slice
 					for i := startIdx; i <= endIdx; i++ {
-						nodename := strings.Replace(nodeexp, match, strconv.Itoa(i), -1)
+						nodename := strings.ReplaceAll(nodeexp, match, strconv.Itoa(i))
 						// Add them to slice and call function again
 						nodeNames = append(nodeNames, expandNodelist(nodename)...)
 					}
@@ -91,27 +97,30 @@ func expandNodelist(nodelistExp string) []string {
 			nodeNames = append(nodeNames, regexp.QuoteMeta(nodeexp))
 		}
 	}
+
 	return nodeNames
 }
 
-// NodelistParser expands SLURM NODELIST into slice of nodenames
+// NodelistParser expands SLURM NODELIST into slice of nodenames.
 func NodelistParser(nodelistExp string) []string {
 	return expandNodelist(replaceNodelistDelimiter(nodelistExp))
 }
 
-// TimeToTimestamp converts a date in a given layout to unix timestamp of the date
+// TimeToTimestamp converts a date in a given layout to unix timestamp of the date.
 func TimeToTimestamp(layout string, date string) int64 {
 	if t, err := time.Parse(layout, date); err == nil {
-		return int64(t.Local().UnixMilli())
+		return t.Local().UnixMilli()
 	}
+
 	return 0
 }
 
-// ChunkBy splits the slice into chunks of given size
-func ChunkBy[T any](items []T, chunkSize int) (chunks [][]T) {
-	var _chunks = make([][]T, 0, (len(items)/chunkSize)+1)
+// ChunkBy splits the slice into chunks of given size.
+func ChunkBy[T any](items []T, chunkSize int) [][]T {
+	_chunks := make([][]T, 0, (len(items)/chunkSize)+1)
 	for chunkSize < len(items) {
 		items, _chunks = items[chunkSize:], append(_chunks, items[0:chunkSize:chunkSize])
 	}
+
 	return append(_chunks, items)
 }

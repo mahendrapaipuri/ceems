@@ -2,7 +2,7 @@ package emissions
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -11,6 +11,10 @@ import (
 	"github.com/go-kit/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+)
+
+const (
+	dummyResponse = "dummy"
 )
 
 var (
@@ -30,8 +34,9 @@ func mockEMapsAPIRequest(
 ) (EmissionFactors, error) {
 	emapsIdx++
 	if emapsIdx > 2 {
-		return nil, fmt.Errorf("some random error while fetching stuff")
+		return nil, errors.New("some random error while fetching stuff")
 	}
+
 	return expectedEMapsFactor[emapsIdx-1], nil
 }
 
@@ -41,7 +46,7 @@ func mockEMapsAPIFailRequest(
 	zones map[string]string,
 	logger log.Logger,
 ) (EmissionFactors, error) {
-	return nil, fmt.Errorf("Failed API request")
+	return nil, errors.New("Failed API request")
 }
 
 func TestEMapsDataProvider(t *testing.T) {
@@ -63,12 +68,15 @@ func TestEMapsDataProvider(t *testing.T) {
 
 	// Sleep for 1 second and make a request again and it should change
 	time.Sleep(20 * time.Millisecond)
+
 	lastFactor, _ := s.Update()
 	assert.Equal(t, lastFactor, expectedEMapsFactor[1])
+
 	lastUpdateTime := s.lastRequestTime
 
 	// Sleep for 1 more second and make a request again and we should get last non null value
 	time.Sleep(20 * time.Millisecond)
+
 	lastFactor, _ = s.Update()
 	assert.Equal(t, lastFactor, expectedEMapsFactor[1])
 	assert.Equal(t, lastUpdateTime, s.lastRequestTime)
@@ -93,9 +101,9 @@ func TestNewEMapsProvider(t *testing.T) {
 	// if err == nil {
 	// 	t.Errorf("expected error to create a new instance of EMaps provider due to missing token env var")
 	// }
-
 	// Start test server
 	expected := eMapsZonesResponse{"FR": map[string]string{"zoneName": "France"}}
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if err := json.NewEncoder(w).Encode(&expected); err != nil {
 			w.Write([]byte("KO"))
@@ -113,7 +121,8 @@ func TestNewEMapsProvider(t *testing.T) {
 
 func TestNewEMapsProviderFail(t *testing.T) {
 	// Start test server
-	expected := "dummy"
+	expected := dummyResponse
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if err := json.NewEncoder(w).Encode(&expected); err != nil {
 			w.Write([]byte("KO"))
@@ -133,6 +142,7 @@ func TestEMapsAPIRequest(t *testing.T) {
 	// Start test server
 	expectedFactor := 10
 	expected := eMapsCarbonIntensityResponse{CarbonIntensity: expectedFactor}
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if err := json.NewEncoder(w).Encode(&expected); err != nil {
 			w.Write([]byte("KO"))
@@ -143,12 +153,13 @@ func TestEMapsAPIRequest(t *testing.T) {
 	// Make request to test server
 	factor, err := eMapsAPIRequest[eMapsCarbonIntensityResponse](server.URL, "token")
 	require.NoError(t, err)
-	assert.Equal(t, factor.CarbonIntensity, expectedFactor)
+	assert.Equal(t, expectedFactor, factor.CarbonIntensity)
 }
 
 func TestEMapsAPIRequestFail(t *testing.T) {
 	// Start test server
-	expected := "dummy"
+	expected := dummyResponse
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if err := json.NewEncoder(w).Encode(&expected); err != nil {
 			w.Write([]byte("KO"))
@@ -167,8 +178,10 @@ func TestEMapsAPIRequestZones(t *testing.T) {
 		"FR": {Name: "France", Factor: float64(10)},
 		"DE": {Name: "Germany", Factor: float64(200)},
 	}
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		zone := r.URL.Query()["zone"][0]
+
 		expected := eMapsCarbonIntensityResponse{CarbonIntensity: int(expectedFactors[zone].Factor)}
 		if err := json.NewEncoder(w).Encode(&expected); err != nil {
 			w.Write([]byte("KO"))

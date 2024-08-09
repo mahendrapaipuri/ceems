@@ -19,6 +19,7 @@ var unlimited uint64 = syscall.RLIM_INFINITY & math.MaxUint64
 // Uname returns the uname of the host machine.
 func Uname() string {
 	buf := unix.Utsname{}
+
 	err := unix.Uname(&buf)
 	if err != nil {
 		panic("unix.Uname failed: " + err.Error())
@@ -30,6 +31,7 @@ func Uname() string {
 	str += " " + unix.ByteSliceToString(buf.Machine[:])
 	str += " " + unix.ByteSliceToString(buf.Nodename[:])
 	str += " " + unix.ByteSliceToString(buf.Domainname[:]) + ")"
+
 	return str
 }
 
@@ -37,11 +39,13 @@ func limitToString(v uint64, unit string) string {
 	if v == unlimited {
 		return "unlimited"
 	}
+
 	return fmt.Sprintf("%d%s", v, unit)
 }
 
 func getLimits(resource int, unit string) string {
 	rlimit := syscall.Rlimit{}
+
 	err := syscall.Getrlimit(resource, &rlimit)
 	if err != nil {
 		panic("syscall.Getrlimit failed: " + err.Error())
@@ -50,9 +54,9 @@ func getLimits(resource int, unit string) string {
 	// We need to cast them explicitly to uint64.
 	return fmt.Sprintf(
 		"(soft=%s, hard=%s)",
-		limitToString(uint64(rlimit.Cur), unit),
-		limitToString(uint64(rlimit.Max), unit),
-	) //nolint:unconvert
+		limitToString(rlimit.Cur, unit),
+		limitToString(rlimit.Max, unit),
+	)
 }
 
 // FdLimits returns the soft and hard limits for file descriptors.

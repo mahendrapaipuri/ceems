@@ -21,7 +21,7 @@ import (
 var (
 	// SLURM AllocTRES gives memory as 200M, 250.5G and we dont know if it gives without
 	// units. So, regex will capture the number and unit (if exists) and we convert it
-	// to bytes
+	// to bytes.
 	memRegex = regexp.MustCompile("([0-9.]+)([K|M|G|T]?)")
 	toBytes  = map[string]int64{
 		"K": 1024,
@@ -32,11 +32,11 @@ var (
 	}
 )
 
-// Run preflights for CLI execution mode
+// Run preflights for CLI execution mode.
 func preflightsCLI(slurm *slurmScheduler) error {
 	// We hit this only when fetch mode is sacct command
 	// Assume execMode is always native
-	slurm.fetchMode = "cli"
+	slurm.fetchMode = cliMode
 	slurm.cmdExecMode = "native"
 	level.Debug(slurm.logger).Log("msg", "SLURM jobs will be fetched using CLI commands")
 
@@ -45,13 +45,16 @@ func preflightsCLI(slurm *slurmScheduler) error {
 		path, err := exec.LookPath("sacct")
 		if err != nil {
 			level.Error(slurm.logger).Log("msg", "Failed to find SLURM utility executables on PATH", "err", err)
+
 			return err
 		}
+
 		slurm.cluster.CLI.Path = filepath.Dir(path)
 	} else {
 		// Check if slurm binary directory exists at the given path
 		if _, err := os.Stat(slurm.cluster.CLI.Path); err != nil {
 			level.Error(slurm.logger).Log("msg", "Failed to open SLURM bin dir", "path", slurm.cluster.CLI.Path, "err", err)
+
 			return err
 		}
 	}
@@ -63,6 +66,7 @@ func preflightsCLI(slurm *slurmScheduler) error {
 	if currentUser, err := user.Current(); err == nil && (currentUser.Username == "slurm" || currentUser.Uid == "0") {
 		level.Info(slurm.logger).
 			Log("msg", "Current user have enough privileges to execute SLURM commands", "user", currentUser.Username)
+
 		return nil
 	}
 
@@ -72,6 +76,7 @@ func preflightsCLI(slurm *slurmScheduler) error {
 	if err != nil {
 		level.Debug(slurm.logger).
 			Log("msg", "User slurm not found. Next attempt to execute SLURM commands with sudo", "err", err)
+
 		goto sudomode
 	}
 
@@ -79,6 +84,7 @@ func preflightsCLI(slurm *slurmScheduler) error {
 	if err != nil {
 		level.Debug(slurm.logger).
 			Log("msg", "Failed to convert SLURM user uid to int. Next attempt to execute SLURM commands with sudo", "uid", slurmUserUID, "err", err)
+
 		goto sudomode
 	}
 
@@ -86,12 +92,14 @@ func preflightsCLI(slurm *slurmScheduler) error {
 	if err != nil {
 		level.Debug(slurm.logger).
 			Log("msg", "Failed to convert SLURM user gid to int. Next attempt to execute SLURM commands with sudo", "gid", slurmUserGID, "err", err)
+
 		goto sudomode
 	}
 
 	if _, err := internal_osexec.ExecuteAs(sacctPath, []string{"--help"}, slurmUserUID, slurmUserGID, nil, slurm.logger); err == nil {
 		slurm.cmdExecMode = "cap"
 		level.Info(slurm.logger).Log("msg", "Linux capabilities will be used to execute SLURM commands as slurm user")
+
 		return nil
 	}
 
@@ -100,26 +108,29 @@ sudomode:
 	if _, err := internal_osexec.ExecuteWithTimeout("sudo", []string{sacctPath, "--help"}, 5, nil, slurm.logger); err == nil {
 		slurm.cmdExecMode = "sudo"
 		level.Info(slurm.logger).Log("msg", "sudo will be used to execute SLURM commands")
+
 		return nil
 	}
 
 	// If nothing works give up. In the worst case DB will be updated with only jobs from current user
 	level.Warn(slurm.logger).
 		Log("msg", "SLURM commands will be executed as current user. Might not fetch jobs of all users")
+
 	return nil
 }
 
-// Parse sacct command output and return batchjob slice
+// Parse sacct command output and return batchjob slice.
 func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]models.Unit, int) {
 	// No header in output
-	sacctOutputLines := strings.Split(string(sacctOutput), "\n")
+	sacctOutputLines := strings.Split(sacctOutput, "\n")
 
 	// Update period
 	intStartTS := start.Local().UnixMilli()
 	intEndTS := end.Local().UnixMilli()
 
-	var numJobs = 0
-	var jobs = make([]models.Unit, len(sacctOutputLines))
+	numJobs := 0
+
+	jobs := make([]models.Unit, len(sacctOutputLines))
 
 	wg := &sync.WaitGroup{}
 	wg.Add(len(sacctOutputLines))
@@ -127,24 +138,28 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 	for iline, line := range sacctOutputLines {
 		go func(i int, l string) {
 			var jobStat models.Unit
+
 			components := strings.Split(l, "|")
 			jobid := components[sacctFieldMap["jobidraw"]]
 
 			// Ignore if we cannot get all components
 			if len(components) < len(sacctFields) {
 				wg.Done()
+
 				return
 			}
 
 			// Ignore job steps
 			if strings.Contains(jobid, ".") {
 				wg.Done()
+
 				return
 			}
 
 			// Ignore jobs that never ran
 			if components[sacctFieldMap["nodelist"]] == "None assigned" {
 				wg.Done()
+
 				return
 			}
 
@@ -161,15 +176,19 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 
 			// Parse alloctres to get billing, nnodes, ncpus, ngpus and mem
 			var billing, nnodes, ncpus, ngpus int64
+
 			var memString string
+
 			for _, elem := range strings.Split(components[sacctFieldMap["alloctres"]], ",") {
-				var tresKV = strings.Split(elem, "=")
+				tresKV := strings.Split(elem, "=")
 				if tresKV[0] == "billing" {
 					billing, _ = strconv.ParseInt(tresKV[1], 10, 64)
 				}
+
 				if tresKV[0] == "node" {
 					nnodes, _ = strconv.ParseInt(tresKV[1], 10, 64)
 				}
+
 				if tresKV[0] == "cpu" {
 					ncpus, _ = strconv.ParseInt(tresKV[1], 10, 64)
 				}
@@ -180,6 +199,7 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 				if strings.HasPrefix(tresKV[0], "gres/gpu") {
 					ngpus, _ = strconv.ParseInt(tresKV[1], 10, 64)
 				}
+
 				if tresKV[0] == "mem" {
 					memString = tresKV[1]
 				}
@@ -190,7 +210,9 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 			// and also without unit eg 20000, 40000. When there is no unit we assume
 			// it is already in bytes
 			matches := memRegex.FindStringSubmatch(memString)
+
 			var mem int64
+
 			if len(matches) >= 2 {
 				if memFloat, err := strconv.ParseFloat(matches[1], 64); err == nil {
 					if len(matches) == 3 {
@@ -211,6 +233,7 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 			// after submission
 			if jobStartTS == 0 {
 				endMark = startMark
+
 				goto elapsed
 			}
 
@@ -221,6 +244,7 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 			if jobEndTS > 0 && jobEndTS < intStartTS {
 				startMark = jobStartTS
 				endMark = jobEndTS
+
 				goto elapsed
 			}
 
@@ -248,7 +272,7 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 			// Get cpuMemSeconds and gpuMemSeconds of current interval in MB
 			var cpuMemSeconds, gpuMemSeconds int64
 			if mem > 0 {
-				cpuMemSeconds = int64(mem) * elapsedSeconds / toBytes["M"]
+				cpuMemSeconds = mem * elapsedSeconds / toBytes["M"]
 			} else {
 				cpuMemSeconds = elapsedSeconds
 			}
@@ -313,6 +337,7 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 				},
 				Tags: tags,
 			}
+
 			jobLock.Lock()
 			jobs[i] = jobStat
 			numJobs += 1
@@ -320,41 +345,50 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 			wg.Done()
 		}(iline, line)
 	}
+
 	wg.Wait()
+
 	return jobs, numJobs
 }
 
-// Parse sacctmgr command output and return association
+// Parse sacctmgr command output and return association.
 func parseSacctMgrCmdOutput(sacctMgrOutput string, currentTime string) ([]models.User, []models.Project) {
 	// No header in output
-	sacctMgrOutputLines := strings.Split(string(sacctMgrOutput), "\n")
+	sacctMgrOutputLines := strings.Split(sacctMgrOutput, "\n")
 
 	wg := &sync.WaitGroup{}
 	wg.Add(len(sacctMgrOutputLines))
 
-	var projectUserMap = make(map[string][]string)
-	var userProjectMap = make(map[string][]string)
+	projectUserMap := make(map[string][]string)
+
+	userProjectMap := make(map[string][]string)
+
 	var users []string
+
 	var projects []string
-	for iline, line := range sacctMgrOutputLines {
-		go func(i int, l string) {
+
+	for _, line := range sacctMgrOutputLines {
+		go func(l string) {
 			components := strings.Split(l, "|")
 
 			// Ignore if we cannot get all components
 			if len(components) < 2 {
 				wg.Done()
+
 				return
 			}
 
 			// Ignore root user/account
 			if components[0] == "root" || components[1] == "root" {
 				wg.Done()
+
 				return
 			}
 
 			// Ignore empty lines
 			if components[0] == "" || components[1] == "" {
 				wg.Done()
+
 				return
 			}
 
@@ -366,8 +400,9 @@ func parseSacctMgrCmdOutput(sacctMgrOutput string, currentTime string) ([]models
 			projects = append(projects, components[0])
 			assocLock.Unlock()
 			wg.Done()
-		}(iline, line)
+		}(line)
 	}
+
 	wg.Wait()
 
 	// Here we sort projects and users to get deterministic
@@ -382,12 +417,14 @@ func parseSacctMgrCmdOutput(sacctMgrOutput string, currentTime string) ([]models
 	users = slices.Compact(users)
 
 	// Transform map into slice of projects
-	var projectModels = make([]models.Project, len(projects))
-	for i := 0; i < len(projects); i++ {
+	projectModels := make([]models.Project, len(projects))
+
+	for i := range len(projects) {
 		projectUsers := projectUserMap[projects[i]]
 
 		// Sort users
 		slices.Sort(projectUsers)
+
 		var usersList models.List
 		for _, u := range slices.Compact(projectUsers) {
 			usersList = append(usersList, u)
@@ -402,12 +439,14 @@ func parseSacctMgrCmdOutput(sacctMgrOutput string, currentTime string) ([]models
 	}
 
 	// Transform map into slice of users
-	var userModels = make([]models.User, len(users))
-	for i := 0; i < len(users); i++ {
+	userModels := make([]models.User, len(users))
+
+	for i := range len(users) {
 		userProjects := userProjectMap[users[i]]
 
 		// Sort projects
 		slices.Sort(userProjects)
+
 		var projectsList models.List
 		for _, p := range slices.Compact(userProjects) {
 			projectsList = append(projectsList, p)
@@ -420,5 +459,6 @@ func parseSacctMgrCmdOutput(sacctMgrOutput string, currentTime string) ([]models
 			LastUpdatedAt: currentTime,
 		}
 	}
+
 	return userModels, projectModels
 }

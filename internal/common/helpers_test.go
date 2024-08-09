@@ -2,7 +2,6 @@ package common
 
 import (
 	"encoding/json"
-	"fmt"
 	"math"
 	"net/http"
 	"net/http/httptest"
@@ -24,30 +23,26 @@ type mockConfig struct {
 
 func TestSanitizeFloat(t *testing.T) {
 	tests := []struct {
-		name     string
-		input    float64
-		expected float64
+		name  string
+		input float64
 	}{
 		{
-			name:     "With +Inf",
-			input:    math.Inf(0),
-			expected: 0,
+			name:  "With +Inf",
+			input: math.Inf(0),
 		},
 		{
-			name:     "With -Inf",
-			input:    math.Inf(-1),
-			expected: 0,
+			name:  "With -Inf",
+			input: math.Inf(-1),
 		},
 		{
-			name:     "With NaN",
-			input:    math.NaN(),
-			expected: 0,
+			name:  "With NaN",
+			input: math.NaN(),
 		},
 	}
 
 	for _, test := range tests {
 		got := SanitizeFloat(test.input)
-		assert.Equal(t, test.expected, got, test.name)
+		assert.Zero(t, got, test.name)
 	}
 }
 
@@ -120,7 +115,7 @@ func TestMakeConfig(t *testing.T) {
 field1: foo
 field2: bar`
 	configPath := filepath.Join(tmpDir, "config.yml")
-	os.WriteFile(configPath, []byte(configFile), 0600)
+	os.WriteFile(configPath, []byte(configFile), 0o600)
 
 	// Check error when no file path is provided
 	_, err := MakeConfig[mockConfig]("")
@@ -141,6 +136,7 @@ func TestGetFreePort(t *testing.T) {
 func TestGrafanaClient(t *testing.T) {
 	// Start mock server
 	expected := "dummy"
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		teamMembers := []grafana.GrafanaTeamsReponse{
 			{
@@ -166,13 +162,14 @@ func TestGrafanaClient(t *testing.T) {
 
 	// Create grafana client
 	var client *grafana.Grafana
+
 	var err error
-	client, err = CreateGrafanaClient(config, log.NewNopLogger())
+	client, err = NewGrafanaClient(config, log.NewNopLogger())
 	require.NoError(t, err, "failed to create Grafana client")
 
 	teamMembers, err := client.TeamMembers([]string{"1"})
 	require.NoError(t, err, "failed to fetch team members")
-	assert.Equal(t, teamMembers[0], fmt.Sprintf("Bearer %s", expected), "headers do not match")
+	assert.Equal(t, teamMembers[0], "Bearer "+expected, "headers do not match")
 }
 
 func TestComputeExternalURL(t *testing.T) {

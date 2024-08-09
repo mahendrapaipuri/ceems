@@ -11,19 +11,19 @@ import (
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 )
 
-// CEEMSServerAppName is kingpin app name
+// CEEMSServerAppName is kingpin app name.
 const CEEMSServerAppName = "ceems_api_server"
 
-// CEEMSDBName is the name of CEEMS DB file
+// CEEMSDBName is the name of CEEMS DB file.
 const CEEMSDBName = "ceems.db"
 
-// CEEMSServerApp is kinpin app
+// CEEMSServerApp is kinpin app.
 var CEEMSServerApp = *kingpin.New(
 	CEEMSServerAppName,
 	"API server for reporting usage statistics for batchjobs/VMs/Pods.",
 )
 
-// DB table names
+// DB table names.
 var (
 	UnitsDBTableName      = models.Unit{}.TableName()
 	UsageDBTableName      = models.Usage{}.TableName()
@@ -34,7 +34,7 @@ var (
 )
 
 // Slice of field names of all tables
-// This slice will not contain the DB columns that are ignored in the query
+// This slice will not contain the DB columns that are ignored in the query.
 var (
 	UnitsDBTableColNames      = models.Unit{}.TagNames("json")
 	UsageDBTableColNames      = models.Usage{}.TagNames("json")
@@ -43,7 +43,7 @@ var (
 	AdminUsersDBTableColNames = models.AdminUsers{}.TagNames("json")
 )
 
-// Map of struct field name to DB column name
+// Map of struct field name to DB column name.
 var (
 	UnitsDBTableStructFieldColNameMap      = models.Unit{}.TagMap("", "sql")
 	UsageDBTableStructFieldColNameMap      = models.Usage{}.TagMap("", "sql")
@@ -52,27 +52,18 @@ var (
 	AdminUsersDBTableStructFieldColNameMap = models.AdminUsers{}.TagMap("", "sql")
 )
 
-// // Map of DB column names to DB column type
-// var (
-// 	UnitsDBTableColTypeMap      = models.Unit{}.TagMap("sql", "sqlitetype")
-// 	UsageDBTableColTypeMap      = models.Usage{}.TagMap("sql", "sqlitetype")
-// 	ProjectsDBTableColTypeMap   = models.Project{}.TagMap("sql", "sqlitetype")
-// 	UsersDBTableColTypeMap      = models.User{}.TagMap("sql", "sqlitetype")
-// 	AdminUsersDBTableColTypeMap = models.AdminUsers{}.TagMap("sql", "sqlitetype")
-// )
-
-// DatetimeLayout to be used in the package
+// DatetimeLayout to be used in the package.
 var DatetimeLayout = fmt.Sprintf("%sT%s", time.DateOnly, time.TimeOnly)
 
-// CLI args with global scope
+// CLI args with global scope.
 var (
 	ConfigFilePath string
 )
 
-// APIVersion sets the version of API in paths
+// APIVersion sets the version of API in paths.
 const APIVersion = "v1"
 
-// Cluster and Updater ID valid regex
+// Cluster and Updater ID valid regex.
 var (
 	InvalidIDRegex = regexp.MustCompile("[^a-zA-Z0-9-_]")
 )

@@ -89,7 +89,7 @@ var (
 	}
 )
 
-// JobProps contains SLURM job properties
+// JobProps contains SLURM job properties.
 type JobProps struct {
 	jobUUID        string
 	jobUser        string
@@ -98,7 +98,7 @@ type JobProps struct {
 	jobGPUOrdinals []string
 }
 
-// CgroupMetric contains metrics returned by cgroup
+// CgroupMetric contains metrics returned by cgroup.
 type CgroupMetric struct {
 	name            string
 	cpuUser         float64
@@ -162,20 +162,25 @@ func init() {
 // NewSlurmCollector returns a new Collector exposing a summary of cgroups.
 func NewSlurmCollector(logger log.Logger) (Collector, error) {
 	var cgroupsVersion string
+
 	var cgroupsRootPath string
+
 	var slurmCgroupsPath string
 
 	// Set cgroups root path based on cgroups version
 	if cgroups.Mode() == cgroups.Unified {
 		cgroupsVersion = "v2"
+
 		level.Info(logger).Log("msg", "Cgroup version v2 detected", "mount", *cgroupfsPath)
 		cgroupsRootPath = *cgroupfsPath
-		slurmCgroupsPath = fmt.Sprintf("%s/system.slice/slurmstepd.scope", *cgroupfsPath)
+		slurmCgroupsPath = *cgroupfsPath + "/system.slice/slurmstepd.scope"
 	} else {
 		cgroupsVersion = "v1"
+
 		level.Info(logger).Log("msg", "Cgroup version v2 not detected, will proceed with v1.")
-		cgroupsRootPath = fmt.Sprintf("%s/cpuacct", *cgroupfsPath)
-		slurmCgroupsPath = fmt.Sprintf("%s/slurm", cgroupsRootPath)
+
+		cgroupsRootPath = *cgroupfsPath + "/cpuacct"
+		slurmCgroupsPath = cgroupsRootPath + "/slurm"
 	}
 
 	// If cgroup version is set via CLI flag for testing override the one we got earlier
@@ -183,16 +188,18 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 		cgroupsVersion = *forceCgroupsVersion
 		if cgroupsVersion == "v2" {
 			cgroupsRootPath = *cgroupfsPath
-			slurmCgroupsPath = fmt.Sprintf("%s/system.slice/slurmstepd.scope", *cgroupfsPath)
+			slurmCgroupsPath = *cgroupfsPath + "/system.slice/slurmstepd.scope"
 		} else if cgroupsVersion == "v1" {
-			cgroupsRootPath = fmt.Sprintf("%s/cpuacct", *cgroupfsPath)
-			slurmCgroupsPath = fmt.Sprintf("%s/slurm", cgroupsRootPath)
+			cgroupsRootPath = *cgroupfsPath + "/cpuacct"
+			slurmCgroupsPath = cgroupsRootPath + "/slurm"
 		}
 	}
 
 	// Attempt to get GPU devices
 	var gpuDevs map[int]Device
+
 	var err error
+
 	gpuDevs, err = GetGPUDevices(*gpuType, logger)
 	if err == nil {
 		level.Info(logger).Log("msg", "GPU devices found")
@@ -200,6 +207,7 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 
 	// Get total memory of host
 	var memTotal float64
+
 	file, err := os.Open(procFilePath("meminfo"))
 	if err == nil {
 		if memInfo, err := parseMemInfo(file); err == nil {
@@ -208,7 +216,9 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 	} else {
 		level.Error(logger).Log("msg", "Failed to get total memory of the host", "err", err)
 	}
+
 	defer file.Close()
+
 	return &slurmCollector{
 		cgroups:          cgroupsVersion,
 		cgroupsRootPath:  cgroupsRootPath,
@@ -344,17 +354,18 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 	}, nil
 }
 
-// Return cgroups v1 subsystem
+// Return cgroups v1 subsystem.
 func subsystem() ([]cgroup1.Subsystem, error) {
 	s := []cgroup1.Subsystem{
 		cgroup1.NewCpuacct(*cgroupfsPath),
 		cgroup1.NewMemory(*cgroupfsPath),
 		cgroup1.NewRdma(*cgroupfsPath),
 	}
+
 	return s, nil
 }
 
-// Update implements Collector and update job metrics
+// Update implements Collector and update job metrics.
 func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 	// Send job level metrics
 	metrics, err := c.getJobsMetrics()
@@ -379,6 +390,7 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 		if cpus == 0 {
 			dir := filepath.Dir(n)
 			cpus = metrics[dir].cpus
+
 			if cpus == 0 {
 				cpus = metrics[filepath.Dir(dir)].cpus
 			}
@@ -398,6 +410,7 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 			ch <- prometheus.MustNewConstMetric(c.jobMemswTotal, prometheus.GaugeValue, m.memswTotal, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
 			ch <- prometheus.MustNewConstMetric(c.jobMemswFailCount, prometheus.GaugeValue, m.memswFailCount, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
 		}
+
 		if *collectPSIStats {
 			ch <- prometheus.MustNewConstMetric(c.jobCPUPressure, prometheus.GaugeValue, m.cpuPressure, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
 			ch <- prometheus.MustNewConstMetric(c.jobMemoryPressure, prometheus.GaugeValue, m.memoryPressure, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
@@ -409,6 +422,7 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 				ch <- prometheus.MustNewConstMetric(c.jobRDMAHCAHandles, prometheus.GaugeValue, handles, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid, device)
 			}
 		}
+
 		for device, objects := range m.rdmaHCAHandles {
 			if objects > 0 {
 				ch <- prometheus.MustNewConstMetric(c.jobRDMAHCAObjects, prometheus.GaugeValue, objects, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid, device)
@@ -423,6 +437,7 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 				for _, dev := range c.gpuDevs {
 					if gpuOrdinal == dev.index {
 						uuid = dev.uuid
+
 						break
 					}
 				}
@@ -430,13 +445,15 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 			}
 		}
 	}
+
 	return nil
 }
 
-// Get current Jobs metrics from cgroups
+// Get current Jobs metrics from cgroups.
 func (c *slurmCollector) getJobsMetrics() (map[string]CgroupMetric, error) {
 	var names []string
-	var metrics = make(map[string]CgroupMetric)
+
+	metrics := make(map[string]CgroupMetric)
 
 	level.Debug(c.logger).Log("msg", "Loading cgroup", "path", c.slurmCgroupsPath)
 
@@ -445,6 +462,7 @@ func (c *slurmCollector) getJobsMetrics() (map[string]CgroupMetric, error) {
 		if err != nil {
 			return err
 		}
+
 		if info.IsDir() && strings.Contains(p, "/job_") && !strings.HasSuffix(p, "/slurm") &&
 			!strings.HasSuffix(p, "/user") {
 			// Ignore step jobs
@@ -455,15 +473,18 @@ func (c *slurmCollector) getJobsMetrics() (map[string]CgroupMetric, error) {
 			level.Debug(c.logger).Log("msg", "cgroup path", "path", p, "rel", rel)
 			names = append(names, "/"+rel)
 		}
+
 		return nil
 	}); err != nil {
 		level.Error(c.logger).
 			Log("msg", "Error walking cgroup subsystem", "path", c.slurmCgroupsPath, "err", err)
-		return metrics, nil
+
+		return metrics, err
 	}
 
 	// Get currently active jobs and set them in activeJobs state variable
 	var activeJobIDs []string
+
 	for _, name := range names {
 		if matches := findNamedMatches(slurmPatterns[c.cgroups], name); matches["jobid"] != "" {
 			jobid := matches["jobid"]
@@ -475,15 +496,19 @@ func (c *slurmCollector) getJobsMetrics() (map[string]CgroupMetric, error) {
 	// Remove all jobs from activeJobs which are not in activeJobIDs. These are generally
 	// finished jobs
 	c.jobPropsCache.Range(func(jobid, jobProps interface{}) bool {
-		if !slices.Contains(activeJobIDs, jobid.(string)) {
-			c.jobPropsCache.Delete(jobid)
-			level.Debug(c.logger).Log("msg", "Removed job from jobPropsCache", "jobid", jobid)
+		if jobidString, ok := jobid.(string); ok {
+			if !slices.Contains(activeJobIDs, jobidString) {
+				c.jobPropsCache.Delete(jobid)
+				level.Debug(c.logger).Log("msg", "Removed job from jobPropsCache", "jobid", jobid)
+			}
 		}
+
 		return true
 	})
 
 	wg := &sync.WaitGroup{}
 	wg.Add(len(names))
+
 	for _, name := range names {
 		go func(n string) {
 			metric, _ := c.getMetrics(n)
@@ -492,14 +517,17 @@ func (c *slurmCollector) getJobsMetrics() (map[string]CgroupMetric, error) {
 				metrics[metric.jobid] = metric
 				metricLock.Unlock()
 			}
+
 			wg.Done()
 		}(name)
 	}
+
 	wg.Wait()
+
 	return metrics, nil
 }
 
-// Get metrics of a given SLURM cgroups path
+// Get metrics of a given SLURM cgroups path.
 func (c *slurmCollector) getMetrics(name string) (CgroupMetric, error) {
 	if c.cgroups == "v2" {
 		return c.getCgroupsV2Metrics(name)
@@ -508,14 +536,18 @@ func (c *slurmCollector) getMetrics(name string) (CgroupMetric, error) {
 	}
 }
 
-// Parse cpuset.cpus file to return a list of CPUs in the cgroup
+// Parse cpuset.cpus file to return a list of CPUs in the cgroup.
 func (c *slurmCollector) parseCPUSet(cpuset string) ([]string, error) {
 	var cpus []string
+
 	var start, end int
+
 	var err error
+
 	if cpuset == "" {
 		return nil, nil
 	}
+
 	ranges := strings.Split(cpuset, ",")
 	for _, r := range ranges {
 		boundaries := strings.Split(r, "-")
@@ -524,26 +556,30 @@ func (c *slurmCollector) parseCPUSet(cpuset string) ([]string, error) {
 			if err != nil {
 				return nil, err
 			}
+
 			end = start
 		} else if len(boundaries) == 2 {
 			start, err = strconv.Atoi(boundaries[0])
 			if err != nil {
 				return nil, err
 			}
+
 			end, err = strconv.Atoi(boundaries[1])
 			if err != nil {
 				return nil, err
 			}
 		}
+
 		for e := start; e <= end; e++ {
 			cpu := strconv.Itoa(e)
 			cpus = append(cpus, cpu)
 		}
 	}
+
 	return cpus, nil
 }
 
-// Get list of CPUs in the cgroup
+// Get list of CPUs in the cgroup.
 func (c *slurmCollector) getCPUs(name string) ([]string, error) {
 	var cpusPath string
 	if c.cgroups == "v2" {
@@ -559,22 +595,26 @@ func (c *slurmCollector) getCPUs(name string) ([]string, error) {
 	cpusData, err := os.ReadFile(cpusPath)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "Error reading cpuset", "cpuset", cpusPath, "err", err)
+
 		return nil, err
 	}
+
 	cpus, err := c.parseCPUSet(strings.TrimSuffix(string(cpusData), "\n"))
 	if err != nil {
 		level.Error(c.logger).Log("msg", "Error parsing cpuset", "cpuset", cpusPath, "err", err)
+
 		return nil, err
 	}
+
 	return cpus, nil
 }
 
-// Read prolog generated run time files to get job properties
+// Read prolog generated run time files to get job properties.
 func (c *slurmCollector) readJobPropsFromProlog(jobid string, jobProps *JobProps) JobProps {
 	var gpuJobID string
 
 	// Read SLURM job properties
-	var slurmJobInfo = filepath.Join(*jobStatPath, jobid)
+	slurmJobInfo := filepath.Join(*jobStatPath, jobid)
 	if _, err := os.Stat(slurmJobInfo); err == nil {
 		content, err := os.ReadFile(slurmJobInfo)
 		if err != nil {
@@ -601,7 +641,7 @@ func (c *slurmCollector) readJobPropsFromProlog(jobid string, jobProps *JobProps
 	// it but just to be safe. This will have a small overhead as we need to check the
 	// correct integer index for each device index. We can live with it as there are
 	// typically 2/4/8 GPUs per node.
-	for i := 0; i < len(c.gpuDevs); i++ {
+	for i := range c.gpuDevs {
 		dev := c.gpuDevs[i]
 		gpuJobMapInfo := fmt.Sprintf("%s/%s", *gpuStatPath, dev.index)
 
@@ -615,28 +655,36 @@ func (c *slurmCollector) readJobPropsFromProlog(jobid string, jobProps *JobProps
 					"msg", "Failed to get job ID for GPU",
 					"index", dev.index, "uuid", dev.uuid, "err", err,
 				)
+
 				continue
 			}
+
 			if _, err := fmt.Sscanf(string(content), "%s", &gpuJobID); err != nil {
 				level.Error(c.logger).Log(
 					"msg", "Failed to scan job ID for GPU",
 					"index", dev.index, "uuid", dev.uuid, "err", err,
 				)
+
 				continue
 			}
+
 			if gpuJobID == jobid {
 				jobProps.jobGPUOrdinals = append(jobProps.jobGPUOrdinals, dev.index)
 			}
 		}
 	}
+
 	return *jobProps
 }
 
-// Read job properties from env vars
+// Read job properties from env vars.
 func (c *slurmCollector) readJobPropsFromEnviron(jobid string, pids []uint64, jobProps *JobProps) JobProps {
 	var jobUser string
+
 	var jobAccount string
+
 	var jobNodelist string
+
 	var jobGPUOrdinals []string
 
 	// Attempt to get UID, Account, Nodelist from /proc file system by looking into
@@ -646,6 +694,7 @@ func (c *slurmCollector) readJobPropsFromEnviron(jobid string, pids []uint64, jo
 	procFS, err := procfs.NewFS(*procfsPath)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "Unable to open procfs", "path", *procfsPath, "err", err)
+
 		return *jobProps
 	}
 
@@ -654,8 +703,10 @@ func (c *slurmCollector) readJobPropsFromEnviron(jobid string, pids []uint64, jo
 		allProcs, err := procFS.AllProcs()
 		if err != nil {
 			level.Error(c.logger).Log("msg", "Failed to read /proc", "err", err)
+
 			return *jobProps
 		}
+
 		pids = make([]uint64, len(allProcs))
 		for idx, proc := range allProcs {
 			pids[idx] = uint64(proc.PID)
@@ -663,7 +714,7 @@ func (c *slurmCollector) readJobPropsFromEnviron(jobid string, pids []uint64, jo
 	}
 
 	// Env var that we will search
-	jobIDEnv := fmt.Sprintf("SLURM_JOB_ID=%s", jobid)
+	jobIDEnv := "SLURM_JOB_ID=" + jobid
 
 	// Initialize a waitgroup for all go routines that we will spawn later
 	wg := &sync.WaitGroup{}
@@ -678,13 +729,16 @@ func (c *slurmCollector) readJobPropsFromEnviron(jobid string, pids []uint64, jo
 			proc, err := procFS.Proc(p)
 			if err != nil {
 				wg.Done()
+
 				return
 			}
+
 			environments, err := proc.Environ()
 
 			// Skip if we cannot read file or job ID env var is not found
 			if err != nil || !slices.Contains(environments, jobIDEnv) {
 				wg.Done()
+
 				return
 			}
 
@@ -696,12 +750,15 @@ func (c *slurmCollector) readJobPropsFromEnviron(jobid string, pids []uint64, jo
 				if strings.Contains(env, "SLURM_JOB_USER") {
 					jobUser = strings.Split(env, "=")[1]
 				}
+
 				if strings.Contains(env, "SLURM_JOB_ACCOUNT") {
 					jobAccount = strings.Split(env, "=")[1]
 				}
+
 				if strings.Contains(env, "SLURM_JOB_NODELIST") {
 					jobNodelist = strings.Split(env, "=")[1]
 				}
+
 				if strings.Contains(env, "SLURM_STEP_GPUS") || strings.Contains(env, "SLURM_JOB_GPUS") {
 					jobGPUOrdinals = strings.Split(strings.Split(env, "=")[1], ",")
 				}
@@ -709,7 +766,6 @@ func (c *slurmCollector) readJobPropsFromEnviron(jobid string, pids []uint64, jo
 
 			// Mark routine as done
 			wg.Done()
-
 		}(int(pid))
 	}
 	// Wait for all go routines to finish
@@ -720,19 +776,22 @@ func (c *slurmCollector) readJobPropsFromEnviron(jobid string, pids []uint64, jo
 	jobProps.jobAccount = jobAccount
 	jobProps.jobNodelist = jobNodelist
 	jobProps.jobGPUOrdinals = jobGPUOrdinals
+
 	return *jobProps
 }
 
-// Check if job properties are set
+// Check if job properties are set.
 func (c *slurmCollector) emptyJobProps(jobProps JobProps) bool {
 	return jobProps.jobUser == "" || jobProps.jobAccount == "" || jobProps.jobNodelist == "" ||
 		(len(jobProps.jobGPUOrdinals) == 0 && len(c.gpuDevs) > 0)
 }
 
-// Get different properties of Job
+// Get different properties of Job.
 func (c *slurmCollector) getJobProperties(name string, metric *CgroupMetric, pids []uint64) {
 	var jobProps JobProps
+
 	var jobid string
+
 	var err error
 
 	// Get jobid first
@@ -741,15 +800,20 @@ func (c *slurmCollector) getJobProperties(name string, metric *CgroupMetric, pid
 	} else {
 		// If no job ID found, skip rest as we cannot get properties of an unknown job
 		level.Warn(c.logger).Log("msg", "Unable to get job ID for cgroup", "path", name)
+
 		return
 	}
+
 	metric.jobid = jobid
 	metric.jobuuid = jobid
 
 	// Attempt to get props from jobPropsCache state variable
 	if value, ok := c.jobPropsCache.Load(jobid); ok {
-		jobProps = value.(JobProps)
+		if v, ok := value.(JobProps); ok {
+			jobProps = v
+		}
 	}
+
 	level.Debug(c.logger).Log(
 		"msg", "Job properties from jobPropsCache", "jobid", jobid,
 		"job_user", jobProps.jobUser, "job_account", jobProps.jobAccount,
@@ -806,12 +870,14 @@ func (c *slurmCollector) getJobProperties(name string, metric *CgroupMetric, pid
 		)
 		if err != nil {
 			level.Error(c.logger).
-				Log("msg", "Failed to generate UUID for job", "jobid", "job_user", jobid, "err", err)
+				Log("msg", "Failed to generate UUID for job", "jobid", jobid, "job_user", jobid, "err", err)
+
 			jobProps.jobUUID = jobid
 		}
 	} else {
 		jobProps.jobUUID = jobid
 	}
+
 	metric.jobuser = jobProps.jobUser
 	metric.jobuuid = jobProps.jobUUID
 	metric.jobaccount = jobProps.jobAccount
@@ -821,15 +887,19 @@ func (c *slurmCollector) getJobProperties(name string, metric *CgroupMetric, pid
 	c.jobPropsCache.Swap(jobid, jobProps)
 }
 
-// Get metrics from cgroups v1
+// Get metrics from cgroups v1.
 func (c *slurmCollector) getCgroupsV1Metrics(name string) (CgroupMetric, error) {
 	metric := CgroupMetric{name: name}
 	metric.err = false
+
 	level.Debug(c.logger).Log("msg", "Loading cgroup v1", "path", name)
+
 	ctrl, err := cgroup1.Load(cgroup1.StaticPath(name), cgroup1.WithHierarchy(subsystem))
 	if err != nil {
 		level.Error(c.logger).Log("msg", "Failed to load cgroups", "path", name, "err", err)
+
 		metric.err = true
+
 		return metric, err
 	}
 
@@ -837,79 +907,92 @@ func (c *slurmCollector) getCgroupsV1Metrics(name string) (CgroupMetric, error) 
 	stats, err := ctrl.Stat(cgroup1.IgnoreNotExist)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "Failed to stat cgroups", "path", name, "err", err)
+
 		return metric, err
 	}
+
 	if stats == nil {
 		level.Error(c.logger).Log("msg", "Cgroup stats are nil", "path", name)
+
 		return metric, err
 	}
 
 	// Get CPU stats
-	if stats.CPU != nil {
-		if stats.CPU.Usage != nil {
-			metric.cpuUser = float64(stats.CPU.Usage.User) / 1000000000.0
-			metric.cpuSystem = float64(stats.CPU.Usage.Kernel) / 1000000000.0
-			metric.cpuTotal = float64(stats.CPU.Usage.Total) / 1000000000.0
+	if stats.GetCPU() != nil {
+		if stats.GetCPU().GetUsage() != nil {
+			metric.cpuUser = float64(stats.GetCPU().GetUsage().GetUser()) / 1000000000.0
+			metric.cpuSystem = float64(stats.GetCPU().GetUsage().GetKernel()) / 1000000000.0
+			metric.cpuTotal = float64(stats.GetCPU().GetUsage().GetTotal()) / 1000000000.0
 		}
 	}
+
 	if cpus, err := c.getCPUs(name); err == nil {
 		metric.cpus = len(cpus)
 	}
 
 	// Get memory stats
-	if stats.Memory != nil {
-		metric.memoryRSS = float64(stats.Memory.TotalRSS)
-		metric.memoryCache = float64(stats.Memory.TotalCache)
-		if stats.Memory.Usage != nil {
-			metric.memoryUsed = float64(stats.Memory.Usage.Usage)
+	if stats.GetMemory() != nil {
+		metric.memoryRSS = float64(stats.GetMemory().GetTotalRSS())
+		metric.memoryCache = float64(stats.GetMemory().GetTotalCache())
+
+		if stats.GetMemory().GetUsage() != nil {
+			metric.memoryUsed = float64(stats.GetMemory().GetUsage().GetUsage())
 			// If memory usage limit is set as "max", cgroups lib will set it to
 			// math.MaxUint64. Here we replace it with total system memory
-			if stats.Memory.Usage.Limit == math.MaxUint64 && c.hostMemTotal != 0 {
+			if stats.GetMemory().GetUsage().GetLimit() == math.MaxUint64 && c.hostMemTotal != 0 {
 				metric.memoryTotal = c.hostMemTotal
 			} else {
-				metric.memoryTotal = float64(stats.Memory.Usage.Limit)
+				metric.memoryTotal = float64(stats.GetMemory().GetUsage().GetLimit())
 			}
-			metric.memoryFailCount = float64(stats.Memory.Usage.Failcnt)
+
+			metric.memoryFailCount = float64(stats.GetMemory().GetUsage().GetFailcnt())
 		}
-		if stats.Memory.Swap != nil {
-			metric.memswUsed = float64(stats.Memory.Swap.Usage)
+
+		if stats.GetMemory().GetSwap() != nil {
+			metric.memswUsed = float64(stats.GetMemory().GetSwap().GetUsage())
 			// If memory usage limit is set as "max", cgroups lib will set it to
 			// math.MaxUint64. Here we replace it with total system memory
-			if stats.Memory.Swap.Limit == math.MaxUint64 && c.hostMemTotal != 0 {
+			if stats.GetMemory().GetSwap().GetLimit() == math.MaxUint64 && c.hostMemTotal != 0 {
 				metric.memswTotal = c.hostMemTotal
 			} else {
-				metric.memswTotal = float64(stats.Memory.Swap.Limit)
+				metric.memswTotal = float64(stats.GetMemory().GetSwap().GetLimit())
 			}
-			metric.memswFailCount = float64(stats.Memory.Swap.Failcnt)
+
+			metric.memswFailCount = float64(stats.GetMemory().GetSwap().GetFailcnt())
 		}
 	}
 
 	// Get RDMA metrics if available
-	if stats.Rdma != nil {
+	if stats.GetRdma() != nil {
 		metric.rdmaHCAHandles = make(map[string]float64)
 		metric.rdmaHCAObjects = make(map[string]float64)
-		for _, device := range stats.Rdma.Current {
-			metric.rdmaHCAHandles[device.Device] = float64(device.HcaHandles)
-			metric.rdmaHCAObjects[device.Device] = float64(device.HcaObjects)
+
+		for _, device := range stats.GetRdma().GetCurrent() {
+			metric.rdmaHCAHandles[device.GetDevice()] = float64(device.GetHcaHandles())
+			metric.rdmaHCAObjects[device.GetDevice()] = float64(device.GetHcaObjects())
 		}
 	}
 
 	// Get job Info
 	c.getJobProperties(name, &metric, nil)
+
 	return metric, nil
 }
 
-// Get Job metrics from cgroups v2
+// Get Job metrics from cgroups v2.
 func (c *slurmCollector) getCgroupsV2Metrics(name string) (CgroupMetric, error) {
 	metric := CgroupMetric{name: name}
 	metric.err = false
+
 	level.Debug(c.logger).Log("msg", "Loading cgroup v2", "path", name)
 
 	// Load cgroups
 	ctrl, err := cgroup2.Load(name, cgroup2.WithMountpoint(*cgroupfsPath))
 	if err != nil {
 		level.Error(c.logger).Log("msg", "Failed to load cgroups", "path", name, "err", err)
+
 		metric.err = true
+
 		return metric, err
 	}
 
@@ -917,63 +1000,71 @@ func (c *slurmCollector) getCgroupsV2Metrics(name string) (CgroupMetric, error) 
 	stats, err := ctrl.Stat()
 	if err != nil {
 		level.Error(c.logger).Log("msg", "Failed to stat cgroups", "path", name, "err", err)
+
 		return metric, err
 	}
+
 	if stats == nil {
 		level.Error(c.logger).Log("msg", "Cgroup stats are nil", "path", name)
+
 		return metric, err
 	}
 
 	// Get CPU stats
-	if stats.CPU != nil {
-		metric.cpuUser = float64(stats.CPU.UserUsec) / 1000000.0
-		metric.cpuSystem = float64(stats.CPU.SystemUsec) / 1000000.0
-		metric.cpuTotal = float64(stats.CPU.UsageUsec) / 1000000.0
-		if stats.CPU.PSI != nil {
-			metric.cpuPressure = float64(stats.CPU.PSI.Full.Total) / 1000000.0
+	if stats.GetCPU() != nil {
+		metric.cpuUser = float64(stats.GetCPU().GetUserUsec()) / 1000000.0
+		metric.cpuSystem = float64(stats.GetCPU().GetSystemUsec()) / 1000000.0
+		metric.cpuTotal = float64(stats.GetCPU().GetUsageUsec()) / 1000000.0
+
+		if stats.GetCPU().GetPSI() != nil {
+			metric.cpuPressure = float64(stats.GetCPU().GetPSI().GetFull().GetTotal()) / 1000000.0
 		}
 	}
+
 	if cpus, err := c.getCPUs(name); err == nil {
 		metric.cpus = len(cpus)
 	}
 
 	// Get memory stats
 	// cgroups2 does not expose swap memory events. So we dont set memswFailCount
-	if stats.Memory != nil {
-		metric.memoryUsed = float64(stats.Memory.Usage)
+	if stats.GetMemory() != nil {
+		metric.memoryUsed = float64(stats.GetMemory().GetUsage())
 		// If memory usage limit is set as "max", cgroups lib will set it to
 		// math.MaxUint64. Here we replace it with total system memory
-		if stats.Memory.UsageLimit == math.MaxUint64 && c.hostMemTotal > 0 {
+		if stats.GetMemory().GetUsageLimit() == math.MaxUint64 && c.hostMemTotal > 0 {
 			metric.memoryTotal = c.hostMemTotal
 		} else {
-			metric.memoryTotal = float64(stats.Memory.UsageLimit)
+			metric.memoryTotal = float64(stats.GetMemory().GetUsageLimit())
 		}
-		metric.memoryCache = float64(stats.Memory.File) // This is page cache
-		metric.memoryRSS = float64(stats.Memory.Anon)
-		metric.memswUsed = float64(stats.Memory.SwapUsage)
+
+		metric.memoryCache = float64(stats.GetMemory().GetFile()) // This is page cache
+		metric.memoryRSS = float64(stats.GetMemory().GetAnon())
+		metric.memswUsed = float64(stats.GetMemory().GetSwapUsage())
 		// If memory usage limit is set as "max", cgroups lib will set it to
 		// math.MaxUint64. Here we replace it with total system memory
-		if stats.Memory.SwapLimit == math.MaxUint64 && c.hostMemTotal > 0 {
+		if stats.GetMemory().GetSwapLimit() == math.MaxUint64 && c.hostMemTotal > 0 {
 			metric.memswTotal = c.hostMemTotal
 		} else {
-			metric.memswTotal = float64(stats.Memory.SwapLimit)
+			metric.memswTotal = float64(stats.GetMemory().GetSwapLimit())
 		}
-		if stats.Memory.PSI != nil {
-			metric.memoryPressure = float64(stats.Memory.PSI.Full.Total) / 1000000.0
+
+		if stats.GetMemory().GetPSI() != nil {
+			metric.memoryPressure = float64(stats.GetMemory().GetPSI().GetFull().GetTotal()) / 1000000.0
 		}
 	}
 	// Get memory events
-	if stats.MemoryEvents != nil {
-		metric.memoryFailCount = float64(stats.MemoryEvents.Oom)
+	if stats.GetMemoryEvents() != nil {
+		metric.memoryFailCount = float64(stats.GetMemoryEvents().GetOom())
 	}
 
 	// Get RDMA stats
-	if stats.Rdma != nil {
+	if stats.GetRdma() != nil {
 		metric.rdmaHCAHandles = make(map[string]float64)
 		metric.rdmaHCAObjects = make(map[string]float64)
-		for _, device := range stats.Rdma.Current {
-			metric.rdmaHCAHandles[device.Device] = float64(device.HcaHandles)
-			metric.rdmaHCAObjects[device.Device] = float64(device.HcaObjects)
+
+		for _, device := range stats.GetRdma().GetCurrent() {
+			metric.rdmaHCAHandles[device.GetDevice()] = float64(device.GetHcaHandles())
+			metric.rdmaHCAObjects[device.GetDevice()] = float64(device.GetHcaObjects())
 		}
 	}
 
@@ -985,5 +1076,6 @@ func (c *slurmCollector) getCgroupsV2Metrics(name string) (CgroupMetric, error) 
 
 	// Get job Info
 	c.getJobProperties(name, &metric, cgroupProcPids)
+
 	return metric, nil
 }

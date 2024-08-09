@@ -27,6 +27,6 @@ func TestRaplMetrics(t *testing.T) {
 	for iz, rz := range zones {
 		microJoules, err := rz.GetEnergyMicrojoules()
 		require.NoError(t, err)
-		assert.Equal(t, expectedEnergyMetrics[iz], float64(microJoules))
+		assert.InEpsilon(t, expectedEnergyMetrics[iz], float64(microJoules), 0)
 	}
 }

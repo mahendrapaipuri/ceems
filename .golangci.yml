@@ -1,8 +1,37 @@
 linters:
-  enable:
-    - misspell
-    - revive
-    - gosec
+  enable-all: true
+  disable:
+    - cyclop
+    # Ignore for the time being until we propagate context everywhere
+    - contextcheck
+    - noctx
+    - depguard
+    - dupl
+    - dupword
+    - exhaustruct
+    - gomnd
+    - gocognit
+    - gocyclo
+    - gocritic
+    - gochecknoinits
+    - funlen
+    - ireturn
+    - err113
+    - execinquery
+    - mnd
+    - nestif
+    - copyloopvar
+    - testpackage
+    - paralleltest
+    - prealloc
+    - musttag
+    - maintidx
+    - gochecknoglobals
+    - gosmopolitan
+    - varnamelen
+    - tagliatelle
+    - lll
+    - wrapcheck
 
 issues:
   exclude-rules:
@@ -11,6 +40,8 @@ issues:
         - errcheck
 
 linters-settings:
+  lll:
+    line-length: 160
   errcheck:
     exclude-functions:
       # Used in HTTP handlers, any error is handled by the server itself.

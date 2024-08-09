@@ -35,21 +35,22 @@ func TestMiddlewareSuccess(t *testing.T) {
 	handlerToTest := setupMiddleware()
 
 	// create a mock request to use
-	req := httptest.NewRequest("GET", "/api/v1/units", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/units", nil)
 	req.Header.Set(grafanaUserHeader, "usr1")
 
 	// call the handler using a mock response recorder (we'll not use that anyway)
 	w := httptest.NewRecorder()
 	handlerToTest.ServeHTTP(w, req)
-	resp := w.Result()
-	defer resp.Body.Close()
+
+	res := w.Result()
+	defer res.Body.Close()
 
 	// Should pass test
-	assert.Equal(t, resp.StatusCode, 200)
+	assert.Equal(t, 200, res.StatusCode)
 
 	// Check headers added to req
-	assert.Equal(t, req.Header.Get(loggedUserHeader), "usr1")
-	assert.Equal(t, req.Header.Get(dashboardUserHeader), "usr1")
+	assert.Equal(t, "usr1", req.Header.Get(loggedUserHeader))
+	assert.Equal(t, "usr1", req.Header.Get(dashboardUserHeader))
 }
 
 func TestMiddlewareFailure(t *testing.T) {
@@ -57,14 +58,17 @@ func TestMiddlewareFailure(t *testing.T) {
 	handlerToTest := setupMiddleware()
 
 	// create a mock request to use
-	req := httptest.NewRequest("GET", "/api/v1/units", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/units", nil)
 
 	// call the handler using a mock response recorder (we'll not use that anyway)
 	w := httptest.NewRecorder()
 	handlerToTest.ServeHTTP(w, req)
 
+	res := w.Result()
+	defer res.Body.Close()
+
 	// Should pass test
-	assert.Equal(t, w.Result().StatusCode, 401)
+	assert.Equal(t, 401, res.StatusCode)
 }
 
 func TestMiddlewareAdminSuccess(t *testing.T) {
@@ -72,18 +76,21 @@ func TestMiddlewareAdminSuccess(t *testing.T) {
 	handlerToTest := setupMiddleware()
 
 	// create a mock request to use
-	req := httptest.NewRequest("GET", "/api/v1/units/admin", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/units/admin", nil)
 	req.Header.Set(grafanaUserHeader, "adm1")
 
 	// call the handler using a mock response recorder (we'll not use that anyway)
 	w := httptest.NewRecorder()
 	handlerToTest.ServeHTTP(w, req)
 
+	res := w.Result()
+	defer res.Body.Close()
+
 	// Should pass test
-	assert.Equal(t, w.Result().StatusCode, 200)
+	assert.Equal(t, 200, res.StatusCode)
 
 	// Check headers added to req
-	assert.Equal(t, req.Header.Get(adminUserHeader), "adm1")
+	assert.Equal(t, "adm1", req.Header.Get(adminUserHeader))
 }
 
 func TestMiddlewareAdminFailure(t *testing.T) {
@@ -91,15 +98,18 @@ func TestMiddlewareAdminFailure(t *testing.T) {
 	handlerToTest := setupMiddleware()
 
 	// create a mock request to use
-	req := httptest.NewRequest("GET", "/api/v1/units/admin", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/units/admin", nil)
 	req.Header.Set(grafanaUserHeader, "usr1")
 
 	// call the handler using a mock response recorder (we'll not use that anyway)
 	w := httptest.NewRecorder()
 	handlerToTest.ServeHTTP(w, req)
 
+	res := w.Result()
+	defer res.Body.Close()
+
 	// Should pass test
-	assert.Equal(t, w.Result().StatusCode, 403)
+	assert.Equal(t, 403, res.StatusCode)
 }
 
 func TestMiddlewareAdminFailurePresetHeader(t *testing.T) {
@@ -107,7 +117,7 @@ func TestMiddlewareAdminFailurePresetHeader(t *testing.T) {
 	handlerToTest := setupMiddleware()
 
 	// create a mock request to use
-	req := httptest.NewRequest("GET", "/api/v1/units/admin", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/units/admin", nil)
 	req.Header.Set(grafanaUserHeader, "usr1")
 	req.Header.Set(adminUserHeader, "usr1")
 
@@ -115,9 +125,12 @@ func TestMiddlewareAdminFailurePresetHeader(t *testing.T) {
 	w := httptest.NewRecorder()
 	handlerToTest.ServeHTTP(w, req)
 
+	res := w.Result()
+	defer res.Body.Close()
+
 	// Should pass test
-	assert.Equal(t, w.Result().StatusCode, 403)
+	assert.Equal(t, 403, res.StatusCode)
 
 	// Should not contain adminHeader
-	assert.Equal(t, req.Header.Get(adminUserHeader), "")
+	assert.Equal(t, "", req.Header.Get(adminUserHeader))
 }

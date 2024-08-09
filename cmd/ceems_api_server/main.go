@@ -1,15 +1,17 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"os"
 
 	"github.com/mahendrapaipuri/ceems/pkg/api/cli"
-	// We need to import each resource manager package here to call init function
+	// We need to import each resource manager package here to call init function.
 	_ "github.com/mahendrapaipuri/ceems/pkg/api/resource/slurm"
+	// We need to import each updater package here to call init function.
+	_ "github.com/mahendrapaipuri/ceems/pkg/api/updater/tsdb"
 )
 
-// Main entry point for `ceems` app
+// Main entry point for `ceems` app.
 func main() {
 	// Create a new app
 	CEEMSServer, err := cli.NewCEEMSServer()
@@ -19,7 +21,7 @@ func main() {
 
 	// Main entrypoint of the app
 	if err := CEEMSServer.Main(); err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		os.Exit(1)
 	}
 }

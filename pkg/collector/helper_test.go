@@ -27,7 +27,7 @@ card3,20170005280c,deon Instinct MI50 32GB,0x0834,Advanced Micro Devices Inc. [A
 )
 
 func getExpectedNvidiaDevs() map[int]Device {
-	var nvidiaDevs = make(map[int]Device, 4)
+	nvidiaDevs := make(map[int]Device, 4)
 	nvidiaDevs[0] = Device{
 		index: "0",
 		name:  "Tesla V100-SXM2-32GB",
@@ -52,11 +52,12 @@ func getExpectedNvidiaDevs() map[int]Device {
 		uuid:  "GPU-61a65011-6571-a64n-5ab8-66cbb6f7f9c3",
 		isMig: false,
 	}
+
 	return nvidiaDevs
 }
 
 func getExpectedAmdDevs() map[int]Device {
-	var amdDevs = make(map[int]Device, 4)
+	amdDevs := make(map[int]Device, 4)
 	amdDevs[0] = Device{
 		index: "0",
 		name:  "deon Instinct MI50 32GB",
@@ -81,6 +82,7 @@ func getExpectedAmdDevs() map[int]Device {
 		uuid:  "20170005280c",
 		isMig: false,
 	}
+
 	return amdDevs
 }
 
@@ -90,7 +92,7 @@ func TestParseNvidiaSmiOutput(t *testing.T) {
 	content := fmt.Sprintf(`#!/bin/bash
 echo """%s"""	
 `, expectedNvidiaSmiOutput)
-	os.WriteFile(nvidiaSMIPath, []byte(content), 0700) // #nosec
+	os.WriteFile(nvidiaSMIPath, []byte(content), 0o700) // #nosec
 	gpuDevices, err := GetNvidiaGPUDevices(nvidiaSMIPath, log.NewNopLogger())
 	require.NoError(t, err)
 	assert.Equal(t, gpuDevices, getExpectedNvidiaDevs())
@@ -102,7 +104,7 @@ func TestParseAmdSmiOutput(t *testing.T) {
 	content := fmt.Sprintf(`#!/bin/bash
 echo """%s"""	
 `, expectedAmdSmiOutput)
-	os.WriteFile(amdSMIPath, []byte(content), 0700) // #nosec
+	os.WriteFile(amdSMIPath, []byte(content), 0o700) // #nosec
 	gpuDevices, err := GetAMDGPUDevices(amdSMIPath, log.NewNopLogger())
 	require.NoError(t, err)
 	assert.Equal(t, gpuDevices, getExpectedAmdDevs())

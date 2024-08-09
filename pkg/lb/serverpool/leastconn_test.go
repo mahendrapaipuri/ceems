@@ -16,21 +16,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	lcIDs = []string{"lc0", "lc1"}
-)
+var lcIDs = []string{"lc0", "lc1"}
 
 func TestUnAvailableBackends(t *testing.T) {
-	d := time.Duration(0 * time.Second)
+	d := 0 * time.Second
 
 	// Start manager
-	manager, err := NewManager("least-connection", log.NewNopLogger())
+	manager, err := New("least-connection", log.NewNopLogger())
 	require.NoError(t, err)
 
 	// Make dummy backend servers
 	backendURLs := make(map[string][]*url.URL, 2)
 	backends := make(map[string][]backend.TSDBServer, 2)
-	for i := 0; i < 2; i++ {
+
+	for i := range 2 {
 		for j, id := range lcIDs {
 			backendURL, err := url.Parse(fmt.Sprintf("http://localhost:%d", 3333*(i+1)+j))
 			require.NoError(t, err)
@@ -43,7 +42,7 @@ func TestUnAvailableBackends(t *testing.T) {
 			backendURLs[id][i] = backendURL
 
 			rp := httputil.NewSingleHostReverseProxy(backendURL)
-			backend := backend.NewTSDBServer(backendURL, rp, log.NewNopLogger())
+			backend := backend.New(backendURL, rp, log.NewNopLogger())
 			backends[id][i] = backend
 			manager.Add(id, backend)
 		}
@@ -51,7 +50,7 @@ func TestUnAvailableBackends(t *testing.T) {
 
 	// Check manager size
 	for _, id := range lcIDs {
-		assert.Equal(t, manager.Size(id), 2)
+		assert.Equal(t, 2, manager.Size(id))
 	}
 
 	// Set one backend to dead
@@ -75,15 +74,16 @@ func TestUnAvailableBackends(t *testing.T) {
 }
 
 func TestLeastConnectionLB(t *testing.T) {
-	d := time.Duration(0 * time.Second)
+	d := 0 * time.Second
 
 	// Start manager
-	manager, err := NewManager("least-connection", log.NewNopLogger())
+	manager, err := New("least-connection", log.NewNopLogger())
 	require.NoError(t, err)
 
 	backendURLs := make(map[string][]*url.URL, 2)
 	backends := make(map[string][]backend.TSDBServer, 2)
-	for i := 0; i < 2; i++ {
+
+	for i := range 2 {
 		for _, id := range lcIDs {
 			dummyServer := httptest.NewServer(h)
 			defer dummyServer.Close()
@@ -94,10 +94,11 @@ func TestLeastConnectionLB(t *testing.T) {
 				backendURLs[id] = make([]*url.URL, 2)
 				backends[id] = make([]backend.TSDBServer, 2)
 			}
+
 			backendURLs[id][i] = backendURL
 
 			rp := httputil.NewSingleHostReverseProxy(backendURL)
-			backend := backend.NewTSDBServer(backendURL, rp, log.NewNopLogger())
+			backend := backend.New(backendURL, rp, log.NewNopLogger())
 			backends[id][i] = backend
 			manager.Add(id, backend)
 		}
@@ -110,10 +111,12 @@ func TestLeastConnectionLB(t *testing.T) {
 
 	// Start wait group
 	var wg sync.WaitGroup
+
 	wg.Add(len(lcIDs))
 
 	// Check if we get non nil target
-	var target = make(map[string]backend.TSDBServer)
+	target := make(map[string]backend.TSDBServer)
+
 	for _, id := range lcIDs {
 		assert.NotEmpty(t, manager.Target(id, d))
 	}
@@ -122,8 +125,10 @@ func TestLeastConnectionLB(t *testing.T) {
 	for _, id := range lcIDs {
 		go func(i string) {
 			defer wg.Done()
+
 			r := httptest.NewRequest(http.MethodGet, "/test", nil)
 			w := httptest.NewRecorder()
+
 			if target := manager.Target(i, d); target != nil {
 				target.Serve(w, r)
 			}

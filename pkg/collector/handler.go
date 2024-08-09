@@ -34,6 +34,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if len(filters) == 0 {
 		// No filters, use the prepared unfiltered handler.
 		h.unfilteredHandler.ServeHTTP(w, r)
+
 		return
 	}
 	// To serve filtered metrics, we create a filtering handler on the fly.
@@ -42,8 +43,10 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		level.Warn(h.logger).Log("msg", "Couldn't create filtered metrics handler:", "err", err)
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Couldn't create filtered metrics handler"))
+
 		return
 	}
+
 	filteredHandler.ServeHTTP(w, r)
 }
 
@@ -55,18 +58,21 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (h *handler) innerHandler(filters ...string) (http.Handler, error) {
 	nc, err := NewCEEMSCollector(h.logger, filters...)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't create collector: %s", err)
+		return nil, fmt.Errorf("couldn't create collector: %w", err)
 	}
 
 	// Only log the creation of an unfiltered handler, which should happen
 	// only once upon startup.
 	if len(filters) == 0 {
 		level.Info(h.logger).Log("msg", "Enabled collectors")
+
 		collectors := []string{}
 		for n := range nc.Collectors {
 			collectors = append(collectors, n)
 		}
+
 		sort.Strings(collectors)
+
 		for _, c := range collectors {
 			level.Info(h.logger).Log("collector", c)
 		}
@@ -74,8 +80,9 @@ func (h *handler) innerHandler(filters ...string) (http.Handler, error) {
 
 	r := prometheus.NewRegistry()
 	r.MustRegister(version.NewCollector(CEEMSExporterAppName))
+
 	if err := r.Register(nc); err != nil {
-		return nil, fmt.Errorf("couldn't register compute resource collector: %s", err)
+		return nil, fmt.Errorf("couldn't register compute resource collector: %w", err)
 	}
 
 	var handler http.Handler

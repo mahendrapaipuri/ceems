@@ -19,7 +19,7 @@ func TestDriver(t *testing.T) {
 
 	conn, err := db.Conn(context.Background())
 	require.NoError(t, err)
-	assert.Equal(t, NumConns(), 1)
+	assert.Equal(t, 1, NumConns())
 
 	// Get the underlying sqlite3 connection
 	sqlc, ok := GetLastConn()
@@ -40,7 +40,7 @@ func TestOpenMany(t *testing.T) {
 	closers := make([]io.Closer, expectedConnections)
 	conns := make([]*Conn, expectedConnections)
 
-	for i := 0; i < expectedConnections; i++ {
+	for i := range expectedConnections {
 		db, err := sql.Open(DriverName, filepath.Join(tmpdir, fmt.Sprintf("test-%d.db", i+1)))
 		require.NoError(t, err, "could not open connection to database")
 		require.NoError(t, db.Ping(), "could not ping database to establish a connection")
@@ -64,6 +64,7 @@ func TestOpenMany(t *testing.T) {
 	// Close each connection
 	for _, closer := range closers {
 		require.NoError(t, closer.Close(), "expected no error during close")
+
 		expectedConnections--
 		require.Equal(t, expectedConnections, NumConns())
 	}
@@ -260,9 +261,10 @@ func TestAvgMetricMapAgg(t *testing.T) {
 
 func setupDB(tmpDir string, aggMetric bool, units []models.Unit) (models.MetricMap, models.MetricMap, error) {
 	dbPath := filepath.Join(tmpDir, "test.db")
+
 	db, err := sql.Open(DriverName, dbPath)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create DB")
+		return nil, nil, fmt.Errorf("failed to create DB: %w", err)
 	}
 
 	stmts := `
@@ -275,9 +277,10 @@ CREATE TABLE units (
 	"avg_cpu_usage" text
 );
 CREATE UNIQUE INDEX uq_cluster_id_uuid_start ON units (uuid);`
+
 	_, err = db.Exec(stmts)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create table in DB: %s", err)
+		return nil, nil, fmt.Errorf("failed to create table in DB: %w", err)
 	}
 
 	updateStmt := `
@@ -287,8 +290,9 @@ INSERT INTO units (uuid,total_time_seconds,avg_cpu_usage) VALUES(:uuid,:total_ti
 
 	sqlStmt, err := db.Prepare(updateStmt)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to prepare statement for table %s", err)
+		return nil, nil, fmt.Errorf("failed to prepare statement for table %w", err)
 	}
+	defer sqlStmt.Close()
 
 	for _, unit := range units {
 		if _, err := sqlStmt.Exec(
@@ -296,7 +300,7 @@ INSERT INTO units (uuid,total_time_seconds,avg_cpu_usage) VALUES(:uuid,:total_ti
 			sql.Named("total_time_seconds", unit.TotalTime),
 			sql.Named("avg_cpu_usage", unit.AveCPUUsage),
 		); err != nil {
-			return nil, nil, fmt.Errorf("failed to insert data for table %s", err)
+			return nil, nil, fmt.Errorf("failed to insert data for table %w", err)
 		}
 	}
 
@@ -308,6 +312,7 @@ INSERT INTO units (uuid,total_time_seconds,avg_cpu_usage) VALUES(:uuid,:total_ti
 	} else {
 		_ = db.QueryRow("SELECT avg_cpu_usage, total_time_seconds FROM units").Scan(&cpuUsage, &totalTimes)
 	}
+
 	return cpuUsage, totalTimes, nil
 }
 

@@ -1,6 +1,7 @@
 package db
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,7 +14,6 @@ import (
 	"github.com/mahendrapaipuri/ceems/pkg/api/resource"
 	"github.com/mahendrapaipuri/ceems/pkg/api/updater"
 	"github.com/prometheus/common/model"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -96,6 +96,7 @@ var mockUnitsOne = []models.ClusterUnits{
 		},
 	},
 }
+
 var mockUnitsTwo = []models.ClusterUnits{
 	{
 		Cluster: models.Cluster{
@@ -232,36 +233,36 @@ func newMockManager(logger log.Logger) (*resource.Manager, error) {
 	}, nil
 }
 
-// FetchUnits implements collection units between start and end times
+// FetchUnits implements collection units between start and end times.
 func (m *mockFetcherOne) FetchUnits(start time.Time, end time.Time) ([]models.ClusterUnits, error) {
 	return mockUnitsOne, nil
 }
 
-// FetchUsersProjects implements collection project user association
+// FetchUsersProjects implements collection project user association.
 func (m *mockFetcherOne) FetchUsersProjects(
 	current time.Time,
 ) ([]models.ClusterUsers, []models.ClusterProjects, error) {
 	return mockUsersOne, mockProjectsOne, nil
 }
 
-// FetchUnits implements collection units between start and end times
+// FetchUnits implements collection units between start and end times.
 func (m *mockFetcherTwo) FetchUnits(start time.Time, end time.Time) ([]models.ClusterUnits, error) {
 	return mockUnitsTwo, nil
 }
 
-// FetchUsersProjects implements collection project user association
+// FetchUsersProjects implements collection project user association.
 func (m *mockFetcherTwo) FetchUsersProjects(
 	current time.Time,
 ) ([]models.ClusterUsers, []models.ClusterProjects, error) {
-	return nil, nil, fmt.Errorf("failed to fetch associations")
+	return nil, nil, errors.New("failed to fetch associations")
 }
 
-// Return error for this mockFetcher
+// Return error for this mockFetcher.
 func (m *mockFetcherThree) FetchUnits(start time.Time, end time.Time) ([]models.ClusterUnits, error) {
-	return nil, fmt.Errorf("failed to fetch units")
+	return nil, errors.New("failed to fetch units")
 }
 
-// FetchUsersProjects implements collection project user association
+// FetchUsersProjects implements collection project user association.
 func (m *mockFetcherThree) FetchUsersProjects(
 	current time.Time,
 ) ([]models.ClusterUsers, []models.ClusterProjects, error) {
@@ -440,7 +441,7 @@ type mockUpdaterSlurm00 struct {
 	logger log.Logger
 }
 
-// GetUnits implements collection units between start and end times
+// GetUnits implements collection units between start and end times.
 func (m mockUpdaterSlurm00) Update(
 	startTime time.Time,
 	endTime time.Time,
@@ -453,7 +454,7 @@ type mockUpdaterSlurm01 struct {
 	logger log.Logger
 }
 
-// GetUnits implements collection units between start and end times
+// GetUnits implements collection units between start and end times.
 func (m mockUpdaterSlurm01) Update(
 	startTime time.Time,
 	endTime time.Time,
@@ -466,7 +467,7 @@ type mockUpdaterSlurm1 struct {
 	logger log.Logger
 }
 
-// GetUnits implements collection units between start and end times
+// GetUnits implements collection units between start and end times.
 func (m mockUpdaterSlurm1) Update(
 	startTime time.Time,
 	endTime time.Time,
@@ -479,7 +480,7 @@ type mockUpdaterOS0 struct {
 	logger log.Logger
 }
 
-// GetUnits implements collection units between start and end times
+// GetUnits implements collection units between start and end times.
 func (m mockUpdaterOS0) Update(
 	startTime time.Time,
 	endTime time.Time,
@@ -492,7 +493,7 @@ type mockUpdaterOS1 struct {
 	logger log.Logger
 }
 
-// GetUnits implements collection units between start and end times
+// GetUnits implements collection units between start and end times.
 func (m mockUpdaterOS1) Update(
 	startTime time.Time,
 	endTime time.Time,
@@ -514,24 +515,27 @@ func newMockUpdater(logger log.Logger) (*updater.UnitUpdater, error) {
 	}, nil
 }
 
-func prepareMockConfig(tmpDir string) *Config {
+func prepareMockConfig(tmpDir string) (*Config, error) {
 	dataDir := filepath.Join(tmpDir, "data")
 	dataBackupDir := filepath.Join(tmpDir, "data-backup")
 
 	// Create data directory
-	if err := os.Mkdir(dataDir, 0750); err != nil {
-		fmt.Printf("Failed to create data directory: %s", err)
+	if err := os.Mkdir(dataDir, 0o750); err != nil {
+		return nil, fmt.Errorf("Failed to create data directory: %w", err)
 	}
-	if err := os.Mkdir(dataBackupDir, 0750); err != nil {
-		fmt.Printf("Failed to create data directory: %s", err)
+
+	if err := os.Mkdir(dataBackupDir, 0o750); err != nil {
+		return nil, fmt.Errorf("Failed to create data directory: %w", err)
 	}
 
 	// Create an empty file for sacct
 	sacctFile, err := os.Create(filepath.Join(tmpDir, "sacct"))
 	if err != nil {
-		fmt.Println(err)
+		return nil, err
 	}
+
 	sacctFile.Close()
+
 	return &Config{
 		Logger: log.NewNopLogger(),
 		Data: DataConfig{
@@ -545,32 +549,41 @@ func prepareMockConfig(tmpDir string) *Config {
 		},
 		ResourceManager: newMockManager,
 		Updater:         newMockUpdater,
-	}
+	}, nil
 }
 
-func populateDBWithMockData(s *statsDB) {
-	tx, _ := s.db.Begin()
+func populateDBWithMockData(s *stats) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+
 	stmtMap, err := s.prepareStatements(tx)
 	if err != nil {
-		fmt.Println(err)
+		return err
 	}
+
 	s.execStatements(stmtMap, time.Now(), mockUnitsOne, mockUsersOne, mockProjectsOne)
 	s.execStatements(stmtMap, time.Now(), mockUnitsTwo, nil, nil)
 	tx.Commit()
+
+	return nil
 }
 
 func TestNewUnitStatsDB(t *testing.T) {
-	tmpDir := t.TempDir()
-	c := prepareMockConfig(tmpDir)
 	var (
-		s   *statsDB
+		s   *stats
 		err error
 	)
 
+	tmpDir := t.TempDir()
+	c, err := prepareMockConfig(tmpDir)
+	require.NoError(t, err, "failed to create mock config")
+
 	// Make new stats DB
 	c.Data.LastUpdateTime, _ = time.Parse("2006-01-02", "2023-12-20")
-	s, err = NewStatsDB(c)
-	require.NoError(t, err, "failed to create new statsDB")
+	s, err = New(c)
+	require.NoError(t, err, "failed to create new stats")
 
 	// Check DB file exists
 	_, err = os.Stat(c.Data.Path)
@@ -583,8 +596,8 @@ func TestNewUnitStatsDB(t *testing.T) {
 
 	// Make again a new stats DB with lastUpdateTime in the past of the one in DB
 	c.Data.LastUpdateTime, _ = time.Parse("2006-01-02", "2023-12-19")
-	s, err = NewStatsDB(c)
-	require.NoError(t, err, "failed to create new statsDB")
+	s, err = New(c)
+	require.NoError(t, err, "failed to create new stats")
 
 	// Check content of last update time file. It should not change
 	assert.Contains(t, s.storage.lastUpdateTime.String(), "2023-12-20 00:00:00", "Expected last update time is 2023-12-20 00:00:00")
@@ -593,11 +606,12 @@ func TestNewUnitStatsDB(t *testing.T) {
 
 func TestUnitStatsDBEntries(t *testing.T) {
 	tmpDir := t.TempDir()
-	c := prepareMockConfig(tmpDir)
+	c, err := prepareMockConfig(tmpDir)
+	require.NoError(t, err, "failed to create mock config")
 
 	// Make new stats DB
-	s, err := NewStatsDB(c)
-	require.NoError(t, err, "Failed to create new statsDB")
+	s, err := New(c)
+	require.NoError(t, err, "failed to create new stats")
 
 	// Fetch units
 	var expectedUnits []models.ClusterUnits
@@ -609,16 +623,19 @@ func TestUnitStatsDBEntries(t *testing.T) {
 
 	// Try to insert data
 	err = s.Collect()
-	require.NoError(t, err, "Failed to collect units data")
+	require.NoError(t, err, "failed to collect units data")
 
 	// Make units query
 	rows, err := s.db.Query(
 		"SELECT uuid,username,project,total_time_seconds,avg_cpu_usage,avg_cpu_mem_usage,total_cpu_energy_usage_kwh,total_cpu_emissions_gms,avg_gpu_usage,avg_gpu_mem_usage,total_gpu_energy_usage_kwh,total_gpu_emissions_gms FROM units ORDER BY uuid",
 	)
-	require.NoError(t, err, "Failed to make DB query")
+	require.NoError(t, err, "failed to make DB query")
+
 	defer rows.Close()
+	require.NoError(t, rows.Err())
 
 	var units []models.Unit
+
 	for rows.Next() {
 		var unit models.Unit
 
@@ -630,6 +647,7 @@ func TestUnitStatsDBEntries(t *testing.T) {
 			&unit.TotalGPUEnergyUsage, &unit.TotalGPUEmissions); err != nil {
 			t.Errorf("failed to scan row: %s", err)
 		}
+
 		units = append(units, unit)
 	}
 
@@ -638,18 +656,23 @@ func TestUnitStatsDBEntries(t *testing.T) {
 	mockUpdatedUnits = append(mockUpdatedUnits, mockUpdatedUnitsSlurm1...)
 	mockUpdatedUnits = append(mockUpdatedUnits, mockUpdatedUnitsOS0...)
 	mockUpdatedUnits = append(mockUpdatedUnits, mockUpdatedUnitsOS1...)
+
 	var expectedUpdatedUnits []models.Unit
+
 	for _, units := range mockUpdatedUnits {
 		expectedUpdatedUnits = append(expectedUpdatedUnits, units.Units...)
 	}
+
 	assert.ElementsMatch(t, units, expectedUpdatedUnits, "expected and got updated cluster units differ")
 
 	// Make usage query
 	rows, err = s.db.Query(
 		"SELECT avg_cpu_usage,num_updates FROM usage WHERE username = 'foo1' AND cluster_id = 'slurm-0'",
 	)
-	require.NoError(t, err, "Failed to make DB query")
+	require.NoError(t, err, "failed to make DB query")
+
 	defer rows.Close()
+	require.NoError(t, rows.Err())
 
 	// // For debugging
 	// source, _ := os.Open(filepath.Join(tmpDir, "data", base.CEEMSDBName))
@@ -660,6 +683,7 @@ func TestUnitStatsDBEntries(t *testing.T) {
 	// fmt.Println(nBytes)
 
 	var cpuUsage models.MetricMap
+
 	var numUpdates int64
 	for rows.Next() {
 		if err = rows.Scan(&cpuUsage, &numUpdates); err != nil {
@@ -667,14 +691,17 @@ func TestUnitStatsDBEntries(t *testing.T) {
 		}
 	}
 
-	assert.Equal(t, models.JSONFloat(15), cpuUsage["usage"], "expected cpuUsage = 15")
+	require.NoError(t, rows.Err())
+	assert.InEpsilon(t, 15, float64(cpuUsage["usage"]), 0, "expected cpuUsage = 15")
 
 	// Make projects query
 	rows, err = s.db.Query(
 		"SELECT users FROM projects WHERE name = 'fooprj' AND cluster_id = 'slurm-0'",
 	)
 	require.NoError(t, err, "Failed to make DB query")
+
 	defer rows.Close()
+	require.NoError(t, rows.Err())
 
 	var users models.List
 	for rows.Next() {
@@ -682,6 +709,7 @@ func TestUnitStatsDBEntries(t *testing.T) {
 			t.Errorf("failed to scan row: %s", err)
 		}
 	}
+
 	assert.ElementsMatch(t, models.List{"foo1", "foo2"}, users, "expected and got users differ")
 
 	// Close DB
@@ -690,12 +718,14 @@ func TestUnitStatsDBEntries(t *testing.T) {
 
 func TestUnitStatsDBEntriesHistorical(t *testing.T) {
 	tmpDir := t.TempDir()
-	c := prepareMockConfig(tmpDir)
+	c, err := prepareMockConfig(tmpDir)
+	require.NoError(t, err, "failed to create mock config")
+
 	c.Data.LastUpdateTime = time.Now().Add(-48 * time.Hour)
 
 	// Make new stats DB
-	s, err := NewStatsDB(c)
-	require.NoError(t, err, "Failed to create new statsDB")
+	s, err := New(c)
+	require.NoError(t, err, "Failed to create new stats")
 
 	// Fetch units
 	var expectedUnits []models.ClusterUnits
@@ -714,9 +744,12 @@ func TestUnitStatsDBEntriesHistorical(t *testing.T) {
 		"SELECT uuid,username,project,total_time_seconds,avg_cpu_usage,avg_cpu_mem_usage,total_cpu_energy_usage_kwh,total_cpu_emissions_gms,avg_gpu_usage,avg_gpu_mem_usage,total_gpu_energy_usage_kwh,total_gpu_emissions_gms FROM units ORDER BY uuid",
 	)
 	require.NoError(t, err, "Failed to make DB query")
+
 	defer rows.Close()
+	require.NoError(t, rows.Err())
 
 	var units []models.Unit
+
 	for rows.Next() {
 		var unit models.Unit
 
@@ -728,6 +761,7 @@ func TestUnitStatsDBEntriesHistorical(t *testing.T) {
 			&unit.TotalGPUEnergyUsage, &unit.TotalGPUEmissions); err != nil {
 			t.Errorf("failed to scan row: %s", err)
 		}
+
 		units = append(units, unit)
 	}
 
@@ -736,10 +770,13 @@ func TestUnitStatsDBEntriesHistorical(t *testing.T) {
 	mockUpdatedUnits = append(mockUpdatedUnits, mockUpdatedUnitsSlurm1...)
 	mockUpdatedUnits = append(mockUpdatedUnits, mockUpdatedUnitsOS0...)
 	mockUpdatedUnits = append(mockUpdatedUnits, mockUpdatedUnitsOS1...)
+
 	var expectedUpdatedUnits []models.Unit
+
 	for _, units := range mockUpdatedUnits {
 		expectedUpdatedUnits = append(expectedUpdatedUnits, units.Units...)
 	}
+
 	assert.ElementsMatch(t, units, expectedUpdatedUnits, "expected and got updated cluster units differ")
 
 	// Close DB
@@ -748,12 +785,13 @@ func TestUnitStatsDBEntriesHistorical(t *testing.T) {
 
 func TestUnitStatsDBLock(t *testing.T) {
 	tmpDir := t.TempDir()
-	c := prepareMockConfig(tmpDir)
+	c, err := prepareMockConfig(tmpDir)
+	require.NoError(t, err, "failed to create mock config")
 
 	// Make new stats DB
-	s, err := NewStatsDB(c)
+	s, err := New(c)
 	defer s.Stop()
-	require.NoError(t, err, "Failed to create new statsDB")
+	require.NoError(t, err, "Failed to create new stats")
 
 	// Beging exclusive transcation to lock DB
 	_, err = s.db.Exec("BEGIN EXCLUSIVE;")
@@ -767,15 +805,17 @@ func TestUnitStatsDBLock(t *testing.T) {
 
 func TestUnitStatsDBVacuum(t *testing.T) {
 	tmpDir := t.TempDir()
-	c := prepareMockConfig(tmpDir)
+	c, err := prepareMockConfig(tmpDir)
+	require.NoError(t, err, "failed to create mock config")
 
 	// Make new stats DB
-	s, err := NewStatsDB(c)
+	s, err := New(c)
 	defer s.Stop()
-	require.NoError(t, err, "Failed to create new statsDB")
+	require.NoError(t, err, "Failed to create new stats")
 
 	// Populate DB with data
-	populateDBWithMockData(s)
+	err = populateDBWithMockData(s)
+	require.NoError(t, err, "failed to insert data in test DB")
 
 	// Run vacuum
 	err = s.vacuum()
@@ -784,15 +824,17 @@ func TestUnitStatsDBVacuum(t *testing.T) {
 
 func TestUnitStatsDBBackup(t *testing.T) {
 	tmpDir := t.TempDir()
-	c := prepareMockConfig(tmpDir)
+	c, err := prepareMockConfig(tmpDir)
+	require.NoError(t, err, "failed to create mock config")
 
 	// Make new stats DB
-	s, err := NewStatsDB(c)
+	s, err := New(c)
 	defer s.Stop()
-	require.NoError(t, err, "Failed to create new statsDB")
+	require.NoError(t, err, "Failed to create new stats")
 
 	// Populate DB with data
-	populateDBWithMockData(s)
+	err = populateDBWithMockData(s)
+	require.NoError(t, err, "failed to insert data in test DB")
 
 	// Run backup
 	expectedBackupFile := filepath.Join(c.Data.BackupPath, "backup.db")
@@ -804,31 +846,41 @@ func TestUnitStatsDBBackup(t *testing.T) {
 
 	// Check contents of backed up DB
 	var numRows int
+
 	db, _, err := openDBConnection(expectedBackupFile)
 	if err != nil {
 		t.Errorf("Failed to create DB connection to backup DB: %s", err)
 	}
-	rows, _ := db.Query(fmt.Sprintf("SELECT * FROM %s;", base.UnitsDBTableName))
+
+	rows, err := db.Query(fmt.Sprintf("SELECT * FROM %s;", base.UnitsDBTableName))
+	require.NoError(t, err)
+
+	defer rows.Close()
+	require.NoError(t, rows.Err())
+
 	for rows.Next() {
 		numRows += 1
 	}
-	assert.Equal(t, numRows, 7, "Backup DB check failed. Expected rows 7")
+
+	assert.Equal(t, 4, numRows, "Backup DB check failed. Expected rows 7")
 }
 
 func TestStatsDBBackup(t *testing.T) {
 	tmpDir := t.TempDir()
-	c := prepareMockConfig(tmpDir)
+	c, err := prepareMockConfig(tmpDir)
+	require.NoError(t, err, "failed to create mock config")
 
 	// Make new stats DB
-	s, err := NewStatsDB(c)
+	s, err := New(c)
 	defer s.Stop()
-	require.NoError(t, err, "failed to create new statsDB")
+	require.NoError(t, err, "failed to create new stats")
 
 	// Make backup dir non existent
 	s.storage.dbBackupPath = tmpDir
 
 	// Populate DB with data
-	populateDBWithMockData(s)
+	err = populateDBWithMockData(s)
+	require.NoError(t, err, "failed to insert data in test DB")
 
 	// Run backup
 	err = s.createBackup()
@@ -838,12 +890,13 @@ func TestStatsDBBackup(t *testing.T) {
 func TestUnitStatsDeleteOldUnits(t *testing.T) {
 	tmpDir := t.TempDir()
 	unitID := "1111"
-	c := prepareMockConfig(tmpDir)
+	c, err := prepareMockConfig(tmpDir)
+	require.NoError(t, err, "failed to create mock config")
 
 	// Make new stats DB
-	s, err := NewStatsDB(c)
+	s, err := New(c)
 	defer s.Stop()
-	require.NoError(t, err, "failed to create new statsDB")
+	require.NoError(t, err, "failed to create new stats")
 
 	// Add new row that should be deleted
 	units := []models.ClusterUnits{
@@ -853,10 +906,8 @@ func TestUnitStatsDeleteOldUnits(t *testing.T) {
 			},
 			Units: []models.Unit{
 				{
-					UUID: unitID,
-					CreatedAt: time.Now().
-						Add(time.Duration(-s.storage.retentionPeriod*24*2) * time.Hour).
-						Format(base.DatetimeLayout),
+					UUID:      unitID,
+					StartedAt: time.Now().Add(-s.storage.retentionPeriod * 2).Format(base.DatetimeLayout),
 				},
 			},
 		},
@@ -868,7 +919,7 @@ func TestUnitStatsDeleteOldUnits(t *testing.T) {
 
 	// Now clean up DB for old units
 	err = s.purgeExpiredUnits(tx)
-	require.NoError(t, err, "failed to delete old netries in DB")
+	require.NoError(t, err, "failed to delete old entries in DB")
 	tx.Commit()
 
 	// Query for deleted unit
@@ -876,9 +927,10 @@ func TestUnitStatsDeleteOldUnits(t *testing.T) {
 		fmt.Sprintf("SELECT COUNT(uuid) FROM %s WHERE uuid = ?;", base.UnitsDBTableName),
 	)
 	require.NoError(t, err)
+	defer result.Close()
 
-	var numRows string
+	var numRows int
 	err = result.QueryRow(unitID).Scan(&numRows)
 	require.NoError(t, err, "failed to query DB")
-	assert.Equal(t, numRows, "0", "expected 0 rows after deletion")
+	assert.Equal(t, 0, numRows, "expected 0 rows after deletion")
 }

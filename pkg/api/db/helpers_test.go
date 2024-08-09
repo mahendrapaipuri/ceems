@@ -13,7 +13,7 @@ import (
 func TestJobStatsDBPreparation(t *testing.T) {
 	tmpDir := t.TempDir()
 	statDBPath := filepath.Join(tmpDir, "stats.db")
-	j := statsDB{
+	j := stats{
 		logger: log.NewNopLogger(),
 	}
 

@@ -12,7 +12,7 @@ import (
 	"github.com/go-kit/log/level"
 )
 
-// Headers
+// Headers.
 const (
 	grafanaUserHeader   = "X-Grafana-User"
 	dashboardUserHeader = "X-Dashboard-User"
@@ -21,12 +21,12 @@ const (
 	ceemsUserHeader     = "X-Ceems-User" // Special header that will be included in requests from CEEMS LB
 )
 
-// Debug end point regex match
+// Debug end point regex match.
 var (
 	debugEndpoints = regexp.MustCompile("/debug/(.*)")
 )
 
-// Define our struct
+// Define our struct.
 type authenticationMiddleware struct {
 	logger          log.Logger
 	routerPrefix    string
@@ -35,11 +35,13 @@ type authenticationMiddleware struct {
 	adminUsers      func(*sql.DB, log.Logger) []string
 }
 
-// Middleware function, which will be called for each request
+// Middleware function, which will be called for each request.
 func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var loggedUser string
+
 		var admUsers []string
+
 		var q url.Values
 
 		// If requested URI is one of the following, skip checking for user header
@@ -77,8 +79,10 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 
 			// Write an error and stop the handler chain
 			errorResponse[any](w, &apiError{errorUnauthorized, errNoUser}, amw.logger, nil)
+
 			return
 		}
+
 		level.Info(amw.logger).Log("loggedUser", loggedUser, "url", r.URL)
 
 		// Set logged user header
@@ -116,8 +120,10 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 
 				// Write an error and stop the handler chain
 				errorResponse[any](w, &apiError{errorForbidden, errNoPrivs}, amw.logger, nil)
+
 				return
 			}
+
 			r.Header.Set(dashboardUserHeader, loggedUser)
 		}
 

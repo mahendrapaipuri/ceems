@@ -31,11 +31,9 @@ const jumpBackSeconds = 3.0
 
 const cpuCollectorSubsystem = "cpu"
 
-var (
-	jumpBackDebugMessage = fmt.Sprintf(
-		"CPU Idle counter jumped backwards more than %f seconds, possible hotplug event, resetting CPU stats",
-		jumpBackSeconds,
-	)
+var jumpBackDebugMessage = fmt.Sprintf(
+	"CPU Idle counter jumped backwards more than %f seconds, possible hotplug event, resetting CPU stats",
+	jumpBackSeconds,
 )
 
 func init() {
@@ -56,12 +54,15 @@ func NewCPUCollector(logger log.Logger) (Collector, error) {
 	}
 
 	// Get number of physical cores
-	var socketCoreMap = make(map[string]int)
+	socketCoreMap := make(map[string]int)
+
 	var physicalCores, logicalCores int
+
 	for _, cpu := range info {
 		socketCoreMap[cpu.PhysicalID] = int(cpu.CPUCores)
 		logicalCores++
 	}
+
 	for _, cores := range socketCoreMap {
 		physicalCores += cores
 	}
@@ -132,12 +133,12 @@ func (c *cpuCollector) Update(ch chan<- prometheus.Metric) error {
 	ch <- prometheus.MustNewConstMetric(c.cpu, prometheus.CounterValue, c.cpuStats.IRQ, c.hostname, "irq")
 	ch <- prometheus.MustNewConstMetric(c.cpu, prometheus.CounterValue, c.cpuStats.SoftIRQ, c.hostname, "softirq")
 	ch <- prometheus.MustNewConstMetric(c.cpu, prometheus.CounterValue, c.cpuStats.Steal, c.hostname, "steal")
+
 	return nil
 }
 
 // updateCPUStats updates the internal cache of CPU stats.
 func (c *cpuCollector) updateCPUStats(newStats procfs.CPUStat) {
-
 	// Acquire a lock to update the stats.
 	c.cpuStatsMutex.Lock()
 	defer c.cpuStatsMutex.Unlock()

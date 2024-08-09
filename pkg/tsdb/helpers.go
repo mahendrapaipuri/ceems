@@ -2,7 +2,6 @@ package tsdb
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 )
@@ -22,6 +21,7 @@ func Request(url string, client *http.Client) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 
 	// Read response body
 	body, err := io.ReadAll(resp.Body)
@@ -37,7 +37,8 @@ func Request(url string, client *http.Client) (interface{}, error) {
 
 	// if Data field is nil return err
 	if data.Data == nil {
-		return nil, fmt.Errorf("missing data in TSDB response")
+		return nil, ErrMissingData
 	}
+
 	return data.Data, nil
 }

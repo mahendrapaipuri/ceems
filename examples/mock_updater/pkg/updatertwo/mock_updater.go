@@ -26,12 +26,13 @@ var (
 
 func init() {
 	// Register mock updater
-	updater.RegisterUpdater(mockUpdaterHookName, NewMockUpdaterHook)
+	updater.Register(mockUpdaterHookName, NewMockUpdaterHook)
 }
 
 // NewMockUpdaterHook returns a new NewMockUpdaterHook to update units
 func NewMockUpdaterHook(instance updater.Instance, logger log.Logger) (updater.Updater, error) {
 	level.Info(logger).Log("msg", "CLI args", "arg1", mockUpdaterHookCLI)
+
 	return &mockUpdater{
 		logger: logger,
 	}, nil

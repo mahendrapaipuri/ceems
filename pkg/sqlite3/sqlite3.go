@@ -26,6 +26,7 @@ import (
 // Init creates the connections map and registers the driver with the SQL package.
 func init() {
 	conns = make(map[uint64]*Conn)
+
 	sql.Register(DriverName, &Driver{
 		sqlite3.SQLiteDriver{
 			ConnectHook: func(conn *sqlite3.SQLiteConn) error {
@@ -41,6 +42,7 @@ func init() {
 				if err := conn.RegisterAggregator("avg_metric_map_agg", newAvgMetricMapAgg, true); err != nil {
 					return err
 				}
+
 				return nil
 			},
 		},
@@ -69,8 +71,11 @@ type Driver struct {
 // Open implements the sql.Driver interface and returns a sqlite3 connection that can
 // be fetched by the user using GetLastConn. The connection ensures it's cleaned up
 // when it's closed. This method is not used by the user, but rather by sql.Open.
-func (d *Driver) Open(dsn string) (_ driver.Conn, err error) {
+func (d *Driver) Open(dsn string) (driver.Conn, error) {
 	var inner driver.Conn
+
+	var err error
+
 	if inner, err = d.SQLiteDriver.Open(dsn); err != nil {
 		return nil, err
 	}
@@ -106,6 +111,7 @@ func (c *Conn) Close() error {
 	mu.Lock()
 	delete(conns, c.cid)
 	mu.Unlock()
+
 	return c.SQLiteConn.Close()
 }
 
@@ -134,7 +140,9 @@ func (c *Conn) Backup(dest string, srcConn *Conn, src string) (*sqlite3.SQLiteBa
 func GetLastConn() (*Conn, bool) {
 	mu.Lock()
 	defer mu.Unlock()
+
 	conn, ok := conns[seq]
+
 	return conn, ok
 }
 
@@ -142,28 +150,30 @@ func GetLastConn() (*Conn, bool) {
 func NumConns() int {
 	mu.Lock()
 	defer mu.Unlock()
+
 	return len(conns)
 }
 
-// addMetricMap adds the existing metricMap to newMetricMap
-func addMetricMap(existing, new string) string {
+// addMetricMap adds the existing metricMap to newMetricMap.
+func addMetricMap(existing, current string) string {
 	// Unmarshal strings into MetricMap type
-	var existingMetricMap, newMetricMap models.MetricMap
+	var existingMetricMap, currentMetricMap models.MetricMap
 	if err := json.Unmarshal([]byte(existing), &existingMetricMap); err != nil {
 		panic(err)
 	}
-	if err := json.Unmarshal([]byte(new), &newMetricMap); err != nil {
+
+	if err := json.Unmarshal([]byte(current), &currentMetricMap); err != nil {
 		panic(err)
 	}
 
 	// Make a deep copy of existingMetricMap into updatedMetricMap
-	var updatedMetricMap = make(models.MetricMap)
+	updatedMetricMap := make(models.MetricMap)
 	for metricName, metricValue := range existingMetricMap {
 		updatedMetricMap[metricName] = metricValue
 	}
 
 	// Walk through new map and update existing with new.
-	for metricName, newMetricValue := range newMetricMap {
+	for metricName, newMetricValue := range currentMetricMap {
 		if existingMetricValue, ok := existingMetricMap[metricName]; ok {
 			updatedMetricMap[metricName] = newMetricValue + existingMetricValue
 		} else {
@@ -176,28 +186,33 @@ func addMetricMap(existing, new string) string {
 	if err != nil {
 		panic(err)
 	}
+
 	return string(updatedMetricMapBytes)
 }
 
 // avgMetricMap makes average between a existing metricMap and a newMetricMap using
-// weights
-func avgMetricMap(existing, new string, existingWeight, newWeight float64) string {
+// weights.
+func avgMetricMap(existing, current string, existingWeight, currentWeight float64) string {
 	// Unmarshal strings into MetricMap type
-	var existingMetricMap, newMetricMap models.MetricMap
+	var existingMetricMap, currentMetricMap models.MetricMap
 	if err := json.Unmarshal([]byte(existing), &existingMetricMap); err != nil {
 		panic(err)
 	}
-	if err := json.Unmarshal([]byte(new), &newMetricMap); err != nil {
+
+	if err := json.Unmarshal([]byte(current), &currentMetricMap); err != nil {
 		panic(err)
 	}
 
 	// Make slice of maps and weights
-	var metricMaps = []models.MetricMap{existingMetricMap, newMetricMap}
-	var weights = []float64{existingWeight, newWeight}
+	metricMaps := []models.MetricMap{existingMetricMap, currentMetricMap}
+
+	weights := []float64{existingWeight, currentWeight}
 
 	// Initialize vars
-	var avgMetricMap = make(models.MetricMap)
-	var totalWeights = make(map[string]models.JSONFloat)
+	avgMetricMap := make(models.MetricMap)
+
+	totalWeights := make(map[string]models.JSONFloat)
+
 	for imetricMap, metricMap := range metricMaps {
 		for metricName, metricValue := range metricMap {
 			weight := models.JSONFloat(weights[imetricMap])
@@ -210,7 +225,7 @@ func avgMetricMap(existing, new string, existingWeight, newWeight float64) strin
 	for metricName := range avgMetricMap {
 		if totalWeight, ok := totalWeights[metricName]; ok {
 			if totalWeight > 0 {
-				avgMetricMap[metricName] = avgMetricMap[metricName] / totalWeight
+				avgMetricMap[metricName] /= totalWeight
 			}
 		}
 	}
@@ -220,23 +235,24 @@ func avgMetricMap(existing, new string, existingWeight, newWeight float64) strin
 	if err != nil {
 		panic(err)
 	}
+
 	return string(updatedMetricMapBytes)
 }
 
 // sumMetricMap aggregate sums MetricMaps.
 // For int or float types, they will be summed up
-// String types will be ignored and treated as zero
+// String types will be ignored and treated as zero.
 type sumMetricMap struct {
 	aggMetricMap     models.MetricMap
 	currentMetricMap models.MetricMap
 }
 
-// newSumMetricMap returns an instance of sumMetricMap
+// newSumMetricMap returns an instance of sumMetricMap.
 func newSumMetricMap() *sumMetricMap {
 	return &sumMetricMap{aggMetricMap: make(models.MetricMap)}
 }
 
-// Step adds the element to slice
+// Step adds the element to slice.
 func (g *sumMetricMap) Step(m string) {
 	// On empty map return
 	if m == "{}" || m == "null" {
@@ -246,31 +262,33 @@ func (g *sumMetricMap) Step(m string) {
 	if err := json.Unmarshal([]byte(m), &g.currentMetricMap); err != nil {
 		panic(err)
 	}
+
 	for metricName, metricValue := range g.currentMetricMap {
 		g.aggMetricMap[metricName] += metricValue
 	}
 }
 
-// Done aggregates all the elements added to slice
+// Done aggregates all the elements added to slice.
 func (g *sumMetricMap) Done() string {
 	// Finally, marshal the type into string and return
 	aggMetricMapBytes, err := json.Marshal(g.aggMetricMap)
 	if err != nil {
 		panic(err)
 	}
+
 	return string(aggMetricMapBytes)
 }
 
 // avgMetricMap averages MetricMaps based on weights.
 // For int or float types, they will be weighed averaged
-// For string types, they will be ignored
+// For string types, they will be ignored.
 type avgMetricMapAgg struct {
 	avgMetricMap     models.MetricMap
 	currentMetricMap models.MetricMap
 	totalWeights     map[string]models.JSONFloat
 }
 
-// newAvgMetricMap returns an instance of avgMetricMap
+// newAvgMetricMap returns an instance of avgMetricMap.
 func newAvgMetricMapAgg() *avgMetricMapAgg {
 	return &avgMetricMapAgg{
 		avgMetricMap: make(models.MetricMap),
@@ -278,7 +296,7 @@ func newAvgMetricMapAgg() *avgMetricMapAgg {
 	}
 }
 
-// Step adds the element to slice
+// Step adds the element to slice.
 func (g *avgMetricMapAgg) Step(m string, w float64) {
 	// On empty map return
 	if m == "{}" || m == "null" || w == 0 {
@@ -288,6 +306,7 @@ func (g *avgMetricMapAgg) Step(m string, w float64) {
 	if err := json.Unmarshal([]byte(m), &g.currentMetricMap); err != nil {
 		panic(err)
 	}
+
 	for metricName, metricValue := range g.currentMetricMap {
 		weight := models.JSONFloat(w)
 		g.avgMetricMap[metricName] += metricValue * weight
@@ -295,13 +314,13 @@ func (g *avgMetricMapAgg) Step(m string, w float64) {
 	}
 }
 
-// Done aggregates all the elements added to slice
+// Done aggregates all the elements added to slice.
 func (g *avgMetricMapAgg) Done() string {
 	// Divide weighted sum by counts to get weighted average
 	for metricName := range g.avgMetricMap {
 		if totalWeight, ok := g.totalWeights[metricName]; ok {
 			if totalWeight > 0 {
-				g.avgMetricMap[metricName] = g.avgMetricMap[metricName] / totalWeight
+				g.avgMetricMap[metricName] /= totalWeight
 			}
 		}
 	}
@@ -311,5 +330,6 @@ func (g *avgMetricMapAgg) Done() string {
 	if err != nil {
 		panic(err)
 	}
+
 	return string(avgMetricMapBytes)
 }

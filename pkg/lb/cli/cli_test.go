@@ -23,13 +23,15 @@ var mockCEEMSLBApp = *kingpin.New(
 )
 
 func queryLB(address string) error {
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s", address), nil)
+	req, err := http.NewRequest(http.MethodGet, "http://"+address, nil)
 	if err != nil {
 		return err
 	}
 
 	req.Header.Add("X-Grafana-User", "usr1")
+
 	client := &http.Client{Timeout: 10 * time.Second}
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return err
@@ -39,18 +41,22 @@ func queryLB(address string) error {
 	if err != nil {
 		return err
 	}
+
 	if err := resp.Body.Close(); err != nil {
 		return err
 	}
+
 	if want, have := http.StatusOK, resp.StatusCode; want != have {
 		return fmt.Errorf("want /metrics status code %d, have %d. Body:\n%s", want, have, b)
 	}
+
 	return nil
 }
 
 func makeConfigFile(configFile string, tmpDir string) string {
 	configPath := filepath.Join(tmpDir, "config.yml")
-	os.WriteFile(configPath, []byte(configFile), 0600)
+	os.WriteFile(configPath, []byte(configFile), 0o600)
+
 	return configPath
 }
 
@@ -77,7 +83,7 @@ ceems_lb:
 	configFilePath := makeConfigFile(configFile, tmpDir)
 
 	// Remove test related args and add a dummy arg
-	os.Args = append([]string{os.Args[0]}, "--log.level", "debug", fmt.Sprintf("--config.file=%s", configFilePath))
+	os.Args = append([]string{os.Args[0]}, "--log.level", "debug", "--config.file="+configFilePath)
 	a := CEEMSLoadBalancer{
 		appName: mockCEEMSLBAppName,
 		App:     mockCEEMSLBApp,
@@ -89,13 +95,13 @@ ceems_lb:
 	}()
 
 	// Query LB
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		if err := queryLB("localhost:9030/default"); err == nil {
 			break
-		} else {
-			fmt.Println(err)
 		}
+
 		time.Sleep(500 * time.Millisecond)
+
 		if i == 9 {
 			t.Errorf("Could not start load balancer after %d attempts", i)
 		}

@@ -13,7 +13,7 @@ import (
 )
 
 func TestNewGrafanaWithNoURL(t *testing.T) {
-	grafana, err := NewGrafana("", config_util.HTTPClientConfig{}, log.NewNopLogger())
+	grafana, err := New("", config_util.HTTPClientConfig{}, log.NewNopLogger())
 	require.NoError(t, err)
 	assert.False(t, grafana.Available())
 }
@@ -21,13 +21,15 @@ func TestNewGrafanaWithNoURL(t *testing.T) {
 func TestNewGrafanaWithURL(t *testing.T) {
 	// Start test server
 	expected := "dummy data"
+
 	t.Setenv("GRAFANA_API_TOKEN", "foo")
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(expected))
 	}))
 	defer server.Close()
 
-	grafana, err := NewGrafana(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
+	grafana, err := New(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
 	require.NoError(t, err)
 	assert.True(t, grafana.Available())
 
@@ -40,7 +42,9 @@ func TestGrafanaTeamMembersQuerySuccess(t *testing.T) {
 	expected := []GrafanaTeamsReponse{
 		{Login: "foo"}, {Login: "bar"},
 	}
+
 	t.Setenv("GRAFANA_API_TOKEN", "foo")
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if err := json.NewEncoder(w).Encode(&expected); err != nil {
 			w.Write([]byte("KO"))
@@ -48,13 +52,13 @@ func TestGrafanaTeamMembersQuerySuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	grafana, err := NewGrafana(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
+	grafana, err := New(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
 	require.NoError(t, err)
 	assert.True(t, grafana.Available())
 
 	m, err := grafana.TeamMembers([]string{"0"})
 	require.NoError(t, err)
-	assert.Equal(t, m, []string{"foo", "bar"})
+	assert.Equal(t, []string{"foo", "bar"}, m)
 }
 
 func TestGrafanaTeamMembersQueryFailNoTeamID(t *testing.T) {
@@ -62,7 +66,9 @@ func TestGrafanaTeamMembersQueryFailNoTeamID(t *testing.T) {
 	expected := []GrafanaTeamsReponse{
 		{Login: "foo"}, {Login: "bar"},
 	}
+
 	t.Setenv("GRAFANA_API_TOKEN", "foo")
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if err := json.NewEncoder(w).Encode(&expected); err != nil {
 			w.Write([]byte("KO"))
@@ -70,7 +76,7 @@ func TestGrafanaTeamMembersQueryFailNoTeamID(t *testing.T) {
 	}))
 	defer server.Close()
 
-	grafana, err := NewGrafana(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
+	grafana, err := New(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
 	require.NoError(t, err)
 	assert.True(t, grafana.Available())
 

@@ -1,4 +1,5 @@
-package updater
+// Package tsdb provides the TSDB based updater for CEEMS
+package tsdb
 
 import (
 	"fmt"
@@ -13,21 +14,22 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/pkg/api/helper"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
+	"github.com/mahendrapaipuri/ceems/pkg/api/updater"
 	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
 	"github.com/prometheus/common/model"
 )
 
-// Size of each batch of UUIDs to make request to TSDB
+// Size of each batch of UUIDs to make request to TSDB.
 const (
 	queryBatchSize = 1000
 )
 
-// Name of the TSDB updater
+// Name of the TSDB updater.
 const (
 	tsdbUpdaterID = "tsdb"
 )
 
-// config is the container for the configuration of a given TSDB instance
+// config is the container for the configuration of a given TSDB instance.
 type tsdbConfig struct {
 	QueryBatchSize int                          `yaml:"query_batch_size"`
 	CutoffDuration model.Duration               `yaml:"cutoff_duration"`
@@ -35,53 +37,57 @@ type tsdbConfig struct {
 	LabelsToDrop   []string                     `yaml:"labels_to_drop"`
 }
 
-// Embed TSDB struct into our TSDBUpdater struct
+// Embed TSDB struct into our TSDBUpdater struct.
 type tsdbUpdater struct {
 	config *tsdbConfig
 	*tsdb.TSDB
 }
 
-// Mutex lock
+// Mutex lock.
 var (
 	metricLock = sync.RWMutex{}
 )
 
 // Register TSDB updater
 // tsdb will estimate time averaged metrics and update units struct
-// It will also remove ignored units time series
+// It will also remove ignored units time series.
 func init() {
-	RegisterUpdater(tsdbUpdaterID, NewTSDBUpdater)
+	updater.Register(tsdbUpdaterID, New)
 }
 
-// NewTSDBUpdater create a new updater interface
-func NewTSDBUpdater(instance Instance, logger log.Logger) (Updater, error) {
+// New create a new TSDB updater.
+func New(instance updater.Instance, logger log.Logger) (updater.Updater, error) {
 	// Make TSDB config from instances extra config
 	config := tsdbConfig{
 		QueryBatchSize: queryBatchSize,
 	}
 	if err := instance.Extra.Decode(&config); err != nil {
 		level.Error(logger).Log("msg", "Failed to setup TSDB updater", "id", instance.ID, "err", err)
+
 		return nil, err
 	}
 
 	// Create instances of TSDB
-	tsdb, err := tsdb.NewTSDB(
+	tsdb, err := tsdb.New(
 		instance.Web.URL,
 		instance.Web.HTTPClientConfig,
 		log.With(logger, "id", instance.ID),
 	)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to setup TSDB updater", "instance_id", instance.ID, "err", err)
+
 		return nil, err
 	}
+
 	level.Info(logger).Log("msg", "TSDB updater setup successful", "id", instance.ID)
+
 	return &tsdbUpdater{
 		&config,
 		tsdb,
 	}, nil
 }
 
-// Update fetches unit metrics from TSDB and update unit struct
+// Update fetches unit metrics from TSDB and update unit struct.
 func (t *tsdbUpdater) Update(
 	startTime time.Time,
 	endTime time.Time,
@@ -90,26 +96,29 @@ func (t *tsdbUpdater) Update(
 	for _, clusterUnit := range units {
 		clusterUnit.Units = t.update(startTime, endTime, clusterUnit.Units)
 	}
+
 	return units
 }
 
-// Return query string from template
+// Return query string from template.
 func (t *tsdbUpdater) queryBuilder(name string, queryTemplate string, data map[string]interface{}) (string, error) {
 	tmpl := template.Must(template.New(name).Parse(queryTemplate))
 	builder := &strings.Builder{}
+
 	if err := tmpl.Execute(builder, data); err != nil {
 		return "", err
 	}
+
 	return builder.String(), nil
 }
 
-// Get time averaged value of each metric identified by label uuid
+// Get time averaged value of each metric identified by label uuid.
 func (t *tsdbUpdater) fetchAggMetrics(
 	queryTime time.Time,
 	duration time.Duration,
 	uuids []string,
 ) map[string]map[string]tsdb.Metric {
-	var aggMetrics = make(map[string]map[string]tsdb.Metric, len(t.config.Queries))
+	aggMetrics := make(map[string]map[string]tsdb.Metric, len(t.config.Queries))
 
 	// Get rate and scrape intervals
 	rateInterval := t.RateInterval()
@@ -123,7 +132,7 @@ func (t *tsdbUpdater) fetchAggMetrics(
 
 	// If duration is more than or equal to 1 day, double scrape and rate intervals
 	// to reduce number of data points Prometheus has to process
-	if duration >= time.Duration(24*time.Hour) {
+	if duration >= 24*time.Hour {
 		scrapeInterval = 2 * scrapeInterval
 		evaluationInterval = 2 * evaluationInterval
 		rateInterval = 2 * rateInterval
@@ -151,7 +160,9 @@ func (t *tsdbUpdater) fetchAggMetrics(
 		for subMetricName, query := range queries {
 			go func(n string, sn string, q string) {
 				var aggMetric tsdb.Metric
+
 				var err error
+
 				tsdbQuery, err := t.queryBuilder(fmt.Sprintf("%s_%s", n, sn), q, tmplData)
 				if err != nil {
 					level.Error(t.Logger).Log(
@@ -159,6 +170,7 @@ func (t *tsdbUpdater) fetchAggMetrics(
 						"query_template", q, "err", err,
 					)
 					wg.Done()
+
 					return
 				}
 
@@ -173,9 +185,11 @@ func (t *tsdbUpdater) fetchAggMetrics(
 					if aggMetrics[n] == nil {
 						aggMetrics[n] = make(map[string]tsdb.Metric)
 					}
+
 					aggMetrics[n][sn] = aggMetric
 					metricLock.Unlock()
 				}
+
 				wg.Done()
 			}(metricName, subMetricName, query)
 		}
@@ -183,10 +197,11 @@ func (t *tsdbUpdater) fetchAggMetrics(
 
 	// Wait for all go routines
 	wg.Wait()
+
 	return aggMetrics
 }
 
-// Fetch unit metrics from TSDB and update UnitStat struct for each unit
+// Fetch unit metrics from TSDB and update UnitStat struct for each unit.
 func (t *tsdbUpdater) update(startTime time.Time, endTime time.Time, units []models.Unit) []models.Unit {
 	// Bail if TSDB is unavailable or there are no units to update
 	if !t.Available() || len(units) == 0 {
@@ -200,12 +215,15 @@ func (t *tsdbUpdater) update(startTime time.Time, endTime time.Time, units []mod
 
 	// Initialize ignored units slice
 	var ignoredUnits []string
-	var allUnitUUIDs = make([]string, len(units))
+
+	allUnitUUIDs := make([]string, len(units))
+
 	var uuid string
 
 	// Loop over all units and find earliest start time of a unit
 	j := 0
-	for i := 0; i < len(units); i++ {
+
+	for i := range len(units) {
 		uuid = units[i].UUID
 		// If unit is empty struct ignore
 		if uuid == "" {
@@ -227,6 +245,7 @@ func (t *tsdbUpdater) update(startTime time.Time, endTime time.Time, units []mod
 				units[i].Ignore = 1
 			}
 		}
+
 		allUnitUUIDs[j] = uuid
 		j++
 	}
@@ -237,7 +256,7 @@ func (t *tsdbUpdater) update(startTime time.Time, endTime time.Time, units []mod
 	uuidBatches := helper.ChunkBy(allUnitUUIDs[:j], t.config.QueryBatchSize)
 	numBatches := len(uuidBatches)
 
-	var aggMetrics = make(map[string]map[string]tsdb.Metric)
+	aggMetrics := make(map[string]map[string]tsdb.Metric)
 
 	// Loop over each chunk
 	for iBatch, batchUUIDs := range uuidBatches {
@@ -258,9 +277,11 @@ func (t *tsdbUpdater) update(startTime time.Time, endTime time.Time, units []mod
 				if aggMetrics[metricName][subMetricName] == nil {
 					aggMetrics[metricName][subMetricName] = make(tsdb.Metric, len(subMetrics))
 				}
+
 				maps.Copy(aggMetrics[metricName][subMetricName], subMetrics)
 			}
 		}
+
 		level.Debug(t.Logger).Log(
 			"msg", "progress", "batch_id", iBatch, "total_batches", numBatches,
 		)
@@ -270,36 +291,43 @@ func (t *tsdbUpdater) update(startTime time.Time, endTime time.Time, units []mod
 	// NOTE: We can improve this by using reflect package by naming queries
 	// after field names. That will allow us to dynamically look up struct
 	// field using query name and set the properties.
-	for i := 0; i < len(units); i++ {
+	for i := range len(units) {
 		uuid := units[i].UUID
 
 		// Update with CPU metrics
 		if metrics, mExists := aggMetrics["avg_cpu_usage"]; mExists {
 			units[i].AveCPUUsage = make(models.MetricMap)
+
 			for name, metric := range metrics {
 				if value, exists := metric[uuid]; exists {
 					units[i].AveCPUUsage[name] = sanitizeValue(value)
 				}
 			}
 		}
+
 		if metrics, mExists := aggMetrics["avg_cpu_mem_usage"]; mExists {
 			units[i].AveCPUMemUsage = make(models.MetricMap)
+
 			for name, metric := range metrics {
 				if value, exists := metric[uuid]; exists {
 					units[i].AveCPUMemUsage[name] = sanitizeValue(value)
 				}
 			}
 		}
+
 		if metrics, mExists := aggMetrics["total_cpu_energy_usage_kwh"]; mExists {
 			units[i].TotalCPUEnergyUsage = make(models.MetricMap)
+
 			for name, metric := range metrics {
 				if value, exists := metric[uuid]; exists {
 					units[i].TotalCPUEnergyUsage[name] = sanitizeValue(value)
 				}
 			}
 		}
+
 		if metrics, mExists := aggMetrics["total_cpu_emissions_gms"]; mExists {
 			units[i].TotalCPUEmissions = make(models.MetricMap)
+
 			for name, metric := range metrics {
 				if value, exists := metric[uuid]; exists {
 					units[i].TotalCPUEmissions[name] = sanitizeValue(value)
@@ -310,30 +338,37 @@ func (t *tsdbUpdater) update(startTime time.Time, endTime time.Time, units []mod
 		// Update with GPU metrics
 		if metrics, mExists := aggMetrics["avg_gpu_usage"]; mExists {
 			units[i].AveGPUUsage = make(models.MetricMap)
+
 			for name, metric := range metrics {
 				if value, exists := metric[uuid]; exists {
 					units[i].AveGPUUsage[name] = sanitizeValue(value)
 				}
 			}
 		}
+
 		if metrics, mExists := aggMetrics["avg_gpu_mem_usage"]; mExists {
 			units[i].AveGPUMemUsage = make(models.MetricMap)
+
 			for name, metric := range metrics {
 				if value, exists := metric[uuid]; exists {
 					units[i].AveGPUMemUsage[name] = sanitizeValue(value)
 				}
 			}
 		}
+
 		if metrics, mExists := aggMetrics["total_gpu_energy_usage_kwh"]; mExists {
 			units[i].TotalGPUEnergyUsage = make(models.MetricMap)
+
 			for name, metric := range metrics {
 				if value, exists := metric[uuid]; exists {
 					units[i].TotalGPUEnergyUsage[name] = sanitizeValue(value)
 				}
 			}
 		}
+
 		if metrics, mExists := aggMetrics["total_gpu_emissions_gms"]; mExists {
 			units[i].TotalGPUEmissions = make(models.MetricMap)
+
 			for name, metric := range metrics {
 				if value, exists := metric[uuid]; exists {
 					units[i].TotalGPUEmissions[name] = sanitizeValue(value)
@@ -344,14 +379,17 @@ func (t *tsdbUpdater) update(startTime time.Time, endTime time.Time, units []mod
 		// Update with IO metrics
 		if metrics, mExists := aggMetrics["total_io_write_stats"]; mExists {
 			units[i].TotalIOWriteStats = make(models.MetricMap)
+
 			for name, metric := range metrics {
 				if value, exists := metric[uuid]; exists {
 					units[i].TotalIOWriteStats[name] = sanitizeValue(value)
 				}
 			}
 		}
+
 		if metrics, mExists := aggMetrics["total_io_read_stats"]; mExists {
 			units[i].TotalIOReadStats = make(models.MetricMap)
+
 			for name, metric := range metrics {
 				if value, exists := metric[uuid]; exists {
 					units[i].TotalIOReadStats[name] = sanitizeValue(value)
@@ -362,14 +400,17 @@ func (t *tsdbUpdater) update(startTime time.Time, endTime time.Time, units []mod
 		// Update with network metrics
 		if metrics, mExists := aggMetrics["total_ingress_stats"]; mExists {
 			units[i].TotalIngressStats = make(models.MetricMap)
+
 			for name, metric := range metrics {
 				if value, exists := metric[uuid]; exists {
 					units[i].TotalIngressStats[name] = sanitizeValue(value)
 				}
 			}
 		}
+
 		if metrics, mExists := aggMetrics["total_outgress_stats"]; mExists {
 			units[i].TotalOutgressStats = make(models.MetricMap)
+
 			for name, metric := range metrics {
 				if value, exists := metric[uuid]; exists {
 					units[i].TotalOutgressStats[name] = sanitizeValue(value)
@@ -383,10 +424,11 @@ func (t *tsdbUpdater) update(startTime time.Time, endTime time.Time, units []mod
 		level.Error(t.Logger).
 			Log("msg", "Failed to delete time series in TSDB", "err", err)
 	}
+
 	return units
 }
 
-// Delete time series data of ignored units
+// Delete time series data of ignored units.
 func (t *tsdbUpdater) deleteTimeSeries(startTime time.Time, endTime time.Time, unitUUIDs []string) error {
 	// Check if there are any units to ignore. If there aren't return immediately
 	// We shouldnt make a API request to delete with empty units slice as TSDB will
@@ -394,6 +436,7 @@ func (t *tsdbUpdater) deleteTimeSeries(startTime time.Time, endTime time.Time, u
 	if len(unitUUIDs) == 0 && len(t.config.LabelsToDrop) == 0 {
 		return nil
 	}
+
 	level.Debug(t.Logger).Log("units_ignored", len(unitUUIDs))
 
 	/*
@@ -420,16 +463,19 @@ func (t *tsdbUpdater) deleteTimeSeries(startTime time.Time, endTime time.Time, u
 	// Join them with | as delimiter. We will use regex match to match all series
 	// with the label uuid=~"$unitids"
 	allUUIDs := strings.Join(unitUUIDs, "|")
-	matchers := append(t.config.LabelsToDrop, fmt.Sprintf("{uuid=~\"%s\"}", allUUIDs))
+	matchers := t.config.LabelsToDrop
+	matchers = append(matchers, fmt.Sprintf("{uuid=~\"%s\"}", allUUIDs))
+
 	// Make a API request to delete data of ignored units
 	return t.Delete(start, end, matchers)
 }
 
 // sanitizeValue verifies if value is either NaN/Inf/-Inf.
-// If value is any of these, zero will be returned. Returns 0 if value is negative
+// If value is any of these, zero will be returned. Returns 0 if value is negative.
 func sanitizeValue(val float64) models.JSONFloat {
 	if math.IsNaN(val) || math.IsInf(val, 0) || val < 0 {
 		return models.JSONFloat(0)
 	}
+
 	return models.JSONFloat(val)
 }

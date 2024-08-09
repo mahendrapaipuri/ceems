@@ -3,7 +3,6 @@ package http
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"slices"
 	"strings"
 
@@ -13,32 +12,41 @@ import (
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 )
 
-// adminUsers returns a slice of admin users fetched from DB
+// adminUsers returns a slice of admin users fetched from DB.
 func adminUsers(dbConn *sql.DB, logger log.Logger) []string {
 	var users []string
+
+	//nolint:gosec
 	rows, err := dbConn.Query(
-		fmt.Sprintf("SELECT users FROM %s", base.AdminUsersDBTableName),
+		"SELECT users FROM " + base.AdminUsersDBTableName,
 	)
-	if err != nil {
+	if err != nil || rows.Err() != nil {
 		level.Error(logger).Log("msg", "Failed to query for admin users", "err", err)
+
 		return nil
 	}
+	defer rows.Close()
 
 	// Scan users rows
 	var usersList models.List
 	for rows.Next() {
 		if err := rows.Scan(&usersList); err != nil {
 			level.Error(logger).Log("msg", "Failed to scan row for admin users query", "err", err)
+
 			continue
 		}
+
 		for _, user := range usersList {
-			users = append(users, user.(string))
+			if userString, ok := user.(string); ok {
+				users = append(users, userString)
+			}
 		}
 	}
+
 	return users
 }
 
-// VerifyOwnership returns true if user is the owner of queried units
+// VerifyOwnership returns true if user is the owner of queried units.
 func VerifyOwnership(
 	ctx context.Context,
 	user string,
@@ -53,6 +61,7 @@ func VerifyOwnership(
 			"msg", "Incomplete data for unit ownership verification", "user", user,
 			"cluster_id", strings.Join(clusterIDs, ","), "queried_uuids", strings.Join(uuids, ","),
 		)
+
 		return false
 	}
 
@@ -60,6 +69,7 @@ func VerifyOwnership(
 	if slices.Contains(adminUsers(db, logger), user) {
 		return true
 	}
+
 	level.Debug(logger).
 		Log("msg", "UUIDs in query", "user", user,
 			"cluster_id", strings.Join(clusterIDs, ","), "queried_uuids", strings.Join(uuids, ","),
@@ -70,7 +80,7 @@ func VerifyOwnership(
 
 	// Make query
 	q := Query{}
-	q.query(fmt.Sprintf("SELECT uuid,cluster_id FROM %s", base.UnitsDBTableName))
+	q.query("SELECT uuid,cluster_id FROM " + base.UnitsDBTableName)
 
 	// Add project sub query
 	q.query(" WHERE project IN ")
@@ -92,6 +102,7 @@ func VerifyOwnership(
 				"queried_uuids", strings.Join(uuids, ","),
 				"cluster_id", strings.Join(clusterIDs, ","), "err", err,
 			)
+
 		return false
 	}
 
@@ -102,6 +113,7 @@ func VerifyOwnership(
 			Log("msg", "Unauthorized query", "user", user,
 				"queried_uuids", len(uuids), "found_uuids", len(units),
 			)
+
 		return false
 	}
 

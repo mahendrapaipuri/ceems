@@ -16,11 +16,13 @@ import (
 var expectedSlurmMetrics CgroupMetric
 
 func mockGPUDevices() map[int]Device {
-	var devs = make(map[int]Device, 4)
+	devs := make(map[int]Device, 4)
+
 	for i := 0; i <= 4; i++ {
 		idxString := strconv.Itoa(i)
 		devs[i] = Device{index: idxString, uuid: fmt.Sprintf("GPU-%d", i)}
 	}
+
 	return devs
 }
 
@@ -55,7 +57,7 @@ func TestCgroupsV2SlurmJobMetrics(t *testing.T) {
 		gpuDevs:          mockGPUDevices(),
 		cgroupsRootPath:  *cgroupfsPath,
 		hostMemTotal:     float64(123456),
-		slurmCgroupsPath: fmt.Sprintf("%s/system.slice/slurmstepd.scope", *cgroupfsPath),
+		slurmCgroupsPath: *cgroupfsPath + "/system.slice/slurmstepd.scope",
 		logger:           log.NewNopLogger(),
 	}
 	metrics, err := c.getJobsMetrics()
@@ -84,8 +86,9 @@ func TestCgroupsV2SlurmJobMetrics(t *testing.T) {
 		jobgpuordinals:  []string{"0"},
 		err:             false,
 	}
+
 	require.NoError(t, err)
-	assert.Equal(t, metrics["1009249"], expectedSlurmMetrics)
+	assert.Equal(t, expectedSlurmMetrics, metrics["1009249"])
 }
 
 func TestCgroupsV2SlurmJobMetricsWithProcFs(t *testing.T) {
@@ -103,7 +106,7 @@ func TestCgroupsV2SlurmJobMetricsWithProcFs(t *testing.T) {
 		cgroupsRootPath:  *cgroupfsPath,
 		gpuDevs:          mockGPUDevices(),
 		hostMemTotal:     float64(123456),
-		slurmCgroupsPath: fmt.Sprintf("%s/system.slice/slurmstepd.scope", *cgroupfsPath),
+		slurmCgroupsPath: *cgroupfsPath + "/system.slice/slurmstepd.scope",
 		logger:           log.NewNopLogger(),
 	}
 	metrics, err := c.getJobsMetrics()
@@ -132,8 +135,9 @@ func TestCgroupsV2SlurmJobMetricsWithProcFs(t *testing.T) {
 		jobgpuordinals:  []string{"2", "3"},
 		err:             false,
 	}
+
 	require.NoError(t, err)
-	assert.Equal(t, metrics["1009248"], expectedSlurmMetrics)
+	assert.Equal(t, expectedSlurmMetrics, metrics["1009248"])
 }
 
 func TestCgroupsV2SlurmJobMetricsNoJobProps(t *testing.T) {
@@ -149,7 +153,7 @@ func TestCgroupsV2SlurmJobMetricsNoJobProps(t *testing.T) {
 		cgroups:          "v2",
 		cgroupsRootPath:  *cgroupfsPath,
 		gpuDevs:          mockGPUDevices(),
-		slurmCgroupsPath: fmt.Sprintf("%s/system.slice/slurmstepd.scope", *cgroupfsPath),
+		slurmCgroupsPath: *cgroupfsPath + "/system.slice/slurmstepd.scope",
 		logger:           log.NewNopLogger(),
 	}
 	metrics, err := c.getJobsMetrics()
@@ -177,8 +181,9 @@ func TestCgroupsV2SlurmJobMetricsNoJobProps(t *testing.T) {
 		jobuuid:         "a0523e93-a037-c2b1-8b34-410c9996399c",
 		err:             false,
 	}
+
 	require.NoError(t, err)
-	assert.Equal(t, metrics["1009248"], expectedSlurmMetrics)
+	assert.Equal(t, expectedSlurmMetrics, metrics["1009248"])
 }
 
 func TestCgroupsV1SlurmJobMetrics(t *testing.T) {
@@ -196,8 +201,8 @@ func TestCgroupsV1SlurmJobMetrics(t *testing.T) {
 		cgroups:          "v1",
 		logger:           log.NewNopLogger(),
 		gpuDevs:          mockGPUDevices(),
-		cgroupsRootPath:  fmt.Sprintf("%s/cpuacct", *cgroupfsPath),
-		slurmCgroupsPath: fmt.Sprintf("%s/cpuacct/slurm", *cgroupfsPath),
+		cgroupsRootPath:  *cgroupfsPath + "/cpuacct",
+		slurmCgroupsPath: *cgroupfsPath + "/cpuacct/slurm",
 	}
 	metrics, err := c.getJobsMetrics()
 	expectedSlurmMetrics = CgroupMetric{
@@ -225,6 +230,7 @@ func TestCgroupsV1SlurmJobMetrics(t *testing.T) {
 		jobgpuordinals:  []string{"2", "3"},
 		err:             false,
 	}
+
 	require.NoError(t, err)
-	assert.Equal(t, metrics["1009248"], expectedSlurmMetrics)
+	assert.Equal(t, expectedSlurmMetrics, metrics["1009248"])
 }

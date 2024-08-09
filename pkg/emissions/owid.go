@@ -22,21 +22,22 @@ type owidProvider struct {
 
 func init() {
 	// Register emissions provider
-	RegisterProvider(owidEmissionsProvider, "OWID", NewOWIDProvider)
+	Register(owidEmissionsProvider, "OWID", NewOWIDProvider)
 }
 
 // readOWIDData reads the carbon intensity CSV file and returns the most "recent"
 // factor for each country.
 // The file can be fetched from https://ourworldindata.org/grapher/carbon-intensity-electricity?tab=table
 // The data is updated every year and the next update will be in December 2024
-// Data sources: Ember - Yearly Electricity Data (2023); Ember - European Electricity Review (2022); Energy Institute - Statistical Review of World Energy (2023)
+// Data sources: Ember - Yearly Electricity Data (2023); Ember - European Electricity Review (2022); Energy Institute - Statistical Review of World Energy (2023).
 func readOWIDData(contents []byte) (EmissionFactors, error) {
 	// Read all records
 	// Each record is of format: Name, Code, Year, Value
 	csvReader := csv.NewReader(bytes.NewReader(contents))
+
 	records, err := csvReader.ReadAll()
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse file as OWID CSV file: %s", err)
+		return nil, fmt.Errorf("unable to parse file as OWID CSV file: %w", err)
 	}
 
 	// Get ISO-3 to ISO-2 map so that we convert all country codes to ISO 2
@@ -46,9 +47,12 @@ func readOWIDData(contents []byte) (EmissionFactors, error) {
 	// keeping only last entry for each country we should get the latest factor
 	// If the country code is empty string, the factor is for a region that is bigger/smaller
 	// than the country.
-	var emissionFactors = make(EmissionFactors)
+	emissionFactors := make(EmissionFactors)
+
 	var countryCode string
+
 	var ok bool
+
 	for _, record := range records {
 		// If record does not have atleast 4 columns, skip
 		if len(record) < 4 {
@@ -70,15 +74,16 @@ func readOWIDData(contents []byte) (EmissionFactors, error) {
 			emissionFactors[countryCode] = EmissionFactor{record[0], val}
 		}
 	}
+
 	return emissionFactors, nil
 }
 
-// NewOWIDProvider returns a new Provider that returns emission factor from OWID data
+// NewOWIDProvider returns a new Provider that returns emission factor from OWID data.
 func NewOWIDProvider(logger log.Logger) (Provider, error) {
 	// Read CSV file
 	carbonIntensityCSV, err := dataDir.ReadFile("data/carbon-intensity-owid.csv")
 	if err != nil {
-		return nil, fmt.Errorf("failed to read OWID data file: %s", err)
+		return nil, fmt.Errorf("failed to read OWID data file: %w", err)
 	}
 
 	// Read OWID data CSV file
@@ -86,14 +91,16 @@ func NewOWIDProvider(logger log.Logger) (Provider, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	level.Info(logger).Log("msg", "Emission factor from OWID data will be reported.")
+
 	return &owidProvider{
 		logger:       logger,
 		emissionData: emissionData,
 	}, nil
 }
 
-// Get emission factor for a given country
+// Get emission factor for a given country.
 func (s *owidProvider) Update() (EmissionFactors, error) {
 	return s.emissionData, nil
 }

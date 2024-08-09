@@ -20,10 +20,17 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Metric defines TSDB metrics
+// Custom errors.
+var (
+	ErrMissingData         = errors.New("missing data in TSDB response")
+	ErrMissingConfig       = errors.New("global config not found in TSDB config")
+	ErrFailedTypeAssertion = errors.New("failed type assertion")
+)
+
+// Metric defines TSDB metrics.
 type Metric map[string]float64
 
-// Response is the TSDB response model
+// Response is the TSDB response model.
 type Response struct {
 	Status    string      `json:"status"`
 	Data      interface{} `json:"data,omitempty"`
@@ -32,7 +39,7 @@ type Response struct {
 	Warnings  []string    `json:"warnings,omitempty"`
 }
 
-// TSDB struct
+// TSDB struct.
 type TSDB struct {
 	URL                *url.URL
 	Client             *http.Client
@@ -44,23 +51,26 @@ type TSDB struct {
 }
 
 const (
-	// Default intervals. Return them if we cannot fetch config
-	defaultScrapeInterval     = time.Duration(time.Minute)
-	defaultEvaluationInterval = time.Duration(time.Minute)
+	// Default intervals. Return them if we cannot fetch config.
+	defaultScrapeInterval     = time.Minute
+	defaultEvaluationInterval = time.Minute
 )
 
-// NewTSDB returns a new instance of TSDB
-func NewTSDB(webURL string, config config_util.HTTPClientConfig, logger log.Logger) (*TSDB, error) {
+// New returns a new instance of TSDB.
+func New(webURL string, config config_util.HTTPClientConfig, logger log.Logger) (*TSDB, error) {
 	// If webURL is empty return empty struct with available set to false
 	if webURL == "" {
 		level.Warn(logger).Log("msg", "TSDB web URL not found")
+
 		return &TSDB{
 			available: false,
 		}, nil
 	}
 
 	var tsdbClient *http.Client
+
 	var tsdbURL *url.URL
+
 	var err error
 	// Unwrap original error to avoid leaking sensitive passwords in output
 	tsdbURL, err = url.Parse(webURL)
@@ -72,6 +82,7 @@ func NewTSDB(webURL string, config config_util.HTTPClientConfig, logger log.Logg
 	if tsdbClient, err = config_util.NewClientFromConfig(config, "tsdb"); err != nil {
 		return nil, err
 	}
+
 	return &TSDB{
 		URL:       tsdbURL,
 		Client:    tsdbClient,
@@ -80,12 +91,12 @@ func NewTSDB(webURL string, config config_util.HTTPClientConfig, logger log.Logg
 	}, nil
 }
 
-// Delete endpoint
+// Delete endpoint.
 func (t *TSDB) deleteEndpoint() *url.URL {
 	return t.URL.JoinPath("/api/v1/admin/tsdb/delete_series")
 }
 
-// Query endpoint
+// Query endpoint.
 func (t *TSDB) queryEndpoint() *url.URL {
 	return t.URL.JoinPath("/api/v1/query")
 }
@@ -95,27 +106,27 @@ func (t *TSDB) queryEndpoint() *url.URL {
 // 	return t.URL.JoinPath("/api/v1/query_range")
 // }
 
-// Config endpoint
+// Config endpoint.
 func (t *TSDB) configEndpoint() *url.URL {
 	return t.URL.JoinPath("/api/v1/status/config")
 }
 
-// CLI flags endpoint
+// CLI flags endpoint.
 func (t *TSDB) flagsEndpoint() *url.URL {
 	return t.URL.JoinPath("/api/v1/status/flags")
 }
 
-// String implements stringer method for TSDB
+// String implements stringer method for TSDB.
 func (t *TSDB) String() string {
 	return fmt.Sprintf("TSDB{URL: %s, available: %t}", t.URL.Redacted(), t.available)
 }
 
-// Available returns true if TSDB is alive
+// Available returns true if TSDB is alive.
 func (t *TSDB) Available() bool {
 	return t.available
 }
 
-// Ping attempts to ping TSDB
+// Ping attempts to ping TSDB.
 func (t *TSDB) Ping() error {
 	var d net.Dialer
 	// Check if TSDB is reachable
@@ -123,11 +134,13 @@ func (t *TSDB) Ping() error {
 	if err != nil {
 		return err
 	}
+
 	defer conn.Close()
+
 	return nil
 }
 
-// Config returns TSDB config
+// Config returns TSDB config.
 func (t *TSDB) Config() (map[interface{}]interface{}, error) {
 	// Make a API request to TSDB
 	data, err := Request(t.configEndpoint().String(), t.Client)
@@ -137,16 +150,27 @@ func (t *TSDB) Config() (map[interface{}]interface{}, error) {
 
 	// Parse full config data and then extract only global config
 	var fullConfig map[interface{}]interface{}
-	configData := data.(map[string]interface{})
-	if v, exists := configData["yaml"]; exists && v.(string) != "" {
-		if err = yaml.Unmarshal([]byte(v.(string)), &fullConfig); err != nil {
+
+	var configData map[string]interface{}
+
+	var ok bool
+
+	if configData, ok = data.(map[string]interface{}); !ok {
+		return nil, ErrFailedTypeAssertion
+	}
+
+	if v, exists := configData["yaml"]; exists {
+		if value, ok := v.(string); !ok {
+			return nil, ErrFailedTypeAssertion
+		} else if err = yaml.Unmarshal([]byte(value), &fullConfig); err != nil {
 			return nil, err
 		}
 	}
+
 	return fullConfig, nil
 }
 
-// GlobalConfig returns global config section of TSDB
+// GlobalConfig returns global config section of TSDB.
 func (t *TSDB) GlobalConfig() (map[string]interface{}, error) {
 	// Get config
 	fullConfig, err := t.Config()
@@ -156,25 +180,38 @@ func (t *TSDB) GlobalConfig() (map[string]interface{}, error) {
 
 	// Extract global config
 	if v, exists := fullConfig["global"]; exists {
-		return v.(map[string]interface{}), nil
+		if c, ok := v.(map[string]interface{}); ok {
+			return c, nil
+		}
+
+		return nil, ErrFailedTypeAssertion
 	}
-	return nil, fmt.Errorf("global config not found in TSDB config")
+
+	return nil, ErrMissingConfig
 }
 
-// Flags returns CLI flags of TSDB
+// Flags returns CLI flags of TSDB.
 func (t *TSDB) Flags() (map[string]interface{}, error) {
 	// Make a API request to TSDB
 	data, err := Request(t.flagsEndpoint().String(), t.Client)
 	if err != nil {
 		return nil, err
 	}
-	return data.(map[string]interface{}), nil
+
+	var flagsData map[string]interface{}
+
+	var ok bool
+	if flagsData, ok = data.(map[string]interface{}); !ok {
+		return nil, ErrFailedTypeAssertion
+	}
+
+	return flagsData, nil
 }
 
-// Intervals returns scrape and evaluation intervals of TSDB
+// Intervals returns scrape and evaluation intervals of TSDB.
 func (t *TSDB) Intervals() map[string]time.Duration {
 	// Check if lastUpdate time is more than 3 hrs
-	if time.Since(t.lastUpdate) < time.Duration(3*time.Hour) {
+	if time.Since(t.lastUpdate) < 3*time.Hour {
 		return map[string]time.Duration{
 			"scrape_interval":     t.scrapeInterval,
 			"evaluation_interval": t.evaluationInterval,
@@ -189,6 +226,7 @@ func (t *TSDB) Intervals() map[string]time.Duration {
 
 	// Get config
 	var globalConfig map[string]interface{}
+
 	var err error
 	if globalConfig, err = t.GlobalConfig(); err != nil {
 		return map[string]time.Duration{
@@ -202,28 +240,31 @@ func (t *TSDB) Intervals() map[string]time.Duration {
 		"scrape_interval":     defaultScrapeInterval,
 		"evaluation_interval": defaultEvaluationInterval,
 	}
+
 	if v, exists := globalConfig["scrape_interval"]; exists {
 		if scrapeInterval, err := model.ParseDuration(v.(string)); err == nil {
 			t.scrapeInterval = time.Duration(scrapeInterval)
 			intervals["scrape_interval"] = time.Duration(scrapeInterval)
 		}
 	}
+
 	if v, exists := globalConfig["evaluation_interval"]; exists {
 		if evaluationInterval, err := model.ParseDuration(v.(string)); err == nil {
 			t.evaluationInterval = time.Duration(evaluationInterval)
 			intervals["evaluation_interval"] = time.Duration(evaluationInterval)
 		}
 	}
+
 	return intervals
 }
 
-// RateInterval returns rate interval of TSDB
+// RateInterval returns rate interval of TSDB.
 func (t *TSDB) RateInterval() time.Duration {
 	// Grafana recommends atleast 4 times of scrape interval to estimate rate
 	return 4 * t.Intervals()["scrape_interval"]
 }
 
-// Query makes a TSDB query
+// Query makes a TSDB query.
 func (t *TSDB) Query(query string, queryTime time.Time) (Metric, error) {
 	// Add form data to request
 	// TSDB expects time stamps in UTC zone
@@ -246,6 +287,7 @@ func (t *TSDB) Query(query string, queryTime time.Time) (Metric, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 
 	// Read response body
 	body, err := io.ReadAll(resp.Body)
@@ -270,25 +312,55 @@ func (t *TSDB) Query(query string, queryTime time.Time) (Metric, error) {
 	}
 
 	// Check response code
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("query returned status: %d", resp.StatusCode)
 	}
 
 	// Parse data
-	var queriedValues = make(Metric)
-	queryData := data.Data.(map[string]interface{})
+	queriedValues := make(Metric)
+
+	queryData, ok := data.Data.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("failed type assertion of data: %v", data.Data)
+	}
+
 	// Check if results is not nil before converting it to slice of interfaces
-	if results, exists := queryData["result"]; exists && results != nil {
-		for _, result := range results.([]interface{}) {
+	if r, exists := queryData["result"]; exists && r != nil {
+		var results, values []interface{}
+
+		var result, metric map[string]interface{}
+
+		var ok bool
+		if results, ok = r.([]interface{}); !ok {
+			return nil, fmt.Errorf("failed type assertion of result: %v", r)
+		}
+
+		for _, res := range results {
 			// Check if metric exists on result. If it does, check for uuid and value
 			var uuid, value string
-			if metric, exists := result.(map[string]interface{})["metric"]; exists {
-				if id, exists := metric.(map[string]interface{})["uuid"]; exists {
-					uuid = id.(string)
+
+			if result, ok = res.(map[string]interface{}); !ok {
+				continue
+			}
+
+			if m, exists := result["metric"]; exists {
+				if metric, ok = m.(map[string]interface{}); !ok {
+					continue
 				}
-				if val, exists := result.(map[string]interface{})["value"]; exists {
-					if len(val.([]interface{})) > 1 {
-						value = val.([]interface{})[1].(string)
+
+				if id, exists := metric["uuid"]; exists {
+					if v, ok := id.(string); ok {
+						uuid = v
+					}
+				}
+
+				if val, exists := result["value"]; exists {
+					if values, ok = val.([]interface{}); ok {
+						if len(values) > 1 {
+							if v, ok := values[1].(string); ok {
+								value = v
+							}
+						}
 					}
 				}
 			}
@@ -298,13 +370,15 @@ func (t *TSDB) Query(query string, queryTime time.Time) (Metric, error) {
 			if err != nil {
 				continue
 			}
+
 			queriedValues[uuid] = valueFloat
 		}
 	}
+
 	return queriedValues, nil
 }
 
-// Delete time series with given labels
+// Delete time series with given labels.
 func (t *TSDB) Delete(startTime time.Time, endTime time.Time, matchers []string) error {
 	// Add form data to request
 	// TSDB expects time stamps in UTC zone
@@ -323,14 +397,14 @@ func (t *TSDB) Delete(startTime time.Time, endTime time.Time, matchers []string)
 	// Add necessary headers
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-	// Make request
+	// Make request and check status code which is supposed to be 204
 	if resp, err := t.Client.Do(req); err != nil {
 		return err
-	} else {
-		// Check status code which is supposed to be 204
-		if resp.StatusCode != 204 {
-			return fmt.Errorf("expected 204 after deletion of time series received %d", resp.StatusCode)
-		}
+	} else if resp.StatusCode != http.StatusNoContent {
+		defer resp.Body.Close()
+
+		return fmt.Errorf("expected 204 after deletion of time series received %d", resp.StatusCode)
 	}
+
 	return nil
 }

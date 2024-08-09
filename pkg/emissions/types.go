@@ -123,7 +123,7 @@ type nationalRealTimeResponseV2 struct {
 // 	Year                       int64   `json:"year"`
 // }
 
-// CountryCodeFields contains different ISO codes of a given country
+// CountryCodeFields contains different ISO codes of a given country.
 type CountryCodeFields struct {
 	Alpha2Code    string `json:"alpha_2"`
 	Alpha3Code    string `json:"alpha_3"`
@@ -131,15 +131,15 @@ type CountryCodeFields struct {
 	NumericalCode string `json:"numeric"`
 }
 
-// CountryCode contains data of countries ISO codes
+// CountryCode contains data of countries ISO codes.
 type CountryCode struct {
 	IsoCode []CountryCodeFields `json:"3166-1"`
 }
 
-// Electricity Maps zones response signature
+// Electricity Maps zones response signature.
 type eMapsZonesResponse map[string]map[string]string
 
-// Electricity Maps carbon intensity response signature
+// Electricity Maps carbon intensity response signature.
 type eMapsCarbonIntensityResponse struct {
 	Zone               string `json:"zone"`
 	CarbonIntensity    int    `json:"carbonIntensity"`
@@ -150,28 +150,28 @@ type eMapsCarbonIntensityResponse struct {
 	EstimationMethod   string `json:"estimationMethod"`
 }
 
-// ContextKey is the struct key to set values in context
+// ContextKey is the struct key to set values in context.
 type ContextKey struct{}
 
-// ContextValues contains the values to be set in context
+// ContextValues contains the values to be set in context.
 type ContextValues struct {
 	CountryCodeAlpha2 string
 	CountryCodeAlpha3 string
 }
 
-// Client interface
+// Client interface.
 type Client interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
 // EmissionFactor is the container for emission factor value. The name can be
-// country name or zone name based on the provider used
+// country name or zone name based on the provider used.
 type EmissionFactor struct {
 	Name   string
 	Factor float64
 }
 
-// EmissionFactors returns a map of country code in ISO-2 with latest emission factor
+// EmissionFactors returns a map of country code in ISO-2 with latest emission factor.
 type EmissionFactors map[string]EmissionFactor
 
 // Provider is the interface a emission provider has to implement.
@@ -188,7 +188,7 @@ type FactorProviders struct {
 	logger        log.Logger
 }
 
-// PayLoad contains emissions factor
+// PayLoad contains emissions factor.
 type PayLoad struct {
 	Factor EmissionFactors
 	Name   string

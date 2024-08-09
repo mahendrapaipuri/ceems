@@ -43,6 +43,7 @@ func NewMockCollector(logger log.Logger) (collector.Collector, error) {
 		logger:         logger,
 		mockMetricDesc: mockMetricDesc,
 	}
+
 	return &collector, nil
 }
 

@@ -2,7 +2,7 @@ package emissions
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -26,13 +26,14 @@ var (
 func mockRTEAPIRequest(url string, logger log.Logger) (EmissionFactors, error) {
 	rteIdx++
 	if rteIdx > 2 {
-		return nil, fmt.Errorf("some random while fetching stuff")
+		return nil, errors.New("some random while fetching stuff")
 	}
+
 	return expectedRTEFactors[rteIdx-1], nil
 }
 
 func mockRTEAPIFailRequest(url string, logger log.Logger) (EmissionFactors, error) {
-	return nil, fmt.Errorf("Failed API request")
+	return nil, errors.New("Failed API request")
 }
 
 func TestRTEDataSource(t *testing.T) {
@@ -46,23 +47,26 @@ func TestRTEDataSource(t *testing.T) {
 	// Get current emission factor
 	factor, err := s.Update()
 	require.NoError(t, err)
-	assert.Equal(t, factor, expectedRTEFactors[0])
+	assert.Equal(t, expectedRTEFactors[0], factor)
 
 	// Make a second request and it should be same as first factor
 	nextFactor, _ := s.Update()
-	assert.Equal(t, nextFactor, expectedRTEFactors[0])
+	assert.Equal(t, expectedRTEFactors[0], nextFactor)
 
 	// Sleep for 2 seconds and make a request again and it should change
 	time.Sleep(20 * time.Millisecond)
+
 	lastFactor, _ := s.Update()
-	assert.Equal(t, lastFactor, expectedRTEFactors[1])
+	assert.Equal(t, expectedRTEFactors[1], lastFactor)
+
 	lastUpdateTime := s.lastRequestTime
 
 	// Sleep for 1 more second and make a request again and we should get last non null value
 	time.Sleep(20 * time.Millisecond)
+
 	lastFactor, _ = s.Update()
-	assert.Equal(t, lastFactor, expectedRTEFactors[1])
-	assert.Equal(t, lastUpdateTime, s.lastRequestTime)
+	assert.Equal(t, expectedRTEFactors[1], lastFactor)
+	assert.Equal(t, s.lastRequestTime, lastUpdateTime)
 }
 
 func TestRTEDataSourceError(t *testing.T) {
@@ -96,6 +100,7 @@ func TestRTEAPIRequest(t *testing.T) {
 	// Start test server
 	expectedFactor := int64(10)
 	expected := nationalRealTimeResponseV2{1, []nationalRealTimeFieldsV2{{TauxCo2: expectedFactor}}}
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if err := json.NewEncoder(w).Encode(&expected); err != nil {
 			w.Write([]byte("KO"))
@@ -106,12 +111,13 @@ func TestRTEAPIRequest(t *testing.T) {
 	// Make request to test server
 	factor, err := makeRTEAPIRequest(server.URL, log.NewNopLogger())
 	require.NoError(t, err)
-	assert.Equal(t, factor["FR"].Factor, float64(expectedFactor))
+	assert.InEpsilon(t, float64(expectedFactor), factor["FR"].Factor, 0)
 }
 
 func TestRTEAPIRequestFail(t *testing.T) {
 	// Start test server
-	expected := "dummy"
+	expected := dummyResponse
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if err := json.NewEncoder(w).Encode(&expected); err != nil {
 			w.Write([]byte("KO"))

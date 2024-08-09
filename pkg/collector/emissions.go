@@ -8,9 +8,8 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/prometheus/client_golang/prometheus"
-
 	"github.com/mahendrapaipuri/ceems/pkg/emissions"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 const emissionsCollectorSubsystem = "emissions"
@@ -23,9 +22,7 @@ type emissionsCollector struct {
 	prevEmissionFactors      map[string]float64
 }
 
-var (
-	newFactorProviders = emissions.NewFactorProviders
-)
+var newFactorProviders = emissions.NewFactorProviders
 
 func init() {
 	RegisterCollector(emissionsCollectorSubsystem, defaultDisabled, NewEmissionsCollector)
@@ -44,8 +41,10 @@ func NewEmissionsCollector(logger log.Logger) (Collector, error) {
 	emissionFactorProviders, err := newFactorProviders(logger)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create new EmissionCollector", "err", err)
+
 		return nil, err
 	}
+
 	return &emissionsCollector{
 		logger:                   logger,
 		emissionFactorProviders:  *emissionFactorProviders,
@@ -68,5 +67,6 @@ func (c *emissionsCollector) Update(ch chan<- prometheus.Metric) error {
 			}
 		}
 	}
+
 	return nil
 }

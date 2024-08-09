@@ -14,10 +14,10 @@ func TestDefaultSysPath(t *testing.T) {
 	require.NoError(t, err)
 
 	got, want := sysFilePath("somefile"), "/sys/somefile"
-	assert.Equal(t, got, want)
+	assert.Equal(t, want, got)
 
 	got, want = sysFilePath("some/file"), "/sys/some/file"
-	assert.Equal(t, got, want)
+	assert.Equal(t, want, got)
 }
 
 func TestCustomSysPath(t *testing.T) {
@@ -25,10 +25,10 @@ func TestCustomSysPath(t *testing.T) {
 	require.NoError(t, err)
 
 	got, want := sysFilePath("somefile"), "../some/place/somefile"
-	assert.Equal(t, got, want)
+	assert.Equal(t, want, got)
 
 	got, want = sysFilePath("some/file"), "../some/place/some/file"
-	assert.Equal(t, got, want)
+	assert.Equal(t, want, got)
 }
 
 func TestDefaultCgroupPath(t *testing.T) {
@@ -36,10 +36,10 @@ func TestDefaultCgroupPath(t *testing.T) {
 	require.NoError(t, err)
 
 	got, want := cgroupFilePath("somefile"), "/sys/fs/cgroup/somefile"
-	assert.Equal(t, got, want)
+	assert.Equal(t, want, got)
 
 	got, want = cgroupFilePath("some/file"), "/sys/fs/cgroup/some/file"
-	assert.Equal(t, got, want)
+	assert.Equal(t, want, got)
 }
 
 func TestCustomCgroupPath(t *testing.T) {
@@ -47,8 +47,8 @@ func TestCustomCgroupPath(t *testing.T) {
 	require.NoError(t, err)
 
 	got, want := cgroupFilePath("somefile"), "../some/place/somefile"
-	assert.Equal(t, got, want)
+	assert.Equal(t, want, got)
 
 	got, want = cgroupFilePath("some/file"), "../some/place/some/file"
-	assert.Equal(t, got, want)
+	assert.Equal(t, want, got)
 }
