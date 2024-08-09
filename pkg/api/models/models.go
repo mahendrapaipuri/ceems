@@ -8,6 +8,7 @@ import (
 const (
 	unitsTableName      = "units"
 	usageTableName      = "usage"
+	dailyUsageTableName = "daily_usage"
 	projectsTableName   = "projects"
 	usersTableName      = "users"
 	adminUsersTableName = "admin_users"
@@ -107,6 +108,16 @@ func (u Usage) TagNames(tag string) []string {
 // field names are used as map keys.
 func (u Usage) TagMap(keyTag string, valueTag string) map[string]string {
 	return structset.GetStructFieldTagMap(u, keyTag, valueTag)
+}
+
+// DailyUsage statistics of each project/tenant/namespace
+type DailyUsage struct {
+	Usage
+}
+
+// TableName returns the table which usage stats are stored into.
+func (DailyUsage) TableName() string {
+	return dailyUsageTableName
 }
 
 // Stat represents high level statistics of each cluster

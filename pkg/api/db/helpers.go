@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	ceems_sqlite3 "github.com/mahendrapaipuri/ceems/pkg/sqlite3"
 )
 
@@ -33,16 +31,6 @@ func makeDSN(filePath string, opts map[string]string) string {
 	}
 	optString := strings.Join(optsSlice, "&")
 	return fmt.Sprintf("%s?%s", dsn, optString)
-}
-
-// Write timestamp to a file
-func writeTimeStampToFile(filePath string, timeStamp time.Time, logger log.Logger) {
-	timeStampString := timeStamp.Format(base.DatetimeLayout)
-	timeStampByte := []byte(timeStampString)
-	if err := os.WriteFile(filePath, timeStampByte, 0600); err != nil {
-		level.Error(logger).
-			Log("msg", "Failed to write timestamp to file", "time", timeStampString, "file", filePath, "err", err)
-	}
 }
 
 // Open DB connection and return connection poiner
@@ -83,6 +71,12 @@ func setupDB(dbFilePath string, logger log.Logger) (*sql.DB, *ceems_sqlite3.Conn
 		return nil, nil, err
 	}
 	file.Close()
+
+	// Set strict permissions
+	if err := os.Chmod(dbFilePath, 0750); err != nil {
+		level.Error(logger).Log("msg", "Failed to harden permissions on DB file", "err", err)
+		return nil, nil, err
+	}
 
 	// Open the created SQLite File
 	db, dbConn, err := openDBConnection(dbFilePath)

@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/go-kit/log"
@@ -68,15 +67,14 @@ type storageConfig struct {
 	dbBackupPath       string
 	retentionPeriod    time.Duration
 	lastUpdateTime     time.Time
-	lastUpdateTimeFile string
 	skipDeleteOldUnits bool
 }
 
 // String implements Stringer interface for storageConfig
 func (s *storageConfig) String() string {
 	return fmt.Sprintf(
-		"dbPath: %s; retentionPeriod: %s; lastUpdateTime: %s; lastUpdateTimeFile: %s",
-		s.dbPath, s.retentionPeriod, s.lastUpdateTime, s.lastUpdateTimeFile,
+		"DB File Path: %s; Retention Period: %s; Last Updated At: %s",
+		s.dbPath, s.retentionPeriod, s.lastUpdateTime,
 	)
 }
 
@@ -125,7 +123,7 @@ var (
 
 // Init func to set prepareStatements
 func init() {
-	for _, tableName := range []string{base.UnitsDBTableName, base.UsageDBTableName, base.AdminUsersDBTableName, base.UsersDBTableName, base.ProjectsDBTableName} {
+	for _, tableName := range []string{base.UnitsDBTableName, base.UsageDBTableName, base.DailyUsageDBTableName, base.AdminUsersDBTableName, base.UsersDBTableName, base.ProjectsDBTableName} {
 		statements, err := StatementsFS.ReadFile(fmt.Sprintf("statements/%s.sql", tableName))
 		if err != nil {
 			panic(fmt.Sprintf("failed to read SQL statements file for table %s: %s", tableName, err))
@@ -140,46 +138,6 @@ func NewStatsDB(c *Config) (*statsDB, error) {
 
 	// Get file paths
 	dbPath := filepath.Join(c.Data.Path, base.CEEMSDBName)
-	lastUpdateTimeStampFile := filepath.Join(c.Data.Path, "lastupdatetime")
-
-	// By this time dataPath **should** exist and we do not need to check for its
-	// existence. Check directly for lastupdatetime file
-	if _, err := os.Stat(lastUpdateTimeStampFile); err == nil {
-		lastUpdateTimeString, err := os.ReadFile(lastUpdateTimeStampFile)
-		if err != nil {
-			level.Error(c.Logger).Log("msg", "Failed to read lastupdatetime file", "err", err)
-			goto updatetime
-		} else {
-			// Trim any spaces and new lines
-			c.Data.LastUpdateTime, err = time.Parse(base.DatetimeLayout, strings.TrimSuffix(strings.TrimSpace(string(lastUpdateTimeString)), "\n"))
-			if err != nil {
-				level.Error(c.Logger).Log("msg", "Failed to parse time string in lastupdatetime file", "time", lastUpdateTimeString, "err", err)
-				goto updatetime
-			}
-		}
-		goto setup
-	} else {
-		goto updatetime
-	}
-
-updatetime:
-	// Write to file for persistence in case of restarts
-	writeTimeStampToFile(lastUpdateTimeStampFile, c.Data.LastUpdateTime, c.Logger)
-
-setup:
-	// Setup manager struct that retrieves unit data
-	manager, err := c.ResourceManager(c.Logger)
-	if err != nil {
-		level.Error(c.Logger).Log("msg", "Resource manager setup failed", "err", err)
-		return nil, err
-	}
-
-	// Setup updater struct that updates units
-	updater, err := c.Updater(c.Logger)
-	if err != nil {
-		level.Error(c.Logger).Log("msg", "Updater setup failed", "err", err)
-		return nil, err
-	}
 
 	// Setup DB
 	db, dbConn, err := setupDB(dbPath, c.Logger)
@@ -199,6 +157,17 @@ setup:
 		return nil, err
 	}
 
+	// Get last_updated_at time from DB and overwrite the one provided from config.
+	// DB should be the single source of truth.
+	var lastUpdatedAt string
+	if err = db.QueryRow(fmt.Sprintf("SELECT MAX(last_updated_at) FROM %s", base.UsageDBTableName)).Scan(&lastUpdatedAt); err == nil {
+		// Parse date time string
+		c.Data.LastUpdateTime, err = time.Parse(base.DatetimeLayout, lastUpdatedAt)
+		if err != nil {
+			level.Error(c.Logger).Log("msg", "Failed to parse last_updated_at fetched from DB", "time", lastUpdatedAt, "err", err)
+		}
+	}
+
 	// Now make an instance of time.Date with proper format and zone
 	c.Data.LastUpdateTime = time.Date(
 		c.Data.LastUpdateTime.Year(),
@@ -210,6 +179,7 @@ setup:
 		c.Data.LastUpdateTime.Nanosecond(),
 		time.Now().Location(),
 	)
+	level.Info(c.Logger).Log("msg", "DB will be updated from", "time", c.Data.LastUpdateTime)
 
 	// Create a new instance of Grafana client
 	grafanaClient, err := common.CreateGrafanaClient(&c.Admin.Grafana, c.Logger)
@@ -219,9 +189,6 @@ setup:
 
 	// Make admin users map
 	adminUsers := make(map[string]models.List, len(AdminUsersSources))
-	// for _, source := range AdminUsersSources {
-	// 	adminUsers[source] = make([]string, 0)
-	// }
 	for _, user := range c.Admin.Users {
 		adminUsers["ceems"] = append(adminUsers["ceems"], user)
 	}
@@ -239,8 +206,21 @@ setup:
 		dbBackupPath:       c.Data.BackupPath,
 		retentionPeriod:    time.Duration(c.Data.RetentionPeriod),
 		lastUpdateTime:     c.Data.LastUpdateTime,
-		lastUpdateTimeFile: lastUpdateTimeStampFile,
 		skipDeleteOldUnits: c.Data.SkipDeleteOldUnits,
+	}
+
+	// Setup manager struct that retrieves unit data
+	manager, err := c.ResourceManager(c.Logger)
+	if err != nil {
+		level.Error(c.Logger).Log("msg", "Resource manager setup failed", "err", err)
+		return nil, err
+	}
+
+	// Setup updater struct that updates units
+	updater, err := c.Updater(c.Logger)
+	if err != nil {
+		level.Error(c.Logger).Log("msg", "Updater setup failed", "err", err)
+		return nil, err
 	}
 
 	// Emit debug logs
@@ -393,7 +373,6 @@ func (s *statsDB) collect(startTime, endTime time.Time) error {
 
 	// Write endTime to file to keep track upon successful insertion of data
 	s.storage.lastUpdateTime = endTime
-	writeTimeStampToFile(s.storage.lastUpdateTimeFile, s.storage.lastUpdateTime, s.logger)
 	return nil
 }
 
@@ -458,6 +437,9 @@ func (s *statsDB) execStatements(
 ) {
 	// Measure elapsed time
 	defer common.TimeTrack(time.Now(), "DB insertion", s.logger)
+
+	// Get current day midnight
+	todayMidnight := currentTime.Truncate(24 * time.Hour).Format(base.DatetimeLayout)
 
 	var err error
 	for _, cluster := range clusterUnits {
@@ -542,6 +524,35 @@ func (s *statsDB) execStatements(
 			); err != nil {
 				level.Error(s.logger).
 					Log("msg", "Failed to update usage table in DB", "cluster_id", cluster.Cluster.ID, "uuid", unit.UUID, "err", err)
+			}
+
+			// Update DailyUsage table
+			// Use named parameters to not to repeat the values
+			if _, err = statements[base.DailyUsageDBTableName].Exec(
+				sql.Named(base.UsageDBTableStructFieldColNameMap["ResourceManager"], unit.ResourceManager),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["ClusterID"], cluster.Cluster.ID),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["NumUnits"], unitIncr),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["Project"], unit.Project),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["User"], unit.User),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["Group"], unit.Group),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["LastUpdatedAt"], todayMidnight), // This ensures that we aggregate data for each day
+				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalTime"], unit.TotalTime),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["AveCPUUsage"], unit.AveCPUUsage),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["AveCPUMemUsage"], unit.AveCPUMemUsage),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalCPUEnergyUsage"], unit.TotalCPUEnergyUsage),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalCPUEmissions"], unit.TotalCPUEmissions),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["AveGPUUsage"], unit.AveGPUUsage),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["AveGPUMemUsage"], unit.AveGPUMemUsage),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalGPUEnergyUsage"], unit.TotalGPUEnergyUsage),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalGPUEmissions"], unit.TotalGPUEmissions),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalIOWriteStats"], unit.TotalIOWriteStats),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalIOReadStats"], unit.TotalIOReadStats),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalIngressStats"], unit.TotalIngressStats),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalOutgressStats"], unit.TotalOutgressStats),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["NumUpdates"], 1),
+			); err != nil {
+				level.Error(s.logger).
+					Log("msg", "Failed to update daily_usage table in DB", "cluster_id", cluster.Cluster.ID, "uuid", unit.UUID, "err", err)
 			}
 		}
 	}

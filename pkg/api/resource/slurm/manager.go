@@ -38,6 +38,10 @@ var (
 		"submit", "start", "end", "elapsed", "elapsedraw", "exitcode", "state",
 		"alloctres", "nodelist", "jobname", "workdir",
 	}
+	slurmStates = []string{
+		"CANCELLED", "COMPLETED", "FAILED", "NODE_FAIL", "PREEMPTED", "TIMEOUT",
+		"RUNNING",
+	}
 	sacctFieldMap = make(map[string]int, len(sacctFields))
 )
 
@@ -140,11 +144,26 @@ func (s *slurmScheduler) fetchFromSacctMgr(current time.Time) ([]models.User, []
 
 // Run sacct command and return output
 func (s *slurmScheduler) runSacctCmd(startTime string, endTime string) ([]byte, error) {
+	// If we are fetching historical data, do not use RUNNING state as it can report
+	// same job twice once when it was still in running state and once it is in completed
+	// state.
+	endTimeParsed, _ := time.Parse(base.DatetimeLayout, endTime)
+	var states []string
+	// When fetching current jobs, endTime should be very close to current time. Here we
+	// assume that if current time is more than 5 sec than end time, we are fetching
+	// historical data
+	if time.Since(endTimeParsed) > time.Duration(5*time.Second) {
+		// Strip RUNNING state from slice
+		states = slurmStates[:len(slurmStates)-1]
+	} else {
+		states = slurmStates
+	}
+
 	// Use jobIDRaw that outputs the array jobs as regular job IDs instead of id_array format
 	args := []string{
 		"-D", "-X", "--noheader", "--allusers", "--parsable2",
 		"--format", strings.Join(sacctFields, ","),
-		"--state", "RUNNING,CANCELLED,COMPLETED,FAILED,NODE_FAIL,PREEMPTED,TIMEOUT",
+		"--state", strings.Join(states, ","),
 		"--starttime", startTime,
 		"--endtime", endTime,
 	}

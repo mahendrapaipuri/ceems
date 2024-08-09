@@ -27,6 +27,7 @@ var CEEMSServerApp = *kingpin.New(
 var (
 	UnitsDBTableName      = models.Unit{}.TableName()
 	UsageDBTableName      = models.Usage{}.TableName()
+	DailyUsageDBTableName = models.DailyUsage{}.TableName()
 	ProjectsDBTableName   = models.Project{}.TableName()
 	UsersDBTableName      = models.User{}.TableName()
 	AdminUsersDBTableName = models.AdminUsers{}.TableName()

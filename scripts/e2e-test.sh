@@ -144,6 +144,10 @@ then
   then
     desc="/usage/current end point test"
     fixture='pkg/api/testdata/output/e2e-test-api-server-current-usage-query.txt'
+  elif [ "${scenario}" = "api-current-usage-experimental-query" ]
+  then
+    desc="/usage/current end point test with experimental aggregation"
+    fixture='pkg/api/testdata/output/e2e-test-api-server-current-usage-experimental-query.txt'
   elif [ "${scenario}" = "api-global-usage-query" ]
   then
     desc="/usage/global end point test"
@@ -152,6 +156,10 @@ then
   then
     desc="/usage/current/admin end point test"
     fixture='pkg/api/testdata/output/e2e-test-api-server-current-usage-admin-query.txt'
+  elif [ "${scenario}" = "api-current-usage-admin-experimental-query" ]
+  then
+    desc="/usage/current/admin end point test with experimental aggregation"
+    fixture='pkg/api/testdata/output/e2e-test-api-server-current-usage-admin-experimental-query.txt'
   elif [ "${scenario}" = "api-global-usage-admin-query" ]
   then
     desc="/usage/global/admin end point test"
@@ -471,12 +479,18 @@ then
   elif [ "${scenario}" = "api-current-usage-query" ]
   then
     get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/usage/current?cluster_id=slurm-1&from=1676934000&to=1677538800" > "${fixture_output}"
+  elif [ "${scenario}" = "api-current-usage-experimental-query" ]
+  then
+    get -H "X-Grafana-User: usr4" "127.0.0.1:${port}/api/${api_version}/usage/current?cluster_id=slurm-1&from=1676934000&experimental" > "${fixture_output}"
   elif [ "${scenario}" = "api-global-usage-query" ]
   then
     get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/usage/global?cluster_id=slurm-0&field=username&field=project&field=num_units" > "${fixture_output}"
   elif [ "${scenario}" = "api-current-usage-admin-query" ]
   then
     get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/usage/current/admin?cluster_id=slurm-1&user=usr15&user=usr3&from=1676934000&to=1677538800" > "${fixture_output}"
+  elif [ "${scenario}" = "api-current-usage-admin-experimental-query" ]
+  then
+    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/usage/current/admin?cluster_id=slurm-1&user=usr15&user=usr4&from=1676934000&experimental" > "${fixture_output}"
   elif [ "${scenario}" = "api-global-usage-admin-query" ]
   then
     get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/usage/global/admin?cluster_id=slurm-0&field=username&field=project&field=num_units" > "${fixture_output}"
