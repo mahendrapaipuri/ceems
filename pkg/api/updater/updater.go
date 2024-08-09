@@ -6,6 +6,7 @@
 package updater
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"slices"
@@ -19,7 +20,13 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Instance contains the configuration of the given updater
+// Custom errors.
+var (
+	ErrDuplID         = errors.New("duplicate ID found in updaters config")
+	ErrUnknownUpdater = errors.New("unknown updater found in the config")
+)
+
+// Instance contains the configuration of the given updater.
 type Instance struct {
 	ID      string           `yaml:"id"`
 	Updater string           `yaml:"updater"`
@@ -28,12 +35,12 @@ type Instance struct {
 	Extra   yaml.Node        `yaml:"extra_config"`
 }
 
-// Config contains the configuration of updater(s)
+// Config contains the configuration of updater(s).
 type Config[T any] struct {
 	Instances []T `yaml:"updaters"`
 }
 
-// Updater interface
+// Updater interface.
 type Updater interface {
 	Update(startTime time.Time, endTime time.Time, units []models.ClusterUnits) []models.ClusterUnits
 }
@@ -44,13 +51,13 @@ type UnitUpdater struct {
 	Logger   log.Logger
 }
 
-// Slice of updaters
+// Slice of updaters.
 var (
 	updaterFactories = make(map[string]func(instance Instance, logger log.Logger) (Updater, error))
 )
 
-// RegisterUpdater registers updater struct into factories
-func RegisterUpdater(
+// Register registers updater struct into factories.
+func Register(
 	name string,
 	factory func(instance Instance, logger log.Logger) (Updater, error),
 ) {
@@ -58,31 +65,37 @@ func RegisterUpdater(
 }
 
 // checkConfig verifies for the errors in updater config and returns a map
-// of updater to its configs
+// of updater to its configs.
 func checkConfig(updaters []string, config *Config[Instance]) (map[string][]Instance, error) {
 	// Check if IDs are unique and updater is registered
-	var IDs []string
-	var configMap = make(map[string][]Instance)
-	for i := 0; i < len(config.Instances); i++ {
+	var IDs []string //nolint:prealloc
+
+	configMap := make(map[string][]Instance)
+
+	for i := range len(config.Instances) {
 		if slices.Contains(IDs, config.Instances[i].ID) {
-			return nil, fmt.Errorf("duplicate ID found in updaters config")
+			return nil, fmt.Errorf("%w: %s", ErrDuplID, config.Instances[i].ID)
 		}
+
 		if !slices.Contains(updaters, config.Instances[i].Updater) {
-			return nil, fmt.Errorf("unknown updater found in the config: %s", config.Instances[i].Updater)
+			return nil, fmt.Errorf("%w: %s", ErrUnknownUpdater, config.Instances[i].Updater)
 		}
+
 		if base.InvalidIDRegex.MatchString(config.Instances[i].ID) {
 			return nil, fmt.Errorf(
 				"invalid ID %s found in updaters config. It must contain only [a-zA-Z0-9-_]",
 				config.Instances[i].ID,
 			)
 		}
+
 		IDs = append(IDs, config.Instances[i].ID)
 		configMap[config.Instances[i].Updater] = append(configMap[config.Instances[i].Updater], config.Instances[i])
 	}
+
 	return configMap, nil
 }
 
-// updaterConfig returns the configuration of updaters
+// updaterConfig returns the configuration of updaters.
 func updaterConfig() (*Config[Instance], error) {
 	// Merge default config with provided config
 	config, err := common.MakeConfig[Config[Instance]](base.ConfigFilePath)
@@ -91,17 +104,21 @@ func updaterConfig() (*Config[Instance], error) {
 	}
 
 	// Set directories
-	for i := 0; i < len(config.Instances); i++ {
+	for i := range len(config.Instances) {
 		config.Instances[i].Web.HTTPClientConfig.SetDirectory(filepath.Dir(base.ConfigFilePath))
 	}
+
 	return config, nil
 }
 
-// NewUnitUpdater creates a new UnitUpdater
-func NewUnitUpdater(logger log.Logger) (*UnitUpdater, error) {
+// New creates a new UnitUpdater.
+func New(logger log.Logger) (*UnitUpdater, error) {
 	var updater Updater
-	var updaters = make(map[string]Updater)
-	var registeredUpdaters []string
+
+	updaters := make(map[string]Updater)
+
+	var registeredUpdaters []string //nolint:prealloc
+
 	var err error
 
 	// Get all registered updaters
@@ -113,6 +130,7 @@ func NewUnitUpdater(logger log.Logger) (*UnitUpdater, error) {
 	config, err := updaterConfig()
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to parse updater config", "err", err)
+
 		return nil, err
 	}
 
@@ -120,6 +138,7 @@ func NewUnitUpdater(logger log.Logger) (*UnitUpdater, error) {
 	configMap, err := checkConfig(registeredUpdaters, config)
 	if err != nil {
 		level.Error(logger).Log("msg", "Invalid updater config", "err", err)
+
 		return nil, err
 	}
 
@@ -129,18 +148,21 @@ func NewUnitUpdater(logger log.Logger) (*UnitUpdater, error) {
 			updater, err = factory(config, log.With(logger, "updater", key))
 			if err != nil {
 				level.Error(logger).Log("msg", "Failed to setup unit updater", "name", key, "err", err)
+
 				return nil, err
 			}
+
 			updaters[config.ID] = updater
 		}
 	}
+
 	return &UnitUpdater{
 		Updaters: updaters,
 		Logger:   logger,
 	}, nil
 }
 
-// Update implements updating units using registered updaters
+// Update implements updating units using registered updaters.
 func (u UnitUpdater) Update(
 	startTime time.Time,
 	endTime time.Time,
@@ -155,12 +177,12 @@ func (u UnitUpdater) Update(
 	}
 
 	// Iterate through units and apply updater for each clusterUnit
-	for i := 0; i < len(clusterUnits); i++ {
+	for i := range len(clusterUnits) {
 		if len(clusterUnits[i].Units) == 0 || len(clusterUnits[i].Cluster.Updaters) == 0 {
 			continue
 		}
 
-		for j := 0; j < len(clusterUnits[i].Cluster.Updaters); j++ {
+		for j := range len(clusterUnits[i].Cluster.Updaters) {
 			updaterID := clusterUnits[i].Cluster.Updaters[j]
 
 			// Check if updaterID is valid
@@ -171,6 +193,7 @@ func (u UnitUpdater) Update(
 				if len(updatedClusterUnits) > 0 {
 					clusterUnits[i].Units = updatedClusterUnits[0].Units
 				}
+
 				level.Info(u.Logger).
 					Log("msg", "Updater", "cluster_id", clusterUnits[i].Cluster.ID, "updater_id", updaterID)
 			} else {
@@ -178,5 +201,6 @@ func (u UnitUpdater) Update(
 			}
 		}
 	}
+
 	return clusterUnits
 }

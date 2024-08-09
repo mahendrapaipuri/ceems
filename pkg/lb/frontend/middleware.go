@@ -11,11 +11,10 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-
 	ceems_api "github.com/mahendrapaipuri/ceems/pkg/api/http"
 )
 
-// Headers
+// Headers.
 const (
 	grafanaUserHeader   = "X-Grafana-User"
 	dashboardUserHeader = "X-Dashboard-User"
@@ -31,11 +30,11 @@ var (
 	// Playground: https://goplay.tools/snippet/kq_r_1SOgnG
 	regexpUUID = regexp.MustCompile("(?:.+?)[^gpu]uuid=[~]{0,1}\"(?P<uuid>[a-zA-Z0-9-|]+)\"(?:.*)")
 
-	// Regex that will match unit's ID
+	// Regex that will match unit's ID.
 	regexID = regexp.MustCompile("(?:.+?)ceems_id=[~]{0,1}\"(?P<id>[a-zA-Z0-9-|_]+)\"(?:.*)")
 )
 
-// ceems is the struct container for CEEMS API server
+// ceems is the struct container for CEEMS API server.
 type ceems struct {
 	db     *sql.DB
 	webURL *url.URL
@@ -46,6 +45,7 @@ func (c *ceems) verifyEndpoint() *url.URL {
 	if c.webURL != nil {
 		return c.webURL.JoinPath("/api/v1/units/verify")
 	}
+
 	return nil
 }
 
@@ -53,17 +53,18 @@ func (c *ceems) clustersEndpoint() *url.URL {
 	if c.webURL != nil {
 		return c.webURL.JoinPath("/api/v1/clusters/admin")
 	}
+
 	return nil
 }
 
-// authenticationMiddleware implements the auth middleware for LB
+// authenticationMiddleware implements the auth middleware for LB.
 type authenticationMiddleware struct {
 	logger     log.Logger
 	ceems      ceems
 	clusterIDs []string
 }
 
-// Check UUIDs in query belong to user or not
+// Check UUIDs in query belong to user or not.
 func (amw *authenticationMiddleware) isUserUnit(
 	ctx context.Context,
 	user string,
@@ -82,11 +83,12 @@ func (amw *authenticationMiddleware) isUserUnit(
 	// what is happening
 	if amw.ceems.verifyEndpoint() != nil {
 		// Create a new POST request
-		req, err := http.NewRequest(http.MethodGet, amw.ceems.verifyEndpoint().String(), nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, amw.ceems.verifyEndpoint().String(), nil)
 		if err != nil {
 			level.Debug(amw.logger).
 				Log("msg", "Failed to create new request for unit ownership verification",
 					"user", user, "queried_uuids", strings.Join(uuids, ","), "err", err)
+
 			return false
 		}
 
@@ -103,23 +105,29 @@ func (amw *authenticationMiddleware) isUserUnit(
 			level.Debug(amw.logger).
 				Log("msg", "Failed to make request for unit ownership verification",
 					"user", user, "queried_uuids", strings.Join(uuids, ","), "err", err)
+
 			return false
-		} else {
-			// Any status code other than 200 should be treated as check failure
-			if resp.StatusCode != 200 {
-				level.Debug(amw.logger).Log("msg", "Unauthorised query", "user", user,
-					"queried_uuids", strings.Join(uuids, ","), "status_code", resp.StatusCode)
-				return false
-			}
+		} else if resp.StatusCode != http.StatusOK {
+			defer resp.Body.Close()
+			level.Debug(amw.logger).Log("msg", "Unauthorised query", "user", user,
+				"queried_uuids", strings.Join(uuids, ","), "status_code", resp.StatusCode)
+
+			return false
 		}
 	}
+
 	return true
 }
 
-// Middleware function, which will be called for each request
+// Middleware function, which will be called for each request.
 func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var loggedUser string
+
+		var id string
+
+		var uuids []string
+
 		var queryParams interface{}
 
 		// Clone request, parse query params and set them in request context
@@ -149,6 +157,7 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 
 			// Write an error and stop the handler chain
 			w.WriteHeader(http.StatusUnauthorized)
+
 			response := ceems_api.Response[any]{
 				Status:    "error",
 				ErrorType: "unauthorized",
@@ -158,8 +167,10 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 				level.Error(amw.logger).Log("msg", "Failed to encode response", "err", err)
 				w.Write([]byte("KO"))
 			}
+
 			return
 		}
+
 		level.Debug(amw.logger).Log("loggedUser", loggedUser, "url", r.URL)
 
 		// Set logged user header
@@ -171,6 +182,7 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 		// If no query params found, return bad request
 		if queryParams == nil {
 			w.WriteHeader(http.StatusBadRequest)
+
 			response := ceems_api.Response[any]{
 				Status:    "error",
 				ErrorType: "bad_request",
@@ -180,18 +192,33 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 				level.Error(amw.logger).Log("msg", "Failed to encode response", "err", err)
 				w.Write([]byte("KO"))
 			}
+
+			return
+		}
+
+		// Check type assertions
+		if v, ok := queryParams.(*QueryParams); ok {
+			id = v.id
+			uuids = v.uuids
+		} else {
+			response := ceems_api.Response[any]{
+				Status:    "error",
+				ErrorType: "bad_request",
+				Error:     "invalid query",
+			}
+			if err := json.NewEncoder(w).Encode(&response); err != nil {
+				level.Error(amw.logger).Log("msg", "Failed to encode response", "err", err)
+				w.Write([]byte("KO"))
+			}
+
 			return
 		}
 
 		// Check if user is querying for his/her own compute units by looking to DB
-		if !amw.isUserUnit(
-			r.Context(),
-			loggedUser,
-			[]string{queryParams.(*QueryParams).id},
-			queryParams.(*QueryParams).uuids,
-		) {
+		if !amw.isUserUnit(r.Context(), loggedUser, []string{id}, uuids) {
 			// Write an error and stop the handler chain
 			w.WriteHeader(http.StatusForbidden)
+
 			response := ceems_api.Response[any]{
 				Status:    "error",
 				ErrorType: "forbidden",
@@ -201,6 +228,7 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 				level.Error(amw.logger).Log("msg", "Failed to encode response", "err", err)
 				w.Write([]byte("KO"))
 			}
+
 			return
 		}
 

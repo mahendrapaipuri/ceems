@@ -18,9 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	rbIDs = []string{"rb0", "rb1"}
-)
+var rbIDs = []string{"rb0", "rb1"}
 
 func dummyTSDBServer(retention string) *httptest.Server {
 	// Start test server
@@ -39,12 +37,13 @@ func dummyTSDBServer(retention string) *httptest.Server {
 			time.Sleep(3 * time.Second)
 		}
 	}))
+
 	return server
 }
 
 func TestResourceBasedLB(t *testing.T) {
 	// Create a manager
-	manager, err := NewManager("resource-based", log.NewNopLogger())
+	manager, err := New("resource-based", log.NewNopLogger())
 	require.NoError(t, err)
 
 	// Retention periods
@@ -68,7 +67,7 @@ func TestResourceBasedLB(t *testing.T) {
 			backendURLs[id][i] = backendURL
 
 			rp := httputil.NewSingleHostReverseProxy(backendURL)
-			backend := backend.NewTSDBServer(backendURL, rp, log.NewNopLogger())
+			backend := backend.New(backendURL, rp, log.NewNopLogger())
 			manager.Add(id, backend)
 			backends[id][i] = backend
 		}
@@ -84,17 +83,20 @@ func TestResourceBasedLB(t *testing.T) {
 
 	// Target should be backend[0]
 	for _, id := range rbIDs {
-		target := manager.Target(id, time.Duration(10*time.Hour))
+		target := manager.Target(id, 10*time.Hour)
 		assert.Equal(t, target.URL(), backendURLs[id][0])
 	}
 
 	// Backend[1] is serving a long request
 	for _, id := range rbIDs {
 		wg.Add(1)
+
 		go func(i string) {
 			r := httptest.NewRequest(http.MethodGet, "/test", nil)
 			w := httptest.NewRecorder()
+
 			defer wg.Done()
+
 			t := backends[i][1]
 			t.Serve(w, r)
 		}(id)
@@ -105,7 +107,7 @@ func TestResourceBasedLB(t *testing.T) {
 
 	// This request should be proxied to backend[2] as backend[1] is busy with request
 	for _, id := range rbIDs {
-		target := manager.Target(id, time.Duration(100*24*time.Hour))
+		target := manager.Target(id, 100*24*time.Hour)
 		assert.Equal(t, target.URL().String(), backendURLs[id][2].String())
 	}
 
@@ -118,10 +120,12 @@ func TestResourceBasedLB(t *testing.T) {
 	// Just to check for any race conditions
 	for _, id := range rbIDs {
 		wg.Add(1)
+
 		go func(iid string) {
 			defer wg.Done()
-			for i := 0; i < 3; i++ {
-				manager.Target(iid, time.Duration(10*time.Hour))
+
+			for range 3 {
+				manager.Target(iid, 10*time.Hour)
 			}
 		}(id)
 	}
@@ -138,6 +142,6 @@ func TestResourceBasedLB(t *testing.T) {
 
 	// Should return nil target
 	for _, id := range rbIDs {
-		assert.Empty(t, manager.Target(id, time.Duration(100*24*time.Hour)))
+		assert.Empty(t, manager.Target(id, 100*24*time.Hour))
 	}
 }

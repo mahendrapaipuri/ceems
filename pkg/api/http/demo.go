@@ -12,14 +12,18 @@ import (
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 )
 
-// Number of units and usage stats to generate
+// Number of units and usage stats to generate.
 const (
 	numUnits       = 100
 	numUsage       = 50
 	maxInt64 int64 = 1<<63 - 1
 )
 
-// Resource manager specific definitions
+const (
+	unknownTime = "Unknown"
+)
+
+// Resource manager specific definitions.
 var (
 	resourceMgrs = []string{"slurm", "openstack", "k8s"}
 	states       = map[string][]string{
@@ -49,36 +53,38 @@ var (
 	allProjects []string
 )
 
-// Get a slice of all projects
+// Get a slice of all projects.
 func init() {
 	for _, p := range projects {
 		allProjects = append(allProjects, p...)
 	}
 }
 
-// randomFloats returns random float64s in the range
-func randomFloats(min, max float64) models.JSONFloat {
+// randomFloats returns random float64s in the range.
+func randomFloats(min, max float64) models.JSONFloat { //nolint:unparam
 	return models.JSONFloat(min + rand.Float64()*(max-min)) // #nosec
 }
 
-// random returns random number between min and max excluding max
+// random returns random number between min and max excluding max.
 func random(min, max int64) int64 {
 	return randomHelper(max-min-1) + min
 }
 
-// randomHelper returns max int64 if n is more than max
+// randomHelper returns max int64 if n is more than max.
 func randomHelper(n int64) int64 {
 	if n < maxInt64 {
-		return int64(rand.Int63n(int64(n + 1))) // #nosec
+		return rand.Int63n(n + 1) // #nosec
 	}
+
 	x := int64(rand.Uint64()) // #nosec
 	for x > n {
 		x = int64(rand.Uint64()) // #nosec
 	}
+
 	return x
 }
 
-// mockUnits will generate units with randomised data
+// mockUnits will generate units with randomised data.
 func mockUnits() []models.Unit {
 	// Define mock group, projects
 	user := users[0]
@@ -98,8 +104,9 @@ func mockUnits() []models.Unit {
 	var maxWait int64 = 7200
 
 	// Generate units
-	var units = make([]models.Unit, numUnits)
-	for i := 0; i < numUnits; i++ {
+	units := make([]models.Unit, numUnits)
+
+	for i := range numUnits {
 		resourceMgr := resourceMgrs[random(0, int64(numResourceMgrs))]
 		clusterID := fmt.Sprintf("%s-%d", resourceMgr, random(0, int64(3)))
 
@@ -124,11 +131,13 @@ func mockUnits() []models.Unit {
 
 		// First 20 jobs must be running and rest should have different status
 		var state, endedAt string
+
 		var endTimeTS, elapsedRaw int64
+
 		if i < 20 {
 			state = runningStates[resourceMgr]
 			endTimeTS = 0
-			endedAt = "Unknown"
+			endedAt = unknownTime
 			elapsedRaw = currentEpoch - startTimeTS
 		} else {
 			state = states[resourceMgr][random(0, int64(len(states[resourceMgr])))]
@@ -139,12 +148,13 @@ func mockUnits() []models.Unit {
 
 		// If state is pending, starttime, elapsed must be zero
 		avgUsageFlag := models.JSONFloat(1)
+
 		if slices.Contains([]string{"PENDING", "Pending", "REQUEUED", "BUILD", "UNKNOWN"}, state) {
 			startTimeTS = 0
 			elapsedRaw = 0
-			startedAt = "Unknown"
+			startedAt = unknownTime
 			endTimeTS = 0
-			endedAt = "Unknown"
+			endedAt = unknownTime
 			avgUsageFlag = 0
 		}
 
@@ -198,36 +208,43 @@ func mockUnits() []models.Unit {
 			},
 		}
 	}
+
 	return units
 }
 
-// mockUsage will generate usage with randomised data
+// mockUsage will generate usage with randomised data.
 func mockUsage() []models.Usage {
 	group := "group"
 	// Set user project map
-	var userProjectMap = make(map[string][]string)
+	userProjectMap := make(map[string][]string)
+
 	for _, user := range users {
 		var userProjects []string
-		for i := 0; i < int(random(1, 4)); i++ {
+		for range int(random(1, 4)) {
 			userProjects = append(
 				userProjects, allProjects[int(random(0, int64(len(allProjects))))],
 			)
 		}
+
 		userProjectMap[user] = userProjects
 	}
 
 	// Generate usage
 	var usage []models.Usage
+
 	for user, prjs := range userProjectMap {
 		for _, prj := range prjs {
 			var resourceMgr string
-			if strings.HasPrefix(prj, "acc") {
+
+			switch {
+			case strings.HasPrefix(prj, "acc"):
 				resourceMgr = "slurm"
-			} else if strings.HasPrefix(prj, "tenant") {
+			case strings.HasPrefix(prj, "tenant"):
 				resourceMgr = "openstack"
-			} else {
+			default:
 				resourceMgr = "k8s"
 			}
+
 			usage = append(usage, models.Usage{
 				ResourceManager: resourceMgr,
 				Project:         prj,
@@ -268,5 +285,6 @@ func mockUsage() []models.Usage {
 			})
 		}
 	}
+
 	return usage
 }

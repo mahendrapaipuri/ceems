@@ -8,20 +8,19 @@ import (
 	"sync"
 )
 
-var (
-	fieldIndexesCache sync.Map
-)
+var fieldIndexesCache sync.Map
 
-// GetStructFieldNames returns all fields in a given struct
-func GetStructFieldNames(Struct interface{}) []string {
+// StructFieldNames returns all fields in a given struct.
+func StructFieldNames(s interface{}) []string {
 	var fields []string
 
-	v := reflect.ValueOf(Struct)
+	v := reflect.ValueOf(s)
 	typeOfS := v.Type()
 
-	for i := 0; i < v.NumField(); i++ {
+	for i := range v.NumField() {
 		fields = append(fields, typeOfS.Field(i).Name)
 	}
+
 	return fields
 }
 
@@ -37,41 +36,45 @@ func GetStructFieldNames(Struct interface{}) []string {
 // 	return values
 // }
 
-// Get tag value of field. If tag value is "-", empty string will be returned
-// If tag is empty, return name of field
-func getTagValue(field reflect.StructField, tag string) string {
-	if field.Tag.Get(tag) == "-" {
+// tagValue returns tag value of field. If tag value is "-", empty string will be returned
+// If tag is empty, return name of field.
+func tagValue(field reflect.StructField, tag string) string {
+	switch field.Tag.Get(tag) {
+	case "-":
 		return ""
-	} else if field.Tag.Get(tag) == "" {
+	case "":
 		return field.Name
-	} else {
+	default:
 		return strings.Split(field.Tag.Get(tag), ",")[0]
 	}
 }
 
-// GetStructFieldTagValues returns all tag names in a given struct for a given tag
-func GetStructFieldTagValues(Struct interface{}, tag string) []string {
-	v := reflect.ValueOf(Struct)
+// StructFieldTagValues returns all tag names in a given struct for a given tag.
+func StructFieldTagValues(s interface{}, tag string) []string {
+	v := reflect.ValueOf(s)
 	typeOfS := v.Type()
 
 	var values []string
-	for i := 0; i < v.NumField(); i++ {
-		if value := getTagValue(typeOfS.Field(i), tag); value != "" {
+
+	for i := range v.NumField() {
+		if value := tagValue(typeOfS.Field(i), tag); value != "" {
 			values = append(values, value)
 		}
 	}
+
 	return values
 }
 
-// GetStructFieldTagMap returns a map of tags using keyTag as map key and valueTag as map value
-func GetStructFieldTagMap(Struct interface{}, keyTag string, valueTag string) map[string]string {
-	v := reflect.ValueOf(Struct)
+// StructFieldTagMap returns a map of tags using keyTag as map key and valueTag as map value.
+func StructFieldTagMap(s interface{}, keyTag string, valueTag string) map[string]string {
+	v := reflect.ValueOf(s)
 	typeOfS := v.Type()
 
-	var fields = make(map[string]string)
-	for i := 0; i < v.NumField(); i++ {
-		fields[getTagValue(typeOfS.Field(i), keyTag)] = getTagValue(typeOfS.Field(i), valueTag)
+	fields := make(map[string]string)
+	for i := range v.NumField() {
+		fields[tagValue(typeOfS.Field(i), keyTag)] = tagValue(typeOfS.Field(i), valueTag)
 	}
+
 	return fields
 }
 
@@ -83,13 +86,12 @@ func ScanRow(rows *sql.Rows, columns []string, indexes map[string]int, dest any)
 	// if rv.Kind() != reflect.Pointer || rv.IsNil() {
 	// 	return errors.New("dest must be a non-nil pointer")
 	// }
-
 	// elem := rv.Elem()
 	// if elem.Kind() != reflect.Struct {
 	// 	return errors.New("dest must point to a struct")
 	// }
-
 	var scanArgs []any
+
 	for _, column := range columns {
 		index, ok := indexes[column]
 		if ok {
@@ -98,14 +100,17 @@ func ScanRow(rows *sql.Rows, columns []string, indexes map[string]int, dest any)
 			scanArgs = append(scanArgs, field.Addr().Interface())
 		}
 	}
+
 	return rows.Scan(scanArgs...)
 }
 
 // fieldIndexes returns a map of database column name to struct field index.
 func fieldIndexes(structType reflect.Type) map[string]int {
 	indexes := make(map[string]int)
-	for i := 0; i < structType.NumField(); i++ {
+
+	for i := range structType.NumField() {
 		field := structType.Field(i)
+
 		tag := field.Tag.Get("sql")
 		if tag != "" {
 			// Use "sql" tag if set
@@ -115,15 +120,20 @@ func fieldIndexes(structType reflect.Type) map[string]int {
 			indexes[field.Name] = i
 		}
 	}
+
 	return indexes
 }
 
 // CachedFieldIndexes is like fieldIndexes, but cached per struct type.
 func CachedFieldIndexes(structType reflect.Type) map[string]int {
 	if f, ok := fieldIndexesCache.Load(structType); ok {
-		return f.(map[string]int)
+		if m, mOk := f.(map[string]int); mOk {
+			return m
+		}
 	}
+
 	indexes := fieldIndexes(structType)
 	fieldIndexesCache.Store(structType, indexes)
+
 	return indexes
 }

@@ -31,7 +31,7 @@ Algeria,DZA,2001,494.60645
 `
 	gotFactors, err := readOWIDData([]byte(testData))
 	require.NoError(t, err)
-	assert.Equal(t, gotFactors, expectedFactors)
+	assert.Equal(t, expectedFactors, gotFactors)
 }
 
 func TestNewOWIDProvider(t *testing.T) {

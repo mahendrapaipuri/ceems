@@ -10,10 +10,15 @@ import (
 	"github.com/go-kit/log/level"
 )
 
-// Error type in API response
+var (
+	ErrMaxQueryWindow     = errors.New("maximum query window exceeded")
+	ErrMalformedTimeStamp = errors.New("malformed timestamp")
+)
+
+// Error type in API response.
 type errorType string
 
-// Error response
+// Error response.
 type apiError struct {
 	typ errorType
 	err error
@@ -23,7 +28,7 @@ func (e *apiError) Error() string {
 	return fmt.Sprintf("%s: %s", e.typ, e.err)
 }
 
-// List of predefined errors
+// List of predefined errors.
 const (
 	errorNone          errorType = ""
 	errorUnauthorized  errorType = "unauthorized"
@@ -38,25 +43,28 @@ const (
 	errorNotAcceptable errorType = "not_acceptable"
 )
 
-// Custom error codes
+// Custom error codes.
 const (
 	// Non-standard status code (originally introduced by nginx) for the case when a client closes
 	// the connection while the server is still processing the request.
 	statusClientClosedConnection = 499
 )
 
-// Custom errors
+// Custom errors.
 var (
 	errNoUser            = errors.New("no user identified")
 	errNoPrivs           = errors.New("current user does not have admin privileges")
 	errInvalidRequest    = errors.New("invalid request")
 	errInvalidQueryField = errors.New("invalid query fields")
+	errMissingUIDs       = errors.New("uuids missing in the request")
+	errNoAuth            = errors.New("user do not have permissions on uuids")
 )
 
-// Return error response for by setting errorString and errorType in response
+// Return error response for by setting errorString and errorType in response.
 func errorResponse[T any](w http.ResponseWriter, apiErr *apiError, logger log.Logger, data []T) {
 	var code int
-	switch apiErr.typ {
+
+	switch apiErr.typ { //nolint:exhaustive
 	case errorBadData:
 		code = http.StatusBadRequest
 	case errorUnauthorized:
@@ -80,6 +88,7 @@ func errorResponse[T any](w http.ResponseWriter, apiErr *apiError, logger log.Lo
 	}
 
 	w.WriteHeader(code)
+
 	response := Response[T]{
 		Status:    "error",
 		ErrorType: apiErr.typ,

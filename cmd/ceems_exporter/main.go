@@ -1,13 +1,13 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"os"
 
 	"github.com/mahendrapaipuri/ceems/pkg/collector"
 )
 
-// Main entry point for `ceems_exporter` app
+// Main entry point for `ceems_exporter` app.
 func main() {
 	// Create a new app
 	ceemsExporterApp, err := collector.NewCEEMSExporter()
@@ -17,7 +17,7 @@ func main() {
 
 	// Main entrypoint of the app
 	if err := ceemsExporterApp.Main(); err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		os.Exit(1)
 	}
 }

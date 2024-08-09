@@ -13,7 +13,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Infinity and NaN representations
+// Infinity and NaN representations.
 var (
 	infNaNRepr = []string{
 		"+Inf", "\"+Inf\"", "-Inf", "\"-Inf\"", "+inf", "\"+inf\"",
@@ -31,17 +31,19 @@ var (
 // https://gist.github.com/jmoiron/6979540
 type Generic map[string]interface{}
 
-// Value implements Valuer interface
+// Value implements Valuer interface.
 func (g Generic) Value() (driver.Value, error) {
 	var generic []byte
+
 	var err error
 	if generic, err = json.Marshal(g); err != nil {
 		return nil, err
 	}
+
 	return driver.Value(string(generic)), nil
 }
 
-// Scan implements Scanner interface
+// Scan implements Scanner interface.
 func (g *Generic) Scan(v interface{}) error {
 	if v == nil {
 		return nil
@@ -62,7 +64,9 @@ func (g *Generic) Scan(v interface{}) error {
 	// Ref: Improvable, see https://groups.google.com/g/golang-nuts/c/TDuGDJAIuVM?pli=1
 	// Decode into a tmp var
 	var tmp map[string]interface{}
+
 	d.UseNumber()
+
 	if err := d.Decode(&tmp); err != nil {
 		return err
 	}
@@ -76,30 +80,34 @@ func (g *Generic) Scan(v interface{}) error {
 			}
 		}
 	}
+
 	*g = tmp
+
 	return nil
 }
 
-// Tag is a type alias to Generic that stores metadata of compute units
+// Tag is a type alias to Generic that stores metadata of compute units.
 type Tag = Generic
 
-// Allocation is a type alias to Generic that stores allocation data of compute units
+// Allocation is a type alias to Generic that stores allocation data of compute units.
 type Allocation = Generic
 
-// MetricMap is a type alias to Generic that stores arbritrary metrics as a map
+// MetricMap is a type alias to Generic that stores arbritrary metrics as a map.
 type MetricMap map[string]JSONFloat
 
-// Value implements Valuer interface
+// Value implements Valuer interface.
 func (m MetricMap) Value() (driver.Value, error) {
 	var generic []byte
+
 	var err error
 	if generic, err = json.Marshal(m); err != nil {
 		return nil, err
 	}
+
 	return driver.Value(string(generic)), nil
 }
 
-// Scan implements Scanner interface
+// Scan implements Scanner interface.
 func (m *MetricMap) Scan(v interface{}) error {
 	if v == nil {
 		return nil
@@ -123,24 +131,28 @@ func (m *MetricMap) Scan(v interface{}) error {
 	if err := d.Decode(&tmp); err != nil {
 		return err
 	}
+
 	*m = tmp
+
 	return nil
 }
 
-// JSONFloat is a custom float64 that can handle Inf and NaN during JSON (un)marshalling
+// JSONFloat is a custom float64 that can handle Inf and NaN during JSON (un)marshalling.
 type JSONFloat float64
 
-// Value implements Valuer interface
+// Value implements Valuer interface.
 func (j JSONFloat) Value() (driver.Value, error) {
 	var generic []byte
+
 	var err error
 	if generic, err = json.Marshal(j); err != nil {
 		return nil, err
 	}
+
 	return driver.Value(string(generic)), nil
 }
 
-// Scan implements Scanner interface
+// Scan implements Scanner interface.
 func (j *JSONFloat) Scan(v interface{}) error {
 	if v == nil {
 		return nil
@@ -174,18 +186,21 @@ func (j *JSONFloat) Scan(v interface{}) error {
 	if err := d.Decode(&tmp); err != nil {
 		return err
 	}
+
 	*j = tmp
+
 	return nil
 }
 
 // MarshalJSON marshals JSONFloat into byte array
 // The custom marshal interface will truncate the float64 to 8 decimals as storing
-// all decimals will bring a very low added value and high DB storage
+// all decimals will bring a very low added value and high DB storage.
 func (j JSONFloat) MarshalJSON() ([]byte, error) {
 	v := float64(j)
 	if math.IsInf(v, 0) || math.IsNaN(v) {
 		// handle infinity, assign desired value to v
 		s := "0"
+
 		return []byte(s), nil
 	}
 
@@ -198,10 +213,11 @@ func (j JSONFloat) MarshalJSON() ([]byte, error) {
 	}
 }
 
-// UnmarshalJSON unmarshals byte array into JSONFloat
+// UnmarshalJSON unmarshals byte array into JSONFloat.
 func (j *JSONFloat) UnmarshalJSON(v []byte) error {
 	if s := string(v); slices.Contains(infNaNRepr, s) {
 		*j = JSONFloat(0)
+
 		return nil
 	}
 	// just a regular float value
@@ -209,7 +225,9 @@ func (j *JSONFloat) UnmarshalJSON(v []byte) error {
 	if err := json.Unmarshal(v, &fv); err != nil {
 		return err
 	}
+
 	*j = JSONFloat(fv)
+
 	return nil
 }
 
@@ -217,17 +235,19 @@ func (j *JSONFloat) UnmarshalJSON(v []byte) error {
 // Any number will be converted into int64.
 type List []interface{}
 
-// Value implements Valuer interface
+// Value implements Valuer interface.
 func (l List) Value() (driver.Value, error) {
 	var list []byte
+
 	var err error
 	if list, err = json.Marshal(l); err != nil {
 		return nil, err
 	}
+
 	return driver.Value(string(list)), nil
 }
 
-// Scan implements Scanner interface
+// Scan implements Scanner interface.
 func (l *List) Scan(v interface{}) error {
 	if v == nil {
 		return nil
@@ -248,7 +268,9 @@ func (l *List) Scan(v interface{}) error {
 	// Ref: Improvable, see https://groups.google.com/g/golang-nuts/c/TDuGDJAIuVM?pli=1
 	// Decode into a tmp var
 	var tmp []interface{}
+
 	d.UseNumber()
+
 	if err := d.Decode(&tmp); err != nil {
 		return err
 	}
@@ -262,11 +284,13 @@ func (l *List) Scan(v interface{}) error {
 			}
 		}
 	}
+
 	*l = tmp
+
 	return nil
 }
 
-// WebConfig contains the client related configuration of a REST API server
+// WebConfig contains the client related configuration of a REST API server.
 type WebConfig struct {
 	URL              string                  `yaml:"url"`
 	HTTPClientConfig config.HTTPClientConfig `yaml:",inline"`
@@ -280,6 +304,7 @@ func (c *WebConfig) SetDirectory(dir string) {
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
 func (c *WebConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	type plain WebConfig
+
 	*c = WebConfig{
 		HTTPClientConfig: config.DefaultHTTPClientConfig,
 	}
@@ -292,35 +317,35 @@ func (c *WebConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return c.HTTPClientConfig.Validate()
 }
 
-// CLIConfig contains the configuration of CLI client
+// CLIConfig contains the configuration of CLI client.
 type CLIConfig struct {
 	Path    string            `yaml:"path"`
 	EnvVars map[string]string `yaml:"environment_variables"`
 }
 
-// Cluster contains the configuration of the given resource manager
+// Cluster contains the configuration of the given resource manager.
 type Cluster struct {
-	ID       string    `yaml:"id"           json:"id"      sql:"cluster_id"`
-	Manager  string    `yaml:"manager"      json:"manager" sql:"resource_manager"`
-	Web      WebConfig `yaml:"web"          json:"-"`
-	CLI      CLIConfig `yaml:"cli"          json:"-"`
-	Updaters []string  `yaml:"updaters"     json:"-"`
-	Extra    yaml.Node `yaml:"extra_config" json:"-"`
+	ID       string    `json:"id"      sql:"cluster_id"       yaml:"id"`
+	Manager  string    `json:"manager" sql:"resource_manager" yaml:"manager"`
+	Web      WebConfig `json:"-"       yaml:"web"`
+	CLI      CLIConfig `json:"-"       yaml:"cli"`
+	Updaters []string  `json:"-"       yaml:"updaters"`
+	Extra    yaml.Node `json:"-"       yaml:"extra_config"`
 }
 
-// ClusterUnits is the container for the units and config of a given cluster
+// ClusterUnits is the container for the units and config of a given cluster.
 type ClusterUnits struct {
 	Cluster Cluster
 	Units   []Unit
 }
 
-// ClusterProjects is the container for the projects for a given cluster
+// ClusterProjects is the container for the projects for a given cluster.
 type ClusterProjects struct {
 	Cluster  Cluster
 	Projects []Project
 }
 
-// ClusterUsers is the container for the users for a given cluster
+// ClusterUsers is the container for the users for a given cluster.
 type ClusterUsers struct {
 	Cluster Cluster
 	Users   []User

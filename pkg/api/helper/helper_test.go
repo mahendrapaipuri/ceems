@@ -1,7 +1,6 @@
 package helper
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
@@ -64,8 +63,10 @@ var nodelistParserTests = []nodelistParserTest{
 	},
 	{
 		"compute-a-[0-1]-b-[3-4],compute-c,compute-d",
-		[]string{"compute-a-0-b-3", "compute-a-0-b-4",
-			"compute-a-1-b-3", "compute-a-1-b-4", "compute-c", "compute-d"},
+		[]string{
+			"compute-a-0-b-3", "compute-a-0-b-4",
+			"compute-a-1-b-3", "compute-a-1-b-4", "compute-c", "compute-d",
+		},
 	},
 	{
 		"compute-a-[0-2,5,7-9]-b-[3-4,7,9-12],compute-c,compute-d",
@@ -120,26 +121,27 @@ var nodelistParserTests = []nodelistParserTest{
 			"compute-a-9-b-11",
 			"compute-a-9-b-12",
 			"compute-c",
-			"compute-d"},
+			"compute-d",
+		},
 	},
 }
 
 func TestNodelistParser(t *testing.T) {
 	for _, test := range nodelistParserTests {
 		output := NodelistParser(test.nodelist)
-		assert.Equal(t, output, test.expected)
+		assert.Equal(t, test.expected, output)
 	}
 }
 
 func TestTimeToTimestamp(t *testing.T) {
 	expectedTimeStamp := 1136239445000
-	timeFormat := fmt.Sprintf("%s-0700", base.DatetimeLayout)
+	timeFormat := base.DatetimeLayout + "-0700"
 	timeStamp := TimeToTimestamp(timeFormat, "2006-01-02T15:04:05-0700")
-	assert.Equal(t, timeStamp, int64(expectedTimeStamp))
+	assert.Equal(t, int64(expectedTimeStamp), timeStamp)
 
 	// Check failure case
 	timeStamp = TimeToTimestamp(timeFormat, "2006-01-0215:04:05-0700")
-	assert.Equal(t, timeStamp, int64(0))
+	assert.Equal(t, int64(0), timeStamp)
 }
 
 func TestChunkBy(t *testing.T) {

@@ -71,12 +71,13 @@ ipmiutil dcmi, completed successfully
 "window_len":600,
 "e":0,
 "err_msg":""
-}`}
+}`,
+	}
 	ipmidcmiStdoutDisactive = map[string]string{
-		"freeipmi":  "Power Measurement                    : Not Available",
-		"ipmitutil": "Power reading state is:          not active",
-		"ipmitool":  "Power reading state is:                   deactivated",
-		"capmc":     `{"e":1,"err_msg":"failed"}`,
+		"freeipmi":   "Power Measurement                    : Not Available",
+		"ipmitutil":  "Power reading state is:          not active",
+		"ipmitool":   "Power reading state is:                   deactivated",
+		crayPowerCap: `{"e":1,"err_msg":"failed"}`,
 	}
 	expectedPower = map[string]float64{
 		"current": 332,
@@ -94,34 +95,37 @@ ipmiutil dcmi, completed successfully
 
 func TestIpmiMetrics(t *testing.T) {
 	c := impiCollector{logger: log.NewNopLogger()}
+
 	for testName, testString := range ipmidcmiStdout {
 		var value map[string]float64
+
 		var err error
+
 		expectedOutput := expectedPower
-		if testName == "capmc" {
+		if testName == crayPowerCap {
 			expectedOutput = expectedCapmcPower
 			value, err = c.parseCapmcOutput([]byte(testString))
 		} else {
 			value, err = c.parseIPMIOutput([]byte(testString))
 		}
+
 		require.NoError(t, err)
-		assert.Equal(t, value, expectedOutput)
+		assert.Equal(t, expectedOutput, value)
 	}
 }
 
 func TestIpmiMetricsDisactive(t *testing.T) {
 	c := impiCollector{logger: log.NewNopLogger()}
+
 	for testName, testString := range ipmidcmiStdoutDisactive {
 		var value map[string]float64
-		if testName == "capmc" {
+		if testName == crayPowerCap {
 			value, _ = c.parseCapmcOutput([]byte(testString))
 		} else {
 			value, _ = c.parseIPMIOutput([]byte(testString))
 		}
+
 		assert.Empty(t, value)
-		// if value != nil {
-		// 	t.Errorf("%s: expected nil output. Got %v", testName, value)
-		// }
 	}
 }
 
@@ -140,7 +144,7 @@ func TestIpmiDcmiFinder(t *testing.T) {
 
 	// findIPMICmd() should give ipmi-dcmi command
 	ipmiCmdSlice := findIPMICmd()
-	assert.Equal(t, ipmiCmdSlice[0], "ipmi-dcmi")
+	assert.Equal(t, "ipmi-dcmi", ipmiCmdSlice[0])
 }
 
 func TestIpmiToolFinder(t *testing.T) {
@@ -158,7 +162,7 @@ func TestIpmiToolFinder(t *testing.T) {
 
 	// findIPMICmd() should give ipmitool command
 	ipmiCmdSlice := findIPMICmd()
-	assert.Equal(t, ipmiCmdSlice[0], "ipmitool")
+	assert.Equal(t, "ipmitool", ipmiCmdSlice[0])
 }
 
 func TestIpmiUtilFinder(t *testing.T) {
@@ -176,5 +180,5 @@ func TestIpmiUtilFinder(t *testing.T) {
 
 	// findIPMICmd() should give ipmiutil command
 	ipmiCmdSlice := findIPMICmd()
-	assert.Equal(t, ipmiCmdSlice[0], "ipmiutil")
+	assert.Equal(t, "ipmiutil", ipmiCmdSlice[0])
 }

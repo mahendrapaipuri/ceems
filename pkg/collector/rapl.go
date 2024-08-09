@@ -30,12 +30,10 @@ func init() {
 	RegisterCollector(raplCollectorSubsystem, defaultEnabled, NewRaplCollector)
 }
 
-var (
-	raplZoneLabel = CEEMSExporterApp.Flag(
-		"collector.rapl.enable-zone-label",
-		"Enables RAPL zone labels (default: disabled)",
-	).Default("false").Bool()
-)
+var raplZoneLabel = CEEMSExporterApp.Flag(
+	"collector.rapl.enable-zone-label",
+	"Enables RAPL zone labels (default: disabled)",
+).Default("false").Bool()
 
 // NewRaplCollector returns a new Collector exposing RAPL metrics.
 func NewRaplCollector(logger log.Logger) (Collector, error) {
@@ -56,6 +54,7 @@ func NewRaplCollector(logger log.Logger) (Collector, error) {
 		hostname:         hostname,
 		joulesMetricDesc: joulesMetricDesc,
 	}
+
 	return &collector, nil
 }
 
@@ -67,12 +66,16 @@ func (c *raplCollector) Update(ch chan<- prometheus.Metric) error {
 		if errors.Is(err, os.ErrNotExist) {
 			level.Debug(c.logger).
 				Log("msg", "Platform doesn't have powercap files present", "err", err)
+
 			return ErrNoData
 		}
+
 		if errors.Is(err, os.ErrPermission) {
 			level.Debug(c.logger).Log("msg", "Can't access powercap files", "err", err)
+
 			return ErrNoData
 		}
+
 		return fmt.Errorf("failed to fetch rapl stats: %w", err)
 	}
 
@@ -82,8 +85,10 @@ func (c *raplCollector) Update(ch chan<- prometheus.Metric) error {
 			if errors.Is(err, os.ErrPermission) {
 				level.Error(c.logger).
 					Log("msg", "Can't access energy_uj file", "zone", rz.Name, "err", err)
+
 				return ErrNoData
 			}
+
 			return err
 		}
 
@@ -95,6 +100,7 @@ func (c *raplCollector) Update(ch chan<- prometheus.Metric) error {
 			ch <- c.joulesMetric(rz, joules)
 		}
 	}
+
 	return nil
 }
 
@@ -104,11 +110,12 @@ func (c *raplCollector) joulesMetric(z sysfs.RaplZone, v float64) prometheus.Met
 		prometheus.BuildFQName(
 			Namespace,
 			raplCollectorSubsystem,
-			fmt.Sprintf("%s_joules_total", SanitizeMetricName(z.Name)),
+			SanitizeMetricName(z.Name)+"_joules_total",
 		),
 		fmt.Sprintf("Current RAPL %s value in joules", z.Name),
 		[]string{"hostname", "index", "path"}, nil,
 	)
+
 	return prometheus.MustNewConstMetric(
 		descriptor,
 		prometheus.CounterValue,
@@ -121,6 +128,7 @@ func (c *raplCollector) joulesMetric(z sysfs.RaplZone, v float64) prometheus.Met
 
 func (c *raplCollector) joulesMetricWithZoneLabel(z sysfs.RaplZone, v float64) prometheus.Metric {
 	index := strconv.Itoa(z.Index)
+
 	return prometheus.MustNewConstMetric(
 		c.joulesMetricDesc,
 		prometheus.CounterValue,

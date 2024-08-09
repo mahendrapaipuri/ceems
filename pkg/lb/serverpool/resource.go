@@ -17,26 +17,30 @@ import (
 // Based on the request's "from" timestamp and backend TSDB retention period, load
 // balancer will make a decision on which backend TSDB server to use. If a request
 // can be served by multiple backend TSDB servers, the one with least retention period
-// will be chosen as it is assumed as "hot" TSDB with maximum performance
+// will be chosen as it is assumed as "hot" TSDB with maximum performance.
 type resourceBased struct {
 	backends map[string][]backend.TSDBServer
 	logger   log.Logger
 }
 
-// Target returns the backend server to send the request if it is alive
+// Target returns the backend server to send the request if it is alive.
 func (s *resourceBased) Target(id string, d time.Duration) backend.TSDBServer {
 	// If the ID is unknown return
 	if _, ok := s.backends[id]; !ok {
 		level.Error(s.logger).Log("msg", "Round Robin strategy", "err", fmt.Errorf("unknown backend ID: %s", id))
+
 		return nil
 	}
 
 	// Get a list of eligible TSDB servers based on retention period and
 	// start time of TSDB query
 	var targetBackend backend.TSDBServer
+
 	var targetBackends []backend.TSDBServer
+
 	var retentionPeriods []time.Duration
-	for i := 0; i < s.Size(id); i++ {
+
+	for i := range s.Size(id) {
 		if !s.backends[id][i].IsAlive() {
 			continue
 		}
@@ -52,6 +56,7 @@ func (s *resourceBased) Target(id string, d time.Duration) backend.TSDBServer {
 	// If no eligible servers found return
 	if len(targetBackends) == 0 {
 		level.Debug(s.logger).Log("msg", "Resourced based strategy. No eligible backends found")
+
 		return targetBackend
 	}
 
@@ -60,8 +65,9 @@ func (s *resourceBased) Target(id string, d time.Duration) backend.TSDBServer {
 
 	// If multiple eligible servers has same retention period as minimum retention
 	// period, return the one that has least connections
-	var activeConnections = math.MaxInt32
-	for i := 0; i < len(targetBackends); i++ {
+	activeConnections := math.MaxInt32
+
+	for i := range len(targetBackends) {
 		if !targetBackends[i].IsAlive() {
 			continue
 		}
@@ -74,24 +80,27 @@ func (s *resourceBased) Target(id string, d time.Duration) backend.TSDBServer {
 			}
 		}
 	}
+
 	if targetBackend != nil {
 		level.Debug(s.logger).Log("msg", "Resourced based strategy", "selected_backend", targetBackend.String())
+
 		return targetBackend
 	}
+
 	return nil
 }
 
-// List all backend servers in pool
+// List all backend servers in pool.
 func (s *resourceBased) Backends() map[string][]backend.TSDBServer {
 	return s.backends
 }
 
-// Add a backend server to pool
+// Add a backend server to pool.
 func (s *resourceBased) Add(id string, b backend.TSDBServer) {
 	s.backends[id] = append(s.backends[id], b)
 }
 
-// Total number of backend servers in pool
+// Total number of backend servers in pool.
 func (s *resourceBased) Size(id string) int {
 	return len(s.backends[id])
 }

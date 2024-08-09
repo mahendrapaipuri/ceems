@@ -15,20 +15,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// mockResourceManager struct
+// mockResourceManager struct.
 type mockResourceManager struct {
 	logger log.Logger
 }
 
-// NewMockResourceManager returns a new defaultResourceManager that returns empty compute units
+// NewMockResourceManager returns a new defaultResourceManager that returns empty compute units.
 func NewMockResourceManager(cluster models.Cluster, logger log.Logger) (Fetcher, error) {
 	level.Info(logger).Log("msg", "Default resource manager activated")
+
 	return &mockResourceManager{
 		logger: logger,
 	}, nil
 }
 
-// Return empty units response
+// Return empty units response.
 func (d *mockResourceManager) FetchUnits(start time.Time, end time.Time) ([]models.ClusterUnits, error) {
 	return []models.ClusterUnits{
 		{
@@ -42,7 +43,7 @@ func (d *mockResourceManager) FetchUnits(start time.Time, end time.Time) ([]mode
 	}, nil
 }
 
-// Return empty projects response
+// Return empty projects response.
 func (d *mockResourceManager) FetchUsersProjects(
 	currentTime time.Time,
 ) ([]models.ClusterUsers, []models.ClusterProjects, error) {
@@ -67,8 +68,9 @@ func (d *mockResourceManager) FetchUsersProjects(
 		}, nil
 }
 
-func mockConfig(tmpDir string, cfg string, serverURL string) string {
+func mockConfig(tmpDir string, cfg string) string {
 	var configFileTmpl string
+
 	switch cfg {
 	case "one_instance":
 		configFileTmpl = `
@@ -189,24 +191,25 @@ clusters:
       url: %[2]s`
 	}
 
-	configFile := fmt.Sprintf(configFileTmpl, tmpDir, serverURL)
+	configFile := fmt.Sprintf(configFileTmpl, tmpDir, "")
 	configPath := filepath.Join(tmpDir, "config.yml")
-	os.WriteFile(configPath, []byte(configFile), 0600)
+	os.WriteFile(configPath, []byte(configFile), 0o600)
+
 	return configPath
 }
 
 func TestMalformedConfig(t *testing.T) {
 	// Make mock config
-	base.ConfigFilePath = mockConfig(t.TempDir(), "malformed_1", "")
+	base.ConfigFilePath = mockConfig(t.TempDir(), "malformed_1")
 
 	cfg, err := managerConfig()
 	require.NoError(t, err)
-	assert.Len(t, cfg.Clusters, 0)
+	assert.Empty(t, cfg.Clusters)
 }
 
 func TestMissingManagerConfig(t *testing.T) {
 	// Make mock config
-	base.ConfigFilePath = mockConfig(t.TempDir(), "malformed_2", "")
+	base.ConfigFilePath = mockConfig(t.TempDir(), "malformed_2")
 
 	cfg, err := managerConfig()
 	require.NoError(t, err)
@@ -217,7 +220,7 @@ func TestMissingManagerConfig(t *testing.T) {
 
 func TestUnknownManagerConfig(t *testing.T) {
 	// Make mock config
-	base.ConfigFilePath = mockConfig(t.TempDir(), "unknown_manager", "")
+	base.ConfigFilePath = mockConfig(t.TempDir(), "unknown_manager")
 
 	cfg, err := managerConfig()
 	require.NoError(t, err)
@@ -228,7 +231,7 @@ func TestUnknownManagerConfig(t *testing.T) {
 
 func TestInvalidIDManagerConfig(t *testing.T) {
 	// Make mock config
-	base.ConfigFilePath = mockConfig(t.TempDir(), "malformed_4", "")
+	base.ConfigFilePath = mockConfig(t.TempDir(), "malformed_4")
 
 	cfg, err := managerConfig()
 	require.NoError(t, err)
@@ -239,7 +242,7 @@ func TestInvalidIDManagerConfig(t *testing.T) {
 
 func TestDuplicatedIDsConfig(t *testing.T) {
 	// Make mock config
-	base.ConfigFilePath = mockConfig(t.TempDir(), "malformed_3", "")
+	base.ConfigFilePath = mockConfig(t.TempDir(), "malformed_3")
 
 	cfg, err := managerConfig()
 	require.NoError(t, err)
@@ -250,7 +253,7 @@ func TestDuplicatedIDsConfig(t *testing.T) {
 
 func TestOneClusterConfig(t *testing.T) {
 	// Make mock config
-	base.ConfigFilePath = mockConfig(t.TempDir(), "one_instance", "")
+	base.ConfigFilePath = mockConfig(t.TempDir(), "one_instance")
 
 	cfg, err := managerConfig()
 	require.NoError(t, err)
@@ -263,7 +266,7 @@ func TestOneClusterConfig(t *testing.T) {
 
 func TestMixedClusterConfig(t *testing.T) {
 	// Make mock config
-	base.ConfigFilePath = mockConfig(t.TempDir(), "mixed_instances", "")
+	base.ConfigFilePath = mockConfig(t.TempDir(), "mixed_instances")
 
 	cfg, err := managerConfig()
 	require.NoError(t, err)
@@ -276,13 +279,13 @@ func TestMixedClusterConfig(t *testing.T) {
 
 func TestNewManager(t *testing.T) {
 	// Make mock config
-	base.ConfigFilePath = mockConfig(t.TempDir(), "mock_instance", "")
+	base.ConfigFilePath = mockConfig(t.TempDir(), "mock_instance")
 
 	// Register mock manager
-	RegisterManager("mock", NewMockResourceManager)
+	Register("mock", NewMockResourceManager)
 
 	// Create new manager
-	manager, err := NewManager(log.NewNopLogger())
+	manager, err := New(log.NewNopLogger())
 	require.NoError(t, err)
 
 	// Fetch units
@@ -301,25 +304,25 @@ func TestNewManager(t *testing.T) {
 
 func TestNewManagerWithNoClusters(t *testing.T) {
 	// Make mock config
-	base.ConfigFilePath = mockConfig(t.TempDir(), "empty_instance", "")
+	base.ConfigFilePath = mockConfig(t.TempDir(), "empty_instance")
 
 	// Register mock manager
-	RegisterManager("mock", NewMockResourceManager)
+	Register("mock", NewMockResourceManager)
 
 	// Create new manager
-	manager, err := NewManager(log.NewNopLogger())
+	manager, err := New(log.NewNopLogger())
 	require.NoError(t, err)
 
 	// Fetch units
 	units, err := manager.FetchUnits(time.Now(), time.Now())
 	require.NoError(t, err)
-	require.Len(t, units[0].Units, 0)
+	require.Empty(t, units[0].Units)
 
 	// Fetch users and projects
 	users, projects, err := manager.FetchUsersProjects(time.Now())
 	require.NoError(t, err)
 
 	// Index 0 seems to be default manager
-	assert.Len(t, users[0].Users, 0)
-	assert.Len(t, projects[0].Projects, 0)
+	assert.Empty(t, users[0].Users)
+	assert.Empty(t, projects[0].Projects)
 }

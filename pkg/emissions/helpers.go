@@ -2,9 +2,7 @@ package emissions
 
 import "encoding/json"
 
-var (
-	CountryCodes CountryCode
-)
+var CountryCodes CountryCode
 
 func init() {
 	// Read countries JSON file
@@ -19,20 +17,22 @@ func init() {
 	}
 }
 
-// ISO32Map returns a ISO-3 code to ISO-2 code map
+// ISO32Map returns a ISO-3 code to ISO-2 code map.
 func ISO32Map() map[string]string {
-	var codeMap = make(map[string]string)
+	codeMap := make(map[string]string)
 	for _, country := range CountryCodes.IsoCode {
 		codeMap[country.Alpha3Code] = country.Alpha2Code
 	}
+
 	return codeMap
 }
 
-// ISO23Map returns a ISO-2 code to ISO-3 code map
+// ISO23Map returns a ISO-2 code to ISO-3 code map.
 func ISO23Map() map[string]string {
-	var codeMap = make(map[string]string)
+	codeMap := make(map[string]string)
 	for _, country := range CountryCodes.IsoCode {
 		codeMap[country.Alpha2Code] = country.Alpha3Code
 	}
+
 	return codeMap
 }

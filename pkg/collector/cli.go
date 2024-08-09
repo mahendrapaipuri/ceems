@@ -28,22 +28,22 @@ type CEEMSExporter struct {
 	App     kingpin.Application
 }
 
-// CEEMSExporterAppName is kingpin app name
+// CEEMSExporterAppName is kingpin app name.
 const CEEMSExporterAppName = "ceems_exporter"
 
-// CEEMSExporterApp is kingpin CLI app
+// CEEMSExporterApp is kingpin CLI app.
 var CEEMSExporterApp = *kingpin.New(
 	CEEMSExporterAppName,
 	"Prometheus Exporter to export compute (job, VM, pod) resource usage metrics.",
 )
 
-// Current hostname
+// Current hostname.
 var hostname string
 
-// Empty hostname flag (Used only for testing)
+// Empty hostname flag (Used only for testing).
 var emptyHostnameLabel *bool
 
-// NewCEEMSExporter returns a new CEEMSExporter instance
+// NewCEEMSExporter returns a new CEEMSExporter instance.
 func NewCEEMSExporter() (*CEEMSExporter, error) {
 	return &CEEMSExporter{
 		appName: CEEMSExporterAppName,
@@ -51,7 +51,7 @@ func NewCEEMSExporter() (*CEEMSExporter, error) {
 	}, nil
 }
 
-// Create a new handler for exporting metrics
+// Create a new handler for exporting metrics.
 func (b *CEEMSExporter) newHandler(includeExporterMetrics bool, maxRequests int, logger log.Logger) *handler {
 	h := &handler{
 		exporterMetricsRegistry: prometheus.NewRegistry(),
@@ -65,15 +65,17 @@ func (b *CEEMSExporter) newHandler(includeExporterMetrics bool, maxRequests int,
 			promcollectors.NewGoCollector(),
 		)
 	}
+
 	if innerHandler, err := h.innerHandler(); err != nil {
-		panic(fmt.Sprintf("Couldn't create metrics handler: %s", err))
+		panic(fmt.Errorf("couldn't create metrics handler: %w", err))
 	} else {
 		h.unfilteredHandler = innerHandler
 	}
+
 	return h
 }
 
-// Main is the entry point of the `ceems_exporter` command
+// Main is the entry point of the `ceems_exporter` command.
 func (b *CEEMSExporter) Main() error {
 	var (
 		metricsPath = b.App.Flag(
@@ -109,9 +111,10 @@ func (b *CEEMSExporter) Main() error {
 	b.App.Version(version.Print(b.appName))
 	b.App.UsageWriter(os.Stdout)
 	b.App.HelpFlag.Short('h')
+
 	_, err := b.App.Parse(os.Args[1:])
 	if err != nil {
-		return fmt.Errorf("failed to parse CLI flags: %s", err)
+		return fmt.Errorf("failed to parse CLI flags: %w", err)
 	}
 
 	// Set logger here after properly configuring promlog
@@ -120,7 +123,8 @@ func (b *CEEMSExporter) Main() error {
 	if *disableDefaultCollectors {
 		DisableDefaultCollectors()
 	}
-	level.Info(logger).Log("msg", fmt.Sprintf("Starting %s", b.appName), "version", version.Info())
+
+	level.Info(logger).Log("msg", "Starting "+b.appName, "version", version.Info())
 	level.Info(logger).Log("msg", "Build context", "build_context", version.BuildContext())
 	level.Info(logger).Log("fd_limits", internal_runtime.Uname())
 	level.Info(logger).Log("fd_limits", internal_runtime.FdLimits())
@@ -142,6 +146,7 @@ func (b *CEEMSExporter) Main() error {
 	level.Debug(logger).Log("msg", "Go MAXPROCS", "procs", runtime.GOMAXPROCS(0))
 
 	http.Handle(*metricsPath, b.newHandler(!*disableExporterMetrics, *maxRequests, logger))
+
 	if *metricsPath != "/" {
 		landingConfig := web.LandingConfig{
 			Name:        b.App.Name,
@@ -154,10 +159,12 @@ func (b *CEEMSExporter) Main() error {
 				},
 			},
 		}
+
 		landingPage, err := web.NewLandingPage(landingConfig)
 		if err != nil {
-			return fmt.Errorf("failed to create landing page: %s", err)
+			return fmt.Errorf("failed to create landing page: %w", err)
 		}
+
 		http.Handle("/", landingPage)
 	}
 
@@ -165,7 +172,8 @@ func (b *CEEMSExporter) Main() error {
 		ReadHeaderTimeout: 2 * time.Second, // slowloris attack: https://app.deepsource.com/directory/analyzers/go/issues/GO-S2112
 	}
 	if err := web.ListenAndServe(server, toolkitFlags, logger); err != nil {
-		return fmt.Errorf("failed to start server: %s", err)
+		return fmt.Errorf("failed to start server: %w", err)
 	}
+
 	return nil
 }

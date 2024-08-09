@@ -19,7 +19,7 @@ func TestExecute(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	assert.Equal(t, strings.TrimSpace(string(out)), "1 2")
+	assert.Equal(t, "1 2", strings.TrimSpace(string(out)))
 
 	// Test failed command execution
 	_, err = Execute("exit", []string{"1"}, nil, log.NewNopLogger())
@@ -29,24 +29,24 @@ func TestExecute(t *testing.T) {
 func TestExecuteAs(t *testing.T) {
 	// Test invalid uid/gid
 	_, err := ExecuteAs("sleep", []string{"5"}, -65534, 65534, nil, log.NewNopLogger())
-	assert.Error(t, err, "expected error due to invalid uid")
+	require.Error(t, err, "expected error due to invalid uid")
 
 	_, err = ExecuteAs("sleep", []string{"5"}, 65534, 65534, nil, log.NewNopLogger())
-	assert.Error(t, err, "expected error executing as nobody user")
+	require.Error(t, err, "expected error executing as nobody user")
 }
 
 func TestExecuteWithTimeout(t *testing.T) {
 	// Test successful command execution
 	_, err := ExecuteWithTimeout("sleep", []string{"5"}, 2, nil, log.NewNopLogger())
-	assert.Error(t, err, "expected command timeout")
+	require.Error(t, err, "expected command timeout")
 }
 
 func TestExecuteAsWithTimeout(t *testing.T) {
 	// Test invalid uid/gid
 	_, err := ExecuteAsWithTimeout("sleep", []string{"5"}, -65534, 65534, 2, nil, log.NewNopLogger())
-	assert.Error(t, err, "expected error due to invalid uid")
+	require.Error(t, err, "expected error due to invalid uid")
 
 	// Test successful command execution
 	_, err = ExecuteAsWithTimeout("sleep", []string{"5"}, 65534, 65534, 2, nil, log.NewNopLogger())
-	assert.Error(t, err, "expected error executing as nobody user")
+	require.Error(t, err, "expected error executing as nobody user")
 }

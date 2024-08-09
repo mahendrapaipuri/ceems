@@ -13,6 +13,7 @@ import (
 
 func mockConfig(tmpDir string, cfg string, serverURL string) string {
 	var configFileTmpl string
+
 	switch cfg {
 	case "one_instance":
 		configFileTmpl = `
@@ -92,7 +93,8 @@ updaters:
 
 	configFile := fmt.Sprintf(configFileTmpl, serverURL, "2m")
 	configPath := filepath.Join(tmpDir, "config.yml")
-	os.WriteFile(configPath, []byte(configFile), 0600)
+	os.WriteFile(configPath, []byte(configFile), 0o600)
+
 	return configPath
 }
 
@@ -102,7 +104,7 @@ func TestMalformedConfig(t *testing.T) {
 
 	cfg, err := updaterConfig()
 	require.NoError(t, err)
-	assert.Len(t, cfg.Instances, 0)
+	assert.Empty(t, cfg.Instances)
 }
 
 func TestMissingUpdaterConfig(t *testing.T) {

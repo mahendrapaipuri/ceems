@@ -24,9 +24,7 @@ const (
 	eMapsEmissionsProvider = "emaps"
 )
 
-var (
-	emissionLock = sync.RWMutex{}
-)
+var emissionLock = sync.RWMutex{}
 
 type emapsProvider struct {
 	logger             log.Logger
@@ -40,36 +38,41 @@ type emapsProvider struct {
 
 func init() {
 	// Register emissions provider
-	RegisterProvider(eMapsEmissionsProvider, "Electricity Maps", NewEMapsProvider)
+	Register(eMapsEmissionsProvider, "Electricity Maps", NewEMapsProvider)
 }
 
-// NewEMapsProvider returns a new Provider that returns emission factor from electricity maps data
+// NewEMapsProvider returns a new Provider that returns emission factor from electricity maps data.
 func NewEMapsProvider(logger log.Logger) (Provider, error) {
 	// Check if EMAPS_API_TOKEN is set
 	var eMapsAPIToken string
+
 	if token, present := os.LookupEnv("EMAPS_API_TOKEN"); present {
 		level.Info(logger).Log("msg", "Emission factor from Electricity Maps will be reported.")
+
 		eMapsAPIToken = token
 	} else {
-		return nil, fmt.Errorf("api token missing for Electricity Maps")
+		return nil, ErrMissingAPIToken
 	}
 
 	// Get all available zones for Electricity Maps
 	// Seems like EMaps do not like token for zones endpoint
-	url := fmt.Sprintf("%s/zones", eMapAPIBaseURL)
+	url := eMapAPIBaseURL + "/zones"
 	// To override baseURL in tests
 	if baseURL, present := os.LookupEnv("__EMAPS_BASE_URL"); present {
-		url = fmt.Sprintf("%s/zones", baseURL)
-	}
-	zoneData, err := eMapsAPIRequest[eMapsZonesResponse](url, "")
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch electricity maps zones: %s", err)
+		url = baseURL + "/zones"
 	}
 
-	var zones = make(map[string]string, len(zoneData))
+	zoneData, err := eMapsAPIRequest[eMapsZonesResponse](url, "")
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch electricity maps zones: %w", err)
+	}
+
+	zones := make(map[string]string, len(zoneData))
+
 	for zone, details := range zoneData {
 		// Check for countryName
 		var compoundName string
+
 		for _, name := range []string{"countryName", "zoneName"} {
 			if n, ok := details[name]; ok {
 				compoundName = fmt.Sprintf("%s %s", compoundName, n)
@@ -79,6 +82,7 @@ func NewEMapsProvider(logger log.Logger) (Provider, error) {
 		compoundName = strings.TrimSpace(compoundName)
 		zones[zone] = compoundName
 	}
+
 	return &emapsProvider{
 		logger:          logger,
 		apiToken:        eMapsAPIToken,
@@ -104,6 +108,7 @@ func (s *emapsProvider) Update() (EmissionFactors, error) {
 			// Check if last emission factor is valid and if it is use the same for current
 			if s.lastEmissionFactor != nil {
 				level.Debug(s.logger).Log("msg", "Using cached emission factor for Electricity maps provider")
+
 				return s.lastEmissionFactor, nil
 			} else {
 				return nil, err
@@ -115,14 +120,16 @@ func (s *emapsProvider) Update() (EmissionFactors, error) {
 		s.lastEmissionFactor = currentEmissionFactor
 		level.Debug(s.logger).
 			Log("msg", "Using real time emission factor from Electricity maps provider")
+
 		return currentEmissionFactor, err
 	} else {
 		level.Debug(s.logger).Log("msg", "Using cached emission factor for Electricity maps provider")
+
 		return s.lastEmissionFactor, nil
 	}
 }
 
-// Make requests to Electricity maps API to fetch factors for all countries
+// Make requests to Electricity maps API to fetch factors for all countries.
 func makeEMapsAPIRequest(
 	baseURL string,
 	apiToken string,
@@ -134,7 +141,8 @@ func makeEMapsAPIRequest(
 	wg.Add(len(zones))
 
 	// Spawn go routine for each group to make an API request
-	var emissionFactors = make(EmissionFactors)
+	emissionFactors := make(EmissionFactors)
+
 	for zone, name := range zones {
 		go func(z string, n string) {
 			// Make query parameters
@@ -143,11 +151,13 @@ func makeEMapsAPIRequest(
 			queryString := params.Encode()
 
 			url := fmt.Sprintf("%s/carbon-intensity/latest?%s", baseURL, queryString)
+
 			response, err := eMapsAPIRequest[eMapsCarbonIntensityResponse](url, apiToken)
 			if err != nil {
 				level.Error(logger).
 					Log("msg", "Failed to fetch factor for Electricity maps provider", "zone", z, "err", err)
 				wg.Done()
+
 				return
 			}
 
@@ -165,6 +175,7 @@ func makeEMapsAPIRequest(
 
 	// Wait for all go routines to finish
 	wg.Wait()
+
 	return emissionFactors, nil
 }
 
@@ -179,28 +190,31 @@ func eMapsAPIRequest[T any](url string, apiToken string) (T, error) {
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return *new(T), fmt.Errorf("failed to create HTTP request for url %s: %s", url, err)
+		return *new(T), fmt.Errorf("failed to create HTTP request for url %s: %w", url, err)
 	}
 
 	// Add token to auth header
 	if apiToken != "" {
-		req.Header.Add("auth-token", apiToken)
+		req.Header.Add("auth-token", apiToken) //nolint:canonicalheader
 	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return *new(T), fmt.Errorf("failed to make HTTP request for url %s: %s", url, err)
+		return *new(T), fmt.Errorf("failed to make HTTP request for url %s: %w", url, err)
 	}
+	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return *new(T), fmt.Errorf("failed to read HTTP response body for url %s: %s", url, err)
+		return *new(T), fmt.Errorf("failed to read HTTP response body for url %s: %w", url, err)
 	}
 
 	var data T
+
 	err = json.Unmarshal(body, &data)
 	if err != nil {
-		return *new(T), fmt.Errorf("failed to unmarshal HTTP response body for url %s: %s", url, err)
+		return *new(T), fmt.Errorf("failed to unmarshal HTTP response body for url %s: %w", url, err)
 	}
+
 	return data, nil
 }

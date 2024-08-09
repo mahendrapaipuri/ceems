@@ -151,12 +151,12 @@ func TestSLURMFetcherMultiCluster(t *testing.T) {
 	sacctPath := filepath.Join(tmpDir, "sacct")
 	sacctScript := fmt.Sprintf(`#!/bin/bash
 printf """%s"""`, sacctCmdOutput)
-	os.WriteFile(sacctPath, []byte(sacctScript), 0700) // #nosec
+	os.WriteFile(sacctPath, []byte(sacctScript), 0o700) // #nosec
 
 	sacctMgrPath := filepath.Join(tmpDir, "sacctmgr")
 	sacctMgrScript := fmt.Sprintf(`#!/bin/bash
 printf """%s"""`, sacctMgrCmdOutput)
-	os.WriteFile(sacctMgrPath, []byte(sacctMgrScript), 0700) // #nosec
+	os.WriteFile(sacctMgrPath, []byte(sacctMgrScript), 0o700) // #nosec
 
 	sacctMgrDir := filepath.Dir(sacctMgrPath)
 
@@ -179,7 +179,7 @@ printf """%s"""`, sacctMgrCmdOutput)
 	current, _ = time.Parse(slurmTimeFormat, "2023-02-21T15:15:00+0100")
 
 	for _, cluster := range clusters {
-		slurm, err := NewSlurmScheduler(cluster, log.NewNopLogger())
+		slurm, err := New(cluster, log.NewNopLogger())
 		require.NoError(t, err)
 
 		_, err = slurm.FetchUnits(start, end)

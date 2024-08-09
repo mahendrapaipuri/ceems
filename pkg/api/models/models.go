@@ -14,7 +14,7 @@ const (
 	adminUsersTableName = "admin_users"
 )
 
-// Unit is an abstract compute unit that can mean Job (batchjobs), VM (cloud) or Pod (k8s)
+// Unit is an abstract compute unit that can mean Job (batchjobs), VM (cloud) or Pod (k8s).
 type Unit struct {
 	ID                  int64      `json:"-"                                    sql:"id"                         sqlitetype:"integer not null primary key"`
 	ClusterID           string     `json:"cluster_id,omitempty"                 sql:"cluster_id"                 sqlitetype:"text"`    // Identifier of the resource manager that owns compute unit. It is used to differentiate multiple clusters of same resource manager.
@@ -59,16 +59,16 @@ func (Unit) TableName() string {
 
 // TagNames returns a slice of all tag names.
 func (u Unit) TagNames(tag string) []string {
-	return structset.GetStructFieldTagValues(u, tag)
+	return structset.StructFieldTagValues(u, tag)
 }
 
 // TagMap returns a map of tags based on keyTag and valueTag. If keyTag is empty,
 // field names are used as map keys.
 func (u Unit) TagMap(keyTag string, valueTag string) map[string]string {
-	return structset.GetStructFieldTagMap(u, keyTag, valueTag)
+	return structset.StructFieldTagMap(u, keyTag, valueTag)
 }
 
-// Usage statistics of each project/tenant/namespace
+// Usage statistics of each project/tenant/namespace.
 type Usage struct {
 	ID                  int64     `json:"-"                                    sql:"id"                         sqlitetype:"integer not null primary key"`
 	ClusterID           string    `json:"cluster_id"                           sql:"cluster_id"                 sqlitetype:"text"`    // Identifier of the resource manager that owns compute unit. It is used to differentiate multiple clusters of same resource manager.
@@ -101,16 +101,16 @@ func (Usage) TableName() string {
 
 // TagNames returns a slice of all tag names.
 func (u Usage) TagNames(tag string) []string {
-	return structset.GetStructFieldTagValues(u, tag)
+	return structset.StructFieldTagValues(u, tag)
 }
 
 // TagMap returns a map of tags based on keyTag and valueTag. If keyTag is empty,
 // field names are used as map keys.
 func (u Usage) TagMap(keyTag string, valueTag string) map[string]string {
-	return structset.GetStructFieldTagMap(u, keyTag, valueTag)
+	return structset.StructFieldTagMap(u, keyTag, valueTag)
 }
 
-// DailyUsage statistics of each project/tenant/namespace
+// DailyUsage statistics of each project/tenant/namespace.
 type DailyUsage struct {
 	Usage
 }
@@ -120,7 +120,7 @@ func (DailyUsage) TableName() string {
 	return dailyUsageTableName
 }
 
-// Stat represents high level statistics of each cluster
+// Stat represents high level statistics of each cluster.
 type Stat struct {
 	ClusterID        string `json:"cluster_id"         sql:"cluster_id"         sqlitetype:"text"`    // Identifier of the resource manager that owns compute unit. It is used to differentiate multiple clusters of same resource manager.
 	ResourceManager  string `json:"resource_manager"   sql:"resource_manager"   sqlitetype:"text"`    // Name of the resource manager that owns project. Eg slurm, openstack, kubernetes, etc
@@ -133,16 +133,16 @@ type Stat struct {
 
 // TagNames returns a slice of all tag names.
 func (s Stat) TagNames(tag string) []string {
-	return structset.GetStructFieldTagValues(s, tag)
+	return structset.StructFieldTagValues(s, tag)
 }
 
 // TagMap returns a map of tags based on keyTag and valueTag. If keyTag is empty,
 // field names are used as map keys.
 func (s Stat) TagMap(keyTag string, valueTag string) map[string]string {
-	return structset.GetStructFieldTagMap(s, keyTag, valueTag)
+	return structset.StructFieldTagMap(s, keyTag, valueTag)
 }
 
-// Project is the container for a given account/tenant/namespace of cluster
+// Project is the container for a given account/tenant/namespace of cluster.
 type Project struct {
 	ID              int64  `json:"-"                sql:"id"               sqlitetype:"integer not null primary key"`
 	UID             string `json:"uid,omitempty"    sql:"uid"              sqlitetype:"text"` // Unique identifier of the project provided by cluster
@@ -161,16 +161,16 @@ func (Project) TableName() string {
 
 // TagNames returns a slice of all tag names.
 func (p Project) TagNames(tag string) []string {
-	return structset.GetStructFieldTagValues(p, tag)
+	return structset.StructFieldTagValues(p, tag)
 }
 
 // TagMap returns a map of tags based on keyTag and valueTag. If keyTag is empty,
 // field names are used as map keys.
 func (p Project) TagMap(keyTag string, valueTag string) map[string]string {
-	return structset.GetStructFieldTagMap(p, keyTag, valueTag)
+	return structset.StructFieldTagMap(p, keyTag, valueTag)
 }
 
-// User is the container for a given user of cluster
+// User is the container for a given user of cluster.
 type User struct {
 	ID              int64  `json:"-"                sql:"id"               sqlitetype:"integer not null primary key"`
 	UID             string `json:"uid,omitempty"    sql:"uid"              sqlitetype:"text"` // Unique identifier of the user provided by cluster
@@ -189,16 +189,16 @@ func (User) TableName() string {
 
 // TagNames returns a slice of all tag names.
 func (u User) TagNames(tag string) []string {
-	return structset.GetStructFieldTagValues(u, tag)
+	return structset.StructFieldTagValues(u, tag)
 }
 
 // TagMap returns a map of tags based on keyTag and valueTag. If keyTag is empty,
 // field names are used as map keys.
 func (u User) TagMap(keyTag string, valueTag string) map[string]string {
-	return structset.GetStructFieldTagMap(u, keyTag, valueTag)
+	return structset.StructFieldTagMap(u, keyTag, valueTag)
 }
 
-// AdminUsers from different sources
+// AdminUsers from different sources.
 type AdminUsers struct {
 	ID            int64  `json:"-"      sql:"id"              sqlitetype:"integer not null primary key"`
 	Source        string `json:"source" sql:"source"          sqlitetype:"text"` // Source of admin users
@@ -213,29 +213,29 @@ func (AdminUsers) TableName() string {
 
 // TagNames returns a slice of all tag names.
 func (a AdminUsers) TagNames(tag string) []string {
-	return structset.GetStructFieldTagValues(a, tag)
+	return structset.StructFieldTagValues(a, tag)
 }
 
 // TagMap returns a map of tags based on keyTag and valueTag. If keyTag is empty,
 // field names are used as map keys.
 func (a AdminUsers) TagMap(keyTag string, valueTag string) map[string]string {
-	return structset.GetStructFieldTagMap(a, keyTag, valueTag)
+	return structset.StructFieldTagMap(a, keyTag, valueTag)
 }
 
-// Key represents arbritrary keys used in metric maps
+// Key represents arbritrary keys used in metric maps.
 type Key struct {
 	Name string `json:"name" sql:"name" sqlitetype:"text"` // Name of the metric key
 }
 
 // TagNames returns a slice of all tag names.
 func (k Key) TagNames(tag string) []string {
-	return structset.GetStructFieldTagValues(k, tag)
+	return structset.StructFieldTagValues(k, tag)
 }
 
 // TagMap returns a map of tags based on keyTag and valueTag. If keyTag is empty,
 // field names are used as map keys.
 func (k Key) TagMap(keyTag string, valueTag string) map[string]string {
-	return structset.GetStructFieldTagMap(k, keyTag, valueTag)
+	return structset.StructFieldTagMap(k, keyTag, valueTag)
 }
 
 // // Ownership mode for a given compute unit

@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -61,15 +61,15 @@ var (
 	mockKeys = []models.Key{
 		{Name: "global"},
 	}
-	errTest = fmt.Errorf("failed to query 10 rows")
+	errTest = errors.New("failed to query 10 rows")
 )
 
 func setupServer(d string) *CEEMSServer {
 	logger := log.NewNopLogger()
-	server, _, _ := NewCEEMSServer(
+	server, _, _ := New(
 		&Config{Logger: logger, DB: db.Config{Data: db.DataConfig{Path: d}}, Web: WebConfig{RequestsLimit: 10}},
 	)
-	server.maxQueryPeriod = time.Duration(time.Hour * 168)
+	server.maxQueryPeriod = time.Hour * 168
 	server.queriers = queriers{
 		unit:    unitQuerier,
 		usage:   usageQuerier,
@@ -79,6 +79,7 @@ func setupServer(d string) *CEEMSServer {
 		stat:    statQuerier,
 		key:     keyQuerier,
 	}
+
 	return server
 }
 
@@ -111,7 +112,7 @@ func keyQuerier(ctx context.Context, db *sql.DB, q Query, logger log.Logger) ([]
 }
 
 func keyQuerierErr(ctx context.Context, db *sql.DB, q Query, logger log.Logger) ([]models.Key, error) {
-	return nil, fmt.Errorf("failed query")
+	return nil, errors.New("failed query")
 }
 
 func getMockUnits(
@@ -121,14 +122,17 @@ func getMockUnits(
 	return mockServerUnits, nil
 }
 
-// Test users and users admin handlers
+// Test users and users admin handlers.
 func TestUsersHandlers(t *testing.T) {
 	tmpDir := t.TempDir()
+
 	f, err := os.Create(filepath.Join(tmpDir, base.CEEMSDBName))
 	if err != nil {
 		require.NoError(t, err)
 	}
+
 	defer f.Close()
+
 	server := setupServer(tmpDir)
 	defer server.Shutdown(context.Background())
 
@@ -153,8 +157,9 @@ func TestUsersHandlers(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		request := httptest.NewRequest("GET", test.req, nil)
+		request := httptest.NewRequest(http.MethodGet, test.req, nil)
 		request.Header.Set("X-Grafana-User", test.user)
+
 		if test.admin {
 			q := url.Values{}
 			q.Add("user", "foousr")
@@ -164,6 +169,7 @@ func TestUsersHandlers(t *testing.T) {
 		// Start recorder
 		w := httptest.NewRecorder()
 		test.handler(w, request)
+
 		res := w.Result()
 		defer res.Body.Close()
 
@@ -173,21 +179,25 @@ func TestUsersHandlers(t *testing.T) {
 
 		// Unmarshal byte into structs.
 		var response Response[models.User]
+
 		json.Unmarshal(data, &response)
-		assert.Equal(t, w.Code, test.code)
-		assert.Equal(t, response.Status, "success")
-		assert.Equal(t, response.Data, mockServerUsers)
+		assert.Equal(t, test.code, w.Code)
+		assert.Equal(t, "success", response.Status)
+		assert.Equal(t, mockServerUsers, response.Data)
 	}
 }
 
-// Test projects and projects admin handlers
+// Test projects and projects admin handlers.
 func TestProjectsHandler(t *testing.T) {
 	tmpDir := t.TempDir()
+
 	f, err := os.Create(filepath.Join(tmpDir, base.CEEMSDBName))
 	if err != nil {
 		require.NoError(t, err)
 	}
+
 	defer f.Close()
+
 	server := setupServer(tmpDir)
 	defer server.Shutdown(context.Background())
 
@@ -212,8 +222,9 @@ func TestProjectsHandler(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		request := httptest.NewRequest("GET", test.req, nil)
+		request := httptest.NewRequest(http.MethodGet, test.req, nil)
 		request.Header.Set("X-Grafana-User", test.user)
+
 		if test.admin {
 			q := url.Values{}
 			q.Add("project", "foo")
@@ -223,6 +234,7 @@ func TestProjectsHandler(t *testing.T) {
 		// Start recorder
 		w := httptest.NewRecorder()
 		test.handler(w, request)
+
 		res := w.Result()
 		defer res.Body.Close()
 
@@ -232,22 +244,26 @@ func TestProjectsHandler(t *testing.T) {
 
 		// Unmarshal byte into structs.
 		var response Response[models.Project]
+
 		json.Unmarshal(data, &response)
-		assert.Equal(t, w.Code, test.code)
-		assert.Equal(t, response.Status, "success")
-		assert.Equal(t, response.Data, mockServerProjects)
-		assert.Equal(t, response.Warnings, []string{errTest.Error()})
+		assert.Equal(t, test.code, w.Code)
+		assert.Equal(t, "success", response.Status)
+		assert.Equal(t, mockServerProjects, response.Data)
+		assert.Equal(t, []string{errTest.Error()}, response.Warnings)
 	}
 }
 
-// Test units and units admin handlers
+// Test units and units admin handlers.
 func TestUnitsHandler(t *testing.T) {
 	tmpDir := t.TempDir()
+
 	f, err := os.Create(filepath.Join(tmpDir, base.CEEMSDBName))
 	if err != nil {
 		require.NoError(t, err)
 	}
+
 	defer f.Close()
+
 	server := setupServer(tmpDir)
 	defer server.Shutdown(context.Background())
 
@@ -272,8 +288,9 @@ func TestUnitsHandler(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		request := httptest.NewRequest("GET", test.req, nil)
+		request := httptest.NewRequest(http.MethodGet, test.req, nil)
 		request.Header.Set("X-Grafana-User", test.user)
+
 		if test.admin {
 			q := url.Values{}
 			q.Add("user", "foousr")
@@ -283,6 +300,7 @@ func TestUnitsHandler(t *testing.T) {
 		// Start recorder
 		w := httptest.NewRecorder()
 		test.handler(w, request)
+
 		res := w.Result()
 		defer res.Body.Close()
 
@@ -292,21 +310,25 @@ func TestUnitsHandler(t *testing.T) {
 
 		// Unmarshal byte into structs.
 		var response Response[models.Unit]
+
 		json.Unmarshal(data, &response)
-		assert.Equal(t, w.Code, test.code)
-		assert.Equal(t, response.Status, "success")
-		assert.Equal(t, response.Data, mockServerUnits)
+		assert.Equal(t, test.code, w.Code)
+		assert.Equal(t, "success", response.Status)
+		assert.Equal(t, mockServerUnits, response.Data)
 	}
 }
 
-// Test usage and usage admin handlers
+// Test usage and usage admin handlers.
 func TestUsageHandlers(t *testing.T) {
 	tmpDir := t.TempDir()
+
 	f, err := os.Create(filepath.Join(tmpDir, base.CEEMSDBName))
 	if err != nil {
 		require.NoError(t, err)
 	}
+
 	defer f.Close()
+
 	server := setupServer(tmpDir)
 	defer server.Shutdown(context.Background())
 
@@ -363,13 +385,15 @@ func TestUsageHandlers(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		request := httptest.NewRequest("GET", test.req, nil)
+		request := httptest.NewRequest(http.MethodGet, test.req, nil)
 		request.Header.Set("X-Grafana-User", test.user)
+
 		if test.admin {
 			q := url.Values{}
 			q.Add("user", "foousr")
 			request.URL.RawQuery = q.Encode()
 		}
+
 		if strings.Contains(test.name, "current") {
 			request = mux.SetURLVars(request, map[string]string{"mode": "current"})
 		} else {
@@ -379,6 +403,7 @@ func TestUsageHandlers(t *testing.T) {
 		// Start recorder
 		w := httptest.NewRecorder()
 		test.handler(w, request)
+
 		res := w.Result()
 		defer res.Body.Close()
 
@@ -388,10 +413,12 @@ func TestUsageHandlers(t *testing.T) {
 
 		// Unmarshal byte into structs.
 		var response Response[models.Usage]
+
 		json.Unmarshal(data, &response)
-		assert.Equal(t, w.Code, test.code)
-		assert.Equal(t, response.Status, "success")
-		assert.Equal(t, response.Data, mockServerUsage)
+		assert.Equal(t, test.code, w.Code)
+		assert.Equal(t, "success", response.Status)
+		assert.Equal(t, mockServerUsage, response.Data)
+
 		if strings.Contains(test.name, "cached") {
 			assert.NotEmpty(t, res.Header["Expires"])
 		} else {
@@ -400,14 +427,17 @@ func TestUsageHandlers(t *testing.T) {
 	}
 }
 
-// Test usage and usage admin handlers
+// Test usage and usage admin handlers.
 func TestUsageErrorHandlers(t *testing.T) {
 	tmpDir := t.TempDir()
+
 	f, err := os.Create(filepath.Join(tmpDir, base.CEEMSDBName))
 	if err != nil {
 		require.NoError(t, err)
 	}
+
 	defer f.Close()
+
 	server := setupServer(tmpDir)
 	defer server.Shutdown(context.Background())
 
@@ -435,13 +465,15 @@ func TestUsageErrorHandlers(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		request := httptest.NewRequest("GET", test.req, nil)
+		request := httptest.NewRequest(http.MethodGet, test.req, nil)
 		request.Header.Set("X-Grafana-User", test.user)
+
 		if test.admin {
 			q := url.Values{}
 			q.Add("user", "foousr")
 			request.URL.RawQuery = q.Encode()
 		}
+
 		if strings.Contains(test.name, "current") {
 			request = mux.SetURLVars(request, map[string]string{"mode": "current"})
 		} else {
@@ -451,6 +483,7 @@ func TestUsageErrorHandlers(t *testing.T) {
 		// Start recorder
 		w := httptest.NewRecorder()
 		test.handler(w, request)
+
 		res := w.Result()
 		defer res.Body.Close()
 
@@ -460,22 +493,26 @@ func TestUsageErrorHandlers(t *testing.T) {
 
 		// Unmarshal byte into structs.
 		var response Response[models.Usage]
+
 		json.Unmarshal(data, &response)
-		assert.Equal(t, w.Code, test.code)
-		assert.Equal(t, response.Status, "success")
-		assert.Equal(t, response.Data, mockServerUsage)
+		assert.Equal(t, test.code, w.Code)
+		assert.Equal(t, "success", response.Status)
+		assert.Equal(t, mockServerUsage, response.Data)
 		assert.NotEmpty(t, response.Warnings)
 	}
 }
 
-// Test stats admin handlers
+// Test stats admin handlers.
 func TestStatsHandlers(t *testing.T) {
 	tmpDir := t.TempDir()
+
 	f, err := os.Create(filepath.Join(tmpDir, base.CEEMSDBName))
 	if err != nil {
 		require.NoError(t, err)
 	}
+
 	defer f.Close()
+
 	server := setupServer(tmpDir)
 	defer server.Shutdown(context.Background())
 
@@ -500,13 +537,15 @@ func TestStatsHandlers(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		request := httptest.NewRequest("GET", test.req, nil)
+		request := httptest.NewRequest(http.MethodGet, test.req, nil)
 		request.Header.Set("X-Grafana-User", test.user)
+
 		if test.admin {
 			q := url.Values{}
 			q.Add("user", "foousr")
 			request.URL.RawQuery = q.Encode()
 		}
+
 		if strings.Contains(test.name, "current") {
 			request = mux.SetURLVars(request, map[string]string{"mode": "current"})
 		} else {
@@ -516,6 +555,7 @@ func TestStatsHandlers(t *testing.T) {
 		// Start recorder
 		w := httptest.NewRecorder()
 		test.handler(w, request)
+
 		res := w.Result()
 		defer res.Body.Close()
 
@@ -525,21 +565,25 @@ func TestStatsHandlers(t *testing.T) {
 
 		// Unmarshal byte into structs.
 		var response Response[models.Stat]
+
 		json.Unmarshal(data, &response)
-		assert.Equal(t, w.Code, test.code)
-		assert.Equal(t, response.Status, "success")
-		assert.Equal(t, response.Data, mockStats)
+		assert.Equal(t, test.code, w.Code)
+		assert.Equal(t, "success", response.Status)
+		assert.Equal(t, mockStats, response.Data)
 	}
 }
 
-// Test verify handler
+// Test verify handler.
 func TestVerifyHandler(t *testing.T) {
 	tmpDir := t.TempDir()
+
 	f, err := os.Create(filepath.Join(tmpDir, base.CEEMSDBName))
 	if err != nil {
 		require.NoError(t, err)
 	}
+
 	defer f.Close()
+
 	server := setupServer(tmpDir)
 	defer server.Shutdown(context.Background())
 
@@ -563,27 +607,31 @@ func TestVerifyHandler(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		request := httptest.NewRequest("GET", test.req, nil)
+		request := httptest.NewRequest(http.MethodGet, test.req, nil)
 		request.Header.Set("X-Grafana-User", test.user)
 
 		// Start recorder
 		w := httptest.NewRecorder()
 		test.handler(w, request)
+
 		res := w.Result()
 		defer res.Body.Close()
 
-		assert.Equal(t, w.Code, test.code)
+		assert.Equal(t, test.code, w.Code)
 	}
 }
 
-// Test demo handlers
+// Test demo handlers.
 func TestDemoHandlers(t *testing.T) {
 	tmpDir := t.TempDir()
+
 	f, err := os.Create(filepath.Join(tmpDir, base.CEEMSDBName))
 	if err != nil {
 		require.NoError(t, err)
 	}
+
 	defer f.Close()
+
 	server := setupServer(tmpDir)
 	defer server.Shutdown(context.Background())
 
@@ -608,8 +656,9 @@ func TestDemoHandlers(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		request := httptest.NewRequest("GET", test.req, nil)
+		request := httptest.NewRequest(http.MethodGet, test.req, nil)
 		request.Header.Set("X-Grafana-User", test.user)
+
 		if strings.Contains(test.name, "units") {
 			request = mux.SetURLVars(request, map[string]string{"resource": "units"})
 		} else {
@@ -619,21 +668,25 @@ func TestDemoHandlers(t *testing.T) {
 		// Start recorder
 		w := httptest.NewRecorder()
 		test.handler(w, request)
+
 		res := w.Result()
 		defer res.Body.Close()
 
-		assert.Equal(t, w.Code, test.code)
+		assert.Equal(t, test.code, w.Code)
 	}
 }
 
-// Test clusters handlers
+// Test clusters handlers.
 func TestClustersHandler(t *testing.T) {
 	tmpDir := t.TempDir()
+
 	f, err := os.Create(filepath.Join(tmpDir, base.CEEMSDBName))
 	if err != nil {
 		require.NoError(t, err)
 	}
+
 	defer f.Close()
+
 	server := setupServer(tmpDir)
 	defer server.Shutdown(context.Background())
 
@@ -646,6 +699,7 @@ func TestClustersHandler(t *testing.T) {
 	// Start recorder
 	w := httptest.NewRecorder()
 	server.clustersAdmin(w, req)
+
 	res := w.Result()
 	defer res.Body.Close()
 
@@ -658,20 +712,24 @@ func TestClustersHandler(t *testing.T) {
 
 	// Unmarshal byte into structs
 	var response Response[models.Cluster]
+
 	json.Unmarshal(data, &response)
 
-	assert.Equal(t, response.Status, "success")
+	assert.Equal(t, "success", response.Status)
 	assert.Equal(t, expectedClusters, response.Data)
 }
 
-// Test /units when from/to query parameters are malformed
+// Test /units when from/to query parameters are malformed.
 func TestUnitsHandlerWithMalformedQueryParams(t *testing.T) {
 	tmpDir := t.TempDir()
+
 	f, err := os.Create(filepath.Join(tmpDir, base.CEEMSDBName))
 	if err != nil {
 		require.NoError(t, err)
 	}
+
 	defer f.Close()
+
 	server := setupServer(tmpDir)
 	defer server.Shutdown(context.Background())
 
@@ -687,6 +745,7 @@ func TestUnitsHandlerWithMalformedQueryParams(t *testing.T) {
 	// Start recorder
 	w := httptest.NewRecorder()
 	server.units(w, req)
+
 	res := w.Result()
 	defer res.Body.Close()
 
@@ -696,21 +755,25 @@ func TestUnitsHandlerWithMalformedQueryParams(t *testing.T) {
 
 	// Unmarshal byte into structs.
 	var response Response[any]
+
 	json.Unmarshal(data, &response)
 
-	assert.Equal(t, response.Status, "error")
-	assert.Equal(t, response.ErrorType, errorType("bad_data"))
+	assert.Equal(t, "error", response.Status)
+	assert.Equal(t, errorType("bad_data"), response.ErrorType)
 	assert.Empty(t, response.Data)
 }
 
-// Test /units when from/to query parameters exceed max time window
+// Test /units when from/to query parameters exceed max time window.
 func TestUnitsHandlerWithQueryWindowExceeded(t *testing.T) {
 	tmpDir := t.TempDir()
+
 	f, err := os.Create(filepath.Join(tmpDir, base.CEEMSDBName))
 	if err != nil {
 		require.NoError(t, err)
 	}
+
 	defer f.Close()
+
 	server := setupServer(tmpDir)
 	defer server.Shutdown(context.Background())
 	// Create request
@@ -726,6 +789,7 @@ func TestUnitsHandlerWithQueryWindowExceeded(t *testing.T) {
 	// Start recorder
 	w := httptest.NewRecorder()
 	server.units(w, req)
+
 	res := w.Result()
 	defer res.Body.Close()
 
@@ -735,22 +799,26 @@ func TestUnitsHandlerWithQueryWindowExceeded(t *testing.T) {
 
 	// Unmarshal byte into structs.
 	var response Response[any]
+
 	json.Unmarshal(data, &response)
 
-	assert.Equal(t, response.Status, "error")
-	assert.Equal(t, response.Error, "maximum query window exceeded")
+	assert.Equal(t, "error", response.Status)
+	assert.Equal(t, "maximum query window exceeded", response.Error)
 	assert.Empty(t, response.Data)
 }
 
 // Test /units when from/to query parameters exceed max time window but when unit uuids
-// are present
+// are present.
 func TestUnitsHandlerWithUnituuidsQueryParams(t *testing.T) {
 	tmpDir := t.TempDir()
+
 	f, err := os.Create(filepath.Join(tmpDir, base.CEEMSDBName))
 	if err != nil {
 		require.NoError(t, err)
 	}
+
 	defer f.Close()
+
 	server := setupServer(tmpDir)
 	defer server.Shutdown(context.Background())
 
@@ -768,6 +836,7 @@ func TestUnitsHandlerWithUnituuidsQueryParams(t *testing.T) {
 	// Start recorder
 	w := httptest.NewRecorder()
 	server.units(w, req)
+
 	res := w.Result()
 	defer res.Body.Close()
 
@@ -780,9 +849,10 @@ func TestUnitsHandlerWithUnituuidsQueryParams(t *testing.T) {
 
 	// Unmarshal byte into structs.
 	var response Response[models.Unit]
+
 	json.Unmarshal(data, &response)
 
-	assert.Equal(t, response.Status, "success")
+	assert.Equal(t, "success", response.Status)
 	assert.Equal(t, expectedUnits, response.Data)
 }
 

@@ -1,13 +1,13 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"os"
 
 	"github.com/mahendrapaipuri/ceems/pkg/lb/cli"
 )
 
-// Main entry point for `ceems_lb` app
+// Main entry point for `ceems_lb` app.
 func main() {
 	// Create a new app
 	CEEMSLoadBalancer, err := cli.NewCEEMSLoadBalancer()
@@ -17,7 +17,7 @@ func main() {
 
 	// Main entrypoint of the app
 	if err := CEEMSLoadBalancer.Main(); err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		os.Exit(1)
 	}
 }

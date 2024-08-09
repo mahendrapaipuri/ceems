@@ -13,9 +13,7 @@ import (
 	"github.com/prometheus/procfs"
 )
 
-var (
-	binary, _ = filepath.Abs("../../bin/ceems_exporter")
-)
+var binary, _ = filepath.Abs("../../bin/ceems_exporter")
 
 const (
 	address = "localhost:19010"
@@ -25,6 +23,7 @@ func TestFileDescriptorLeak(t *testing.T) {
 	if _, err := os.Stat(binary); err != nil {
 		t.Skipf("ceems_exporter binary not available, try to run `make build` first: %s", err)
 	}
+
 	fs, err := procfs.NewDefaultFS()
 	if err != nil {
 		t.Skipf(
@@ -32,6 +31,7 @@ func TestFileDescriptorLeak(t *testing.T) {
 			err,
 		)
 	}
+
 	if _, err := fs.Stat(); err != nil {
 		t.Errorf("unable to read process stats: %s", err)
 	}
@@ -56,23 +56,28 @@ func TestFileDescriptorLeak(t *testing.T) {
 		if err := queryExporter(address); err != nil {
 			return err
 		}
+
 		proc, err := procfs.NewProc(pid)
 		if err != nil {
 			return err
 		}
+
 		fdsBefore, err := proc.FileDescriptors()
 		if err != nil {
 			return err
 		}
-		for i := 0; i < 5; i++ {
+
+		for range 5 {
 			if err := queryExporter(address); err != nil {
 				return err
 			}
 		}
+
 		fdsAfter, err := proc.FileDescriptors()
 		if err != nil {
 			return err
 		}
+
 		if want, have := len(fdsBefore), len(fdsAfter); want != have {
 			return fmt.Errorf(
 				"want %d open file descriptors after metrics scrape, have %d",
@@ -80,6 +85,7 @@ func TestFileDescriptorLeak(t *testing.T) {
 				have,
 			)
 		}
+
 		return nil
 	}
 
@@ -93,29 +99,37 @@ func queryExporter(address string) error {
 	if err != nil {
 		return err
 	}
+
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
+
 	if err := resp.Body.Close(); err != nil {
 		return err
 	}
+
 	if want, have := http.StatusOK, resp.StatusCode; want != have {
 		return fmt.Errorf("want /metrics status code %d, have %d. Body:\n%s", want, have, b)
 	}
+
 	return nil
 }
 
 func runCommandAndTests(cmd *exec.Cmd, address string, fn func(pid int) error) error {
 	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("failed to start command: %s", err)
+		return fmt.Errorf("failed to start command: %w", err)
 	}
+
 	time.Sleep(50 * time.Millisecond)
-	for i := 0; i < 10; i++ {
+
+	for i := range 10 {
 		if err := queryExporter(address); err == nil {
 			break
 		}
+
 		time.Sleep(500 * time.Millisecond)
+
 		if cmd.Process == nil || i == 9 {
 			return fmt.Errorf("can't start command %s %s", cmd.Stderr, cmd.Stdout)
 		}
@@ -127,8 +141,10 @@ func runCommandAndTests(cmd *exec.Cmd, address string, fn func(pid int) error) e
 	}(cmd.Process.Pid)
 
 	err := <-errc
+
 	if cmd.Process != nil {
 		cmd.Process.Kill()
 	}
+
 	return err
 }

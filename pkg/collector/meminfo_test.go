@@ -20,8 +20,8 @@ func TestMemInfo(t *testing.T) {
 	require.NoError(t, err)
 
 	want, got := 16042172416.0, memInfo["MemTotal_bytes"]
-	assert.Equal(t, want, got)
+	assert.InEpsilon(t, want, got, 0)
 
 	want, got = 16424894464.0, memInfo["DirectMap2M_bytes"]
-	assert.Equal(t, want, got)
+	assert.InEpsilon(t, want, got, 0)
 }

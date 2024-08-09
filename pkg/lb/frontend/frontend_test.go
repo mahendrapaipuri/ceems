@@ -24,11 +24,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func setupClusterIDsDB(d string) (*sql.DB, string) {
+func setupClusterIDsDB(d string) error {
 	dbPath := filepath.Join(d, "ceems.db")
+
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
-		fmt.Printf("failed to create DB")
+		return fmt.Errorf("failed to create DB: %w", err)
 	}
 
 	stmts := `
@@ -47,17 +48,18 @@ COMMIT;`
 
 	_, err = db.Exec(stmts)
 	if err != nil {
-		fmt.Printf("failed to insert mock data into DB: %s", err)
+		return fmt.Errorf("failed to insert mock data into DB: %w", err)
 	}
-	return db, dbPath
+
+	return nil
 }
 
-func dummyTSDBServer(retention string, clusterID string) *httptest.Server {
+func dummyTSDBServer(clusterID string) *httptest.Server {
 	// Start test server
 	expected := tsdb.Response{
 		Status: "success",
 		Data: map[string]string{
-			"storageRetention": retention,
+			"storageRetention": "30d",
 		},
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -69,6 +71,7 @@ func dummyTSDBServer(retention string, clusterID string) *httptest.Server {
 			w.Write([]byte(clusterID))
 		}
 	}))
+
 	return server
 }
 
@@ -76,16 +79,16 @@ func TestNewFrontendSingleGroup(t *testing.T) {
 	clusterID := "default"
 
 	// Backends
-	dummyServer1 := dummyTSDBServer("30d", clusterID)
+	dummyServer1 := dummyTSDBServer(clusterID)
 	defer dummyServer1.Close()
 	backend1URL, err := url.Parse(dummyServer1.URL)
 	require.NoError(t, err)
 
 	rp1 := httputil.NewSingleHostReverseProxy(backend1URL)
-	backend1 := backend.NewTSDBServer(backend1URL, rp1, log.NewNopLogger())
+	backend1 := backend.New(backend1URL, rp1, log.NewNopLogger())
 
 	// Start manager
-	manager, err := serverpool.NewManager("resource-based", log.NewNopLogger())
+	manager, err := serverpool.New("resource-based", log.NewNopLogger())
 	require.NoError(t, err)
 
 	manager.Add(clusterID, backend1)
@@ -97,7 +100,7 @@ func TestNewFrontendSingleGroup(t *testing.T) {
 	}
 
 	// New load balancer
-	lb, err := NewLoadBalancer(config)
+	lb, err := New(config)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -119,17 +122,18 @@ func TestNewFrontendSingleGroup(t *testing.T) {
 		},
 		{
 			name:     "query with params in ctx and start more than retention period",
-			start:    time.Now().UTC().Add(-time.Duration(31 * 24 * time.Hour)).Unix(),
+			start:    time.Now().UTC().Add(-31 * 24 * time.Hour).Unix(),
 			code:     503,
 			response: false,
 		},
 	}
 
 	for _, test := range tests {
-		request := httptest.NewRequest("GET", "/test", nil)
+		request := httptest.NewRequest(http.MethodGet, "/test", nil)
 
 		// Add uuids and start to context
 		var newReq *http.Request
+
 		if test.start > 0 {
 			period := time.Duration((time.Now().UTC().Unix() - test.start)) * time.Second
 			newReq = request.WithContext(
@@ -146,6 +150,7 @@ func TestNewFrontendSingleGroup(t *testing.T) {
 		http.HandlerFunc(lb.Serve).ServeHTTP(responseRecorder, newReq)
 
 		assert.Equal(t, responseRecorder.Code, test.code)
+
 		if test.response {
 			assert.Equal(t, responseRecorder.Body.String(), clusterID)
 		}
@@ -153,7 +158,8 @@ func TestNewFrontendSingleGroup(t *testing.T) {
 
 	// Take backend offline, we should expect 503
 	backend1.SetAlive(false)
-	request := httptest.NewRequest("GET", "/test", nil)
+
+	request := httptest.NewRequest(http.MethodGet, "/test", nil)
 	newReq := request.WithContext(
 		context.WithValue(
 			request.Context(), QueryParamsContextKey{},
@@ -163,30 +169,30 @@ func TestNewFrontendSingleGroup(t *testing.T) {
 	responseRecorder := httptest.NewRecorder()
 	http.HandlerFunc(lb.Serve).ServeHTTP(responseRecorder, newReq)
 
-	assert.Equal(t, responseRecorder.Code, 503)
+	assert.Equal(t, 503, responseRecorder.Code)
 }
 
 func TestNewFrontendTwoGroups(t *testing.T) {
 	// Backends for group 1
-	dummyServer1 := dummyTSDBServer("30d", "rm-0")
+	dummyServer1 := dummyTSDBServer("rm-0")
 	defer dummyServer1.Close()
 	backend1URL, err := url.Parse(dummyServer1.URL)
 	require.NoError(t, err)
 
 	rp1 := httputil.NewSingleHostReverseProxy(backend1URL)
-	backend1 := backend.NewTSDBServer(backend1URL, rp1, log.NewNopLogger())
+	backend1 := backend.New(backend1URL, rp1, log.NewNopLogger())
 
 	// Backends for group 2
-	dummyServer2 := dummyTSDBServer("30d", "rm-1")
+	dummyServer2 := dummyTSDBServer("rm-1")
 	defer dummyServer2.Close()
 	backend2URL, err := url.Parse(dummyServer2.URL)
 	require.NoError(t, err)
 
 	rp2 := httputil.NewSingleHostReverseProxy(backend2URL)
-	backend2 := backend.NewTSDBServer(backend2URL, rp2, log.NewNopLogger())
+	backend2 := backend.New(backend2URL, rp2, log.NewNopLogger())
 
 	// Start manager
-	manager, err := serverpool.NewManager("resource-based", log.NewNopLogger())
+	manager, err := serverpool.New("resource-based", log.NewNopLogger())
 	require.NoError(t, err)
 
 	manager.Add("rm-0", backend1)
@@ -199,7 +205,7 @@ func TestNewFrontendTwoGroups(t *testing.T) {
 	}
 
 	// New load balancer
-	lb, err := NewLoadBalancer(config)
+	lb, err := New(config)
 	require.NoError(t, err)
 
 	// Validate cluster IDs
@@ -234,7 +240,7 @@ func TestNewFrontendTwoGroups(t *testing.T) {
 		},
 		{
 			name:      "query with params in ctx and start more than retention period",
-			start:     time.Now().UTC().Add(-time.Duration(31 * 24 * time.Hour)).Unix(),
+			start:     time.Now().UTC().Add(-31 * 24 * time.Hour).Unix(),
 			clusterID: "rm-0",
 			code:      503,
 			response:  false,
@@ -242,10 +248,11 @@ func TestNewFrontendTwoGroups(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		request := httptest.NewRequest("GET", "/test", nil)
+		request := httptest.NewRequest(http.MethodGet, "/test", nil)
 
 		// Add uuids and start to context
 		var newReq *http.Request
+
 		if test.start > 0 {
 			period := time.Duration((time.Now().UTC().Unix() - test.start)) * time.Second
 			newReq = request.WithContext(
@@ -262,6 +269,7 @@ func TestNewFrontendTwoGroups(t *testing.T) {
 		http.HandlerFunc(lb.Serve).ServeHTTP(responseRecorder, newReq)
 
 		assert.Equal(t, responseRecorder.Code, test.code)
+
 		if test.response {
 			assert.Equal(t, responseRecorder.Body.String(), test.clusterID)
 		}
@@ -269,7 +277,8 @@ func TestNewFrontendTwoGroups(t *testing.T) {
 
 	// Take backend offline, we should expect 503
 	backend1.SetAlive(false)
-	request := httptest.NewRequest("GET", "/test", nil)
+
+	request := httptest.NewRequest(http.MethodGet, "/test", nil)
 	newReq := request.WithContext(
 		context.WithValue(
 			request.Context(), QueryParamsContextKey{},
@@ -279,24 +288,25 @@ func TestNewFrontendTwoGroups(t *testing.T) {
 	responseRecorder := httptest.NewRecorder()
 	http.HandlerFunc(lb.Serve).ServeHTTP(responseRecorder, newReq)
 
-	assert.Equal(t, responseRecorder.Code, 503)
+	assert.Equal(t, 503, responseRecorder.Code)
 }
 
 func TestValidateClusterIDsWithDBPass(t *testing.T) {
 	tmpDir := t.TempDir()
-	setupClusterIDsDB(tmpDir)
+	err := setupClusterIDsDB(tmpDir)
+	require.NoError(t, err, "failed to setup test DB")
 
 	// Backends for group 1
-	dummyServer := dummyTSDBServer("30d", "slurm-0")
+	dummyServer := dummyTSDBServer("slurm-0")
 	defer dummyServer.Close()
 	backendURL, err := url.Parse(dummyServer.URL)
 	require.NoError(t, err)
 
 	rp := httputil.NewSingleHostReverseProxy(backendURL)
-	backend := backend.NewTSDBServer(backendURL, rp, log.NewNopLogger())
+	backend := backend.New(backendURL, rp, log.NewNopLogger())
 
 	// Start manager
-	manager, err := serverpool.NewManager("resource-based", log.NewNopLogger())
+	manager, err := serverpool.New("resource-based", log.NewNopLogger())
 	require.NoError(t, err)
 
 	manager.Add("slurm-0", backend)
@@ -310,7 +320,7 @@ func TestValidateClusterIDsWithDBPass(t *testing.T) {
 	config.APIServer.Data.Path = tmpDir
 
 	// New load balancer
-	lb, err := NewLoadBalancer(config)
+	lb, err := New(config)
 	require.NoError(t, err)
 
 	// Validate cluster IDs
@@ -319,19 +329,20 @@ func TestValidateClusterIDsWithDBPass(t *testing.T) {
 
 func TestValidateClusterIDsWithDBFail(t *testing.T) {
 	tmpDir := t.TempDir()
-	setupClusterIDsDB(tmpDir)
+	err := setupClusterIDsDB(tmpDir)
+	require.NoError(t, err, "failed to setup test DB")
 
 	// Backends for group 1
-	dummyServer := dummyTSDBServer("30d", "slurm-0")
+	dummyServer := dummyTSDBServer("slurm-0")
 	defer dummyServer.Close()
 	backendURL, err := url.Parse(dummyServer.URL)
 	require.NoError(t, err)
 
 	rp := httputil.NewSingleHostReverseProxy(backendURL)
-	backend := backend.NewTSDBServer(backendURL, rp, log.NewNopLogger())
+	backend := backend.New(backendURL, rp, log.NewNopLogger())
 
 	// Start manager
-	manager, err := serverpool.NewManager("resource-based", log.NewNopLogger())
+	manager, err := serverpool.New("resource-based", log.NewNopLogger())
 	require.NoError(t, err)
 
 	manager.Add("unknown", backend)
@@ -345,7 +356,7 @@ func TestValidateClusterIDsWithDBFail(t *testing.T) {
 	config.APIServer.Data.Path = tmpDir
 
 	// New load balancer
-	lb, err := NewLoadBalancer(config)
+	lb, err := New(config)
 	require.NoError(t, err)
 
 	// Validate cluster IDs
@@ -365,6 +376,7 @@ func TestValidateClusterIDsWithAPIPass(t *testing.T) {
 			},
 		},
 	}
+
 	ceemsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if err := json.NewEncoder(w).Encode(&expected); err != nil {
 			w.Write([]byte("KO"))
@@ -373,16 +385,16 @@ func TestValidateClusterIDsWithAPIPass(t *testing.T) {
 	defer ceemsServer.Close()
 
 	// Backends for group 1
-	dummyServer := dummyTSDBServer("30d", "slurm-0")
+	dummyServer := dummyTSDBServer("slurm-0")
 	defer dummyServer.Close()
 	backendURL, err := url.Parse(dummyServer.URL)
 	require.NoError(t, err)
 
 	rp := httputil.NewSingleHostReverseProxy(backendURL)
-	backend := backend.NewTSDBServer(backendURL, rp, log.NewNopLogger())
+	backend := backend.New(backendURL, rp, log.NewNopLogger())
 
 	// Start manager
-	manager, err := serverpool.NewManager("resource-based", log.NewNopLogger())
+	manager, err := serverpool.New("resource-based", log.NewNopLogger())
 	require.NoError(t, err)
 
 	manager.Add("slurm-0", backend)
@@ -396,7 +408,7 @@ func TestValidateClusterIDsWithAPIPass(t *testing.T) {
 	config.APIServer.Web.URL = ceemsServer.URL
 
 	// New load balancer
-	lb, err := NewLoadBalancer(config)
+	lb, err := New(config)
 	require.NoError(t, err)
 
 	// Validate cluster IDs
@@ -408,6 +420,7 @@ func TestValidateClusterIDsWithAPIFail(t *testing.T) {
 	expected := ceems_api_http.Response[models.Cluster]{
 		Status: "error",
 	}
+
 	ceemsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if err := json.NewEncoder(w).Encode(&expected); err != nil {
 			w.Write([]byte("KO"))
@@ -416,16 +429,16 @@ func TestValidateClusterIDsWithAPIFail(t *testing.T) {
 	defer ceemsServer.Close()
 
 	// Backends for group 1
-	dummyServer := dummyTSDBServer("30d", "slurm-0")
+	dummyServer := dummyTSDBServer("slurm-0")
 	defer dummyServer.Close()
 	backendURL, err := url.Parse(dummyServer.URL)
 	require.NoError(t, err)
 
 	rp := httputil.NewSingleHostReverseProxy(backendURL)
-	backend := backend.NewTSDBServer(backendURL, rp, log.NewNopLogger())
+	backend := backend.New(backendURL, rp, log.NewNopLogger())
 
 	// Start manager
-	manager, err := serverpool.NewManager("resource-based", log.NewNopLogger())
+	manager, err := serverpool.New("resource-based", log.NewNopLogger())
 	require.NoError(t, err)
 
 	manager.Add("slurm-0", backend)
@@ -439,7 +452,7 @@ func TestValidateClusterIDsWithAPIFail(t *testing.T) {
 	config.APIServer.Web.URL = ceemsServer.URL
 
 	// New load balancer
-	lb, err := NewLoadBalancer(config)
+	lb, err := New(config)
 	require.NoError(t, err)
 
 	// Validate cluster IDs

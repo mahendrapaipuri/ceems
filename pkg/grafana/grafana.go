@@ -15,7 +15,12 @@ import (
 	config_util "github.com/prometheus/common/config"
 )
 
-// GrafanaTeamsReponse is the API response struct from Grafana
+// Custom errors.
+var (
+	ErrNoTeamIDs = errors.New("Grafana Teams IDs not set")
+)
+
+// GrafanaTeamsReponse is the API response struct from Grafana.
 type GrafanaTeamsReponse struct {
 	OrgID      int      `json:"orgId"`
 	TeamID     int      `json:"teamId"`
@@ -30,7 +35,7 @@ type GrafanaTeamsReponse struct {
 	Permission int      `json:"permission"`
 }
 
-// Grafana struct
+// Grafana implements Grafana client.
 type Grafana struct {
 	logger    log.Logger
 	URL       *url.URL
@@ -38,11 +43,12 @@ type Grafana struct {
 	available bool
 }
 
-// NewGrafana return a new instance of Grafana struct
-func NewGrafana(webURL string, config config_util.HTTPClientConfig, logger log.Logger) (*Grafana, error) {
+// New return a new instance of Grafana struct.
+func New(webURL string, config config_util.HTTPClientConfig, logger log.Logger) (*Grafana, error) {
 	// If webURL is empty return empty struct with available set to false
 	if webURL == "" {
 		level.Warn(logger).Log("msg", "Grafana web URL not found")
+
 		return &Grafana{
 			available: false,
 		}, nil
@@ -50,7 +56,9 @@ func NewGrafana(webURL string, config config_util.HTTPClientConfig, logger log.L
 
 	// Parse Grafana web Url
 	var grafanaURL *url.URL
+
 	var grafanaClient *http.Client
+
 	var err error
 	if grafanaURL, err = url.Parse(webURL); err != nil {
 		return nil, errors.Unwrap(err)
@@ -60,6 +68,7 @@ func NewGrafana(webURL string, config config_util.HTTPClientConfig, logger log.L
 	if grafanaClient, err = config_util.NewClientFromConfig(config, "grafana"); err != nil {
 		return nil, err
 	}
+
 	return &Grafana{
 		URL:       grafanaURL,
 		Client:    grafanaClient,
@@ -68,22 +77,22 @@ func NewGrafana(webURL string, config config_util.HTTPClientConfig, logger log.L
 	}, nil
 }
 
-// teamMembersEndpoint returns the URL for fetching team members
+// teamMembersEndpoint returns the URL for fetching team members.
 func (g *Grafana) teamMembersEndpoint(teamID string) string {
 	return g.URL.JoinPath(fmt.Sprintf("/api/teams/%s/members", teamID)).String()
 }
 
-// String receiver for Grafana struct
+// String receiver for Grafana struct.
 func (g *Grafana) String() string {
-	return fmt.Sprintf("Grafana{URL: %s, available: %t}", g.URL.Redacted(), g.available)
+	return fmt.Sprintf("Grafana URL: %s, Is Grafana Online: %t", g.URL.Redacted(), g.available)
 }
 
-// Available returns true if Grafana is available
+// Available returns true if Grafana is available.
 func (g *Grafana) Available() bool {
 	return g.available
 }
 
-// Ping attempts to ping Grafana
+// Ping attempts to ping Grafana.
 func (g *Grafana) Ping() error {
 	var d net.Dialer
 	// Check if Grafana host is reachable
@@ -91,19 +100,22 @@ func (g *Grafana) Ping() error {
 	if err != nil {
 		return err
 	}
+
 	defer conn.Close()
+
 	return nil
 }
 
-// TeamMembers fetches team members from a given slice of Grafana teams IDs
+// TeamMembers fetches team members from a given slice of Grafana teams IDs.
 func (g *Grafana) TeamMembers(teamsIDs []string) ([]string, error) {
 	// Sanity checks
 	// Check if adminTeamID is not an empty string
 	if teamsIDs == nil {
-		return nil, fmt.Errorf("Grafana Teams IDs not set")
+		return nil, ErrNoTeamIDs
 	}
 
 	var allMembers []string
+
 	for _, teamsID := range teamsIDs {
 		teamMembers, err := g.teamMembers(teamsID)
 		if err != nil {
@@ -113,14 +125,15 @@ func (g *Grafana) TeamMembers(teamsIDs []string) ([]string, error) {
 			allMembers = append(allMembers, teamMembers...)
 		}
 	}
+
 	return allMembers, nil
 }
 
-// teamMembers fetches team members from a given Grafana team
+// teamMembers fetches team members from a given Grafana team.
 func (g *Grafana) teamMembers(teamsID string) ([]string, error) {
 	// Check if adminTeamID is not an empty string
 	if teamsID == "" {
-		return nil, fmt.Errorf("Grafana Teams IDs not set")
+		return nil, ErrNoTeamIDs
 	}
 
 	// Make API URL
@@ -129,7 +142,7 @@ func (g *Grafana) teamMembers(teamsID string) ([]string, error) {
 	// Create a new GET request
 	req, err := http.NewRequest(http.MethodGet, teamMembersURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create a new HTTP request for Grafana teams API: %s", err)
+		return nil, fmt.Errorf("failed to create a new HTTP request for Grafana teams API: %w", err)
 	}
 
 	// Add necessary headers
@@ -138,28 +151,32 @@ func (g *Grafana) teamMembers(teamsID string) ([]string, error) {
 	// Make request
 	resp, err := g.Client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to make HTTP request for Grafana teams API: %s", err)
+		return nil, fmt.Errorf("failed to make HTTP request for Grafana teams API: %w", err)
 	}
+	defer resp.Body.Close()
 
 	// Read response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read HTTP response body for Grafana teams API: %s", err)
+		return nil, fmt.Errorf("failed to read HTTP response body for Grafana teams API: %w", err)
 	}
 
 	// Unpack into data
 	var data []GrafanaTeamsReponse
+
 	err = json.Unmarshal(body, &data)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal HTTP response body for Grafana teams API: %s", err)
+		return nil, fmt.Errorf("failed to unmarshal HTTP response body for Grafana teams API: %w", err)
 	}
 
 	// Get list of all usernames and add them to admin users
 	var teamMembers []string
+
 	for _, user := range data {
 		if user.Login != "" {
 			teamMembers = append(teamMembers, user.Login)
 		}
 	}
+
 	return teamMembers, nil
 }

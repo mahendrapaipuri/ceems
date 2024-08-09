@@ -46,10 +46,12 @@ func NewMeminfoCollector(logger log.Logger) (Collector, error) {
 // memory metrics.
 func (c *meminfoCollector) Update(ch chan<- prometheus.Metric) error {
 	var metricType prometheus.ValueType
+
 	memInfo, err := c.getMemInfo()
 	if err != nil {
 		return fmt.Errorf("couldn't get meminfo: %w", err)
 	}
+
 	level.Debug(c.logger).Log("msg", "Set node_mem", "memInfo", fmt.Sprintf("%v", memInfo))
 
 	// Export only MemTotal, MemFree and MemAvailable fields if meminfoAllStatistics is false
@@ -63,6 +65,7 @@ func (c *meminfoCollector) Update(ch chan<- prometheus.Metric) error {
 			"MemAvailable_bytes": memInfo["MemAvailable_bytes"],
 		}
 	}
+
 	for k, v := range memInfoStats {
 		if strings.HasSuffix(k, "_total") {
 			metricType = prometheus.CounterValue
@@ -78,10 +81,11 @@ func (c *meminfoCollector) Update(ch chan<- prometheus.Metric) error {
 			metricType, v, c.hostname,
 		)
 	}
+
 	return nil
 }
 
-// Get memory info from /proc/meminfo
+// Get memory info from /proc/meminfo.
 func (c *meminfoCollector) getMemInfo() (map[string]float64, error) {
 	file, err := os.Open(procFilePath("meminfo"))
 	if err != nil {
@@ -92,7 +96,7 @@ func (c *meminfoCollector) getMemInfo() (map[string]float64, error) {
 	return parseMemInfo(file)
 }
 
-// Parse /proc/meminfo file and get memory info
+// Parse /proc/meminfo file and get memory info.
 func parseMemInfo(r io.Reader) (map[string]float64, error) {
 	var (
 		memInfo = map[string]float64{}
@@ -106,21 +110,25 @@ func parseMemInfo(r io.Reader) (map[string]float64, error) {
 		if len(parts) == 0 {
 			continue
 		}
+
 		fv, err := strconv.ParseFloat(parts[1], 64)
 		if err != nil {
 			return nil, fmt.Errorf("invalid value in meminfo: %w", err)
 		}
+
 		key := parts[0][:len(parts[0])-1] // remove trailing : from key
 		// Active(anon) -> Active_anon
 		key = reParens.ReplaceAllString(key, "_${1}")
+
 		switch len(parts) {
 		case 2: // no unit
 		case 3: // has unit, we presume kB
 			fv *= 1024
-			key = key + "_bytes"
+			key += "_bytes"
 		default:
 			return nil, fmt.Errorf("invalid line in meminfo: %s", line)
 		}
+
 		memInfo[key] = fv
 	}
 

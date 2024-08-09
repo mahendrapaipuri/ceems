@@ -33,7 +33,13 @@ import (
 	"github.com/prometheus/common/version"
 )
 
-// CEEMSLBAppConfig contains the configuration of CEEMS load balancer app
+// Custom errors.
+var (
+	ErrMissingIDs  = errors.New("missing ID for backend(s)")
+	ErrMissingURLs = errors.New("missing TSDB URL(s) for backend(s)")
+)
+
+// CEEMSLBAppConfig contains the configuration of CEEMS load balancer app.
 type CEEMSLBAppConfig struct {
 	LB       CEEMSLBConfig                  `yaml:"ceems_lb"`
 	Server   ceems_api.CEEMSAPIServerConfig `yaml:"ceems_api_server"`
@@ -49,6 +55,7 @@ func (c *CEEMSLBAppConfig) SetDirectory(dir string) {
 func (c *CEEMSLBAppConfig) Validate() error {
 	// Fetch all cluster IDs
 	var clusterIDs []string
+
 	for _, cluster := range c.Clusters {
 		if cluster.ID != "" {
 			clusterIDs = append(clusterIDs, cluster.ID)
@@ -58,10 +65,11 @@ func (c *CEEMSLBAppConfig) Validate() error {
 	// Preflight checks for backends
 	for _, backend := range c.LB.Backends {
 		if backend.ID == "" {
-			return fmt.Errorf("missing ID for backend(s)")
+			return ErrMissingIDs
 		}
+
 		if len(backend.URLs) == 0 {
-			return fmt.Errorf("missing TSDB URL(s) for backend(s)")
+			return ErrMissingURLs
 		}
 
 		// Clusters config is not always present. Validate only when it is available
@@ -72,6 +80,7 @@ func (c *CEEMSLBAppConfig) Validate() error {
 			)
 		}
 	}
+
 	return nil
 }
 
@@ -89,7 +98,9 @@ func (c *CEEMSLBAppConfig) UnmarshalYAML(unmarshal func(interface{}) error) erro
 		},
 		[]ceems_api_models.Cluster{},
 	}
+
 	type plain CEEMSLBAppConfig
+
 	if err := unmarshal((*plain)(c)); err != nil {
 		return err
 	}
@@ -105,10 +116,11 @@ func (c *CEEMSLBAppConfig) UnmarshalYAML(unmarshal func(interface{}) error) erro
 	if err := c.Server.Web.HTTPClientConfig.Validate(); err != nil {
 		return err
 	}
+
 	return nil
 }
 
-// CEEMSLBConfig contains the CEEMS load balancer config
+// CEEMSLBConfig contains the CEEMS load balancer config.
 type CEEMSLBConfig struct {
 	Backends []base.Backend `yaml:"backends"`
 	Strategy string         `yaml:"strategy"`
@@ -120,7 +132,7 @@ type CEEMSLoadBalancer struct {
 	App     kingpin.Application
 }
 
-// NewCEEMSLoadBalancer returns a new CEEMSLoadBalancer instance
+// NewCEEMSLoadBalancer returns a new CEEMSLoadBalancer instance.
 func NewCEEMSLoadBalancer() (*CEEMSLoadBalancer, error) {
 	return &CEEMSLoadBalancer{
 		appName: base.CEEMSLoadBalancerAppName,
@@ -128,7 +140,7 @@ func NewCEEMSLoadBalancer() (*CEEMSLoadBalancer, error) {
 	}, nil
 }
 
-// Main is the entry point of the `ceems_lb` command
+// Main is the entry point of the `ceems_lb` command.
 func (lb *CEEMSLoadBalancer) Main() error {
 	var (
 		webListenAddresses = lb.App.Flag(
@@ -149,7 +161,7 @@ func (lb *CEEMSLoadBalancer) Main() error {
 	)
 
 	// Socket activation only available on Linux
-	systemdSocket := func() *bool { b := false; return &b }()
+	systemdSocket := func() *bool { b := false; return &b }() //nolint:nlreturn
 	if runtime.GOOS == "linux" {
 		systemdSocket = lb.App.Flag(
 			"web.systemd-socket",
@@ -162,21 +174,22 @@ func (lb *CEEMSLoadBalancer) Main() error {
 	lb.App.Version(version.Print(lb.appName))
 	lb.App.UsageWriter(os.Stdout)
 	lb.App.HelpFlag.Short('h')
+
 	_, err := lb.App.Parse(os.Args[1:])
 	if err != nil {
-		return fmt.Errorf("failed to parse CLI flags: %s", err)
+		return fmt.Errorf("failed to parse CLI flags: %w", err)
 	}
 
 	// Make LB config
 	config, err := common.MakeConfig[CEEMSLBAppConfig](*configFile)
 	if err != nil {
-		return fmt.Errorf("failed to parse config file: %s", err)
+		return fmt.Errorf("failed to parse config file: %w", err)
 	}
 
 	// Set logger here after properly configuring promlog
 	logger := promlog.New(promlogConfig)
 
-	level.Info(logger).Log("msg", fmt.Sprintf("Starting %s", lb.appName), "version", version.Info())
+	level.Info(logger).Log("msg", "Starting "+lb.appName, "version", version.Info())
 	level.Info(logger).Log("msg", "Build context", "build_context", version.BuildContext())
 	level.Info(logger).Log("fd_limits", internal_runtime.Uname())
 	level.Info(logger).Log("fd_limits", internal_runtime.FdLimits())
@@ -189,9 +202,10 @@ func (lb *CEEMSLoadBalancer) Main() error {
 	defer stop()
 
 	// Create a pool of backend TSDB servers
-	manager, err := serverpool.NewManager(config.LB.Strategy, logger)
+	manager, err := serverpool.New(config.LB.Strategy, logger)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create backend TSDB server pool", "err", err)
+
 		return err
 	}
 
@@ -206,9 +220,10 @@ func (lb *CEEMSLoadBalancer) Main() error {
 	}
 
 	// Create frontend instance
-	loadBalancer, err := frontend.NewLoadBalancer(frontendConfig)
+	loadBalancer, err := frontend.New(frontendConfig)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create load balancer frontend", "err", err)
+
 		return err
 	}
 
@@ -220,11 +235,12 @@ func (lb *CEEMSLoadBalancer) Main() error {
 				// If we dont unwrap original error, the URL string will be printed to log which
 				// might contain sensitive passwords
 				level.Error(logger).Log("msg", "Could not parse backend TSDB server URL", "err", errors.Unwrap(err))
+
 				continue
 			}
 
 			rp := httputil.NewSingleHostReverseProxy(webURL)
-			backendServer := tsdb.NewTSDBServer(webURL, rp, logger)
+			backendServer := tsdb.New(webURL, rp, logger)
 			rp.ErrorHandler = func(writer http.ResponseWriter, request *http.Request, err error) {
 				level.Error(logger).Log("msg", "Failed to handle the request", "host", webURL.Host, "err", err)
 				backendServer.SetAlive(false)
@@ -234,6 +250,7 @@ func (lb *CEEMSLoadBalancer) Main() error {
 					level.Info(logger).
 						Log("msg", "Max retry attempts reached, terminating", "address", request.RemoteAddr, "path", request.URL.Path)
 					http.Error(writer, "Service not available", http.StatusServiceUnavailable)
+
 					return
 				}
 
@@ -247,6 +264,7 @@ func (lb *CEEMSLoadBalancer) Main() error {
 					),
 				)
 			}
+
 			manager.Add(backend.ID, backendServer)
 		}
 	}
@@ -261,6 +279,7 @@ func (lb *CEEMSLoadBalancer) Main() error {
 
 	// Spawn a go routine to do health checks of backend TSDB servers
 	wg.Add(1)
+
 	go func() {
 		defer wg.Done()
 		frontend.Monitor(ctx, manager, logger)
@@ -288,11 +307,13 @@ func (lb *CEEMSLoadBalancer) Main() error {
 	// the request it is currently handling
 	shutDownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+
 	if err := loadBalancer.Shutdown(shutDownCtx); err != nil {
 		level.Error(logger).Log("msg", "Failed to gracefully shutdown server", "err", err)
 	}
 
 	level.Info(logger).Log("msg", "Load balancer exiting")
 	level.Info(logger).Log("msg", "See you next time!!")
+
 	return nil
 }

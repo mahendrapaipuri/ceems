@@ -15,24 +15,27 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func setupTestDB() *sql.DB {
+func setupTestDB() (*sql.DB, error) {
 	currentDir, err := os.Getwd()
 	if err != nil {
-		fmt.Println(err)
+		return nil, err
 	}
 
 	db, err := sql.Open(
 		"sqlite3", filepath.Join(currentDir, "..", "testdata", "ceems.db"),
 	)
 	if err != nil {
-		fmt.Println("failed to open DB")
+		return nil, fmt.Errorf("failed to open DB: %w", err)
 	}
-	return db
+
+	return db, nil
 }
 
 func TestUnitsQuerier(t *testing.T) {
 	logger := log.NewNopLogger()
-	db := setupTestDB()
+
+	db, err := setupTestDB()
+	require.NoError(t, err, "failed to setup test DB")
 	defer db.Close()
 
 	// Query
@@ -169,7 +172,9 @@ func TestUnitsQuerier(t *testing.T) {
 
 func TestUsageQuerier(t *testing.T) {
 	logger := log.NewNopLogger()
-	db := setupTestDB()
+
+	db, err := setupTestDB()
+	require.NoError(t, err, "failed to setup test DB")
 	defer db.Close()
 
 	// Query
@@ -220,7 +225,9 @@ func TestUsageQuerier(t *testing.T) {
 
 func TestProjectQuerier(t *testing.T) {
 	logger := log.NewNopLogger()
-	db := setupTestDB()
+
+	db, err := setupTestDB()
+	require.NoError(t, err, "failed to setup test DB")
 	defer db.Close()
 
 	// Query
@@ -249,7 +256,9 @@ func TestProjectQuerier(t *testing.T) {
 
 func TestUserQuerier(t *testing.T) {
 	logger := log.NewNopLogger()
-	db := setupTestDB()
+
+	db, err := setupTestDB()
+	require.NoError(t, err, "failed to setup test DB")
 	defer db.Close()
 
 	// Query
@@ -278,12 +287,14 @@ func TestUserQuerier(t *testing.T) {
 
 func TestClusterQuerier(t *testing.T) {
 	logger := log.NewNopLogger()
-	db := setupTestDB()
+
+	db, err := setupTestDB()
+	require.NoError(t, err, "failed to setup test DB")
 	defer db.Close()
 
 	// Query
 	q := Query{}
-	q.query(fmt.Sprintf("SELECT DISTINCT cluster_id, resource_manager FROM %s", base.UnitsDBTableName))
+	q.query("SELECT DISTINCT cluster_id, resource_manager FROM " + base.UnitsDBTableName)
 
 	expectedClusters := []models.Cluster{
 		{
@@ -302,7 +313,9 @@ func TestClusterQuerier(t *testing.T) {
 
 func TestStatsQuerier(t *testing.T) {
 	logger := log.NewNopLogger()
-	db := setupTestDB()
+
+	db, err := setupTestDB()
+	require.NoError(t, err, "failed to setup test DB")
 	defer db.Close()
 
 	// Query
@@ -327,7 +340,9 @@ func TestStatsQuerier(t *testing.T) {
 
 func TestKeysQuerier(t *testing.T) {
 	logger := log.NewNopLogger()
-	db := setupTestDB()
+
+	db, err := setupTestDB()
+	require.NoError(t, err, "failed to setup test DB")
 	defer db.Close()
 
 	// Query
@@ -373,7 +388,7 @@ func TestQueryBuilder(t *testing.T) {
 
 	// Get built query
 	queryString, queryParams := q.get()
-	require.Equal(t, queryString, expectedQueryString)
+	require.Equal(t, expectedQueryString, queryString)
 	assert.Equal(t, expectedQueryParams, queryParams)
 }
 
@@ -398,6 +413,6 @@ func TestSubQueryBuilder(t *testing.T) {
 
 	// Get built query
 	queryString, queryParams := q.get()
-	require.Equal(t, queryString, expectedQueryString)
+	require.Equal(t, expectedQueryString, queryString)
 	assert.Equal(t, expectedQueryParams, queryParams)
 }

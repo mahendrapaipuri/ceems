@@ -33,18 +33,21 @@ var (
 	maxTimeFormatted = MaxTime.Format(time.RFC3339Nano)
 )
 
-// AllowRetry checks if a failed request can be retried
+// AllowRetry checks if a failed request can be retried.
 func AllowRetry(r *http.Request) bool {
 	if _, ok := r.Context().Value(RetryContextKey{}).(bool); ok {
 		return false
 	}
+
 	return true
 }
 
-// Monitor checks the backend servers health
+// Monitor checks the backend servers health.
 func Monitor(ctx context.Context, manager serverpool.Manager, logger log.Logger) {
 	t := time.NewTicker(time.Second * 20)
+
 	level.Info(logger).Log("msg", "Starting health checker")
+
 	for {
 		// This will ensure that we will run the method as soon as go routine
 		// starts instead of waiting for ticker to tick
@@ -55,32 +58,39 @@ func Monitor(ctx context.Context, manager serverpool.Manager, logger log.Logger)
 			continue
 		case <-ctx.Done():
 			level.Info(logger).Log("msg", "Received Interrupt. Stopping health checker")
+
 			return
 		}
 	}
 }
 
-// Set query params into request's context and return new request
+// Set query params into request's context and return new request.
 func setQueryParams(r *http.Request, queryParams *QueryParams) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), QueryParamsContextKey{}, queryParams))
 }
 
-// Parse query in the request after cloning it and add query params to context
+// Parse query in the request after cloning it and add query params to context.
 func parseQueryParams(r *http.Request, rmIDs []string, logger log.Logger) *http.Request {
 	var body []byte
+
 	var id string
+
 	var uuids []string
+
 	var queryPeriod time.Duration
+
 	var err error
 
 	// Get id from path parameter.
 	// Requested paths will be of form /{id}/<rest of path>. Here will strip `id`
 	// part and proxy the rest to backend
 	var pathParts []string
+
 	for _, p := range strings.Split(r.URL.Path, "/") {
 		if strings.TrimSpace(p) == "" {
 			continue
 		}
+
 		pathParts = append(pathParts, p)
 	}
 
@@ -91,7 +101,7 @@ func parseQueryParams(r *http.Request, rmIDs []string, logger log.Logger) *http.
 
 			// If there is more than 1 pathParts, make URL or set / as URL
 			if len(pathParts) > 1 {
-				r.URL.Path = fmt.Sprintf("/%s", strings.Join(pathParts[1:], "/"))
+				r.URL.Path = "/" + strings.Join(pathParts[1:], "/")
 				r.RequestURI = r.URL.Path
 			} else {
 				r.URL.Path = "/"
@@ -111,6 +121,7 @@ func parseQueryParams(r *http.Request, rmIDs []string, logger log.Logger) *http.
 	// If failed to read body, skip verification and go to request proxy
 	if body, err = io.ReadAll(r.Body); err != nil {
 		level.Error(logger).Log("msg", "Failed to read request body", "err", err)
+
 		return setQueryParams(r, &QueryParams{id, uuids, queryPeriod})
 	}
 
@@ -121,6 +132,7 @@ func parseQueryParams(r *http.Request, rmIDs []string, logger log.Logger) *http.
 	// Get form values
 	if err = clonedReq.ParseForm(); err != nil {
 		level.Error(logger).Log("msg", "Could not parse request body", "err", err)
+
 		return setQueryParams(r, &QueryParams{id, uuids, queryPeriod})
 	}
 
@@ -157,7 +169,8 @@ func parseQueryParams(r *http.Request, rmIDs []string, logger log.Logger) *http.
 	// Parse TSDB's start query in request query params
 	if startTime, err := parseTimeParam(clonedReq, "start", time.Now().UTC()); err != nil {
 		level.Error(logger).Log("msg", "Could not parse start query param", "err", err)
-		queryPeriod = time.Duration(0 * time.Second)
+
+		queryPeriod = 0 * time.Second
 	} else {
 		queryPeriod = time.Now().UTC().Sub(startTime)
 	}
@@ -166,26 +179,30 @@ func parseQueryParams(r *http.Request, rmIDs []string, logger log.Logger) *http.
 	return setQueryParams(r, &QueryParams{id, uuids, queryPeriod})
 }
 
-// Parse time parameter in request
+// Parse time parameter in request.
 func parseTimeParam(r *http.Request, paramName string, defaultValue time.Time) (time.Time, error) {
 	val := r.FormValue(paramName)
 	if val == "" {
 		return defaultValue, nil
 	}
+
 	result, err := parseTime(val)
 	if err != nil {
 		return time.Time{}, fmt.Errorf("invalid time value for '%s': %w", paramName, err)
 	}
+
 	return result, nil
 }
 
-// Convert time parameter string into time.Time
+// Convert time parameter string into time.Time.
 func parseTime(s string) (time.Time, error) {
 	if t, err := strconv.ParseFloat(s, 64); err == nil {
 		s, ns := math.Modf(t)
 		ns = math.Round(ns*1000) / 1000
+
 		return time.Unix(int64(s), int64(ns*float64(time.Second))).UTC(), nil
 	}
+
 	if t, err := time.Parse(time.RFC3339Nano, s); err == nil {
 		return t, nil
 	}
@@ -200,10 +217,11 @@ func parseTime(s string) (time.Time, error) {
 	case maxTimeFormatted:
 		return MaxTime, nil
 	}
+
 	return time.Time{}, fmt.Errorf("cannot parse %q to a valid timestamp", s)
 }
 
-// healthCheck monitors the status of all backend servers
+// healthCheck monitors the status of all backend servers.
 func healthCheck(ctx context.Context, manager serverpool.Manager, logger log.Logger) {
 	aliveChannel := make(chan bool, 1)
 
@@ -211,15 +229,19 @@ func healthCheck(ctx context.Context, manager serverpool.Manager, logger log.Log
 		for _, backend := range backends {
 			requestCtx, stop := context.WithTimeout(ctx, 10*time.Second)
 			defer stop()
+
 			status := "up"
+
 			go isAlive(requestCtx, aliveChannel, backend.URL(), logger)
 
 			select {
 			case <-ctx.Done():
 				level.Info(logger).Log("msg", "Gracefully shutting down health check")
+
 				return
 			case alive := <-aliveChannel:
 				backend.SetAlive(alive)
+
 				if !alive {
 					status = "down"
 				}
@@ -229,15 +251,18 @@ func healthCheck(ctx context.Context, manager serverpool.Manager, logger log.Log
 	}
 }
 
-// isAlive returns the status of backend server with a channel
+// isAlive returns the status of backend server with a channel.
 func isAlive(ctx context.Context, aliveChannel chan bool, u *url.URL, logger log.Logger) {
 	var d net.Dialer
+
 	conn, err := d.DialContext(ctx, "tcp", u.Host)
 	if err != nil {
 		level.Debug(logger).Log("msg", "Backend unreachable", "backend", u.Redacted(), "err", err)
 		aliveChannel <- false
+
 		return
 	}
+
 	_ = conn.Close()
 	aliveChannel <- true
 }

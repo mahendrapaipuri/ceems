@@ -31,12 +31,13 @@ type rteProvider struct {
 
 func init() {
 	// Register emissions factor provider
-	RegisterProvider(rteEmissionsProvider, "RTE eCO2 Mix", NewRTEProvider)
+	Register(rteEmissionsProvider, "RTE eCO2 Mix", NewRTEProvider)
 }
 
-// NewRTEProvider returns a new Provider that returns emission factor from RTE eCO2 mix
+// NewRTEProvider returns a new Provider that returns emission factor from RTE eCO2 mix.
 func NewRTEProvider(logger log.Logger) (Provider, error) {
 	level.Info(logger).Log("msg", "Emission factor from RTE eCO2 mix will be reported.")
+
 	return &rteProvider{
 		logger:          logger,
 		cacheDuration:   1800000,
@@ -62,6 +63,7 @@ func (s *rteProvider) Update() (EmissionFactors, error) {
 			if s.lastEmissionFactor != nil {
 				level.Debug(s.logger).
 					Log("msg", "Using cached emission factor for RTE provider", "factor", s.lastEmissionFactor["FR"].Factor)
+
 				return s.lastEmissionFactor, nil
 			} else {
 				return nil, err
@@ -73,14 +75,16 @@ func (s *rteProvider) Update() (EmissionFactors, error) {
 		s.lastEmissionFactor = currentEmissionFactor
 		level.Debug(s.logger).
 			Log("msg", "Using real time emission factor from RTE provider", "factor", currentEmissionFactor["FR"].Factor)
+
 		return currentEmissionFactor, err
 	} else {
 		level.Debug(s.logger).Log("msg", "Using cached emission factor for RTE provider", "factor", s.lastEmissionFactor["FR"].Factor)
+
 		return s.lastEmissionFactor, nil
 	}
 }
 
-// Make URL
+// Make URL.
 func makeRTEURL(baseURL string) string {
 	// Make query string
 	params := url.Values{}
@@ -98,11 +102,13 @@ func makeRTEURL(baseURL string) string {
 			time.Now().Format("2006-01-02"),
 		),
 	)
+
 	queryString := params.Encode()
+
 	return fmt.Sprintf("%s?%s", baseURL, queryString)
 }
 
-// Make request to Opendatasoft API
+// Make request to Opendatasoft API.
 func makeRTEAPIRequest(url string, logger log.Logger) (EmissionFactors, error) {
 	// Create a context with timeout to ensure we dont have deadlocks
 	// Dont use a long timeout. If one provider takes too long, whole scrape will be
@@ -113,25 +119,31 @@ func makeRTEAPIRequest(url string, logger log.Logger) (EmissionFactors, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create HTTP request for RTE provider", "err", err)
+
 		return nil, err
 	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to make HTTP request for RTE provider", "err", err)
+
 		return nil, err
 	}
+	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to read HTTP response body for RTE provider", "err", err)
+
 		return nil, err
 	}
 
 	var data nationalRealTimeResponseV2
+
 	err = json.Unmarshal(body, &data)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to unmarshal HTTP response body for RTE provider", "err", err)
+
 		return nil, err
 	}
 
@@ -141,5 +153,6 @@ func makeRTEAPIRequest(url string, logger log.Logger) (EmissionFactors, error) {
 	if len(fields) >= 1 {
 		return EmissionFactors{"FR": EmissionFactor{"France", float64(fields[0].TauxCo2)}}, nil
 	}
+
 	return nil, fmt.Errorf("empty response received from RTE server: %v", fields)
 }

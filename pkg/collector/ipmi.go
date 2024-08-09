@@ -8,6 +8,7 @@ package collector
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os/exec"
 	"path/filepath"
@@ -22,6 +23,19 @@ import (
 )
 
 const ipmiCollectorSubsystem = "ipmi_dcmi"
+
+// Custom errors.
+var (
+	ErrIPMIUnavailable = errors.New("IPMI Power readings not Active")
+)
+
+// Execution modes.
+const (
+	sudoMode       = "sudo"
+	nativeMode     = "native"
+	capabilityMode = "cap"
+	crayPowerCap   = "capmc"
+)
 
 type impiCollector struct {
 	logger       log.Logger
@@ -154,8 +168,10 @@ func NewIPMICollector(logger log.Logger) (Collector, error) {
 	var execMode string
 
 	// Initialize metricDesc map
-	var metricDesc = make(map[string]*prometheus.Desc, 3)
-	var cachedMetric = make(map[string]float64, 3)
+	metricDesc := make(map[string]*prometheus.Desc, 3)
+
+	cachedMetric := make(map[string]float64, 3)
+
 	metricDesc["current"] = prometheus.NewDesc(
 		prometheus.BuildFQName(Namespace, ipmiCollectorSubsystem, "current_watts"),
 		"Current Power consumption in watts", []string{"hostname"}, nil,
@@ -180,6 +196,7 @@ func NewIPMICollector(logger log.Logger) (Collector, error) {
 	} else {
 		cmdSlice = strings.Split(*ipmiDcmiCmd, " ")
 	}
+
 	level.Debug(logger).Log(
 		"msg", "Using IPMI command", "ipmi", strings.Join(cmdSlice, " "),
 	)
@@ -192,15 +209,17 @@ func NewIPMICollector(logger log.Logger) (Collector, error) {
 
 	// Verify if running ipmiDcmiCmd works
 	if _, err := osexec.Execute(cmdSlice[0], cmdSlice[1:], nil, logger); err == nil {
-		execMode = "native"
+		execMode = nativeMode
+
 		goto outside
 	}
 
 	// If ipmiDcmiCmd failed to run and if sudo is not already present in command,
 	// add sudo to command and execute. If current user has sudo rights it will be a success
-	if cmdSlice[0] != "sudo" {
-		if _, err := osexec.ExecuteWithTimeout("sudo", cmdSlice, 2, nil, logger); err == nil {
-			execMode = "sudo"
+	if cmdSlice[0] != sudoMode {
+		if _, err := osexec.ExecuteWithTimeout(sudoMode, cmdSlice, 2, nil, logger); err == nil {
+			execMode = sudoMode
+
 			goto outside
 		}
 	}
@@ -208,7 +227,8 @@ func NewIPMICollector(logger log.Logger) (Collector, error) {
 	// As last attempt, run the command as root user by forking subprocess
 	// as root. If there is setuid cap on the process, it will be a success
 	if _, err := osexec.ExecuteAs(cmdSlice[0], cmdSlice[1:], 0, 0, nil, logger); err == nil {
-		execMode = "cap"
+		execMode = capabilityMode
+
 		goto outside
 	}
 
@@ -221,10 +241,11 @@ outside:
 		metricDesc:   metricDesc,
 		cachedMetric: cachedMetric,
 	}
+
 	return &collector, nil
 }
 
-// Find IPMI command from list of different IPMI implementations
+// Find IPMI command from list of different IPMI implementations.
 func findIPMICmd() []string {
 	for _, cmd := range ipmiDcmiCmds {
 		cmdSlice := strings.Split(cmd, " ")
@@ -236,20 +257,23 @@ func findIPMICmd() []string {
 	return strings.Split(ipmiDcmiCmds[0], " ")
 }
 
-// Get value based on regex from IPMI output
+// Get value based on regex from IPMI output.
 func getValue(ipmiOutput []byte, regex *regexp.Regexp) (string, error) {
 	for _, line := range strings.Split(string(ipmiOutput), "\n") {
 		match := regex.FindStringSubmatch(line)
 		if match == nil {
 			continue
 		}
+
 		for i, name := range regex.SubexpNames() {
 			if name != "value" {
 				continue
 			}
+
 			return match[i], nil
 		}
 	}
+
 	return "", fmt.Errorf("could not find value in output: %s", string(ipmiOutput))
 }
 
@@ -263,6 +287,7 @@ func (c *impiCollector) Update(ch chan<- prometheus.Metric) error {
 			"msg", "Failed to get power statistics from IPMI. Using last cached values",
 			"err", err, "cached_metrics", fmt.Sprintf("%#v", c.cachedMetric),
 		)
+
 		powerReadings = c.cachedMetric
 	}
 
@@ -270,13 +295,15 @@ func (c *impiCollector) Update(ch chan<- prometheus.Metric) error {
 	for rType, rValue := range powerReadings {
 		if rValue > 0 {
 			ch <- prometheus.MustNewConstMetric(c.metricDesc[rType], prometheus.GaugeValue, float64(rValue), c.hostname)
+
 			c.cachedMetric[rType] = rValue
 		}
 	}
+
 	return nil
 }
 
-// Get current, min and max power readings
+// Get current, min and max power readings.
 func (c *impiCollector) getPowerReadings() (map[string]float64, error) {
 	// Execute IPMI command
 	ipmiOutput, err := c.executeIPMICmd()
@@ -286,36 +313,43 @@ func (c *impiCollector) getPowerReadings() (map[string]float64, error) {
 
 	// For capmc, we get JSON output, so treat it differently
 	var values map[string]float64
-	if filepath.Base(c.ipmiCmd[0]) == "capmc" {
+	if filepath.Base(c.ipmiCmd[0]) == crayPowerCap {
 		values, err = c.parseCapmcOutput(ipmiOutput)
 	} else {
 		// Parse IPMI output
 		values, err = c.parseIPMIOutput(ipmiOutput)
 	}
+
 	if err != nil {
 		return nil, err
 	}
+
 	return values, nil
 }
 
-// Parse current, min and max power readings for capmc output
+// Parse current, min and max power readings for capmc output.
 func (c *impiCollector) parseCapmcOutput(stdOut []byte) (map[string]float64, error) {
 	// Unmarshal JSON output
 	var data map[string]interface{}
 	if err := json.Unmarshal(stdOut, &data); err != nil {
-		return nil, fmt.Errorf("capmc Power readings command failed")
+		return nil, fmt.Errorf("%s Power readings command failed", crayPowerCap)
 	}
 
 	// Check error code
-	if data["e"].(float64) != 0 {
-		return nil, fmt.Errorf("capmc Power readings not Active: %s", data["err_msg"].(string))
+	if errValue, valueOk := data["e"].(float64); valueOk && errValue != 0 {
+		if errMsg, msgOk := data["err_msg"].(string); msgOk {
+			return nil, fmt.Errorf("capmc Power readings not Active: %s", errMsg)
+		}
 	}
 
 	// Get power readings
-	var powerReadings = make(map[string]float64, 3)
+	powerReadings := make(map[string]float64, 3)
+
 	for rType := range ipmiDCMIPowerReadingRegexMap {
 		if value, ok := data[rType]; ok {
-			powerReadings[rType] = value.(float64)
+			if valueFloat, valueOk := value.(float64); valueOk {
+				powerReadings[rType] = valueFloat
+			}
 		}
 	}
 
@@ -323,10 +357,11 @@ func (c *impiCollector) parseCapmcOutput(stdOut []byte) (map[string]float64, err
 	if powerReadings["avg"] > 0 {
 		powerReadings["current"] = powerReadings["avg"]
 	}
+
 	return powerReadings, nil
 }
 
-// Parse current, min and max power readings for IPMI commands
+// Parse current, min and max power readings for IPMI commands.
 func (c *impiCollector) parseIPMIOutput(stdOut []byte) (map[string]float64, error) {
 	// Check for Power Measurement are avail
 	value, err := getValue(stdOut, ipmiDCMIPowerMeasurementRegex)
@@ -335,7 +370,8 @@ func (c *impiCollector) parseIPMIOutput(stdOut []byte) (map[string]float64, erro
 	}
 
 	// When Power Measurement in 'Active' state - we can get watts
-	var powerReadings = make(map[string]float64, 3)
+	powerReadings := make(map[string]float64, 3)
+
 	if value == "active" || value == "Active" || value == "activated" {
 		// Get power readings
 		for rType, regex := range ipmiDCMIPowerReadingRegexMap {
@@ -345,28 +381,34 @@ func (c *impiCollector) parseIPMIOutput(stdOut []byte) (map[string]float64, erro
 				}
 			}
 		}
+
 		return powerReadings, nil
 	}
-	return nil, fmt.Errorf("IPMI Power readings not Active")
+
+	return nil, ErrIPMIUnavailable
 }
 
-// Execute IPMI command based
+// Execute IPMI command based.
 func (c *impiCollector) executeIPMICmd() ([]byte, error) {
 	var stdOut []byte
+
 	var err error
 
 	// Execute found ipmi command
-	if c.execMode == "cap" {
+	switch c.execMode {
+	case capabilityMode:
 		stdOut, err = osexec.ExecuteAs(c.ipmiCmd[0], c.ipmiCmd[1:], 0, 0, nil, c.logger)
-	} else if c.execMode == "sudo" {
-		stdOut, err = osexec.ExecuteWithTimeout("sudo", c.ipmiCmd, 1, nil, c.logger)
-	} else if c.execMode == "native" {
+	case sudoMode:
+		stdOut, err = osexec.ExecuteWithTimeout(sudoMode, c.ipmiCmd, 1, nil, c.logger)
+	case nativeMode:
 		stdOut, err = osexec.Execute(c.ipmiCmd[0], c.ipmiCmd[1:], nil, c.logger)
-	} else {
+	default:
 		err = fmt.Errorf("current process do not have permissions to execute %s", strings.Join(c.ipmiCmd, " "))
 	}
+
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute IPMI command: %s", err)
+		return nil, fmt.Errorf("failed to execute IPMI command: %w", err)
 	}
+
 	return stdOut, nil
 }

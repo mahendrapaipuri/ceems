@@ -9,14 +9,16 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-// Same as the one in lb/frontend/middleware_test.go
-func setupMockDB(d string) (*sql.DB, string) {
+// Same as the one in lb/frontend/middleware_test.go.
+func setupMockDB(d string) (*sql.DB, error) {
 	dbPath := filepath.Join(d, "test.db")
+
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
-		fmt.Printf("failed to create DB")
+		return nil, fmt.Errorf("failed to create DB: %w", err)
 	}
 
 	stmts := `
@@ -87,13 +89,15 @@ COMMIT;`
 
 	_, err = db.Exec(stmts)
 	if err != nil {
-		fmt.Printf("failed to insert mock data into DB: %s", err)
+		return nil, fmt.Errorf("failed to insert mock data into DB: %w", err)
 	}
-	return db, dbPath
+
+	return db, nil
 }
 
 func TestVerifyOwnership(t *testing.T) {
-	db, _ := setupMockDB(t.TempDir())
+	db, err := setupMockDB(t.TempDir())
+	require.NoError(t, err, "failed to setup test DB")
 
 	tests := []struct {
 		name   string
@@ -167,16 +171,17 @@ func TestVerifyOwnership(t *testing.T) {
 			db,
 			log.NewNopLogger(),
 		)
-		assert.Equal(t, result, test.verify)
+		assert.Equal(t, test.verify, result)
 	}
 }
 
 func TestAdminUsers(t *testing.T) {
-	db, _ := setupMockDB(t.TempDir())
+	db, err := setupMockDB(t.TempDir())
+	require.NoError(t, err, "failed to setup test DB")
 
 	// Expected users
 	expectedUsers := []string{"adm1", "adm2", "adm3", "adm4", "adm5", "adm6"}
 
 	users := adminUsers(db, log.NewNopLogger())
-	assert.Equal(t, users, expectedUsers)
+	assert.Equal(t, expectedUsers, users)
 }
