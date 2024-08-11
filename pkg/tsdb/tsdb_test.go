@@ -81,6 +81,98 @@ func TestTSDBConfigSuccess(t *testing.T) {
 	assert.Equal(t, 60*time.Second, rateInterval)
 }
 
+func TestTSDBFlagsSuccess(t *testing.T) {
+	// Start test server
+	expected := Response{
+		Status: "success",
+		Data: map[string]interface{}{
+			"alertmanager.notification-queue-capacity":  10000,
+			"alertmanager.timeout":                      "",
+			"auto-gomemlimit.ratio":                     0.9,
+			"config.file":                               "/etc/prometheus/prometheus.yml",
+			"enable-feature":                            "promql-at-modifier,promql-negative-offset",
+			"log.format":                                "logfmt",
+			"log.level":                                 "info",
+			"query.lookback-delta":                      "5m",
+			"query.max-concurrency":                     20,
+			"query.max-samples":                         50000000,
+			"query.timeout":                             "2m",
+			"rules.alert.for-grace-period":              "10m",
+			"rules.alert.for-outage-tolerance":          "1h",
+			"rules.alert.resend-delay":                  "1m",
+			"rules.max-concurrent-evals":                4,
+			"scrape.adjust-timestamps":                  true,
+			"scrape.discovery-reload-interval":          "5s",
+			"scrape.timestamp-tolerance":                "2ms",
+			"storage.agent.no-lockfile":                 false,
+			"storage.agent.path":                        "data-agent/",
+			"storage.agent.retention.max-time":          "0s",
+			"storage.agent.retention.min-time":          "0s",
+			"storage.agent.wal-compression":             true,
+			"storage.agent.wal-compression-type":        "snappy",
+			"storage.agent.wal-segment-size":            "0B",
+			"storage.agent.wal-truncate-frequency":      "0s",
+			"storage.remote.flush-deadline":             "1m",
+			"storage.remote.read-concurrent-limit":      10,
+			"storage.remote.read-max-bytes-in-frame":    1048576,
+			"storage.remote.read-sample-limit":          50000000,
+			"storage.tsdb.allow-overlapping-blocks":     true,
+			"storage.tsdb.head-chunks-write-queue-size": "0",
+			"storage.tsdb.max-block-chunk-segment-size": "0B",
+			"storage.tsdb.max-block-duration":           "3d2h24m",
+			"storage.tsdb.min-block-duration":           "2h",
+			"storage.tsdb.no-lockfile":                  false,
+			"storage.tsdb.path":                         "/var/lib/prometheus",
+			"storage.tsdb.retention":                    "0s",
+			"storage.tsdb.retention.size":               "0B",
+			"storage.tsdb.retention.time":               "31d",
+			"storage.tsdb.samples-per-chunk":            120,
+			"storage.tsdb.wal-compression":              true,
+			"storage.tsdb.wal-compression-type":         "snappy",
+			"storage.tsdb.wal-segment-size":             "0B",
+			"web.config.file":                           "/etc/prometheus/web.yml",
+			"web.console.libraries":                     "/etc/prometheus/console_libraries",
+			"web.console.templates":                     "/etc/prometheus/consoles",
+			"web.cors.origin":                           ".*",
+			"web.enable-admin-api":                      false,
+			"web.enable-lifecycle":                      false,
+			"web.enable-remote-write-receiver":          false,
+			"web.external-url":                          "http://demo.do.prometheus.io:9090",
+			"web.listen-address":                        "0.0.0.0:9090",
+			"web.max-connections":                       512,
+			"web.page-title":                            "Prometheus Time Series Collection and Processing Server",
+			"web.read-timeout":                          "5m",
+			"web.route-prefix":                          "/",
+			"web.user-assets":                           "",
+			"write-documentation":                       false,
+		},
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewEncoder(w).Encode(&expected); err != nil {
+			w.Write([]byte("KO"))
+		}
+	}))
+	defer server.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
+	require.NoError(t, err)
+
+	// Check if Ping is working
+	assert.True(t, tsdb.Available())
+
+	// Check flags
+	var flags map[string]interface{}
+	flags, err = tsdb.Flags(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, "0.0.0.0:9090", flags["web.listen-address"].(string)) //nolint:forcetypeassert
+	assert.InEpsilon(t, 512, flags["web.max-connections"].(float64), 0)   //nolint:forcetypeassert
+	assert.False(t, flags["write-documentation"].(bool))                  //nolint:forcetypeassert
+}
+
 func TestTSDBConfigFail(t *testing.T) {
 	// Start test server
 	expected := Response{
@@ -178,4 +270,59 @@ func TestTSDBQueryFail(t *testing.T) {
 
 	_, err = tsdb.Query(context.Background(), "", time.Now())
 	assert.Error(t, err)
+}
+
+func TestTSDBDeleteSuccess(t *testing.T) {
+	// Start test server
+	expected := []string{"metric1", "metric2"}
+
+	var got []string
+
+	var err error
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err = r.ParseForm(); err != nil {
+			w.Write([]byte("KO"))
+
+			return
+		}
+
+		got = r.Form["match[]"]
+
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
+	require.NoError(t, err)
+	assert.True(t, tsdb.Available())
+
+	err = tsdb.Delete(context.Background(), time.Now(), time.Now(), expected)
+	require.NoError(t, err)
+	assert.ElementsMatch(t, expected, got)
+}
+
+func TestTSDBDeleteFail(t *testing.T) {
+	// Start test server
+	expected := []string{"metric1", "metric2"}
+
+	var err error
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err = r.ParseForm(); err != nil {
+			w.Write([]byte("KO"))
+
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
+	require.NoError(t, err)
+	assert.True(t, tsdb.Available())
+
+	err = tsdb.Delete(context.Background(), time.Now(), time.Now(), expected)
+	require.Error(t, err)
 }

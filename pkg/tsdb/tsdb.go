@@ -322,7 +322,7 @@ func (t *TSDB) Query(ctx context.Context, query string, queryTime time.Time) (Me
 
 	queryData, ok := data.Data.(map[string]interface{})
 	if !ok {
-		return nil, fmt.Errorf("failed type assertion of data: %v", data.Data)
+		return nil, fmt.Errorf("%w on data: %v", ErrFailedTypeAssertion, data.Data)
 	}
 
 	// Check if results is not nil before converting it to slice of interfaces
@@ -333,7 +333,7 @@ func (t *TSDB) Query(ctx context.Context, query string, queryTime time.Time) (Me
 
 		var ok bool
 		if results, ok = r.([]interface{}); !ok {
-			return nil, fmt.Errorf("failed type assertion of result: %v", r)
+			return nil, fmt.Errorf("%w on result: %v", ErrFailedTypeAssertion, r)
 		}
 
 		for _, res := range results {
