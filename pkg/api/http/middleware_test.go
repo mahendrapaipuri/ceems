@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"database/sql"
 	"net/http"
 	"net/http/httptest"
@@ -11,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func mockAdminUsers(db *sql.DB, logger log.Logger) []string {
+func mockAdminUsers(_ context.Context, _ *sql.DB, _ log.Logger) []string {
 	return []string{"adm1"}
 }
 

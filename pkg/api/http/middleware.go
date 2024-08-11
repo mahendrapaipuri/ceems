@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"database/sql"
 	"net/http"
 	"net/url"
@@ -32,7 +33,7 @@ type authenticationMiddleware struct {
 	routerPrefix    string
 	whitelistedURLs *regexp.Regexp
 	db              *sql.DB
-	adminUsers      func(*sql.DB, log.Logger) []string
+	adminUsers      func(context.Context, *sql.DB, log.Logger) []string
 }
 
 // Middleware function, which will be called for each request.
@@ -94,7 +95,7 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 		r.URL.RawQuery = q.Encode()
 
 		// Fetch admin users from DB
-		admUsers = amw.adminUsers(amw.db, amw.logger)
+		admUsers = amw.adminUsers(r.Context(), amw.db, amw.logger)
 
 		// If current user is in list of admin users, get "actual" user from
 		// X-Dashboard-User header. For normal users, this header will be exactly same

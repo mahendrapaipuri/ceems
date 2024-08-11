@@ -160,8 +160,10 @@ func (lb *loadBalancer) ValidateClusterIDs(ctx context.Context) error {
 
 	if lb.amw.ceems.db != nil {
 		//nolint:gosec
-		rows, err := lb.amw.ceems.db.QueryContext(ctx, "SELECT DISTINCT cluster_id, resource_manager FROM "+ceems_api_base.UnitsDBTableName)
-		if err != nil || rows.Err() != nil {
+		rows, err := lb.amw.ceems.db.QueryContext(
+			ctx, "SELECT DISTINCT cluster_id, resource_manager FROM "+ceems_api_base.UnitsDBTableName,
+		)
+		if err != nil {
 			return err
 		}
 		defer rows.Close()
@@ -173,6 +175,12 @@ func (lb *loadBalancer) ValidateClusterIDs(ctx context.Context) error {
 			}
 
 			clusters = append(clusters, cluster)
+		}
+
+		// Ref: http://go-database-sql.org/errors.html
+		// Get all the errors during iteration
+		if err := rows.Err(); err != nil {
+			level.Error(lb.logger).Log("msg", "Errors during scanning rows", "err", err)
 		}
 
 		goto validate

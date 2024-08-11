@@ -13,14 +13,14 @@ import (
 )
 
 // adminUsers returns a slice of admin users fetched from DB.
-func adminUsers(dbConn *sql.DB, logger log.Logger) []string {
+func adminUsers(ctx context.Context, dbConn *sql.DB, logger log.Logger) []string {
 	var users []string
 
 	//nolint:gosec
-	rows, err := dbConn.Query(
-		"SELECT users FROM " + base.AdminUsersDBTableName,
+	rows, err := dbConn.QueryContext(
+		ctx, "SELECT users FROM "+base.AdminUsersDBTableName,
 	)
-	if err != nil || rows.Err() != nil {
+	if err != nil {
 		level.Error(logger).Log("msg", "Failed to query for admin users", "err", err)
 
 		return nil
@@ -41,6 +41,12 @@ func adminUsers(dbConn *sql.DB, logger log.Logger) []string {
 				users = append(users, userString)
 			}
 		}
+	}
+
+	// Ref: http://go-database-sql.org/errors.html
+	// Get all the errors during iteration
+	if err := rows.Err(); err != nil {
+		level.Error(logger).Log("msg", "Errors during scanning rows", "err", err)
 	}
 
 	return users
@@ -66,7 +72,7 @@ func VerifyOwnership(
 	}
 
 	// If current user is in list of admin users, pass the check
-	if slices.Contains(adminUsers(db, logger), user) {
+	if slices.Contains(adminUsers(ctx, db, logger), user) {
 		return true
 	}
 
