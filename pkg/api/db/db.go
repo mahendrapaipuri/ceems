@@ -405,8 +405,9 @@ func (s *stats) purgeExpiredUnits(ctx context.Context, tx *sql.Tx) error {
 
 	// Get changes
 	var unitsDeleted int
-	_ = tx.QueryRowContext(ctx, "SELECT changes()").Scan(&unitsDeleted)
-	level.Debug(s.logger).Log("units_deleted", unitsDeleted)
+	if err := tx.QueryRowContext(ctx, "SELECT changes()").Scan(&unitsDeleted); err == nil {
+		level.Debug(s.logger).Log("units_deleted", unitsDeleted)
+	}
 
 	// Purge stale usage data
 	deleteUsageQuery := fmt.Sprintf(
@@ -420,8 +421,9 @@ func (s *stats) purgeExpiredUnits(ctx context.Context, tx *sql.Tx) error {
 
 	// Get changes
 	var usageDeleted int
-	_ = tx.QueryRowContext(ctx, "SELECT changes()").Scan(&usageDeleted)
-	level.Debug(s.logger).Log("usage_deleted", usageDeleted)
+	if err := tx.QueryRowContext(ctx, "SELECT changes()").Scan(&usageDeleted); err == nil {
+		level.Debug(s.logger).Log("usage_deleted", usageDeleted)
+	}
 
 	return nil
 }

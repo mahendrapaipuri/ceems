@@ -182,6 +182,6 @@ func TestAdminUsers(t *testing.T) {
 	// Expected users
 	expectedUsers := []string{"adm1", "adm2", "adm3", "adm4", "adm5", "adm6"}
 
-	users := adminUsers(db, log.NewNopLogger())
+	users := adminUsers(context.Background(), db, log.NewNopLogger())
 	assert.Equal(t, expectedUsers, users)
 }

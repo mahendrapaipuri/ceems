@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -116,6 +117,12 @@ func scanRows[T any](rows *sql.Rows, numRows int) ([]T, error) {
 	// in the response
 	if scanErrs > 0 {
 		err = fmt.Errorf("failed to scan %d rows", scanErrs)
+	}
+
+	// Ref: http://go-database-sql.org/errors.html
+	// Get all the errors during iteration
+	if errRows := rows.Err(); errRows != nil {
+		err = errors.Join(err, errRows)
 	}
 
 	return values, err

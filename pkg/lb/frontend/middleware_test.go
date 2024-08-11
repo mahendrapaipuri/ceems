@@ -159,7 +159,7 @@ func setupCEEMSAPI(db *sql.DB) *httptest.Server {
 		uuids := r.URL.Query()["uuid"]
 		rmIDs := r.URL.Query()["cluster_id"]
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
 		// Check if user is owner of the queries uuids
