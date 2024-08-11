@@ -14,6 +14,10 @@ import (
 	"github.com/go-kit/log/level"
 )
 
+const (
+	sudoCmd = "sudo"
+)
+
 // Execute command and return stdout/stderr.
 func Execute(cmd string, args []string, env []string, logger log.Logger) ([]byte, error) {
 	level.Debug(logger).Log("msg", "Executing", "command", cmd, "args", strings.Join(args, " "))
@@ -25,11 +29,15 @@ func Execute(cmd string, args []string, env []string, logger log.Logger) ([]byte
 		execCmd.Env = append(os.Environ(), env...)
 	}
 
+	// Start child process in its own process group so that interrupt signal will
+	// not stop the command
+	execCmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+
 	// Attach a separate terminal less session to the subprocess
 	// This is to avoid prompting for password when we run command with sudo
 	// Ref: https://stackoverflow.com/questions/13432947/exec-external-program-script-and-detect-if-it-requests-user-input
-	if cmd == "sudo" {
-		execCmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	if cmd == sudoCmd {
+		execCmd.SysProcAttr.Setsid = true
 	}
 
 	// Execute command
@@ -59,8 +67,82 @@ func ExecuteAs(cmd string, args []string, uid int, gid int, env []string, logger
 		gidInt32 = uint32(gid)
 	}
 
+	// Start child process in its own process group so that interrupt signal will
+	// not stop the command
+	execCmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+
 	// Set uid and gid for process
-	execCmd.SysProcAttr = &syscall.SysProcAttr{}
+	execCmd.SysProcAttr.Credential = &syscall.Credential{Uid: uidInt32, Gid: gidInt32}
+
+	// If env is not nil pointer, add env vars into subprocess cmd
+	if env != nil {
+		execCmd.Env = append(os.Environ(), env...)
+	}
+
+	// Execute command
+	out, err := execCmd.CombinedOutput()
+	if err != nil {
+		level.Error(logger).
+			Log("msg", "Error executing command as user", "command", cmd, "args", strings.Join(args, " "), "uid", uid, "gid", gid, "err", err)
+	}
+
+	return out, err
+}
+
+// ExecuteContext executes a command with context and return stdout/stderr.
+func ExecuteContext(ctx context.Context, cmd string, args []string, env []string, logger log.Logger) ([]byte, error) {
+	level.Debug(logger).Log("msg", "Executing with context", "command", cmd, "args", strings.Join(args, " "))
+
+	execCmd := exec.CommandContext(ctx, cmd, args...)
+
+	// If env is not nil pointer, add env vars into subprocess cmd
+	if env != nil {
+		execCmd.Env = append(os.Environ(), env...)
+	}
+
+	// Start child process in its own process group so that interrupt signal will
+	// not stop the command
+	execCmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+
+	// Attach a separate terminal less session to the subprocess
+	// This is to avoid prompting for password when we run command with sudo
+	// Ref: https://stackoverflow.com/questions/13432947/exec-external-program-script-and-detect-if-it-requests-user-input
+	if cmd == sudoCmd {
+		execCmd.SysProcAttr.Setsid = true
+	}
+
+	// Execute command
+	out, err := execCmd.CombinedOutput()
+	if err != nil {
+		level.Error(logger).
+			Log("msg", "Error executing command", "command", cmd, "args", strings.Join(args, " "), "err", err)
+	}
+
+	return out, err
+}
+
+// ExecuteAsContext executes a command as a given UID and GID with context and return stdout/stderr.
+func ExecuteAsContext(ctx context.Context, cmd string, args []string, uid int, gid int, env []string, logger log.Logger) ([]byte, error) {
+	level.Debug(logger).
+		Log("msg", "Executing as user with context", "command", cmd, "args", strings.Join(args, " "), "uid", uid, "gid", gid)
+
+	execCmd := exec.CommandContext(ctx, cmd, args...)
+
+	// Check bounds on uid and gid before converting into int32
+	var uidInt32, gidInt32 uint32
+	if uid > 0 && uid <= math.MaxInt32 {
+		uidInt32 = uint32(uid)
+	}
+
+	if gid > 0 && gid <= math.MaxInt32 {
+		gidInt32 = uint32(gid)
+	}
+
+	// Start child process in its own process group so that interrupt signal will
+	// not stop the command
+	execCmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+
+	// Set uid and gid for process
 	execCmd.SysProcAttr.Credential = &syscall.Credential{Uid: uidInt32, Gid: gidInt32}
 
 	// If env is not nil pointer, add env vars into subprocess cmd
@@ -98,11 +180,15 @@ func ExecuteWithTimeout(cmd string, args []string, timeout int, env []string, lo
 		execCmd.Env = append(os.Environ(), env...)
 	}
 
+	// Start child process in its own process group so that interrupt signal will
+	// not stop the command
+	execCmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+
 	// Attach a separate terminal less session to the subprocess
 	// This is to avoid prompting for password when we run command with sudo
 	// Ref: https://stackoverflow.com/questions/13432947/exec-external-program-script-and-detect-if-it-requests-user-input
-	if cmd == "sudo" {
-		execCmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	if cmd == sudoCmd {
+		execCmd.SysProcAttr.Setsid = true
 	}
 
 	// The signal to send to the children when parent receives a kill signal
@@ -156,8 +242,11 @@ func ExecuteAsWithTimeout(
 		gidInt32 = uint32(gid)
 	}
 
+	// Start child process in its own process group so that interrupt signal will
+	// not stop the command
+	execCmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+
 	// Set uid and gid for process
-	execCmd.SysProcAttr = &syscall.SysProcAttr{}
 	execCmd.SysProcAttr.Credential = &syscall.Credential{Uid: uidInt32, Gid: gidInt32}
 
 	// Execute command

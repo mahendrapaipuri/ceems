@@ -3,6 +3,7 @@
 package slurm
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -80,13 +81,13 @@ func New(cluster models.Cluster, logger log.Logger) (resource.Fetcher, error) {
 }
 
 // FetchUnits fetches jobs from slurm.
-func (s *slurmScheduler) FetchUnits(start time.Time, end time.Time) ([]models.ClusterUnits, error) {
+func (s *slurmScheduler) FetchUnits(ctx context.Context, start time.Time, end time.Time) ([]models.ClusterUnits, error) {
 	// Fetch each cluster one by one to reduce memory footprint
 	var jobs []models.Unit
 
 	var err error
 	if s.fetchMode == cliMode {
-		if jobs, err = s.fetchFromSacct(start, end); err != nil {
+		if jobs, err = s.fetchFromSacct(ctx, start, end); err != nil {
 			level.Error(s.logger).
 				Log("msg", "Failed to execute SLURM sacct command", "cluster_id", s.cluster.ID, "err", err)
 
@@ -101,6 +102,7 @@ func (s *slurmScheduler) FetchUnits(start time.Time, end time.Time) ([]models.Cl
 
 // FetchUsersProjects fetches current SLURM users and accounts.
 func (s *slurmScheduler) FetchUsersProjects(
+	ctx context.Context,
 	current time.Time,
 ) ([]models.ClusterUsers, []models.ClusterProjects, error) {
 	// Fetch each cluster one by one to reduce memory footprint
@@ -110,7 +112,7 @@ func (s *slurmScheduler) FetchUsersProjects(
 
 	var err error
 	if s.fetchMode == cliMode {
-		if users, projects, err = s.fetchFromSacctMgr(current); err != nil {
+		if users, projects, err = s.fetchFromSacctMgr(ctx, current); err != nil {
 			level.Error(s.logger).
 				Log("msg", "Failed to execute SLURM sacctmgr command", "cluster_id", s.cluster.ID, "err", err)
 
@@ -128,12 +130,12 @@ func (s *slurmScheduler) FetchUsersProjects(
 }
 
 // Get jobs from slurm sacct command.
-func (s *slurmScheduler) fetchFromSacct(start time.Time, end time.Time) ([]models.Unit, error) {
+func (s *slurmScheduler) fetchFromSacct(ctx context.Context, start time.Time, end time.Time) ([]models.Unit, error) {
 	startTime := start.Format(base.DatetimeLayout)
 	endTime := end.Format(base.DatetimeLayout)
 
 	// Execute sacct command between start and end times
-	sacctOutput, err := s.runSacctCmd(startTime, endTime)
+	sacctOutput, err := s.runSacctCmd(ctx, startTime, endTime)
 	if err != nil {
 		return []models.Unit{}, err
 	}
@@ -147,12 +149,12 @@ func (s *slurmScheduler) fetchFromSacct(start time.Time, end time.Time) ([]model
 }
 
 // Get user project association from slurm sacctmgr command.
-func (s *slurmScheduler) fetchFromSacctMgr(current time.Time) ([]models.User, []models.Project, error) {
+func (s *slurmScheduler) fetchFromSacctMgr(ctx context.Context, current time.Time) ([]models.User, []models.Project, error) {
 	// Get current time string
 	currentTime := current.Format(base.DatetimeLayout)
 
 	// Execute sacctmgr command
-	sacctMgrOutput, err := s.runSacctMgrCmd()
+	sacctMgrOutput, err := s.runSacctMgrCmd(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -167,7 +169,7 @@ func (s *slurmScheduler) fetchFromSacctMgr(current time.Time) ([]models.User, []
 }
 
 // Run sacct command and return output.
-func (s *slurmScheduler) runSacctCmd(startTime string, endTime string) ([]byte, error) {
+func (s *slurmScheduler) runSacctCmd(ctx context.Context, startTime string, endTime string) ([]byte, error) {
 	// If we are fetching historical data, do not use RUNNING state as it can report
 	// same job twice once when it was still in running state and once it is in completed
 	// state.
@@ -204,20 +206,20 @@ func (s *slurmScheduler) runSacctCmd(startTime string, endTime string) ([]byte, 
 
 	// Run command as slurm user
 	if s.cmdExecMode == capabilityMode {
-		return internal_osexec.ExecuteAs(sacctPath, args, slurmUserUID, slurmUserGID, env, s.logger)
+		return internal_osexec.ExecuteAsContext(ctx, sacctPath, args, slurmUserUID, slurmUserGID, env, s.logger)
 	} else if s.cmdExecMode == sudoMode {
 		// Important that we need to export env as well as we set environment variables in the
 		// command execution
 		args = append([]string{"-E", sacctPath}, args...)
 
-		return internal_osexec.Execute(sudoMode, args, env, s.logger)
+		return internal_osexec.ExecuteContext(ctx, sudoMode, args, env, s.logger)
 	}
 
-	return internal_osexec.Execute(sacctPath, args, env, s.logger)
+	return internal_osexec.ExecuteContext(ctx, sacctPath, args, env, s.logger)
 }
 
 // Run sacctmgr command and return output.
-func (s *slurmScheduler) runSacctMgrCmd() ([]byte, error) {
+func (s *slurmScheduler) runSacctMgrCmd(ctx context.Context) ([]byte, error) {
 	// Use jobIDRaw that outputs the array jobs as regular job IDs instead of id_array format
 	args := []string{"--parsable2", "--noheader", "list", "associations", "format=Account,User"}
 
@@ -232,16 +234,16 @@ func (s *slurmScheduler) runSacctMgrCmd() ([]byte, error) {
 
 	// Run command as slurm user
 	if s.cmdExecMode == capabilityMode {
-		return internal_osexec.ExecuteAs(sacctMgrPath, args, slurmUserUID, slurmUserGID, env, s.logger)
+		return internal_osexec.ExecuteAsContext(ctx, sacctMgrPath, args, slurmUserUID, slurmUserGID, env, s.logger)
 	} else if s.cmdExecMode == sudoMode {
 		// Important that we need to export env as well as we set environment variables in the
 		// command execution
 		args = append([]string{"-E", sacctMgrPath}, args...)
 
-		return internal_osexec.Execute(sudoMode, args, env, s.logger)
+		return internal_osexec.ExecuteContext(ctx, sudoMode, args, env, s.logger)
 	}
 
-	return internal_osexec.Execute(sacctMgrPath, args, env, s.logger)
+	return internal_osexec.ExecuteContext(ctx, sacctMgrPath, args, env, s.logger)
 }
 
 // Run preflight checks on provided config.

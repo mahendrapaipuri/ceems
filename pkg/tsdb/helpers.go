@@ -1,14 +1,15 @@
 package tsdb
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
 )
 
-func Request(url string, client *http.Client) (interface{}, error) {
+func Request(ctx context.Context, url string, client *http.Client) (interface{}, error) {
 	// Create a new GET request to reach out to TSDB
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}

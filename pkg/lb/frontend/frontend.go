@@ -29,6 +29,11 @@ import (
 	"github.com/prometheus/exporter-toolkit/web"
 )
 
+// Custom errors.
+var (
+	ErrUnknownClusterID = errors.New("unknown cluster ID")
+)
+
 // RetryContextKey is the key used to set context value for retry.
 type RetryContextKey struct{}
 
@@ -47,7 +52,7 @@ type LoadBalancer interface {
 	Serve(w http.ResponseWriter, r *http.Request)
 	Start() error
 	Shutdown(ctx context.Context) error
-	ValidateClusterIDs() error
+	ValidateClusterIDs(ctx context.Context) error
 }
 
 // Config makes a server config from CLI args.
@@ -138,7 +143,7 @@ outside:
 }
 
 // ValidateClusterIDs validates the cluster IDs by checking them against DB.
-func (lb *loadBalancer) ValidateClusterIDs() error {
+func (lb *loadBalancer) ValidateClusterIDs(ctx context.Context) error {
 	// Fetch all cluster IDs set in config file
 	for id := range lb.manager.Backends() {
 		lb.amw.clusterIDs = append(lb.amw.clusterIDs, id)
@@ -155,7 +160,7 @@ func (lb *loadBalancer) ValidateClusterIDs() error {
 
 	if lb.amw.ceems.db != nil {
 		//nolint:gosec
-		rows, err := lb.amw.ceems.db.Query("SELECT DISTINCT cluster_id, resource_manager FROM " + ceems_api_base.UnitsDBTableName)
+		rows, err := lb.amw.ceems.db.QueryContext(ctx, "SELECT DISTINCT cluster_id, resource_manager FROM "+ceems_api_base.UnitsDBTableName)
 		if err != nil || rows.Err() != nil {
 			return err
 		}
@@ -175,7 +180,7 @@ func (lb *loadBalancer) ValidateClusterIDs() error {
 
 	if lb.amw.ceems.clustersEndpoint() != nil {
 		// Create a new GET request
-		req, err := http.NewRequest(http.MethodGet, lb.amw.ceems.clustersEndpoint().String(), nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, lb.amw.ceems.clustersEndpoint().String(), nil)
 		if err != nil {
 			return err
 		}
@@ -234,8 +239,8 @@ validate:
 	for _, id := range lb.amw.clusterIDs {
 		if !slices.Contains(actualClusterIDs, id) {
 			return fmt.Errorf(
-				"unknown cluster ID %s. Cluster IDs in CEEMS DB are %s",
-				id, strings.Join(actualClusterIDs, ","),
+				"%w: %s. Cluster IDs in CEEMS DB are %s",
+				ErrUnknownClusterID, id, strings.Join(actualClusterIDs, ","),
 			)
 		}
 	}

@@ -1,6 +1,7 @@
 package common
 
 import (
+	"context"
 	"encoding/json"
 	"math"
 	"net/http"
@@ -167,7 +168,7 @@ func TestGrafanaClient(t *testing.T) {
 	client, err = NewGrafanaClient(config, log.NewNopLogger())
 	require.NoError(t, err, "failed to create Grafana client")
 
-	teamMembers, err := client.TeamMembers([]string{"1"})
+	teamMembers, err := client.TeamMembers(context.Background(), []string{"1"})
 	require.NoError(t, err, "failed to fetch team members")
 	assert.Equal(t, teamMembers[0], "Bearer "+expected, "headers do not match")
 }

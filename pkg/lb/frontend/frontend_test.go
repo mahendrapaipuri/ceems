@@ -209,7 +209,7 @@ func TestNewFrontendTwoGroups(t *testing.T) {
 	require.NoError(t, err)
 
 	// Validate cluster IDs
-	require.NoError(t, lb.ValidateClusterIDs())
+	require.NoError(t, lb.ValidateClusterIDs(context.Background()))
 
 	tests := []struct {
 		name      string
@@ -324,7 +324,7 @@ func TestValidateClusterIDsWithDBPass(t *testing.T) {
 	require.NoError(t, err)
 
 	// Validate cluster IDs
-	require.NoError(t, lb.ValidateClusterIDs())
+	require.NoError(t, lb.ValidateClusterIDs(context.Background()))
 }
 
 func TestValidateClusterIDsWithDBFail(t *testing.T) {
@@ -360,7 +360,7 @@ func TestValidateClusterIDsWithDBFail(t *testing.T) {
 	require.NoError(t, err)
 
 	// Validate cluster IDs
-	require.Error(t, lb.ValidateClusterIDs())
+	require.Error(t, lb.ValidateClusterIDs(context.Background()))
 }
 
 func TestValidateClusterIDsWithAPIPass(t *testing.T) {
@@ -412,7 +412,7 @@ func TestValidateClusterIDsWithAPIPass(t *testing.T) {
 	require.NoError(t, err)
 
 	// Validate cluster IDs
-	require.NoError(t, lb.ValidateClusterIDs())
+	require.NoError(t, lb.ValidateClusterIDs(context.Background()))
 }
 
 func TestValidateClusterIDsWithAPIFail(t *testing.T) {
@@ -456,5 +456,5 @@ func TestValidateClusterIDsWithAPIFail(t *testing.T) {
 	require.NoError(t, err)
 
 	// Validate cluster IDs
-	require.Error(t, lb.ValidateClusterIDs())
+	require.Error(t, lb.ValidateClusterIDs(context.Background()))
 }

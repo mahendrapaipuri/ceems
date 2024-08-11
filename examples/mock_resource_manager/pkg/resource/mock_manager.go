@@ -3,6 +3,7 @@
 package resource
 
 import (
+	"context"
 	"os"
 	"time"
 
@@ -61,7 +62,7 @@ func NewMockManager(cluster models.Cluster, logger log.Logger) (resource.Fetcher
 //
 // When making Unit stucts, ensure to format the datetime using base.DatetimeLayout
 // Also ensure to set StartTS and EndTS fields to start and end times in unix milliseconds epoch
-func (s *mockManager) FetchUnits(start time.Time, end time.Time) ([]models.ClusterUnits, error) {
+func (s *mockManager) FetchUnits(_ context.Context, _ time.Time, _ time.Time) ([]models.ClusterUnits, error) {
 	return []models.ClusterUnits{
 		{
 			Cluster: models.Cluster{
@@ -81,7 +82,7 @@ func (s *mockManager) FetchUnits(start time.Time, end time.Time) ([]models.Clust
 
 // Add the logic here to get users and projects/accounts/tenants/namespaces from
 // resource manager
-func (s *mockManager) FetchUsersProjects(current time.Time) ([]models.ClusterUsers, []models.ClusterProjects, error) {
+func (s *mockManager) FetchUsersProjects(_ context.Context, _ time.Time) ([]models.ClusterUsers, []models.ClusterProjects, error) {
 	return []models.ClusterUsers{
 			{
 				Cluster: models.Cluster{

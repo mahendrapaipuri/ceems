@@ -3,6 +3,7 @@
 package resource
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -22,6 +23,7 @@ import (
 var (
 	ErrDuplID         = errors.New("duplicate ID found in clusters config")
 	ErrUnknownManager = errors.New("unknown resource manager found in the config")
+	ErrInvalidID      = errors.New("invalid cluster ID. It must contain only [a-zA-Z0-9-_]")
 )
 
 // Config contains the configuration of resource manager cluster(s).
@@ -32,9 +34,9 @@ type Config[T any] struct {
 // Fetcher is the interface resource manager has to implement.
 type Fetcher interface {
 	// FetchUnits fetches compute units between start and end times
-	FetchUnits(start time.Time, end time.Time) ([]models.ClusterUnits, error)
+	FetchUnits(ctx context.Context, start time.Time, end time.Time) ([]models.ClusterUnits, error)
 	// FetchUsersProjects fetches latest projects, users and their associations
-	FetchUsersProjects(currentTime time.Time) ([]models.ClusterUsers, []models.ClusterProjects, error)
+	FetchUsersProjects(ctx context.Context, currentTime time.Time) ([]models.ClusterUsers, []models.ClusterProjects, error)
 }
 
 // Manager implements the interface to fetch compute units from different resource managers.
@@ -77,10 +79,7 @@ func checkConfig(managers []string, config *Config[models.Cluster]) (map[string]
 		}
 
 		if base.InvalidIDRegex.MatchString(config.Clusters[i].ID) {
-			return nil, fmt.Errorf(
-				"invalid ID %s found in clusters config. It must contain only [a-zA-Z0-9-_]",
-				config.Clusters[i].ID,
-			)
+			return nil, fmt.Errorf("%w: %s", ErrInvalidID, config.Clusters[i].ID)
 		}
 
 		IDs = append(IDs, config.Clusters[i].ID)
@@ -174,7 +173,7 @@ func New(logger log.Logger) (*Manager, error) {
 }
 
 // FetchUnits implements collection jobs between start and end times.
-func (b Manager) FetchUnits(start time.Time, end time.Time) ([]models.ClusterUnits, error) {
+func (b Manager) FetchUnits(ctx context.Context, start time.Time, end time.Time) ([]models.ClusterUnits, error) {
 	// Measure elapsed time
 	defer common.TimeTrack(time.Now(), "units fetcher", b.Logger)
 
@@ -188,7 +187,7 @@ func (b Manager) FetchUnits(start time.Time, end time.Time) ([]models.ClusterUni
 
 	for _, fetcher := range b.Fetchers {
 		go func(f Fetcher) {
-			units, err := f.FetchUnits(start, end)
+			units, err := f.FetchUnits(ctx, start, end)
 			if err != nil {
 				unitFetcherLock.Lock()
 				errs = errors.Join(errs, err)
@@ -211,7 +210,7 @@ func (b Manager) FetchUnits(start time.Time, end time.Time) ([]models.ClusterUni
 }
 
 // FetchUsersProjects fetches latest projects and users for each cluster.
-func (b Manager) FetchUsersProjects(currentTime time.Time) ([]models.ClusterUsers, []models.ClusterProjects, error) {
+func (b Manager) FetchUsersProjects(ctx context.Context, currentTime time.Time) ([]models.ClusterUsers, []models.ClusterProjects, error) {
 	// Measure elapsed time
 	defer common.TimeTrack(time.Now(), "users and projects fetcher", b.Logger)
 
@@ -227,7 +226,7 @@ func (b Manager) FetchUsersProjects(currentTime time.Time) ([]models.ClusterUser
 
 	for _, fetcher := range b.Fetchers {
 		go func(f Fetcher) {
-			users, projects, err := f.FetchUsersProjects(currentTime)
+			users, projects, err := f.FetchUsersProjects(ctx, currentTime)
 			if err != nil {
 				userFetcherLock.Lock()
 				errs = errors.Join(errs, err)

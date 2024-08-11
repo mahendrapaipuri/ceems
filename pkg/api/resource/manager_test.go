@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -30,7 +31,7 @@ func NewMockResourceManager(cluster models.Cluster, logger log.Logger) (Fetcher,
 }
 
 // Return empty units response.
-func (d *mockResourceManager) FetchUnits(start time.Time, end time.Time) ([]models.ClusterUnits, error) {
+func (d *mockResourceManager) FetchUnits(_ context.Context, start time.Time, end time.Time) ([]models.ClusterUnits, error) {
 	return []models.ClusterUnits{
 		{
 			Cluster: models.Cluster{ID: "mock"},
@@ -45,6 +46,7 @@ func (d *mockResourceManager) FetchUnits(start time.Time, end time.Time) ([]mode
 
 // Return empty projects response.
 func (d *mockResourceManager) FetchUsersProjects(
+	_ context.Context,
 	currentTime time.Time,
 ) ([]models.ClusterUsers, []models.ClusterProjects, error) {
 	return []models.ClusterUsers{
@@ -280,6 +282,7 @@ func TestMixedClusterConfig(t *testing.T) {
 func TestNewManager(t *testing.T) {
 	// Make mock config
 	base.ConfigFilePath = mockConfig(t.TempDir(), "mock_instance")
+	ctx := context.Background()
 
 	// Register mock manager
 	Register("mock", NewMockResourceManager)
@@ -289,12 +292,12 @@ func TestNewManager(t *testing.T) {
 	require.NoError(t, err)
 
 	// Fetch units
-	units, err := manager.FetchUnits(time.Now(), time.Now())
+	units, err := manager.FetchUnits(ctx, time.Now(), time.Now())
 	require.NoError(t, err)
 	require.Len(t, units[0].Units, 1)
 
 	// Fetch users and projects
-	users, projects, err := manager.FetchUsersProjects(time.Now())
+	users, projects, err := manager.FetchUsersProjects(ctx, time.Now())
 	require.NoError(t, err)
 
 	// Index 0 seems to be default manager
@@ -305,6 +308,7 @@ func TestNewManager(t *testing.T) {
 func TestNewManagerWithNoClusters(t *testing.T) {
 	// Make mock config
 	base.ConfigFilePath = mockConfig(t.TempDir(), "empty_instance")
+	ctx := context.Background()
 
 	// Register mock manager
 	Register("mock", NewMockResourceManager)
@@ -314,12 +318,12 @@ func TestNewManagerWithNoClusters(t *testing.T) {
 	require.NoError(t, err)
 
 	// Fetch units
-	units, err := manager.FetchUnits(time.Now(), time.Now())
+	units, err := manager.FetchUnits(ctx, time.Now(), time.Now())
 	require.NoError(t, err)
 	require.Empty(t, units[0].Units)
 
 	// Fetch users and projects
-	users, projects, err := manager.FetchUsersProjects(time.Now())
+	users, projects, err := manager.FetchUsersProjects(ctx, time.Now())
 	require.NoError(t, err)
 
 	// Index 0 seems to be default manager

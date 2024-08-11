@@ -1,6 +1,7 @@
 package grafana
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -56,7 +57,7 @@ func TestGrafanaTeamMembersQuerySuccess(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, grafana.Available())
 
-	m, err := grafana.TeamMembers([]string{"0"})
+	m, err := grafana.TeamMembers(context.Background(), []string{"0"})
 	require.NoError(t, err)
 	assert.Equal(t, []string{"foo", "bar"}, m)
 }
@@ -80,6 +81,6 @@ func TestGrafanaTeamMembersQueryFailNoTeamID(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, grafana.Available())
 
-	_, err = grafana.teamMembers("")
+	_, err = grafana.teamMembers(context.Background(), "")
 	assert.Error(t, err)
 }

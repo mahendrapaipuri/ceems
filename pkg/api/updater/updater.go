@@ -6,6 +6,7 @@
 package updater
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -24,6 +25,7 @@ import (
 var (
 	ErrDuplID         = errors.New("duplicate ID found in updaters config")
 	ErrUnknownUpdater = errors.New("unknown updater found in the config")
+	ErrInvalidID      = errors.New("invalid updater ID. It must contain only [a-zA-Z0-9-_]")
 )
 
 // Instance contains the configuration of the given updater.
@@ -42,7 +44,7 @@ type Config[T any] struct {
 
 // Updater interface.
 type Updater interface {
-	Update(startTime time.Time, endTime time.Time, units []models.ClusterUnits) []models.ClusterUnits
+	Update(ctx context.Context, startTime time.Time, endTime time.Time, units []models.ClusterUnits) []models.ClusterUnits
 }
 
 // UnitUpdater implements the interface to update compute units from different updaters.
@@ -82,10 +84,7 @@ func checkConfig(updaters []string, config *Config[Instance]) (map[string][]Inst
 		}
 
 		if base.InvalidIDRegex.MatchString(config.Instances[i].ID) {
-			return nil, fmt.Errorf(
-				"invalid ID %s found in updaters config. It must contain only [a-zA-Z0-9-_]",
-				config.Instances[i].ID,
-			)
+			return nil, fmt.Errorf("%w: %s", ErrInvalidID, config.Instances[i].ID)
 		}
 
 		IDs = append(IDs, config.Instances[i].ID)
@@ -164,6 +163,7 @@ func New(logger log.Logger) (*UnitUpdater, error) {
 
 // Update implements updating units using registered updaters.
 func (u UnitUpdater) Update(
+	ctx context.Context,
 	startTime time.Time,
 	endTime time.Time,
 	clusterUnits []models.ClusterUnits,
@@ -188,7 +188,7 @@ func (u UnitUpdater) Update(
 			// Check if updaterID is valid
 			if updater, ok := u.Updaters[updaterID]; ok {
 				// Only update Units slice and do not touch cluster meta data
-				updatedClusterUnits := updater.Update(startTime, endTime, []models.ClusterUnits{clusterUnits[i]})
+				updatedClusterUnits := updater.Update(ctx, startTime, endTime, []models.ClusterUnits{clusterUnits[i]})
 				// Just to ensure we wont have nil pointer dereferencing errors in runtime
 				if len(updatedClusterUnits) > 0 {
 					clusterUnits[i].Units = updatedClusterUnits[0].Units

@@ -270,7 +270,7 @@ func (lb *CEEMSLoadBalancer) Main() error {
 	}
 
 	// Validate configured cluster IDs against the ones in CEEMS DB
-	if err := loadBalancer.ValidateClusterIDs(); err != nil {
+	if err := loadBalancer.ValidateClusterIDs(ctx); err != nil {
 		return err
 	}
 
