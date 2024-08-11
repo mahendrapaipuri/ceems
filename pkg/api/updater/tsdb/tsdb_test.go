@@ -1,6 +1,7 @@
 package tsdb
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -264,7 +265,7 @@ func TestTSDBUpdateSuccessSingleInstance(t *testing.T) {
 	tsdb, err := New(instance, log.NewNopLogger())
 	require.NoError(t, err)
 
-	updatedUnits := tsdb.Update(time.Now().Add(-5*time.Minute), time.Now(), units)
+	updatedUnits := tsdb.Update(context.Background(), time.Now().Add(-5*time.Minute), time.Now(), units)
 	for i := range len(expectedUnits) {
 		assert.Equal(t, expectedUnits[i], updatedUnits[0].Units[i], fmt.Sprintf("Unit: %d", i))
 	}
@@ -372,7 +373,7 @@ func TestTSDBUpdateFailMaxDuration(t *testing.T) {
 	tsdb, err := New(instance, log.NewNopLogger())
 	require.NoError(t, err)
 
-	updatedUnits := tsdb.Update(time.Now().Add(-1*time.Minute), time.Now(), units)
+	updatedUnits := tsdb.Update(context.Background(), time.Now().Add(-1*time.Minute), time.Now(), units)
 	assert.Equal(t, expectedUnits, updatedUnits[0].Units)
 }
 
@@ -401,7 +402,7 @@ func TestTSDBUpdateFailNoUnits(t *testing.T) {
 		t.Errorf("Failed to create TSDB updater instance")
 	}
 
-	updatedUnits := tsdb.Update(time.Now().Add(-5*time.Minute), time.Now(), units)
+	updatedUnits := tsdb.Update(context.Background(), time.Now().Add(-5*time.Minute), time.Now(), units)
 	assert.Empty(t, updatedUnits[0].Units)
 }
 
@@ -453,6 +454,6 @@ func TestTSDBUpdateFailNoTSDB(t *testing.T) {
 	// Stop TSDB server
 	server.Close()
 
-	updatedUnits := tsdb.Update(time.Now().Add(-5*time.Minute), time.Now(), units)
+	updatedUnits := tsdb.Update(context.Background(), time.Now().Add(-5*time.Minute), time.Now(), units)
 	assert.Equal(t, expectedUnits, updatedUnits)
 }

@@ -2,6 +2,7 @@
 package backend
 
 import (
+	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -174,8 +175,12 @@ func (b *tsdbServer) Serve(w http.ResponseWriter, r *http.Request) {
 
 // Fetches retention period from backend TSDB server.
 func (b *tsdbServer) fetchRetentionPeriod() (time.Duration, error) {
+	// Create a context with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
 	// Make a API request to TSDB
-	data, err := tsdb.Request(b.url.JoinPath("api/v1/status/runtimeinfo").String(), b.client)
+	data, err := tsdb.Request(ctx, b.url.JoinPath("api/v1/status/runtimeinfo").String(), b.client)
 	if err != nil {
 		return b.retentionPeriod, fmt.Errorf("failed to make API request to backend: %w", err)
 	}

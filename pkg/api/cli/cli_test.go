@@ -19,7 +19,7 @@ import (
 
 func queryServer(address string) error {
 	client := &http.Client{}
-	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s/api/%s/health", address, base.APIVersion), nil)
+	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s/api/%s/health", address, base.APIVersion), nil) //nolint:noctx
 	req.Header.Set("X-Grafana-User", "usr1")
 
 	resp, err := client.Do(req)

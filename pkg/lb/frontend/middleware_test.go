@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/go-kit/log"
 	http_api "github.com/mahendrapaipuri/ceems/pkg/api/http"
@@ -158,8 +159,11 @@ func setupCEEMSAPI(db *sql.DB) *httptest.Server {
 		uuids := r.URL.Query()["uuid"]
 		rmIDs := r.URL.Query()["cluster_id"]
 
+		ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
+		defer cancel()
+
 		// Check if user is owner of the queries uuids
-		if http_api.VerifyOwnership(context.Background(), user, rmIDs, uuids, db, log.NewNopLogger()) {
+		if http_api.VerifyOwnership(ctx, user, rmIDs, uuids, db, log.NewNopLogger()) { //nolint:contextcheck
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("success"))
 		} else {

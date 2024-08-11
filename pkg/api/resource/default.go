@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"context"
 	"time"
 
 	"github.com/go-kit/log"
@@ -30,7 +31,7 @@ func NewDefaultResourceManager(cluster models.Cluster, logger log.Logger) (Fetch
 }
 
 // Return empty units response.
-func (d *defaultResourceManager) FetchUnits(start time.Time, end time.Time) ([]models.ClusterUnits, error) {
+func (d *defaultResourceManager) FetchUnits(_ context.Context, start time.Time, end time.Time) ([]models.ClusterUnits, error) {
 	level.Info(d.logger).Log("msg", "Empty units fetched from default NoOp cluster")
 
 	return []models.ClusterUnits{
@@ -42,6 +43,7 @@ func (d *defaultResourceManager) FetchUnits(start time.Time, end time.Time) ([]m
 
 // Return empty projects response.
 func (d *defaultResourceManager) FetchUsersProjects(
+	_ context.Context,
 	currentTime time.Time,
 ) ([]models.ClusterUsers, []models.ClusterProjects, error) {
 	level.Info(d.logger).Log("msg", "Empty users and projects fetched from default NoOp cluster")

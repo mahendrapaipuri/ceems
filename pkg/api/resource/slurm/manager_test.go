@@ -1,6 +1,7 @@
 package slurm
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -177,15 +178,16 @@ printf """%s"""`, sacctMgrCmdOutput)
 	start, _ = time.Parse(slurmTimeFormat, "2023-02-21T15:00:00+0100")
 	end, _ = time.Parse(slurmTimeFormat, "2023-02-21T15:15:00+0100")
 	current, _ = time.Parse(slurmTimeFormat, "2023-02-21T15:15:00+0100")
+	ctx := context.Background()
 
 	for _, cluster := range clusters {
 		slurm, err := New(cluster, log.NewNopLogger())
 		require.NoError(t, err)
 
-		_, err = slurm.FetchUnits(start, end)
+		_, err = slurm.FetchUnits(ctx, start, end)
 		require.NoError(t, err)
 
-		_, _, err = slurm.FetchUsersProjects(current)
+		_, _, err = slurm.FetchUsersProjects(ctx, current)
 		require.NoError(t, err)
 	}
 }

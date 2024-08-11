@@ -18,7 +18,7 @@ import (
 	"github.com/mahendrapaipuri/ceems/internal/common"
 	internal_runtime "github.com/mahendrapaipuri/ceems/internal/runtime"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
-	"github.com/mahendrapaipuri/ceems/pkg/api/db"
+	ceems_db "github.com/mahendrapaipuri/ceems/pkg/api/db"
 	ceems_http "github.com/mahendrapaipuri/ceems/pkg/api/http"
 	"github.com/mahendrapaipuri/ceems/pkg/api/resource"
 	"github.com/mahendrapaipuri/ceems/pkg/api/updater"
@@ -51,14 +51,14 @@ func (c *CEEMSAPIAppConfig) UnmarshalYAML(unmarshal func(interface{}) error) err
 	todayMidnight, _ := time.Parse("2006-01-02", time.Now().Format("2006-01-02"))
 	*c = CEEMSAPIAppConfig{
 		CEEMSAPIServerConfig{
-			Data: db.DataConfig{
+			Data: ceems_db.DataConfig{
 				Path:            "data",
 				RetentionPeriod: model.Duration(30 * 24 * time.Hour),
 				UpdateInterval:  model.Duration(15 * time.Minute),
 				BackupInterval:  model.Duration(24 * time.Hour),
 				LastUpdateTime:  todayMidnight,
 			},
-			Admin: db.AdminConfig{
+			Admin: ceems_db.AdminConfig{
 				Grafana: common.GrafanaWebConfig{
 					HTTPClientConfig: config.DefaultHTTPClientConfig,
 				},
@@ -92,8 +92,8 @@ func (c *CEEMSAPIAppConfig) UnmarshalYAML(unmarshal func(interface{}) error) err
 
 // CEEMSAPIServerConfig contains the configuration of CEEMS API server.
 type CEEMSAPIServerConfig struct {
-	Data  db.DataConfig        `yaml:"data"`
-	Admin db.AdminConfig       `yaml:"admin"`
+	Data  ceems_db.DataConfig  `yaml:"data"`
+	Admin ceems_db.AdminConfig `yaml:"admin"`
 	Web   ceems_http.WebConfig `yaml:"web"`
 }
 
@@ -211,8 +211,8 @@ func (b *CEEMSServer) Main() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	// Make DB config
-	dbConfig := &db.Config{
+	// Make DB config.
+	dbConfig := &ceems_db.Config{
 		Logger:          logger,
 		Data:            config.Server.Data,
 		Admin:           config.Server.Admin,
@@ -220,7 +220,7 @@ func (b *CEEMSServer) Main() error {
 		Updater:         updater.New,
 	}
 
-	// Make server config
+	// Make server config.
 	serverConfig := &ceems_http.Config{
 		Logger: logger,
 		Web: ceems_http.WebConfig{
@@ -234,7 +234,7 @@ func (b *CEEMSServer) Main() error {
 		DB: *dbConfig,
 	}
 
-	// Create server instance
+	// Create server instance.
 	apiServer, cleanup, err := ceems_http.New(serverConfig)
 	defer cleanup()
 
@@ -244,20 +244,20 @@ func (b *CEEMSServer) Main() error {
 		return err
 	}
 
-	// Create DB instance
-	collector, err := db.New(dbConfig)
+	// Create DB instance.
+	collector, err := ceems_db.New(dbConfig)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create ceems_server DB", "err", err)
 
 		return err
 	}
 
-	// Declare wait group and tickers
+	// Declare wait group and tickers.
 	var wg sync.WaitGroup
 
 	var dbUpdateTicker, dbBackupTicker *time.Ticker
 
-	// Initialize tickers. We will stop the ticker immediately after signal has received
+	// Initialize tickers. We will stop the ticker immediately after signal has received.
 	dbUpdateTicker = time.NewTicker(time.Duration(config.Server.Data.UpdateInterval))
 
 	wg.Add(1)
@@ -267,10 +267,10 @@ func (b *CEEMSServer) Main() error {
 
 		for {
 			// This will ensure that we will run the method as soon as go routine
-			// starts instead of waiting for ticker to tick
+			// starts instead of waiting for ticker to tick.
 			level.Info(logger).Log("msg", "Updating CEEMS DB")
 
-			if err := collector.Collect(); err != nil {
+			if err := collector.Collect(ctx); err != nil {
 				level.Error(logger).Log("msg", "Failed to fetch data", "err", err)
 			}
 
@@ -285,9 +285,9 @@ func (b *CEEMSServer) Main() error {
 		}
 	}()
 
-	// Start backup go routine only backup path is provided in CLI
+	// Start backup go routine only backup path is provided in CLI.
 	if config.Server.Data.BackupPath != "" {
-		// Initialise ticker and increase waitgroup counter
+		// Initialise ticker and increase waitgroup counter.
 		dbBackupTicker = time.NewTicker(time.Duration(config.Server.Data.BackupInterval))
 
 		wg.Add(1)
@@ -300,10 +300,10 @@ func (b *CEEMSServer) Main() error {
 				case <-dbBackupTicker.C:
 					// Dont run backup as soon as go routine is spawned. In prod, it
 					// can take very long depending on the size of DB and so wait until
-					// first tick to run it
+					// first tick to run it.
 					level.Info(logger).Log("msg", "Backing up CEEMS DB")
 
-					if err := collector.Backup(); err != nil {
+					if err := collector.Backup(ctx); err != nil {
 						level.Error(logger).Log("msg", "Failed to backup DB", "err", err)
 					}
 				case <-ctx.Done():
@@ -316,7 +316,7 @@ func (b *CEEMSServer) Main() error {
 	}
 
 	// Initializing the server in a goroutine so that
-	// it won't block the graceful shutdown handling below
+	// it won't block the graceful shutdown handling below.
 	go func() {
 		if err := apiServer.Start(); err != nil {
 			level.Error(logger).Log("msg", "Failed to start server", "err", err)
@@ -326,17 +326,17 @@ func (b *CEEMSServer) Main() error {
 	// Listen for the interrupt signal.
 	<-ctx.Done()
 
-	// Stop tickers
+	// Stop tickers.
 	dbUpdateTicker.Stop()
 
 	if config.Server.Data.BackupPath != "" {
 		dbBackupTicker.Stop()
 	}
 
-	// Wait for all DB go routines to finish
+	// Wait for all DB go routines to finish.
 	wg.Wait()
 
-	// Close DB only after all DB go routines are done
+	// Close DB only after all DB go routines are done.
 	if err := collector.Stop(); err != nil {
 		level.Error(logger).Log("msg", "Failed to close DB connection", "err", err)
 	}
@@ -346,7 +346,7 @@ func (b *CEEMSServer) Main() error {
 	level.Info(logger).Log("msg", "Shutting down gracefully, press Ctrl+C again to force")
 
 	// The context is used to inform the server it has 5 seconds to finish
-	// the request it is currently handling
+	// the request it is currently handling.
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -379,7 +379,7 @@ func createDirs(config *CEEMSAPIAppConfig) (*CEEMSAPIAppConfig, error) {
 		}
 	}
 
-	// Check if config.Data.Path/config.Data.BackupPath exists and create one if it does not
+	// Check if config.Data.Path/config.Data.BackupPath exists and create one if it does not.
 	if _, err := os.Stat(config.Server.Data.Path); os.IsNotExist(err) {
 		if err := os.MkdirAll(config.Server.Data.Path, 0o750); err != nil {
 			return nil, fmt.Errorf("failed to create data directory: %w", err)

@@ -1,8 +1,10 @@
 package osexec
 
 import (
+	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-kit/log"
 	"github.com/stretchr/testify/assert"
@@ -33,6 +35,21 @@ func TestExecuteAs(t *testing.T) {
 
 	_, err = ExecuteAs("sleep", []string{"5"}, 65534, 65534, nil, log.NewNopLogger())
 	require.Error(t, err, "expected error executing as nobody user")
+}
+
+func TestExecuteContext(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+
+	// Test successful command execution
+	_, err := ExecuteContext(
+		ctx,
+		"sleep",
+		[]string{"300"},
+		nil,
+		log.NewNopLogger(),
+	)
+	require.Error(t, err)
 }
 
 func TestExecuteWithTimeout(t *testing.T) {

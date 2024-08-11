@@ -2,6 +2,7 @@
 package tsdb
 
 import (
+	"context"
 	"fmt"
 	"html/template"
 	"maps"
@@ -89,12 +90,13 @@ func New(instance updater.Instance, logger log.Logger) (updater.Updater, error) 
 
 // Update fetches unit metrics from TSDB and update unit struct.
 func (t *tsdbUpdater) Update(
+	ctx context.Context,
 	startTime time.Time,
 	endTime time.Time,
 	units []models.ClusterUnits,
 ) []models.ClusterUnits {
 	for _, clusterUnit := range units {
-		clusterUnit.Units = t.update(startTime, endTime, clusterUnit.Units)
+		clusterUnit.Units = t.update(ctx, startTime, endTime, clusterUnit.Units)
 	}
 
 	return units
@@ -114,6 +116,7 @@ func (t *tsdbUpdater) queryBuilder(name string, queryTemplate string, data map[s
 
 // Get time averaged value of each metric identified by label uuid.
 func (t *tsdbUpdater) fetchAggMetrics(
+	ctx context.Context,
 	queryTime time.Time,
 	duration time.Duration,
 	uuids []string,
@@ -121,9 +124,9 @@ func (t *tsdbUpdater) fetchAggMetrics(
 	aggMetrics := make(map[string]map[string]tsdb.Metric, len(t.config.Queries))
 
 	// Get rate and scrape intervals
-	rateInterval := t.RateInterval()
-	scrapeInterval := t.Intervals()["scrape_interval"]
-	evaluationInterval := t.Intervals()["evaluation_interval"]
+	rateInterval := t.RateInterval(ctx)
+	scrapeInterval := t.Intervals(ctx)["scrape_interval"]
+	evaluationInterval := t.Intervals(ctx)["evaluation_interval"]
 
 	// If duration is less than rateInterval bail
 	if duration < rateInterval {
@@ -159,6 +162,8 @@ func (t *tsdbUpdater) fetchAggMetrics(
 	for metricName, queries := range t.config.Queries {
 		for subMetricName, query := range queries {
 			go func(n string, sn string, q string) {
+				defer wg.Done()
+
 				var aggMetric tsdb.Metric
 
 				var err error
@@ -169,12 +174,11 @@ func (t *tsdbUpdater) fetchAggMetrics(
 						"msg", "Failed to build query from template", "metric", n,
 						"query_template", q, "err", err,
 					)
-					wg.Done()
 
 					return
 				}
 
-				if aggMetric, err = t.Query(tsdbQuery, queryTime); err != nil {
+				if aggMetric, err = t.Query(ctx, tsdbQuery, queryTime); err != nil {
 					level.Error(t.Logger).Log(
 						"msg", "Failed to fetch metrics from TSDB", "metric", n, "duration",
 						duration, "scrape_int", scrapeInterval, "rate_int", rateInterval,
@@ -189,8 +193,6 @@ func (t *tsdbUpdater) fetchAggMetrics(
 					aggMetrics[n][sn] = aggMetric
 					metricLock.Unlock()
 				}
-
-				wg.Done()
 			}(metricName, subMetricName, query)
 		}
 	}
@@ -202,7 +204,7 @@ func (t *tsdbUpdater) fetchAggMetrics(
 }
 
 // Fetch unit metrics from TSDB and update UnitStat struct for each unit.
-func (t *tsdbUpdater) update(startTime time.Time, endTime time.Time, units []models.Unit) []models.Unit {
+func (t *tsdbUpdater) update(ctx context.Context, startTime time.Time, endTime time.Time, units []models.Unit) []models.Unit {
 	// Bail if TSDB is unavailable or there are no units to update
 	if !t.Available() || len(units) == 0 {
 		return units
@@ -260,31 +262,38 @@ func (t *tsdbUpdater) update(startTime time.Time, endTime time.Time, units []mod
 
 	// Loop over each chunk
 	for iBatch, batchUUIDs := range uuidBatches {
-		// Get aggregate metrics of present chunk
-		batchedAggMetrics := t.fetchAggMetrics(endTime, duration, batchUUIDs)
+		select {
+		case <-ctx.Done():
+			level.Error(t.Logger).Log("msg", "Aborting units update", "err", ctx.Err())
 
-		// Merge metrics map of each metric type. Metric map has uuid as key and hence
-		// merging is safe as UUID is "unique" during the given update interval
-		for metricName, metrics := range batchedAggMetrics {
-			// If inner map has not been initialized yet, do it
-			// These are parent metrics like avg_cpu_usage, avg_gpu_usage
-			if aggMetrics[metricName] == nil {
-				aggMetrics[metricName] = make(map[string]tsdb.Metric, len(metrics))
-			}
-			// Each parent metric has sub metrics that operator chooses and we loop
-			// over them here
-			for subMetricName, subMetrics := range metrics {
-				if aggMetrics[metricName][subMetricName] == nil {
-					aggMetrics[metricName][subMetricName] = make(tsdb.Metric, len(subMetrics))
+			return units
+		default:
+			// Get aggregate metrics of present chunk
+			batchedAggMetrics := t.fetchAggMetrics(ctx, endTime, duration, batchUUIDs)
+
+			// Merge metrics map of each metric type. Metric map has uuid as key and hence
+			// merging is safe as UUID is "unique" during the given update interval
+			for metricName, metrics := range batchedAggMetrics {
+				// If inner map has not been initialized yet, do it
+				// These are parent metrics like avg_cpu_usage, avg_gpu_usage
+				if aggMetrics[metricName] == nil {
+					aggMetrics[metricName] = make(map[string]tsdb.Metric, len(metrics))
 				}
+				// Each parent metric has sub metrics that operator chooses and we loop
+				// over them here
+				for subMetricName, subMetrics := range metrics {
+					if aggMetrics[metricName][subMetricName] == nil {
+						aggMetrics[metricName][subMetricName] = make(tsdb.Metric, len(subMetrics))
+					}
 
-				maps.Copy(aggMetrics[metricName][subMetricName], subMetrics)
+					maps.Copy(aggMetrics[metricName][subMetricName], subMetrics)
+				}
 			}
-		}
 
-		level.Debug(t.Logger).Log(
-			"msg", "progress", "batch_id", iBatch, "total_batches", numBatches,
-		)
+			level.Debug(t.Logger).Log(
+				"msg", "progress", "batch_id", iBatch, "total_batches", numBatches,
+			)
+		}
 	}
 
 	// Update all units
@@ -420,7 +429,7 @@ func (t *tsdbUpdater) update(startTime time.Time, endTime time.Time, units []mod
 	}
 
 	// Finally delete time series
-	if err := t.deleteTimeSeries(startTime, endTime, ignoredUnits); err != nil {
+	if err := t.deleteTimeSeries(ctx, startTime, endTime, ignoredUnits); err != nil {
 		level.Error(t.Logger).
 			Log("msg", "Failed to delete time series in TSDB", "err", err)
 	}
@@ -429,7 +438,7 @@ func (t *tsdbUpdater) update(startTime time.Time, endTime time.Time, units []mod
 }
 
 // Delete time series data of ignored units.
-func (t *tsdbUpdater) deleteTimeSeries(startTime time.Time, endTime time.Time, unitUUIDs []string) error {
+func (t *tsdbUpdater) deleteTimeSeries(ctx context.Context, startTime time.Time, endTime time.Time, unitUUIDs []string) error {
 	// Check if there are any units to ignore. If there aren't return immediately
 	// We shouldnt make a API request to delete with empty units slice as TSDB will
 	// match all units during that period with uuid=~"" matcher
@@ -467,7 +476,7 @@ func (t *tsdbUpdater) deleteTimeSeries(startTime time.Time, endTime time.Time, u
 	matchers = append(matchers, fmt.Sprintf("{uuid=~\"%s\"}", allUUIDs))
 
 	// Make a API request to delete data of ignored units
-	return t.Delete(start, end, matchers)
+	return t.Delete(ctx, start, end, matchers)
 }
 
 // sanitizeValue verifies if value is either NaN/Inf/-Inf.

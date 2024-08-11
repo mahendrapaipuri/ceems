@@ -2,6 +2,7 @@
 package tsdb
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -141,9 +142,9 @@ func (t *TSDB) Ping() error {
 }
 
 // Config returns TSDB config.
-func (t *TSDB) Config() (map[interface{}]interface{}, error) {
+func (t *TSDB) Config(ctx context.Context) (map[interface{}]interface{}, error) {
 	// Make a API request to TSDB
-	data, err := Request(t.configEndpoint().String(), t.Client)
+	data, err := Request(ctx, t.configEndpoint().String(), t.Client)
 	if err != nil {
 		return nil, err
 	}
@@ -171,9 +172,9 @@ func (t *TSDB) Config() (map[interface{}]interface{}, error) {
 }
 
 // GlobalConfig returns global config section of TSDB.
-func (t *TSDB) GlobalConfig() (map[string]interface{}, error) {
+func (t *TSDB) GlobalConfig(ctx context.Context) (map[string]interface{}, error) {
 	// Get config
-	fullConfig, err := t.Config()
+	fullConfig, err := t.Config(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -191,9 +192,9 @@ func (t *TSDB) GlobalConfig() (map[string]interface{}, error) {
 }
 
 // Flags returns CLI flags of TSDB.
-func (t *TSDB) Flags() (map[string]interface{}, error) {
+func (t *TSDB) Flags(ctx context.Context) (map[string]interface{}, error) {
 	// Make a API request to TSDB
-	data, err := Request(t.flagsEndpoint().String(), t.Client)
+	data, err := Request(ctx, t.flagsEndpoint().String(), t.Client)
 	if err != nil {
 		return nil, err
 	}
@@ -209,7 +210,7 @@ func (t *TSDB) Flags() (map[string]interface{}, error) {
 }
 
 // Intervals returns scrape and evaluation intervals of TSDB.
-func (t *TSDB) Intervals() map[string]time.Duration {
+func (t *TSDB) Intervals(ctx context.Context) map[string]time.Duration {
 	// Check if lastUpdate time is more than 3 hrs
 	if time.Since(t.lastUpdate) < 3*time.Hour {
 		return map[string]time.Duration{
@@ -228,7 +229,7 @@ func (t *TSDB) Intervals() map[string]time.Duration {
 	var globalConfig map[string]interface{}
 
 	var err error
-	if globalConfig, err = t.GlobalConfig(); err != nil {
+	if globalConfig, err = t.GlobalConfig(ctx); err != nil {
 		return map[string]time.Duration{
 			"scrape_interval":     defaultScrapeInterval,
 			"evaluation_interval": defaultEvaluationInterval,
@@ -259,13 +260,13 @@ func (t *TSDB) Intervals() map[string]time.Duration {
 }
 
 // RateInterval returns rate interval of TSDB.
-func (t *TSDB) RateInterval() time.Duration {
+func (t *TSDB) RateInterval(ctx context.Context) time.Duration {
 	// Grafana recommends atleast 4 times of scrape interval to estimate rate
-	return 4 * t.Intervals()["scrape_interval"]
+	return 4 * t.Intervals(ctx)["scrape_interval"]
 }
 
 // Query makes a TSDB query.
-func (t *TSDB) Query(query string, queryTime time.Time) (Metric, error) {
+func (t *TSDB) Query(ctx context.Context, query string, queryTime time.Time) (Metric, error) {
 	// Add form data to request
 	// TSDB expects time stamps in UTC zone
 	values := url.Values{
@@ -274,7 +275,7 @@ func (t *TSDB) Query(query string, queryTime time.Time) (Metric, error) {
 	}
 
 	// Create a new POST request
-	req, err := http.NewRequest(http.MethodPost, t.queryEndpoint().String(), strings.NewReader(values.Encode()))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, t.queryEndpoint().String(), strings.NewReader(values.Encode()))
 	if err != nil {
 		return nil, err
 	}
@@ -379,7 +380,7 @@ func (t *TSDB) Query(query string, queryTime time.Time) (Metric, error) {
 }
 
 // Delete time series with given labels.
-func (t *TSDB) Delete(startTime time.Time, endTime time.Time, matchers []string) error {
+func (t *TSDB) Delete(ctx context.Context, startTime time.Time, endTime time.Time, matchers []string) error {
 	// Add form data to request
 	// TSDB expects time stamps in UTC zone
 	values := url.Values{
@@ -389,7 +390,7 @@ func (t *TSDB) Delete(startTime time.Time, endTime time.Time, matchers []string)
 	}
 
 	// Create a new POST request
-	req, err := http.NewRequest(http.MethodPost, t.deleteEndpoint().String(), strings.NewReader(values.Encode()))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, t.deleteEndpoint().String(), strings.NewReader(values.Encode()))
 	if err != nil {
 		return err
 	}

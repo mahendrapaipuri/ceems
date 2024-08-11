@@ -2,6 +2,7 @@
 package grafana
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -107,7 +108,7 @@ func (g *Grafana) Ping() error {
 }
 
 // TeamMembers fetches team members from a given slice of Grafana teams IDs.
-func (g *Grafana) TeamMembers(teamsIDs []string) ([]string, error) {
+func (g *Grafana) TeamMembers(ctx context.Context, teamsIDs []string) ([]string, error) {
 	// Sanity checks
 	// Check if adminTeamID is not an empty string
 	if teamsIDs == nil {
@@ -117,7 +118,7 @@ func (g *Grafana) TeamMembers(teamsIDs []string) ([]string, error) {
 	var allMembers []string
 
 	for _, teamsID := range teamsIDs {
-		teamMembers, err := g.teamMembers(teamsID)
+		teamMembers, err := g.teamMembers(ctx, teamsID)
 		if err != nil {
 			level.Warn(g.logger).
 				Log("msg", "Failed to fetch team members from Grafana Team", "teams_id", teamsID, "err", err)
@@ -130,7 +131,7 @@ func (g *Grafana) TeamMembers(teamsIDs []string) ([]string, error) {
 }
 
 // teamMembers fetches team members from a given Grafana team.
-func (g *Grafana) teamMembers(teamsID string) ([]string, error) {
+func (g *Grafana) teamMembers(ctx context.Context, teamsID string) ([]string, error) {
 	// Check if adminTeamID is not an empty string
 	if teamsID == "" {
 		return nil, ErrNoTeamIDs
@@ -140,7 +141,7 @@ func (g *Grafana) teamMembers(teamsID string) ([]string, error) {
 	teamMembersURL := g.teamMembersEndpoint(teamsID)
 
 	// Create a new GET request
-	req, err := http.NewRequest(http.MethodGet, teamMembersURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, teamMembersURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a new HTTP request for Grafana teams API: %w", err)
 	}

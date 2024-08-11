@@ -1,6 +1,7 @@
 package tsdb
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -52,6 +53,9 @@ func TestTSDBConfigSuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
 	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
 	require.NoError(t, err)
 
@@ -60,20 +64,20 @@ func TestTSDBConfigSuccess(t *testing.T) {
 
 	// Check global config
 	var globalConfig map[string]interface{}
-	globalConfig, err = tsdb.GlobalConfig()
+	globalConfig, err = tsdb.GlobalConfig(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, "15s", globalConfig["scrape_interval"].(string)) //nolint:forcetypeassert
 
 	// Check scrape interval
-	scrapeInterval := tsdb.Intervals()["scrape_interval"]
+	scrapeInterval := tsdb.Intervals(ctx)["scrape_interval"]
 	assert.Equal(t, 15*time.Second, scrapeInterval)
 
 	// Check evaluation interval
-	evaluationInterval := tsdb.Intervals()["evaluation_interval"]
+	evaluationInterval := tsdb.Intervals(ctx)["evaluation_interval"]
 	assert.Equal(t, 10*time.Second, evaluationInterval)
 
 	// Check rate interval
-	rateInterval := tsdb.RateInterval()
+	rateInterval := tsdb.RateInterval(ctx)
 	assert.Equal(t, 60*time.Second, rateInterval)
 }
 
@@ -94,18 +98,21 @@ func TestTSDBConfigFail(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, tsdb.Available())
 
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
 	// Check if config is working
-	_, err = tsdb.Config()
+	_, err = tsdb.Config(ctx)
 	require.Error(t, err)
 
-	scrapeInterval := tsdb.Intervals()["scrape_interval"]
+	scrapeInterval := tsdb.Intervals(ctx)["scrape_interval"]
 	assert.Equal(t, defaultScrapeInterval, scrapeInterval)
 
 	// Check evaluation interval
-	evaluationInterval := tsdb.Intervals()["evaluation_interval"]
+	evaluationInterval := tsdb.Intervals(ctx)["evaluation_interval"]
 	assert.Equal(t, defaultEvaluationInterval, evaluationInterval)
 
-	rateInterval := tsdb.RateInterval()
+	rateInterval := tsdb.RateInterval(ctx)
 	assert.Equal(t, defaultScrapeInterval*4, rateInterval)
 }
 
@@ -147,7 +154,7 @@ func TestTSDBQuerySuccess(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, tsdb.Available())
 
-	m, err := tsdb.Query("", time.Now())
+	m, err := tsdb.Query(context.Background(), "", time.Now())
 	require.NoError(t, err)
 	assert.Equal(t, Metric{"1": 1.1, "2": 2.2}, m)
 }
@@ -169,6 +176,6 @@ func TestTSDBQueryFail(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, tsdb.Available())
 
-	_, err = tsdb.Query("", time.Now())
+	_, err = tsdb.Query(context.Background(), "", time.Now())
 	assert.Error(t, err)
 }

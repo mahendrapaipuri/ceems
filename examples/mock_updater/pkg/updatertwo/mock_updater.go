@@ -2,6 +2,7 @@
 package updatertwo
 
 import (
+	"context"
 	"time"
 
 	"github.com/go-kit/log"
@@ -40,8 +41,9 @@ func NewMockUpdaterHook(instance updater.Instance, logger log.Logger) (updater.U
 
 // Add the logic here to update the units retrieved from batch scheduler
 func (u *mockUpdater) Update(
-	startTime time.Time,
-	endTime time.Time,
+	_ context.Context,
+	_ time.Time,
+	_ time.Time,
 	units []models.ClusterUnits,
 ) []models.ClusterUnits {
 	return units
