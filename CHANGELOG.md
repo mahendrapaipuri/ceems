@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0 / 2024-08-11
+
+- [FEATURE] Pass context to downstream functions [#133](https://github.com/mahendrapaipuri/ceems/pull/133) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [MAINT] Enable more linters [#132](https://github.com/mahendrapaipuri/ceems/pull/132) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [MAINT] General maintenance [#129](https://github.com/mahendrapaipuri/ceems/pull/129) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Use native JSON functions in aggregate query [#128](https://github.com/mahendrapaipuri/ceems/pull/128) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Stats API endpoint [#127](https://github.com/mahendrapaipuri/ceems/pull/127) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Cache current usage query result [#122](https://github.com/mahendrapaipuri/ceems/pull/122) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+
 ## 0.1.1 / 2024-07-24
 
 - [MAINT] DB query performance improvements [#113](https://github.com/mahendrapaipuri/ceems/pull/113) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
