@@ -2,9 +2,6 @@ linters:
   enable-all: true
   disable:
     - cyclop
-    # Ignore for the time being until we propagate context everywhere
-    - contextcheck
-    - noctx
     - depguard
     - dupl
     - dupword
@@ -20,11 +17,9 @@ linters:
     - execinquery
     - mnd
     - nestif
-    - copyloopvar
     - testpackage
     - paralleltest
     - prealloc
-    - musttag
     - maintidx
     - gochecknoglobals
     - gosmopolitan

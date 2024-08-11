@@ -61,23 +61,23 @@ func GetUUIDFromString(stringSlice []string) (string, error) {
 // MakeConfig reads config file, merges with passed default config and returns updated
 // config instance.
 func MakeConfig[T any](filePath string) (*T, error) {
+	// Create a new pointer to config instance
+	config := new(T)
+
 	// If no config file path provided, return default config
 	if filePath == "" {
-		return new(T), errors.New("config file path missing")
+		return config, errors.New("config file path missing")
 	}
 
 	// Read config file
 	configFile, err := os.ReadFile(filePath)
 	if err != nil {
-		return new(T), err
+		return config, err
 	}
-
-	// Update config from YAML file
-	config := new(T)
 
 	err = yaml.Unmarshal(configFile, config)
 	if err != nil {
-		return new(T), err
+		return config, err
 	}
 
 	return config, nil

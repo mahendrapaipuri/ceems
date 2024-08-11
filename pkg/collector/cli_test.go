@@ -22,7 +22,7 @@ var mockCEEMSExporterApp = *kingpin.New(
 )
 
 func queryExporter(address string) error {
-	resp, err := http.Get(fmt.Sprintf("http://%s/metrics", address))
+	resp, err := http.Get(fmt.Sprintf("http://%s/metrics", address)) //nolint:noctx
 	if err != nil {
 		return err
 	}
