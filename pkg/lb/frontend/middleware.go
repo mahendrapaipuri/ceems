@@ -215,7 +215,7 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 		}
 
 		// Check if user is querying for his/her own compute units by looking to DB
-		if !amw.isUserUnit(r.Context(), loggedUser, []string{id}, uuids) {
+		if !amw.isUserUnit(r.Context(), loggedUser, []string{id}, uuids) { //nolint:contextcheck // False positive
 			// Write an error and stop the handler chain
 			w.WriteHeader(http.StatusForbidden)
 

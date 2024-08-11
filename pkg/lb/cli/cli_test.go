@@ -23,7 +23,7 @@ var mockCEEMSLBApp = *kingpin.New(
 )
 
 func queryLB(address string) error {
-	req, err := http.NewRequest(http.MethodGet, "http://"+address, nil)
+	req, err := http.NewRequest(http.MethodGet, "http://"+address, nil) //nolint:noctx
 	if err != nil {
 		return err
 	}

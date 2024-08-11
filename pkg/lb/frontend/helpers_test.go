@@ -62,7 +62,7 @@ func TestParseTimeParam(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		req, err := http.NewRequest(http.MethodGet, "localhost:42/foo?"+test.paramName+"="+test.paramValue, nil)
+		req, err := http.NewRequest(http.MethodGet, "localhost:42/foo?"+test.paramName+"="+test.paramValue, nil) //nolint:noctx
 		require.NoError(t, err)
 
 		result := test.result
@@ -190,7 +190,7 @@ func TestParseQueryParams(t *testing.T) {
 			body = strings.NewReader("hello")
 		}
 
-		req, err := http.NewRequest(test.method, "http://localhost:9090", body)
+		req, err := http.NewRequest(test.method, "http://localhost:9090", body) //nolint:noctx
 		require.NoError(t, err)
 
 		// For GET request add query to URL

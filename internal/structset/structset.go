@@ -12,13 +12,13 @@ var fieldIndexesCache sync.Map
 
 // StructFieldNames returns all fields in a given struct.
 func StructFieldNames(s interface{}) []string {
-	var fields []string
-
 	v := reflect.ValueOf(s)
 	typeOfS := v.Type()
 
+	fields := make([]string, v.NumField())
+
 	for i := range v.NumField() {
-		fields = append(fields, typeOfS.Field(i).Name)
+		fields[i] = typeOfS.Field(i).Name
 	}
 
 	return fields
