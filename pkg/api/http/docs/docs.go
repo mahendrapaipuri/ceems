@@ -15,8 +15,8 @@ const docTemplate = `{
             "email": "mahendra.paipuri@gmail.com"
         },
         "license": {
-            "name": "BSD-3-Clause license",
-            "url": "https://opensource.org/license/bsd-3-clause"
+            "name": "GPL-3.0 license",
+            "url": "https://www.gnu.org/licenses/gpl-3.0.en.html"
         },
         "version": "{{.Version}}"
     },

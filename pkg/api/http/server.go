@@ -247,7 +247,7 @@ func New(c *Config) (*CEEMSServer, func(), error) {
 	)).Methods(http.MethodGet)
 
 	// Open DB connection
-	dsn := fmt.Sprintf("file:%s?%s", filepath.Join(c.DB.Data.Path, base.CEEMSDBName), "_mutex=no&mode=ro")
+	dsn := fmt.Sprintf("file:%s?%s", filepath.Join(c.DB.Data.Path, base.CEEMSDBName), "_mutex=no&mode=ro&_busy_timeout=5000")
 	if server.db, err = sql.Open(sqlite3.DriverName, dsn); err != nil {
 		return nil, func() {}, fmt.Errorf("failed to open DB: %w", err)
 	}
@@ -299,8 +299,8 @@ func New(c *Config) (*CEEMSServer, func(), error) {
 //	@contact.url				https://github.com/mahendrapaipuri/ceems/issues
 //	@contact.email				mahendra.paipuri@gmail.com
 //
-//	@license.name				BSD-3-Clause license
-//	@license.url				https://opensource.org/license/bsd-3-clause
+//	@license.name				GPL-3.0 license
+//	@license.url				https://www.gnu.org/licenses/gpl-3.0.en.html
 //
 //	@securityDefinitions.basic	BasicAuth
 //

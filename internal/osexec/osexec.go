@@ -29,15 +29,17 @@ func Execute(cmd string, args []string, env []string, logger log.Logger) ([]byte
 		execCmd.Env = append(os.Environ(), env...)
 	}
 
-	// Start child process in its own process group so that interrupt signal will
-	// not stop the command
-	execCmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-
-	// Attach a separate terminal less session to the subprocess
-	// This is to avoid prompting for password when we run command with sudo
-	// Ref: https://stackoverflow.com/questions/13432947/exec-external-program-script-and-detect-if-it-requests-user-input
+	// According to setpgid docs (https://man7.org/linux/man-pages/man2/setpgid.2.html)
+	// we cannot use setpgid and setsid at the same time
 	if cmd == sudoCmd {
-		execCmd.SysProcAttr.Setsid = true
+		// Attach a separate terminal less session to the subprocess
+		// This is to avoid prompting for password when we run command with sudo
+		// Ref: https://stackoverflow.com/questions/13432947/exec-external-program-script-and-detect-if-it-requests-user-input
+		execCmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	} else {
+		// Start child process in its own process group so that interrupt signal will
+		// not stop the command
+		execCmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	}
 
 	// Execute command
@@ -67,9 +69,18 @@ func ExecuteAs(cmd string, args []string, uid int, gid int, env []string, logger
 		gidInt32 = uint32(gid)
 	}
 
-	// Start child process in its own process group so that interrupt signal will
-	// not stop the command
-	execCmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	// According to setpgid docs (https://man7.org/linux/man-pages/man2/setpgid.2.html)
+	// we cannot use setpgid and setsid at the same time
+	if cmd == sudoCmd {
+		// Attach a separate terminal less session to the subprocess
+		// This is to avoid prompting for password when we run command with sudo
+		// Ref: https://stackoverflow.com/questions/13432947/exec-external-program-script-and-detect-if-it-requests-user-input
+		execCmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	} else {
+		// Start child process in its own process group so that interrupt signal will
+		// not stop the command
+		execCmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	}
 
 	// Set uid and gid for process
 	execCmd.SysProcAttr.Credential = &syscall.Credential{Uid: uidInt32, Gid: gidInt32}
@@ -100,15 +111,17 @@ func ExecuteContext(ctx context.Context, cmd string, args []string, env []string
 		execCmd.Env = append(os.Environ(), env...)
 	}
 
-	// Start child process in its own process group so that interrupt signal will
-	// not stop the command
-	execCmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-
-	// Attach a separate terminal less session to the subprocess
-	// This is to avoid prompting for password when we run command with sudo
-	// Ref: https://stackoverflow.com/questions/13432947/exec-external-program-script-and-detect-if-it-requests-user-input
+	// According to setpgid docs (https://man7.org/linux/man-pages/man2/setpgid.2.html)
+	// we cannot use setpgid and setsid at the same time
 	if cmd == sudoCmd {
-		execCmd.SysProcAttr.Setsid = true
+		// Attach a separate terminal less session to the subprocess
+		// This is to avoid prompting for password when we run command with sudo
+		// Ref: https://stackoverflow.com/questions/13432947/exec-external-program-script-and-detect-if-it-requests-user-input
+		execCmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	} else {
+		// Start child process in its own process group so that interrupt signal will
+		// not stop the command
+		execCmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	}
 
 	// Execute command
@@ -138,9 +151,18 @@ func ExecuteAsContext(ctx context.Context, cmd string, args []string, uid int, g
 		gidInt32 = uint32(gid)
 	}
 
-	// Start child process in its own process group so that interrupt signal will
-	// not stop the command
-	execCmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	// According to setpgid docs (https://man7.org/linux/man-pages/man2/setpgid.2.html)
+	// we cannot use setpgid and setsid at the same time
+	if cmd == sudoCmd {
+		// Attach a separate terminal less session to the subprocess
+		// This is to avoid prompting for password when we run command with sudo
+		// Ref: https://stackoverflow.com/questions/13432947/exec-external-program-script-and-detect-if-it-requests-user-input
+		execCmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	} else {
+		// Start child process in its own process group so that interrupt signal will
+		// not stop the command
+		execCmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	}
 
 	// Set uid and gid for process
 	execCmd.SysProcAttr.Credential = &syscall.Credential{Uid: uidInt32, Gid: gidInt32}
@@ -180,15 +202,17 @@ func ExecuteWithTimeout(cmd string, args []string, timeout int, env []string, lo
 		execCmd.Env = append(os.Environ(), env...)
 	}
 
-	// Start child process in its own process group so that interrupt signal will
-	// not stop the command
-	execCmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-
-	// Attach a separate terminal less session to the subprocess
-	// This is to avoid prompting for password when we run command with sudo
-	// Ref: https://stackoverflow.com/questions/13432947/exec-external-program-script-and-detect-if-it-requests-user-input
+	// According to setpgid docs (https://man7.org/linux/man-pages/man2/setpgid.2.html)
+	// we cannot use setpgid and setsid at the same time
 	if cmd == sudoCmd {
-		execCmd.SysProcAttr.Setsid = true
+		// Attach a separate terminal less session to the subprocess
+		// This is to avoid prompting for password when we run command with sudo
+		// Ref: https://stackoverflow.com/questions/13432947/exec-external-program-script-and-detect-if-it-requests-user-input
+		execCmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	} else {
+		// Start child process in its own process group so that interrupt signal will
+		// not stop the command
+		execCmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	}
 
 	// The signal to send to the children when parent receives a kill signal
@@ -242,9 +266,18 @@ func ExecuteAsWithTimeout(
 		gidInt32 = uint32(gid)
 	}
 
-	// Start child process in its own process group so that interrupt signal will
-	// not stop the command
-	execCmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	// According to setpgid docs (https://man7.org/linux/man-pages/man2/setpgid.2.html)
+	// we cannot use setpgid and setsid at the same time
+	if cmd == sudoCmd {
+		// Attach a separate terminal less session to the subprocess
+		// This is to avoid prompting for password when we run command with sudo
+		// Ref: https://stackoverflow.com/questions/13432947/exec-external-program-script-and-detect-if-it-requests-user-input
+		execCmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	} else {
+		// Start child process in its own process group so that interrupt signal will
+		// not stop the command
+		execCmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	}
 
 	// Set uid and gid for process
 	execCmd.SysProcAttr.Credential = &syscall.Credential{Uid: uidInt32, Gid: gidInt32}
