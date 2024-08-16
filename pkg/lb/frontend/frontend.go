@@ -96,7 +96,9 @@ func New(c *Config) (LoadBalancer, error) {
 		// Set DB pointer only if file exists. Else sql.Open will create an empty
 		// file as if exists already
 		if _, err := os.Stat(dbAbsPath); err == nil {
-			if db, err = sql.Open("sqlite3", dbAbsPath); err != nil {
+			dsn := fmt.Sprintf("file:%s?%s", dbAbsPath, "_mutex=no&mode=ro&_busy_timeout=5000")
+
+			if db, err = sql.Open("sqlite3", dsn); err != nil {
 				return nil, err
 			}
 		}
