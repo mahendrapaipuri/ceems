@@ -139,6 +139,13 @@ func TestNewProfilers(t *testing.T) {
 	metrics := make(chan prometheus.Metric)
 	defer close(metrics)
 
+	go func() {
+		i := 0
+		for range metrics {
+			i++
+		}
+	}()
+
 	// make new profilers
 	pids := collector.newProfilers(cgroupIDProcMap)
 	assert.ElementsMatch(t, pids, []int{os.Getpid()})
