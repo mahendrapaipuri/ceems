@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Need to use this path in --collector.nvidia.gpu.job.map.path flag for ceems_exporter
+# Need to use this path in --collector.slurm.gpu-job-map-path flag for ceems_exporter
 DEST=/run/gpujobmap
 [ -e $DEST ] || mkdir -m 755 $DEST
 

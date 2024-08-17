@@ -25,10 +25,16 @@ type meminfoCollector struct {
 	hostname string
 }
 
-var meminfoAllStatistics = CEEMSExporterApp.Flag(
-	"collector.meminfo.all.stats",
-	"Enable collecting all meminfo stats (default is disabled).",
-).Default("false").Bool()
+var (
+	meminfoAllStatisticsDepr = CEEMSExporterApp.Flag(
+		"collector.meminfo.all.stats",
+		"Enable collecting all meminfo stats (default is disabled).",
+	).Hidden().Default("false").Bool()
+	meminfoAllStatistics = CEEMSExporterApp.Flag(
+		"collector.meminfo.all-stats",
+		"Enable collecting all meminfo stats (default is disabled).",
+	).Default("false").Bool()
+)
 
 func init() {
 	RegisterCollector(memInfoSubsystem, defaultEnabled, NewMeminfoCollector)
@@ -36,6 +42,10 @@ func init() {
 
 // NewMeminfoCollector returns a new Collector exposing memory stats.
 func NewMeminfoCollector(logger log.Logger) (Collector, error) {
+	if *meminfoAllStatisticsDepr {
+		level.Warn(logger).Log("msg", "flag --collector.meminfo.all.stats has been deprecated. Use --collector.meminfo.all-stats instead")
+	}
+
 	return &meminfoCollector{
 		logger:   logger,
 		hostname: hostname,
@@ -56,7 +66,7 @@ func (c *meminfoCollector) Update(ch chan<- prometheus.Metric) error {
 
 	// Export only MemTotal, MemFree and MemAvailable fields if meminfoAllStatistics is false
 	var memInfoStats map[string]float64
-	if *meminfoAllStatistics {
+	if *meminfoAllStatistics || *meminfoAllStatisticsDepr {
 		memInfoStats = memInfo
 	} else {
 		memInfoStats = map[string]float64{

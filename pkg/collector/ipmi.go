@@ -123,8 +123,12 @@ type impiCollector struct {
 */
 
 var (
-	ipmiDcmiCmd = CEEMSExporterApp.Flag(
+	ipmiDcmiCmdDepr = CEEMSExporterApp.Flag(
 		"collector.ipmi.dcmi.cmd",
+		"IPMI DCMI command to get system power statistics. Use full path to executables.",
+	).Hidden().Default("").String()
+	ipmiDcmiCmd = CEEMSExporterApp.Flag(
+		"collector.ipmi_dcmi.cmd",
 		"IPMI DCMI command to get system power statistics. Use full path to executables.",
 	).Default("").String()
 
@@ -165,6 +169,10 @@ func init() {
 
 // NewIPMICollector returns a new Collector exposing IMPI DCMI power metrics.
 func NewIPMICollector(logger log.Logger) (Collector, error) {
+	if *ipmiDcmiCmdDepr != "" {
+		level.Warn(logger).Log("msg", "flag --collector.ipmi.dcmi.cmd has been deprecated. Use --collector.ipmi_dcmi.cmd instead.")
+	}
+
 	var execMode string
 
 	// Initialize metricDesc map
@@ -191,10 +199,14 @@ func NewIPMICollector(logger log.Logger) (Collector, error) {
 
 	// If no IPMI command is provided, try to find one
 	var cmdSlice []string
-	if *ipmiDcmiCmd == "" {
+	if *ipmiDcmiCmd == "" && *ipmiDcmiCmdDepr == "" {
 		cmdSlice = findIPMICmd()
 	} else {
-		cmdSlice = strings.Split(*ipmiDcmiCmd, " ")
+		if *ipmiDcmiCmdDepr != "" {
+			cmdSlice = strings.Split(*ipmiDcmiCmdDepr, " ")
+		} else {
+			cmdSlice = strings.Split(*ipmiDcmiCmd, " ")
+		}
 	}
 
 	level.Debug(logger).Log(

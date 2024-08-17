@@ -102,7 +102,7 @@ func (b *CEEMSExporter) Main() error {
 
 	// This is hidden flag only used for e2e testing
 	emptyHostnameLabel = b.App.Flag(
-		"collector.empty.hostname.label",
+		"collector.empty-hostname-label",
 		"Use empty hostname in labels. Only for testing. (default is disabled)",
 	).Hidden().Default("false").Bool()
 
