@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1 / 2024-08-17
+
+- [BUGFIX] Fix setting sysprocattr correctly based on command [#136](https://github.com/mahendrapaipuri/ceems/pull/136) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+
 ## 0.2.0 / 2024-08-11
 
 - [FEATURE] Pass context to downstream functions [#133](https://github.com/mahendrapaipuri/ceems/pull/133) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
