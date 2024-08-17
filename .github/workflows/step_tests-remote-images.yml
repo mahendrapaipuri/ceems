@@ -1,0 +1,52 @@
+name: test-remote-images
+run-name: Test remote container images
+
+on:
+  workflow_call:
+    inputs:
+      registry:
+        type: string
+        description: Registry
+      organization:
+        type: string
+        description: Organization
+      registry_provider:
+        type: string
+        description: Registry Provider
+
+jobs:
+  images:
+    name: images
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get step vars
+        id: vars
+        env:
+          REGISTRY_PROVIDER: ${{ inputs.registry_provider }}
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
+            echo "branch_name=$(echo ${GITHUB_REF##*/})" >> $GITHUB_OUTPUT
+          elif [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+            echo "branch_name=$(echo $GITHUB_BASE_REF)" >> $GITHUB_OUTPUT
+          else
+            echo "branch_name=nightly" >> $GITHUB_OUTPUT
+          fi
+
+          # Repo name for container registries
+          if [[ "${REGISTRY_PROVIDER}" == "dockerhub" ]]; then
+            echo "repo_name=$(make docker-repo-name)" >> $GITHUB_OUTPUT
+          else
+            export DOCKER_REPO="$(echo quay.io/${GITHUB_REPOSITORY_OWNER} | tr -d '-')"
+            echo "repo_name=$(make docker-repo-name)" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Pull remote container images
+        run: |
+          make docker-pull DOCKER_IMAGE_TAG=${{ steps.vars.outputs.branch_name }} DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
+          docker images
+
+      - name: Test remote container images
+        run: make test-docker DOCKER_IMAGE_TAG=${{ steps.vars.outputs.branch_name }} DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}

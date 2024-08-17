@@ -91,6 +91,16 @@ jobs:
       password: ${{ secrets.DOCKER_HUB_PASSWORD }}
       quay_api_token: ${{ secrets.QUAY_API_TOKEN }}
 
+  docker-test:
+    needs: [docker]
+    uses: ./.github/workflows/step_tests-remote-images.yml
+    # Since workflow_dispatch inputs are only available on manual triggers
+    # we need to set default values to the context vars here
+    with:
+      registry: ${{ inputs.docker_hub_registry || 'docker.io' }}
+      organization: ${{ inputs.docker_hub_organization || 'mahendrapaipuri' }}
+      registry_provider: ${{ inputs.docker_hub_registry_provider || 'dockerhub' }}
+
   quay:
     needs: [build]
     uses: ./.github/workflows/step_images.yml
@@ -104,3 +114,13 @@ jobs:
       login: ${{ secrets.QUAY_LOGIN }}
       password: ${{ secrets.QUAY_PASSWORD }}
       quay_api_token: ${{ secrets.QUAY_API_TOKEN }}
+
+  quay-test:
+    needs: [quay]
+    uses: ./.github/workflows/step_tests-remote-images.yml
+    # Since workflow_dispatch inputs are only available on manual triggers
+    # we need to set default values to the context vars here
+    with:
+      registry: ${{ inputs.quay_registry || 'quay.io' }}
+      organization: ${{ inputs.quay_organization || 'mahendrapaipuri' }}
+      registry_provider: ${{ inputs.quay_registry_provider || 'quay' }}
