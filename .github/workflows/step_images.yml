@@ -86,7 +86,7 @@ jobs:
 
       - name: Push README to registry
         uses: christian-korneck/update-container-description-action@d36005551adeaba9698d8d67a296bd16fa91f8e8 # v1
-        if: github.ref == 'refs/heads/main' && github.repository_owner == 'mahendrapaipuri' # Don't run this workflow on forks.
+        if: (github.ref == 'refs/heads/main' || (github.event_name == 'push' && contains(github.ref, 'refs/tags/'))) && github.repository_owner == 'mahendrapaipuri' # Don't run this workflow on forks.
         # NOTE: We need to remove it once we trim down the README and move content to
         # dedicated docs. DockerHub complains about too many characters in README
         continue-on-error: true
