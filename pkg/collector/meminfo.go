@@ -28,11 +28,11 @@ type meminfoCollector struct {
 var (
 	meminfoAllStatisticsDepr = CEEMSExporterApp.Flag(
 		"collector.meminfo.all.stats",
-		"Enable collecting all meminfo stats (default is disabled).",
+		"Enable collecting all meminfo stats (default: disabled).",
 	).Hidden().Default("false").Bool()
 	meminfoAllStatistics = CEEMSExporterApp.Flag(
 		"collector.meminfo.all-stats",
-		"Enable collecting all meminfo stats (default is disabled).",
+		"Enable collecting all meminfo stats (default: disabled).",
 	).Default("false").Bool()
 )
 
