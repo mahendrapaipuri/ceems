@@ -9,8 +9,7 @@ sidebar_position: 1
 :::important[IMPORTANT]
 
 Currently CEEMS exporter supports only exporting SLURM job metrics. Consequently, CEEMS
-support only SLURM resource manager. Adding support for 
-Openstack and libvirt is in next milestone.
+support only SLURM resource manager. Adding support for Openstack and libvirt is in next milestone.
 
 :::
 
@@ -27,14 +26,14 @@ List of collectors that are enabled by default are:
 - `rapl`: RAPL energy counters
 - `ipmi_dcmi`: Power usage from IPMI DCMI
 
-By default CEEMS exporter exposes metrics on all interfaces, port `9010` and 
+By default CEEMS exporter exposes metrics on all interfaces, port `9010` and
 at `/metrics` endpoint. This can be changed by setting `--web.listen-address` CLI flag
 
 ```bash
 ceems_exporter --web.listen-address="localhost:8010"
 ```
 
-Above command will run exporter only on `localhost` and on port `8010`. 
+Above command will run exporter only on `localhost` and on port `8010`.
 
 In order to enable SLURM collector, we need to add the following CLI flag
 
@@ -42,56 +41,54 @@ In order to enable SLURM collector, we need to add the following CLI flag
 ceems_exporter --collector.slurm
 ```
 
-If there are GPUs on the compute nodes, it is necessary to tell the exporter the type 
-of GPU. Currently only NVIDIA and AMD GPUs are supported.
+:::important[IMPORTANT]
 
-```bash
-ceems_exporter --collector.slurm --collector.slurm.gpu.type=amd
-# or
-ceems_exporter --collector.slurm --collector.slurm.gpu.type=nvidia
-```
+Starting from `v0.3.0`, there is no need to configure the GPU type. The exporter will
+automatically detect the supported GPU types: NVIDIA and AMD.
 
-In order to disable default collectors, we need to add `no` prefix to the collector flag. 
+:::
+
+In order to disable default collectors, we need to add `no` prefix to the collector flag.
 The following command will disable IPMI and RAPL collectors:
 
 ```bash
 ceems_exporter --no-collector.ipmi_dcmi --no-collector.rapl
 ```
 
-If a custom IPMI DCMI implementation is used that does not give power usage in one 
+If a custom IPMI DCMI implementation is used that does not give power usage in one
 of the [one of these formats](https://github.com/mahendrapaipuri/ceems/blob/c031e0e5b484c30ad8b6e2b68e35874441e9d167/pkg/collector/ipmi.go#L35-L92)
-supported by the exporter, it is necessary to write a wrapper that outputs the usage 
-in one of the supported format. This wrapper script can be provided to the exporter 
+supported by the exporter, it is necessary to write a wrapper that outputs the usage
+in one of the supported format. This wrapper script can be provided to the exporter
 using following command:
 
 ```bash
-ceems_exporter --collector.ipmi.dcmi.cmd="/path/to/wrapper/script"
+ceems_exporter --collector.ipmi_dcmi.cmd="/path/to/wrapper/script"
 ```
 
-By default no authentication is imposed on the exporter web server. In production this 
-is no advisable and it is possible to add basic auth and TLS to the exporter using 
-a web configuration file. More details on how to setup web configuration is discussed 
-in [Web configuration](../configuration/basic-auth.md) section. This file can be 
+By default no authentication is imposed on the exporter web server. In production this
+is no advisable and it is possible to add basic auth and TLS to the exporter using
+a web configuration file. More details on how to setup web configuration is discussed
+in [Web configuration](../configuration/basic-auth.md) section. This file can be
 passed to exporter as a CLI argument as follows:
 
 ```bash
 ceems_exporter --web.config.file=/path/to/web/config/file
 ```
 
-The basic auth password is hashed inside the web configuration file just like in 
+The basic auth password is hashed inside the web configuration file just like in
 `/etc/passwd` file and hence, the chances of password leaks are minimal.
 
 :::important[IMPORTANT]
 
-In all the cases, it is important that either exporter binary or exporter process must 
-have enough privileges to be able to export all the metrics. More info on the privileges 
-necessary for the exporter are discussed in [Configuration](../configuration/ceems-exporter.md) 
-section where as how to set privileges are briefed in [Systemd](../configuration/systemd.md) 
+In all the cases, it is important that either exporter binary or exporter process must
+have enough privileges to be able to export all the metrics. More info on the privileges
+necessary for the exporter are discussed in [Configuration](../configuration/ceems-exporter.md)
+section where as how to set privileges are briefed in [Systemd](../configuration/systemd.md)
 section.
 
 :::
 
-Once the exporter is running, by making a request to `/metrics` endpoint will give 
+Once the exporter is running, by making a request to `/metrics` endpoint will give
 following output:
 
 ```bash

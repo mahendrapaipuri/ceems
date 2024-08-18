@@ -2,8 +2,9 @@ package collector
 
 import (
 	"fmt"
+	std_log "log"
 	"net/http"
-	_ "net/http/pprof" // #nosec
+	"net/http/pprof"
 	"os"
 	"os/user"
 	"runtime"
@@ -97,12 +98,20 @@ func (b *CEEMSExporter) Main() error {
 		maxProcs = b.App.Flag(
 			"runtime.gomaxprocs", "The target number of CPUs Go will run on (GOMAXPROCS)",
 		).Envar("GOMAXPROCS").Default("1").Int()
+		enableDebugServer = b.App.Flag(
+			"web.debug-server",
+			"Enable debug server (default: disabled).",
+		).Default("false").Bool()
+		debugServerAddr = b.App.Flag(
+			"web.debug-server.listen-address",
+			"Address on which debug server will be exposed. Running debug server on localhost is strongly recommended.",
+		).Default("localhost:8010").String()
 		toolkitFlags = kingpinflag.AddFlags(&b.App, ":9010")
 	)
 
 	// This is hidden flag only used for e2e testing
 	emptyHostnameLabel = b.App.Flag(
-		"collector.empty.hostname.label",
+		"collector.empty-hostname-label",
 		"Use empty hostname in labels. Only for testing. (default is disabled)",
 	).Hidden().Default("false").Bool()
 
@@ -144,6 +153,33 @@ func (b *CEEMSExporter) Main() error {
 
 	runtime.GOMAXPROCS(*maxProcs)
 	level.Debug(logger).Log("msg", "Go MAXPROCS", "procs", runtime.GOMAXPROCS(0))
+
+	// Reset default routes (removing access to profiling)
+	http.DefaultServeMux = http.NewServeMux()
+
+	if *enableDebugServer {
+		// Recreating routes to profiling manually
+		pprofServeMux := http.NewServeMux()
+		pprofServeMux.HandleFunc("/debug/pprof/", pprof.Index)
+		pprofServeMux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+		pprofServeMux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+		pprofServeMux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+
+		go func() {
+			debugServer := &http.Server{
+				// slowloris attack: https://app.deepsource.com/directory/analyzers/go/issues/GO-S2112
+				ReadHeaderTimeout: 2 * time.Second,
+				// Only use routes for the profiling interface
+				Handler: pprofServeMux,
+				// Exposing them on loopback on a specific port for debbuging access
+				Addr: *debugServerAddr,
+			}
+
+			if err := debugServer.ListenAndServe(); err != nil {
+				std_log.Println("Failed to start debug server", "err", err)
+			}
+		}()
+	}
 
 	http.Handle(*metricsPath, b.newHandler(!*disableExporterMetrics, *maxRequests, logger))
 

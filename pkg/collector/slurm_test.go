@@ -30,9 +30,9 @@ func TestNewSlurmCollector(t *testing.T) {
 	_, err := CEEMSExporterApp.Parse(
 		[]string{
 			"--path.cgroupfs", "testdata/sys/fs/cgroup",
-			"--collector.slurm.create.unique.jobids",
-			"--collector.slurm.job.props.path", "testdata/slurmjobprops",
-			"--collector.slurm.gpu.job.map.path", "testdata/gpujobmap",
+			"--collector.slurm.create-unique-jobids",
+			"--collector.slurm.job-props-path", "testdata/slurmjobprops",
+			"--collector.slurm.gpu-job-map-path", "testdata/gpujobmap",
 		},
 	)
 	require.NoError(t, err)
@@ -45,9 +45,9 @@ func TestCgroupsV2SlurmJobMetrics(t *testing.T) {
 	_, err := CEEMSExporterApp.Parse(
 		[]string{
 			"--path.cgroupfs", "testdata/sys/fs/cgroup",
-			"--collector.slurm.create.unique.jobids",
-			"--collector.slurm.job.props.path", "testdata/slurmjobprops",
-			"--collector.slurm.gpu.job.map.path", "testdata/gpujobmap",
+			"--collector.slurm.create-unique-jobids",
+			"--collector.slurm.job-props-path", "testdata/slurmjobprops",
+			"--collector.slurm.gpu-job-map-path", "testdata/gpujobmap",
 		},
 	)
 	require.NoError(t, err)
@@ -95,7 +95,7 @@ func TestCgroupsV2SlurmJobMetricsWithProcFs(t *testing.T) {
 	_, err := CEEMSExporterApp.Parse(
 		[]string{
 			"--path.cgroupfs", "testdata/sys/fs/cgroup",
-			"--collector.slurm.create.unique.jobids",
+			"--collector.slurm.create-unique-jobids",
 			"--path.procfs", "testdata/proc",
 		},
 	)
@@ -144,7 +144,7 @@ func TestCgroupsV2SlurmJobMetricsNoJobProps(t *testing.T) {
 	_, err := CEEMSExporterApp.Parse(
 		[]string{
 			"--path.cgroupfs", "testdata/sys/fs/cgroup",
-			"--collector.slurm.create.unique.jobids",
+			"--collector.slurm.create-unique-jobids",
 		},
 	)
 	require.NoError(t, err)
@@ -191,8 +191,8 @@ func TestCgroupsV1SlurmJobMetrics(t *testing.T) {
 		[]string{
 			"--path.cgroupfs", "testdata/sys/fs/cgroup",
 			"--path.procfs", "testdata/proc",
-			"--collector.slurm.create.unique.jobids",
-			"--collector.slurm.job.props.path", "testdata/slurmjobprops",
+			"--collector.slurm.create-unique-jobids",
+			"--collector.slurm.job-props-path", "testdata/slurmjobprops",
 		},
 	)
 	require.NoError(t, err)

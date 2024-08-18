@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Need to use this path in --collector.slurm.job.props.path flag for ceems_exporter
+# Need to use this path in --collector.slurm.job-props-path flag for ceems_exporter
 DEST=/run/slurmjobprops
 [ -e $DEST ] || mkdir -m 755 $DEST
 

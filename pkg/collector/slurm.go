@@ -31,43 +31,51 @@ const (
 )
 
 var (
-	metricLock             = sync.RWMutex{}
-	collectSwapMemoryStats = CEEMSExporterApp.Flag(
+	metricLock                  = sync.RWMutex{}
+	collectSwapMemoryStatsDepre = CEEMSExporterApp.Flag(
 		"collector.slurm.swap.memory.metrics",
 		"Enables collection of swap memory metrics (default: disabled)",
+	).Default("false").Hidden().Bool()
+	collectSwapMemoryStats = CEEMSExporterApp.Flag(
+		"collector.slurm.swap-memory-metrics",
+		"Enables collection of swap memory metrics (default: disabled)",
 	).Default("false").Bool()
-	collectPSIStats = CEEMSExporterApp.Flag(
+	collectPSIStatsDepre = CEEMSExporterApp.Flag(
 		"collector.slurm.psi.metrics",
+		"Enables collection of PSI metrics (default: disabled)",
+	).Default("false").Hidden().Bool()
+	collectPSIStats = CEEMSExporterApp.Flag(
+		"collector.slurm.psi-metrics",
 		"Enables collection of PSI metrics (default: disabled)",
 	).Default("false").Bool()
 	useJobIDHash = CEEMSExporterApp.Flag(
-		"collector.slurm.create.unique.jobids",
+		"collector.slurm.create-unique-jobids",
 		`Enables calculation of a unique hash based job UUID (default: disabled). 
 UUID is calculated based on SLURM_JOBID, SLURM_JOB_USER, SLURM_JOB_ACCOUNT, SLURM_JOB_NODELIST.`,
 	).Default("false").Hidden().Bool()
 	gpuType = CEEMSExporterApp.Flag(
-		"collector.slurm.gpu.type",
+		"collector.slurm.gpu-type",
 		"GPU device type. Currently only nvidia and amd devices are supported.",
-	).Enum("nvidia", "amd")
+	).Hidden().Enum("nvidia", "amd")
 	jobStatPath = CEEMSExporterApp.Flag(
-		"collector.slurm.job.props.path",
+		"collector.slurm.job-props-path",
 		`Directory containing files with job properties. Files should be named after SLURM_JOBID 
 with contents as "$SLURM_JOB_USER $SLURM_JOB_ACCOUNT $SLURM_JOB_NODELIST" in the same order.`,
 	).Default("/run/slurmjobprops").Hidden().String()
 	gpuStatPath = CEEMSExporterApp.Flag(
-		"collector.slurm.gpu.job.map.path",
+		"collector.slurm.gpu-job-map-path",
 		"Path to file that maps GPU ordinals to job IDs.",
 	).Default("/run/gpujobmap").Hidden().String()
 	forceCgroupsVersion = CEEMSExporterApp.Flag(
-		"collector.slurm.force.cgroups.version",
+		"collector.slurm.force-cgroups-version",
 		"Set cgroups version manually. Used only for testing.",
 	).Hidden().Enum("v1", "v2")
 	nvidiaSmiPath = CEEMSExporterApp.Flag(
-		"collector.slurm.nvidia.smi.path",
+		"collector.slurm.nvidia-smi-path",
 		"Absolute path to nvidia-smi binary. Use only for testing.",
 	).Hidden().Default("").String()
 	rocmSmiPath = CEEMSExporterApp.Flag(
-		"collector.slurm.rocm.smi.path",
+		"collector.slurm.rocm-smi-path",
 		"Absolute path to rocm-smi binary. Use only for testing.",
 	).Hidden().Default("").String()
 )
@@ -161,6 +169,15 @@ func init() {
 
 // NewSlurmCollector returns a new Collector exposing a summary of cgroups.
 func NewSlurmCollector(logger log.Logger) (Collector, error) {
+	// Log deprecation notices
+	if *collectPSIStatsDepre {
+		level.Warn(logger).Log("msg", "flag --collector.slurm.psi.metrics has been deprecated. Use --collector.slurm.psi-metrics instead")
+	}
+
+	if *collectSwapMemoryStatsDepre {
+		level.Warn(logger).Log("msg", "flag --collector.slurm.swap.memory.metrics has been deprecated. Use --collector.slurm.swap-memory-metrics instead")
+	}
+
 	var cgroupsVersion string
 
 	var cgroupsRootPath string
@@ -196,13 +213,25 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 	}
 
 	// Attempt to get GPU devices
+	var gpuTypes []string
+
 	var gpuDevs map[int]Device
 
 	var err error
 
-	gpuDevs, err = GetGPUDevices(*gpuType, logger)
-	if err == nil {
-		level.Info(logger).Log("msg", "GPU devices found")
+	if *gpuType != "" {
+		gpuTypes = []string{*gpuType}
+	} else {
+		gpuTypes = []string{"nvidia", "amd"}
+	}
+
+	for _, gpuType := range gpuTypes {
+		gpuDevs, err = GetGPUDevices(gpuType, logger)
+		if err == nil {
+			level.Info(logger).Log("msg", "GPU devices found", "type", gpuType)
+
+			break
+		}
 	}
 
 	// Get total memory of host
@@ -405,13 +434,13 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 		ch <- prometheus.MustNewConstMetric(c.jobMemoryFailCount, prometheus.GaugeValue, m.memoryFailCount, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
 
 		// PSI stats. Push them only if they are available
-		if *collectSwapMemoryStats {
+		if *collectSwapMemoryStatsDepre || *collectSwapMemoryStats {
 			ch <- prometheus.MustNewConstMetric(c.jobMemswUsed, prometheus.GaugeValue, m.memswUsed, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
 			ch <- prometheus.MustNewConstMetric(c.jobMemswTotal, prometheus.GaugeValue, m.memswTotal, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
 			ch <- prometheus.MustNewConstMetric(c.jobMemswFailCount, prometheus.GaugeValue, m.memswFailCount, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
 		}
 
-		if *collectPSIStats {
+		if *collectPSIStatsDepre || *collectPSIStats {
 			ch <- prometheus.MustNewConstMetric(c.jobCPUPressure, prometheus.GaugeValue, m.cpuPressure, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
 			ch <- prometheus.MustNewConstMetric(c.jobMemoryPressure, prometheus.GaugeValue, m.memoryPressure, c.manager, c.hostname, m.jobuser, m.jobaccount, m.jobuuid)
 		}
