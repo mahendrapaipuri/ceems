@@ -5,7 +5,7 @@ go 1.22.5
 require (
 	github.com/alecthomas/kingpin/v2 v2.4.0
 	github.com/containerd/cgroups/v3 v3.0.4-0.20240117155926-c00d22e55fef
-	github.com/go-chi/httprate v0.12.1
+	github.com/go-chi/httprate v0.14.0
 	github.com/go-kit/log v0.2.1
 	github.com/golang-migrate/migrate/v4 v4.17.1
 	github.com/google/uuid v1.6.0
