@@ -69,6 +69,8 @@ var (
 type perfCollector struct {
 	fs procfs.FS
 
+	envVar string
+
 	perfHwProfilersEnabled    bool
 	perfSwProfilersEnabled    bool
 	perfCacheProfilersEnabled bool
@@ -81,8 +83,8 @@ type perfCollector struct {
 	perfSwProfilerTypes    perf.SoftwareProfilerType
 	perfCacheProfilerTypes perf.CacheProfilerType
 
-	cgroupComputeIDRegex *regexp.Regexp
-	ignoreProcNameRegex  *regexp.Regexp
+	cgroupIDRegex      *regexp.Regexp // Regex to extract cgroup ID from process
+	filterProcCmdRegex *regexp.Regexp // Processes with command line matching this regex will be ignored
 
 	desc map[string]*prometheus.Desc
 
@@ -98,6 +100,10 @@ func init() {
 
 // CLI options.
 var (
+	perfProfilersEnvVars = CEEMSExporterApp.Flag(
+		"collector.perf.env-var",
+		"Processes having this environment variable set will be profiled. If empty, all the relevant processes will be profiled.",
+	).String()
 	perfHwProfilersFlag = CEEMSExporterApp.Flag(
 		"collector.perf.enable-hardware-profilers",
 		"Enables perf hardware profilers (default: enabled)",
@@ -130,6 +136,7 @@ func NewPerfCollector(logger log.Logger) (Collector, error) {
 	collector := &perfCollector{
 		logger:                    logger,
 		hostname:                  hostname,
+		envVar:                    *perfProfilersEnvVars,
 		perfHwProfilersEnabled:    *perfHwProfilersFlag,
 		perfSwProfilersEnabled:    *perfSwProfilersFlag,
 		perfCacheProfilersEnabled: *perfCacheProfilersFlag,
@@ -165,13 +172,13 @@ func NewPerfCollector(logger log.Logger) (Collector, error) {
 
 	if *collectorState[slurmCollectorSubsystem] {
 		collector.manager = "slurm"
-		collector.cgroupComputeIDRegex = slurmCgroupIDRegex
-		collector.ignoreProcNameRegex = slurmIgnoreProcsRegex
+		collector.cgroupIDRegex = slurmCgroupIDRegex
+		collector.filterProcCmdRegex = slurmIgnoreProcsRegex
 	}
 
-	// Instantiate a new Proc FS
 	var err error
 
+	// Instantiate a new Proc FS
 	collector.fs, err = procfs.NewFS(*procfsPath)
 	if err != nil {
 		level.Error(logger).Log("msg", "Unable to open procfs", "path", *procfsPath, "err", err)
@@ -687,29 +694,50 @@ func (c *perfCollector) discoverProcess() (map[string][]procfs.Proc, error) {
 	var cgroupID string
 
 	for _, proc := range allProcs {
-		// Ignore processes that match regex
-		if c.ignoreProcNameRegex != nil {
+		// if envVar is not empty check if this env vars is present for the process
+		// We dont check for the value of env var. Presence of env var is enough to
+		// trigger the profiling of that process
+		if c.envVar != "" {
+			environ, err := proc.Environ()
+			if err != nil {
+				continue
+			}
+
+			for _, env := range environ {
+				if strings.HasPrefix(env, c.envVar) {
+					goto check_process
+				}
+			}
+
+			// If env var is not found on process, ignore it
+			continue
+		}
+
+	check_process:
+
+		// Ignore processes where command line matches the regex
+		if c.filterProcCmdRegex != nil {
 			procCmdLine, err := proc.CmdLine()
 			if err != nil || len(procCmdLine) == 0 {
 				continue
 			}
 
 			// Ignore process if matches found
-			procCmdLineMatches := c.ignoreProcNameRegex.FindStringSubmatch(strings.Join(procCmdLine, " "))
+			procCmdLineMatches := c.filterProcCmdRegex.FindStringSubmatch(strings.Join(procCmdLine, " "))
 			if len(procCmdLineMatches) > 1 {
 				continue
 			}
 		}
 
 		// Get cgroup ID from regex
-		if c.cgroupComputeIDRegex != nil {
+		if c.cgroupIDRegex != nil {
 			cgroups, err := proc.Cgroups()
 			if err != nil || len(cgroups) == 0 {
 				continue
 			}
 
 			for _, cgroup := range cgroups {
-				cgroupIDMatches := c.cgroupComputeIDRegex.FindStringSubmatch(cgroup.Path)
+				cgroupIDMatches := c.cgroupIDRegex.FindStringSubmatch(cgroup.Path)
 				if len(cgroupIDMatches) <= 1 {
 					continue
 				}
