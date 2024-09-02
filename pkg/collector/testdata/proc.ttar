@@ -4366,7 +4366,7 @@ SymlinkTo: /usr/bin
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: proc/46231/environ
 Lines: 1
-PATH=/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/binNULLBYTEHOSTNAME=cd24e11f73a5NULLBYTETERM=xtermNULLBYTEGOLANG_VERSION=1.12.5NULLBYTEGOPATH=/goNULLBYTEHOME=/rootNULLBYTEEOF
+PATH=/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/binNULLBYTEHOSTNAME=cd24e11f73a5NULLBYTETERM=xtermNULLBYTEGOLANG_VERSION=1.12.5NULLBYTEGOPATH=/goNULLBYTEHOME=/rootNULLBYTEENABLE_PROFILING=1NULLBYTE
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: proc/46231/exe
@@ -7159,7 +7159,7 @@ SymlinkTo: /usr/bin
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: proc/46235/environ
 Lines: 1
-PATH=/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/binNULLBYTEHOSTNAME=cd24e11f73a5NULLBYTETERM=xtermNULLBYTEGOLANG_VERSION=1.12.5NULLBYTEGOPATH=/goNULLBYTEHOME=/rootNULLBYTEEOF
+PATH=/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/binNULLBYTEHOSTNAME=cd24e11f73a5NULLBYTETERM=xtermNULLBYTEGOLANG_VERSION=1.12.5NULLBYTEGOPATH=/goNULLBYTEHOME=/rootNULLBYTEENABLE_PROFILING=1NULLBYTE
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: proc/46235/exe
@@ -7849,7 +7849,7 @@ SymlinkTo: /usr/bin
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: proc/46236/environ
 Lines: 1
-PATH=/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/binNULLBYTEHOSTNAME=cd24e11f73a5NULLBYTETERM=xtermNULLBYTEGOLANG_VERSION=1.12.5NULLBYTEGOPATH=/goNULLBYTEHOME=/rootNULLBYTEEOF
+PATH=/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/binNULLBYTEHOSTNAME=cd24e11f73a5NULLBYTETERM=xtermNULLBYTEGOLANG_VERSION=1.12.5NULLBYTEGOPATH=/goNULLBYTEHOME=/rootNULLBYTEENABLE_PROFILING=1NULLBYTE
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: proc/46236/exe
@@ -8550,7 +8550,7 @@ SymlinkTo: /usr/bin
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: proc/46281/environ
 Lines: 1
-PATH=/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/binNULLBYTEHOSTNAME=cd24e11f73a5NULLBYTETERM=xtermNULLBYTEGOLANG_VERSION=1.12.5NULLBYTEGOPATH=/goNULLBYTEHOME=/rootNULLBYTEEOF
+PATH=/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/binNULLBYTEHOSTNAME=cd24e11f73a5NULLBYTETERM=xtermNULLBYTEGOLANG_VERSION=1.12.5NULLBYTEGOPATH=/goNULLBYTEHOME=/rootNULLBYTEENABLE_PROFILING=1NULLBYTE
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: proc/46281/exe
