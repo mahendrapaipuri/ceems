@@ -29,7 +29,7 @@
     "redocusaurus": "^2.1.1"
   },
   "devDependencies": {
-    "@docusaurus/module-type-aliases": "3.2.1",
+    "@docusaurus/module-type-aliases": "3.5.2",
     "@docusaurus/tsconfig": "3.5.2",
     "@docusaurus/types": "3.2.1",
     "cspell": "^8.9.1",
