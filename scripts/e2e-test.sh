@@ -309,6 +309,7 @@ then
         --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/freeipmi/ipmi-dcmi" \
         --collector.empty-hostname-label \
         --web.listen-address "127.0.0.1:${port}" \
+        --web.disable-exporter-metrics \
         --log.level="debug" > "${logfile}" 2>&1 &
 
   elif [ "${scenario}" = "exporter-cgroups-v2-nvidia-ipmiutil" ] 
@@ -325,6 +326,7 @@ then
         --collector.slurm.gpu-job-map-path="pkg/collector/testdata/gpujobmap" \
         --collector.empty-hostname-label \
         --web.listen-address "127.0.0.1:${port}" \
+        --web.disable-exporter-metrics \
         --log.level="debug" > "${logfile}" 2>&1 &
 
   elif [ "${scenario}" = "exporter-cgroups-v2-amd-ipmitool" ] 
@@ -342,6 +344,7 @@ then
         --collector.slurm.gpu-job-map-path="pkg/collector/testdata/gpujobmap" \
         --collector.empty-hostname-label \
         --web.listen-address "127.0.0.1:${port}" \
+        --web.disable-exporter-metrics \
         --log.level="debug" > "${logfile}" 2>&1 &
 
   elif [ "${scenario}" = "exporter-cgroups-v2-nogpu" ] 
@@ -356,6 +359,7 @@ then
         --collector.slurm.force-cgroups-version="v2" \
         --collector.empty-hostname-label \
         --web.listen-address "127.0.0.1:${port}" \
+        --web.disable-exporter-metrics \
         --log.level="debug" > "${logfile}" 2>&1 &
 
   elif [ "${scenario}" = "exporter-cgroups-v2-procfs" ] 
@@ -372,6 +376,7 @@ then
         --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/ipmiutils/ipmiutil" \
         --collector.empty-hostname-label \
         --web.listen-address "127.0.0.1:${port}" \
+        --web.disable-exporter-metrics \
         --log.level="debug" > "${logfile}" 2>&1 &
   
   elif [ "${scenario}" = "exporter-cgroups-v2-all-metrics" ] 
@@ -392,6 +397,7 @@ then
         --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/capmc/capmc" \
         --collector.empty-hostname-label \
         --web.listen-address "127.0.0.1:${port}" \
+        --web.disable-exporter-metrics \
         --log.level="debug" > "${logfile}" 2>&1 &
   fi
 
