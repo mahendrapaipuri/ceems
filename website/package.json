@@ -18,8 +18,8 @@
     "checks": "yarn spellcheck && yarn linkcheck"
   },
   "dependencies": {
-    "@docusaurus/core": "3.2.1",
-    "@docusaurus/preset-classic": "3.2.1",
+    "@docusaurus/core": "3.5.2",
+    "@docusaurus/preset-classic": "3.5.2",
     "@mdx-js/react": "^3.0.0",
     "clsx": "^2.0.0",
     "docusaurus-theme-redoc": "^2.0.2",
@@ -31,7 +31,7 @@
   "devDependencies": {
     "@docusaurus/module-type-aliases": "3.5.2",
     "@docusaurus/tsconfig": "3.5.2",
-    "@docusaurus/types": "3.2.1",
+    "@docusaurus/types": "3.5.2",
     "cspell": "^8.9.1",
     "markdown-link-check": "^3.12.2",
     "typescript": "~5.2.2"
