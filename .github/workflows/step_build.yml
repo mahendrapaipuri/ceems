@@ -40,3 +40,4 @@ jobs:
           name: build-artifacts
           path: .build
           retention-days: 3
+          include-hidden-files: true
