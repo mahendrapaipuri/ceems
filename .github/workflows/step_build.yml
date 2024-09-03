@@ -38,7 +38,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-artifacts
-          path: |
-            .build
-            .tarballs
+          path: .build
           retention-days: 3
