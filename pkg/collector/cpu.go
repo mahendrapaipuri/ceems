@@ -4,6 +4,7 @@
 package collector
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"sync"
@@ -54,12 +55,12 @@ func NewCPUCollector(logger log.Logger) (Collector, error) {
 	}
 
 	// Get number of physical cores
-	socketCoreMap := make(map[string]int)
+	socketCoreMap := make(map[string]uint)
 
-	var physicalCores, logicalCores int
+	var physicalCores, logicalCores uint
 
 	for _, cpu := range info {
-		socketCoreMap[cpu.PhysicalID] = int(cpu.CPUCores)
+		socketCoreMap[cpu.PhysicalID] = cpu.CPUCores
 		logicalCores++
 	}
 
@@ -133,6 +134,13 @@ func (c *cpuCollector) Update(ch chan<- prometheus.Metric) error {
 	ch <- prometheus.MustNewConstMetric(c.cpu, prometheus.CounterValue, c.cpuStats.IRQ, c.hostname, "irq")
 	ch <- prometheus.MustNewConstMetric(c.cpu, prometheus.CounterValue, c.cpuStats.SoftIRQ, c.hostname, "softirq")
 	ch <- prometheus.MustNewConstMetric(c.cpu, prometheus.CounterValue, c.cpuStats.Steal, c.hostname, "steal")
+
+	return nil
+}
+
+// Stop releases system resources used by the collector.
+func (c *cpuCollector) Stop(_ context.Context) error {
+	level.Debug(c.logger).Log("msg", "Stopping", "collector", cpuCollectorSubsystem)
 
 	return nil
 }

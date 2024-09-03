@@ -4,6 +4,7 @@
 package collector
 
 import (
+	"context"
 	"time"
 
 	"github.com/go-kit/log"
@@ -67,6 +68,13 @@ func (c *emissionsCollector) Update(ch chan<- prometheus.Metric) error {
 			}
 		}
 	}
+
+	return nil
+}
+
+// Stops collector and releases system resources.
+func (c *emissionsCollector) Stop(_ context.Context) error {
+	level.Debug(c.logger).Log("msg", "Stopping", "collector", emissionsCollectorSubsystem)
 
 	return nil
 }

@@ -4,11 +4,14 @@
 package collector
 
 import (
+	"context"
 	"testing"
 
 	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/procfs"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func makeTestCPUCollector(s procfs.CPUStat) *cpuCollector {
@@ -18,6 +21,33 @@ func makeTestCPUCollector(s procfs.CPUStat) *cpuCollector {
 		logger:   log.NewNopLogger(),
 		cpuStats: dupStat,
 	}
+}
+
+func TestCPUCollector(t *testing.T) {
+	_, err := CEEMSExporterApp.Parse([]string{
+		"--path.procfs", "testdata/proc", "--collector.empty-hostname-label",
+	})
+	require.NoError(t, err)
+
+	collector, err := NewCPUCollector(log.NewNopLogger())
+	require.NoError(t, err)
+
+	// Setup background goroutine to capture metrics.
+	metrics := make(chan prometheus.Metric)
+	defer close(metrics)
+
+	go func() {
+		i := 0
+		for range metrics {
+			i++
+		}
+	}()
+
+	err = collector.Update(metrics)
+	require.NoError(t, err)
+
+	err = collector.Stop(context.Background())
+	require.NoError(t, err)
 }
 
 func TestCPU(t *testing.T) {

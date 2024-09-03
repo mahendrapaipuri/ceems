@@ -5,6 +5,7 @@ package collector
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -43,7 +44,8 @@ func init() {
 // NewMeminfoCollector returns a new Collector exposing memory stats.
 func NewMeminfoCollector(logger log.Logger) (Collector, error) {
 	if *meminfoAllStatisticsDepr {
-		level.Warn(logger).Log("msg", "flag --collector.meminfo.all.stats has been deprecated. Use --collector.meminfo.all-stats instead")
+		level.Warn(logger).
+			Log("msg", "flag --collector.meminfo.all.stats has been deprecated. Use --collector.meminfo.all-stats instead")
 	}
 
 	return &meminfoCollector{
@@ -91,6 +93,13 @@ func (c *meminfoCollector) Update(ch chan<- prometheus.Metric) error {
 			metricType, v, c.hostname,
 		)
 	}
+
+	return nil
+}
+
+// Stop releases system resources used by the collector.
+func (c *meminfoCollector) Stop(_ context.Context) error {
+	level.Debug(c.logger).Log("msg", "Stopping", "collector", memInfoSubsystem)
 
 	return nil
 }

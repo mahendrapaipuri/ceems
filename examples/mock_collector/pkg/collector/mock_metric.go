@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"context"
 	"math/rand"
 
 	"github.com/go-kit/log"
@@ -51,5 +52,10 @@ func NewMockCollector(logger log.Logger) (collector.Collector, error) {
 func (c *mockCollector) Update(ch chan<- prometheus.Metric) error {
 	// Return a random value
 	ch <- prometheus.MustNewConstMetric(c.mockMetricDesc, prometheus.CounterValue, float64(rand.Intn(*maxRandInt)))
+	return nil
+}
+
+// Stop releases system resources used by the collector.
+func (c *mockCollector) Stop(_ context.Context) error {
 	return nil
 }

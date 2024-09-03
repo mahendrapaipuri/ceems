@@ -6,6 +6,7 @@
 package collector
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -100,6 +101,13 @@ func (c *raplCollector) Update(ch chan<- prometheus.Metric) error {
 			ch <- c.joulesMetric(rz, joules)
 		}
 	}
+
+	return nil
+}
+
+// Stop releases system resources used by the collector.
+func (c *raplCollector) Stop(_ context.Context) error {
+	level.Debug(c.logger).Log("msg", "Stopping", "collector", raplCollectorSubsystem)
 
 	return nil
 }

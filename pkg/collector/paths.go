@@ -16,14 +16,17 @@ var (
 			String()
 )
 
+// sysFilePath returns the sub directory of sys fs.
 func sysFilePath(name string) string {
 	return filepath.Join(*sysPath, name)
 }
 
+// procFilePath returns the sub directory of path fs.
 func procFilePath(name string) string {
 	return filepath.Join(*procfsPath, name)
 }
 
+// cgroupFilePath returns the sub directory of crgoup fs.
 func cgroupFilePath(name string) string {
 	return filepath.Join(*cgroupfsPath, name)
 }

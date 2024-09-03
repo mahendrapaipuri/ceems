@@ -4,6 +4,7 @@
 package collector
 
 import (
+	"context"
 	"fmt"
 	"io/fs"
 	"math"
@@ -171,11 +172,13 @@ func init() {
 func NewSlurmCollector(logger log.Logger) (Collector, error) {
 	// Log deprecation notices
 	if *collectPSIStatsDepre {
-		level.Warn(logger).Log("msg", "flag --collector.slurm.psi.metrics has been deprecated. Use --collector.slurm.psi-metrics instead")
+		level.Warn(logger).
+			Log("msg", "flag --collector.slurm.psi.metrics has been deprecated. Use --collector.slurm.psi-metrics instead")
 	}
 
 	if *collectSwapMemoryStatsDepre {
-		level.Warn(logger).Log("msg", "flag --collector.slurm.swap.memory.metrics has been deprecated. Use --collector.slurm.swap-memory-metrics instead")
+		level.Warn(logger).
+			Log("msg", "flag --collector.slurm.swap.memory.metrics has been deprecated. Use --collector.slurm.swap-memory-metrics instead")
 	}
 
 	var cgroupsVersion string
@@ -383,17 +386,6 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 	}, nil
 }
 
-// Return cgroups v1 subsystem.
-func subsystem() ([]cgroup1.Subsystem, error) {
-	s := []cgroup1.Subsystem{
-		cgroup1.NewCpuacct(*cgroupfsPath),
-		cgroup1.NewMemory(*cgroupfsPath),
-		cgroup1.NewRdma(*cgroupfsPath),
-	}
-
-	return s, nil
-}
-
 // Update implements Collector and update job metrics.
 func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 	// Send job level metrics
@@ -474,6 +466,13 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 			}
 		}
 	}
+
+	return nil
+}
+
+// Stop releases system resources used by the collector.
+func (c *slurmCollector) Stop(_ context.Context) error {
+	level.Debug(c.logger).Log("msg", "Stopping", "collector", slurmCollectorSubsystem)
 
 	return nil
 }
@@ -749,8 +748,17 @@ func (c *slurmCollector) readJobPropsFromEnviron(jobid string, pids []uint64, jo
 	wg := &sync.WaitGroup{}
 	wg.Add(len(pids))
 
+	var pidInt32 int
+
 	// Iterate through all procs and look for SLURM_JOB_ID env entry
 	for _, pid := range pids {
+		// Check for overflows
+		if pid < math.MaxInt32 {
+			pidInt32 = int(pid) //nolint:gosec
+		} else {
+			continue
+		}
+
 		go func(p int) {
 			// Read process environment variables
 			// NOTE: This needs CAP_SYS_PTRACE and CAP_DAC_READ_SEARCH caps
@@ -795,7 +803,7 @@ func (c *slurmCollector) readJobPropsFromEnviron(jobid string, pids []uint64, jo
 
 			// Mark routine as done
 			wg.Done()
-		}(int(pid))
+		}(pidInt32)
 	}
 	// Wait for all go routines to finish
 	wg.Wait()
@@ -1107,4 +1115,15 @@ func (c *slurmCollector) getCgroupsV2Metrics(name string) (CgroupMetric, error) 
 	c.getJobProperties(name, &metric, cgroupProcPids)
 
 	return metric, nil
+}
+
+// subsystem returns cgroups v1 subsystem.
+func subsystem() ([]cgroup1.Subsystem, error) {
+	s := []cgroup1.Subsystem{
+		cgroup1.NewCpuacct(*cgroupfsPath),
+		cgroup1.NewMemory(*cgroupfsPath),
+		cgroup1.NewRdma(*cgroupfsPath),
+	}
+
+	return s, nil
 }

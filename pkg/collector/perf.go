@@ -4,6 +4,7 @@
 package collector
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"regexp"
@@ -459,6 +460,16 @@ func (c *perfCollector) Update(ch chan<- prometheus.Metric) error {
 			level.Error(c.logger).Log("msg", "failed to update cache counters", "cgroup", cgroupID, "err", err)
 		}
 	}
+
+	return nil
+}
+
+// Stop releases system resources used by the collector.
+func (c *perfCollector) Stop(_ context.Context) error {
+	level.Debug(c.logger).Log("msg", "Stopping", "collector", perfCollectorSubsystem)
+
+	// Close all profilers
+	c.closeProfilers([]int{})
 
 	return nil
 }

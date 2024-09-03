@@ -82,7 +82,10 @@ func (s *mockManager) FetchUnits(_ context.Context, _ time.Time, _ time.Time) ([
 
 // Add the logic here to get users and projects/accounts/tenants/namespaces from
 // resource manager
-func (s *mockManager) FetchUsersProjects(_ context.Context, _ time.Time) ([]models.ClusterUsers, []models.ClusterProjects, error) {
+func (s *mockManager) FetchUsersProjects(
+	_ context.Context,
+	_ time.Time,
+) ([]models.ClusterUsers, []models.ClusterProjects, error) {
 	return []models.ClusterUsers{
 			{
 				Cluster: models.Cluster{

@@ -7,6 +7,7 @@
 package collector
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -170,7 +171,8 @@ func init() {
 // NewIPMICollector returns a new Collector exposing IMPI DCMI power metrics.
 func NewIPMICollector(logger log.Logger) (Collector, error) {
 	if *ipmiDcmiCmdDepr != "" {
-		level.Warn(logger).Log("msg", "flag --collector.ipmi.dcmi.cmd has been deprecated. Use --collector.ipmi_dcmi.cmd instead.")
+		level.Warn(logger).
+			Log("msg", "flag --collector.ipmi.dcmi.cmd has been deprecated. Use --collector.ipmi_dcmi.cmd instead.")
 	}
 
 	var execMode string
@@ -257,38 +259,6 @@ outside:
 	return &collector, nil
 }
 
-// Find IPMI command from list of different IPMI implementations.
-func findIPMICmd() []string {
-	for _, cmd := range ipmiDcmiCmds {
-		cmdSlice := strings.Split(cmd, " ")
-		if _, err := exec.LookPath(cmdSlice[0]); err == nil {
-			return cmdSlice
-		}
-	}
-	// Return a sane default and collector will handle even if bin does not exist
-	return strings.Split(ipmiDcmiCmds[0], " ")
-}
-
-// Get value based on regex from IPMI output.
-func getValue(ipmiOutput []byte, regex *regexp.Regexp) (string, error) {
-	for _, line := range strings.Split(string(ipmiOutput), "\n") {
-		match := regex.FindStringSubmatch(line)
-		if match == nil {
-			continue
-		}
-
-		for i, name := range regex.SubexpNames() {
-			if name != "value" {
-				continue
-			}
-
-			return match[i], nil
-		}
-	}
-
-	return "", fmt.Errorf("could not find value in output: %s", string(ipmiOutput))
-}
-
 // Update implements Collector and exposes IPMI DCMI power related metrics.
 func (c *impiCollector) Update(ch chan<- prometheus.Metric) error {
 	// Get power consumption from IPMI
@@ -311,6 +281,13 @@ func (c *impiCollector) Update(ch chan<- prometheus.Metric) error {
 			c.cachedMetric[rType] = rValue
 		}
 	}
+
+	return nil
+}
+
+// Stop releases system resources used by the collector.
+func (c *impiCollector) Stop(_ context.Context) error {
+	level.Debug(c.logger).Log("msg", "Stopping", "collector", ipmiCollectorSubsystem)
 
 	return nil
 }
@@ -423,4 +400,36 @@ func (c *impiCollector) executeIPMICmd() ([]byte, error) {
 	}
 
 	return stdOut, nil
+}
+
+// Find IPMI command from list of different IPMI implementations.
+func findIPMICmd() []string {
+	for _, cmd := range ipmiDcmiCmds {
+		cmdSlice := strings.Split(cmd, " ")
+		if _, err := exec.LookPath(cmdSlice[0]); err == nil {
+			return cmdSlice
+		}
+	}
+	// Return a sane default and collector will handle even if bin does not exist
+	return strings.Split(ipmiDcmiCmds[0], " ")
+}
+
+// Get value based on regex from IPMI output.
+func getValue(ipmiOutput []byte, regex *regexp.Regexp) (string, error) {
+	for _, line := range strings.Split(string(ipmiOutput), "\n") {
+		match := regex.FindStringSubmatch(line)
+		if match == nil {
+			continue
+		}
+
+		for i, name := range regex.SubexpNames() {
+			if name != "value" {
+				continue
+			}
+
+			return match[i], nil
+		}
+	}
+
+	return "", fmt.Errorf("could not find value in output: %s", string(ipmiOutput))
 }

@@ -2,23 +2,13 @@ package collector
 
 import (
 	"fmt"
-	"io"
 	"net/http"
 	"os"
+	"syscall"
 	"testing"
 	"time"
 
-	"github.com/alecthomas/kingpin/v2"
-	"github.com/go-kit/log"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-)
-
-const mockCEEMSExporterAppName = "mockApp"
-
-var mockCEEMSExporterApp = *kingpin.New(
-	mockCEEMSExporterAppName,
-	"Prometheus Exporter to export compute metrics.",
 )
 
 func queryExporter(address string) error {
@@ -26,32 +16,13 @@ func queryExporter(address string) error {
 	if err != nil {
 		return err
 	}
-
-	b, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	if err := resp.Body.Close(); err != nil {
-		return err
-	}
+	defer resp.Body.Close()
 
 	if want, have := http.StatusOK, resp.StatusCode; want != have {
-		return fmt.Errorf("want /metrics status code %d, have %d. Body:\n%s", want, have, b)
+		return fmt.Errorf("want /metrics status code %d, have %d.", want, have)
 	}
 
 	return nil
-}
-
-func TestCEEMSExporterAppHandler(t *testing.T) {
-	a := CEEMSExporter{
-		appName: mockCEEMSExporterAppName,
-		App:     mockCEEMSExporterApp,
-	}
-
-	// Create handler
-	handler := a.newHandler(false, 1, log.NewNopLogger())
-	assert.Equal(t, 1, handler.maxRequests)
 }
 
 func TestCEEMSExporterMain(t *testing.T) {
@@ -83,4 +54,8 @@ func TestCEEMSExporterMain(t *testing.T) {
 			t.Errorf("Could not start exporter after %d attempts", i)
 		}
 	}
+
+	// Send INT signal and wait a second to clean up server and DB
+	syscall.Kill(syscall.Getpid(), syscall.SIGINT)
+	time.Sleep(1 * time.Second)
 }

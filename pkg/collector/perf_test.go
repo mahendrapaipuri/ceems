@@ -4,6 +4,7 @@
 package collector
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -33,6 +34,9 @@ func TestPerfCollector(t *testing.T) {
 	}()
 
 	err = collector.Update(metrics)
+	require.NoError(t, err)
+
+	err = collector.Stop(context.Background())
 	require.NoError(t, err)
 }
 
