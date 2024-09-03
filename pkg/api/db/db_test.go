@@ -262,7 +262,11 @@ func (m *mockFetcherTwo) FetchUsersProjects(
 }
 
 // Return error for this mockFetcher.
-func (m *mockFetcherThree) FetchUnits(_ context.Context, start time.Time, end time.Time) ([]models.ClusterUnits, error) {
+func (m *mockFetcherThree) FetchUnits(
+	_ context.Context,
+	start time.Time,
+	end time.Time,
+) ([]models.ClusterUnits, error) {
 	time.Sleep(10 * time.Millisecond)
 
 	return nil, errors.New("failed to fetch units")
@@ -611,7 +615,12 @@ func TestNewUnitStatsDB(t *testing.T) {
 	require.NoError(t, err, "failed to create new stats")
 
 	// Check content of last update time file. It should not change
-	assert.Contains(t, s.storage.lastUpdateTime.String(), "2023-12-20 00:00:00", "Expected last update time is 2023-12-20 00:00:00")
+	assert.Contains(
+		t,
+		s.storage.lastUpdateTime.String(),
+		"2023-12-20 00:00:00",
+		"Expected last update time is 2023-12-20 00:00:00",
+	)
 	s.Stop()
 }
 

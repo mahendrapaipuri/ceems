@@ -36,7 +36,10 @@ type Fetcher interface {
 	// FetchUnits fetches compute units between start and end times
 	FetchUnits(ctx context.Context, start time.Time, end time.Time) ([]models.ClusterUnits, error)
 	// FetchUsersProjects fetches latest projects, users and their associations
-	FetchUsersProjects(ctx context.Context, currentTime time.Time) ([]models.ClusterUsers, []models.ClusterProjects, error)
+	FetchUsersProjects(
+		ctx context.Context,
+		currentTime time.Time,
+	) ([]models.ClusterUsers, []models.ClusterProjects, error)
 }
 
 // Manager implements the interface to fetch compute units from different resource managers.
@@ -210,7 +213,10 @@ func (b Manager) FetchUnits(ctx context.Context, start time.Time, end time.Time)
 }
 
 // FetchUsersProjects fetches latest projects and users for each cluster.
-func (b Manager) FetchUsersProjects(ctx context.Context, currentTime time.Time) ([]models.ClusterUsers, []models.ClusterProjects, error) {
+func (b Manager) FetchUsersProjects(
+	ctx context.Context,
+	currentTime time.Time,
+) ([]models.ClusterUsers, []models.ClusterProjects, error) {
 	// Measure elapsed time
 	defer common.TimeTrack(time.Now(), "users and projects fetcher", b.Logger)
 

@@ -81,7 +81,11 @@ func New(cluster models.Cluster, logger log.Logger) (resource.Fetcher, error) {
 }
 
 // FetchUnits fetches jobs from slurm.
-func (s *slurmScheduler) FetchUnits(ctx context.Context, start time.Time, end time.Time) ([]models.ClusterUnits, error) {
+func (s *slurmScheduler) FetchUnits(
+	ctx context.Context,
+	start time.Time,
+	end time.Time,
+) ([]models.ClusterUnits, error) {
 	// Fetch each cluster one by one to reduce memory footprint
 	var jobs []models.Unit
 
@@ -149,7 +153,10 @@ func (s *slurmScheduler) fetchFromSacct(ctx context.Context, start time.Time, en
 }
 
 // Get user project association from slurm sacctmgr command.
-func (s *slurmScheduler) fetchFromSacctMgr(ctx context.Context, current time.Time) ([]models.User, []models.Project, error) {
+func (s *slurmScheduler) fetchFromSacctMgr(
+	ctx context.Context,
+	current time.Time,
+) ([]models.User, []models.Project, error) {
 	// Get current time string
 	currentTime := current.Format(base.DatetimeLayout)
 

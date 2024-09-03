@@ -275,7 +275,12 @@ func (t *TSDB) Query(ctx context.Context, query string, queryTime time.Time) (Me
 	}
 
 	// Create a new POST request
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, t.queryEndpoint().String(), strings.NewReader(values.Encode()))
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		t.queryEndpoint().String(),
+		strings.NewReader(values.Encode()),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -390,7 +395,12 @@ func (t *TSDB) Delete(ctx context.Context, startTime time.Time, endTime time.Tim
 	}
 
 	// Create a new POST request
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, t.deleteEndpoint().String(), strings.NewReader(values.Encode()))
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		t.deleteEndpoint().String(),
+		strings.NewReader(values.Encode()),
+	)
 	if err != nil {
 		return err
 	}

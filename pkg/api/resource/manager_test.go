@@ -31,7 +31,11 @@ func NewMockResourceManager(cluster models.Cluster, logger log.Logger) (Fetcher,
 }
 
 // Return empty units response.
-func (d *mockResourceManager) FetchUnits(_ context.Context, start time.Time, end time.Time) ([]models.ClusterUnits, error) {
+func (d *mockResourceManager) FetchUnits(
+	_ context.Context,
+	start time.Time,
+	end time.Time,
+) ([]models.ClusterUnits, error) {
 	return []models.ClusterUnits{
 		{
 			Cluster: models.Cluster{ID: "mock"},

@@ -61,13 +61,13 @@ func init() {
 }
 
 // randomFloats returns random float64s in the range.
-func randomFloats(min, max float64) models.JSONFloat { //nolint:unparam
-	return models.JSONFloat(min + rand.Float64()*(max-min)) // #nosec
+func randomFloats(minBound, maxBound float64) models.JSONFloat { //nolint:unparam
+	return models.JSONFloat(minBound + rand.Float64()*(maxBound-minBound)) // #nosec
 }
 
 // random returns random number between min and max excluding max.
-func random(min, max int64) int64 {
-	return randomHelper(max-min-1) + min
+func random(minBound, maxBound int64) int64 {
+	return randomHelper(maxBound-minBound-1) + minBound
 }
 
 // randomHelper returns max int64 if n is more than max.

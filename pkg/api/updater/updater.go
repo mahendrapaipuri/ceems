@@ -44,7 +44,12 @@ type Config[T any] struct {
 
 // Updater interface.
 type Updater interface {
-	Update(ctx context.Context, startTime time.Time, endTime time.Time, units []models.ClusterUnits) []models.ClusterUnits
+	Update(
+		ctx context.Context,
+		startTime time.Time,
+		endTime time.Time,
+		units []models.ClusterUnits,
+	) []models.ClusterUnits
 }
 
 // UnitUpdater implements the interface to update compute units from different updaters.

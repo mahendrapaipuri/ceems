@@ -31,7 +31,11 @@ func NewDefaultResourceManager(cluster models.Cluster, logger log.Logger) (Fetch
 }
 
 // Return empty units response.
-func (d *defaultResourceManager) FetchUnits(_ context.Context, start time.Time, end time.Time) ([]models.ClusterUnits, error) {
+func (d *defaultResourceManager) FetchUnits(
+	_ context.Context,
+	start time.Time,
+	end time.Time,
+) ([]models.ClusterUnits, error) {
 	level.Info(d.logger).Log("msg", "Empty units fetched from default NoOp cluster")
 
 	return []models.ClusterUnits{

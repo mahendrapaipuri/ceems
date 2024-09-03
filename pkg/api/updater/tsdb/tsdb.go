@@ -204,7 +204,12 @@ func (t *tsdbUpdater) fetchAggMetrics(
 }
 
 // Fetch unit metrics from TSDB and update UnitStat struct for each unit.
-func (t *tsdbUpdater) update(ctx context.Context, startTime time.Time, endTime time.Time, units []models.Unit) []models.Unit {
+func (t *tsdbUpdater) update(
+	ctx context.Context,
+	startTime time.Time,
+	endTime time.Time,
+	units []models.Unit,
+) []models.Unit {
 	// Bail if TSDB is unavailable or there are no units to update
 	if !t.Available() || len(units) == 0 {
 		return units
@@ -438,7 +443,12 @@ func (t *tsdbUpdater) update(ctx context.Context, startTime time.Time, endTime t
 }
 
 // Delete time series data of ignored units.
-func (t *tsdbUpdater) deleteTimeSeries(ctx context.Context, startTime time.Time, endTime time.Time, unitUUIDs []string) error {
+func (t *tsdbUpdater) deleteTimeSeries(
+	ctx context.Context,
+	startTime time.Time,
+	endTime time.Time,
+	unitUUIDs []string,
+) error {
 	// Check if there are any units to ignore. If there aren't return immediately
 	// We shouldnt make a API request to delete with empty units slice as TSDB will
 	// match all units during that period with uuid=~"" matcher
