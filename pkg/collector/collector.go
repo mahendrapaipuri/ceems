@@ -2,6 +2,7 @@
 package collector
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
@@ -45,6 +46,23 @@ var (
 	forcedCollectors       = map[string]bool{} // collectors which have been explicitly enabled or disabled
 )
 
+// Collector is the interface a collector has to implement.
+type Collector interface {
+	// Get new metrics and expose them via prometheus registry.
+	Update(ch chan<- prometheus.Metric) error
+	// Stops each collector and cleans up system resources
+	Stop(ctx context.Context) error
+}
+
+// ErrNoData indicates the collector found no data to collect, but had no other error.
+var ErrNoData = errors.New("collector returned no data")
+
+// IsNoDataError returns true if error is ErrNoData.
+func IsNoDataError(err error) bool {
+	return errors.Is(ErrNoData, err)
+}
+
+// RegisterCollector registers collector into collector factory.
 func RegisterCollector(
 	collector string,
 	isDefaultEnabled bool,
@@ -100,21 +118,8 @@ func collectorFlagAction(collector string) func(ctx *kingpin.ParseContext) error
 }
 
 // NewCEEMSCollector creates a new CEEMSCollector.
-func NewCEEMSCollector(logger log.Logger, filters ...string) (*CEEMSCollector, error) {
+func NewCEEMSCollector(logger log.Logger) (*CEEMSCollector, error) {
 	f := make(map[string]bool)
-
-	for _, filter := range filters {
-		enabled, exist := collectorState[filter]
-		if !exist {
-			return nil, fmt.Errorf("missing collector: %s", filter)
-		}
-
-		if !*enabled {
-			return nil, fmt.Errorf("disabled collector: %s", filter)
-		}
-
-		f[filter] = true
-	}
 
 	collectors := make(map[string]Collector)
 
@@ -163,6 +168,20 @@ func (n CEEMSCollector) Collect(ch chan<- prometheus.Metric) {
 	wg.Wait()
 }
 
+// Close stops all the collectors and release system resources.
+func (n CEEMSCollector) Close(ctx context.Context) error {
+	var errs error
+
+	for _, c := range n.Collectors {
+		if err := c.Stop(ctx); err != nil {
+			errs = errors.Join(errs, err)
+		}
+	}
+
+	return errs
+}
+
+// execute collects the metrics from each collector.
 func execute(name string, c Collector, ch chan<- prometheus.Metric, logger log.Logger) {
 	begin := time.Now()
 	err := c.Update(ch)
@@ -186,17 +205,4 @@ func execute(name string, c Collector, ch chan<- prometheus.Metric, logger log.L
 	}
 	ch <- prometheus.MustNewConstMetric(scrapeDurationDesc, prometheus.GaugeValue, duration.Seconds(), name)
 	ch <- prometheus.MustNewConstMetric(scrapeSuccessDesc, prometheus.GaugeValue, success, name)
-}
-
-// Collector is the interface a collector has to implement.
-type Collector interface {
-	// Get new metrics and expose them via prometheus registry.
-	Update(ch chan<- prometheus.Metric) error
-}
-
-// ErrNoData indicates the collector found no data to collect, but had no other error.
-var ErrNoData = errors.New("collector returned no data")
-
-func IsNoDataError(err error) bool {
-	return errors.Is(ErrNoData, err)
 }

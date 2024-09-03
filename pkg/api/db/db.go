@@ -169,7 +169,8 @@ func New(c *Config) (*stats, error) {
 		// Parse date time string
 		c.Data.LastUpdateTime, err = time.Parse(base.DatetimeLayout, lastUpdatedAt)
 		if err != nil {
-			level.Error(c.Logger).Log("msg", "Failed to parse last_updated_at fetched from DB", "time", lastUpdatedAt, "err", err)
+			level.Error(c.Logger).
+				Log("msg", "Failed to parse last_updated_at fetched from DB", "time", lastUpdatedAt, "err", err)
 		}
 	}
 
@@ -720,7 +721,11 @@ func (s *stats) createBackup(ctx context.Context) error {
 
 	// Attempt to create in-place DB backup
 	// Make a unique backup file name using current time
-	backupDBFileName := fmt.Sprintf("%s-%s.db", strings.Split(base.CEEMSDBName, ".")[0], time.Now().Format("200601021504"))
+	backupDBFileName := fmt.Sprintf(
+		"%s-%s.db",
+		strings.Split(base.CEEMSDBName, ".")[0],
+		time.Now().Format("200601021504"),
+	)
 
 	backupDBFilePath := filepath.Join(filepath.Dir(s.storage.dbPath), backupDBFileName)
 	if err := s.backup(ctx, backupDBFilePath); err != nil {

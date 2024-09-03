@@ -62,11 +62,11 @@ func ExecuteAs(cmd string, args []string, uid int, gid int, env []string, logger
 	// Check bounds on uid and gid before converting into int32
 	var uidInt32, gidInt32 uint32
 	if uid > 0 && uid <= math.MaxInt32 {
-		uidInt32 = uint32(uid)
+		uidInt32 = uint32(uid) //nolint:gosec
 	}
 
 	if gid > 0 && gid <= math.MaxInt32 {
-		gidInt32 = uint32(gid)
+		gidInt32 = uint32(gid) //nolint:gosec
 	}
 
 	// According to setpgid docs (https://man7.org/linux/man-pages/man2/setpgid.2.html)
@@ -135,7 +135,15 @@ func ExecuteContext(ctx context.Context, cmd string, args []string, env []string
 }
 
 // ExecuteAsContext executes a command as a given UID and GID with context and return stdout/stderr.
-func ExecuteAsContext(ctx context.Context, cmd string, args []string, uid int, gid int, env []string, logger log.Logger) ([]byte, error) {
+func ExecuteAsContext(
+	ctx context.Context,
+	cmd string,
+	args []string,
+	uid int,
+	gid int,
+	env []string,
+	logger log.Logger,
+) ([]byte, error) {
 	level.Debug(logger).
 		Log("msg", "Executing as user with context", "command", cmd, "args", strings.Join(args, " "), "uid", uid, "gid", gid)
 
@@ -144,11 +152,11 @@ func ExecuteAsContext(ctx context.Context, cmd string, args []string, uid int, g
 	// Check bounds on uid and gid before converting into int32
 	var uidInt32, gidInt32 uint32
 	if uid > 0 && uid <= math.MaxInt32 {
-		uidInt32 = uint32(uid)
+		uidInt32 = uint32(uid) //nolint:gosec
 	}
 
 	if gid > 0 && gid <= math.MaxInt32 {
-		gidInt32 = uint32(gid)
+		gidInt32 = uint32(gid) //nolint:gosec
 	}
 
 	// According to setpgid docs (https://man7.org/linux/man-pages/man2/setpgid.2.html)
@@ -259,11 +267,11 @@ func ExecuteAsWithTimeout(
 	// Check bounds on uid and gid before converting into int32
 	var uidInt32, gidInt32 uint32
 	if uid > 0 && uid <= math.MaxInt32 {
-		uidInt32 = uint32(uid)
+		uidInt32 = uint32(uid) //nolint:gosec
 	}
 
 	if gid > 0 && gid <= math.MaxInt32 {
-		gidInt32 = uint32(gid)
+		gidInt32 = uint32(gid) //nolint:gosec
 	}
 
 	// According to setpgid docs (https://man7.org/linux/man-pages/man2/setpgid.2.html)

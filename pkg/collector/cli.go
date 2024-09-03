@@ -1,26 +1,22 @@
 package collector
 
 import (
+	"context"
 	"fmt"
-	std_log "log"
-	"net/http"
-	"net/http/pprof"
 	"os"
+	"os/signal"
 	"os/user"
 	"runtime"
+	"syscall"
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
-	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	internal_runtime "github.com/mahendrapaipuri/ceems/internal/runtime"
-	"github.com/prometheus/client_golang/prometheus"
-	promcollectors "github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/common/promlog"
 	"github.com/prometheus/common/promlog/flag"
 	"github.com/prometheus/common/version"
 	"github.com/prometheus/exporter-toolkit/web"
-	"github.com/prometheus/exporter-toolkit/web/kingpinflag"
 )
 
 // CEEMSExporter represents the `ceems_exporter` cli.
@@ -42,7 +38,12 @@ var CEEMSExporterApp = *kingpin.New(
 var hostname string
 
 // Empty hostname flag (Used only for testing).
-var emptyHostnameLabel *bool
+// var emptyHostnameLabel *bool
+// This is hidden flag only used for e2e testing.
+var emptyHostnameLabel = CEEMSExporterApp.Flag(
+	"collector.empty-hostname-label",
+	"Use empty hostname in labels. Only for testing. (default is disabled)",
+).Hidden().Default("false").Bool()
 
 // NewCEEMSExporter returns a new CEEMSExporter instance.
 func NewCEEMSExporter() (*CEEMSExporter, error) {
@@ -52,33 +53,17 @@ func NewCEEMSExporter() (*CEEMSExporter, error) {
 	}, nil
 }
 
-// Create a new handler for exporting metrics.
-func (b *CEEMSExporter) newHandler(includeExporterMetrics bool, maxRequests int, logger log.Logger) *handler {
-	h := &handler{
-		exporterMetricsRegistry: prometheus.NewRegistry(),
-		includeExporterMetrics:  includeExporterMetrics,
-		maxRequests:             maxRequests,
-		logger:                  logger,
-	}
-	if h.includeExporterMetrics {
-		h.exporterMetricsRegistry.MustRegister(
-			promcollectors.NewProcessCollector(promcollectors.ProcessCollectorOpts{}),
-			promcollectors.NewGoCollector(),
-		)
-	}
-
-	if innerHandler, err := h.innerHandler(); err != nil {
-		panic(fmt.Errorf("couldn't create metrics handler: %w", err))
-	} else {
-		h.unfilteredHandler = innerHandler
-	}
-
-	return h
-}
-
 // Main is the entry point of the `ceems_exporter` command.
 func (b *CEEMSExporter) Main() error {
 	var (
+		webListenAddresses = b.App.Flag(
+			"web.listen-address",
+			"Addresses on which to expose metrics and web interface.",
+		).Default(":9010").Strings()
+		webConfigFile = b.App.Flag(
+			"web.config.file",
+			"Path to configuration file that can enable TLS or authentication. See: https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md",
+		).Envar("CEEMS_EXPORTER_WEB_CONFIG_FILE").Default("").String()
 		metricsPath = b.App.Flag(
 			"web.telemetry-path",
 			"Path under which to expose metrics.",
@@ -102,18 +87,16 @@ func (b *CEEMSExporter) Main() error {
 			"web.debug-server",
 			"Enable debug server (default: disabled).",
 		).Default("false").Bool()
-		debugServerAddr = b.App.Flag(
-			"web.debug-server.listen-address",
-			"Address on which debug server will be exposed. Running debug server on localhost is strongly recommended.",
-		).Default("localhost:8010").String()
-		toolkitFlags = kingpinflag.AddFlags(&b.App, ":9010")
 	)
 
-	// This is hidden flag only used for e2e testing
-	emptyHostnameLabel = b.App.Flag(
-		"collector.empty-hostname-label",
-		"Use empty hostname in labels. Only for testing. (default is disabled)",
-	).Hidden().Default("false").Bool()
+	// Socket activation only available on Linux
+	systemdSocket := func() *bool { b := false; return &b }() //nolint:nlreturn
+	if runtime.GOOS == "linux" {
+		systemdSocket = b.App.Flag(
+			"web.systemd-socket",
+			"Use systemd socket activation listeners instead of port listeners (Linux only).",
+		).Bool()
+	}
 
 	promlogConfig := &promlog.Config{}
 	flag.AddFlags(&b.App, promlogConfig)
@@ -140,7 +123,7 @@ func (b *CEEMSExporter) Main() error {
 
 	if user, err := user.Current(); err == nil && user.Uid == "0" {
 		level.Warn(logger).
-			Log("msg", "Batch Job Metrics Exporter is running as root user. This exporter can be run as unprivileged user, root is not required.")
+			Log("msg", "CEEMS Exporter is running as root user. This exporter can be run as unprivileged user, root is not required.")
 	}
 
 	// Get hostname
@@ -154,62 +137,69 @@ func (b *CEEMSExporter) Main() error {
 	runtime.GOMAXPROCS(*maxProcs)
 	level.Debug(logger).Log("msg", "Go MAXPROCS", "procs", runtime.GOMAXPROCS(0))
 
-	// Reset default routes (removing access to profiling)
-	http.DefaultServeMux = http.NewServeMux()
+	// Create context that listens for the interrupt signal from the OS.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
-	if *enableDebugServer {
-		// Recreating routes to profiling manually
-		pprofServeMux := http.NewServeMux()
-		pprofServeMux.HandleFunc("/debug/pprof/", pprof.Index)
-		pprofServeMux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
-		pprofServeMux.HandleFunc("/debug/pprof/profile", pprof.Profile)
-		pprofServeMux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
-
-		go func() {
-			debugServer := &http.Server{
-				// slowloris attack: https://app.deepsource.com/directory/analyzers/go/issues/GO-S2112
-				ReadHeaderTimeout: 2 * time.Second,
-				// Only use routes for the profiling interface
-				Handler: pprofServeMux,
-				// Exposing them on loopback on a specific port for debbuging access
-				Addr: *debugServerAddr,
-			}
-
-			if err := debugServer.ListenAndServe(); err != nil {
-				std_log.Println("Failed to start debug server", "err", err)
-			}
-		}()
-	}
-
-	http.Handle(*metricsPath, b.newHandler(!*disableExporterMetrics, *maxRequests, logger))
-
-	if *metricsPath != "/" {
-		landingConfig := web.LandingConfig{
-			Name:        b.App.Name,
-			Description: b.App.Help,
-			Version:     version.Info(),
-			Links: []web.LandingLinks{
-				{
-					Address: *metricsPath,
-					Text:    "Metrics",
+	// Create web server config
+	config := &Config{
+		Logger: logger,
+		Web: WebConfig{
+			Addresses:              *webListenAddresses,
+			WebSystemdSocket:       *systemdSocket,
+			WebConfigFile:          *webConfigFile,
+			MetricsPath:            *metricsPath,
+			MaxRequests:            *maxRequests,
+			IncludeExporterMetrics: !*disableExporterMetrics,
+			EnableDebugServer:      *enableDebugServer,
+			LandingConfig: &web.LandingConfig{
+				Name:        b.App.Name,
+				Description: b.App.Help,
+				Version:     version.Info(),
+				Links: []web.LandingLinks{
+					{
+						Address: *metricsPath,
+						Text:    "Metrics",
+					},
 				},
 			},
+		},
+	}
+
+	// Create a new exporter server instance
+	server, err := NewCEEMSExporterServer(config)
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create ceems exporter server", "err", err)
+
+		return err
+	}
+
+	// Initializing the server in a goroutine so that
+	// it won't block the graceful shutdown handling below.
+	go func() {
+		if err := server.Start(); err != nil {
+			level.Error(logger).Log("msg", "Failed to start server", "err", err)
 		}
+	}()
 
-		landingPage, err := web.NewLandingPage(landingConfig)
-		if err != nil {
-			return fmt.Errorf("failed to create landing page: %w", err)
-		}
+	// Listen for the interrupt signal.
+	<-ctx.Done()
 
-		http.Handle("/", landingPage)
+	// Restore default behavior on the interrupt signal and notify user of shutdown.
+	stop()
+	level.Info(logger).Log("msg", "Shutting down gracefully, press Ctrl+C again to force")
+
+	// The context is used to inform the server it has 5 seconds to finish
+	// the request it is currently handling.
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := server.Shutdown(ctx); err != nil {
+		level.Error(logger).Log("msg", "Failed to gracefully shutdown server", "err", err)
 	}
 
-	server := &http.Server{
-		ReadHeaderTimeout: 2 * time.Second, // slowloris attack: https://app.deepsource.com/directory/analyzers/go/issues/GO-S2112
-	}
-	if err := web.ListenAndServe(server, toolkitFlags, logger); err != nil {
-		return fmt.Errorf("failed to start server: %w", err)
-	}
+	level.Info(logger).Log("msg", "Server exiting")
+	level.Info(logger).Log("msg", "See you next time!!")
 
 	return nil
 }

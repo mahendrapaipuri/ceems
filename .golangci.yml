@@ -6,6 +6,7 @@ linters:
     - dupl
     - dupword
     - exhaustruct
+    - exportloopref  # deprecated
     - gomnd
     - gocognit
     - gocyclo

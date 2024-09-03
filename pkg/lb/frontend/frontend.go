@@ -58,7 +58,7 @@ type LoadBalancer interface {
 // Config makes a server config from CLI args.
 type Config struct {
 	Logger           log.Logger
-	Address          string
+	Addresses        []string
 	WebSystemdSocket bool
 	WebConfigFile    string
 	APIServer        ceems_api_cli.CEEMSAPIServerConfig
@@ -124,11 +124,11 @@ outside:
 	return &loadBalancer{
 		logger: c.Logger,
 		server: &http.Server{
-			Addr:              c.Address,
+			Addr:              c.Addresses[0],
 			ReadHeaderTimeout: 2 * time.Second, // slowloris attack: https://app.deepsource.com/directory/analyzers/go/issues/GO-S2112
 		},
 		webConfig: &web.FlagConfig{
-			WebListenAddresses: &[]string{c.Address},
+			WebListenAddresses: &c.Addresses,
 			WebSystemdSocket:   &c.WebSystemdSocket,
 			WebConfigFile:      &c.WebConfigFile,
 		},
@@ -265,7 +265,8 @@ func (lb *loadBalancer) Start() error {
 	level.Info(lb.logger).Log("msg", "Starting "+base.CEEMSLoadBalancerAppName)
 
 	// Listen for requests
-	if err := web.ListenAndServe(lb.server, lb.webConfig, lb.logger); err != nil && errors.Is(err, http.ErrServerClosed) {
+	if err := web.ListenAndServe(lb.server, lb.webConfig, lb.logger); err != nil &&
+		!errors.Is(err, http.ErrServerClosed) {
 		level.Error(lb.logger).Log("msg", "Failed to Listen and Serve HTTP server", "err", err)
 
 		return err

@@ -117,7 +117,7 @@ func (b *CEEMSServer) Main() error {
 		webListenAddresses = b.App.Flag(
 			"web.listen-address",
 			"Addresses on which to expose metrics and web interface.",
-		).Default(":9020").String()
+		).Default(":9020").Strings()
 		webConfigFile = b.App.Flag(
 			"web.config.file",
 			"Path to configuration file that can enable TLS or authentication. See: https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md",
@@ -224,7 +224,7 @@ func (b *CEEMSServer) Main() error {
 	serverConfig := &ceems_http.Config{
 		Logger: logger,
 		Web: ceems_http.WebConfig{
-			Address:          *webListenAddresses,
+			Addresses:        *webListenAddresses,
 			WebSystemdSocket: *systemdSocket,
 			WebConfigFile:    *webConfigFile,
 			RoutePrefix:      config.Server.Web.RoutePrefix,

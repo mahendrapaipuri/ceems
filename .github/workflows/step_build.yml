@@ -38,7 +38,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-artifacts
+          # Here we add .tarballs to path even if there is no .tarballs. This is to be
+          # consistent with cross-build step so that on download artifact we dont have to
+          # provide path argument.
           path: |
             .build
             .tarballs
           retention-days: 3
+          include-hidden-files: true

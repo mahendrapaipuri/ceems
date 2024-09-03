@@ -56,7 +56,7 @@ const (
 
 // WebConfig makes HTTP web config from CLI args.
 type WebConfig struct {
-	Address          string
+	Addresses        []string
 	WebSystemdSocket bool
 	WebConfigFile    string
 	RoutePrefix      string                  `yaml:"route_prefix"`
@@ -158,14 +158,14 @@ func New(c *Config) (*CEEMSServer, func(), error) {
 	server := &CEEMSServer{
 		logger: c.Logger,
 		server: &http.Server{
-			Addr:              c.Web.Address,
+			Addr:              c.Web.Addresses[0],
 			Handler:           router,
 			ReadTimeout:       10 * time.Second,
 			WriteTimeout:      10 * time.Second,
 			ReadHeaderTimeout: 2 * time.Second, // slowloris attack: https://app.deepsource.com/directory/analyzers/go/issues/GO-S2112
 		},
 		webConfig: &web.FlagConfig{
-			WebListenAddresses: &[]string{c.Web.Address},
+			WebListenAddresses: &c.Web.Addresses,
 			WebSystemdSocket:   &c.Web.WebSystemdSocket,
 			WebConfigFile:      &c.Web.WebConfigFile,
 		},
@@ -247,7 +247,11 @@ func New(c *Config) (*CEEMSServer, func(), error) {
 	)).Methods(http.MethodGet)
 
 	// Open DB connection
-	dsn := fmt.Sprintf("file:%s?%s", filepath.Join(c.DB.Data.Path, base.CEEMSDBName), "_mutex=no&mode=ro&_busy_timeout=5000")
+	dsn := fmt.Sprintf(
+		"file:%s?%s",
+		filepath.Join(c.DB.Data.Path, base.CEEMSDBName),
+		"_mutex=no&mode=ro&_busy_timeout=5000",
+	)
 	if server.db, err = sql.Open(sqlite3.DriverName, dsn); err != nil {
 		return nil, func() {}, fmt.Errorf("failed to open DB: %w", err)
 	}
@@ -313,7 +317,7 @@ func (s *CEEMSServer) Start() error {
 
 	level.Info(s.logger).Log("msg", "Starting "+base.CEEMSServerAppName)
 
-	if err := web.ListenAndServe(s.server, s.webConfig, s.logger); err != nil && errors.Is(err, http.ErrServerClosed) {
+	if err := web.ListenAndServe(s.server, s.webConfig, s.logger); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		level.Error(s.logger).Log("msg", "Failed to Listen and Serve HTTP server", "err", err)
 
 		return err

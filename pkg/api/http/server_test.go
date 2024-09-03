@@ -67,7 +67,14 @@ var (
 func setupServer(d string) *CEEMSServer {
 	logger := log.NewNopLogger()
 	server, _, _ := New(
-		&Config{Logger: logger, DB: db.Config{Data: db.DataConfig{Path: d}}, Web: WebConfig{RequestsLimit: 10}},
+		&Config{
+			Logger: logger,
+			DB:     db.Config{Data: db.DataConfig{Path: d}},
+			Web: WebConfig{
+				Addresses:     []string{"localhost:9020"}, // dummy address
+				RequestsLimit: 10,
+			},
+		},
 	)
 	server.maxQueryPeriod = time.Hour * 168
 	server.queriers = queriers{

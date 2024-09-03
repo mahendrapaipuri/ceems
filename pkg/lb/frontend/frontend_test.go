@@ -95,8 +95,9 @@ func TestNewFrontendSingleGroup(t *testing.T) {
 
 	// make minimal config
 	config := &Config{
-		Logger:  log.NewNopLogger(),
-		Manager: manager,
+		Logger:    log.NewNopLogger(),
+		Manager:   manager,
+		Addresses: []string{"localhost:9030"}, // dummy address
 	}
 
 	// New load balancer
@@ -200,8 +201,9 @@ func TestNewFrontendTwoGroups(t *testing.T) {
 
 	// make minimal config
 	config := &Config{
-		Logger:  log.NewNopLogger(),
-		Manager: manager,
+		Logger:    log.NewNopLogger(),
+		Manager:   manager,
+		Addresses: []string{"localhost:9030"}, // dummy address
 	}
 
 	// New load balancer
@@ -314,8 +316,9 @@ func TestValidateClusterIDsWithDBPass(t *testing.T) {
 
 	// make minimal config
 	config := &Config{
-		Logger:  log.NewNopLogger(),
-		Manager: manager,
+		Logger:    log.NewNopLogger(),
+		Manager:   manager,
+		Addresses: []string{"localhost:9030"}, // dummy address
 	}
 	config.APIServer.Data.Path = tmpDir
 
@@ -350,8 +353,9 @@ func TestValidateClusterIDsWithDBFail(t *testing.T) {
 
 	// make minimal config
 	config := &Config{
-		Logger:  log.NewNopLogger(),
-		Manager: manager,
+		Logger:    log.NewNopLogger(),
+		Manager:   manager,
+		Addresses: []string{"localhost:9030"}, // dummy address
 	}
 	config.APIServer.Data.Path = tmpDir
 
@@ -402,8 +406,9 @@ func TestValidateClusterIDsWithAPIPass(t *testing.T) {
 
 	// make minimal config
 	config := &Config{
-		Logger:  log.NewNopLogger(),
-		Manager: manager,
+		Logger:    log.NewNopLogger(),
+		Manager:   manager,
+		Addresses: []string{"localhost:9030"}, // dummy address
 	}
 	config.APIServer.Web.URL = ceemsServer.URL
 
@@ -446,8 +451,9 @@ func TestValidateClusterIDsWithAPIFail(t *testing.T) {
 
 	// make minimal config
 	config := &Config{
-		Logger:  log.NewNopLogger(),
-		Manager: manager,
+		Logger:    log.NewNopLogger(),
+		Manager:   manager,
+		Addresses: []string{"localhost:9030"}, // dummy address
 	}
 	config.APIServer.Web.URL = ceemsServer.URL
 

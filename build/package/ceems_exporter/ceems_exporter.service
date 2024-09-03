@@ -9,7 +9,7 @@ Group=ceemsexp
 ExecStart=/usr/local/bin/ceems_exporter \
     --web.disable-exporter-metrics \
     --web.config.file=/etc/ceems_exporter/web-config.yml \
-    --web.telemetry-path=/metrics
+    --web.telemetry-path=/metrics $CEEMS_EXPORTER_OPTIONS
 
 SyslogIdentifier=ceems_exporter
 Restart=always

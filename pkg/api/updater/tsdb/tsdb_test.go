@@ -267,7 +267,7 @@ func TestTSDBUpdateSuccessSingleInstance(t *testing.T) {
 
 	updatedUnits := tsdb.Update(context.Background(), time.Now().Add(-5*time.Minute), time.Now(), units)
 	for i := range len(expectedUnits) {
-		assert.Equal(t, expectedUnits[i], updatedUnits[0].Units[i], fmt.Sprintf("Unit: %d", i))
+		assert.Equal(t, expectedUnits[i], updatedUnits[0].Units[i], "Unit: %d", i)
 	}
 }
 

@@ -4,11 +4,13 @@
 package collector
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"testing"
 
 	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -33,12 +35,32 @@ func TestNewSlurmCollector(t *testing.T) {
 			"--collector.slurm.create-unique-jobids",
 			"--collector.slurm.job-props-path", "testdata/slurmjobprops",
 			"--collector.slurm.gpu-job-map-path", "testdata/gpujobmap",
+			"--collector.slurm.swap-memory-metrics",
+			"--collector.slurm.psi-metrics",
+			"--collector.slurm.nvidia-smi-path", "testdata/nvidia-smi",
 		},
 	)
 	require.NoError(t, err)
 
-	_, err = NewSlurmCollector(log.NewNopLogger())
-	assert.NoError(t, err)
+	collector, err := NewSlurmCollector(log.NewNopLogger())
+	require.NoError(t, err)
+
+	// Setup background goroutine to capture metrics.
+	metrics := make(chan prometheus.Metric)
+	defer close(metrics)
+
+	go func() {
+		i := 0
+		for range metrics {
+			i++
+		}
+	}()
+
+	err = collector.Update(metrics)
+	require.NoError(t, err)
+
+	err = collector.Stop(context.Background())
+	require.NoError(t, err)
 }
 
 func TestCgroupsV2SlurmJobMetrics(t *testing.T) {

@@ -62,7 +62,11 @@ func TestParseTimeParam(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		req, err := http.NewRequest(http.MethodGet, "localhost:42/foo?"+test.paramName+"="+test.paramValue, nil) //nolint:noctx
+		req, err := http.NewRequest( //nolint:noctx
+			http.MethodGet,
+			"localhost:42/foo?"+test.paramName+"="+test.paramValue,
+			nil,
+		)
 		require.NoError(t, err)
 
 		result := test.result

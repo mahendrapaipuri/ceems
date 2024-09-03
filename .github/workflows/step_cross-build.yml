@@ -51,3 +51,4 @@ jobs:
             .build
             .tarballs
           retention-days: 1
+          include-hidden-files: true

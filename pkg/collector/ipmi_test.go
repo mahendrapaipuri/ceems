@@ -4,12 +4,14 @@
 package collector
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -92,6 +94,33 @@ ipmiutil dcmi, completed successfully
 		"avg":     348,
 	}
 )
+
+func TestIPMICollector(t *testing.T) {
+	_, err := CEEMSExporterApp.Parse([]string{
+		"--collector.ipmi_dcmi.cmd", "testdata/ipmi/capmc/capmc",
+	})
+	require.NoError(t, err)
+
+	collector, err := NewIPMICollector(log.NewNopLogger())
+	require.NoError(t, err)
+
+	// Setup background goroutine to capture metrics.
+	metrics := make(chan prometheus.Metric)
+	defer close(metrics)
+
+	go func() {
+		i := 0
+		for range metrics {
+			i++
+		}
+	}()
+
+	err = collector.Update(metrics)
+	require.NoError(t, err)
+
+	err = collector.Stop(context.Background())
+	require.NoError(t, err)
+}
 
 func TestIpmiMetrics(t *testing.T) {
 	c := impiCollector{logger: log.NewNopLogger()}

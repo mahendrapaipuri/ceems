@@ -146,7 +146,7 @@ func (lb *CEEMSLoadBalancer) Main() error {
 		webListenAddresses = lb.App.Flag(
 			"web.listen-address",
 			"Addresses on which to expose metrics and web interface.",
-		).Default(":9030").String()
+		).Default(":9030").Strings()
 		webConfigFile = lb.App.Flag(
 			"web.config.file",
 			"Path to configuration file that can enable TLS or authentication. See: https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md",
@@ -212,7 +212,7 @@ func (lb *CEEMSLoadBalancer) Main() error {
 	// Create frontend config
 	frontendConfig := &frontend.Config{
 		Logger:           logger,
-		Address:          *webListenAddresses,
+		Addresses:        *webListenAddresses,
 		WebSystemdSocket: *systemdSocket,
 		WebConfigFile:    *webConfigFile,
 		APIServer:        config.Server,
