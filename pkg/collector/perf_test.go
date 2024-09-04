@@ -70,7 +70,7 @@ func TestDiscoverProcess(t *testing.T) {
 	collector := perfCollector{
 		logger:                    log.NewNopLogger(),
 		envVar:                    "ENABLE_PROFILING",
-		cgroupIDRegex:             slurmCgroupIDRegex,
+		cgroupIDRegex:             slurmCgroupPathRegex,
 		filterProcCmdRegex:        slurmIgnoreProcsRegex,
 		perfHwProfilersEnabled:    true,
 		perfSwProfilersEnabled:    true,
@@ -121,7 +121,7 @@ func TestNewProfilers(t *testing.T) {
 
 	collector := perfCollector{
 		logger:                    log.NewNopLogger(),
-		cgroupIDRegex:             slurmCgroupIDRegex,
+		cgroupIDRegex:             slurmCgroupPathRegex,
 		filterProcCmdRegex:        slurmIgnoreProcsRegex,
 		perfHwProfilersEnabled:    true,
 		perfSwProfilersEnabled:    true,

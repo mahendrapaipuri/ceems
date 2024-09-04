@@ -6,11 +6,13 @@ package collector
 import (
 	"context"
 	"fmt"
+	"os"
 	"strconv"
 	"testing"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/procfs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -32,12 +34,11 @@ func TestNewSlurmCollector(t *testing.T) {
 	_, err := CEEMSExporterApp.Parse(
 		[]string{
 			"--path.cgroupfs", "testdata/sys/fs/cgroup",
-			"--collector.slurm.create-unique-jobids",
-			"--collector.slurm.job-props-path", "testdata/slurmjobprops",
 			"--collector.slurm.gpu-job-map-path", "testdata/gpujobmap",
 			"--collector.slurm.swap-memory-metrics",
 			"--collector.slurm.psi-metrics",
 			"--collector.slurm.nvidia-smi-path", "testdata/nvidia-smi",
+			"--collector.slurm.force-cgroups-version", "v2",
 		},
 	)
 	require.NoError(t, err)
@@ -67,8 +68,6 @@ func TestCgroupsV2SlurmJobMetrics(t *testing.T) {
 	_, err := CEEMSExporterApp.Parse(
 		[]string{
 			"--path.cgroupfs", "testdata/sys/fs/cgroup",
-			"--collector.slurm.create-unique-jobids",
-			"--collector.slurm.job-props-path", "testdata/slurmjobprops",
 			"--collector.slurm.gpu-job-map-path", "testdata/gpujobmap",
 		},
 	)
@@ -81,10 +80,11 @@ func TestCgroupsV2SlurmJobMetrics(t *testing.T) {
 		hostMemTotal:     float64(123456),
 		slurmCgroupsPath: *cgroupfsPath + "/system.slice/slurmstepd.scope",
 		logger:           log.NewNopLogger(),
+		jobsCache:        make(map[string]jobProps),
 	}
-	metrics, err := c.getJobsMetrics()
+
 	expectedSlurmMetrics = CgroupMetric{
-		name:            "/system.slice/slurmstepd.scope/job_1009249",
+		path:            "/system.slice/slurmstepd.scope/job_1009249",
 		cpuUser:         60375.292848,
 		cpuSystem:       115.777502,
 		cpuTotal:        60491.070351,
@@ -101,26 +101,35 @@ func TestCgroupsV2SlurmJobMetrics(t *testing.T) {
 		memoryPressure:  0,
 		rdmaHCAHandles:  map[string]float64{"hfi1_0": 479, "hfi1_1": 1479, "hfi1_2": 2479},
 		rdmaHCAObjects:  map[string]float64{"hfi1_0": 340, "hfi1_1": 1340, "hfi1_2": 2340},
-		jobuser:         "testusr2",
-		jobaccount:      "testacc2",
-		jobid:           "1009249",
-		jobuuid:         "018ce2fe-b3f9-632a-7507-0e01c2687de5",
+		jobuuid:         "1009249",
 		jobgpuordinals:  []string{"0"},
 		err:             false,
 	}
 
+	metrics, err := c.getJobsMetrics()
 	require.NoError(t, err)
-	assert.Equal(t, expectedSlurmMetrics, metrics["1009249"])
+
+	var gotMetric CgroupMetric
+
+	for _, metric := range metrics {
+		if metric.jobuuid == expectedSlurmMetrics.jobuuid {
+			gotMetric = metric
+		}
+	}
+
+	assert.Equal(t, expectedSlurmMetrics, gotMetric)
 }
 
 func TestCgroupsV2SlurmJobMetricsWithProcFs(t *testing.T) {
 	_, err := CEEMSExporterApp.Parse(
 		[]string{
 			"--path.cgroupfs", "testdata/sys/fs/cgroup",
-			"--collector.slurm.create-unique-jobids",
 			"--path.procfs", "testdata/proc",
 		},
 	)
+	require.NoError(t, err)
+
+	procFS, err := procfs.NewFS(*procfsPath)
 	require.NoError(t, err)
 
 	c := slurmCollector{
@@ -130,10 +139,12 @@ func TestCgroupsV2SlurmJobMetricsWithProcFs(t *testing.T) {
 		hostMemTotal:     float64(123456),
 		slurmCgroupsPath: *cgroupfsPath + "/system.slice/slurmstepd.scope",
 		logger:           log.NewNopLogger(),
+		jobsCache:        make(map[string]jobProps),
+		procFS:           procFS,
 	}
-	metrics, err := c.getJobsMetrics()
+
 	expectedSlurmMetrics = CgroupMetric{
-		name:            "/system.slice/slurmstepd.scope/job_1009248",
+		path:            "/system.slice/slurmstepd.scope/job_1009248",
 		cpuUser:         60375.292848,
 		cpuSystem:       115.777502,
 		cpuTotal:        60491.070351,
@@ -150,23 +161,29 @@ func TestCgroupsV2SlurmJobMetricsWithProcFs(t *testing.T) {
 		memoryPressure:  0,
 		rdmaHCAHandles:  make(map[string]float64),
 		rdmaHCAObjects:  make(map[string]float64),
-		jobuser:         "testusr",
-		jobaccount:      "testacc",
-		jobid:           "1009248",
-		jobuuid:         "0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",
+		jobuuid:         "1009248",
 		jobgpuordinals:  []string{"2", "3"},
 		err:             false,
 	}
 
+	metrics, err := c.getJobsMetrics()
 	require.NoError(t, err)
-	assert.Equal(t, expectedSlurmMetrics, metrics["1009248"])
+
+	var gotMetric CgroupMetric
+
+	for _, metric := range metrics {
+		if metric.jobuuid == expectedSlurmMetrics.jobuuid {
+			gotMetric = metric
+		}
+	}
+
+	assert.Equal(t, expectedSlurmMetrics, gotMetric)
 }
 
 func TestCgroupsV2SlurmJobMetricsNoJobProps(t *testing.T) {
 	_, err := CEEMSExporterApp.Parse(
 		[]string{
 			"--path.cgroupfs", "testdata/sys/fs/cgroup",
-			"--collector.slurm.create-unique-jobids",
 		},
 	)
 	require.NoError(t, err)
@@ -177,10 +194,11 @@ func TestCgroupsV2SlurmJobMetricsNoJobProps(t *testing.T) {
 		gpuDevs:          mockGPUDevices(),
 		slurmCgroupsPath: *cgroupfsPath + "/system.slice/slurmstepd.scope",
 		logger:           log.NewNopLogger(),
+		jobsCache:        make(map[string]jobProps),
 	}
-	metrics, err := c.getJobsMetrics()
+
 	expectedSlurmMetrics = CgroupMetric{
-		name:            "/system.slice/slurmstepd.scope/job_1009248",
+		path:            "/system.slice/slurmstepd.scope/job_1009248",
 		cpuUser:         60375.292848,
 		cpuSystem:       115.777502,
 		cpuTotal:        60491.070351,
@@ -197,15 +215,22 @@ func TestCgroupsV2SlurmJobMetricsNoJobProps(t *testing.T) {
 		memoryPressure:  0,
 		rdmaHCAHandles:  make(map[string]float64),
 		rdmaHCAObjects:  make(map[string]float64),
-		jobuser:         "",
-		jobaccount:      "",
-		jobid:           "1009248",
-		jobuuid:         "a0523e93-a037-c2b1-8b34-410c9996399c",
+		jobuuid:         "1009248",
 		err:             false,
 	}
 
+	metrics, err := c.getJobsMetrics()
 	require.NoError(t, err)
-	assert.Equal(t, expectedSlurmMetrics, metrics["1009248"])
+
+	var gotMetric CgroupMetric
+
+	for _, metric := range metrics {
+		if metric.jobuuid == expectedSlurmMetrics.jobuuid {
+			gotMetric = metric
+		}
+	}
+
+	assert.Equal(t, expectedSlurmMetrics, gotMetric)
 }
 
 func TestCgroupsV1SlurmJobMetrics(t *testing.T) {
@@ -213,10 +238,11 @@ func TestCgroupsV1SlurmJobMetrics(t *testing.T) {
 		[]string{
 			"--path.cgroupfs", "testdata/sys/fs/cgroup",
 			"--path.procfs", "testdata/proc",
-			"--collector.slurm.create-unique-jobids",
-			"--collector.slurm.job-props-path", "testdata/slurmjobprops",
 		},
 	)
+	require.NoError(t, err)
+
+	procFS, err := procfs.NewFS(*procfsPath)
 	require.NoError(t, err)
 
 	c := slurmCollector{
@@ -225,10 +251,12 @@ func TestCgroupsV1SlurmJobMetrics(t *testing.T) {
 		gpuDevs:          mockGPUDevices(),
 		cgroupsRootPath:  *cgroupfsPath + "/cpuacct",
 		slurmCgroupsPath: *cgroupfsPath + "/cpuacct/slurm",
+		jobsCache:        make(map[string]jobProps),
+		procFS:           procFS,
 	}
-	metrics, err := c.getJobsMetrics()
+
 	expectedSlurmMetrics = CgroupMetric{
-		name:            "/slurm/uid_1000/job_1009248",
+		path:            "/slurm/uid_1000/job_1009248",
 		cpuUser:         0.39,
 		cpuSystem:       0.45,
 		cpuTotal:        1.012410966,
@@ -245,14 +273,103 @@ func TestCgroupsV1SlurmJobMetrics(t *testing.T) {
 		memoryPressure:  0,
 		rdmaHCAHandles:  map[string]float64{"hfi1_0": 479, "hfi1_1": 1479, "hfi1_2": 2479},
 		rdmaHCAObjects:  map[string]float64{"hfi1_0": 340, "hfi1_1": 1340, "hfi1_2": 2340},
-		jobuser:         "testusr",
-		jobaccount:      "testacc",
-		jobid:           "1009248",
-		jobuuid:         "0f0ac288-dbd4-a9a3-df3a-ab14ef9d51d5",
+		jobuuid:         "1009248",
 		jobgpuordinals:  []string{"2", "3"},
 		err:             false,
 	}
 
+	metrics, err := c.getJobsMetrics()
 	require.NoError(t, err)
-	assert.Equal(t, expectedSlurmMetrics, metrics["1009248"])
+
+	var gotMetric CgroupMetric
+
+	for _, metric := range metrics {
+		if metric.jobuuid == expectedSlurmMetrics.jobuuid {
+			gotMetric = metric
+		}
+	}
+
+	assert.Equal(t, expectedSlurmMetrics, gotMetric)
+}
+
+func TestJobPropsCaching(t *testing.T) {
+	path := t.TempDir()
+
+	cgroupsPath := path + "/cgroups"
+	err := os.Mkdir(cgroupsPath, 0o750)
+	require.NoError(t, err)
+
+	gpuMapFilePath := path + "/gpu-map"
+	err = os.Mkdir(gpuMapFilePath, 0o750)
+	require.NoError(t, err)
+
+	_, err = CEEMSExporterApp.Parse(
+		[]string{
+			"--path.cgroupfs", cgroupsPath,
+			"--collector.slurm.gpu-job-map-path", gpuMapFilePath,
+		},
+	)
+	require.NoError(t, err)
+
+	mockGPUDevs := mockGPUDevices()
+	c := slurmCollector{
+		cgroups:          "v1",
+		logger:           log.NewNopLogger(),
+		gpuDevs:          mockGPUDevs,
+		cgroupsRootPath:  *cgroupfsPath + "/cpuacct",
+		slurmCgroupsPath: *cgroupfsPath + "/cpuacct/slurm",
+		jobsCache:        make(map[string]jobProps),
+	}
+
+	// Add cgroups
+	for i := range 20 {
+		dir := fmt.Sprintf("%s/cpuacct/slurm/job_%d", cgroupsPath, i)
+
+		err = os.MkdirAll(dir, 0o750)
+		require.NoError(t, err)
+	}
+
+	// Binds GPUs to first n jobs
+	for igpu := range mockGPUDevs {
+		err = os.WriteFile(fmt.Sprintf("%s/%d", gpuMapFilePath, igpu), []byte(strconv.FormatInt(int64(igpu), 10)), 0o600)
+		require.NoError(t, err)
+	}
+
+	// Now call get metrics which should populate jobsCache
+	_, err = c.getJobsMetrics()
+	require.NoError(t, err)
+
+	// Check if jobsCache has 20 jobs and GPU ordinals are correct
+	assert.Len(t, c.jobsCache, 20)
+
+	for igpu := range mockGPUDevs {
+		gpuIDString := strconv.FormatInt(int64(igpu), 10)
+		assert.Equal(t, []string{gpuIDString}, c.jobsCache[gpuIDString].gpuOrdinals)
+	}
+
+	// Remove first 10 jobs and add new 10 more jobs
+	for i := range 10 {
+		dir := fmt.Sprintf("%s/cpuacct/slurm/job_%d", cgroupsPath, i)
+
+		err = os.RemoveAll(dir)
+		require.NoError(t, err)
+	}
+
+	for i := 19; i < 25; i++ {
+		dir := fmt.Sprintf("%s/cpuacct/slurm/job_%d", cgroupsPath, i)
+
+		err = os.MkdirAll(dir, 0o750)
+		require.NoError(t, err)
+	}
+
+	// Now call again get metrics which should populate jobsCache
+	_, err = c.getJobsMetrics()
+	require.NoError(t, err)
+
+	// Check if jobsCache has only 15 jobs and GPU ordinals are empty
+	assert.Len(t, c.jobsCache, 15)
+
+	for _, p := range c.jobsCache {
+		assert.Empty(t, p.gpuOrdinals)
+	}
 }
