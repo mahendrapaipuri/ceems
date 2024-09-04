@@ -51,6 +51,11 @@ then
     cgroups_mode="legacy"
     desc="Cgroups V1"
     fixture='pkg/collector/testdata/output/e2e-test-cgroupsv1-output.txt'
+  elif [ "${scenario}" = "exporter-cgroups-v1-memory-subsystem" ]
+  then
+    cgroups_mode="legacy"
+    desc="Cgroups V1 with memory subsystem"
+    fixture='pkg/collector/testdata/output/e2e-test-cgroupsv1-memory-subsystem-output.txt'
   elif [ "${scenario}" = "exporter-cgroups-v2-nvidia-ipmiutil" ]
   then
     cgroups_mode="unified"
@@ -300,8 +305,24 @@ then
         --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
         --path.procfs="pkg/collector/testdata/proc" \
         --collector.slurm \
-        --collector.slurm.create-unique-jobids \
-        --collector.slurm.job-props-path="pkg/collector/testdata/slurmjobprops" \
+        --collector.slurm.gpu-type="nvidia" \
+        --collector.slurm.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
+        --collector.slurm.force-cgroups-version="v1" \
+        --collector.slurm.gpu-job-map-path="pkg/collector/testdata/gpujobmap" \
+        --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/freeipmi/ipmi-dcmi" \
+        --collector.empty-hostname-label \
+        --web.listen-address "127.0.0.1:${port}" \
+        --web.disable-exporter-metrics \
+        --log.level="debug" > "${logfile}" 2>&1 &
+      
+  elif [ "${scenario}" = "exporter-cgroups-v1-memory-subsystem" ] 
+  then
+      ./bin/ceems_exporter \
+        --path.sysfs="pkg/collector/testdata/sys" \
+        --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
+        --path.procfs="pkg/collector/testdata/proc" \
+        --collector.slurm \
+        --collector.slurm.cgroups-v1-subsystem="memory" \
         --collector.slurm.gpu-type="nvidia" \
         --collector.slurm.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
         --collector.slurm.force-cgroups-version="v1" \
@@ -319,7 +340,6 @@ then
         --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
         --path.procfs="pkg/collector/testdata/proc" \
         --collector.slurm \
-        --collector.slurm.job-props-path="pkg/collector/testdata/slurmjobprops" \
         --collector.slurm.gpu-type="nvidia" \
         --collector.slurm.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
         --collector.slurm.force-cgroups-version="v2" \
@@ -336,8 +356,6 @@ then
         --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
         --path.procfs="pkg/collector/testdata/proc" \
         --collector.slurm \
-        --collector.slurm.create-unique-jobids \
-        --collector.slurm.job-props-path="pkg/collector/testdata/slurmjobprops" \
         --collector.slurm.gpu-type="amd" \
         --collector.slurm.rocm-smi-path="pkg/collector/testdata/rocm-smi" \
         --collector.slurm.force-cgroups-version="v2" \
@@ -354,8 +372,6 @@ then
         --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
         --path.procfs="pkg/collector/testdata/proc" \
         --collector.slurm \
-        --collector.slurm.create-unique-jobids \
-        --collector.slurm.job-props-path="pkg/collector/testdata/slurmjobprops" \
         --collector.slurm.force-cgroups-version="v2" \
         --collector.empty-hostname-label \
         --web.listen-address "127.0.0.1:${port}" \
@@ -369,7 +385,6 @@ then
         --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
         --path.procfs="pkg/collector/testdata/proc" \
         --collector.slurm \
-        --collector.slurm.create-unique-jobids \
         --collector.slurm.gpu-type="nvidia" \
         --collector.slurm.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
         --collector.slurm.force-cgroups-version="v2" \
@@ -386,8 +401,6 @@ then
         --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
         --path.procfs="pkg/collector/testdata/proc" \
         --collector.slurm \
-        --collector.slurm.create-unique-jobids \
-        --collector.slurm.job-props-path="pkg/collector/testdata/slurmjobprops" \
         --collector.slurm.gpu-type="amd" \
         --collector.slurm.rocm-smi-path="pkg/collector/testdata/rocm-smi" \
         --collector.slurm.force-cgroups-version="v2" \

@@ -25,7 +25,7 @@ var (
 	reParens        = regexp.MustCompile(`\((.*)\)`)
 )
 
-// Check if file exists.
+// fileExists checks if given file exists or not.
 func fileExists(filename string) bool {
 	info, err := os.Stat(filename)
 	if os.IsNotExist(err) {
@@ -35,17 +35,17 @@ func fileExists(filename string) bool {
 	return !info.IsDir()
 }
 
-// Find named matches in regex groups and return a map.
-func findNamedMatches(regex *regexp.Regexp, str string) map[string]string {
-	match := regex.FindStringSubmatch(str)
+// // Find named matches in regex groups and return a map.
+// func findNamedMatches(regex *regexp.Regexp, str string) map[string]string {
+// 	match := regex.FindStringSubmatch(str)
 
-	results := map[string]string{}
-	for i, name := range match {
-		results[regex.SubexpNames()[i]] = name
-	}
+// 	results := map[string]string{}
+// 	for i, name := range match {
+// 		results[regex.SubexpNames()[i]] = name
+// 	}
 
-	return results
-}
+// 	return results
+// }
 
 // SanitizeMetricName sanitize the given metric name by replacing invalid characters by underscores.
 //

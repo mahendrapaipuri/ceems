@@ -13,8 +13,8 @@ An example [systemd service file](https://github.com/mahendrapaipuri/ceems/blob/
 is also provided in the repo that can be used along with these prolog and epilog scripts.
 
 > [!IMPORTANT]
-> The CLI arguments `--collector.slurm.job-props-path` and `--collector.slurm.gpu-job-map-path`
-are hidden and cannot be seen in `ceems_exporter --help` output. However, these arguments
+> The CLI argument `--collector.slurm.gpu-job-map-path`
+is hidden and cannot be seen in `ceems_exporter --help` output. However, this argument
 exists in the exporter and can be used.
 
 Even with such prolog and epilog scripts, operators should grant the user running CEEMS

@@ -42,12 +42,9 @@ section.
 
 On the other hand, if the operators do not wish to add any privileges to exporter
 process, they can use the second approach but this requires some configuration additions
-to SLURM controller to execute a prolog and epilog script for each job. Alongside GPU
-ordinals to job ID map, the exporter retrieves some other job metadata like job owner,
-group, account, _etc_ to facilitate easy querying. These meta data are also gathered
-from prolog scripts.
+to SLURM controller to execute a prolog and epilog script for each job.
 
-A sample prolog script to get job meta data is as follows:
+<!-- A sample prolog script to get job meta data is as follows:
 
 ```bash
 #!/bin/bash
@@ -59,9 +56,9 @@ DEST=/run/slurmjobprops
 # Important to keep the order as SLURM_JOB_USER SLURM_JOB_ACCOUNT SLURM_JOB_NODELIST
 echo $SLURM_JOB_USER $SLURM_JOB_ACCOUNT $SLURM_JOB_NODELIST > $DEST/$SLURM_JOB_ID
 exit 0 
-```
+``` -->
 
-Similarly, sample prolog script to get GPU ordinals is as follows:
+A sample prolog script to get GPU ordinals is as follows:
 
 ```bash
 #!/bin/bash
@@ -92,16 +89,16 @@ Assuming the operators are using the above prolog scripts to get job meta data, 
 exporter must be configured with the following CLI flags:
 
 ```bash
-ceems_exporter --collector.slum --collector.slurm.job-props-path=/run/slurmjobprops --collector.slurm.gpu-job-map-path=/run/gpujobmap
+ceems_exporter --collector.slum --collector.slurm.gpu-job-map-path=/run/gpujobmap
 ```
 
-With above configuration, the exporter should export job meta data and GPU ordinal mapping
+With above configuration, the exporter should export GPU ordinal mapping
 along with other metrics of slurm collector.
 
 :::important[IMPORTANT]
 
-The CLI arguments `--collector.slurm.job-props-path` and `--collector.slurm.gpu-job-map-path`
-are hidden and cannot be seen in `ceems_exporter --help` output. However, these arguments
+The CLI option `--collector.slurm.gpu-job-map-path`
+is hidden and cannot be seen in `ceems_exporter --help` output. However, this option
 exists in the exporter and can be used.
 
 :::

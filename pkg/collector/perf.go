@@ -21,12 +21,6 @@ import (
 
 const perfCollectorSubsystem = "perf"
 
-// slurm related regexes.
-var (
-	slurmCgroupIDRegex    = regexp.MustCompile("^.*/(?:.+?)job_([0-9]+)(?:.*$)")
-	slurmIgnoreProcsRegex = regexp.MustCompile("slurmstepd:(.*)|sleep ([0-9]+)|/bin/bash (.*)/slurm_script")
-)
-
 var (
 	perfHardwareProfilerMap = map[string]perf.HardwareProfilerType{
 		"CpuCycles":    perf.CpuCyclesProfiler,
@@ -173,7 +167,7 @@ func NewPerfCollector(logger log.Logger) (Collector, error) {
 
 	if *collectorState[slurmCollectorSubsystem] {
 		collector.manager = "slurm"
-		collector.cgroupIDRegex = slurmCgroupIDRegex
+		collector.cgroupIDRegex = slurmCgroupPathRegex
 		collector.filterProcCmdRegex = slurmIgnoreProcsRegex
 	}
 

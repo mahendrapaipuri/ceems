@@ -139,6 +139,7 @@ ifeq ($(CGO_BUILD), 0)
 test-e2e: build pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked
 	@echo ">> running end-to-end tests"
 	./scripts/e2e-test.sh -s exporter-cgroups-v1
+	./scripts/e2e-test.sh -s exporter-cgroups-v1-memory-subsystem
 	./scripts/e2e-test.sh -s exporter-cgroups-v2-nvidia-ipmiutil
 	./scripts/e2e-test.sh -s exporter-cgroups-v2-amd-ipmitool
 	./scripts/e2e-test.sh -s exporter-cgroups-v2-nogpu
@@ -187,6 +188,7 @@ ifeq ($(CGO_BUILD), 0)
 test-e2e-update: build pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked
 	@echo ">> updating end-to-end tests outputs"
 	./scripts/e2e-test.sh -s exporter-cgroups-v1 -u || true
+	./scripts/e2e-test.sh -s exporter-cgroups-v1-memory-subsystem -u || true
 	./scripts/e2e-test.sh -s exporter-cgroups-v2-nvidia-ipmiutil -u || true
 	./scripts/e2e-test.sh -s exporter-cgroups-v2-amd-ipmitool -u || true
 	./scripts/e2e-test.sh -s exporter-cgroups-v2-nogpu -u || true
