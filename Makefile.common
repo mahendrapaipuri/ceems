@@ -184,7 +184,7 @@ common-unused:
 
 # Dont bother updating swagger docs for release builds
 .PHONY: common-build
-common-build: promu swag
+common-build: promu swag bpf
 ifeq ($(RELEASE_BUILD), 0)
 ifeq ($(CGO_BUILD), 1)
 	@echo ">> updating swagger docs"
@@ -193,11 +193,6 @@ ifeq ($(CGO_BUILD), 1)
 endif
 	@echo ">> building test binaries"
 	$(PROMU_TEST) build --prefix $(PREFIX) $(PROMU_BINARIES)
-endif
-ifeq ($(CGO_BUILD), 0)
-	@echo ">> building bpf assets"
-	$(MAKE) -C ./pkg/collector/bpf clean
-	$(MAKE) -C ./pkg/collector/bpf
 endif
 	@echo ">> building binaries"
 	$(PROMU) build --prefix $(PREFIX) $(PROMU_BINARIES)
@@ -250,6 +245,18 @@ $(PROMU):
 	mkdir -p $(FIRST_GOPATH)/bin
 	cp $(PROMU_TMP)/promu-$(PROMU_VERSION).$(GO_BUILD_PLATFORM)/promu $(FIRST_GOPATH)/bin/promu
 	rm -r $(PROMU_TMP)
+
+.PHONY: bpf
+bpf:
+ifeq ($(CGO_BUILD), 0)
+ifeq (, $(shell command -v clang))
+	@echo ">> installing clang 18"
+	@./scripts/install_clang.sh
+endif
+	@echo ">> building bpf assets using clang"
+	$(MAKE) -C ./pkg/collector/bpf clean
+	$(MAKE) -C ./pkg/collector/bpf
+endif
 
 # Dont run swagger for release builds. This is due to cross compiling with GOARCH set 
 # to different archs and swag will be built in arch specific bin folder.
