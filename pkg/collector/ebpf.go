@@ -140,6 +140,13 @@ func NewEbpfCollector(logger log.Logger) (Collector, error) {
 		cgroupFS = slurmCgroupFS(*cgroupfsPath, *cgroupsV1Subsystem, *forceCgroupsVersion)
 	}
 
+	// If no cgroupFS set return
+	if cgroupFS.root == "" {
+		level.Error(logger).Log("msg", "ebpf collector needs slurm collector. Enable it with --collector.slurm")
+
+		return nil, ErrInvalidCgroupFS
+	}
+
 	// Remove resource limits for kernels <5.11.
 	if err := rlimit.RemoveMemlock(); err != nil {
 		return nil, fmt.Errorf("error removing memlock: %w", err)
@@ -491,23 +498,26 @@ func (c *ebpfCollector) Stop(_ context.Context) error {
 
 // updateVFSWrite updates VFS write metrics.
 func (c *ebpfCollector) updateVFSWrite(ch chan<- prometheus.Metric) error {
+	if c.vfsColl == nil {
+		return nil
+	}
+
 	var key bpfVfsEventKey
 
 	var value bpfVfsRwEvent
 
-	if c.vfsColl != nil {
-		if m, ok := c.vfsColl.Maps["write_accumulator"]; ok {
-			defer m.Close()
+	if m, ok := c.vfsColl.Maps["write_accumulator"]; ok {
+		defer m.Close()
 
-			for m.Iterate().Next(&key, &value) {
-				cgroupID := uint64(key.Cid)
-				if slices.Contains(c.activeCgroups, cgroupID) {
-					uuid := c.inodesMap[cgroupID]
-					mount := unix.ByteSliceToString(key.Mnt[:])
-					ch <- prometheus.MustNewConstMetric(c.vfsWriteRequests, prometheus.CounterValue, float64(value.Calls), c.cgroupFS.manager, c.hostname, uuid, mount)
-					ch <- prometheus.MustNewConstMetric(c.vfsWriteBytes, prometheus.CounterValue, float64(value.Bytes), c.cgroupFS.manager, c.hostname, uuid, mount)
-					ch <- prometheus.MustNewConstMetric(c.vfsWriteErrors, prometheus.CounterValue, float64(value.Errors), c.cgroupFS.manager, c.hostname, uuid, mount)
-				}
+		entries := m.Iterate()
+		for entries.Next(&key, &value) {
+			cgroupID := uint64(key.Cid)
+			if slices.Contains(c.activeCgroups, cgroupID) {
+				uuid := c.inodesMap[cgroupID]
+				mount := unix.ByteSliceToString(key.Mnt[:])
+				ch <- prometheus.MustNewConstMetric(c.vfsWriteRequests, prometheus.CounterValue, float64(value.Calls), c.cgroupFS.manager, c.hostname, uuid, mount)
+				ch <- prometheus.MustNewConstMetric(c.vfsWriteBytes, prometheus.CounterValue, float64(value.Bytes), c.cgroupFS.manager, c.hostname, uuid, mount)
+				ch <- prometheus.MustNewConstMetric(c.vfsWriteErrors, prometheus.CounterValue, float64(value.Errors), c.cgroupFS.manager, c.hostname, uuid, mount)
 			}
 		}
 	}
@@ -517,23 +527,26 @@ func (c *ebpfCollector) updateVFSWrite(ch chan<- prometheus.Metric) error {
 
 // updateVFSRead updates VFS read metrics.
 func (c *ebpfCollector) updateVFSRead(ch chan<- prometheus.Metric) error {
+	if c.vfsColl == nil {
+		return nil
+	}
+
 	var key bpfVfsEventKey
 
 	var value bpfVfsRwEvent
 
-	if c.vfsColl != nil {
-		if m, ok := c.vfsColl.Maps["read_accumulator"]; ok {
-			defer m.Close()
+	if m, ok := c.vfsColl.Maps["read_accumulator"]; ok {
+		defer m.Close()
 
-			for m.Iterate().Next(&key, &value) {
-				cgroupID := uint64(key.Cid)
-				if slices.Contains(c.activeCgroups, cgroupID) {
-					uuid := c.inodesMap[cgroupID]
-					mount := unix.ByteSliceToString(key.Mnt[:])
-					ch <- prometheus.MustNewConstMetric(c.vfsReadRequests, prometheus.CounterValue, float64(value.Calls), c.cgroupFS.manager, c.hostname, uuid, mount)
-					ch <- prometheus.MustNewConstMetric(c.vfsReadBytes, prometheus.CounterValue, float64(value.Bytes), c.cgroupFS.manager, c.hostname, uuid, mount)
-					ch <- prometheus.MustNewConstMetric(c.vfsReadErrors, prometheus.CounterValue, float64(value.Errors), c.cgroupFS.manager, c.hostname, uuid, mount)
-				}
+		entries := m.Iterate()
+		for entries.Next(&key, &value) {
+			cgroupID := uint64(key.Cid)
+			if slices.Contains(c.activeCgroups, cgroupID) {
+				uuid := c.inodesMap[cgroupID]
+				mount := unix.ByteSliceToString(key.Mnt[:])
+				ch <- prometheus.MustNewConstMetric(c.vfsReadRequests, prometheus.CounterValue, float64(value.Calls), c.cgroupFS.manager, c.hostname, uuid, mount)
+				ch <- prometheus.MustNewConstMetric(c.vfsReadBytes, prometheus.CounterValue, float64(value.Bytes), c.cgroupFS.manager, c.hostname, uuid, mount)
+				ch <- prometheus.MustNewConstMetric(c.vfsReadErrors, prometheus.CounterValue, float64(value.Errors), c.cgroupFS.manager, c.hostname, uuid, mount)
 			}
 		}
 	}
@@ -543,21 +556,24 @@ func (c *ebpfCollector) updateVFSRead(ch chan<- prometheus.Metric) error {
 
 // updateVFSOpen updates VFS open stats.
 func (c *ebpfCollector) updateVFSOpen(ch chan<- prometheus.Metric) error {
+	if c.vfsColl == nil {
+		return nil
+	}
+
 	var key uint32
 
 	var value bpfVfsInodeEvent
 
-	if c.vfsColl != nil {
-		if m, ok := c.vfsColl.Maps["open_accumulator"]; ok {
-			defer m.Close()
+	if m, ok := c.vfsColl.Maps["open_accumulator"]; ok {
+		defer m.Close()
 
-			for m.Iterate().Next(&key, &value) {
-				cgroupID := uint64(key)
-				if slices.Contains(c.activeCgroups, cgroupID) {
-					uuid := c.inodesMap[cgroupID]
-					ch <- prometheus.MustNewConstMetric(c.vfsOpenRequests, prometheus.CounterValue, float64(value.Calls), c.cgroupFS.manager, c.hostname, uuid)
-					ch <- prometheus.MustNewConstMetric(c.vfsOpenErrors, prometheus.CounterValue, float64(value.Errors), c.cgroupFS.manager, c.hostname, uuid)
-				}
+		entries := m.Iterate()
+		for entries.Next(&key, &value) {
+			cgroupID := uint64(key)
+			if slices.Contains(c.activeCgroups, cgroupID) {
+				uuid := c.inodesMap[cgroupID]
+				ch <- prometheus.MustNewConstMetric(c.vfsOpenRequests, prometheus.CounterValue, float64(value.Calls), c.cgroupFS.manager, c.hostname, uuid)
+				ch <- prometheus.MustNewConstMetric(c.vfsOpenErrors, prometheus.CounterValue, float64(value.Errors), c.cgroupFS.manager, c.hostname, uuid)
 			}
 		}
 	}
@@ -567,21 +583,24 @@ func (c *ebpfCollector) updateVFSOpen(ch chan<- prometheus.Metric) error {
 
 // updateVFSCreate updates VFS create stats.
 func (c *ebpfCollector) updateVFSCreate(ch chan<- prometheus.Metric) error {
+	if c.vfsColl == nil {
+		return nil
+	}
+
 	var key uint32
 
 	var value bpfVfsInodeEvent
 
-	if c.vfsColl != nil {
-		if m, ok := c.vfsColl.Maps["create_accumulator"]; ok {
-			defer m.Close()
+	if m, ok := c.vfsColl.Maps["create_accumulator"]; ok {
+		defer m.Close()
 
-			for m.Iterate().Next(&key, &value) {
-				cgroupID := uint64(key)
-				if slices.Contains(c.activeCgroups, cgroupID) {
-					uuid := c.inodesMap[cgroupID]
-					ch <- prometheus.MustNewConstMetric(c.vfsOpenRequests, prometheus.CounterValue, float64(value.Calls), c.cgroupFS.manager, c.hostname, uuid)
-					ch <- prometheus.MustNewConstMetric(c.vfsOpenErrors, prometheus.CounterValue, float64(value.Errors), c.cgroupFS.manager, c.hostname, uuid)
-				}
+		entries := m.Iterate()
+		for entries.Next(&key, &value) {
+			cgroupID := uint64(key)
+			if slices.Contains(c.activeCgroups, cgroupID) {
+				uuid := c.inodesMap[cgroupID]
+				ch <- prometheus.MustNewConstMetric(c.vfsOpenRequests, prometheus.CounterValue, float64(value.Calls), c.cgroupFS.manager, c.hostname, uuid)
+				ch <- prometheus.MustNewConstMetric(c.vfsOpenErrors, prometheus.CounterValue, float64(value.Errors), c.cgroupFS.manager, c.hostname, uuid)
 			}
 		}
 	}
@@ -591,21 +610,24 @@ func (c *ebpfCollector) updateVFSCreate(ch chan<- prometheus.Metric) error {
 
 // updateVFSUnlink updates VFS unlink stats.
 func (c *ebpfCollector) updateVFSUnlink(ch chan<- prometheus.Metric) error {
+	if c.vfsColl == nil {
+		return nil
+	}
+
 	var key uint32
 
 	var value bpfVfsInodeEvent
 
-	if c.vfsColl != nil {
-		if m, ok := c.vfsColl.Maps["unlink_accumulator"]; ok {
-			defer m.Close()
+	if m, ok := c.vfsColl.Maps["unlink_accumulator"]; ok {
+		defer m.Close()
 
-			for m.Iterate().Next(&key, &value) {
-				cgroupID := uint64(key)
-				if slices.Contains(c.activeCgroups, cgroupID) {
-					uuid := c.inodesMap[cgroupID]
-					ch <- prometheus.MustNewConstMetric(c.vfsOpenRequests, prometheus.CounterValue, float64(value.Calls), c.cgroupFS.manager, c.hostname, uuid)
-					ch <- prometheus.MustNewConstMetric(c.vfsOpenErrors, prometheus.CounterValue, float64(value.Errors), c.cgroupFS.manager, c.hostname, uuid)
-				}
+		entries := m.Iterate()
+		for entries.Next(&key, &value) {
+			cgroupID := uint64(key)
+			if slices.Contains(c.activeCgroups, cgroupID) {
+				uuid := c.inodesMap[cgroupID]
+				ch <- prometheus.MustNewConstMetric(c.vfsOpenRequests, prometheus.CounterValue, float64(value.Calls), c.cgroupFS.manager, c.hostname, uuid)
+				ch <- prometheus.MustNewConstMetric(c.vfsOpenErrors, prometheus.CounterValue, float64(value.Errors), c.cgroupFS.manager, c.hostname, uuid)
 			}
 		}
 	}
@@ -615,22 +637,25 @@ func (c *ebpfCollector) updateVFSUnlink(ch chan<- prometheus.Metric) error {
 
 // updateNetIngress updates network ingress stats.
 func (c *ebpfCollector) updateNetIngress(ch chan<- prometheus.Metric) error {
+	if c.netColl == nil {
+		return nil
+	}
+
 	var key bpfNetEventKey
 
 	var value bpfNetEvent
 
-	if c.netColl != nil {
-		if m, ok := c.netColl.Maps["ingress_accumulator"]; ok {
-			defer m.Close()
+	if m, ok := c.netColl.Maps["ingress_accumulator"]; ok {
+		defer m.Close()
 
-			for m.Iterate().Next(&key, &value) {
-				cgroupID := uint64(key.Cid)
-				if slices.Contains(c.activeCgroups, cgroupID) {
-					uuid := c.inodesMap[cgroupID]
-					device := unix.ByteSliceToString(key.Dev[:])
-					ch <- prometheus.MustNewConstMetric(c.netIngressPackets, prometheus.CounterValue, float64(value.Packets), c.cgroupFS.manager, c.hostname, uuid, device)
-					ch <- prometheus.MustNewConstMetric(c.netIngressBytes, prometheus.CounterValue, float64(value.Bytes), c.cgroupFS.manager, c.hostname, uuid, device)
-				}
+		entries := m.Iterate()
+		for entries.Next(&key, &value) {
+			cgroupID := uint64(key.Cid)
+			if slices.Contains(c.activeCgroups, cgroupID) {
+				uuid := c.inodesMap[cgroupID]
+				device := unix.ByteSliceToString(key.Dev[:])
+				ch <- prometheus.MustNewConstMetric(c.netIngressPackets, prometheus.CounterValue, float64(value.Packets), c.cgroupFS.manager, c.hostname, uuid, device)
+				ch <- prometheus.MustNewConstMetric(c.netIngressBytes, prometheus.CounterValue, float64(value.Bytes), c.cgroupFS.manager, c.hostname, uuid, device)
 			}
 		}
 	}
@@ -640,22 +665,25 @@ func (c *ebpfCollector) updateNetIngress(ch chan<- prometheus.Metric) error {
 
 // updateNetEgress updates network egress stats.
 func (c *ebpfCollector) updateNetEgress(ch chan<- prometheus.Metric) error {
+	if c.netColl == nil {
+		return nil
+	}
+
 	var key bpfNetEventKey
 
 	var value bpfNetEvent
 
-	if c.netColl != nil {
-		if m, ok := c.netColl.Maps["egress_accumulator"]; ok {
-			defer m.Close()
+	if m, ok := c.netColl.Maps["egress_accumulator"]; ok {
+		defer m.Close()
 
-			for m.Iterate().Next(&key, &value) {
-				cgroupID := uint64(key.Cid)
-				if slices.Contains(c.activeCgroups, cgroupID) {
-					uuid := c.inodesMap[cgroupID]
-					device := unix.ByteSliceToString(key.Dev[:])
-					ch <- prometheus.MustNewConstMetric(c.netEgressPackets, prometheus.CounterValue, float64(value.Packets), c.cgroupFS.manager, c.hostname, uuid, device)
-					ch <- prometheus.MustNewConstMetric(c.netEgressBytes, prometheus.CounterValue, float64(value.Bytes), c.cgroupFS.manager, c.hostname, uuid, device)
-				}
+		entries := m.Iterate()
+		for entries.Next(&key, &value) {
+			cgroupID := uint64(key.Cid)
+			if slices.Contains(c.activeCgroups, cgroupID) {
+				uuid := c.inodesMap[cgroupID]
+				device := unix.ByteSliceToString(key.Dev[:])
+				ch <- prometheus.MustNewConstMetric(c.netEgressPackets, prometheus.CounterValue, float64(value.Packets), c.cgroupFS.manager, c.hostname, uuid, device)
+				ch <- prometheus.MustNewConstMetric(c.netEgressBytes, prometheus.CounterValue, float64(value.Bytes), c.cgroupFS.manager, c.hostname, uuid, device)
 			}
 		}
 	}

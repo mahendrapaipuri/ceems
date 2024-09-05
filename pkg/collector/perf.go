@@ -126,9 +126,23 @@ var (
 // NewPerfCollector returns a new perf based collector, it creates a profiler
 // per compute unit.
 func NewPerfCollector(logger log.Logger) (Collector, error) {
+	// Get cgroup file system
+	var cgroupFS cgroupFS
+	if *collectorState[slurmCollectorSubsystem] {
+		cgroupFS = slurmCgroupFS(*cgroupfsPath, *cgroupsV1Subsystem, *forceCgroupsVersion)
+	}
+
+	// If no cgroupFS set return
+	if cgroupFS.root == "" {
+		level.Error(logger).Log("msg", "ebpf collector needs slurm collector. Enable it with --collector.slurm")
+
+		return nil, ErrInvalidCgroupFS
+	}
+
 	collector := &perfCollector{
 		logger:                    logger,
 		hostname:                  hostname,
+		cgroupFS:                  cgroupFS,
 		envVar:                    *perfProfilersEnvVars,
 		perfHwProfilersEnabled:    *perfHwProfilersFlag,
 		perfSwProfilersEnabled:    *perfSwProfilersFlag,
@@ -161,10 +175,6 @@ func NewPerfCollector(logger log.Logger) (Collector, error) {
 				collector.perfCacheProfilerTypes |= v
 			}
 		}
-	}
-
-	if *collectorState[slurmCollectorSubsystem] {
-		collector.cgroupFS = slurmCgroupFS(*cgroupfsPath, *cgroupsV1Subsystem, *forceCgroupsVersion)
 	}
 
 	var err error

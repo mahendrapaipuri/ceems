@@ -48,7 +48,7 @@ PROMU_URL     := https://github.com/prometheus/promu/releases/download/v$(PROMU_
 SKIP_GOLANGCI_LINT :=
 GOLANGCI_LINT :=
 GOLANGCI_LINT_OPTS ?=
-GOLANGCI_LINT_VERSION ?= v1.54.2
+GOLANGCI_LINT_VERSION ?= v1.60.3
 # golangci-lint only supports linux, darwin and windows platforms on i386/amd64.
 # windows isn't included here because of the path separator being different.
 ifeq ($(GOHOSTOS),$(filter $(GOHOSTOS),linux darwin))
@@ -249,7 +249,7 @@ $(PROMU):
 .PHONY: bpf
 bpf:
 ifeq ($(CGO_BUILD), 0)
-ifeq ($(CI), true)
+ifeq (, $(shell command -v clang > /dev/null))
 	@echo ">> installing clang 18"
 	@./scripts/install_clang.sh
 endif

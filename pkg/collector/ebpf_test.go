@@ -158,6 +158,7 @@ func TestNewEbpfCollector(t *testing.T) {
 	_, err := CEEMSExporterApp.Parse(
 		[]string{
 			"--path.cgroupfs", "testdata/sys/fs/cgroup",
+			"--collector.slurm",
 			"--collector.slurm.force-cgroups-version", "v2",
 		},
 	)

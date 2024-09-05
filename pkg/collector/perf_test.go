@@ -16,7 +16,9 @@ import (
 )
 
 func TestPerfCollector(t *testing.T) {
-	_, err := CEEMSExporterApp.Parse([]string{"--path.procfs", "testdata/proc"})
+	_, err := CEEMSExporterApp.Parse([]string{
+		"--path.procfs", "testdata/proc", "--collector.slurm",
+	})
 	require.NoError(t, err)
 
 	collector, err := NewPerfCollector(log.NewNopLogger())

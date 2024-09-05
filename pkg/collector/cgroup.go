@@ -2,6 +2,7 @@ package collector
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -17,6 +18,11 @@ const (
 	// to define a max index for the default controllers on tasks.
 	// For further documentation check BPF part.
 	cgroupSubSysCount = 15
+)
+
+// Custom errors.
+var (
+	ErrInvalidCgroupFS = errors.New("invalid cgroup file system")
 )
 
 // Regular expressions of cgroup paths for different resource managers

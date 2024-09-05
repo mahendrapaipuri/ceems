@@ -18,6 +18,11 @@ jobs:
         with:
           go-version: 1.22.x
 
+      - name: Create a sample object file
+        run: |
+          mkdir -p pkg/collector/bpf/objs
+          touch pkg/collector/bpf/objs/sample.o
+
       - name: Lint
         uses: golangci/golangci-lint-action@v6
         with:

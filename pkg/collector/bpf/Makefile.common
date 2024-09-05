@@ -5,19 +5,19 @@ LLC    ?= llc
 
 # Build the BPF programs for the detected architecture, default to x86, and
 # allow easy overriding by using ?= for cross-compilation
-# UNAME_M := $(shell uname -m)
-# ifeq ($(UNAME_M),x86_64)
-# 	BPF_TARGET_ARCH ?= x86
-# endif
-# ifeq ($(UNAME_M),aarch64)
-# 	BPF_TARGET_ARCH ?= arm64
-# endif
-
-# Get cross-compiling flags from GOARCH env variable
-# Endians are picked up https://github.com/cilium/ebpf/blob/625b0a910e1ba666e483e75b149880ce3b54dc85/cmd/bpf2go/gen/target.go#L14-L28
 BPF_TARGET_ARCH ?= x86
 BPF_TARGET_MARCH ?= bpf
 BPF_TARGET_COMPILE ?= 1
+UNAME_M := $(shell uname -m)
+ifeq ($(UNAME_M),x86_64)
+	BPF_TARGET_ARCH ?= x86
+endif
+ifeq ($(UNAME_M),aarch64)
+	BPF_TARGET_ARCH ?= arm64
+endif
+
+# Get cross-compiling flags from GOARCH env variable
+# Endians are picked up https://github.com/cilium/ebpf/blob/625b0a910e1ba666e483e75b149880ce3b54dc85/cmd/bpf2go/gen/target.go#L14-L28
 ifeq ($(GOARCH),386)
 	BPF_TARGET_ARCH = x86
 	BPF_TARGET_MARCH = bpfel
