@@ -256,13 +256,12 @@ bpf: clang
 	$(MAKE) -C ./pkg/collector/bpf
 endif
 
-# Install clang using script
+# Install clang using script. We chack the version of clang inside the script and ensure 
+# that we install clang >= 18
 .PHONY: clang
-ifeq (, $(shell which clang))
 clang:
-	@echo ">> installing clang 18"
+	@echo ">> installing clang"
 	@./scripts/install_clang.sh
-endif
 
 # Dont run swagger for release builds. This is due to cross compiling with GOARCH set 
 # to different archs and swag will be built in arch specific bin folder.
