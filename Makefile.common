@@ -194,6 +194,11 @@ endif
 	@echo ">> building test binaries"
 	$(PROMU_TEST) build --prefix $(PREFIX) $(PROMU_BINARIES)
 endif
+ifeq ($(CGO_BUILD), 0)
+	@echo ">> building bpf assets"
+	$(MAKE) -C ./pkg/collector/bpf clean
+	$(MAKE) -C ./pkg/collector/bpf
+endif
 	@echo ">> building binaries"
 	$(PROMU) build --prefix $(PREFIX) $(PROMU_BINARIES)
 

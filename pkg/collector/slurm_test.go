@@ -74,13 +74,11 @@ func TestCgroupsV2SlurmJobMetrics(t *testing.T) {
 	require.NoError(t, err)
 
 	c := slurmCollector{
-		cgroups:          "v2",
-		gpuDevs:          mockGPUDevices(),
-		cgroupsRootPath:  *cgroupfsPath,
-		hostMemTotal:     float64(123456),
-		slurmCgroupsPath: *cgroupfsPath + "/system.slice/slurmstepd.scope",
-		logger:           log.NewNopLogger(),
-		jobsCache:        make(map[string]jobProps),
+		cgroupFS:     slurmCgroupFS(*cgroupfsPath, "", "v2"),
+		gpuDevs:      mockGPUDevices(),
+		hostMemTotal: float64(123456),
+		logger:       log.NewNopLogger(),
+		jobsCache:    make(map[string]jobProps),
 	}
 
 	expectedSlurmMetrics = CgroupMetric{
@@ -133,14 +131,12 @@ func TestCgroupsV2SlurmJobMetricsWithProcFs(t *testing.T) {
 	require.NoError(t, err)
 
 	c := slurmCollector{
-		cgroups:          "v2",
-		cgroupsRootPath:  *cgroupfsPath,
-		gpuDevs:          mockGPUDevices(),
-		hostMemTotal:     float64(123456),
-		slurmCgroupsPath: *cgroupfsPath + "/system.slice/slurmstepd.scope",
-		logger:           log.NewNopLogger(),
-		jobsCache:        make(map[string]jobProps),
-		procFS:           procFS,
+		cgroupFS:     slurmCgroupFS(*cgroupfsPath, "", "v2"),
+		gpuDevs:      mockGPUDevices(),
+		hostMemTotal: float64(123456),
+		logger:       log.NewNopLogger(),
+		jobsCache:    make(map[string]jobProps),
+		procFS:       procFS,
 	}
 
 	expectedSlurmMetrics = CgroupMetric{
@@ -189,12 +185,10 @@ func TestCgroupsV2SlurmJobMetricsNoJobProps(t *testing.T) {
 	require.NoError(t, err)
 
 	c := slurmCollector{
-		cgroups:          "v2",
-		cgroupsRootPath:  *cgroupfsPath,
-		gpuDevs:          mockGPUDevices(),
-		slurmCgroupsPath: *cgroupfsPath + "/system.slice/slurmstepd.scope",
-		logger:           log.NewNopLogger(),
-		jobsCache:        make(map[string]jobProps),
+		cgroupFS:  slurmCgroupFS(*cgroupfsPath, "", "v2"),
+		gpuDevs:   mockGPUDevices(),
+		logger:    log.NewNopLogger(),
+		jobsCache: make(map[string]jobProps),
 	}
 
 	expectedSlurmMetrics = CgroupMetric{
@@ -246,13 +240,11 @@ func TestCgroupsV1SlurmJobMetrics(t *testing.T) {
 	require.NoError(t, err)
 
 	c := slurmCollector{
-		cgroups:          "v1",
-		logger:           log.NewNopLogger(),
-		gpuDevs:          mockGPUDevices(),
-		cgroupsRootPath:  *cgroupfsPath + "/cpuacct",
-		slurmCgroupsPath: *cgroupfsPath + "/cpuacct/slurm",
-		jobsCache:        make(map[string]jobProps),
-		procFS:           procFS,
+		cgroupFS:  slurmCgroupFS(*cgroupfsPath, "cpuacct", "v1"),
+		logger:    log.NewNopLogger(),
+		gpuDevs:   mockGPUDevices(),
+		jobsCache: make(map[string]jobProps),
+		procFS:    procFS,
 	}
 
 	expectedSlurmMetrics = CgroupMetric{
@@ -313,12 +305,10 @@ func TestJobPropsCaching(t *testing.T) {
 
 	mockGPUDevs := mockGPUDevices()
 	c := slurmCollector{
-		cgroups:          "v1",
-		logger:           log.NewNopLogger(),
-		gpuDevs:          mockGPUDevs,
-		cgroupsRootPath:  *cgroupfsPath + "/cpuacct",
-		slurmCgroupsPath: *cgroupfsPath + "/cpuacct/slurm",
-		jobsCache:        make(map[string]jobProps),
+		cgroupFS:  slurmCgroupFS(*cgroupfsPath, "cpuacct", "v1"),
+		logger:    log.NewNopLogger(),
+		gpuDevs:   mockGPUDevs,
+		jobsCache: make(map[string]jobProps),
 	}
 
 	// Add cgroups

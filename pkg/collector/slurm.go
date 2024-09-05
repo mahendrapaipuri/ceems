@@ -104,10 +104,7 @@ type CgroupMetric struct {
 }
 
 type slurmCollector struct {
-	cgroups            string // v1 or v2
-	cgroupsRootPath    string
-	slurmCgroupsPath   string
-	manager            string
+	cgroupFS           cgroupFS
 	hostname           string
 	gpuDevs            map[int]Device
 	hostMemTotal       float64
@@ -151,36 +148,9 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 			Log("msg", "flag --collector.slurm.swap.memory.metrics has been deprecated. Use --collector.slurm.swap-memory-metrics instead")
 	}
 
-	var cgroupsVersion string
-
-	var cgroupsRootPath string
-
-	var slurmCgroupsPath string
-
-	// Set cgroups root path based on cgroups version
-	if cgroups.Mode() == cgroups.Unified {
-		cgroupsVersion = "v2"
-		cgroupsRootPath = *cgroupfsPath
-		slurmCgroupsPath = filepath.Join(*cgroupfsPath, "system.slice/slurmstepd.scope")
-	} else {
-		cgroupsVersion = "v1"
-		cgroupsRootPath = filepath.Join(*cgroupfsPath, *cgroupsV1Subsystem)
-		slurmCgroupsPath = filepath.Join(cgroupsRootPath, "slurm")
-	}
-
-	level.Info(logger).Log("cgroup", cgroupsVersion, "mount", slurmCgroupsPath)
-
-	// If cgroup version is set via CLI flag for testing override the one we got earlier
-	if *forceCgroupsVersion != "" {
-		cgroupsVersion = *forceCgroupsVersion
-		if cgroupsVersion == "v2" {
-			cgroupsRootPath = *cgroupfsPath
-			slurmCgroupsPath = filepath.Join(*cgroupfsPath, "system.slice/slurmstepd.scope")
-		} else if cgroupsVersion == "v1" {
-			cgroupsRootPath = filepath.Join(*cgroupfsPath, "cpuacct")
-			slurmCgroupsPath = filepath.Join(cgroupsRootPath, "slurm")
-		}
-	}
+	// Get SLURM's cgroup details
+	cgroupFS := slurmCgroupFS(*cgroupfsPath, *cgroupsV1Subsystem, *forceCgroupsVersion)
+	level.Info(logger).Log("cgroup", cgroupFS.mode, "mount", cgroupFS.mount)
 
 	// Attempt to get GPU devices
 	var gpuTypes []string
@@ -227,15 +197,12 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 	defer file.Close()
 
 	return &slurmCollector{
-		cgroups:          cgroupsVersion,
-		cgroupsRootPath:  cgroupsRootPath,
-		slurmCgroupsPath: slurmCgroupsPath,
-		manager:          slurmCollectorSubsystem,
-		hostname:         hostname,
-		gpuDevs:          gpuDevs,
-		hostMemTotal:     memTotal,
-		procFS:           procFS,
-		jobsCache:        make(map[string]jobProps),
+		cgroupFS:     cgroupFS,
+		hostname:     hostname,
+		gpuDevs:      gpuDevs,
+		hostMemTotal: memTotal,
+		procFS:       procFS,
+		jobsCache:    make(map[string]jobProps),
 		numJobs: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, genericSubsystem, "units"),
 			"Total number of jobs",
@@ -370,7 +337,7 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 	}
 
 	// First send num jobs on the current host
-	ch <- prometheus.MustNewConstMetric(c.numJobs, prometheus.GaugeValue, float64(len(metrics)), c.manager, c.hostname)
+	ch <- prometheus.MustNewConstMetric(c.numJobs, prometheus.GaugeValue, float64(len(metrics)), c.cgroupFS.manager, c.hostname)
 
 	// Send metrics of each cgroup
 	for _, m := range metrics {
@@ -379,40 +346,40 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 		}
 
 		// CPU stats
-		ch <- prometheus.MustNewConstMetric(c.jobCPUUser, prometheus.CounterValue, m.cpuUser, c.manager, c.hostname, m.jobuuid)
-		ch <- prometheus.MustNewConstMetric(c.jobCPUSystem, prometheus.CounterValue, m.cpuSystem, c.manager, c.hostname, m.jobuuid)
-		// ch <- prometheus.MustNewConstMetric(c.cpuTotal, prometheus.GaugeValue, m.cpuTotal, c.manager, c.hostname, m.jobuuid)
-		ch <- prometheus.MustNewConstMetric(c.jobCPUs, prometheus.GaugeValue, float64(m.cpus), c.manager, c.hostname, m.jobuuid)
+		ch <- prometheus.MustNewConstMetric(c.jobCPUUser, prometheus.CounterValue, m.cpuUser, c.cgroupFS.manager, c.hostname, m.jobuuid)
+		ch <- prometheus.MustNewConstMetric(c.jobCPUSystem, prometheus.CounterValue, m.cpuSystem, c.cgroupFS.manager, c.hostname, m.jobuuid)
+		// ch <- prometheus.MustNewConstMetric(c.cpuTotal, prometheus.GaugeValue, m.cpuTotal, c.cgroupFS.manager, c.hostname, m.jobuuid)
+		ch <- prometheus.MustNewConstMetric(c.jobCPUs, prometheus.GaugeValue, float64(m.cpus), c.cgroupFS.manager, c.hostname, m.jobuuid)
 
 		// Memory stats
-		ch <- prometheus.MustNewConstMetric(c.jobMemoryRSS, prometheus.GaugeValue, m.memoryRSS, c.manager, c.hostname, m.jobuuid)
-		ch <- prometheus.MustNewConstMetric(c.jobMemoryCache, prometheus.GaugeValue, m.memoryCache, c.manager, c.hostname, m.jobuuid)
-		ch <- prometheus.MustNewConstMetric(c.jobMemoryUsed, prometheus.GaugeValue, m.memoryUsed, c.manager, c.hostname, m.jobuuid)
-		ch <- prometheus.MustNewConstMetric(c.jobMemoryTotal, prometheus.GaugeValue, m.memoryTotal, c.manager, c.hostname, m.jobuuid)
-		ch <- prometheus.MustNewConstMetric(c.jobMemoryFailCount, prometheus.GaugeValue, m.memoryFailCount, c.manager, c.hostname, m.jobuuid)
+		ch <- prometheus.MustNewConstMetric(c.jobMemoryRSS, prometheus.GaugeValue, m.memoryRSS, c.cgroupFS.manager, c.hostname, m.jobuuid)
+		ch <- prometheus.MustNewConstMetric(c.jobMemoryCache, prometheus.GaugeValue, m.memoryCache, c.cgroupFS.manager, c.hostname, m.jobuuid)
+		ch <- prometheus.MustNewConstMetric(c.jobMemoryUsed, prometheus.GaugeValue, m.memoryUsed, c.cgroupFS.manager, c.hostname, m.jobuuid)
+		ch <- prometheus.MustNewConstMetric(c.jobMemoryTotal, prometheus.GaugeValue, m.memoryTotal, c.cgroupFS.manager, c.hostname, m.jobuuid)
+		ch <- prometheus.MustNewConstMetric(c.jobMemoryFailCount, prometheus.GaugeValue, m.memoryFailCount, c.cgroupFS.manager, c.hostname, m.jobuuid)
 
 		// PSI stats. Push them only if they are available
 		if *collectSwapMemoryStatsDepre || *collectSwapMemoryStats {
-			ch <- prometheus.MustNewConstMetric(c.jobMemswUsed, prometheus.GaugeValue, m.memswUsed, c.manager, c.hostname, m.jobuuid)
-			ch <- prometheus.MustNewConstMetric(c.jobMemswTotal, prometheus.GaugeValue, m.memswTotal, c.manager, c.hostname, m.jobuuid)
-			ch <- prometheus.MustNewConstMetric(c.jobMemswFailCount, prometheus.GaugeValue, m.memswFailCount, c.manager, c.hostname, m.jobuuid)
+			ch <- prometheus.MustNewConstMetric(c.jobMemswUsed, prometheus.GaugeValue, m.memswUsed, c.cgroupFS.manager, c.hostname, m.jobuuid)
+			ch <- prometheus.MustNewConstMetric(c.jobMemswTotal, prometheus.GaugeValue, m.memswTotal, c.cgroupFS.manager, c.hostname, m.jobuuid)
+			ch <- prometheus.MustNewConstMetric(c.jobMemswFailCount, prometheus.GaugeValue, m.memswFailCount, c.cgroupFS.manager, c.hostname, m.jobuuid)
 		}
 
 		if *collectPSIStatsDepre || *collectPSIStats {
-			ch <- prometheus.MustNewConstMetric(c.jobCPUPressure, prometheus.GaugeValue, m.cpuPressure, c.manager, c.hostname, m.jobuuid)
-			ch <- prometheus.MustNewConstMetric(c.jobMemoryPressure, prometheus.GaugeValue, m.memoryPressure, c.manager, c.hostname, m.jobuuid)
+			ch <- prometheus.MustNewConstMetric(c.jobCPUPressure, prometheus.GaugeValue, m.cpuPressure, c.cgroupFS.manager, c.hostname, m.jobuuid)
+			ch <- prometheus.MustNewConstMetric(c.jobMemoryPressure, prometheus.GaugeValue, m.memoryPressure, c.cgroupFS.manager, c.hostname, m.jobuuid)
 		}
 
 		// RDMA stats
 		for device, handles := range m.rdmaHCAHandles {
 			if handles > 0 {
-				ch <- prometheus.MustNewConstMetric(c.jobRDMAHCAHandles, prometheus.GaugeValue, handles, c.manager, c.hostname, m.jobuuid, device)
+				ch <- prometheus.MustNewConstMetric(c.jobRDMAHCAHandles, prometheus.GaugeValue, handles, c.cgroupFS.manager, c.hostname, m.jobuuid, device)
 			}
 		}
 
 		for device, objects := range m.rdmaHCAHandles {
 			if objects > 0 {
-				ch <- prometheus.MustNewConstMetric(c.jobRDMAHCAObjects, prometheus.GaugeValue, objects, c.manager, c.hostname, m.jobuuid, device)
+				ch <- prometheus.MustNewConstMetric(c.jobRDMAHCAObjects, prometheus.GaugeValue, objects, c.cgroupFS.manager, c.hostname, m.jobuuid, device)
 			}
 		}
 
@@ -428,7 +395,7 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 						break
 					}
 				}
-				ch <- prometheus.MustNewConstMetric(c.jobGpuFlag, prometheus.GaugeValue, float64(1), c.manager, c.hostname, m.jobuuid, gpuOrdinal, fmt.Sprintf("%s-gpu-%s", c.hostname, gpuOrdinal), uuid)
+				ch <- prometheus.MustNewConstMetric(c.jobGpuFlag, prometheus.GaugeValue, float64(1), c.cgroupFS.manager, c.hostname, m.jobuuid, gpuOrdinal, fmt.Sprintf("%s-gpu-%s", c.hostname, gpuOrdinal), uuid)
 			}
 		}
 	}
@@ -452,21 +419,21 @@ func (c *slurmCollector) getJobsMetrics() ([]CgroupMetric, error) {
 
 	var gpuOrdinals []string
 
-	level.Debug(c.logger).Log("msg", "Loading cgroup", "path", c.slurmCgroupsPath)
+	level.Debug(c.logger).Log("msg", "Loading cgroup", "path", c.cgroupFS.mount)
 
 	// Walk through all cgroups and get cgroup paths
-	if err := filepath.WalkDir(c.slurmCgroupsPath, func(p string, info fs.DirEntry, err error) error {
+	if err := filepath.WalkDir(c.cgroupFS.mount, func(p string, info fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 
 		// Ignore step jobs
-		if !info.IsDir() || strings.Contains(p, "/step_") {
+		if !info.IsDir() || c.cgroupFS.pathFilter(p) {
 			return nil
 		}
 
 		// Get relative path of cgroup
-		rel, err := filepath.Rel(c.cgroupsRootPath, p)
+		rel, err := filepath.Rel(c.cgroupFS.root, p)
 		if err != nil {
 			level.Error(c.logger).Log("msg", "Failed to resolve relative path for cgroup", "path", p, "err", err)
 
@@ -474,7 +441,7 @@ func (c *slurmCollector) getJobsMetrics() ([]CgroupMetric, error) {
 		}
 
 		// Get cgroup ID which is job ID
-		cgroupIDMatches := slurmCgroupPathRegex.FindStringSubmatch(p)
+		cgroupIDMatches := c.cgroupFS.idRegex.FindStringSubmatch(p)
 		if len(cgroupIDMatches) <= 1 {
 			return nil
 		}
@@ -483,6 +450,11 @@ func (c *slurmCollector) getJobsMetrics() ([]CgroupMetric, error) {
 		if jobuuid == "" {
 			level.Error(c.logger).Log("msg", "Empty job ID", "path", p)
 
+			return nil
+		}
+
+		// Check if we already passed through this job
+		if slices.Contains(activeJobUUIDs, jobuuid) {
 			return nil
 		}
 
@@ -504,7 +476,7 @@ func (c *slurmCollector) getJobsMetrics() ([]CgroupMetric, error) {
 		return nil
 	}); err != nil {
 		level.Error(c.logger).
-			Log("msg", "Error walking cgroup subsystem", "path", c.slurmCgroupsPath, "err", err)
+			Log("msg", "Error walking cgroup subsystem", "path", c.cgroupFS.mount, "err", err)
 
 		return nil, err
 	}
@@ -538,7 +510,7 @@ func (c *slurmCollector) getJobsMetrics() ([]CgroupMetric, error) {
 
 // getMetrics fetches metrics of a given SLURM cgroups path.
 func (c *slurmCollector) getMetrics(metric *CgroupMetric) {
-	if c.cgroups == "v2" {
+	if c.cgroupFS.mode == cgroups.Unified {
 		c.getCgroupsV2Metrics(metric)
 	} else {
 		c.getCgroupsV1Metrics(metric)
@@ -591,7 +563,7 @@ func (c *slurmCollector) parseCPUSet(cpuset string) ([]string, error) {
 // getCPUs returns list of CPUs in the cgroup.
 func (c *slurmCollector) getCPUs(path string) ([]string, error) {
 	var cpusPath string
-	if c.cgroups == "v2" {
+	if c.cgroupFS.mode == cgroups.Unified {
 		cpusPath = fmt.Sprintf("%s%s/cpuset.cpus.effective", *cgroupfsPath, path)
 	} else {
 		cpusPath = fmt.Sprintf("%s/cpuset%s/cpuset.cpus", *cgroupfsPath, path)

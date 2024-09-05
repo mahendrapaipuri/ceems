@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -78,8 +77,7 @@ type perfCollector struct {
 	perfSwProfilerTypes    perf.SoftwareProfilerType
 	perfCacheProfilerTypes perf.CacheProfilerType
 
-	cgroupIDRegex      *regexp.Regexp // Regex to extract cgroup ID from process
-	filterProcCmdRegex *regexp.Regexp // Processes with command line matching this regex will be ignored
+	cgroupFS cgroupFS
 
 	desc map[string]*prometheus.Desc
 
@@ -166,9 +164,7 @@ func NewPerfCollector(logger log.Logger) (Collector, error) {
 	}
 
 	if *collectorState[slurmCollectorSubsystem] {
-		collector.manager = "slurm"
-		collector.cgroupIDRegex = slurmCgroupPathRegex
-		collector.filterProcCmdRegex = slurmIgnoreProcsRegex
+		collector.cgroupFS = slurmCgroupFS(*cgroupfsPath, *cgroupsV1Subsystem, *forceCgroupsVersion)
 	}
 
 	var err error
@@ -441,19 +437,31 @@ func (c *perfCollector) Update(ch chan<- prometheus.Metric) error {
 	// Remove all profilers that have already finished
 	c.closeProfilers(activePIDs)
 
+	// Start a wait group
+	wg := sync.WaitGroup{}
+	wg.Add(len(cgroupIDProcMap))
+
+	// Update metrics in go routines for each cgroup
 	for cgroupID, procs := range cgroupIDProcMap {
-		if err := c.updateHardwareCounters(cgroupID, procs, ch); err != nil {
-			level.Error(c.logger).Log("msg", "failed to update hardware counters", "cgroup", cgroupID, "err", err)
-		}
+		go func(cid string, ps []procfs.Proc) {
+			defer wg.Done()
 
-		if err := c.updateSoftwareCounters(cgroupID, procs, ch); err != nil {
-			level.Error(c.logger).Log("msg", "failed to update software counters", "cgroup", cgroupID, "err", err)
-		}
+			if err := c.updateHardwareCounters(cid, ps, ch); err != nil {
+				level.Error(c.logger).Log("msg", "failed to update hardware counters", "cgroup", cgroupID, "err", err)
+			}
 
-		if err := c.updateCacheCounters(cgroupID, procs, ch); err != nil {
-			level.Error(c.logger).Log("msg", "failed to update cache counters", "cgroup", cgroupID, "err", err)
-		}
+			if err := c.updateSoftwareCounters(cid, ps, ch); err != nil {
+				level.Error(c.logger).Log("msg", "failed to update software counters", "cgroup", cgroupID, "err", err)
+			}
+
+			if err := c.updateCacheCounters(cid, ps, ch); err != nil {
+				level.Error(c.logger).Log("msg", "failed to update cache counters", "cgroup", cgroupID, "err", err)
+			}
+		}(cgroupID, procs)
 	}
+
+	// Wait all go routines
+	wg.Wait()
 
 	return nil
 }
@@ -721,28 +729,27 @@ func (c *perfCollector) discoverProcess() (map[string][]procfs.Proc, error) {
 	check_process:
 
 		// Ignore processes where command line matches the regex
-		if c.filterProcCmdRegex != nil {
+		if c.cgroupFS.procFilter != nil {
 			procCmdLine, err := proc.CmdLine()
 			if err != nil || len(procCmdLine) == 0 {
 				continue
 			}
 
 			// Ignore process if matches found
-			procCmdLineMatches := c.filterProcCmdRegex.FindStringSubmatch(strings.Join(procCmdLine, " "))
-			if len(procCmdLineMatches) > 1 {
+			if c.cgroupFS.procFilter(strings.Join(procCmdLine, " ")) {
 				continue
 			}
 		}
 
 		// Get cgroup ID from regex
-		if c.cgroupIDRegex != nil {
+		if c.cgroupFS.idRegex != nil {
 			cgroups, err := proc.Cgroups()
 			if err != nil || len(cgroups) == 0 {
 				continue
 			}
 
 			for _, cgroup := range cgroups {
-				cgroupIDMatches := c.cgroupIDRegex.FindStringSubmatch(cgroup.Path)
+				cgroupIDMatches := c.cgroupFS.idRegex.FindStringSubmatch(cgroup.Path)
 				if len(cgroupIDMatches) <= 1 {
 					continue
 				}

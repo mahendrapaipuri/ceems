@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -25,28 +26,6 @@ var (
 	metricNameRegex = regexp.MustCompile(`_*[^0-9A-Za-z_]+_*`)
 	reParens        = regexp.MustCompile(`\((.*)\)`)
 )
-
-// fileExists checks if given file exists or not.
-func fileExists(filename string) bool {
-	info, err := os.Stat(filename)
-	if os.IsNotExist(err) {
-		return false
-	}
-
-	return !info.IsDir()
-}
-
-// // Find named matches in regex groups and return a map.
-// func findNamedMatches(regex *regexp.Regexp, str string) map[string]string {
-// 	match := regex.FindStringSubmatch(str)
-
-// 	results := map[string]string{}
-// 	for i, name := range match {
-// 		results[regex.SubexpNames()[i]] = name
-// 	}
-
-// 	return results
-// }
 
 // SanitizeMetricName sanitize the given metric name by replacing invalid characters by underscores.
 //
@@ -269,4 +248,41 @@ func GetAMDGPUDevices(rocmSmiPath string, logger log.Logger) (map[int]Device, er
 	}
 	// Get all devices
 	return parseAmdSmioutput(string(rocmSmiOutput), logger), nil
+}
+
+// fileExists checks if given file exists or not.
+func fileExists(filename string) bool {
+	info, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
+	}
+
+	return !info.IsDir()
+}
+
+// // Find named matches in regex groups and return a map.
+// func findNamedMatches(regex *regexp.Regexp, str string) map[string]string {
+// 	match := regex.FindStringSubmatch(str)
+
+// 	results := map[string]string{}
+// 	for i, name := range match {
+// 		results[regex.SubexpNames()[i]] = name
+// 	}
+
+// 	return results
+// }
+
+// inode returns the inode of a given path.
+func inode(path string) (uint64, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return 0, fmt.Errorf("error running stat(%s): %w", path, err)
+	}
+
+	stat, ok := info.Sys().(*syscall.Stat_t)
+	if !ok {
+		return 0, fmt.Errorf("missing syscall.Stat_t in FileInfo for %s", path)
+	}
+
+	return stat.Ino, nil
 }

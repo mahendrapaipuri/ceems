@@ -1,10 +1,10 @@
-// Taken from prometheus-community/ipmi_exporter/blob/master/collector_ipmi.go
-// DCMI spec (old) https://www.intel.com/content/dam/www/public/us/en/documents/technical-specifications/dcmi-v1-5-rev-spec.pdf
-
 //go:build !noimpi
 // +build !noimpi
 
 package collector
+
+// Taken from prometheus-community/ipmi_exporter/blob/master/collector_ipmi.go
+// DCMI spec (old) https://www.intel.com/content/dam/www/public/us/en/documents/technical-specifications/dcmi-v1-5-rev-spec.pdf
 
 import (
 	"context"
