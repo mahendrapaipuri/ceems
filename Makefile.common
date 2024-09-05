@@ -24,6 +24,7 @@ PRE_GO_111        ?= $(shell echo $(GO_VERSION_NUMBER) | grep -E 'go1\.(10|[0-9]
 
 PROMU        := $(FIRST_GOPATH)/bin/promu
 SWAG         := $(FIRST_GOPATH)/bin/swag
+CLANG        := $(firstword $(subst :, ,$(shell which clang)))
 pkgs          = ./...
 
 ifeq (arm, $(GOHOSTARCH))
@@ -246,16 +247,21 @@ $(PROMU):
 	cp $(PROMU_TMP)/promu-$(PROMU_VERSION).$(GO_BUILD_PLATFORM)/promu $(FIRST_GOPATH)/bin/promu
 	rm -r $(PROMU_TMP)
 
+# Build bpf assets using clang
 .PHONY: bpf
-bpf:
 ifeq ($(CGO_BUILD), 0)
-ifeq (, $(shell command -v clang > /dev/null))
-	@echo ">> installing clang 18"
-	@./scripts/install_clang.sh
-endif
+bpf: clang
 	@echo ">> building bpf assets using clang"
 	$(MAKE) -C ./pkg/collector/bpf clean
 	$(MAKE) -C ./pkg/collector/bpf
+endif
+
+# Install clang using script
+.PHONY: clang
+ifeq (, $(shell which clang))
+clang:
+	@echo ">> installing clang 18"
+	@./scripts/install_clang.sh
 endif
 
 # Dont run swagger for release builds. This is due to cross compiling with GOARCH set 

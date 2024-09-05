@@ -10,10 +10,10 @@ BPF_TARGET_MARCH ?= bpf
 BPF_TARGET_COMPILE ?= 1
 UNAME_M := $(shell uname -m)
 ifeq ($(UNAME_M),x86_64)
-	BPF_TARGET_ARCH ?= x86
+	BPF_TARGET_ARCH = x86
 endif
 ifeq ($(UNAME_M),aarch64)
-	BPF_TARGET_ARCH ?= arm64
+	BPF_TARGET_ARCH = arm64
 endif
 
 # Get cross-compiling flags from GOARCH env variable
