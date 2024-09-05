@@ -1,3 +1,4 @@
 # Ignore objs and deps 
-objs/
+**/bpf_*.o
+**/bpf_*.ll
 deps/ 

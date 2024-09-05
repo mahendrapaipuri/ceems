@@ -27,7 +27,7 @@ import (
 
 // Embed the entire objs directory.
 //
-//go:embed bpf/objs
+//go:embed bpf/objs/*.o
 var objsFS embed.FS
 
 const (
@@ -240,8 +240,7 @@ func NewEbpfCollector(logger log.Logger) (Collector, error) {
 					continue
 				}
 
-				links[kernFuncName], err = link.Kprobe(kernFuncName, prog, nil)
-				if err != nil {
+				if links[kernFuncName], err = link.Kprobe(kernFuncName, prog, nil); err != nil {
 					level.Error(logger).Log("msg", "Failed to open kprobe", "func", kernFuncName, "err", err)
 				}
 			}
@@ -257,8 +256,7 @@ func NewEbpfCollector(logger log.Logger) (Collector, error) {
 					continue
 				}
 
-				links[kernFuncName], err = link.Kretprobe(kernFuncName, prog, nil)
-				if err != nil {
+				if links[kernFuncName], err = link.Kretprobe(kernFuncName, prog, nil); err != nil {
 					level.Error(logger).Log("msg", "Failed to open kretprobe", "func", kernFuncName, "err", err)
 				}
 			}
@@ -267,11 +265,10 @@ func NewEbpfCollector(logger log.Logger) (Collector, error) {
 		// fentry/* programs
 		if strings.HasPrefix(name, "fentry") {
 			kernFuncName := strings.TrimPrefix(name, "fentry_")
-			links[kernFuncName], err = link.AttachTracing(link.TracingOptions{
+			if links[kernFuncName], err = link.AttachTracing(link.TracingOptions{
 				Program:    prog,
 				AttachType: ebpf.AttachTraceFEntry,
-			})
-			if err != nil {
+			}); err != nil {
 				level.Error(logger).Log("msg", "Failed to open fentry", "func", kernFuncName, "err", err)
 			}
 		}
@@ -279,11 +276,10 @@ func NewEbpfCollector(logger log.Logger) (Collector, error) {
 		// fexit/* programs
 		if strings.HasPrefix(name, "fexit") {
 			kernFuncName := strings.TrimPrefix(name, "fexit_")
-			links[kernFuncName], err = link.AttachTracing(link.TracingOptions{
+			if links[kernFuncName], err = link.AttachTracing(link.TracingOptions{
 				Program:    prog,
 				AttachType: ebpf.AttachTraceFExit,
-			})
-			if err != nil {
+			}); err != nil {
 				level.Error(logger).Log("msg", "Failed to open fexit", "func", kernFuncName, "err", err)
 			}
 		}
