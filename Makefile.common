@@ -249,7 +249,7 @@ $(PROMU):
 .PHONY: bpf
 bpf:
 ifeq ($(CGO_BUILD), 0)
-ifeq (, $(shell command -v clang))
+ifeq ($(CI), true)
 	@echo ">> installing clang 18"
 	@./scripts/install_clang.sh
 endif
