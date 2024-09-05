@@ -7,7 +7,11 @@ apt-get update && apt-get install -y --no-install-recommends  \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install clang 18
-bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
+SUDO=''
+if (( $EUID != 0 )); then
+    SUDO='sudo'
+fi
+$SUDO bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
 
 # Create necessary symlinks
 ln -vsnf /usr/lib/llvm-18/bin/clang /usr/bin/clang

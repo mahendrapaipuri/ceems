@@ -19,14 +19,14 @@ jobs:
     steps:
       - prometheus/setup_environment
       - run: go mod download
-      - run: sudo make
+      - run: make
       - run: CGO_BUILD=1 make
   test-arm:
     executor: arm
     steps:
       - checkout
       - run: uname -a
-      - run: sudo make
+      - run: make
       - run: CGO_BUILD=1 make
   build:
     machine:
