@@ -117,13 +117,13 @@ coverage:
 	$(GO) tool cover -func=coverage.out -o=coverage.out
 
 .PHONY: test
-test: pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked
+test: pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked bpf
 	@echo ">> running tests"
 	$(GO) test -short $(test-flags) $(pkgs)
 	cat $(coverage-file).tmp | grep -v "main.go" > $(coverage-file)
 
 .PHONY: test-32bit
-test-32bit: pkg/collector/testdata/sys/.unpacked 
+test-32bit: pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked bpf
 	@echo ">> running tests in 32-bit mode"
 	@env GOARCH=$(GOARCH_CROSS) $(GO) test $(pkgs)
 

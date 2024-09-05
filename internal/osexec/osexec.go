@@ -3,6 +3,7 @@ package osexec
 
 import (
 	"context"
+	"errors"
 	"math"
 	"os"
 	"os/exec"
@@ -16,6 +17,12 @@ import (
 
 const (
 	sudoCmd = "sudo"
+)
+
+// Custom errors.
+var (
+	ErrInvalidUID = errors.New("invalid UID")
+	ErrInvalidGID = errors.New("invalid GID")
 )
 
 // Execute command and return stdout/stderr.
@@ -63,10 +70,14 @@ func ExecuteAs(cmd string, args []string, uid int, gid int, env []string, logger
 	var uidInt32, gidInt32 uint32
 	if uid > 0 && uid <= math.MaxInt32 {
 		uidInt32 = uint32(uid) //nolint:gosec
+	} else {
+		return nil, ErrInvalidUID
 	}
 
 	if gid > 0 && gid <= math.MaxInt32 {
 		gidInt32 = uint32(gid) //nolint:gosec
+	} else {
+		return nil, ErrInvalidGID
 	}
 
 	// According to setpgid docs (https://man7.org/linux/man-pages/man2/setpgid.2.html)
@@ -153,10 +164,14 @@ func ExecuteAsContext(
 	var uidInt32, gidInt32 uint32
 	if uid > 0 && uid <= math.MaxInt32 {
 		uidInt32 = uint32(uid) //nolint:gosec
+	} else {
+		return nil, ErrInvalidUID
 	}
 
 	if gid > 0 && gid <= math.MaxInt32 {
 		gidInt32 = uint32(gid) //nolint:gosec
+	} else {
+		return nil, ErrInvalidGID
 	}
 
 	// According to setpgid docs (https://man7.org/linux/man-pages/man2/setpgid.2.html)
@@ -268,10 +283,14 @@ func ExecuteAsWithTimeout(
 	var uidInt32, gidInt32 uint32
 	if uid > 0 && uid <= math.MaxInt32 {
 		uidInt32 = uint32(uid) //nolint:gosec
+	} else {
+		return nil, ErrInvalidUID
 	}
 
 	if gid > 0 && gid <= math.MaxInt32 {
 		gidInt32 = uint32(gid) //nolint:gosec
+	} else {
+		return nil, ErrInvalidGID
 	}
 
 	// According to setpgid docs (https://man7.org/linux/man-pages/man2/setpgid.2.html)
