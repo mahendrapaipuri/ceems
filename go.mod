@@ -12,7 +12,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/hodgesds/perf-utils v0.7.0
 	github.com/jellydator/ttlcache/v3 v3.3.0
-	github.com/mattn/go-sqlite3 v1.14.22
+	github.com/mattn/go-sqlite3 v1.14.23
 	github.com/prometheus/client_golang v1.20.2
 	github.com/prometheus/common v0.59.1
 	github.com/prometheus/exporter-toolkit v0.11.0
