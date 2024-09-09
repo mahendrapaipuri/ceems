@@ -15,7 +15,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.22
 	github.com/prometheus/client_golang v1.20.2
 	github.com/prometheus/common v0.58.0
-	github.com/prometheus/exporter-toolkit v0.11.0
+	github.com/prometheus/exporter-toolkit v0.12.0
 	github.com/prometheus/procfs v0.15.1
 	github.com/stretchr/testify v1.9.0
 	github.com/swaggo/http-swagger/v2 v2.0.2
@@ -47,6 +47,8 @@ require (
 	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
+	github.com/mdlayher/socket v0.4.1 // indirect
+	github.com/mdlayher/vsock v1.2.1 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f // indirect
 	github.com/opencontainers/runtime-spec v1.0.2 // indirect
