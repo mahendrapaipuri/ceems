@@ -14,7 +14,7 @@ require (
 	github.com/jellydator/ttlcache/v3 v3.3.0
 	github.com/mattn/go-sqlite3 v1.14.22
 	github.com/prometheus/client_golang v1.20.2
-	github.com/prometheus/common v0.58.0
+	github.com/prometheus/common v0.59.1
 	github.com/prometheus/exporter-toolkit v0.11.0
 	github.com/prometheus/procfs v0.15.1
 	github.com/stretchr/testify v1.9.0
