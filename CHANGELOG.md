@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0 / 2024-09-10
+
+- [MAINT] Remove unnecessary log lines [#167](https://github.com/mahendrapaipuri/ceems/pull/167) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [MAINT] Refactor slurm collector organization [#155](https://github.com/mahendrapaipuri/ceems/pull/155) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [MAINT] Graceful exporter shutdown and misc fixes [#153](https://github.com/mahendrapaipuri/ceems/pull/153) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Use consistent CLI flags for exporter [#144](https://github.com/mahendrapaipuri/ceems/pull/144) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Add perf collector that exports perf metrics [#137](https://github.com/mahendrapaipuri/ceems/pull/137) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [MAINT] Bump dependencies [#138](https://github.com/mahendrapaipuri/ceems/pull/138), [#139](https://github.com/mahendrapaipuri/ceems/pull/139), [#140](https://github.com/mahendrapaipuri/ceems/pull/140), [#141](https://github.com/mahendrapaipuri/ceems/pull/141), [#142](https://github.com/mahendrapaipuri/ceems/pull/142), [#143](https://github.com/mahendrapaipuri/ceems/pull/143), [#145](https://github.com/mahendrapaipuri/ceems/pull/145), [#146](https://github.com/mahendrapaipuri/ceems/pull/146), [#147](https://github.com/mahendrapaipuri/ceems/pull/147), [#148](https://github.com/mahendrapaipuri/ceems/pull/148), [#149](https://github.com/mahendrapaipuri/ceems/pull/149), [#150](https://github.com/mahendrapaipuri/ceems/pull/150), [#151](https://github.com/mahendrapaipuri/ceems/pull/151) , [#152](https://github.com/mahendrapaipuri/ceems/pull/152), [#154](https://github.com/mahendrapaipuri/ceems/pull/154), [#157](https://github.com/mahendrapaipuri/ceems/pull/157), [#158](https://github.com/mahendrapaipuri/ceems/pull/158), [#159](https://github.com/mahendrapaipuri/ceems/pull/159), [#160](https://github.com/mahendrapaipuri/ceems/pull/160), [#161](https://github.com/mahendrapaipuri/ceems/pull/161), [#162](https://github.com/mahendrapaipuri/ceems/pull/162), [#163](https://github.com/mahendrapaipuri/ceems/pull/163), [#164](https://github.com/mahendrapaipuri/ceems/pull/164) ([@dependabot](https://github.com/dependabot))
+
 ## 0.2.1 / 2024-08-17
 
 - [BUGFIX] Fix setting sysprocattr correctly based on command [#136](https://github.com/mahendrapaipuri/ceems/pull/136) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
