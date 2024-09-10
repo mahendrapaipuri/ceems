@@ -3,6 +3,7 @@ package collector
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -130,9 +131,6 @@ func parseNvidiaSmiOutput(cmdOutput string, logger log.Logger) map[int]Device {
 
 		devDetails := strings.Split(line, ",")
 		if len(devDetails) < 3 {
-			level.Error(logger).
-				Log("msg", "Cannot parse output from nvidia-smi command", "output", line)
-
 			continue
 		}
 
@@ -175,14 +173,15 @@ func GetNvidiaGPUDevices(nvidiaSmiPath string, logger log.Logger) (map[int]Devic
 
 	if nvidiaSmiPath != "" {
 		if _, err := os.Stat(nvidiaSmiPath); err != nil {
-			level.Error(logger).Log("msg", "Failed to open nvidia-smi executable", "path", nvidiaSmiPath, "err", err)
-
 			return nil, err
 		}
 
 		nvidiaSmiCmd = nvidiaSmiPath
 	} else {
 		nvidiaSmiCmd = "nvidia-smi"
+		if _, err := exec.LookPath(nvidiaSmiCmd); err != nil {
+			return nil, err
+		}
 	}
 
 	// Execute nvidia-smi command to get available GPUs
@@ -211,9 +210,6 @@ func parseAmdSmioutput(cmdOutput string, logger log.Logger) map[int]Device {
 
 		devDetails := strings.Split(line, ",")
 		if len(devDetails) < 6 {
-			level.Error(logger).
-				Log("msg", "Cannot parse output from rocm-smi command", "output", line)
-
 			continue
 		}
 
@@ -256,6 +252,9 @@ func GetAMDGPUDevices(rocmSmiPath string, logger log.Logger) (map[int]Device, er
 		rocmSmiCmd = rocmSmiPath
 	} else {
 		rocmSmiCmd = "rocm-smi"
+		if _, err := exec.LookPath(rocmSmiCmd); err != nil {
+			return nil, err
+		}
 	}
 
 	// Execute nvidia-smi command to get available GPUs

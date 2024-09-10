@@ -375,7 +375,7 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 	// Send metrics of each cgroup
 	for _, m := range metrics {
 		if m.err {
-			ch <- prometheus.MustNewConstMetric(c.collectError, prometheus.GaugeValue, 1, m.path)
+			ch <- prometheus.MustNewConstMetric(c.collectError, prometheus.GaugeValue, 1, c.manager, c.hostname, m.jobuuid)
 		}
 
 		// CPU stats
@@ -487,11 +487,13 @@ func (c *slurmCollector) getJobsMetrics() ([]CgroupMetric, error) {
 		}
 
 		// Get GPU ordinals of the job
-		if props, ok := c.jobsCache[jobuuid]; !ok || (ok && !c.containsGPUOrdinals(props)) {
-			gpuOrdinals = c.gpuOrdinals(jobuuid)
-			c.jobsCache[jobuuid] = jobProps{uuid: jobuuid, gpuOrdinals: gpuOrdinals}
-		} else {
-			gpuOrdinals = c.jobsCache[jobuuid].gpuOrdinals
+		if len(c.gpuDevs) > 0 {
+			if props, ok := c.jobsCache[jobuuid]; !ok || (ok && !c.containsGPUOrdinals(props)) {
+				gpuOrdinals = c.gpuOrdinals(jobuuid)
+				c.jobsCache[jobuuid] = jobProps{uuid: jobuuid, gpuOrdinals: gpuOrdinals}
+			} else {
+				gpuOrdinals = c.jobsCache[jobuuid].gpuOrdinals
+			}
 		}
 
 		activeJobUUIDs = append(activeJobUUIDs, jobuuid)
