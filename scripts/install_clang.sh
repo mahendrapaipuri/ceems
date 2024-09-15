@@ -1,6 +1,9 @@
 #!/bin/bash
 set -exo pipefail
 
+# This script only works for Ubuntu derivates and it is meant to be
+# used in CI to install clang in golang builder containers.
+
 # Check if clang exists. If it exists, we need to ensure that it
 # is at least of version >= 18
 if [ -x "$(command -v clang)" ]; then

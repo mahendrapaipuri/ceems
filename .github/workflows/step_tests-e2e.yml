@@ -17,6 +17,9 @@ jobs:
         with:
           go-version: 1.22.x
 
+      - name: Setup clang 18
+        run: ./scripts/install_clang.sh
+
       - name: Run e2e tests for Go packages
         run: make test-e2e
 
