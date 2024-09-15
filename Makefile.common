@@ -24,8 +24,10 @@ PRE_GO_111        ?= $(shell echo $(GO_VERSION_NUMBER) | grep -E 'go1\.(10|[0-9]
 
 PROMU        := $(FIRST_GOPATH)/bin/promu
 SWAG         := $(FIRST_GOPATH)/bin/swag
-CLANG        := $(firstword $(subst :, ,$(shell which clang)))
 pkgs          = ./...
+
+# clang format
+FORMAT_FIND_FLAGS ?= -name '*.c' -o -name '*.h' -not -path 'pkg/collector/bpf/include/vmlinux.h' -not -path 'pkg/collector/bpf/libbpf/*'
 
 ifeq (arm, $(GOHOSTARCH))
 	GOHOSTARM ?= $(shell GOARM= $(GO) env GOARM)
@@ -173,6 +175,10 @@ else
 	yamllint .
 endif
 
+.PHONY: common-clang-format
+clang-format: ## Run code formatter on BPF code.
+	find pkg/collector/bpf $(FORMAT_FIND_FLAGS) | xargs -n 1000 clang-format -i -style=file
+
 # For backward-compatibility.
 .PHONY: common-staticcheck
 common-staticcheck: lint
@@ -247,21 +253,32 @@ $(PROMU):
 	cp $(PROMU_TMP)/promu-$(PROMU_VERSION).$(GO_BUILD_PLATFORM)/promu $(FIRST_GOPATH)/bin/promu
 	rm -r $(PROMU_TMP)
 
-# Build bpf assets using clang
-.PHONY: bpf
+# Build bpf assets only when CGO_BUILD=0
 ifeq ($(CGO_BUILD), 0)
-bpf: clang
+# Build bpf assets
+.PHONY: bpf
+bpf: clang bpfclean
 	@echo ">> building bpf assets using clang"
-	$(MAKE) -C ./pkg/collector/bpf clean
 	$(MAKE) -C ./pkg/collector/bpf
+
+# Clean existing bpf assets. When GOARCH is set we ALWAYS clean the
+# assets as we need to build them for each architecture
+.PHONY: bpfclean
+ifdef GOARCH
+bpfclean: 
+	@echo ">> cleaning existing bpf assets"
+	$(MAKE) -C ./pkg/collector/bpf clean
 endif
 
-# Install clang using script. We chack the version of clang inside the script and ensure 
-# that we install clang >= 18
+# Install clang using script. Do it only when GOARCH is set as we need
+# clang to build go binaries inside golang-builder container.
 .PHONY: clang
+ifdef GOARCH
 clang:
 	@echo ">> installing clang"
 	@./scripts/install_clang.sh
+endif
+endif
 
 # Dont run swagger for release builds. This is due to cross compiling with GOARCH set 
 # to different archs and swag will be built in arch specific bin folder.

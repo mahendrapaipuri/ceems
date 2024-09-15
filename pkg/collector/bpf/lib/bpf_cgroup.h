@@ -19,7 +19,7 @@
 #define EVENT_ERROR_CGROUP_KN	      0x020000
 #define EVENT_ERROR_CGROUP_SUBSYSCGRP 0x040000
 #define EVENT_ERROR_CGROUP_SUBSYS     0x080000
-#define EVENT_ERROR_CGROUPS	          0x100000
+#define EVENT_ERROR_CGROUPS	      0x100000
 #define EVENT_ERROR_CGROUP_ID	      0x200000
 
 /* Represent old kernfs node with the kernfs_node_id
@@ -187,7 +187,6 @@ FUNC_INLINE __u64 ceems_get_current_cgroupv1_id(int subsys_idx)
 
 	return get_cgroup_id(cgrp);
 }
-
 
 /**
  * ceems_get_current_cgroup_id() Returns the accurate cgroup id of current task.

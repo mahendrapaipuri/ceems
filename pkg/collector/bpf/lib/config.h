@@ -16,4 +16,4 @@ struct {
 	__type(value, struct conf);
 } conf_map SEC(".maps");
 
-#endif // __CONF_ 
+#endif // __CONF_

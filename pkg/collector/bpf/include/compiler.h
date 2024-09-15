@@ -22,15 +22,15 @@ const void *__builtin_preserve_access_index(void *);
 #define _(P) (__builtin_preserve_access_index(P))
 
 #ifndef likely
-# define likely(X)		__builtin_expect(!!(X), 1)
+#define likely(X) __builtin_expect(!!(X), 1)
 #endif
 
 #ifndef unlikely
-# define unlikely(X)    __builtin_expect(!!(X), 0)
+#define unlikely(X) __builtin_expect(!!(X), 0)
 #endif
 
 #ifndef __inline__
-# define __inline__		__attribute__((always_inline))
+#define __inline__ __attribute__((always_inline))
 #endif
 
 #define DEBUG
@@ -38,13 +38,16 @@ const void *__builtin_preserve_access_index(void *);
 /* Only use this for debug output. Notice output from bpf_trace_printk()
  * ends up in /sys/kernel/debug/tracing/trace_pipe
  */
-#define bpf_debug(fmt, ...)                                                    \
-	({                                                                     \
-		char ____fmt[] = fmt;                                          \
-		bpf_trace_printk(____fmt, sizeof(____fmt), ##__VA_ARGS__);     \
+#define bpf_debug(fmt, ...)                                                \
+	({                                                                 \
+		char ____fmt[] = fmt;                                      \
+		bpf_trace_printk(____fmt, sizeof(____fmt), ##__VA_ARGS__); \
 	})
 #else
-#define bpf_debug(fmt, ...){;}
+#define bpf_debug(fmt, ...) \
+	{                   \
+		;           \
+	}
 #endif
 
 // Just to ensure that we can use vfs_write/vfs_read calls

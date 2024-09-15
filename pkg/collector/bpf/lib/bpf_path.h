@@ -12,8 +12,8 @@
 #define UNRESOLVED_PATH_COMPONENTS 0x02
 
 #define PROBE_MNT_ITERATIONS 8
-#define ENAMETOOLONG 36 /* File name too long */
-#define MAX_BUF_LEN 4096
+#define ENAMETOOLONG	     36 /* File name too long */
+#define MAX_BUF_LEN	     4096
 
 /* buffer in the heap */
 struct buffer_heap_map_value {
@@ -52,7 +52,7 @@ struct mnt_path_data {
  *
  * Returns pointer to mnt of real mount path.
  */
-FUNC_INLINE struct mount* real_mount(struct vfsmount *mnt)
+FUNC_INLINE struct mount *real_mount(struct vfsmount *mnt)
 {
 	return container_of_btf(mnt, struct mount, mnt);
 }
@@ -147,7 +147,7 @@ FUNC_INLINE long mnt_path_read(struct mnt_path_data *data)
 	int error;
 
 	bpf_probe_read(&curr_de, sizeof(curr_de), _(&mnt->mnt_mountpoint));
-	
+
 	/* Global root? */
 	if (curr_de == prev_de || IS_ROOT(curr_de)) {
 
@@ -226,7 +226,7 @@ FUNC_INLINE int prepend_mnt_path(struct file *file, char *bf, char **buffer, int
 
 	*buffer = data.bptr;
 	*buflen = data.blen;
-    
+
 	return error;
 }
 
@@ -262,7 +262,7 @@ FUNC_INLINE int prepend_mnt_path(struct file *file, char *bf, char **buffer, int
  *
  * ps. The size of the path will be (initial value of buflen) - (return value of buflen) if (buflen != 0)
  */
-FUNC_INLINE char* __mnt_path_local(struct file *file, char *buf, int *buflen, int *error)
+FUNC_INLINE char *__mnt_path_local(struct file *file, char *buf, int *buflen, int *error)
 {
 	char *res = buf + *buflen;
 
@@ -284,9 +284,9 @@ FUNC_INLINE char* __mnt_path_local(struct file *file, char *buf, int *buflen, in
  * 'error' is 0 in case of success or UNRESOLVED_PATH_COMPONENTS in the case
  * where the path is larger than the provided buffer.
  */
-FUNC_INLINE char* mnt_path_local(struct file *file, int *buflen, int *error)
+FUNC_INLINE char *mnt_path_local(struct file *file, int *buflen, int *error)
 {
-    int zero = 0;
+	int zero = 0;
 	char *buffer = 0;
 
 	buffer = bpf_map_lookup_elem(&buffer_heap_map, &zero);
