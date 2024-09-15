@@ -19,6 +19,7 @@ jobs:
     steps:
       - prometheus/setup_environment
       - run: go mod download
+      - run: GOARCH=1 make clang
       - run: make
       - run: CGO_BUILD=1 make
   test-arm:
@@ -26,6 +27,7 @@ jobs:
     steps:
       - checkout
       - run: uname -a
+      - run: GOARCH=1 make clang
       - run: make
       - run: CGO_BUILD=1 make
   build:

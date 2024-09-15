@@ -253,10 +253,10 @@ $(PROMU):
 	cp $(PROMU_TMP)/promu-$(PROMU_VERSION).$(GO_BUILD_PLATFORM)/promu $(FIRST_GOPATH)/bin/promu
 	rm -r $(PROMU_TMP)
 
-# Build bpf assets only when CGO_BUILD=0
-ifeq ($(CGO_BUILD), 0)
 # Build bpf assets
 .PHONY: bpf
+# Build bpf assets only when CGO_BUILD=0
+ifeq ($(CGO_BUILD), 0)
 bpf: clang bpfclean
 	@echo ">> building bpf assets using clang"
 	$(MAKE) -C ./pkg/collector/bpf
