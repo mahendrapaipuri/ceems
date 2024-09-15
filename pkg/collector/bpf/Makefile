@@ -7,9 +7,8 @@ VFSDIR := vfs/
 NETWORKDIR := network/
 BPFTESTDIR := test/
 
-NETWORK = bpf_network.o
+NETWORK = bpf_network.o bpf_network_v519.o bpf_network_v64.o
 VFS = bpf_vfs.o bpf_vfs_v511.o bpf_vfs_v62.o
-# BPFTEST = bpf_lseek.o
 
 OBJSDIR       := objs/
 DEPSDIR       := deps/
@@ -34,15 +33,23 @@ $(OBJSDIR):
 $(DEPSDIR):
 	mkdir $(DEPSDIR)
 
-define DEFINE_VARIANT
+define DEFINE_VFS_VARIANT
 VAR := $1
 deps/bpf_vfs_$$(VAR).d: vfs/bpf_vfs.c
 endef
 
 # Generic build targets for each sub-dir
+$(eval $(call DEFINE_VFS_VARIANT,v511))
+$(eval $(call DEFINE_VFS_VARIANT,v62))
 
-$(eval $(call DEFINE_VARIANT,v511))
-$(eval $(call DEFINE_VARIANT,v62))
+define DEFINE_NET_VARIANT
+VAR := $1
+deps/bpf_network_$$(VAR).d: network/bpf_network.c
+endef
+
+# Generic build targets for each sub-dir
+$(eval $(call DEFINE_NET_VARIANT,v519))
+$(eval $(call DEFINE_NET_VARIANT,v64))
 
 # Build only for relevant architectures
 ifeq ($(BPF_TARGET_COMPILE),1)
@@ -70,8 +77,20 @@ $(DEPSDIR)%_v62.d:
 objs/%.ll: $(NETWORKDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
 
+objs/%_v519.ll: $(NETWORKDIR)%.c
+	$(CLANG) $(CLANG_FLAGS) -D__KERNEL_PRE_v519 -D__KERNEL_PRE_v64 -c $< -o $@
+
+objs/%_v64.ll: $(NETWORKDIR)%.c
+	$(CLANG) $(CLANG_FLAGS) -D__KERNEL_PRE_v64 -c $< -o $@
+
 $(DEPSDIR)%.d: $(NETWORKDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
+
+$(DEPSDIR)%_v519.d: $(NETWORKDIR)%.c
+	$(CLANG) $(CLANG_FLAGS) -D__KERNEL_PRE_v519 -D__KERNEL_PRE_v64 -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
+
+$(DEPSDIR)%_v64.d: $(NETWORKDIR)%.c
+	$(CLANG) $(CLANG_FLAGS) -D__KERNEL_PRE_v64 -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
 
 # BPFTESTDIR
 objs/%.ll: $(BPFTESTDIR)%.c
