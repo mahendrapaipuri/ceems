@@ -168,12 +168,9 @@ func GetNvidiaGPUDevices(nvidiaSmiPath string, logger log.Logger) (map[int]Devic
 
 	nvidiaSmiOutput, err := osexec.Execute(nvidiaSmiCmd, args, nil, logger)
 	if err != nil {
-		level.Error(logger).
-			Log("msg", "nvidia-smi command to get list of devices failed", "err", err)
-
 		return nil, err
 	}
-	// Get all devices
+
 	return parseNvidiaSmiOutput(string(nvidiaSmiOutput), logger), nil
 }
 
@@ -223,14 +220,13 @@ func GetAMDGPUDevices(rocmSmiPath string, logger log.Logger) (map[int]Device, er
 
 	if rocmSmiPath != "" {
 		if _, err := os.Stat(rocmSmiPath); err != nil {
-			level.Error(logger).Log("msg", "Failed to open rocm-smi executable", "path", rocmSmiPath, "err", err)
-
 			return nil, err
 		}
 
 		rocmSmiCmd = rocmSmiPath
 	} else {
 		rocmSmiCmd = "rocm-smi"
+
 		if _, err := exec.LookPath(rocmSmiCmd); err != nil {
 			return nil, err
 		}
@@ -241,12 +237,9 @@ func GetAMDGPUDevices(rocmSmiPath string, logger log.Logger) (map[int]Device, er
 
 	rocmSmiOutput, err := osexec.Execute(rocmSmiCmd, args, nil, logger)
 	if err != nil {
-		level.Error(logger).
-			Log("msg", "rocm-smi command to get list of devices failed", "err", err)
-
 		return nil, err
 	}
-	// Get all devices
+
 	return parseAmdSmioutput(string(rocmSmiOutput), logger), nil
 }
 

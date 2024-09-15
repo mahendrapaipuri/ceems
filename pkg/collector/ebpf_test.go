@@ -2,9 +2,12 @@ package collector
 
 import (
 	"context"
+	"os"
 	"os/user"
+	"slices"
 	"testing"
 
+	"github.com/containerd/cgroups/v3"
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
@@ -158,13 +161,22 @@ func TestNewEbpfCollector(t *testing.T) {
 	_, err := CEEMSExporterApp.Parse(
 		[]string{
 			"--path.cgroupfs", "testdata/sys/fs/cgroup",
-			"--collector.slurm",
-			"--collector.slurm.force-cgroups-version", "v2",
+			"--collector.cgroups.force-version", "v2",
 		},
 	)
 	require.NoError(t, err)
 
-	collector, err := NewEbpfCollector(log.NewNopLogger())
+	// cgroup manager
+	cgManager, err := NewCgroupManager("slurm")
+	require.NoError(t, err)
+
+	// ebpf opts
+	opts := ebpfOpts{
+		vfsStatsEnabled: true,
+		netStatsEnabled: true,
+	}
+
+	collector, err := NewEbpfCollector(log.NewNopLogger(), cgManager, opts)
 	require.NoError(t, err)
 
 	// Setup background goroutine to capture metrics.
@@ -193,25 +205,42 @@ func TestActiveCgroupsV2(t *testing.T) {
 	)
 	require.NoError(t, err)
 
+	// cgroup manager
+	cgManager := &cgroupManager{
+		mode:       cgroups.Unified,
+		mountPoint: "testdata/sys/fs/cgroup/system.slice/slurmstepd.scope",
+		idRegex:    slurmCgroupPathRegex,
+	}
+
+	// ebpf opts
+	opts := ebpfOpts{
+		vfsStatsEnabled: true,
+		netStatsEnabled: true,
+	}
+
 	c := ebpfCollector{
-		cgroupFS:     slurmCgroupFS(*cgroupfsPath, "", "v2"),
-		logger:       log.NewNopLogger(),
-		inodesMap:    make(map[uint64]string),
-		inodesRevMap: make(map[string]uint64),
+		logger:        log.NewNopLogger(),
+		cgroupManager: cgManager,
+
+		opts:              opts,
+		cgroupIDUUIDCache: make(map[uint64]string),
+		cgroupPathIDCache: make(map[string]uint64),
 	}
 
 	// Get active cgroups
-	err = c.getActiveCgroups()
+	err = c.discoverCgroups()
 	require.NoError(t, err)
 
-	assert.Len(t, c.activeCgroups, 3)
-	assert.Len(t, c.inodesMap, 3)
-	assert.Len(t, c.inodesRevMap, 3)
+	assert.Len(t, c.activeCgroupIDs, 39)
+	assert.Len(t, c.cgroupIDUUIDCache, 39)
+	assert.Len(t, c.cgroupPathIDCache, 39)
 
 	// Get cgroup IDs
 	var uuids []string
-	for uuid := range c.inodesRevMap {
-		uuids = append(uuids, uuid)
+	for _, uuid := range c.cgroupIDUUIDCache {
+		if !slices.Contains(uuids, uuid) {
+			uuids = append(uuids, uuid)
+		}
 	}
 
 	assert.ElementsMatch(t, []string{"1009248", "1009249", "1009250"}, uuids)
@@ -225,26 +254,123 @@ func TestActiveCgroupsV1(t *testing.T) {
 	)
 	require.NoError(t, err)
 
+	// cgroup manager
+	cgManager := &cgroupManager{
+		mode:       cgroups.Legacy,
+		mountPoint: "testdata/sys/fs/cgroup/cpuacct/slurm",
+		idRegex:    slurmCgroupPathRegex,
+	}
+
+	// ebpf opts
+	opts := ebpfOpts{
+		vfsStatsEnabled: true,
+		netStatsEnabled: true,
+	}
+
 	c := ebpfCollector{
-		cgroupFS:     slurmCgroupFS(*cgroupfsPath, "cpuacct", "v1"),
-		logger:       log.NewNopLogger(),
-		inodesMap:    make(map[uint64]string),
-		inodesRevMap: make(map[string]uint64),
+		logger:        log.NewNopLogger(),
+		cgroupManager: cgManager,
+
+		opts:              opts,
+		cgroupIDUUIDCache: make(map[uint64]string),
+		cgroupPathIDCache: make(map[string]uint64),
 	}
 
 	// Get active cgroups
-	err = c.getActiveCgroups()
+	err = c.discoverCgroups()
 	require.NoError(t, err)
 
-	assert.Len(t, c.activeCgroups, 3)
-	assert.Len(t, c.inodesMap, 3)
-	assert.Len(t, c.inodesRevMap, 3)
+	assert.Len(t, c.activeCgroupIDs, 6)
+	assert.Len(t, c.cgroupIDUUIDCache, 6)
+	assert.Len(t, c.cgroupPathIDCache, 6)
 
 	// Get cgroup IDs
 	var uuids []string
-	for uuid := range c.inodesRevMap {
-		uuids = append(uuids, uuid)
+	for _, uuid := range c.cgroupIDUUIDCache {
+		if !slices.Contains(uuids, uuid) {
+			uuids = append(uuids, uuid)
+		}
 	}
 
 	assert.ElementsMatch(t, []string{"1009248", "1009249", "1009250"}, uuids)
+}
+
+func TestVFSBPFObjects(t *testing.T) {
+	tests := []struct {
+		name    string
+		procfs  string
+		version string
+		obj     string
+	}{
+		{
+			name:    "kernel >= 6.2",
+			procfs:  t.TempDir(),
+			version: "Ubuntu 6.5.0-35.35~22.04.1-generic 6.5.13",
+			obj:     "bpf_vfs.o",
+		},
+		{
+			name:    "kernel > 5.11 and kernel < 6.2",
+			procfs:  t.TempDir(),
+			version: "Ubuntu 5.19.0-35.35~22.04.1-generic 5.19.13",
+			obj:     "bpf_vfs_v62.o",
+		},
+		{
+			name:    "kernel < 5.11",
+			procfs:  t.TempDir(),
+			version: "Ubuntu 5.6.0-35.35~22.04.1-generic 5.6.13",
+			obj:     "bpf_vfs_v511.o",
+		},
+	}
+
+	for _, test := range tests {
+		err := os.WriteFile(test.procfs+"/version_signature", []byte(test.version), 0o600)
+		require.NoError(t, err)
+
+		*procfsPath = test.procfs
+
+		obj, err := bpfVFSObjs()
+		require.NoError(t, err)
+
+		assert.Equal(t, test.obj, obj, test.name)
+	}
+}
+
+func TestNetBPFObjects(t *testing.T) {
+	tests := []struct {
+		name    string
+		procfs  string
+		version string
+		obj     string
+	}{
+		{
+			name:    "kernel >= 6.5",
+			procfs:  t.TempDir(),
+			version: "Ubuntu 6.9.0-35.35~22.04.1-generic 6.5.13",
+			obj:     "bpf_network.o",
+		},
+		{
+			name:    "kernel > 5.19 and kernel < 6.5",
+			procfs:  t.TempDir(),
+			version: "Ubuntu 5.27.0-35.35~22.04.1-generic 5.19.13",
+			obj:     "bpf_network_v64.o",
+		},
+		{
+			name:    "kernel < 5.19",
+			procfs:  t.TempDir(),
+			version: "Ubuntu 5.6.0-35.35~22.04.1-generic 5.6.13",
+			obj:     "bpf_network_v519.o",
+		},
+	}
+
+	for _, test := range tests {
+		err := os.WriteFile(test.procfs+"/version_signature", []byte(test.version), 0o600)
+		require.NoError(t, err)
+
+		*procfsPath = test.procfs
+
+		obj, err := bpfNetObjs()
+		require.NoError(t, err)
+
+		assert.Equal(t, test.obj, obj, test.name)
+	}
 }
