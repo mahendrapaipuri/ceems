@@ -14,30 +14,35 @@
   <img src="https://raw.githubusercontent.com/mahendrapaipuri/ceems/main/website/static/img/logo.png" width="200">
 </p>
 
-Compute Energy & Emissions Monitoring Stack (CEEMS) (pronounced as *kiːms*) contains 
-a Prometheus exporter to export metrics of compute instance units and a REST API 
+Compute Energy & Emissions Monitoring Stack (CEEMS) (pronounced as *kiːms*) contains
+a Prometheus exporter to export metrics of compute instance units and a REST API
 server that serves the metadata and aggregated metrics of each
 compute unit. Optionally, it includes a TSDB load balancer that supports basic access
 control on TSDB so that one user cannot access metrics of another user.
 
 "Compute Unit" in the current context has a wider scope. It can be a batch job in HPC,
-a VM in cloud, a pod in k8s, _etc_. The main objective of the repository is to quantify
+a VM in cloud, a pod in k8s, *etc*. The main objective of the repository is to quantify
 the energy consumed and estimate emissions by each "compute unit". The repository itself
 does not provide any frontend apps to show dashboards and it is meant to use along
 with Grafana and Prometheus to show statistics to users.
 
+Although CEEMS was born out of a need to monitor energy and carbon footprint of compute
+workloads, it supports monitoring performance metrics as well. In addition, it leverages
+[eBPF](https://ebpf.io/what-is-ebpf/) framework to monitor IO and network metrics
+in a resource manager agnostic way.
+
 ## Install CEEMS
 
-> [!WARNING] 
-> DO NOT USE pre-release versions as the API has changed quite a lot between the 
+> [!WARNING]
+> DO NOT USE pre-release versions as the API has changed quite a lot between the
 pre-release and stable versions.
 
-Installation instructions of CEEMS components can be found in 
+Installation instructions of CEEMS components can be found in
 [docs](https://mahendrapaipuri.github.io/ceems/docs/category/installation).
 
 ## Visualizing metrics with Grafana
 
-CEEMS is meant to be used with Grafana for visualization and below are some of the 
+CEEMS is meant to be used with Grafana for visualization and below are some of the
 screenshots few possible metrics.
 
 ### Time series compute unit CPU metrics
@@ -46,7 +51,7 @@ screenshots few possible metrics.
   <img src="https://raw.githubusercontent.com/mahendrapaipuri/ceems/main/website/static/img/dashboards/cpu_ts_stats.png" width="1200">
 </p>
 
-### Time series compute unit GPU metrics 
+### Time series compute unit GPU metrics
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/mahendrapaipuri/ceems/main/website/static/img/dashboards/gpu_ts_stats.png" width="1200">
@@ -71,9 +76,9 @@ screenshots few possible metrics.
 
 ## Contributing
 
-We welcome contributions to this project, we hope to see this project grow and become 
-a useful tool for people who are interested in the energy and carbon footprint of their 
+We welcome contributions to this project, we hope to see this project grow and become
+a useful tool for people who are interested in the energy and carbon footprint of their
 workloads.
 
-Please feel free to open issues and/or discussions for any potential ideas of 
+Please feel free to open issues and/or discussions for any potential ideas of
 improvement.

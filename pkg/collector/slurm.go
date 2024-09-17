@@ -43,8 +43,8 @@ var (
 		"perf software profilers to collect",
 	).Strings()
 	slurmPerfCacheProfilersFlag = CEEMSExporterApp.Flag(
-		"collector.slurm.perf-cache-events",
-		"Enables collection of perf cache events (default: disabled)",
+		"collector.slurm.perf--hardware-cache-events",
+		"Enables collection of perf harware cache events (default: disabled)",
 	).Default("false").Bool()
 	slurmPerfCacheProfilers = CEEMSExporterApp.Flag(
 		"collector.slurm.perf-cache-profilers",

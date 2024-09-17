@@ -18,34 +18,34 @@ slug: /
 
 :::warning[WARNING]
 
-CEEMS is in early development phase, thus subject to breaking changes with no guarantee 
+CEEMS is in early development phase, thus subject to breaking changes with no guarantee
 of backward compatibility.
 
 :::
 
-CEEMS provide a set of components that enable operators to monitor the consumption of 
-resources of the compute units of different resource managers like SLURM, Openstack and 
-Kubernetes. 
+CEEMS provide a set of components that enable operators to monitor the consumption of
+resources of the compute units of different resource managers like SLURM, Openstack and
+Kubernetes.
 
-- CEEMS Prometheus exporter is capable of exporting compute unit metrics including energy 
-consumption from different resource managers.
+- CEEMS Prometheus exporter is capable of exporting compute unit metrics including energy
+consumption, performance, IO and network metrics from different resource managers in a
+unified manner.
 
-- CEEMS API server can store the aggregate metrics and metadata of each compute unit 
-originating from different resource manager. 
+- CEEMS API server can store the aggregate metrics and metadata of each compute unit
+originating from different resource managers.
 
-- CEEMS load balancer provides basic access control on TSDB so that compute unit metrics 
+- CEEMS load balancer provides basic access control on TSDB so that compute unit metrics
 from different projects/tenants/namespaces are isolated.
 
-"Compute Unit" in the current context has a wider scope. It can be a batch job in HPC, 
-a VM in cloud, a pod in k8s, _etc_. The main objective of the stack is to quantify 
-the energy consumed and estimate emissions by each "compute unit". The repository itself 
-does not provide any frontend apps to show dashboards and it is meant to use along 
-with Grafana and Prometheus to show statistics to users. 
+"Compute Unit" in the current context has a wider scope. It can be a batch job in HPC,
+a VM in cloud, a pod in k8s, _etc_. The main objective of the stack is to quantify
+the energy consumed and estimate emissions by each "compute unit". The repository itself
+does not provide any frontend apps to show dashboards and it is meant to use along
+with Grafana and Prometheus to show statistics to users.
 
 :::important[Note]
 
-Currently, only SLURM is supported as a resource manager. In future support for Openstack 
+Currently, only SLURM is supported as a resource manager. In future support for Openstack
 and Kubernetes will be added.
 
 :::
-
