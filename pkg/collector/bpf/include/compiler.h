@@ -1,7 +1,17 @@
 /* SPDX-License-Identifier: (GPL-3.0-only) */
 
+/**
+ * Seems like LRU hash map with fewer max entries have unexpected
+ * behaviour.
+ * Ref: https://stackoverflow.com/questions/75882443/elements-incorrectly-evicted-from-ebpf-lru-hash-map
+ * 
+ * We noticed in rudimentary tests as well where values are being
+ * evicted even before map is full. So we use bigger maps to
+ * ensure that we get a more LRUish behaviour in production.
+ * 
+*/
 #ifndef MAX_MAP_ENTRIES
-#define MAX_MAP_ENTRIES 256
+#define MAX_MAP_ENTRIES 4096
 #endif
 
 #define FUNC_INLINE static inline __attribute__((always_inline))
