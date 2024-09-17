@@ -52,7 +52,6 @@
     "node": ">=18.0"
   },
   "resolutions": {
-    "react-router/**/path-to-regexp": "1.9.0",
-    "express/**/path-to-regexp": "0.1.10"
+    "path-to-regexp": "1.9.0"
   }
 }
