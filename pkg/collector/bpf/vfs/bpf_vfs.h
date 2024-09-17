@@ -46,7 +46,7 @@ struct {
 	__uint(max_entries, MAX_MAP_ENTRIES);
 	__type(key, struct vfs_event_key); /* Key is the vfs_event_key struct */
 	__type(value, struct vfs_rw_event);
-	__type(flags, BPF_F_NO_COMMON_LRU);
+	__uint(map_flags, BPF_F_NO_COMMON_LRU);
 } write_accumulator SEC(".maps");
 
 /* Map to track vfs_read events */
@@ -55,7 +55,7 @@ struct {
 	__uint(max_entries, MAX_MAP_ENTRIES);
 	__type(key, struct vfs_event_key); /* Key is the vfs_event_key struct */
 	__type(value, struct vfs_rw_event);
-	__type(flags, BPF_F_NO_COMMON_LRU);
+	__uint(map_flags, BPF_F_NO_COMMON_LRU);
 } read_accumulator SEC(".maps");
 
 /* Map to track vfs_open events */
@@ -64,7 +64,7 @@ struct {
 	__uint(max_entries, MAX_MAP_ENTRIES);
 	__type(key, __u32); /* Key is the vfs_event_key struct */
 	__type(value, struct vfs_inode_event);
-	__type(flags, BPF_F_NO_COMMON_LRU);
+	__uint(map_flags, BPF_F_NO_COMMON_LRU);
 } open_accumulator SEC(".maps");
 
 /* Map to track vfs_create events */
@@ -73,7 +73,7 @@ struct {
 	__uint(max_entries, MAX_MAP_ENTRIES);
 	__type(key, __u32); /* Key is the vfs_event_key struct */
 	__type(value, struct vfs_inode_event);
-	__type(flags, BPF_F_NO_COMMON_LRU);
+	__uint(map_flags, BPF_F_NO_COMMON_LRU);
 } create_accumulator SEC(".maps");
 
 /* Map to track vfs_unlink events */
@@ -82,7 +82,7 @@ struct {
 	__uint(max_entries, MAX_MAP_ENTRIES);
 	__type(key, __u32); /* Key is the vfs_event_key struct */
 	__type(value, struct vfs_inode_event);
-	__type(flags, BPF_F_NO_COMMON_LRU);
+	__uint(map_flags, BPF_F_NO_COMMON_LRU);
 } unlink_accumulator SEC(".maps");
 
 /**
