@@ -2,6 +2,7 @@ package osexec
 
 import (
 	"context"
+	"os/user"
 	"strings"
 	"testing"
 	"time"
@@ -30,11 +31,19 @@ func TestExecute(t *testing.T) {
 
 func TestExecuteAs(t *testing.T) {
 	// Test invalid uid/gid
-	_, err := ExecuteAs("sleep", []string{"5"}, -65534, 65534, nil, log.NewNopLogger())
+	_, err := ExecuteAs("sleep", []string{"0.001"}, -65534, 65534, nil, log.NewNopLogger())
 	require.Error(t, err, "expected error due to invalid uid")
 
-	_, err = ExecuteAs("sleep", []string{"5"}, 65534, 65534, nil, log.NewNopLogger())
-	require.Error(t, err, "expected error executing as nobody user")
+	// Get current user
+	currentUser, err := user.Current()
+	require.NoError(t, err)
+
+	_, err = ExecuteAs("sleep", []string{"0.001"}, 65534, 65534, nil, log.NewNopLogger())
+	if currentUser.Uid == "0" {
+		require.NoError(t, err)
+	} else {
+		require.Error(t, err, "expected error executing as nobody user")
+	}
 }
 
 func TestExecuteContext(t *testing.T) {
@@ -60,10 +69,18 @@ func TestExecuteWithTimeout(t *testing.T) {
 
 func TestExecuteAsWithTimeout(t *testing.T) {
 	// Test invalid uid/gid
-	_, err := ExecuteAsWithTimeout("sleep", []string{"5"}, -65534, 65534, 2, nil, log.NewNopLogger())
+	_, err := ExecuteAsWithTimeout("sleep", []string{"0.001"}, -65534, 65534, 2, nil, log.NewNopLogger())
 	require.Error(t, err, "expected error due to invalid uid")
 
+	// Get current user
+	currentUser, err := user.Current()
+	require.NoError(t, err)
+
 	// Test successful command execution
-	_, err = ExecuteAsWithTimeout("sleep", []string{"5"}, 65534, 65534, 2, nil, log.NewNopLogger())
-	require.Error(t, err, "expected error executing as nobody user")
+	_, err = ExecuteAsWithTimeout("sleep", []string{"0.001"}, 65534, 65534, 2, nil, log.NewNopLogger())
+	if currentUser.Uid == "0" {
+		require.NoError(t, err)
+	} else {
+		require.Error(t, err, "expected error executing as nobody user")
+	}
 }

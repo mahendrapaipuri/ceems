@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -56,91 +55,58 @@ var (
 	}
 )
 
+// Lock to update cgroupsProcMap.
+var (
+	mapLock = sync.RWMutex{}
+)
+
+type perfOpts struct {
+	perfHwProfilersEnabled    bool
+	perfSwProfilersEnabled    bool
+	perfCacheProfilersEnabled bool
+	perfHwProfilers           []string
+	perfSwProfilers           []string
+	perfCacheProfilers        []string
+	targetEnvVars             []string
+}
+
 // perfCollector is a Collector that uses the perf subsystem to collect
 // metrics. It uses perf_event_open an ioctls for profiling. Due to the fact
 // that the perf subsystem is highly dependent on kernel configuration and
 // settings not all profiler values may be exposed on the target system at any
 // given time.
 type perfCollector struct {
-	fs procfs.FS
-
-	envVar string
-
-	perfHwProfilersEnabled    bool
-	perfSwProfilersEnabled    bool
-	perfCacheProfilersEnabled bool
-
-	perfHwProfilers    sync.Map
-	perfSwProfilers    sync.Map
-	perfCacheProfilers sync.Map
-
+	logger                 log.Logger
+	hostname               string
+	cgroupManager          *cgroupManager
+	fs                     procfs.FS
+	opts                   perfOpts
+	perfHwProfilers        map[int]*perf.HardwareProfiler
+	perfSwProfilers        map[int]*perf.SoftwareProfiler
+	perfCacheProfilers     map[int]*perf.CacheProfiler
 	perfHwProfilerTypes    perf.HardwareProfilerType
 	perfSwProfilerTypes    perf.SoftwareProfilerType
 	perfCacheProfilerTypes perf.CacheProfilerType
-
-	cgroupIDRegex      *regexp.Regexp // Regex to extract cgroup ID from process
-	filterProcCmdRegex *regexp.Regexp // Processes with command line matching this regex will be ignored
-
-	desc map[string]*prometheus.Desc
-
-	hostname string
-	manager  string
-
-	logger log.Logger
+	desc                   map[string]*prometheus.Desc
 }
-
-func init() {
-	RegisterCollector(perfCollectorSubsystem, defaultDisabled, NewPerfCollector)
-}
-
-// CLI options.
-var (
-	perfProfilersEnvVars = CEEMSExporterApp.Flag(
-		"collector.perf.env-var",
-		"Processes having this environment variable set will be profiled. If empty, all the relevant processes will be profiled.",
-	).String()
-	perfHwProfilersFlag = CEEMSExporterApp.Flag(
-		"collector.perf.enable-hardware-profilers",
-		"Enables perf hardware profilers (default: enabled)",
-	).Default("true").Bool()
-	perfHwProfilers = CEEMSExporterApp.Flag(
-		"collector.perf.hardware-profilers",
-		"perf hardware profilers to collect",
-	).Strings()
-	perfSwProfilersFlag = CEEMSExporterApp.Flag(
-		"collector.perf.enable-software-profilers",
-		"Enables perf software profilers (default: enabled)",
-	).Default("true").Bool()
-	perfSwProfilers = CEEMSExporterApp.Flag(
-		"collector.perf.software-profilers",
-		"perf software profilers to collect",
-	).Strings()
-	perfCacheProfilersFlag = CEEMSExporterApp.Flag(
-		"collector.perf.enable-cache-profilers",
-		"Enables perf cache profilers (default: disabled)",
-	).Default("false").Bool()
-	perfCacheProfilers = CEEMSExporterApp.Flag(
-		"collector.perf.cache-profilers",
-		"perf cache profilers to collect",
-	).Strings()
-)
 
 // NewPerfCollector returns a new perf based collector, it creates a profiler
 // per compute unit.
-func NewPerfCollector(logger log.Logger) (Collector, error) {
+func NewPerfCollector(logger log.Logger, cgManager *cgroupManager, opts perfOpts) (*perfCollector, error) {
 	collector := &perfCollector{
-		logger:                    logger,
-		hostname:                  hostname,
-		envVar:                    *perfProfilersEnvVars,
-		perfHwProfilersEnabled:    *perfHwProfilersFlag,
-		perfSwProfilersEnabled:    *perfSwProfilersFlag,
-		perfCacheProfilersEnabled: *perfCacheProfilersFlag,
+		logger:             logger,
+		hostname:           hostname,
+		cgroupManager:      cgManager,
+		opts:               opts,
+		perfHwProfilers:    make(map[int]*perf.HardwareProfiler),
+		perfSwProfilers:    make(map[int]*perf.SoftwareProfiler),
+		perfCacheProfilers: make(map[int]*perf.CacheProfiler),
 	}
 
 	// Configure perf profilers
 	collector.perfHwProfilerTypes = perf.AllHardwareProfilers
-	if collector.perfHwProfilersEnabled && len(*perfHwProfilers) > 0 {
-		for _, hf := range *perfHwProfilers {
+	if collector.opts.perfHwProfilersEnabled && len(collector.opts.perfHwProfilers) > 0 {
+		for _, hf := range collector.opts.perfHwProfilers {
 			if v, ok := perfHardwareProfilerMap[hf]; ok {
 				collector.perfHwProfilerTypes |= v
 			}
@@ -148,8 +114,8 @@ func NewPerfCollector(logger log.Logger) (Collector, error) {
 	}
 
 	collector.perfSwProfilerTypes = perf.AllSoftwareProfilers
-	if collector.perfSwProfilersEnabled && len(*perfSwProfilers) > 0 {
-		for _, sf := range *perfSwProfilers {
+	if collector.opts.perfSwProfilersEnabled && len(collector.opts.perfSwProfilers) > 0 {
+		for _, sf := range collector.opts.perfSwProfilers {
 			if v, ok := perfSoftwareProfilerMap[sf]; ok {
 				collector.perfSwProfilerTypes |= v
 			}
@@ -157,18 +123,12 @@ func NewPerfCollector(logger log.Logger) (Collector, error) {
 	}
 
 	collector.perfCacheProfilerTypes = perf.AllCacheProfilers
-	if collector.perfCacheProfilersEnabled && len(*perfCacheProfilers) > 0 {
-		for _, cf := range *perfCacheProfilers {
+	if collector.opts.perfCacheProfilersEnabled && len(collector.opts.perfCacheProfilers) > 0 {
+		for _, cf := range collector.opts.perfCacheProfilers {
 			if v, ok := perfCacheProfilerMap[cf]; ok {
 				collector.perfCacheProfilerTypes |= v
 			}
 		}
-	}
-
-	if *collectorState[slurmCollectorSubsystem] {
-		collector.manager = "slurm"
-		collector.cgroupIDRegex = slurmCgroupPathRegex
-		collector.filterProcCmdRegex = slurmIgnoreProcsRegex
 	}
 
 	var err error
@@ -441,19 +401,31 @@ func (c *perfCollector) Update(ch chan<- prometheus.Metric) error {
 	// Remove all profilers that have already finished
 	c.closeProfilers(activePIDs)
 
+	// Start a wait group
+	wg := sync.WaitGroup{}
+	wg.Add(len(cgroupIDProcMap))
+
+	// Update metrics in go routines for each cgroup
 	for cgroupID, procs := range cgroupIDProcMap {
-		if err := c.updateHardwareCounters(cgroupID, procs, ch); err != nil {
-			level.Error(c.logger).Log("msg", "failed to update hardware counters", "cgroup", cgroupID, "err", err)
-		}
+		go func(cid string, ps []procfs.Proc) {
+			defer wg.Done()
 
-		if err := c.updateSoftwareCounters(cgroupID, procs, ch); err != nil {
-			level.Error(c.logger).Log("msg", "failed to update software counters", "cgroup", cgroupID, "err", err)
-		}
+			if err := c.updateHardwareCounters(cid, ps, ch); err != nil {
+				level.Error(c.logger).Log("msg", "failed to update hardware counters", "cgroup", cgroupID, "err", err)
+			}
 
-		if err := c.updateCacheCounters(cgroupID, procs, ch); err != nil {
-			level.Error(c.logger).Log("msg", "failed to update cache counters", "cgroup", cgroupID, "err", err)
-		}
+			if err := c.updateSoftwareCounters(cid, ps, ch); err != nil {
+				level.Error(c.logger).Log("msg", "failed to update software counters", "cgroup", cgroupID, "err", err)
+			}
+
+			if err := c.updateCacheCounters(cid, ps, ch); err != nil {
+				level.Error(c.logger).Log("msg", "failed to update cache counters", "cgroup", cgroupID, "err", err)
+			}
+		}(cgroupID, procs)
 	}
+
+	// Wait all go routines
+	wg.Wait()
 
 	return nil
 }
@@ -470,7 +442,7 @@ func (c *perfCollector) Stop(_ context.Context) error {
 
 // updateHardwareCounters collects hardware counters for the given cgroup.
 func (c *perfCollector) updateHardwareCounters(cgroupID string, procs []procfs.Proc, ch chan<- prometheus.Metric) error {
-	if !c.perfHwProfilersEnabled {
+	if !c.opts.perfHwProfilersEnabled {
 		return nil
 	}
 
@@ -483,14 +455,12 @@ func (c *perfCollector) updateHardwareCounters(cgroupID string, procs []procfs.P
 	for _, proc := range procs {
 		pid = proc.PID
 
-		if profiler, ok := c.perfHwProfilers.Load(pid); ok {
+		if hwProfiler, ok := c.perfHwProfilers[pid]; ok {
 			hwProfile := &perf.HardwareProfile{}
-			if hwProfiler, ok := profiler.(*perf.HardwareProfiler); ok {
-				if err := (*hwProfiler).Profile(hwProfile); err != nil {
-					errs = errors.Join(errs, fmt.Errorf("%w: %d", err, pid))
+			if err := (*hwProfiler).Profile(hwProfile); err != nil {
+				errs = errors.Join(errs, fmt.Errorf("%w: %d", err, pid))
 
-					continue
-				}
+				continue
 			}
 
 			if hwProfile.CPUCycles != nil {
@@ -528,7 +498,7 @@ func (c *perfCollector) updateHardwareCounters(cgroupID string, procs []procfs.P
 			ch <- prometheus.MustNewConstMetric(
 				c.desc[counter],
 				prometheus.CounterValue, value,
-				c.manager, c.hostname, cgroupID,
+				c.cgroupManager.manager, c.hostname, cgroupID,
 			)
 		}
 	}
@@ -538,7 +508,7 @@ func (c *perfCollector) updateHardwareCounters(cgroupID string, procs []procfs.P
 
 // updateSoftwareCounters collects software counters for the given cgroup.
 func (c *perfCollector) updateSoftwareCounters(cgroupID string, procs []procfs.Proc, ch chan<- prometheus.Metric) error {
-	if !c.perfSwProfilersEnabled {
+	if !c.opts.perfSwProfilersEnabled {
 		return nil
 	}
 
@@ -551,14 +521,12 @@ func (c *perfCollector) updateSoftwareCounters(cgroupID string, procs []procfs.P
 	for _, proc := range procs {
 		pid = proc.PID
 
-		if profiler, ok := c.perfSwProfilers.Load(pid); ok {
+		if swProfiler, ok := c.perfSwProfilers[pid]; ok {
 			swProfile := &perf.SoftwareProfile{}
-			if swProfiler, ok := profiler.(*perf.SoftwareProfiler); ok {
-				if err := (*swProfiler).Profile(swProfile); err != nil {
-					errs = errors.Join(errs, fmt.Errorf("%w: %d", err, pid))
+			if err := (*swProfiler).Profile(swProfile); err != nil {
+				errs = errors.Join(errs, fmt.Errorf("%w: %d", err, pid))
 
-					continue
-				}
+				continue
 			}
 
 			if swProfile.PageFaults != nil {
@@ -588,7 +556,7 @@ func (c *perfCollector) updateSoftwareCounters(cgroupID string, procs []procfs.P
 			ch <- prometheus.MustNewConstMetric(
 				c.desc[counter],
 				prometheus.CounterValue, value,
-				c.manager, c.hostname, cgroupID,
+				c.cgroupManager.manager, c.hostname, cgroupID,
 			)
 		}
 	}
@@ -598,7 +566,7 @@ func (c *perfCollector) updateSoftwareCounters(cgroupID string, procs []procfs.P
 
 // updateCacheCounters collects cache counters for the given cgroup.
 func (c *perfCollector) updateCacheCounters(cgroupID string, procs []procfs.Proc, ch chan<- prometheus.Metric) error {
-	if !c.perfCacheProfilersEnabled {
+	if !c.opts.perfCacheProfilersEnabled {
 		return nil
 	}
 
@@ -611,14 +579,12 @@ func (c *perfCollector) updateCacheCounters(cgroupID string, procs []procfs.Proc
 	for _, proc := range procs {
 		pid = proc.PID
 
-		if profiler, ok := c.perfCacheProfilers.Load(pid); ok {
+		if cacheProfiler, ok := c.perfCacheProfilers[pid]; ok {
 			cacheProfile := &perf.CacheProfile{}
-			if cacheProfiler, ok := profiler.(*perf.CacheProfiler); ok {
-				if err := (*cacheProfiler).Profile(cacheProfile); err != nil {
-					errs = errors.Join(errs, fmt.Errorf("%w: %d", err, pid))
+			if err := (*cacheProfiler).Profile(cacheProfile); err != nil {
+				errs = errors.Join(errs, fmt.Errorf("%w: %d", err, pid))
 
-					continue
-				}
+				continue
 			}
 
 			if cacheProfile.L1DataReadHit != nil {
@@ -676,7 +642,7 @@ func (c *perfCollector) updateCacheCounters(cgroupID string, procs []procfs.Proc
 			ch <- prometheus.MustNewConstMetric(
 				c.desc[counter],
 				prometheus.CounterValue, value,
-				c.manager, c.hostname, cgroupID,
+				c.cgroupManager.manager, c.hostname, cgroupID,
 			)
 		}
 	}
@@ -684,8 +650,11 @@ func (c *perfCollector) updateCacheCounters(cgroupID string, procs []procfs.Proc
 	return errs
 }
 
-// discoverProcess discovers all active processes by walking through procsfs and returns
-// a map of cgroup ID to procs.
+// discoverProcess returns a map of cgroup ID to procs by looking at each process
+// in proc FS. Walking through cgroup
+// fs is not really an option here as cgroups v1 wont have all PIDs of cgroup
+// if the PID controller is not turned on.
+// The current implementation should work for both cgroups v1 and v2.
 func (c *perfCollector) discoverProcess() (map[string][]procfs.Proc, error) {
 	allProcs, err := c.fs.AllProcs()
 	if err != nil {
@@ -696,70 +665,85 @@ func (c *perfCollector) discoverProcess() (map[string][]procfs.Proc, error) {
 
 	cgroupIDProcMap := make(map[string][]procfs.Proc)
 
-	var cgroupID string
+	wg := sync.WaitGroup{}
+	wg.Add(allProcs.Len())
 
 	for _, proc := range allProcs {
-		// if envVar is not empty check if this env vars is present for the process
-		// We dont check for the value of env var. Presence of env var is enough to
-		// trigger the profiling of that process
-		if c.envVar != "" {
-			environ, err := proc.Environ()
-			if err != nil {
-				continue
+		go func(p procfs.Proc) {
+			defer wg.Done()
+
+			// if targetEnvVars is not empty check if this env vars is present for the process
+			// We dont check for the value of env var. Presence of env var is enough to
+			// trigger the profiling of that process
+			if len(c.opts.targetEnvVars) > 0 {
+				environ, err := p.Environ()
+				if err != nil {
+					return
+				}
+
+				for _, env := range environ {
+					for _, targetEnvVar := range c.opts.targetEnvVars {
+						if strings.HasPrefix(env, targetEnvVar) {
+							goto check_process
+						}
+					}
+				}
+
+				// If target env var(s) is not found, return
+				return
 			}
 
-			for _, env := range environ {
-				if strings.HasPrefix(env, c.envVar) {
-					goto check_process
+		check_process:
+
+			// Ignore processes where command line matches the regex
+			if c.cgroupManager.procFilter != nil {
+				procCmdLine, err := p.CmdLine()
+				if err != nil || len(procCmdLine) == 0 {
+					return
+				}
+
+				// Ignore process if matches found
+				if c.cgroupManager.procFilter(strings.Join(procCmdLine, " ")) {
+					return
 				}
 			}
 
-			// If env var is not found on process, ignore it
-			continue
-		}
+			// Get cgroup ID from regex
+			var cgroupID string
 
-	check_process:
-
-		// Ignore processes where command line matches the regex
-		if c.filterProcCmdRegex != nil {
-			procCmdLine, err := proc.CmdLine()
-			if err != nil || len(procCmdLine) == 0 {
-				continue
-			}
-
-			// Ignore process if matches found
-			procCmdLineMatches := c.filterProcCmdRegex.FindStringSubmatch(strings.Join(procCmdLine, " "))
-			if len(procCmdLineMatches) > 1 {
-				continue
-			}
-		}
-
-		// Get cgroup ID from regex
-		if c.cgroupIDRegex != nil {
-			cgroups, err := proc.Cgroups()
-			if err != nil || len(cgroups) == 0 {
-				continue
-			}
-
-			for _, cgroup := range cgroups {
-				cgroupIDMatches := c.cgroupIDRegex.FindStringSubmatch(cgroup.Path)
-				if len(cgroupIDMatches) <= 1 {
-					continue
+			if c.cgroupManager.idRegex != nil {
+				cgroups, err := p.Cgroups()
+				if err != nil || len(cgroups) == 0 {
+					return
 				}
 
-				cgroupID = cgroupIDMatches[1]
+				for _, cgroup := range cgroups {
+					cgroupIDMatches := c.cgroupManager.idRegex.FindStringSubmatch(cgroup.Path)
+					if len(cgroupIDMatches) <= 1 {
+						continue
+					}
 
-				break
+					cgroupID = cgroupIDMatches[1]
+
+					break
+				}
 			}
-		}
 
-		// If no cgroupID found, ignore
-		if cgroupID == "" {
-			continue
-		}
+			// If no cgroupID found, ignore
+			if cgroupID == "" {
+				return
+			}
 
-		cgroupIDProcMap[cgroupID] = append(cgroupIDProcMap[cgroupID], proc)
+			mapLock.Lock()
+			cgroupIDProcMap[cgroupID] = append(cgroupIDProcMap[cgroupID], p)
+			mapLock.Unlock()
+		}(proc)
 	}
+
+	// Wait for all go routines
+	wg.Wait()
+
+	level.Debug(c.logger).Log("msg", "Discovered cgroups and procs for profiling", "map", cgroupIDProcMap)
 
 	return cgroupIDProcMap, nil
 }
@@ -779,32 +763,32 @@ func (c *perfCollector) newProfilers(cgroupIDProcMap map[string][]procfs.Proc) [
 				cmdLine = []string{err.Error()}
 			}
 
-			if c.perfHwProfilersEnabled {
-				if _, ok := c.perfHwProfilers.Load(pid); !ok {
-					if profiler, err := c.newHwProfiler(pid); err != nil {
+			if c.opts.perfHwProfilersEnabled {
+				if _, ok := c.perfHwProfilers[pid]; !ok {
+					if hwProfiler, err := c.newHwProfiler(pid); err != nil {
 						level.Error(c.logger).Log("msg", "failed to start hardware profiler", "pid", pid, "cmd", strings.Join(cmdLine, " "), "err", err)
 					} else {
-						c.perfHwProfilers.Store(pid, profiler)
+						c.perfHwProfilers[pid] = hwProfiler
 					}
 				}
 			}
 
-			if c.perfSwProfilersEnabled {
-				if _, ok := c.perfSwProfilers.Load(pid); !ok {
-					if profiler, err := c.newSwProfiler(pid); err != nil {
+			if c.opts.perfSwProfilersEnabled {
+				if _, ok := c.perfSwProfilers[pid]; !ok {
+					if swProfiler, err := c.newSwProfiler(pid); err != nil {
 						level.Error(c.logger).Log("msg", "failed to start software profiler", "pid", pid, "cmd", strings.Join(cmdLine, " "), "err", err)
 					} else {
-						c.perfSwProfilers.Store(pid, profiler)
+						c.perfSwProfilers[pid] = swProfiler
 					}
 				}
 			}
 
-			if c.perfCacheProfilersEnabled {
-				if _, ok := c.perfCacheProfilers.Load(pid); !ok {
-					if profiler, err := c.newCacheProfiler(pid); err != nil {
+			if c.opts.perfCacheProfilersEnabled {
+				if _, ok := c.perfCacheProfilers[pid]; !ok {
+					if cacheProfiler, err := c.newCacheProfiler(pid); err != nil {
 						level.Error(c.logger).Log("msg", "failed to start cache profiler", "pid", pid, "cmd", strings.Join(cmdLine, " "), "err", err)
 					} else {
-						c.perfCacheProfilers.Store(pid, profiler)
+						c.perfCacheProfilers[pid] = cacheProfiler
 					}
 				}
 			}
@@ -870,61 +854,40 @@ func (c *perfCollector) newCacheProfiler(pid int) (*perf.CacheProfiler, error) {
 
 // closeProfilers stops and closes profilers of PIDs that do not exist anymore.
 func (c *perfCollector) closeProfilers(activePIDs []int) {
-	if c.perfHwProfilersEnabled {
-		c.perfHwProfilers.Range(func(pid, profiler interface{}) bool {
-			if pidInt, ok := pid.(int); ok {
-				if !slices.Contains(activePIDs, pidInt) {
-					if hwProfiler, ok := profiler.(*perf.HardwareProfiler); ok {
-						if err := c.closeHwProfiler(hwProfiler); err != nil {
-							level.Error(c.logger).Log("msg", "failed to shutdown hardware profiler", "err", err)
-						} else {
-							c.perfHwProfilers.Delete(pidInt)
-							level.Debug(c.logger).Log("msg", "Removed process from hardware profilers map", "pid", pid)
-						}
-					}
+	if c.opts.perfHwProfilersEnabled {
+		for pid, hwProfiler := range c.perfHwProfilers {
+			if !slices.Contains(activePIDs, pid) {
+				if err := c.closeHwProfiler(hwProfiler); err != nil {
+					level.Error(c.logger).Log("msg", "failed to shutdown hardware profiler", "err", err)
+				} else {
+					delete(c.perfHwProfilers, pid)
 				}
 			}
-
-			return true
-		})
+		}
 	}
 
-	if c.perfSwProfilersEnabled {
-		c.perfSwProfilers.Range(func(pid, profiler interface{}) bool {
-			if pidInt, ok := pid.(int); ok {
-				if !slices.Contains(activePIDs, pidInt) {
-					if swProfiler, ok := profiler.(*perf.SoftwareProfiler); ok {
-						if err := c.closeSwProfiler(swProfiler); err != nil {
-							level.Error(c.logger).Log("msg", "failed to shutdown software profiler", "err", err)
-						} else {
-							c.perfSwProfilers.Delete(pidInt)
-							level.Debug(c.logger).Log("msg", "Removed process from software profilers map", "pid", pid)
-						}
-					}
+	if c.opts.perfSwProfilersEnabled {
+		for pid, swProfiler := range c.perfSwProfilers {
+			if !slices.Contains(activePIDs, pid) {
+				if err := c.closeSwProfiler(swProfiler); err != nil {
+					level.Error(c.logger).Log("msg", "failed to shutdown software profiler", "err", err)
+				} else {
+					delete(c.perfSwProfilers, pid)
 				}
 			}
-
-			return true
-		})
+		}
 	}
 
-	if c.perfCacheProfilersEnabled {
-		c.perfCacheProfilers.Range(func(pid, profiler interface{}) bool {
-			if pidInt, ok := pid.(int); ok {
-				if !slices.Contains(activePIDs, pidInt) {
-					if cacheProfiler, ok := profiler.(*perf.CacheProfiler); ok {
-						if err := c.closeCacheProfiler(cacheProfiler); err != nil {
-							level.Error(c.logger).Log("msg", "failed to shutdown cache profiler", "err", err)
-						} else {
-							c.perfCacheProfilers.Delete(pidInt)
-							level.Debug(c.logger).Log("msg", "Removed process from cache profilers map", "pid", pid)
-						}
-					}
+	if c.opts.perfCacheProfilersEnabled {
+		for pid, cacheProfiler := range c.perfCacheProfilers {
+			if !slices.Contains(activePIDs, pid) {
+				if err := c.closeCacheProfiler(cacheProfiler); err != nil {
+					level.Error(c.logger).Log("msg", "failed to shutdown cache profiler", "err", err)
+				} else {
+					delete(c.perfCacheProfilers, pid)
 				}
 			}
-
-			return true
-		})
+		}
 	}
 }
 

@@ -95,13 +95,63 @@ ceems_exporter --collector.slum --collector.slurm.gpu-job-map-path=/run/gpujobma
 With above configuration, the exporter should export GPU ordinal mapping
 along with other metrics of slurm collector.
 
-:::important[IMPORTANT]
+As discussed in [Components](../components/ceems-exporter.md#slurm-collector), Slurm
+collector supports [perf](../components/ceems-exporter.md#perf-sub-collector) and
+[eBPF](../components/ceems-exporter.md#ebpf-sub-collector) sub-collectors. These
+sub-collectors can be enabled using following CLI flags:
 
-The CLI option `--collector.slurm.gpu-job-map-path`
-is hidden and cannot be seen in `ceems_exporter --help` output. However, this option
-exists in the exporter and can be used.
+:::warning[WARNING]
+
+eBPF sub-collector needs a kernel version `>= 5.8`.
 
 :::
+
+```bash
+ceems_exporter --collector.slurm --collector.slurm.perf-hardware-events --collector.slurm.perf-software-events --collector.slurm.perf-hardware-cache-events --collector.slurm.io-metrics --collector.slurm.network-metrics
+```
+
+The above command will enable hardware, software and hardware cache perf metrics along
+with IO and network metrics retrieved by eBPF sub-collector.
+
+In production, users may not wish to profile their codes _all the time_ even though
+the overhead induced by these monitoring these metrics is negligible. In order to
+tackle this usecase, collection of perf metrics can be triggered by the presence of
+a configured environment variable. Operators need to choose an environment variable(s)
+name and configure it with the exporter as follows:
+
+```bash
+ceems_exporter --collector.slurm --collector.slurm.perf-hardware-events --collector.slurm.perf-software-events --collector.slurm.perf-hardware-cache-events --collector.slurm.perf-env-var=CEEMS_ENABLE_PERF --collector.slurm.perf-env-var=ENABLE_PERF
+```
+
+The above example command will enable all available perf metrics and monitor the processes
+in a SLURM job, _only if one of `CEEMS_ENABLE_PERF` or `ENABLE_PERF` environment variable is set_.
+
+:::note[NOTE]
+
+As demonstrated in the example, more than one environment variable can be configured and
+presence of at least one of the configured environment variables is enough to trigger
+the perf metrics monitoring.
+
+:::
+
+The presence of environment variable is enough to trigger the monitoring of perf metrics and
+the value of the environment variable is not checked. Thus, an environment variable like
+`CEEMS_ENABLE_PERF=false` will trigger the perf metrics monitoring. The operators need to
+inform their end users to set one of these configured environment variables in their
+workflows to have the perf metrics monitored.
+
+:::important[IMPORTANT]
+
+This way of controlling the monitoring of metrics is only applicable to perf events namely,
+hardware, software and hardware cache events. Unfortunately there is no easy way to use a
+similar approach for IO and network metrics which are provided by eBPF sub-collector. This
+is due to the fact that these metrics are collected in the kernel space and ability to
+enable and disable them at runtime is more involved.
+
+:::
+
+Both perf and eBPF sub-collectors extra privileges to work and the necessary privileges
+are discussed in [Systemd](./systemd.md) section.
 
 ## IPMI collector
 

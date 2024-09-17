@@ -40,6 +40,9 @@ else
 	test-docker := test-docker
 endif
 
+# Base test flags
+test-flags := -covermode=atomic -race
+
 # Use CGO for api and GO for ceems_exporter.
 PROMU_TEST_CONF ?= .promu-go-test.yml
 ifeq ($(CGO_BUILD), 1)
@@ -67,8 +70,13 @@ else
 
 	# go test flags
 	coverage-file := coverage-go.out
+
+	# If running in CI add -exec sudo flags to run tests that require privileges
+	ifeq ($(CI), true)
+		test-flags := $(test-flags) -exec sudo
+	endif
 endif
-test-flags := -covermode=atomic -coverprofile=$(coverage-file).tmp -race
+test-flags := $(test-flags) -coverprofile=$(coverage-file).tmp
 
 ifeq ($(GOHOSTOS), linux)
 	test-e2e := test-e2e
@@ -109,13 +117,13 @@ coverage:
 	$(GO) tool cover -func=coverage.out -o=coverage.out
 
 .PHONY: test
-test: pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked
+test: pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked bpf
 	@echo ">> running tests"
 	$(GO) test -short $(test-flags) $(pkgs)
 	cat $(coverage-file).tmp | grep -v "main.go" > $(coverage-file)
 
 .PHONY: test-32bit
-test-32bit: pkg/collector/testdata/sys/.unpacked 
+test-32bit: pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked bpf
 	@echo ">> running tests in 32-bit mode"
 	@env GOARCH=$(GOARCH_CROSS) $(GO) test $(pkgs)
 

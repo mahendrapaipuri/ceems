@@ -8,7 +8,9 @@ import (
 	"os"
 	"testing"
 
+	"github.com/containerd/cgroups/v3"
 	"github.com/go-kit/log"
+	"github.com/hodgesds/perf-utils"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/procfs"
 	"github.com/stretchr/testify/assert"
@@ -16,10 +18,29 @@ import (
 )
 
 func TestPerfCollector(t *testing.T) {
-	_, err := CEEMSExporterApp.Parse([]string{"--path.procfs", "testdata/proc"})
+	_, err := CEEMSExporterApp.Parse([]string{
+		"--path.procfs", "testdata/proc",
+	})
 	require.NoError(t, err)
 
-	collector, err := NewPerfCollector(log.NewNopLogger())
+	// cgroup manager
+	cgManager := &cgroupManager{
+		mode:       cgroups.Unified,
+		mountPoint: "testdata/sys/fs/cgroup/system.slice/slurmstepd.scope",
+		idRegex:    slurmCgroupPathRegex,
+		procFilter: func(p string) bool {
+			return slurmIgnoreProcsRegex.MatchString(p)
+		},
+	}
+
+	// perf opts
+	opts := perfOpts{
+		perfHwProfilersEnabled:    true,
+		perfSwProfilersEnabled:    true,
+		perfCacheProfilersEnabled: true,
+	}
+
+	collector, err := NewPerfCollector(log.NewNopLogger(), cgManager, opts)
 	require.NoError(t, err)
 
 	// Setup background goroutine to capture metrics.
@@ -40,41 +61,30 @@ func TestPerfCollector(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestPerfCollectorWithSlurm(t *testing.T) {
-	_, err := CEEMSExporterApp.Parse(
-		[]string{"--path.procfs", "testdata/proc", "--collector.slurm"},
-	)
-	require.NoError(t, err)
-
-	collector, err := NewPerfCollector(log.NewNopLogger())
-	require.NoError(t, err)
-
-	// Setup background goroutine to capture metrics.
-	metrics := make(chan prometheus.Metric)
-	defer close(metrics)
-
-	go func() {
-		i := 0
-		for range metrics {
-			i++
-		}
-	}()
-
-	err = collector.Update(metrics)
-	require.NoError(t, err)
-}
-
 func TestDiscoverProcess(t *testing.T) {
 	var err error
 
-	collector := perfCollector{
-		logger:                    log.NewNopLogger(),
-		envVar:                    "ENABLE_PROFILING",
-		cgroupIDRegex:             slurmCgroupPathRegex,
-		filterProcCmdRegex:        slurmIgnoreProcsRegex,
+	// cgroup manager
+	cgManager := &cgroupManager{
+		mode:    cgroups.Unified,
+		idRegex: slurmCgroupPathRegex,
+		procFilter: func(p string) bool {
+			return slurmIgnoreProcsRegex.MatchString(p)
+		},
+	}
+
+	// perf opts
+	opts := perfOpts{
 		perfHwProfilersEnabled:    true,
 		perfSwProfilersEnabled:    true,
 		perfCacheProfilersEnabled: true,
+		targetEnvVars:             []string{"ENABLE_PROFILING"},
+	}
+
+	collector := perfCollector{
+		logger:        log.NewNopLogger(),
+		cgroupManager: cgManager,
+		opts:          opts,
 	}
 
 	collector.fs, err = procfs.NewFS("testdata/proc")
@@ -119,13 +129,29 @@ func TestNewProfilers(t *testing.T) {
 
 	var ok bool
 
-	collector := perfCollector{
-		logger:                    log.NewNopLogger(),
-		cgroupIDRegex:             slurmCgroupPathRegex,
-		filterProcCmdRegex:        slurmIgnoreProcsRegex,
+	// cgroup manager
+	cgManager := &cgroupManager{
+		mode:    cgroups.Legacy,
+		idRegex: slurmCgroupPathRegex,
+		procFilter: func(p string) bool {
+			return slurmIgnoreProcsRegex.MatchString(p)
+		},
+	}
+
+	// perf opts
+	opts := perfOpts{
 		perfHwProfilersEnabled:    true,
 		perfSwProfilersEnabled:    true,
 		perfCacheProfilersEnabled: true,
+	}
+
+	collector := perfCollector{
+		logger:             log.NewNopLogger(),
+		cgroupManager:      cgManager,
+		opts:               opts,
+		perfHwProfilers:    make(map[int]*perf.HardwareProfiler),
+		perfSwProfilers:    make(map[int]*perf.SoftwareProfiler),
+		perfCacheProfilers: make(map[int]*perf.CacheProfiler),
 	}
 
 	collector.fs, err = procfs.NewFS("testdata/proc")
@@ -169,12 +195,12 @@ func TestNewProfilers(t *testing.T) {
 	collector.closeProfilers([]int{})
 
 	// check the map should not contain the proc
-	_, ok = collector.perfHwProfilers.Load(os.Getpid())
+	_, ok = collector.perfHwProfilers[os.Getpid()]
 	assert.False(t, ok)
 
-	_, ok = collector.perfSwProfilers.Load(os.Getpid())
+	_, ok = collector.perfSwProfilers[os.Getpid()]
 	assert.False(t, ok)
 
-	_, ok = collector.perfCacheProfilers.Load(os.Getpid())
+	_, ok = collector.perfCacheProfilers[os.Getpid()]
 	assert.False(t, ok)
 }

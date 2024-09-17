@@ -54,6 +54,8 @@ jobs:
       shell: bash
       if: ${{ matrix.language == 'go' }}
       run: |
+        echo 'Installing clang 18'
+        GOARCH=1 make clang
         echo 'Building pure go binaries'
         make build
         echo 'Building cgo binaries'

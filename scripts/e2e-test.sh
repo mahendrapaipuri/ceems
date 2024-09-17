@@ -304,10 +304,10 @@ then
         --path.sysfs="pkg/collector/testdata/sys" \
         --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
         --path.procfs="pkg/collector/testdata/proc" \
+        --collector.cgroups.force-version="v1" \
         --collector.slurm \
         --collector.slurm.gpu-type="nvidia" \
         --collector.slurm.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
-        --collector.slurm.force-cgroups-version="v1" \
         --collector.slurm.gpu-job-map-path="pkg/collector/testdata/gpujobmap" \
         --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/freeipmi/ipmi-dcmi" \
         --collector.empty-hostname-label \
@@ -321,11 +321,11 @@ then
         --path.sysfs="pkg/collector/testdata/sys" \
         --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
         --path.procfs="pkg/collector/testdata/proc" \
+        --collector.cgroups.force-version="v1" \
+        --collector.cgroup.active-subsystem="memory" \
         --collector.slurm \
-        --collector.slurm.cgroups-v1-subsystem="memory" \
         --collector.slurm.gpu-type="nvidia" \
         --collector.slurm.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
-        --collector.slurm.force-cgroups-version="v1" \
         --collector.slurm.gpu-job-map-path="pkg/collector/testdata/gpujobmap" \
         --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/freeipmi/ipmi-dcmi" \
         --collector.empty-hostname-label \
@@ -339,10 +339,10 @@ then
         --path.sysfs="pkg/collector/testdata/sys" \
         --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
         --path.procfs="pkg/collector/testdata/proc" \
+        --collector.cgroups.force-version="v2" \
         --collector.slurm \
         --collector.slurm.gpu-type="nvidia" \
         --collector.slurm.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
-        --collector.slurm.force-cgroups-version="v2" \
         --collector.slurm.gpu-job-map-path="pkg/collector/testdata/gpujobmap" \
         --collector.empty-hostname-label \
         --web.listen-address "127.0.0.1:${port}" \
@@ -355,10 +355,10 @@ then
         --path.sysfs="pkg/collector/testdata/sys" \
         --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
         --path.procfs="pkg/collector/testdata/proc" \
+        --collector.cgroups.force-version="v2" \
         --collector.slurm \
         --collector.slurm.gpu-type="amd" \
         --collector.slurm.rocm-smi-path="pkg/collector/testdata/rocm-smi" \
-        --collector.slurm.force-cgroups-version="v2" \
         --collector.slurm.gpu-job-map-path="pkg/collector/testdata/gpujobmap" \
         --collector.empty-hostname-label \
         --web.listen-address "127.0.0.1:${port}" \
@@ -371,8 +371,8 @@ then
         --path.sysfs="pkg/collector/testdata/sys" \
         --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
         --path.procfs="pkg/collector/testdata/proc" \
+        --collector.cgroups.force-version="v2" \
         --collector.slurm \
-        --collector.slurm.force-cgroups-version="v2" \
         --collector.empty-hostname-label \
         --web.listen-address "127.0.0.1:${port}" \
         --web.disable-exporter-metrics \
@@ -384,10 +384,10 @@ then
         --path.sysfs="pkg/collector/testdata/sys" \
         --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
         --path.procfs="pkg/collector/testdata/proc" \
+        --collector.cgroups.force-version="v2" \
         --collector.slurm \
         --collector.slurm.gpu-type="nvidia" \
         --collector.slurm.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
-        --collector.slurm.force-cgroups-version="v2" \
         --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/ipmiutils/ipmiutil" \
         --collector.empty-hostname-label \
         --web.listen-address "127.0.0.1:${port}" \
@@ -400,10 +400,10 @@ then
         --path.sysfs="pkg/collector/testdata/sys" \
         --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
         --path.procfs="pkg/collector/testdata/proc" \
+        --collector.cgroups.force-version="v2" \
         --collector.slurm \
         --collector.slurm.gpu-type="amd" \
         --collector.slurm.rocm-smi-path="pkg/collector/testdata/rocm-smi" \
-        --collector.slurm.force-cgroups-version="v2" \
         --collector.slurm.gpu-job-map-path="pkg/collector/testdata/gpujobmap" \
         --collector.slurm.swap.memory.metrics \
         --collector.slurm.psi.metrics \

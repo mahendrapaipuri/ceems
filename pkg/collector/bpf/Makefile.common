@@ -1,0 +1,72 @@
+SHELL=/bin/bash # needed for the *.{o,ll,i,s} pattern in the clean target
+
+CLANG  ?= clang
+LLC    ?= llc
+
+# Build the BPF programs for the detected architecture, default to x86, and
+# allow easy overriding by using ?= for cross-compilation
+BPF_TARGET_ARCH ?= x86
+BPF_TARGET_MARCH ?= bpf
+BPF_TARGET_COMPILE ?= 1
+UNAME_M := $(shell uname -m)
+ifeq ($(UNAME_M),x86_64)
+	BPF_TARGET_ARCH = x86
+endif
+ifeq ($(UNAME_M),aarch64)
+	BPF_TARGET_ARCH = arm64
+endif
+
+# Get cross-compiling flags from GOARCH env variable
+# Endians are picked up https://github.com/cilium/ebpf/blob/625b0a910e1ba666e483e75b149880ce3b54dc85/cmd/bpf2go/gen/target.go#L14-L28
+ifeq ($(GOARCH),386)
+	BPF_TARGET_ARCH = x86
+	BPF_TARGET_MARCH = bpfel
+else ifeq ($(GOARCH),amd64)
+	BPF_TARGET_ARCH = x86
+	BPF_TARGET_MARCH = bpfel
+else ifeq ($(GOARCH),arm64)
+	BPF_TARGET_ARCH = arm64
+	BPF_TARGET_MARCH = bpfel
+else ifeq ($(GOARCH),mpis)
+	BPF_TARGET_ARCH = mips
+	BPF_TARGET_MARCH = bpfeb
+else ifeq ($(GOARCH),ppc64)
+	BPF_TARGET_ARCH = powerpc
+	BPF_TARGET_MARCH = bpfeb
+else ifeq ($(GOARCH),ppc64le)
+	BPF_TARGET_ARCH = powerpc
+	BPF_TARGET_MARCH = bpfel
+else ifeq ($(GOARCH),riscv64)
+	BPF_TARGET_ARCH = riscv
+	BPF_TARGET_MARCH = bpfel
+else ifeq ($(GOARCH),s390x)
+	BPF_TARGET_ARCH = s390
+	BPF_TARGET_MARCH = bpfeb
+endif
+
+# Do not compile BPF assets for mipsle, mips64 and mips64le architectures
+ifeq ($(GOARCH),mipsle)   
+   BPF_TARGET_COMPILE = 0
+endif
+ifeq ($(GOARCH),mips64)  
+   BPF_TARGET_COMPILE = 0
+endif
+ifeq ($(GOARCH),mips64le)
+   BPF_TARGET_COMPILE = 0
+endif
+
+ROOT_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
+
+IDIR = $(ROOT_DIR)include/
+LIBBPF = $(ROOT_DIR)libbpf/
+LDIR = $(ROOT_DIR)lib
+DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
+
+FLAGS := -I$(ROOT_DIR) \
+	 -Wall -Werror \
+	 -Wno-address-of-packed-member -Wno-compare-distinct-pointer-types -Wno-unknown-warning-option \
+	 -O2
+
+CLANG_FLAGS += $(FLAGS) -I $(LIBBPF) -I $(IDIR) -I $(LDIR) -target bpf -emit-llvm -g -D__TARGET_ARCH_$(BPF_TARGET_ARCH) -fdebug-default-version=4
+LLC_FLAGS   := -march=$(BPF_TARGET_MARCH) -mcpu=v2 -mattr=dwarfris
+LLC_FLAGS_ALU32 := -march=$(BPF_TARGET_MARCH) -mcpu=v3 -mattr=dwarfris 

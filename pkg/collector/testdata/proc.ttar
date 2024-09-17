@@ -9233,6 +9233,24 @@ Node 0, zone    DMA32    759    572    791    475    194     45     12      0   
 Node 0, zone   Normal   4381   1093    185   1530    567    102      4      0      0      0      0
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: proc/cgroups
+Lines: 14
+#subsys_name    hierarchy       num_cgroups     enabled
+cpuset  5       3       1
+cpu     6       3       1
+cpuacct 6       3       1
+blkio   12      1       1
+memory  7       123     1
+devices 11      51      1
+freezer 2       3       1
+net_cls 4       3       1
+perf_event      3       1       1
+net_prio        4       3       1
+hugetlb 8       1       1
+pids    9       56      1
+rdma    10      1       1 
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: proc/cmdline
 Lines: 1
 BOOT_IMAGE=/vmlinuz-5.11.0-22-generic root=UUID=456a0345-450d-4f7b-b7c9-43e3241d99ad ro quiet splash vt.handoff=7
@@ -10561,6 +10579,47 @@ xpc 399724544 92823103 86219234
 debug 0
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: proc/kallsyms
+Lines: 37
+ffffffffa94ddd10 t __pfx_vfs_readv
+ffffffffa94ddd20 t vfs_readv
+ffffffffa94e0430 T __pfx_vfs_read
+ffffffffa94e0440 T vfs_read
+ffffffffa94fbce0 T __pfx_vfs_readlink
+ffffffffa94fbcf0 T vfs_readlink
+ffffffffaad9c2b8 r __ksymtab_vfs_readlink
+ffffffffa94de9c0 t __pfx_vfs_writev
+ffffffffa94de9d0 t vfs_writev
+ffffffffa94e0ef0 T __pfx_vfs_write
+ffffffffa94e0f00 T vfs_write
+ffffffffa94dbf30 T __pfx_vfs_open
+ffffffffa94dbf40 T vfs_open
+ffffffffa94f5060 T __pfx_vfs_create
+ffffffffa94f5070 T vfs_create
+ffffffffa95131c0 T __pfx_vfs_create_mount
+ffffffffa95131d0 T vfs_create_mount
+ffffffffaad9c144 r __ksymtab_vfs_create
+ffffffffaad9c150 r __ksymtab_vfs_create_mount
+ffffffffa94f4860 T __pfx_vfs_unlink
+ffffffffa94f4870 T vfs_unlink
+ffffffffaad9c300 r __ksymtab_vfs_unlink
+ffffffffa9efa6c0 t __pfx___netif_receive_skb_core.constprop.0
+ffffffffa9efa6d0 t __netif_receive_skb_core.constprop.0
+ffffffffa9efbaa0 T __pfx_netif_receive_skb_core
+ffffffffa9efbab0 T netif_receive_skb_core
+ffffffffaad965ac r __ksymtab_netif_receive_skb_core 
+ffffffffa9ef0a80 T __pfx_dev_queue_xmit_nit
+ffffffffa9ef0a90 T dev_queue_xmit_nit
+ffffffffa9ef95e0 T __pfx___dev_queue_xmit
+ffffffffa9ef95f0 T __dev_queue_xmit
+ffffffffa9f80430 T __pfx_tcf_dev_queue_xmit
+ffffffffa9f80440 T tcf_dev_queue_xmit
+ffffffffaa20e77a t dev_queue_xmit_nit.cold
+ffffffffaad8a984 r __ksymtab___dev_queue_xmit
+ffffffffaada69b0 r __ksymtab_dev_queue_xmit_nit
+ffffffffaadb3184 r __ksymtab_tcf_dev_queue_xmitEOF
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: proc/loadavg
 Lines: 1
 0.02 0.04 0.05 1/497 11947
@@ -11586,6 +11645,11 @@ Path: proc/sys/vm/zone_reclaim_mode
 Lines: 1
 0
 Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: proc/version_signature
+Lines: 1
+Ubuntu 6.5.0-35.35~22.04.1-generic 6.5.13
+Mode: 444
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: proc/zoneinfo
 Lines: 262
