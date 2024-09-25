@@ -86,7 +86,12 @@ func TestDiscoverProcess(t *testing.T) {
 	}
 
 	// Create dummy security context
-	collector.securityContexts[perfDiscovererCtx], err = security.NewSecurityContext(perfDiscovererCtx, nil, discoverer, collector.logger)
+	collector.securityContexts[perfDiscovererCtx], err = security.NewSecurityContext(
+		perfDiscovererCtx,
+		nil,
+		discoverer,
+		collector.logger,
+	)
 	require.NoError(t, err)
 
 	collector.fs, err = procfs.NewFS("testdata/proc")
@@ -158,10 +163,20 @@ func TestNewProfilers(t *testing.T) {
 	}
 
 	// Create dummy security context
-	collector.securityContexts[perfOpenProfilersCtx], err = security.NewSecurityContext(perfOpenProfilersCtx, nil, openProfilers, collector.logger)
+	collector.securityContexts[perfOpenProfilersCtx], err = security.NewSecurityContext(
+		perfOpenProfilersCtx,
+		nil,
+		openProfilers,
+		collector.logger,
+	)
 	require.NoError(t, err)
 
-	collector.securityContexts[perfCloseProfilersCtx], err = security.NewSecurityContext(perfCloseProfilersCtx, nil, closeProfilers, collector.logger)
+	collector.securityContexts[perfCloseProfilersCtx], err = security.NewSecurityContext(
+		perfCloseProfilersCtx,
+		nil,
+		closeProfilers,
+		collector.logger,
+	)
 	require.NoError(t, err)
 
 	collector.fs, err = procfs.NewFS("testdata/proc")

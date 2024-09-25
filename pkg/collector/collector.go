@@ -47,8 +47,11 @@ var (
 	initiatedCollectors    = make(map[string]Collector)
 	collectorState         = make(map[string]*bool)
 	collectorCaps          = make(map[string][]cap.Value) // capabilities required by the collector
-	allCollectorCaps       = make([]cap.Value, 0)         // Unique slice of all required caps of currently enabled collectors
-	forcedCollectors       = map[string]bool{}            // collectors which have been explicitly enabled or disabled
+	allCollectorCaps       = make(
+		[]cap.Value,
+		0,
+	) // Unique slice of all required caps of currently enabled collectors
+	forcedCollectors = map[string]bool{} // collectors which have been explicitly enabled or disabled
 )
 
 // Collector is the interface a collector has to implement.

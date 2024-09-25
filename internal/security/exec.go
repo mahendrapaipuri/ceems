@@ -30,7 +30,12 @@ type SecurityContext struct {
 }
 
 // NewSecurityContext returns a new instance of SecurityContext.
-func NewSecurityContext(name string, caps []cap.Value, f func(interface{}) error, logger log.Logger) (*SecurityContext, error) {
+func NewSecurityContext(
+	name string,
+	caps []cap.Value,
+	f func(interface{}) error,
+	logger log.Logger,
+) (*SecurityContext, error) {
 	// Create a SecurityContext
 	s := &SecurityContext{
 		Logger: logger,
@@ -105,7 +110,8 @@ func (s *SecurityContext) targetFunc(data interface{}) error {
 	// Log an error so that operators will be aware that the reason
 	// for the error is lack of privileges.
 	if err := s.raiseCaps(); err != nil {
-		level.Error(s.Logger).Log("msg", "Failed to raise capabilities", "name", s.Name, "caps", cap.GetProc(), "err", err)
+		level.Error(s.Logger).
+			Log("msg", "Failed to raise capabilities", "name", s.Name, "caps", cap.GetProc(), "err", err)
 	}
 
 	level.Debug(s.Logger).Log("msg", "Executing in security context", "name", s.Name, "caps", cap.GetProc())
@@ -114,7 +120,8 @@ func (s *SecurityContext) targetFunc(data interface{}) error {
 	if err := s.Func(data); err != nil {
 		// Attempt to drop capabilities and ignore any errors
 		if err := s.dropCaps(); err != nil {
-			level.Warn(s.Logger).Log("msg", "Failed to drop capabilities", "name", s.Name, "caps", cap.GetProc(), "err", err)
+			level.Warn(s.Logger).
+				Log("msg", "Failed to drop capabilities", "name", s.Name, "caps", cap.GetProc(), "err", err)
 		}
 
 		return err
@@ -124,7 +131,8 @@ func (s *SecurityContext) targetFunc(data interface{}) error {
 	// destroyed. But just in case...
 	// Ignore any errors
 	if err := s.dropCaps(); err != nil {
-		level.Warn(s.Logger).Log("msg", "Failed to drop capabilities", "name", s.Name, "caps", cap.GetProc(), "err", err)
+		level.Warn(s.Logger).
+			Log("msg", "Failed to drop capabilities", "name", s.Name, "caps", cap.GetProc(), "err", err)
 	}
 
 	return nil
@@ -133,7 +141,7 @@ func (s *SecurityContext) targetFunc(data interface{}) error {
 // ExecSecurityCtxData contains the input/output data for executing subprocess
 // inside security context.
 type ExecSecurityCtxData struct {
-	Context context.Context
+	Context context.Context //nolint:containedctx
 	Cmd     []string
 	Environ []string
 	UID     int
@@ -154,7 +162,8 @@ func ExecAsUser(data interface{}) error {
 
 	// If context is not provided, use context with timeout of 5 seconds.
 	var cancel context.CancelFunc
-	var ctx = ctxData.Context
+
+	ctx := ctxData.Context
 	if ctx == nil {
 		ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
@@ -167,7 +176,15 @@ func ExecAsUser(data interface{}) error {
 
 	cmd := ctxData.Cmd
 	if len(cmd) > 1 {
-		stdOut, err = osexec.ExecuteAsContext(ctx, cmd[0], cmd[1:], ctxData.UID, ctxData.GID, ctxData.Environ, ctxData.Logger)
+		stdOut, err = osexec.ExecuteAsContext(
+			ctx,
+			cmd[0],
+			cmd[1:],
+			ctxData.UID,
+			ctxData.GID,
+			ctxData.Environ,
+			ctxData.Logger,
+		)
 	} else {
 		stdOut, err = osexec.ExecuteAsContext(ctx, cmd[0], nil, ctxData.UID, ctxData.GID, ctxData.Environ, ctxData.Logger)
 	}

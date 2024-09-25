@@ -106,6 +106,7 @@ func preflightsCLI(slurm *slurmScheduler) error {
 		level.Info(slurm.logger).Log("msg", "Linux capabilities will be used to execute SLURM commands as slurm user")
 
 		var caps []cap.Value
+
 		for _, name := range []string{"cap_setuid", "cap_setgid"} {
 			value, err := cap.FromName(name)
 			if err != nil {
@@ -119,7 +120,12 @@ func preflightsCLI(slurm *slurmScheduler) error {
 
 		// If we choose capability mode, setup security context
 		// Setup new security context(s)
-		slurm.securityContexts[slurmExecCmdCtx], err = security.NewSecurityContext(slurmExecCmdCtx, caps, security.ExecAsUser, slurm.logger)
+		slurm.securityContexts[slurmExecCmdCtx], err = security.NewSecurityContext(
+			slurmExecCmdCtx,
+			caps,
+			security.ExecAsUser,
+			slurm.logger,
+		)
 		if err != nil {
 			level.Error(slurm.logger).Log("msg", "Failed to create a security context for SLURM", "err", err)
 
@@ -529,12 +535,13 @@ func (s *slurmScheduler) runSacctCmd(ctx context.Context, startTime string, endT
 	if s.cmdExecMode == capabilityMode {
 		// Get security context
 		var securityCtx *security.SecurityContext
+
 		var ok bool
 		if securityCtx, ok = s.securityContexts[slurmExecCmdCtx]; !ok {
 			return nil, security.ErrNoSecurityCtx
 		}
 
-		var cmd = []string{sacctPath}
+		cmd := []string{sacctPath}
 		cmd = append(cmd, args...)
 
 		// security context data
@@ -546,6 +553,7 @@ func (s *slurmScheduler) runSacctCmd(ctx context.Context, startTime string, endT
 			UID:     slurmUserUID,
 			GID:     slurmUserGID,
 		}
+
 		return executeInSecurityContext(securityCtx, dataPtr)
 	} else if s.cmdExecMode == sudoMode {
 		// Important that we need to export env as well as we set environment variables in the
@@ -576,12 +584,13 @@ func (s *slurmScheduler) runSacctMgrCmd(ctx context.Context) ([]byte, error) {
 	if s.cmdExecMode == capabilityMode {
 		// Get security context
 		var securityCtx *security.SecurityContext
+
 		var ok bool
 		if securityCtx, ok = s.securityContexts[slurmExecCmdCtx]; !ok {
 			return nil, security.ErrNoSecurityCtx
 		}
 
-		var cmd = []string{sacctMgrPath}
+		cmd := []string{sacctMgrPath}
 		cmd = append(cmd, args...)
 
 		// security context data
@@ -593,6 +602,7 @@ func (s *slurmScheduler) runSacctMgrCmd(ctx context.Context) ([]byte, error) {
 			UID:     slurmUserUID,
 			GID:     slurmUserGID,
 		}
+
 		return executeInSecurityContext(securityCtx, dataPtr)
 	} else if s.cmdExecMode == sudoMode {
 		// Important that we need to export env as well as we set environment variables in the
@@ -606,7 +616,10 @@ func (s *slurmScheduler) runSacctMgrCmd(ctx context.Context) ([]byte, error) {
 }
 
 // executeInSecurityContext executes SLURM command within a security context.
-func executeInSecurityContext(securityCtx *security.SecurityContext, dataPtr *security.ExecSecurityCtxData) ([]byte, error) {
+func executeInSecurityContext(
+	securityCtx *security.SecurityContext,
+	dataPtr *security.ExecSecurityCtxData,
+) ([]byte, error) {
 	// Read stdOut of command into data
 	if err := securityCtx.Exec(dataPtr); err != nil {
 		return nil, err

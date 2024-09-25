@@ -190,7 +190,10 @@ func NewPerfCollector(logger log.Logger, cgManager *cgroupManager) (*perfCollect
 	// able to open perf events for ANY process on the host.
 	if paranoid, err := fs.SysctlInts("kernel.perf_event_paranoid"); err == nil {
 		if len(paranoid) == 1 && paranoid[0] > 2 {
-			return nil, fmt.Errorf("perf_event_open syscall is not possible with perf_event_paranoid=%d. Set it to value 2", paranoid[0])
+			return nil, fmt.Errorf(
+				"perf_event_open syscall is not possible with perf_event_paranoid=%d. Set it to value 2",
+				paranoid[0],
+			)
 		}
 	} else {
 		return nil, fmt.Errorf("error opening /proc/sys/kernel/perf_event_paranoid file: %w", err)
@@ -486,7 +489,12 @@ func NewPerfCollector(logger log.Logger, cgManager *cgroupManager) (*perfCollect
 	// Security context for openining profilers
 	collector.securityContexts = make(map[string]*security.SecurityContext)
 
-	collector.securityContexts[perfOpenProfilersCtx], err = security.NewSecurityContext(perfOpenProfilersCtx, reqCaps, openProfilers, logger)
+	collector.securityContexts[perfOpenProfilersCtx], err = security.NewSecurityContext(
+		perfOpenProfilersCtx,
+		reqCaps,
+		openProfilers,
+		logger,
+	)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create a security context for opening perf profiler(s)", "err", err)
 
@@ -494,7 +502,12 @@ func NewPerfCollector(logger log.Logger, cgManager *cgroupManager) (*perfCollect
 	}
 
 	// Security context for closing profilers
-	collector.securityContexts[perfCloseProfilersCtx], err = security.NewSecurityContext(perfCloseProfilersCtx, reqCaps, closeProfilers, logger)
+	collector.securityContexts[perfCloseProfilersCtx], err = security.NewSecurityContext(
+		perfCloseProfilersCtx,
+		reqCaps,
+		closeProfilers,
+		logger,
+	)
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to create a security context for closing perf profiler(s)", "err", err)
 
@@ -507,7 +520,12 @@ func NewPerfCollector(logger log.Logger, cgManager *cgroupManager) (*perfCollect
 		capabilities = []string{"cap_sys_ptrace", "cap_dac_read_search"}
 		auxCaps := setupCollectorCaps(logger, perfCollectorSubsystem, capabilities)
 
-		collector.securityContexts[perfDiscovererCtx], err = security.NewSecurityContext(perfDiscovererCtx, auxCaps, discoverer, logger)
+		collector.securityContexts[perfDiscovererCtx], err = security.NewSecurityContext(
+			perfDiscovererCtx,
+			auxCaps,
+			discoverer,
+			logger,
+		)
 		if err != nil {
 			level.Error(logger).Log("msg", "Failed to create a security context for perf discoverer", "err", err)
 
@@ -582,7 +600,11 @@ func (c *perfCollector) Stop(_ context.Context) error {
 }
 
 // updateHardwareCounters collects hardware counters for the given cgroup.
-func (c *perfCollector) updateHardwareCounters(cgroupID string, procs []procfs.Proc, ch chan<- prometheus.Metric) error {
+func (c *perfCollector) updateHardwareCounters(
+	cgroupID string,
+	procs []procfs.Proc,
+	ch chan<- prometheus.Metric,
+) error {
 	if !c.opts.perfHwProfilersEnabled {
 		return nil
 	}
@@ -648,7 +670,11 @@ func (c *perfCollector) updateHardwareCounters(cgroupID string, procs []procfs.P
 }
 
 // updateSoftwareCounters collects software counters for the given cgroup.
-func (c *perfCollector) updateSoftwareCounters(cgroupID string, procs []procfs.Proc, ch chan<- prometheus.Metric) error {
+func (c *perfCollector) updateSoftwareCounters(
+	cgroupID string,
+	procs []procfs.Proc,
+	ch chan<- prometheus.Metric,
+) error {
 	if !c.opts.perfSwProfilersEnabled {
 		return nil
 	}
@@ -901,7 +927,8 @@ func openProfilers(data interface{}) error {
 			if d.perfHwProfilersEnabled {
 				if _, ok := d.perfHwProfilers[pid]; !ok {
 					if hwProfiler, err := newHwProfiler(pid, d.perfHwProfilerTypes); err != nil {
-						level.Error(d.logger).Log("msg", "failed to start hardware profiler", "pid", pid, "cmd", strings.Join(cmdLine, " "), "err", err)
+						level.Error(d.logger).
+							Log("msg", "failed to start hardware profiler", "pid", pid, "cmd", strings.Join(cmdLine, " "), "err", err)
 					} else {
 						d.perfHwProfilers[pid] = hwProfiler
 					}
@@ -911,7 +938,8 @@ func openProfilers(data interface{}) error {
 			if d.perfSwProfilersEnabled {
 				if _, ok := d.perfSwProfilers[pid]; !ok {
 					if swProfiler, err := newSwProfiler(pid, d.perfSwProfilerTypes); err != nil {
-						level.Error(d.logger).Log("msg", "failed to start software profiler", "pid", pid, "cmd", strings.Join(cmdLine, " "), "err", err)
+						level.Error(d.logger).
+							Log("msg", "failed to start software profiler", "pid", pid, "cmd", strings.Join(cmdLine, " "), "err", err)
 					} else {
 						d.perfSwProfilers[pid] = swProfiler
 					}
@@ -921,7 +949,8 @@ func openProfilers(data interface{}) error {
 			if d.perfCacheProfilersEnabled {
 				if _, ok := d.perfCacheProfilers[pid]; !ok {
 					if cacheProfiler, err := newCacheProfiler(pid, d.perfCacheProfilerTypes); err != nil {
-						level.Error(d.logger).Log("msg", "failed to start cache profiler", "pid", pid, "cmd", strings.Join(cmdLine, " "), "err", err)
+						level.Error(d.logger).
+							Log("msg", "failed to start cache profiler", "pid", pid, "cmd", strings.Join(cmdLine, " "), "err", err)
 					} else {
 						d.perfCacheProfilers[pid] = cacheProfiler
 					}

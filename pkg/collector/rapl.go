@@ -66,9 +66,15 @@ func NewRaplCollector(logger log.Logger) (Collector, error) {
 			capabilities := []string{"cap_dac_read_search"}
 			reqCaps := setupCollectorCaps(logger, raplCollectorSubsystem, capabilities)
 
-			securityContexts[raplReadEnergyCounter], err = security.NewSecurityContext(raplReadEnergyCounter, reqCaps, readCounters, logger)
+			securityContexts[raplReadEnergyCounter], err = security.NewSecurityContext(
+				raplReadEnergyCounter,
+				reqCaps,
+				readCounters,
+				logger,
+			)
 			if err != nil {
-				level.Error(logger).Log("msg", "Failed to create a security context for reading rapl counters", "err", err)
+				level.Error(logger).
+					Log("msg", "Failed to create a security context for reading rapl counters", "err", err)
 
 				return nil, err
 			}

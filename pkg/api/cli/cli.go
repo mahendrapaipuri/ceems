@@ -225,6 +225,7 @@ func (b *CEEMSServer) Main() error {
 	// So, we keep the privileges only as a insurance and once we confirm with resource manager
 	// we decide to either keep them or drop them.
 	var allCaps []cap.Value
+
 	for _, name := range []string{"cap_setuid", "cap_setgid"} {
 		value, err := cap.FromName(name)
 		if err != nil {

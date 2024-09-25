@@ -84,7 +84,15 @@ type cgroupManager struct {
 
 // String implements stringer interface of the struct.
 func (c *cgroupManager) String() string {
-	return fmt.Sprintf("mode: %d root: %s slice: %s scope: %s mount: %s manager: %s", c.mode, c.root, c.slice, c.scope, c.mountPoint, c.manager)
+	return fmt.Sprintf(
+		"mode: %d root: %s slice: %s scope: %s mount: %s manager: %s",
+		c.mode,
+		c.root,
+		c.slice,
+		c.scope,
+		c.mountPoint,
+		c.manager,
+	)
 }
 
 // setMountPoint sets mountPoint for thc cgroupManager struct.
@@ -790,8 +798,12 @@ func parseCgroupSubSysIds() ([]cgroupController, error) {
 		/* We care only for the controllers that we want */
 		if idx >= cgroupSubSysCount {
 			/* Maybe some cgroups are not upstream? */
-			return cgroupControllers, fmt.Errorf("cgroup default subsystem '%s' is indexed at idx=%d higher than CGROUP_SUBSYS_COUNT=%d",
-				fields[0], idx, cgroupSubSysCount)
+			return cgroupControllers, fmt.Errorf(
+				"cgroup default subsystem '%s' is indexed at idx=%d higher than CGROUP_SUBSYS_COUNT=%d",
+				fields[0],
+				idx,
+				cgroupSubSysCount,
+			)
 		}
 
 		if id, err := strconv.ParseUint(fields[1], 10, 32); err == nil {

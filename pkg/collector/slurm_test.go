@@ -146,7 +146,12 @@ func TestSlurmJobPropsWithProcsFS(t *testing.T) {
 	}
 
 	// Add dummy security context
-	c.securityContexts[slurmReadProcCtx], err = security.NewSecurityContext(slurmReadProcCtx, nil, readProcEnvirons, c.logger)
+	c.securityContexts[slurmReadProcCtx], err = security.NewSecurityContext(
+		slurmReadProcCtx,
+		nil,
+		readProcEnvirons,
+		c.logger,
+	)
 	require.NoError(t, err)
 
 	expectedProps := props{
@@ -216,7 +221,11 @@ func TestJobPropsCaching(t *testing.T) {
 
 	// Binds GPUs to first n jobs
 	for igpu := range mockGPUDevs {
-		err = os.WriteFile(fmt.Sprintf("%s/%d", gpuMapFilePath, igpu), []byte(strconv.FormatInt(int64(igpu), 10)), 0o600)
+		err = os.WriteFile(
+			fmt.Sprintf("%s/%d", gpuMapFilePath, igpu),
+			[]byte(strconv.FormatInt(int64(igpu), 10)),
+			0o600,
+		)
 		require.NoError(t, err)
 	}
 

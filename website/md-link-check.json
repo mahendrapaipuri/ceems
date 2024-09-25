@@ -12,6 +12,9 @@
     },
     {
       "pattern": "https://www.rte-france.com/en/eco2mix/co2-emissions"
+    },
+    {
+      "pattern": "https://ebpf.io/what-is-ebpf/"
     }
   ],
   "replacementPatterns": [

@@ -294,7 +294,8 @@ func NewEbpfCollector(logger log.Logger, cgManager *cgroupManager) (*ebpfCollect
 			if funcName := strings.TrimPrefix(name, "kprobe_"); funcName != "" {
 				kernFuncName, err := ksyms.GetArchSpecificName(funcName)
 				if err != nil {
-					level.Error(logger).Log("msg", "Failed to find kernel specific function name", "func", funcName, "err", err)
+					level.Error(logger).
+						Log("msg", "Failed to find kernel specific function name", "func", funcName, "err", err)
 
 					continue
 				}
@@ -312,7 +313,8 @@ func NewEbpfCollector(logger log.Logger, cgManager *cgroupManager) (*ebpfCollect
 			if funcName := strings.TrimPrefix(name, "kretprobe_"); funcName != "" {
 				kernFuncName, err := ksyms.GetArchSpecificName(funcName)
 				if err != nil {
-					level.Error(logger).Log("msg", "Failed to find kernel specific function name", "func", funcName, "err", err)
+					level.Error(logger).
+						Log("msg", "Failed to find kernel specific function name", "func", funcName, "err", err)
 
 					continue
 				}

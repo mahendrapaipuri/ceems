@@ -144,6 +144,7 @@ func New(logger log.Logger) (*Manager, error) {
 
 	// Loop over factories and create new instances
 	var keepPrivs bool
+
 	for key, factory := range factories {
 		for _, config := range configMap[key] {
 			fetcher, err = factory(config, log.With(logger, "manager", key))
