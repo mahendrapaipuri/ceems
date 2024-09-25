@@ -11397,6 +11397,11 @@ Mode: 775
 Directory: proc/sys/kernel
 Mode: 775
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: proc/sys/kernel/perf_event_paranoid
+Lines: 1
+2
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Directory: proc/sys/kernel/random
 Mode: 775
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

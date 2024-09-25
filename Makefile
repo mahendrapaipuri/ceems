@@ -64,7 +64,7 @@ else
 	PROMU_CONF ?= .promu-go.yml
 	pkgs := ./pkg/collector ./pkg/emissions ./pkg/tsdb ./pkg/grafana \
 			./internal/common ./internal/osexec ./internal/structset \
-			./cmd/ceems_exporter
+			./internal/security ./cmd/ceems_exporter
 	checkmetrics := checkmetrics
 	checkrules := checkrules
 

@@ -11,6 +11,7 @@ import (
 	"github.com/containerd/cgroups/v3"
 	"github.com/go-kit/log"
 	"github.com/hodgesds/perf-utils"
+	"github.com/mahendrapaipuri/ceems/internal/security"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/procfs"
 	"github.com/stretchr/testify/assert"
@@ -20,6 +21,9 @@ import (
 func TestPerfCollector(t *testing.T) {
 	_, err := CEEMSExporterApp.Parse([]string{
 		"--path.procfs", "testdata/proc",
+		"--collector.perf.hardware-events",
+		"--collector.perf.software-events",
+		"--collector.perf.hardware-cache-events",
 	})
 	require.NoError(t, err)
 
@@ -33,14 +37,7 @@ func TestPerfCollector(t *testing.T) {
 		},
 	}
 
-	// perf opts
-	opts := perfOpts{
-		perfHwProfilersEnabled:    true,
-		perfSwProfilersEnabled:    true,
-		perfCacheProfilersEnabled: true,
-	}
-
-	collector, err := NewPerfCollector(log.NewNopLogger(), cgManager, opts)
+	collector, err := NewPerfCollector(log.NewNopLogger(), cgManager)
 	require.NoError(t, err)
 
 	// Setup background goroutine to capture metrics.
@@ -82,10 +79,15 @@ func TestDiscoverProcess(t *testing.T) {
 	}
 
 	collector := perfCollector{
-		logger:        log.NewNopLogger(),
-		cgroupManager: cgManager,
-		opts:          opts,
+		logger:           log.NewNopLogger(),
+		cgroupManager:    cgManager,
+		opts:             opts,
+		securityContexts: make(map[string]*security.SecurityContext),
 	}
+
+	// Create dummy security context
+	collector.securityContexts[perfDiscovererCtx], err = security.NewSecurityContext(perfDiscovererCtx, nil, discoverer, collector.logger)
+	require.NoError(t, err)
 
 	collector.fs, err = procfs.NewFS("testdata/proc")
 	require.NoError(t, err)
@@ -152,7 +154,15 @@ func TestNewProfilers(t *testing.T) {
 		perfHwProfilers:    make(map[int]*perf.HardwareProfiler),
 		perfSwProfilers:    make(map[int]*perf.SoftwareProfiler),
 		perfCacheProfilers: make(map[int]*perf.CacheProfiler),
+		securityContexts:   make(map[string]*security.SecurityContext),
 	}
+
+	// Create dummy security context
+	collector.securityContexts[perfOpenProfilersCtx], err = security.NewSecurityContext(perfOpenProfilersCtx, nil, openProfilers, collector.logger)
+	require.NoError(t, err)
+
+	collector.securityContexts[perfCloseProfilersCtx], err = security.NewSecurityContext(perfCloseProfilersCtx, nil, closeProfilers, collector.logger)
+	require.NoError(t, err)
 
 	collector.fs, err = procfs.NewFS("testdata/proc")
 	require.NoError(t, err)

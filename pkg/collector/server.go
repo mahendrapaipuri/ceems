@@ -7,7 +7,6 @@ import (
 	stdlog "log"
 	"net/http"
 	_ "net/http/pprof" // #nosec
-	"sort"
 	"time"
 
 	"github.com/go-kit/log"
@@ -34,8 +33,9 @@ type WebConfig struct {
 
 // Config makes a server config.
 type Config struct {
-	Logger log.Logger
-	Web    WebConfig
+	Logger    log.Logger
+	Collector *CEEMSCollector
+	Web       WebConfig
 }
 
 // CEEMSExporterServer struct implements HTTP server for exporter.
@@ -66,11 +66,10 @@ func (h *metricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // NewCEEMSExporterServer creates new CEEMSExporterServer struct instance.
 func NewCEEMSExporterServer(c *Config) (*CEEMSExporterServer, error) {
-	var err error
-
 	router := mux.NewRouter()
 	server := &CEEMSExporterServer{
-		logger: c.Logger,
+		logger:    c.Logger,
+		collector: c.Collector,
 		server: &http.Server{
 			Addr:              c.Web.Addresses[0],
 			Handler:           router,
@@ -97,26 +96,6 @@ func NewCEEMSExporterServer(c *Config) (*CEEMSExporterServer, error) {
 			promcollectors.NewProcessCollector(promcollectors.ProcessCollectorOpts{}),
 			promcollectors.NewGoCollector(),
 		)
-	}
-
-	// Create a new instance of collector
-	server.collector, err = NewCEEMSCollector(c.Logger)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't create collector: %w", err)
-	}
-
-	// Log all enabled collectors
-	level.Info(c.Logger).Log("msg", "Enabled collectors")
-
-	collectors := []string{}
-	for n := range server.collector.Collectors {
-		collectors = append(collectors, n)
-	}
-
-	sort.Strings(collectors)
-
-	for _, coll := range collectors {
-		level.Info(c.Logger).Log("collector", coll)
 	}
 
 	// Register metrics collector with Prometheus

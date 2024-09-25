@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/user"
 	"path/filepath"
 	"syscall"
 	"testing"
@@ -120,16 +121,20 @@ ceems_api_server:
 	os.MkdirAll(dataDir, os.ModePerm)
 
 	f, err := os.Create(filepath.Join(dataDir, base.CEEMSDBName))
-	if err != nil {
-		require.NoError(t, err)
-	}
+	require.NoError(t, err)
 
 	f.Close()
+
+	// Get current user name
+	currentUser, err := user.Current()
+	require.NoError(t, err)
 
 	// Remove test related args
 	os.Args = append([]string{os.Args[0]}, "--config.file="+configFilePath)
 	os.Args = append(os.Args, "--log.level=debug")
-	a, _ := NewCEEMSServer()
+	os.Args = append(os.Args, "--test.run-as-user="+currentUser.Username)
+	a, err := NewCEEMSServer()
+	require.NoError(t, err)
 
 	// Start Main
 	go func() {

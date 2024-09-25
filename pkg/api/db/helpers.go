@@ -84,7 +84,7 @@ func setupDB(dbFilePath string, logger log.Logger) (*sql.DB, *ceems_sqlite3.Conn
 	file.Close()
 
 	// Set strict permissions
-	if err := os.Chmod(dbFilePath, 0o750); err != nil {
+	if err := os.Chmod(dbFilePath, 0o640); err != nil {
 		level.Error(logger).Log("msg", "Failed to harden permissions on DB file", "err", err)
 
 		return nil, nil, err

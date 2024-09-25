@@ -51,6 +51,7 @@ func TestFileDescriptorLeak(t *testing.T) {
 		"--web.listen-address", address,
 		"--path.cgroupfs", sysfsPath,
 		"--path.procfs", procfsPath,
+		"--collector.ipmi_dcmi.cmd", "pkg/collector/testdata/ipmi/freeipmi/ipmi-dcmi",
 	)
 	test := func(pid int) error {
 		if err := queryExporter(address); err != nil {

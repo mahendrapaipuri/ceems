@@ -15,6 +15,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/internal/common"
+	"github.com/mahendrapaipuri/ceems/internal/security"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 )
@@ -142,6 +143,7 @@ func New(logger log.Logger) (*Manager, error) {
 	}
 
 	// Loop over factories and create new instances
+	var keepPrivs bool
 	for key, factory := range factories {
 		for _, config := range configMap[key] {
 			fetcher, err = factory(config, log.With(logger, "manager", key))
@@ -152,6 +154,11 @@ func New(logger log.Logger) (*Manager, error) {
 			}
 
 			fetchers = append(fetchers, fetcher)
+
+			// If manager is SLURM and CLI is configured, we MUST keep privileges
+			if config.Manager == "slurm" && config.CLI.Path != "" {
+				keepPrivs = true
+			}
 		}
 	}
 
@@ -170,6 +177,13 @@ func New(logger log.Logger) (*Manager, error) {
 		}
 
 		fetchers = append(fetchers, fetcher)
+	}
+
+	// If we dont need to keep any privileges, drop any existing capabilities
+	if !keepPrivs {
+		if err := security.DropCapabilities(); err != nil {
+			level.Warn(logger).Log("msg", "Failed to drop capabilities", "err", err)
+		}
 	}
 
 	return &Manager{Fetchers: fetchers, Logger: logger}, nil

@@ -53,7 +53,7 @@ func Execute(cmd string, args []string, env []string, logger log.Logger) ([]byte
 	out, err := execCmd.CombinedOutput()
 	if err != nil {
 		level.Error(logger).
-			Log("msg", "Error executing command", "command", cmd, "args", strings.Join(args, " "), "err", err)
+			Log("msg", "Error executing command", "command", cmd, "args", strings.Join(args, " "), "out", string(out), "err", err)
 	}
 
 	return out, err
@@ -67,17 +67,14 @@ func ExecuteAs(cmd string, args []string, uid int, gid int, env []string, logger
 	execCmd := exec.Command(cmd, args...)
 
 	// Check bounds on uid and gid before converting into int32
-	var uidInt32, gidInt32 uint32
-	if uid > 0 && uid <= math.MaxInt32 {
-		uidInt32 = uint32(uid) //nolint:gosec
-	} else {
-		return nil, ErrInvalidUID
+	uidInt32, err := convertToUint(uid)
+	if err != nil {
+		return nil, err
 	}
 
-	if gid > 0 && gid <= math.MaxInt32 {
-		gidInt32 = uint32(gid) //nolint:gosec
-	} else {
-		return nil, ErrInvalidGID
+	gidInt32, err := convertToUint(gid)
+	if err != nil {
+		return nil, err
 	}
 
 	// According to setpgid docs (https://man7.org/linux/man-pages/man2/setpgid.2.html)
@@ -105,7 +102,7 @@ func ExecuteAs(cmd string, args []string, uid int, gid int, env []string, logger
 	out, err := execCmd.CombinedOutput()
 	if err != nil {
 		level.Error(logger).
-			Log("msg", "Error executing command as user", "command", cmd, "args", strings.Join(args, " "), "uid", uid, "gid", gid, "err", err)
+			Log("msg", "Error executing command as user", "command", cmd, "args", strings.Join(args, " "), "uid", uid, "gid", gid, "out", string(out), "err", err)
 	}
 
 	return out, err
@@ -139,7 +136,7 @@ func ExecuteContext(ctx context.Context, cmd string, args []string, env []string
 	out, err := execCmd.CombinedOutput()
 	if err != nil {
 		level.Error(logger).
-			Log("msg", "Error executing command", "command", cmd, "args", strings.Join(args, " "), "err", err)
+			Log("msg", "Error executing command", "command", cmd, "args", strings.Join(args, " "), "out", string(out), "err", err)
 	}
 
 	return out, err
@@ -161,17 +158,14 @@ func ExecuteAsContext(
 	execCmd := exec.CommandContext(ctx, cmd, args...)
 
 	// Check bounds on uid and gid before converting into int32
-	var uidInt32, gidInt32 uint32
-	if uid > 0 && uid <= math.MaxInt32 {
-		uidInt32 = uint32(uid) //nolint:gosec
-	} else {
-		return nil, ErrInvalidUID
+	uidInt32, err := convertToUint(uid)
+	if err != nil {
+		return nil, err
 	}
 
-	if gid > 0 && gid <= math.MaxInt32 {
-		gidInt32 = uint32(gid) //nolint:gosec
-	} else {
-		return nil, ErrInvalidGID
+	gidInt32, err := convertToUint(gid)
+	if err != nil {
+		return nil, err
 	}
 
 	// According to setpgid docs (https://man7.org/linux/man-pages/man2/setpgid.2.html)
@@ -199,7 +193,7 @@ func ExecuteAsContext(
 	out, err := execCmd.CombinedOutput()
 	if err != nil {
 		level.Error(logger).
-			Log("msg", "Error executing command as user", "command", cmd, "args", strings.Join(args, " "), "uid", uid, "gid", gid, "err", err)
+			Log("msg", "Error executing command as user", "command", cmd, "args", strings.Join(args, " "), "uid", uid, "gid", gid, "out", string(out), "err", err)
 	}
 
 	return out, err
@@ -280,17 +274,14 @@ func ExecuteAsWithTimeout(
 	}
 
 	// Check bounds on uid and gid before converting into int32
-	var uidInt32, gidInt32 uint32
-	if uid > 0 && uid <= math.MaxInt32 {
-		uidInt32 = uint32(uid) //nolint:gosec
-	} else {
-		return nil, ErrInvalidUID
+	uidInt32, err := convertToUint(uid)
+	if err != nil {
+		return nil, err
 	}
 
-	if gid > 0 && gid <= math.MaxInt32 {
-		gidInt32 = uint32(gid) //nolint:gosec
-	} else {
-		return nil, ErrInvalidGID
+	gidInt32, err := convertToUint(gid)
+	if err != nil {
+		return nil, err
 	}
 
 	// According to setpgid docs (https://man7.org/linux/man-pages/man2/setpgid.2.html)
@@ -313,8 +304,17 @@ func ExecuteAsWithTimeout(
 	out, err := execCmd.CombinedOutput()
 	if err != nil {
 		level.Error(logger).
-			Log("msg", "Error executing command as user", "command", cmd, "args", strings.Join(args, " "), "uid", uid, "gid", gid, "err", err)
+			Log("msg", "Error executing command as user", "command", cmd, "args", strings.Join(args, " "), "uid", uid, "gid", gid, "out", string(out), "err", err)
 	}
 
 	return out, err
+}
+
+// convertToUint converts int to uint32 after checking bounds.
+func convertToUint(i int) (uint32, error) {
+	if i >= 0 && i <= math.MaxInt32 {
+		return uint32(i), nil //nolint:gosec
+	}
+
+	return 0, ErrInvalidUID
 }

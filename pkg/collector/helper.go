@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -251,6 +252,25 @@ func fileExists(filename string) bool {
 	}
 
 	return !info.IsDir()
+}
+
+// lookPath is like exec.LookPath but looks only in /sbin, /usr/sbin,
+// /usr/local/sbin which are reserved for super user.
+func lookPath(f string) (string, error) {
+	locations := []string{
+		"/sbin",
+		"/usr/sbin",
+		"/usr/local/sbin",
+	}
+
+	for _, path := range locations {
+		fullPath := filepath.Join(path, f)
+		if fileExists(fullPath) {
+			return fullPath, nil
+		}
+	}
+
+	return "", errors.New("path does not exist")
 }
 
 // // Find named matches in regex groups and return a map.

@@ -16,9 +16,9 @@ DCGM_FI_DEV_TOTAL_ENERGY_CONSUMPTION, counter, Total energy consumption since bo
 DCGM_FI_DEV_POWER_MGMT_LIMIT,         gauge, Power limit (in W).
 
 # PCIE
-DCGM_FI_DEV_PCIE_TX_THROUGHPUT,  counter, Total number of bytes transmitted through PCIe TX (in KB) via NVML.
-DCGM_FI_DEV_PCIE_RX_THROUGHPUT,  counter, Total number of bytes received through PCIe RX (in KB) via NVML.
-DCGM_FI_DEV_PCIE_REPLAY_COUNTER, counter, Total number of PCIe retries.
+# DCGM_FI_DEV_PCIE_TX_THROUGHPUT,  counter, Total number of bytes transmitted through PCIe TX (in KB) via NVML.
+# DCGM_FI_DEV_PCIE_RX_THROUGHPUT,  counter, Total number of bytes received through PCIe RX (in KB) via NVML.
+# DCGM_FI_DEV_PCIE_REPLAY_COUNTER, counter, Total number of PCIe retries.
 
 # Utilization (the sample period varies depending on the product)
 DCGM_FI_DEV_GPU_UTIL,      gauge, GPU utilization (in %).
@@ -61,9 +61,9 @@ DCGM_FI_DEV_NVLINK_BANDWIDTH_TOTAL,            counter, Total number of NVLink b
 DCGM_FI_DEV_VGPU_LICENSE_STATUS, gauge, vGPU License status
 
 # Remapped rows
-DCGM_FI_DEV_UNCORRECTABLE_REMAPPED_ROWS, counter, Number of remapped rows for uncorrectable errors
-DCGM_FI_DEV_CORRECTABLE_REMAPPED_ROWS,   counter, Number of remapped rows for correctable errors
-DCGM_FI_DEV_ROW_REMAP_FAILURE,           gauge,   Whether remapping of rows has failed
+# DCGM_FI_DEV_UNCORRECTABLE_REMAPPED_ROWS, counter, Number of remapped rows for uncorrectable errors
+# DCGM_FI_DEV_CORRECTABLE_REMAPPED_ROWS,   counter, Number of remapped rows for correctable errors
+# DCGM_FI_DEV_ROW_REMAP_FAILURE,           gauge,   Whether remapping of rows has failed
 
 # Static configuration information. These appear as labels on the other metrics
 DCGM_FI_DRIVER_VERSION,        label, Driver Version
@@ -75,3 +75,17 @@ DCGM_FI_DRIVER_VERSION,        label, Driver Version
 # DCGM_FI_DEV_POWER_INFOROM_VER, label, Power management object inforom version
 # DCGM_FI_DEV_INFOROM_IMAGE_VER, label, Inforom image version
 # DCGM_FI_DEV_VBIOS_VERSION,     label, VBIOS version of the device
+
+# Profiling metrics. Ref: https://docs.nvidia.com/datacenter/dcgm/latest/user-guide/feature-overview.html#profiling-metrics
+DCGM_FI_PROF_GR_ENGINE_ACTIVE,    gauge, Fraction of time any portion of the graphics or compute engines were active.
+DCGM_FI_PROF_SM_ACTIVE,           gauge, Fraction of time at least one warp was active on a multiprocessor, averaged over all multiprocessors.
+DCGM_FI_PROF_SM_OCCUPANCY,        gauge, Fraction of resident warps on a multiprocessor, relative to the maximum number of concurrent warps supported on a multiprocessor.
+DCGM_FI_PROF_PIPE_TENSOR_ACTIVE,  gauge, Fraction of cycles the tensor (HMMA / IMMA) pipe was active.
+DCGM_FI_PROF_PIPE_FP64_ACTIVE,    gauge, Fraction of cycles the FP64 (double precision) pipe was active. 
+DCGM_FI_PROF_PIPE_FP32_ACTIVE,    gauge, Fraction of cycles the FMA (FP32 (single precision), and integer) pipe was active. 
+DCGM_FI_PROF_PIPE_FP16_ACTIVE,    gauge, Fraction of cycles the FP16 (half precision) pipe was active. The value represents an average over a time interval and is not an instantaneous value.
+DCGM_FI_PROF_DRAM_ACTIVE,         gauge, Fraction of cycles where data was sent to or received from device memory.
+DCGM_FI_PROF_NVLINK_TX_BYTES,     gauge, Total rate of data transmitted over NVLink, not including protocol headers, in bytes per second.
+DCGM_FI_PROF_NVLINK_RX_BYTES,     gauge, Total rate of data received over NVLink, not including protocol headers, in bytes per second.
+DCGM_FI_PROF_PCIE_TX_BYTES,       gauge, Total rate of data transmitted over PCIE, not including protocol headers, in bytes per second.
+DCGM_FI_PROF_PCIE_RX_BYTES,       gauge, Total rate of data received over PCIE, not including protocol headers, in bytes per second.

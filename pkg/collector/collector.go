@@ -5,6 +5,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
+	"sort"
 	"strconv"
 	"sync"
 	"time"
@@ -13,6 +15,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
+	"kernel.org/pub/linux/libs/security/libcap/cap"
 )
 
 // Namespace defines the common namespace to be used by all metrics.
@@ -43,7 +46,9 @@ var (
 	initiatedCollectorsMtx = sync.Mutex{}
 	initiatedCollectors    = make(map[string]Collector)
 	collectorState         = make(map[string]*bool)
-	forcedCollectors       = map[string]bool{} // collectors which have been explicitly enabled or disabled
+	collectorCaps          = make(map[string][]cap.Value) // capabilities required by the collector
+	allCollectorCaps       = make([]cap.Value, 0)         // Unique slice of all required caps of currently enabled collectors
+	forcedCollectors       = map[string]bool{}            // collectors which have been explicitly enabled or disabled
 )
 
 // Collector is the interface a collector has to implement.
@@ -143,6 +148,32 @@ func NewCEEMSCollector(logger log.Logger) (*CEEMSCollector, error) {
 			initiatedCollectors[key] = collector
 		}
 	}
+
+	// Log all enabled collectors
+	level.Info(logger).Log("msg", "Enabled collectors")
+
+	coll := []string{}
+	for n := range collectors {
+		coll = append(coll, n)
+	}
+
+	sort.Strings(coll)
+
+	for _, coll := range coll {
+		level.Info(logger).Log("collector", coll)
+	}
+
+	// Remove duplicates of caps
+	for subSystem, caps := range collectorCaps {
+		slices.Sort(caps)
+		uniqueCaps := slices.Compact(caps)
+		collectorCaps[subSystem] = uniqueCaps
+
+		allCollectorCaps = append(allCollectorCaps, caps...)
+	}
+
+	slices.Sort(allCollectorCaps)
+	allCollectorCaps = slices.Compact(allCollectorCaps)
 
 	return &CEEMSCollector{Collectors: collectors, logger: logger}, nil
 }

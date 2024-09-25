@@ -21,6 +21,7 @@ import (
 	"github.com/containerd/cgroups/v3"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/mahendrapaipuri/ceems/internal/security"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sys/unix"
 )
@@ -34,11 +35,6 @@ const (
 	ebpfCollectorSubsystem = "ebpf"
 )
 
-// Custom errors.
-var (
-	errMapNotFound = errors.New("map not found")
-)
-
 // Network enum maps.
 var (
 	protoMap = map[int]string{
@@ -49,6 +45,22 @@ var (
 		unix.AF_INET:  "ipv4",
 		unix.AF_INET6: "ipv6",
 	}
+)
+
+// CLI opts.
+var (
+	ebpfIOMetricsFlag = CEEMSExporterApp.Flag(
+		"collector.ebpf.io-metrics",
+		"Enables collection of IO metrics using ebpf (default: disabled)",
+	).Default("false").Bool()
+	ebpfNetMetricsFlag = CEEMSExporterApp.Flag(
+		"collector.ebpf.network-metrics",
+		"Enables collection of network metrics using ebpf (default: disabled)",
+	).Default("false").Bool()
+	ebpfFSMountPoints = CEEMSExporterApp.Flag(
+		"collector.ebpf.fs-mount-point",
+		"File system mount points to monitor IO stats. If empty all mount points are monitored. It is strongly advised to choose appropriate mount points to reduce cardinality.",
+	).Strings()
 )
 
 // bpfConfig is a container for the config that is passed to bpf progs.
@@ -104,10 +116,33 @@ type promNetEventKey struct {
 	Family string
 }
 
+// ebpfOpts contains options to the sub collector.
 type ebpfOpts struct {
 	vfsStatsEnabled bool
 	netStatsEnabled bool
 	vfsMountPoints  []string
+}
+
+// Security context names.
+const (
+	ebpfReadBPFMapsCtx = "ebpf_read_maps"
+)
+
+type aggMetrics struct {
+	readWrite map[string]map[promVfsEventKey]bpfVfsRwEvent
+	inode     map[string]map[string]bpfVfsInodeEvent
+	network   map[string]map[promNetEventKey]bpfNetEvent
+}
+
+// ebpfReadMapsCtxData contains the input/output data for
+// reading eBPF maps to execute inside security context.
+type ebpfReadMapsCtxData struct {
+	opts              ebpfOpts
+	cgroupIDUUIDCache map[uint64]string
+	activeCgroupIDs   []uint64
+	netColl           *ebpf.Collection
+	vfsColl           *ebpf.Collection
+	aggMetrics        *aggMetrics
 }
 
 type ebpfCollector struct {
@@ -121,6 +156,7 @@ type ebpfCollector struct {
 	netColl           *ebpf.Collection
 	vfsColl           *ebpf.Collection
 	links             map[string]link.Link
+	securityContexts  map[string]*security.SecurityContext
 	vfsWriteRequests  *prometheus.Desc
 	vfsWriteBytes     *prometheus.Desc
 	vfsWriteErrors    *prometheus.Desc
@@ -142,7 +178,7 @@ type ebpfCollector struct {
 }
 
 // NewEbpfCollector returns a new instance of ebpf collector.
-func NewEbpfCollector(logger log.Logger, cgManager *cgroupManager, opts ebpfOpts) (*ebpfCollector, error) {
+func NewEbpfCollector(logger log.Logger, cgManager *cgroupManager) (*ebpfCollector, error) {
 	var netColl, vfsColl *ebpf.Collection
 
 	var configMap *ebpf.Map
@@ -151,6 +187,21 @@ func NewEbpfCollector(logger log.Logger, cgManager *cgroupManager, opts ebpfOpts
 
 	var err error
 
+	// Make opts struct
+	opts := ebpfOpts{
+		vfsStatsEnabled: *ebpfIOMetricsFlag,
+		netStatsEnabled: *ebpfNetMetricsFlag,
+		vfsMountPoints:  *ebpfFSMountPoints,
+	}
+
+	// Get current kernel version
+	currentKernelVer, err := KernelVersion()
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to get current kernel version", "err", err)
+
+		return nil, err
+	}
+
 	// Remove resource limits for kernels <5.11.
 	if err := rlimit.RemoveMemlock(); err != nil {
 		return nil, fmt.Errorf("error removing memlock: %w", err)
@@ -158,12 +209,7 @@ func NewEbpfCollector(logger log.Logger, cgManager *cgroupManager, opts ebpfOpts
 
 	// Load network programs
 	if opts.netStatsEnabled {
-		objFile, err := bpfNetObjs()
-		if err != nil {
-			level.Error(logger).Log("msg", "Failed to get current kernel version", "err", err)
-
-			return nil, err
-		}
+		objFile := bpfNetObjs(currentKernelVer)
 
 		netColl, err = loadObject("bpf/objs/" + objFile)
 		if err != nil {
@@ -182,12 +228,7 @@ func NewEbpfCollector(logger log.Logger, cgManager *cgroupManager, opts ebpfOpts
 
 	// Load VFS programs
 	if opts.vfsStatsEnabled {
-		objFile, err := bpfVFSObjs()
-		if err != nil {
-			level.Error(logger).Log("msg", "Failed to get current kernel version", "err", err)
-
-			return nil, err
-		}
+		objFile := bpfVFSObjs(currentKernelVer)
 
 		vfsColl, err = loadObject("bpf/objs/" + objFile)
 		if err != nil {
@@ -311,6 +352,29 @@ func NewEbpfCollector(logger log.Logger, cgManager *cgroupManager, opts ebpfOpts
 		}
 	}
 
+	// Setup necessary capabilities. We need cap_bpf for loading BPF prpgrams into kernel
+	// CAP_BPF and CAP_PERFMON are only added in Kernel 5.8
+	// CEEMS is not guaranteed to work with Kernels < 5.8 anyways
+	var capabilities []string
+	if currentKernelVer < KernelStringToNumeric("5.8") {
+		capabilities = []string{"cap_sys_admin"}
+	} else {
+		capabilities = []string{"cap_bpf", "cap_perfmon"}
+	}
+
+	caps := setupCollectorCaps(logger, ebpfCollectorSubsystem, capabilities)
+
+	// Setup new security context(s)
+	// Security context for reading eBPF VFS maps
+	securityContexts := make(map[string]*security.SecurityContext)
+
+	securityContexts[ebpfReadBPFMapsCtx], err = security.NewSecurityContext(ebpfReadBPFMapsCtx, caps, aggStats, logger)
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create a security context for reading BPF maps", "err", err)
+
+		return nil, err
+	}
+
 	return &ebpfCollector{
 		logger:            logger,
 		hostname:          hostname,
@@ -321,6 +385,7 @@ func NewEbpfCollector(logger log.Logger, cgManager *cgroupManager, opts ebpfOpts
 		netColl:           netColl,
 		vfsColl:           vfsColl,
 		links:             links,
+		securityContexts:  securityContexts,
 		vfsWriteBytes: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, ebpfCollectorSubsystem, "write_bytes_total"),
 			"Total number of bytes written from a cgroup in bytes",
@@ -439,74 +504,87 @@ func (c *ebpfCollector) Update(ch chan<- prometheus.Metric) error {
 		return err
 	}
 
+	// Fetch metrics from maps
+	aggMetrics, err := c.readMaps()
+	if err != nil {
+		return err
+	}
+
 	// Start wait group
 	wg := sync.WaitGroup{}
-	wg.Add(8)
 
 	// Update different metrics in go routines
-	go func() {
-		defer wg.Done()
+	if *ebpfIOMetricsFlag {
+		wg.Add(5)
 
-		if err := c.updateVFSWrite(ch); err != nil {
-			level.Error(c.logger).Log("msg", "Failed to update VFS write stats", "err", err)
-		}
-	}()
+		go func() {
+			defer wg.Done()
 
-	go func() {
-		defer wg.Done()
+			if err := c.updateVFSWrite(ch, aggMetrics); err != nil {
+				level.Error(c.logger).Log("msg", "Failed to update VFS write stats", "err", err)
+			}
+		}()
 
-		if err := c.updateVFSRead(ch); err != nil {
-			level.Error(c.logger).Log("msg", "Failed to update VFS read stats", "err", err)
-		}
-	}()
+		go func() {
+			defer wg.Done()
 
-	go func() {
-		defer wg.Done()
+			if err := c.updateVFSRead(ch, aggMetrics); err != nil {
+				level.Error(c.logger).Log("msg", "Failed to update VFS read stats", "err", err)
+			}
+		}()
 
-		if err := c.updateVFSOpen(ch); err != nil {
-			level.Error(c.logger).Log("msg", "Failed to update VFS open stats", "err", err)
-		}
-	}()
+		go func() {
+			defer wg.Done()
 
-	go func() {
-		defer wg.Done()
+			if err := c.updateVFSOpen(ch, aggMetrics); err != nil {
+				level.Error(c.logger).Log("msg", "Failed to update VFS open stats", "err", err)
+			}
+		}()
 
-		if err := c.updateVFSCreate(ch); err != nil {
-			level.Error(c.logger).Log("msg", "Failed to update VFS create stats", "err", err)
-		}
-	}()
+		go func() {
+			defer wg.Done()
 
-	go func() {
-		defer wg.Done()
+			if err := c.updateVFSCreate(ch, aggMetrics); err != nil {
+				level.Error(c.logger).Log("msg", "Failed to update VFS create stats", "err", err)
+			}
+		}()
 
-		if err := c.updateVFSUnlink(ch); err != nil {
-			level.Error(c.logger).Log("msg", "Failed to update VFS unlink stats", "err", err)
-		}
-	}()
+		go func() {
+			defer wg.Done()
 
-	go func() {
-		defer wg.Done()
+			if err := c.updateVFSUnlink(ch, aggMetrics); err != nil {
+				level.Error(c.logger).Log("msg", "Failed to update VFS unlink stats", "err", err)
+			}
+		}()
+	}
 
-		if err := c.updateNetEgress(ch); err != nil {
-			level.Error(c.logger).Log("msg", "Failed to update network egress stats", "err", err)
-		}
-	}()
+	if *ebpfNetMetricsFlag {
+		wg.Add(3)
 
-	go func() {
-		defer wg.Done()
+		go func() {
+			defer wg.Done()
 
-		if err := c.updateNetIngress(ch); err != nil {
-			level.Error(c.logger).Log("msg", "Failed to update network ingress stats", "err", err)
-		}
-	}()
+			if err := c.updateNetEgress(ch, aggMetrics); err != nil {
+				level.Error(c.logger).Log("msg", "Failed to update network egress stats", "err", err)
+			}
+		}()
 
-	go func() {
-		defer wg.Done()
+		go func() {
+			defer wg.Done()
 
-		if err := c.updateNetRetrans(ch); err != nil {
-			level.Error(c.logger).Log("msg", "Failed to update network retransmission stats", "err", err)
-		}
-	}()
+			if err := c.updateNetIngress(ch, aggMetrics); err != nil {
+				level.Error(c.logger).Log("msg", "Failed to update network ingress stats", "err", err)
+			}
+		}()
+
+		go func() {
+			defer wg.Done()
+
+			if err := c.updateNetRetrans(ch, aggMetrics); err != nil {
+				level.Error(c.logger).Log("msg", "Failed to update network retransmission stats", "err", err)
+			}
+		}()
+	}
 
 	// Wait for all go routines
 	wg.Wait()
@@ -538,74 +616,18 @@ func (c *ebpfCollector) Stop(_ context.Context) error {
 	return nil
 }
 
-// containsMount returns true if any of configured mount points is a substring to mount path
-// returned by map.
-// If there are no mount points configured it returns true to allow all mount points.
-func (c *ebpfCollector) containsMount(mount string) bool {
-	if len(c.opts.vfsMountPoints) <= 0 {
-		return true
-	}
-
-	// Check if any of configured mount points is a sub string
-	// of actual mount point
-	for _, m := range c.opts.vfsMountPoints {
-		if strings.Contains(mount, m) {
-			return true
-		}
-	}
-
-	return false
-}
-
-// aggVFSRWStats aggregates the VFS read/write metrics based on UUID.
-func (c *ebpfCollector) aggVFSRWStats(mapName string) (map[promVfsEventKey]bpfVfsRwEvent, error) {
-	var key bpfVfsEventKey
-
-	var value bpfVfsRwEvent
-
-	aggMetric := make(map[promVfsEventKey]bpfVfsRwEvent)
-
-	if m, ok := c.vfsColl.Maps[mapName]; ok {
-		entries := m.Iterate()
-		for entries.Next(&key, &value) {
-			if slices.Contains(c.activeCgroupIDs, uint64(key.Cid)) {
-				mount := unix.ByteSliceToString(key.Mnt[:])
-				if !c.containsMount(mount) {
-					continue
-				}
-
-				promKey := promVfsEventKey{
-					UUID:  c.cgroupIDUUIDCache[uint64(key.Cid)],
-					Mount: mount,
-				}
-				if v, ok := aggMetric[promKey]; ok {
-					aggMetric[promKey] = bpfVfsRwEvent{
-						Calls:  v.Calls + value.Calls,
-						Bytes:  v.Bytes + value.Bytes,
-						Errors: v.Errors + value.Errors,
-					}
-				} else {
-					aggMetric[promKey] = value
-				}
-			}
-		}
-	} else {
-		return nil, errMapNotFound
-	}
-
-	return aggMetric, nil
-}
-
 // updateVFSWrite updates VFS write metrics.
-func (c *ebpfCollector) updateVFSWrite(ch chan<- prometheus.Metric) error {
-	if c.vfsColl == nil {
+func (c *ebpfCollector) updateVFSWrite(ch chan<- prometheus.Metric, aggMetrics *aggMetrics) error {
+	if aggMetrics.readWrite == nil {
 		return nil
 	}
 
 	// Aggregate metrics
-	aggMetric, err := c.aggVFSRWStats("write_accumulator")
-	if err != nil {
-		return err
+	var aggMetric map[promVfsEventKey]bpfVfsRwEvent
+
+	var ok bool
+	if aggMetric, ok = aggMetrics.readWrite["write_accumulator"]; !ok {
+		return ErrNoData
 	}
 
 	// Update metrics to the channel
@@ -619,15 +641,17 @@ func (c *ebpfCollector) updateVFSWrite(ch chan<- prometheus.Metric) error {
 }
 
 // updateVFSRead updates VFS read metrics.
-func (c *ebpfCollector) updateVFSRead(ch chan<- prometheus.Metric) error {
-	if c.vfsColl == nil {
+func (c *ebpfCollector) updateVFSRead(ch chan<- prometheus.Metric, aggMetrics *aggMetrics) error {
+	if aggMetrics.readWrite == nil {
 		return nil
 	}
 
 	// Aggregate metrics
-	aggMetric, err := c.aggVFSRWStats("read_accumulator")
-	if err != nil {
-		return err
+	var aggMetric map[promVfsEventKey]bpfVfsRwEvent
+
+	var ok bool
+	if aggMetric, ok = aggMetrics.readWrite["read_accumulator"]; !ok {
+		return ErrNoData
 	}
 
 	// Update metrics to the channel
@@ -640,46 +664,18 @@ func (c *ebpfCollector) updateVFSRead(ch chan<- prometheus.Metric) error {
 	return nil
 }
 
-// aggVFSInodeStats aggregates the VFS inode metrics based on UUID.
-func (c *ebpfCollector) aggVFSInodeStats(mapName string) (map[string]bpfVfsInodeEvent, error) {
-	var key uint32
-
-	var value bpfVfsInodeEvent
-
-	aggMetric := make(map[string]bpfVfsInodeEvent)
-
-	if m, ok := c.vfsColl.Maps[mapName]; ok {
-		entries := m.Iterate()
-		for entries.Next(&key, &value) {
-			if slices.Contains(c.activeCgroupIDs, uint64(key)) {
-				uuid := c.cgroupIDUUIDCache[uint64(key)]
-				if v, ok := aggMetric[uuid]; ok {
-					aggMetric[uuid] = bpfVfsInodeEvent{
-						Calls:  v.Calls + value.Calls,
-						Errors: v.Errors + value.Errors,
-					}
-				} else {
-					aggMetric[uuid] = value
-				}
-			}
-		}
-	} else {
-		return nil, errMapNotFound
-	}
-
-	return aggMetric, nil
-}
-
 // updateVFSOpen updates VFS open stats.
-func (c *ebpfCollector) updateVFSOpen(ch chan<- prometheus.Metric) error {
-	if c.vfsColl == nil {
+func (c *ebpfCollector) updateVFSOpen(ch chan<- prometheus.Metric, aggMetrics *aggMetrics) error {
+	if aggMetrics.inode == nil {
 		return nil
 	}
 
 	// Aggregate metrics
-	aggMetric, err := c.aggVFSInodeStats("open_accumulator")
-	if err != nil {
-		return err
+	var aggMetric map[string]bpfVfsInodeEvent
+
+	var ok bool
+	if aggMetric, ok = aggMetrics.inode["open_accumulator"]; !ok {
+		return ErrNoData
 	}
 
 	// Update metrics to the channel
@@ -692,15 +688,17 @@ func (c *ebpfCollector) updateVFSOpen(ch chan<- prometheus.Metric) error {
 }
 
 // updateVFSCreate updates VFS create stats.
-func (c *ebpfCollector) updateVFSCreate(ch chan<- prometheus.Metric) error {
-	if c.vfsColl == nil {
+func (c *ebpfCollector) updateVFSCreate(ch chan<- prometheus.Metric, aggMetrics *aggMetrics) error {
+	if aggMetrics.inode == nil {
 		return nil
 	}
 
 	// Aggregate metrics
-	aggMetric, err := c.aggVFSInodeStats("create_accumulator")
-	if err != nil {
-		return err
+	var aggMetric map[string]bpfVfsInodeEvent
+
+	var ok bool
+	if aggMetric, ok = aggMetrics.inode["create_accumulator"]; !ok {
+		return ErrNoData
 	}
 
 	// Update metrics to the channel
@@ -713,15 +711,17 @@ func (c *ebpfCollector) updateVFSCreate(ch chan<- prometheus.Metric) error {
 }
 
 // updateVFSUnlink updates VFS unlink stats.
-func (c *ebpfCollector) updateVFSUnlink(ch chan<- prometheus.Metric) error {
-	if c.vfsColl == nil {
+func (c *ebpfCollector) updateVFSUnlink(ch chan<- prometheus.Metric, aggMetrics *aggMetrics) error {
+	if aggMetrics.inode == nil {
 		return nil
 	}
 
 	// Aggregate metrics
-	aggMetric, err := c.aggVFSInodeStats("unlink_accumulator")
-	if err != nil {
-		return err
+	var aggMetric map[string]bpfVfsInodeEvent
+
+	var ok bool
+	if aggMetric, ok = aggMetrics.inode["unlink_accumulator"]; !ok {
+		return ErrNoData
 	}
 
 	// Update metrics to the channel
@@ -733,50 +733,18 @@ func (c *ebpfCollector) updateVFSUnlink(ch chan<- prometheus.Metric) error {
 	return nil
 }
 
-// aggNetStats aggregates the network metrics based on UUID.
-func (c *ebpfCollector) aggNetStats(mapName string) (map[promNetEventKey]bpfNetEvent, error) {
-	var key bpfNetEventKey
-
-	var value bpfNetEvent
-
-	aggMetric := make(map[promNetEventKey]bpfNetEvent)
-
-	if m, ok := c.netColl.Maps[mapName]; ok {
-		entries := m.Iterate()
-		for entries.Next(&key, &value) {
-			if slices.Contains(c.activeCgroupIDs, uint64(key.Cid)) {
-				promKey := promNetEventKey{
-					UUID:   c.cgroupIDUUIDCache[uint64(key.Cid)],
-					Proto:  protoMap[int(key.Proto)],
-					Family: familyMap[int(key.Fam)],
-				}
-				if v, ok := aggMetric[promKey]; ok {
-					aggMetric[promKey] = bpfNetEvent{
-						Packets: v.Packets + value.Packets,
-						Bytes:   v.Bytes + value.Bytes,
-					}
-				} else {
-					aggMetric[promKey] = value
-				}
-			}
-		}
-	} else {
-		return nil, errMapNotFound
-	}
-
-	return aggMetric, nil
-}
-
 // updateNetIngress updates network ingress stats.
-func (c *ebpfCollector) updateNetIngress(ch chan<- prometheus.Metric) error {
-	if c.netColl == nil {
+func (c *ebpfCollector) updateNetIngress(ch chan<- prometheus.Metric, aggMetrics *aggMetrics) error {
+	if aggMetrics.network == nil {
 		return nil
 	}
 
 	// Aggregate metrics
-	aggMetric, err := c.aggNetStats("ingress_accumulator")
-	if err != nil {
-		return err
+	var aggMetric map[promNetEventKey]bpfNetEvent
+
+	var ok bool
+	if aggMetric, ok = aggMetrics.network["ingress_accumulator"]; !ok {
+		return ErrNoData
 	}
 
 	// Update metrics to the channel
@@ -789,15 +757,17 @@ func (c *ebpfCollector) updateNetIngress(ch chan<- prometheus.Metric) error {
 }
 
 // updateNetEgress updates network egress stats.
-func (c *ebpfCollector) updateNetEgress(ch chan<- prometheus.Metric) error {
-	if c.netColl == nil {
+func (c *ebpfCollector) updateNetEgress(ch chan<- prometheus.Metric, aggMetrics *aggMetrics) error {
+	if aggMetrics.network == nil {
 		return nil
 	}
 
 	// Aggregate metrics
-	aggMetric, err := c.aggNetStats("egress_accumulator")
-	if err != nil {
-		return err
+	var aggMetric map[promNetEventKey]bpfNetEvent
+
+	var ok bool
+	if aggMetric, ok = aggMetrics.network["egress_accumulator"]; !ok {
+		return ErrNoData
 	}
 
 	// Update metrics to the channel
@@ -810,15 +780,17 @@ func (c *ebpfCollector) updateNetEgress(ch chan<- prometheus.Metric) error {
 }
 
 // updateNetRetrans updates network retransmission stats.
-func (c *ebpfCollector) updateNetRetrans(ch chan<- prometheus.Metric) error {
-	if c.netColl == nil {
+func (c *ebpfCollector) updateNetRetrans(ch chan<- prometheus.Metric, aggMetrics *aggMetrics) error {
+	if aggMetrics.network == nil {
 		return nil
 	}
 
 	// Aggregate metrics
-	aggMetric, err := c.aggNetStats("retrans_accumulator")
-	if err != nil {
-		return err
+	var aggMetric map[promNetEventKey]bpfNetEvent
+
+	var ok bool
+	if aggMetric, ok = aggMetrics.network["retrans_accumulator"]; !ok {
+		return ErrNoData
 	}
 
 	// Update metrics to the channel
@@ -830,6 +802,28 @@ func (c *ebpfCollector) updateNetRetrans(ch chan<- prometheus.Metric) error {
 	return nil
 }
 
+// readMaps reads the BPF maps in a security context and returns aggregate metrics.
+func (c *ebpfCollector) readMaps() (*aggMetrics, error) {
+	dataPtr := &ebpfReadMapsCtxData{
+		opts:              c.opts,
+		cgroupIDUUIDCache: c.cgroupIDUUIDCache,
+		activeCgroupIDs:   c.activeCgroupIDs,
+		vfsColl:           c.vfsColl,
+		netColl:           c.netColl,
+	}
+
+	// Start new profilers within security context
+	if securityCtx, ok := c.securityContexts[ebpfReadBPFMapsCtx]; ok {
+		if err := securityCtx.Exec(dataPtr); err == nil {
+			return dataPtr.aggMetrics, nil
+		}
+	}
+
+	return nil, ErrNoData
+}
+
+// discoverCgroups walks through cgroup file system and discover all relevant cgroups based
+// on cgroupManager.
 func (c *ebpfCollector) discoverCgroups() error {
 	// Get currently active uuids and cgroup paths to evict older entries in caches
 	var activeCgroupUUIDs []string
@@ -905,39 +899,184 @@ func (c *ebpfCollector) discoverCgroups() error {
 	return nil
 }
 
-// bpfVFSObjs returns the VFS bpf objects based on current kernel version.
-func bpfVFSObjs() (string, error) {
-	// Get current kernel version
-	currentKernelVer, err := KernelVersion()
-	if err != nil {
-		return "", err
+// aggStats returns aggregate VFS and network metrics by reading
+// BPF maps. This function gets executes in a security context
+// with relevant privileges.
+func aggStats(data interface{}) error {
+	// Assert data type
+	var d *ebpfReadMapsCtxData
+
+	var ok bool
+	if d, ok = data.(*ebpfReadMapsCtxData); !ok {
+		return security.ErrSecurityCtxDataAssertion
 	}
 
+	// Initialise aggMetrics field
+	d.aggMetrics = &aggMetrics{
+		readWrite: make(map[string]map[promVfsEventKey]bpfVfsRwEvent),
+		inode:     make(map[string]map[string]bpfVfsInodeEvent),
+		network:   make(map[string]map[promNetEventKey]bpfNetEvent),
+	}
+
+	// Read VFS stats
+	aggVFSStats(d)
+
+	// Read network stats
+	aggNetStats(d)
+
+	return nil
+}
+
+// containsMount returns true if any of configured mount points is a substring to mount path
+// returned by map. If there are no mount points configured it returns true to allow all
+// mount points.
+func containsMount(mount string, mounPoints []string) bool {
+	if len(mounPoints) <= 0 {
+		return true
+	}
+
+	// Check if any of configured mount points is a sub string
+	// of actual mount point
+	for _, m := range mounPoints {
+		if strings.Contains(mount, m) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// aggVFSStats returns VFS related aggregate stats from BPF maps.
+func aggVFSStats(d *ebpfReadMapsCtxData) {
+	if d.vfsColl == nil {
+		return
+	}
+
+	var rwKey bpfVfsEventKey
+
+	var inodeKey uint32
+
+	var rwValue bpfVfsRwEvent
+
+	var inodeValue bpfVfsInodeEvent
+
+	// d.aggMetrics.readWrite = make(map[string]map[promVfsEventKey]bpfVfsRwEvent)
+
+	// d.aggMetrics.inode = make(map[string]map[string]bpfVfsInodeEvent)
+
+	for mapName, mapData := range d.vfsColl.Maps {
+		entries := mapData.Iterate()
+
+		// Read and Write maps
+		if strings.HasPrefix(mapName, "read") || strings.HasPrefix(mapName, "write") {
+			if d.aggMetrics.readWrite[mapName] == nil {
+				d.aggMetrics.readWrite[mapName] = make(map[promVfsEventKey]bpfVfsRwEvent)
+			}
+
+			for entries.Next(&rwKey, &rwValue) {
+				if slices.Contains(d.activeCgroupIDs, uint64(rwKey.Cid)) {
+					mount := unix.ByteSliceToString(rwKey.Mnt[:])
+					if !containsMount(mount, d.opts.vfsMountPoints) {
+						continue
+					}
+
+					promKey := promVfsEventKey{
+						UUID:  d.cgroupIDUUIDCache[uint64(rwKey.Cid)],
+						Mount: mount,
+					}
+					if v, ok := d.aggMetrics.readWrite[mapName][promKey]; ok {
+						d.aggMetrics.readWrite[mapName][promKey] = bpfVfsRwEvent{
+							Calls:  v.Calls + rwValue.Calls,
+							Bytes:  v.Bytes + rwValue.Bytes,
+							Errors: v.Errors + rwValue.Errors,
+						}
+					} else {
+						d.aggMetrics.readWrite[mapName][promKey] = rwValue
+					}
+				}
+			}
+		} else {
+			if d.aggMetrics.inode[mapName] == nil {
+				d.aggMetrics.inode[mapName] = make(map[string]bpfVfsInodeEvent)
+			}
+
+			for entries.Next(&inodeKey, &inodeValue) {
+				if slices.Contains(d.activeCgroupIDs, uint64(inodeKey)) {
+					uuid := d.cgroupIDUUIDCache[uint64(inodeKey)]
+					if v, ok := d.aggMetrics.inode[mapName][uuid]; ok {
+						d.aggMetrics.inode[mapName][uuid] = bpfVfsInodeEvent{
+							Calls:  v.Calls + inodeValue.Calls,
+							Errors: v.Errors + inodeValue.Errors,
+						}
+					} else {
+						d.aggMetrics.inode[mapName][uuid] = inodeValue
+					}
+				}
+			}
+		}
+	}
+}
+
+// aggNetStats returns network related aggregate stats from BPF maps.
+func aggNetStats(d *ebpfReadMapsCtxData) {
+	if d.netColl == nil {
+		return
+	}
+
+	var key bpfNetEventKey
+
+	var value bpfNetEvent
+
+	// d.aggMetrics.network = make(map[string]map[promNetEventKey]bpfNetEvent)
+
+	for mapName, mapData := range d.netColl.Maps {
+		entries := mapData.Iterate()
+
+		if d.aggMetrics.network[mapName] == nil {
+			d.aggMetrics.network[mapName] = make(map[promNetEventKey]bpfNetEvent)
+		}
+
+		for entries.Next(&key, &value) {
+			if slices.Contains(d.activeCgroupIDs, uint64(key.Cid)) {
+				promKey := promNetEventKey{
+					UUID:   d.cgroupIDUUIDCache[uint64(key.Cid)],
+					Proto:  protoMap[int(key.Proto)],
+					Family: familyMap[int(key.Fam)],
+				}
+				if v, ok := d.aggMetrics.network[mapName][promKey]; ok {
+					d.aggMetrics.network[mapName][promKey] = bpfNetEvent{
+						Packets: v.Packets + value.Packets,
+						Bytes:   v.Bytes + value.Bytes,
+					}
+				} else {
+					d.aggMetrics.network[mapName][promKey] = value
+				}
+			}
+		}
+	}
+}
+
+// bpfVFSObjs returns the VFS bpf objects based on current kernel version.
+func bpfVFSObjs(kernelVersion int64) string {
 	// Return appropriate bpf object file based on kernel version
-	if currentKernelVer > KernelStringToNumeric("6.2") {
-		return "bpf_vfs.o", nil
-	} else if currentKernelVer > KernelStringToNumeric("5.11") && currentKernelVer <= KernelStringToNumeric("6.2") {
-		return "bpf_vfs_v62.o", nil
+	if kernelVersion > KernelStringToNumeric("6.2") {
+		return "bpf_vfs.o"
+	} else if kernelVersion > KernelStringToNumeric("5.11") && kernelVersion <= KernelStringToNumeric("6.2") {
+		return "bpf_vfs_v62.o"
 	} else {
-		return "bpf_vfs_v511.o", nil
+		return "bpf_vfs_v511.o"
 	}
 }
 
 // bpfNetObjs returns the network bpf objects based on current kernel version.
-func bpfNetObjs() (string, error) {
-	// Get current kernel version
-	currentKernelVer, err := KernelVersion()
-	if err != nil {
-		return "", err
-	}
-
+func bpfNetObjs(kernelVersion int64) string {
 	// Return appropriate bpf object file based on kernel version
-	if currentKernelVer > KernelStringToNumeric("6.4") {
-		return "bpf_network.o", nil
-	} else if currentKernelVer >= KernelStringToNumeric("5.19") && currentKernelVer <= KernelStringToNumeric("6.4") {
-		return "bpf_network_v64.o", nil
+	if kernelVersion > KernelStringToNumeric("6.4") {
+		return "bpf_network.o"
+	} else if kernelVersion >= KernelStringToNumeric("5.19") && kernelVersion <= KernelStringToNumeric("6.4") {
+		return "bpf_network_v64.o"
 	} else {
-		return "bpf_network_v519.o", nil
+		return "bpf_network_v519.o"
 	}
 }
 
@@ -969,4 +1108,9 @@ func loadObject(path string) (*ebpf.Collection, error) {
 	}
 
 	return coll, nil
+}
+
+// ebpfCollectorEnabled returns true if any of ebpf stats are enabled.
+func ebpfCollectorEnabled() bool {
+	return *ebpfIOMetricsFlag || *ebpfNetMetricsFlag
 }

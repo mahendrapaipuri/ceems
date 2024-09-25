@@ -64,7 +64,7 @@ func (c *meminfoCollector) Update(ch chan<- prometheus.Metric) error {
 		return fmt.Errorf("couldn't get meminfo: %w", err)
 	}
 
-	level.Debug(c.logger).Log("msg", "Set node_mem", "memInfo", fmt.Sprintf("%v", memInfo))
+	// level.Debug(c.logger).Log("msg", "Set node_mem", "memInfo", fmt.Sprintf("%v", memInfo))
 
 	// Export only MemTotal, MemFree and MemAvailable fields if meminfoAllStatistics is false
 	var memInfoStats map[string]float64
