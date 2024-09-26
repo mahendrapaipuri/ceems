@@ -10,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"kernel.org/pub/linux/libs/security/libcap/cap"
 )
 
 func skipUnprivileged(t *testing.T) {
@@ -24,44 +25,44 @@ func skipUnprivileged(t *testing.T) {
 	}
 }
 
-// func TestDropPrivileges(t *testing.T) {
-// 	skipUnprivileged(t)
+func TestDropPrivileges(t *testing.T) {
+	skipUnprivileged(t)
 
-// 	// Target a cap
-// 	value, err := cap.FromName("cap_sys_admin")
-// 	require.NoError(t, err)
+	// Target a cap
+	value, err := cap.FromName("cap_sys_admin")
+	require.NoError(t, err)
 
-// 	// Make test config
-// 	// We are running as root as using any other user
-// 	// will make the process owner running that test
-// 	// as that user and go wont be able to create
-// 	// build and coverage related files anymore after
-// 	// test finishes.
-// 	cfg := Config{
-// 		RunAsUser: "root",
-// 		Caps:      []cap.Value{value},
-// 	}
+	// Make test config
+	// We are running as root as using any other user
+	// will make the process owner running that test
+	// as that user and go wont be able to create
+	// build and coverage related files anymore after
+	// test finishes.
+	cfg := Config{
+		RunAsUser: "root",
+		Caps:      []cap.Value{value},
+	}
 
-// 	// Drop all privileges
-// 	err = DropPrivileges(&cfg)
-// 	require.NoError(t, err)
+	// Drop all privileges
+	err = DropPrivileges(&cfg)
+	require.NoError(t, err)
 
-// 	// Check process do not have any privileges
-// 	capName := cap.GetProc().String()
+	// Check process do not have any privileges
+	capName := cap.GetProc().String()
 
-// 	require.NoError(t, err)
-// 	assert.EqualValues(t, "cap_sys_admin=p", capName)
+	require.NoError(t, err)
+	assert.EqualValues(t, "cap_sys_admin=p", capName)
 
-// 	// Get current caps
-// 	current := cap.GetProc()
+	// Get current caps
+	current := cap.GetProc()
 
-// 	// Setback current caps
-// 	err = current.SetFlag(cap.Effective, true, value)
-// 	require.NoError(t, err)
+	// Setback current caps
+	err = current.SetFlag(cap.Effective, true, value)
+	require.NoError(t, err)
 
-// 	err = current.SetProc()
-// 	require.NoError(t, err)
-// }
+	err = current.SetProc()
+	require.NoError(t, err)
+}
 
 func TestChangeOwnership(t *testing.T) {
 	skipUnprivileged(t)

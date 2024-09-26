@@ -37,6 +37,7 @@ func TestCEEMSLBExecutable(t *testing.T) {
 		binary, "--path.data", tmpDir,
 		"--config.path", tmpConfigPath,
 		"--web.listen-address", address,
+		"--no-security.drop-privileges",
 	)
 	if err := runCommandAndTests(lb); err != nil {
 		t.Error(err)
