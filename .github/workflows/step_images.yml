@@ -67,7 +67,9 @@ jobs:
           docker images
 
       - name: Test container images
-        run: make test-docker DOCKER_IMAGE_TAG=${{ steps.vars.outputs.branch_name }} DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
+        run: |
+          docker run --privileged -d -p 9010:9010 ${{ inputs.registry }}/${{ inputs.organization }}-linux-amd64:${{ steps.vars.outputs.branch_name }} ceems_exporter
+          make test-docker DOCKER_IMAGE_TAG=${{ steps.vars.outputs.branch_name }} DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
 
       - name: Publish image for current branch/tag
         if: github.ref == 'refs/heads/main' || (github.event_name == 'push' && contains(github.ref, 'refs/tags/'))
