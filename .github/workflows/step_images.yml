@@ -68,7 +68,6 @@ jobs:
 
       - name: Test container images
         run: |
-          docker run --privileged -p 9010:9010 docker.io/mahendrapaipuri/ceems-linux-amd64:main ceems_exporter
           make test-docker DOCKER_IMAGE_TAG=${{ steps.vars.outputs.branch_name }} DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
 
       - name: Publish image for current branch/tag

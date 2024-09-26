@@ -17,6 +17,7 @@ wait_start() {
         fi
     done
 
+    docker logs "${container_id}"
     exit 1
 }
 
