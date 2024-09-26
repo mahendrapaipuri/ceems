@@ -191,6 +191,10 @@ func (b *tsdbServer) fetchRetentionPeriod() (time.Duration, error) {
 		return b.retentionPeriod, ErrTypeAssertion
 	}
 
+	// Use an initial value so that even if we do not find it
+	// in runtime config, we return a sane default
+	period := model.Duration(b.retentionPeriod)
+
 	for k, v := range runtimeData {
 		if k == "storageRetention" {
 			vString, ok := v.(string)
@@ -199,12 +203,72 @@ func (b *tsdbServer) fetchRetentionPeriod() (time.Duration, error) {
 			}
 
 			for _, retentionString := range strings.Split(vString, "or") {
-				period, err := model.ParseDuration(strings.TrimSpace(retentionString))
+				period, err = model.ParseDuration(strings.TrimSpace(retentionString))
 				if err != nil {
 					continue
 				}
 
-				return time.Duration(period), nil
+				goto outside
+			}
+		}
+	}
+
+outside:
+
+	// If both retention storage and retention period are set,
+	// depending on whichever hit first, TSDB uses the data based
+	// on that retention.
+	// So just becase retention period is, say 30d, we might not
+	// have data spanning 30d if retention size cannot accommodate
+	// 30 days of data.
+	//
+	// Check if the data is actually available on TSDB by making
+	// a range query on "up" from now to now - retention_period
+	//
+	// Make query parameters
+	values := url.Values{
+		"query": []string{fmt.Sprintf(`up{instance="%s:%s"}`, b.url.Hostname(), b.url.Port())},
+		"start": []string{time.Now().Add(-time.Duration(period)).UTC().Format(time.RFC3339Nano)},
+		"end":   []string{time.Now().UTC().Format(time.RFC3339Nano)},
+		"step":  []string{"10m"},
+	}
+
+	queryURL := fmt.Sprintf("%s?%s", b.url.JoinPath("api/v1/query_range").String(), values.Encode())
+
+	data, err = tsdb.Request(ctx, queryURL, b.client)
+	if err != nil {
+		return time.Duration(period), nil
+	}
+
+	queryData, ok := data.(map[string]interface{})
+	if !ok {
+		return time.Duration(period), nil
+	}
+
+	// Check if results is not nil before converting it to slice of interfaces
+	if r, exists := queryData["result"]; exists && r != nil {
+		var results, values []interface{}
+
+		var result map[string]interface{}
+
+		var ok bool
+		if results, ok = r.([]interface{}); !ok {
+			return time.Duration(period), nil
+		}
+
+		for _, res := range results {
+			if result, ok = res.(map[string]interface{}); !ok {
+				continue
+			}
+
+			if val, exists := result["values"]; exists {
+				if values, ok = val.([]interface{}); ok && len(values) > 0 {
+					if v, ok := values[0].([]interface{}); ok && len(v) > 0 {
+						if t, ok := v[0].(float64); ok {
+							return time.Since(time.Unix(int64(t), 0)).Truncate(time.Hour), nil
+						}
+					}
+				}
 			}
 		}
 	}

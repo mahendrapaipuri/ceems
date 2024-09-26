@@ -31,6 +31,9 @@ var (
 // Metric defines TSDB metrics.
 type Metric map[string]float64
 
+// RangeMetric defines TSDB range metrics.
+type RangeMetric map[string][]interface{}
+
 // Response is the TSDB response model.
 type Response struct {
 	Status    string      `json:"status"`
@@ -102,10 +105,10 @@ func (t *TSDB) queryEndpoint() *url.URL {
 	return t.URL.JoinPath("/api/v1/query")
 }
 
-// // Query range endpoint
-// func (t *TSDB) queryRangeEndpoint() *url.URL {
-// 	return t.URL.JoinPath("/api/v1/query_range")
-// }
+// Query range endpoint.
+func (t *TSDB) queryRangeEndpoint() *url.URL {
+	return t.URL.JoinPath("/api/v1/query_range")
+}
 
 // Config endpoint.
 func (t *TSDB) configEndpoint() *url.URL {
@@ -382,6 +385,124 @@ func (t *TSDB) Query(ctx context.Context, query string, queryTime time.Time) (Me
 	}
 
 	return queriedValues, nil
+}
+
+// RangeQuery makes a TSDB range query.
+func (t *TSDB) RangeQuery(
+	ctx context.Context,
+	query string,
+	startTime time.Time,
+	endTime time.Time,
+	step string,
+) (RangeMetric, error) {
+	// Add form data to request
+	// TSDB expects time stamps in UTC zone
+	values := url.Values{
+		"query": []string{query},
+		"start": []string{startTime.UTC().Format(time.RFC3339Nano)},
+		"end":   []string{endTime.UTC().Format(time.RFC3339Nano)},
+		"step":  []string{step},
+	}
+
+	// Create a new POST request
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		t.queryRangeEndpoint().String(),
+		strings.NewReader(values.Encode()),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Add necessary headers
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+	// Make request
+	resp, err := t.Client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// Read response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	// Unpack into data
+	var data Response
+	if err = json.Unmarshal(body, &data); err != nil {
+		return nil, err
+	}
+
+	// Check if Status is error
+	if data.Status == "error" {
+		return nil, fmt.Errorf("error response from TSDB: %v", data)
+	}
+
+	// Check if Data exists on response
+	if data.Data == nil {
+		return nil, fmt.Errorf("TSDB response returned no data: %v", data)
+	}
+
+	// Check response code
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("query returned status: %d", resp.StatusCode)
+	}
+
+	queryData, ok := data.Data.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("%w on data: %v", ErrFailedTypeAssertion, data.Data)
+	}
+
+	// Parse data
+	queriedRangeValues := make(RangeMetric)
+
+	// Check if results is not nil before converting it to slice of interfaces
+	if r, exists := queryData["result"]; exists && r != nil {
+		var results, values []interface{}
+
+		var result, metric map[string]interface{}
+
+		var name interface{}
+
+		var n string
+
+		var ok bool
+		if results, ok = r.([]interface{}); !ok {
+			return nil, fmt.Errorf("%w on result: %v", ErrFailedTypeAssertion, r)
+		}
+
+		for _, res := range results {
+			if result, ok = res.(map[string]interface{}); !ok {
+				continue
+			}
+
+			if m, exists := result["metric"]; exists {
+				if metric, ok = m.(map[string]interface{}); !ok {
+					continue
+				}
+
+				if name, ok = metric["__name__"]; !ok {
+					continue
+				}
+
+				if n, ok = name.(string); !ok {
+					continue
+				}
+
+				if val, exists := result["values"]; exists {
+					if values, ok = val.([]interface{}); ok {
+						queriedRangeValues[n] = values
+					}
+				}
+			}
+		}
+	}
+
+	return queriedRangeValues, nil
 }
 
 // Delete time series with given labels.
