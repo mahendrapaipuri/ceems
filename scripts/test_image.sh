@@ -21,7 +21,7 @@ wait_start() {
 }
 
 docker_start() {
-    container_id=$(docker run -d -p "${port}":"${port}" "${docker_image}" ${app})
+    container_id=$(docker run --privileged -d -p "${port}":"${port}" "${docker_image}" ${app})
 }
 
 docker_cleanup() {

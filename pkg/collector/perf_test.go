@@ -10,7 +10,6 @@ import (
 
 	"github.com/containerd/cgroups/v3"
 	"github.com/go-kit/log"
-	"github.com/hodgesds/perf-utils"
 	"github.com/mahendrapaipuri/ceems/internal/security"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/procfs"
@@ -136,6 +135,14 @@ func TestNewProfilers(t *testing.T) {
 
 	var ok bool
 
+	_, err = CEEMSExporterApp.Parse([]string{
+		"--path.procfs", "testdata/proc",
+		"--collector.perf.hardware-events",
+		"--collector.perf.software-events",
+		"--collector.perf.hardware-cache-events",
+	})
+	require.NoError(t, err)
+
 	// cgroup manager
 	cgManager := &cgroupManager{
 		mode:    cgroups.Legacy,
@@ -145,41 +152,7 @@ func TestNewProfilers(t *testing.T) {
 		},
 	}
 
-	// perf opts
-	opts := perfOpts{
-		perfHwProfilersEnabled:    true,
-		perfSwProfilersEnabled:    true,
-		perfCacheProfilersEnabled: true,
-	}
-
-	collector := perfCollector{
-		logger:             log.NewNopLogger(),
-		cgroupManager:      cgManager,
-		opts:               opts,
-		perfHwProfilers:    make(map[int]*perf.HardwareProfiler),
-		perfSwProfilers:    make(map[int]*perf.SoftwareProfiler),
-		perfCacheProfilers: make(map[int]*perf.CacheProfiler),
-		securityContexts:   make(map[string]*security.SecurityContext),
-	}
-
-	// Create dummy security context
-	collector.securityContexts[perfOpenProfilersCtx], err = security.NewSecurityContext(
-		perfOpenProfilersCtx,
-		nil,
-		openProfilers,
-		collector.logger,
-	)
-	require.NoError(t, err)
-
-	collector.securityContexts[perfCloseProfilersCtx], err = security.NewSecurityContext(
-		perfCloseProfilersCtx,
-		nil,
-		closeProfilers,
-		collector.logger,
-	)
-	require.NoError(t, err)
-
-	collector.fs, err = procfs.NewFS("testdata/proc")
+	collector, err := NewPerfCollector(log.NewNopLogger(), cgManager)
 	require.NoError(t, err)
 
 	// Use fake cgroupID for current process
