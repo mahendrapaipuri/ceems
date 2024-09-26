@@ -123,7 +123,7 @@ func TestNewFrontendSingleGroup(t *testing.T) {
 		},
 		{
 			name:     "query with params in ctx and start more than retention period",
-			start:    time.Now().UTC().Add(-31 * 24 * time.Hour).Unix(),
+			start:    time.Now().UTC().Add(-32 * 24 * time.Hour).Unix(),
 			code:     503,
 			response: false,
 		},

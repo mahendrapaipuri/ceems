@@ -62,7 +62,19 @@ func NewEMapsProvider(logger log.Logger) (Provider, error) {
 		url = baseURL + "/zones"
 	}
 
-	zoneData, err := eMapsAPIRequest[eMapsZonesResponse](url, "")
+	var zoneData eMapsZonesResponse
+
+	var err error
+	// Try few times before giving up
+	for range 5 {
+		zoneData, err = eMapsAPIRequest[eMapsZonesResponse](url, "")
+		if err == nil {
+			break
+		}
+
+		time.Sleep(time.Second)
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch electricity maps zones: %w", err)
 	}

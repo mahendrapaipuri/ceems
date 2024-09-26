@@ -272,6 +272,70 @@ func TestTSDBQueryFail(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestTSDBQueryRangeSuccess(t *testing.T) {
+	// Start test server
+	expected := Response{
+		Status: "success",
+		Data: map[string]interface{}{
+			"resultType": "matrix",
+			"result": []interface{}{
+				map[string]interface{}{
+					"metric": map[string]string{
+						"__name__": "up",
+						"instance": "localhost:9090",
+					},
+					"values": []interface{}{
+						[]interface{}{1727367964.929, "1"},
+						[]interface{}{1727368964.929, "1"},
+					},
+				},
+			},
+		},
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewEncoder(w).Encode(&expected); err != nil {
+			w.Write([]byte("KO"))
+		}
+	}))
+	defer server.Close()
+
+	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
+	require.NoError(t, err)
+	assert.True(t, tsdb.Available())
+
+	m, err := tsdb.RangeQuery(context.Background(), "", time.Now(), time.Now(), "300")
+	require.NoError(t, err)
+	assert.Equal(
+		t,
+		RangeMetric{
+			"up": []interface{}{[]interface{}{1.727367964929e+09, "1"}, []interface{}{1.727368964929e+09, "1"}},
+		},
+		m,
+	)
+}
+
+func TestTSDBQueryRangeFail(t *testing.T) {
+	// Start test server
+	expected := Response{
+		Status: "error",
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewEncoder(w).Encode(&expected); err != nil {
+			w.Write([]byte("KO"))
+		}
+	}))
+	defer server.Close()
+
+	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
+	require.NoError(t, err)
+	assert.True(t, tsdb.Available())
+
+	_, err = tsdb.RangeQuery(context.Background(), "", time.Now(), time.Now(), "300")
+	assert.Error(t, err)
+}
+
 func TestTSDBDeleteSuccess(t *testing.T) {
 	// Start test server
 	expected := []string{"metric1", "metric2"}

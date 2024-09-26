@@ -27,7 +27,7 @@ type resourceBased struct {
 func (s *resourceBased) Target(id string, d time.Duration) backend.TSDBServer {
 	// If the ID is unknown return
 	if _, ok := s.backends[id]; !ok {
-		level.Error(s.logger).Log("msg", "Round Robin strategy", "err", fmt.Errorf("unknown backend ID: %s", id))
+		level.Error(s.logger).Log("msg", "Resource based strategy", "err", fmt.Errorf("unknown backend ID: %s", id))
 
 		return nil
 	}

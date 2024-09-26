@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"net/http/httputil"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -21,15 +22,40 @@ const (
 
 func TestTSDBConfigSuccess(t *testing.T) {
 	// Start test server
-	expected := tsdb.Response{
+	expectedRuntime := tsdb.Response{
 		Status: "success",
 		Data: map[string]string{
 			"storageRetention": "30d",
 		},
 	}
+	expectedRange := tsdb.Response{
+		Status: "success",
+		Data: map[string]interface{}{
+			"resultType": "matrix",
+			"result": []interface{}{
+				map[string]interface{}{
+					"metric": map[string]string{
+						"__name__": "up",
+						"instance": "localhost:9090",
+					},
+					"values": []interface{}{
+						[]interface{}{time.Now().Add(-15 * 24 * time.Hour).Unix(), "1"},
+						[]interface{}{time.Now().Add(-15 * 23 * time.Hour).Unix(), "1"},
+					},
+				},
+			},
+		},
+	}
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if err := json.NewEncoder(w).Encode(&expected); err != nil {
-			w.Write([]byte("KO"))
+		if strings.Contains(r.URL.Path, "runtimeinfo") {
+			if err := json.NewEncoder(w).Encode(&expectedRuntime); err != nil {
+				w.Write([]byte("KO"))
+			}
+		} else {
+			if err := json.NewEncoder(w).Encode(&expectedRange); err != nil {
+				w.Write([]byte("KO"))
+			}
 		}
 	}))
 	// defer server.Close()
@@ -37,27 +63,52 @@ func TestTSDBConfigSuccess(t *testing.T) {
 	url, _ := url.Parse(server.URL)
 	b := New(url, httputil.NewSingleHostReverseProxy(url), log.NewNopLogger())
 	require.Equal(t, server.URL, b.URL().String())
-	require.Equal(t, 30*24*time.Hour, b.RetentionPeriod())
+	require.Equal(t, 15*24*time.Hour, b.RetentionPeriod())
 	require.True(t, b.IsAlive())
 	require.Equal(t, 0, b.ActiveConnections())
 
 	// Stop dummy server and query for retention period, we should get last updated value
 	server.Close()
-	require.Equal(t, 30*24*time.Hour, b.RetentionPeriod())
+	require.Equal(t, 15*24*time.Hour, b.RetentionPeriod())
 }
 
 func TestTSDBConfigSuccessWithTwoRetentions(t *testing.T) {
 	// Start test server
-	expected := tsdb.Response{
+	expectedRuntime := tsdb.Response{
 		Status: "success",
 		Data: map[string]string{
 			"storageRetention": "30d or 10GiB",
 		},
 	}
 
+	expectedRange := tsdb.Response{
+		Status: "success",
+		Data: map[string]interface{}{
+			"resultType": "matrix",
+			"result": []interface{}{
+				map[string]interface{}{
+					"metric": map[string]string{
+						"__name__": "up",
+						"instance": "localhost:9090",
+					},
+					"values": []interface{}{
+						[]interface{}{time.Now().Add(-30 * 24 * time.Hour).Unix(), "1"},
+						[]interface{}{time.Now().Add(-30 * 23 * time.Hour).Unix(), "1"},
+					},
+				},
+			},
+		},
+	}
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if err := json.NewEncoder(w).Encode(&expected); err != nil {
-			w.Write([]byte("KO"))
+		if strings.Contains(r.URL.Path, "runtimeinfo") {
+			if err := json.NewEncoder(w).Encode(&expectedRuntime); err != nil {
+				w.Write([]byte("KO"))
+			}
+		} else {
+			if err := json.NewEncoder(w).Encode(&expectedRange); err != nil {
+				w.Write([]byte("KO"))
+			}
 		}
 	}))
 	defer server.Close()
