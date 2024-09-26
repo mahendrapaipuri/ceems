@@ -90,10 +90,10 @@ func (b *CEEMSExporter) Main() error {
 		).Default("false").Bool()
 
 		// test CLI flags hidden
-		runAsUser = b.App.Flag(
-			"test.run-as-user",
-			"Drop privileges and run as this user when exporter is started as root.",
-		).Default("nobody").Hidden().String()
+		dropPrivs = b.App.Flag(
+			"security.drop-privileges",
+			"Drop privileges and run as nobody when exporter is started as root.",
+		).Default("true").Bool()
 	)
 
 	// Socket activation only available on Linux
@@ -161,15 +161,21 @@ func (b *CEEMSExporter) Main() error {
 	// we do not/should not create users as it can have unwanted side-effects.
 	// We should be minimally intrusive but at the same time should provide maximum
 	// security
-	securityCfg := &security.Config{
-		RunAsUser: *runAsUser,
-		Caps:      allCollectorCaps,
-		ReadPaths: []string{*webConfigFile},
+	if *dropPrivs {
+		securityCfg := &security.Config{
+			RunAsUser: "nobody",
+			Caps:      allCollectorCaps,
+			ReadPaths: []string{*webConfigFile},
+		}
+
+		// Drop all unnecessary privileges
+		if err := security.DropPrivileges(securityCfg); err != nil {
+			return err
+		}
 	}
 
-	// Drop all unnecessary privileges
-	if err := security.DropPrivileges(securityCfg); err != nil {
-		return err
+	if user, err := user.Current(); err == nil {
+		level.Info(logger).Log("current_user", user.Username)
 	}
 
 	// Create web server config

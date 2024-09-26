@@ -29,7 +29,7 @@ func TestDropPrivileges(t *testing.T) {
 	skipUnprivileged(t)
 
 	// Target a cap
-	value, err := cap.FromName("cap_dac_override")
+	value, err := cap.FromName("cap_sys_admin")
 	require.NoError(t, err)
 
 	// Make test config
@@ -51,7 +51,17 @@ func TestDropPrivileges(t *testing.T) {
 	capName := cap.GetProc().String()
 
 	require.NoError(t, err)
-	assert.EqualValues(t, "cap_dac_override=p", capName)
+	assert.EqualValues(t, "cap_sys_admin=p", capName)
+
+	// Get current caps
+	current := cap.GetProc()
+
+	// Setback current caps
+	err = current.SetFlag(cap.Effective, true, value)
+	require.NoError(t, err)
+
+	err = current.SetProc()
+	require.NoError(t, err)
 }
 
 func TestChangeOwnership(t *testing.T) {

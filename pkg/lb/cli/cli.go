@@ -161,10 +161,10 @@ func (lb *CEEMSLoadBalancer) Main() error {
 		).Envar("GOMAXPROCS").Default("1").Int()
 
 		// Hidden test flags
-		runAsUser = lb.App.Flag(
-			"test.run-as-user",
-			"Drop privileges and run as this user when exporter is started as root.",
-		).Default("nobody").Hidden().String()
+		dropPrivs = lb.App.Flag(
+			"security.drop-privileges",
+			"Drop privileges and run as nobody when exporter is started as root.",
+		).Default("true").Bool()
 	)
 
 	// Socket activation only available on Linux
@@ -207,15 +207,17 @@ func (lb *CEEMSLoadBalancer) Main() error {
 	// We should STRONGLY advise in docs that CEEMS API server should not be started as root
 	// as that will end up dropping the privileges and running it as nobody user which can
 	// be strange as CEEMS API server writes data to DB.
-	securityCfg := &security.Config{
-		RunAsUser: *runAsUser,
-		Caps:      nil,
-		ReadPaths: []string{*webConfigFile, *configFile},
-	}
+	if *dropPrivs {
+		securityCfg := &security.Config{
+			RunAsUser: "nobody",
+			Caps:      nil,
+			ReadPaths: []string{*webConfigFile, *configFile},
+		}
 
-	// Drop all unnecessary privileges
-	if err := security.DropPrivileges(securityCfg); err != nil {
-		return err
+		// Drop all unnecessary privileges
+		if err := security.DropPrivileges(securityCfg); err != nil {
+			return err
+		}
 	}
 
 	// Create context that listens for the interrupt signal from the OS.

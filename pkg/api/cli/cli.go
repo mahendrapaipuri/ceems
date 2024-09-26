@@ -141,10 +141,10 @@ func (b *CEEMSServer) Main() error {
 		maxProcs = b.App.Flag(
 			"runtime.gomaxprocs", "The target number of CPUs Go will run on (GOMAXPROCS)",
 		).Envar("GOMAXPROCS").Default("1").Int()
-		runAsUser = b.App.Flag(
-			"test.run-as-user",
-			"Drop privileges and run as this user when exporter is started as root.",
-		).Default("nobody").Hidden().String()
+		dropPrivs = b.App.Flag(
+			"security.drop-privileges",
+			"Drop privileges and run as nobody when exporter is started as root.",
+		).Default("true").Bool()
 	)
 
 	// Socket activation only available on Linux
@@ -237,19 +237,21 @@ func (b *CEEMSServer) Main() error {
 		allCaps = append(allCaps, value)
 	}
 
-	// We should STRONGLY advise in docs that CEEMS API server should not be started as root
-	// as that will end up dropping the privileges and running it as nobody user which can
-	// be strange as CEEMS API server writes data to DB.
-	securityCfg := &security.Config{
-		RunAsUser:      *runAsUser,
-		Caps:           allCaps,
-		ReadPaths:      []string{*webConfigFile, *configFile},
-		ReadWritePaths: []string{config.Server.Data.Path, config.Server.Data.BackupPath},
-	}
+	if *dropPrivs {
+		// We should STRONGLY advise in docs that CEEMS API server should not be started as root
+		// as that will end up dropping the privileges and running it as nobody user which can
+		// be strange as CEEMS API server writes data to DB.
+		securityCfg := &security.Config{
+			RunAsUser:      "nobody",
+			Caps:           allCaps,
+			ReadPaths:      []string{*webConfigFile, *configFile},
+			ReadWritePaths: []string{config.Server.Data.Path, config.Server.Data.BackupPath},
+		}
 
-	// Drop all unnecessary privileges
-	if err := security.DropPrivileges(securityCfg); err != nil {
-		return err
+		// Drop all unnecessary privileges
+		if err := security.DropPrivileges(securityCfg); err != nil {
+			return err
+		}
 	}
 
 	// Create context that listens for the interrupt signal from the OS.
