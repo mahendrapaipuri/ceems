@@ -174,10 +174,6 @@ func (b *CEEMSExporter) Main() error {
 		}
 	}
 
-	if user, err := user.Current(); err == nil {
-		level.Info(logger).Log("current_user", user.Username)
-	}
-
 	// Create web server config
 	config := &Config{
 		Logger:    logger,
