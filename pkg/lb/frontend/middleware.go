@@ -134,8 +134,16 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 		// This will ensure we set query params in request's context always
 		r = parseQueryParams(r, amw.clusterIDs, amw.logger)
 
-		// Apply middleware only for query and query_range API calls
-		if !strings.HasSuffix(r.URL.Path, "query") && !strings.HasSuffix(r.URL.Path, "query_range") {
+		// Apply middleware only for following endpoints:
+		// - query
+		// - query_range
+		// - labels
+		// - labels values
+		// - series
+		if !strings.HasSuffix(r.URL.Path, "query") && !strings.HasSuffix(r.URL.Path, "query_range") &&
+			!strings.HasSuffix(r.URL.Path, "values") &&
+			!strings.HasSuffix(r.URL.Path, "labels") &&
+			!strings.HasSuffix(r.URL.Path, "series") {
 			goto end
 		}
 
@@ -171,7 +179,7 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 			return
 		}
 
-		level.Debug(amw.logger).Log("loggedUser", loggedUser, "url", r.URL)
+		level.Debug(amw.logger).Log("logged_user", loggedUser, "url", r.URL)
 
 		// Set logged user header
 		r.Header.Set(loggedUserHeader, loggedUser)

@@ -199,7 +199,7 @@ func (b *tsdbServer) fetchRetentionPeriod() (time.Duration, error) {
 		if k == "storageRetention" {
 			vString, ok := v.(string)
 			if !ok {
-				return b.retentionPeriod, ErrTypeAssertion
+				return time.Duration(period), ErrTypeAssertion
 			}
 
 			for _, retentionString := range strings.Split(vString, "or") {
@@ -210,6 +210,13 @@ func (b *tsdbServer) fetchRetentionPeriod() (time.Duration, error) {
 
 				goto outside
 			}
+
+			return time.Duration(
+					period,
+				), fmt.Errorf(
+					"failed to find retention period in runtime config: %s",
+					runtimeData,
+				)
 		}
 	}
 
@@ -225,15 +232,22 @@ outside:
 	// Check if the data is actually available on TSDB by making
 	// a range query on "up" from now to now - retention_period
 	//
+	// Seems like default limit of number of points per timeseries
+	// is 11k and so we need to choose a step that should keep
+	// the number of point below this limit. We choose 5k as limit
+	// to be safe. Infact we dont need all the points but just
+	// the first one.
+	//
 	// Make query parameters
-	values := url.Values{
+	step := time.Duration(period) / 5000
+	urlValues := url.Values{
 		"query": []string{fmt.Sprintf(`up{instance="%s:%s"}`, b.url.Hostname(), b.url.Port())},
 		"start": []string{time.Now().Add(-time.Duration(period)).UTC().Format(time.RFC3339Nano)},
 		"end":   []string{time.Now().UTC().Format(time.RFC3339Nano)},
-		"step":  []string{"10m"},
+		"step":  []string{step.Truncate(time.Second).String()},
 	}
 
-	queryURL := fmt.Sprintf("%s?%s", b.url.JoinPath("api/v1/query_range").String(), values.Encode())
+	queryURL := fmt.Sprintf("%s?%s", b.url.JoinPath("api/v1/query_range").String(), urlValues.Encode())
 
 	data, err = tsdb.Request(ctx, queryURL, b.client)
 	if err != nil {
@@ -246,32 +260,38 @@ outside:
 	}
 
 	// Check if results is not nil before converting it to slice of interfaces
-	if r, exists := queryData["result"]; exists && r != nil {
-		var results, values []interface{}
+	r, exists := queryData["result"]
+	if !exists || r == nil {
+		return time.Duration(period), nil
+	}
 
-		var result map[string]interface{}
+	var results, values []interface{}
 
-		var ok bool
-		if results, ok = r.([]interface{}); !ok {
-			return time.Duration(period), nil
+	var result map[string]interface{}
+
+	if results, ok = r.([]interface{}); !ok {
+		return time.Duration(period), nil
+	}
+
+	for _, res := range results {
+		if result, ok = res.(map[string]interface{}); !ok {
+			continue
 		}
 
-		for _, res := range results {
-			if result, ok = res.(map[string]interface{}); !ok {
-				continue
-			}
-
-			if val, exists := result["values"]; exists {
-				if values, ok = val.([]interface{}); ok && len(values) > 0 {
-					if v, ok := values[0].([]interface{}); ok && len(v) > 0 {
-						if t, ok := v[0].(float64); ok {
-							return time.Since(time.Unix(int64(t), 0)).Truncate(time.Hour), nil
-						}
+		if val, exists := result["values"]; exists {
+			if values, ok = val.([]interface{}); ok && len(values) > 0 {
+				if v, ok := values[0].([]interface{}); ok && len(v) > 0 {
+					if t, ok := v[0].(float64); ok {
+						// We are updating retention period only at updateInterval
+						// so we need to reduce the actual retention period.
+						// Here we reduce twice the update interval just to be
+						// in a safe land
+						return (time.Since(time.Unix(int64(t), 0)) - 2*b.updateInterval).Truncate(time.Hour), nil
 					}
 				}
 			}
 		}
 	}
 
-	return b.retentionPeriod, fmt.Errorf("failed to find retention period in runtime config: %s", runtimeData)
+	return time.Duration(period), nil
 }

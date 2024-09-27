@@ -166,8 +166,16 @@ func parseQueryParams(r *http.Request, rmIDs []string, logger log.Logger) *http.
 		}
 	}
 
+	// Except for query API, rest of the load balanced API endpoint have start query param
+	var targetQueryParam string
+	if strings.HasSuffix(clonedReq.URL.Path, "query") {
+		targetQueryParam = "time"
+	} else {
+		targetQueryParam = "start"
+	}
+
 	// Parse TSDB's start query in request query params
-	if startTime, err := parseTimeParam(clonedReq, "start", time.Now().UTC()); err != nil {
+	if startTime, err := parseTimeParam(clonedReq, targetQueryParam, time.Now().UTC()); err != nil {
 		level.Error(logger).Log("msg", "Could not parse start query param", "err", err)
 
 		queryPeriod = 0 * time.Second
