@@ -11,7 +11,7 @@ type testStruct struct {
 	ID     int         `json:"-"                sql:"id"`
 	Field1 string      `json:"field1,omitempty" sql:"f1"`
 	Field2 bool        `json:"field2"           sql:"f2"`
-	Field3 interface{} `sql:"f3"`
+	Field3 interface{} `                        sql:"f3"`
 	Field4 []string    `json:"field4"           sql:"f4"`
 }
 

@@ -3,6 +3,7 @@ package tsdb
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 )
@@ -38,7 +39,7 @@ func Request(ctx context.Context, url string, client *http.Client) (interface{},
 
 	// if Data field is nil return err
 	if data.Data == nil {
-		return nil, ErrMissingData
+		return nil, fmt.Errorf("%w: %s", ErrMissingData, data.Error)
 	}
 
 	return data.Data, nil

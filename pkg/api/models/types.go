@@ -327,10 +327,10 @@ type CLIConfig struct {
 type Cluster struct {
 	ID       string    `json:"id"      sql:"cluster_id"       yaml:"id"`
 	Manager  string    `json:"manager" sql:"resource_manager" yaml:"manager"`
-	Web      WebConfig `json:"-"       yaml:"web"`
-	CLI      CLIConfig `json:"-"       yaml:"cli"`
-	Updaters []string  `json:"-"       yaml:"updaters"`
-	Extra    yaml.Node `json:"-"       yaml:"extra_config"`
+	Web      WebConfig `json:"-"                              yaml:"web"`
+	CLI      CLIConfig `json:"-"                              yaml:"cli"`
+	Updaters []string  `json:"-"                              yaml:"updaters"`
+	Extra    yaml.Node `json:"-"                              yaml:"extra_config"`
 }
 
 // ClusterUnits is the container for the units and config of a given cluster.

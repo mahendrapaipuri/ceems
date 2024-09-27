@@ -63,13 +63,13 @@ func TestTSDBConfigSuccess(t *testing.T) {
 	url, _ := url.Parse(server.URL)
 	b := New(url, httputil.NewSingleHostReverseProxy(url), log.NewNopLogger())
 	require.Equal(t, server.URL, b.URL().String())
-	require.Equal(t, 15*24*time.Hour, b.RetentionPeriod())
+	require.Equal(t, 354*time.Hour, b.RetentionPeriod())
 	require.True(t, b.IsAlive())
 	require.Equal(t, 0, b.ActiveConnections())
 
 	// Stop dummy server and query for retention period, we should get last updated value
 	server.Close()
-	require.Equal(t, 15*24*time.Hour, b.RetentionPeriod())
+	require.Equal(t, 354*time.Hour, b.RetentionPeriod())
 }
 
 func TestTSDBConfigSuccessWithTwoRetentions(t *testing.T) {
@@ -116,7 +116,7 @@ func TestTSDBConfigSuccessWithTwoRetentions(t *testing.T) {
 	url, _ := url.Parse(server.URL)
 	b := New(url, httputil.NewSingleHostReverseProxy(url), log.NewNopLogger())
 	require.Equal(t, server.URL, b.URL().String())
-	require.Equal(t, 30*24*time.Hour, b.RetentionPeriod())
+	require.Equal(t, 714*time.Hour, b.RetentionPeriod())
 	require.True(t, b.IsAlive())
 }
 
