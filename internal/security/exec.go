@@ -183,10 +183,9 @@ func ExecAsUser(data interface{}) error {
 			ctxData.UID,
 			ctxData.GID,
 			ctxData.Environ,
-			ctxData.Logger,
 		)
 	} else {
-		stdOut, err = osexec.ExecuteAsContext(ctx, cmd[0], nil, ctxData.UID, ctxData.GID, ctxData.Environ, ctxData.Logger)
+		stdOut, err = osexec.ExecuteAsContext(ctx, cmd[0], nil, ctxData.UID, ctxData.GID, ctxData.Environ)
 	}
 
 	// Return on error

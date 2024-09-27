@@ -101,7 +101,7 @@ func preflightsCLI(slurm *slurmScheduler) error {
 		goto sudomode
 	}
 
-	if _, err := internal_osexec.ExecuteAs(sacctPath, []string{"--help"}, slurmUserUID, slurmUserGID, nil, slurm.logger); err == nil {
+	if _, err := internal_osexec.ExecuteAs(sacctPath, []string{"--help"}, slurmUserUID, slurmUserGID, nil); err == nil {
 		slurm.cmdExecMode = "cap"
 		level.Info(slurm.logger).Log("msg", "Linux capabilities will be used to execute SLURM commands as slurm user")
 
@@ -137,7 +137,7 @@ func preflightsCLI(slurm *slurmScheduler) error {
 
 sudomode:
 	// Last attempt to run sacct with sudo
-	if _, err := internal_osexec.ExecuteWithTimeout("sudo", []string{sacctPath, "--help"}, 5, nil, slurm.logger); err == nil {
+	if _, err := internal_osexec.ExecuteWithTimeout("sudo", []string{sacctPath, "--help"}, 5, nil); err == nil {
 		slurm.cmdExecMode = "sudo"
 		level.Info(slurm.logger).Log("msg", "sudo will be used to execute SLURM commands")
 
@@ -560,10 +560,10 @@ func (s *slurmScheduler) runSacctCmd(ctx context.Context, startTime string, endT
 		// command execution
 		args = append([]string{"-E", sacctPath}, args...)
 
-		return internal_osexec.ExecuteContext(ctx, sudoMode, args, env, s.logger)
+		return internal_osexec.ExecuteContext(ctx, sudoMode, args, env)
 	}
 
-	return internal_osexec.ExecuteContext(ctx, sacctPath, args, env, s.logger)
+	return internal_osexec.ExecuteContext(ctx, sacctPath, args, env)
 }
 
 // Run sacctmgr command and return output.
@@ -609,10 +609,10 @@ func (s *slurmScheduler) runSacctMgrCmd(ctx context.Context) ([]byte, error) {
 		// command execution
 		args = append([]string{"-E", sacctMgrPath}, args...)
 
-		return internal_osexec.ExecuteContext(ctx, sudoMode, args, env, s.logger)
+		return internal_osexec.ExecuteContext(ctx, sudoMode, args, env)
 	}
 
-	return internal_osexec.ExecuteContext(ctx, sacctMgrPath, args, env, s.logger)
+	return internal_osexec.ExecuteContext(ctx, sacctMgrPath, args, env)
 }
 
 // executeInSecurityContext executes SLURM command within a security context.

@@ -51,7 +51,9 @@ is used, these capabilities wont be needed.
 - `perf`: `cap_perfmon` to be able to open perf events. `cap_sys_ptrace` and `cap_dac_read_search`
 to be able to access processes' environment variables when `--collector.slurm.perf-env-var` is
 used.
-- `ebpf`: `cap_bpf` and `cap_perfmon` to be able to load and access BPP programs and maps.
+- `ebpf`: `cap_bpf` and `cap_perfmon` to be able to load and access BPP programs and maps. For
+kernels < 5.11, `cap_sys_resource` is necessary to increase locked memory for loading BPF
+programs.
 - `rapl`: `cap_dac_read_search` when kernels > 5.3 is used as RAPL counters from this kernel
 version is only access to `root`.
 

@@ -22,7 +22,7 @@ func testFunc(d interface{}) error {
 		return fmt.Errorf("cannot be asserted: %v", d)
 	}
 
-	stdOut, err := osexec.ExecuteAs("id", nil, 65534, 65534, nil, log.NewNopLogger())
+	stdOut, err := osexec.ExecuteAs("id", nil, 65534, 65534, nil)
 	if err != nil {
 		return err
 	}

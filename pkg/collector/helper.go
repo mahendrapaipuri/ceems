@@ -167,7 +167,7 @@ func GetNvidiaGPUDevices(nvidiaSmiPath string, logger log.Logger) (map[int]Devic
 	// Execute nvidia-smi command to get available GPUs
 	args := []string{"--query-gpu=index,name,uuid", "--format=csv"}
 
-	nvidiaSmiOutput, err := osexec.Execute(nvidiaSmiCmd, args, nil, logger)
+	nvidiaSmiOutput, err := osexec.Execute(nvidiaSmiCmd, args, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -236,7 +236,7 @@ func GetAMDGPUDevices(rocmSmiPath string, logger log.Logger) (map[int]Device, er
 	// Execute nvidia-smi command to get available GPUs
 	args := []string{"--showproductname", "--showserial", "--csv"}
 
-	rocmSmiOutput, err := osexec.Execute(rocmSmiCmd, args, nil, logger)
+	rocmSmiOutput, err := osexec.Execute(rocmSmiCmd, args, nil)
 	if err != nil {
 		return nil, err
 	}

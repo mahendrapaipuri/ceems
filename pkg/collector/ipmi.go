@@ -256,7 +256,7 @@ func NewIPMICollector(logger log.Logger) (Collector, error) {
 	// Eventually we drop all the privileges and use cap_setuid and cap_setgid to
 	// execute ipmi command in subprocess as root.
 	// So we set execMode as capabilityMode here too.
-	if _, err := osexec.Execute(cmdSlice[0], cmdSlice[1:], nil, logger); err == nil {
+	if _, err := osexec.Execute(cmdSlice[0], cmdSlice[1:], nil); err == nil {
 		execMode = capabilityMode
 
 		goto outside
@@ -265,7 +265,7 @@ func NewIPMICollector(logger log.Logger) (Collector, error) {
 	// If ipmiDcmiCmd failed to run and if sudo is not already present in command,
 	// add sudo to command and execute. If current user has sudo rights it will be a success
 	if cmdSlice[0] != sudoMode {
-		if _, err := osexec.ExecuteWithTimeout(sudoMode, cmdSlice, 1, nil, logger); err == nil {
+		if _, err := osexec.ExecuteWithTimeout(sudoMode, cmdSlice, 1, nil); err == nil {
 			execMode = sudoMode
 
 			goto outside
@@ -274,7 +274,7 @@ func NewIPMICollector(logger log.Logger) (Collector, error) {
 
 	// As last attempt, run the command as root user by forking subprocess
 	// as root. If there is setuid cap on the process, it will be a success
-	if _, err := osexec.ExecuteAs(cmdSlice[0], cmdSlice[1:], 0, 0, nil, logger); err == nil {
+	if _, err := osexec.ExecuteAs(cmdSlice[0], cmdSlice[1:], 0, 0, nil); err == nil {
 		execMode = capabilityMode
 
 		goto outside
@@ -298,6 +298,8 @@ outside:
 			return nil, err
 		}
 	}
+
+	level.Debug(logger).Log("msg", "IPMI DCMI command", "execution_mode", execMode)
 
 	collector := impiCollector{
 		logger:           logger,
@@ -446,10 +448,10 @@ func (c *impiCollector) executeIPMICmd() ([]byte, error) {
 	case capabilityMode:
 		stdOut, err = c.executeInSecurityContext()
 	case sudoMode:
-		stdOut, err = osexec.ExecuteWithTimeout(sudoMode, c.ipmiCmd, 1, nil, c.logger)
+		stdOut, err = osexec.ExecuteWithTimeout(sudoMode, c.ipmiCmd, 1, nil)
 	// Only used in e2e and unit tests
 	case testMode:
-		stdOut, err = osexec.Execute(c.ipmiCmd[0], c.ipmiCmd[1:], nil, c.logger)
+		stdOut, err = osexec.Execute(c.ipmiCmd[0], c.ipmiCmd[1:], nil)
 	default:
 		return nil, ErrNoData
 	}
