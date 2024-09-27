@@ -56,7 +56,7 @@ contents:
     file_info:
       mode: 0750
       owner: root
-      group: ceemsexp
+      group: ceems
 
   # CEEMS exporter web config file
   - src: build/config/common/web-config.yml
@@ -65,8 +65,8 @@ contents:
     file_info:
       # Make sure that the mode is specified in octal, e.g. 0644 instead of 644.
       mode: 0660
-      owner: ceemsexp
-      group: root
+      owner: root
+      group: ceems
 
   # systemd unit file
   - src: build/package/ceems_exporter/ceems_exporter.service

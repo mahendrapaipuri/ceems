@@ -309,7 +309,8 @@ then
         --collector.slurm.gpu-type="nvidia" \
         --collector.slurm.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
         --collector.slurm.gpu-job-map-path="pkg/collector/testdata/gpujobmap" \
-        --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/freeipmi/ipmi-dcmi" \
+        --collector.ipmi_dcmi.test-mode \
+        --collector.ipmi_dcmi.cmd="pkg/collector/testdata/ipmi/freeipmi/ipmi-dcmi" \
         --collector.empty-hostname-label \
         --web.listen-address "127.0.0.1:${port}" \
         --web.disable-exporter-metrics \
@@ -327,7 +328,8 @@ then
         --collector.slurm.gpu-type="nvidia" \
         --collector.slurm.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
         --collector.slurm.gpu-job-map-path="pkg/collector/testdata/gpujobmap" \
-        --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/freeipmi/ipmi-dcmi" \
+        --collector.ipmi_dcmi.cmd="pkg/collector/testdata/ipmi/freeipmi/ipmi-dcmi" \
+        --collector.ipmi_dcmi.test-mode \
         --collector.empty-hostname-label \
         --web.listen-address "127.0.0.1:${port}" \
         --web.disable-exporter-metrics \
@@ -345,6 +347,7 @@ then
         --collector.slurm.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
         --collector.slurm.gpu-job-map-path="pkg/collector/testdata/gpujobmap" \
         --collector.empty-hostname-label \
+        --collector.ipmi_dcmi.test-mode \
         --web.listen-address "127.0.0.1:${port}" \
         --web.disable-exporter-metrics \
         --log.level="debug" > "${logfile}" 2>&1 &
@@ -361,6 +364,7 @@ then
         --collector.slurm.rocm-smi-path="pkg/collector/testdata/rocm-smi" \
         --collector.slurm.gpu-job-map-path="pkg/collector/testdata/gpujobmap" \
         --collector.empty-hostname-label \
+        --collector.ipmi_dcmi.test-mode \
         --web.listen-address "127.0.0.1:${port}" \
         --web.disable-exporter-metrics \
         --log.level="debug" > "${logfile}" 2>&1 &
@@ -374,6 +378,7 @@ then
         --collector.cgroups.force-version="v2" \
         --collector.slurm \
         --collector.empty-hostname-label \
+        --collector.ipmi_dcmi.test-mode \
         --web.listen-address "127.0.0.1:${port}" \
         --web.disable-exporter-metrics \
         --log.level="debug" > "${logfile}" 2>&1 &
@@ -389,6 +394,7 @@ then
         --collector.slurm.gpu-type="nvidia" \
         --collector.slurm.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
         --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/ipmiutils/ipmiutil" \
+        --collector.ipmi_dcmi.test-mode \
         --collector.empty-hostname-label \
         --web.listen-address "127.0.0.1:${port}" \
         --web.disable-exporter-metrics \
@@ -408,6 +414,7 @@ then
         --collector.slurm.swap.memory.metrics \
         --collector.slurm.psi.metrics \
         --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/capmc/capmc" \
+        --collector.ipmi_dcmi.test-mode \
         --collector.empty-hostname-label \
         --web.listen-address "127.0.0.1:${port}" \
         --web.disable-exporter-metrics \

@@ -1,6 +1,7 @@
 ARG ARCH="amd64"
 ARG OS="linux"
-FROM quay.io/prometheus/busybox-${OS}-${ARCH}:latest
+FROM --platform=${OS}/${ARCH} alpine:3
+RUN apk --no-cache add freeipmi
 LABEL maintainer="Mahendra Paipuri <mahendra.paipuri@gmail.com>"
 
 ARG ARCH="amd64"
@@ -15,7 +16,7 @@ COPY LICENSE /LICENSE
 ENV CEEMS_API_SERVER_CONFIG_FILE /etc/ceems_api_server/config.yml
 ENV CEEMS_LB_CONFIG_FILE /etc/ceems_lb/config.yml
 
-RUN mkdir -p /var/lib/ceems && chown -R nobody:nobody /var/lib/ceems /etc/ceems_api_server /etc/ceems_lb
+RUN mkdir -p /var/lib/ceems && chown -R root:root /var/lib/ceems /etc/ceems_api_server /etc/ceems_lb
 
-USER        nobody
+USER        root
 WORKDIR     /var/lib/ceems

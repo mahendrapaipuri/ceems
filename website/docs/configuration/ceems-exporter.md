@@ -37,7 +37,7 @@ is provided in the [repo](https://github.com/mahendrapaipuri/ceems/tree/main/etc
 We recommend to use the first approach as it requires minimum configuration to maintain
 for the operators. The downside is that the CEEMS exporter process will need some
 privileges to be able to read the environment variables in `/proc` file system. The
-privileges can be set in different ways and it is discussed in [Systemd](./systemd.md)
+privileges can be set in different ways and it is discussed in [Security](./security.md)
 section.
 
 On the other hand, if the operators do not wish to add any privileges to exporter
@@ -151,7 +151,7 @@ enable and disable them at runtime is more involved.
 :::
 
 Both perf and eBPF sub-collectors extra privileges to work and the necessary privileges
-are discussed in [Systemd](./systemd.md) section.
+are discussed in [Security](./security.md) section.
 
 ## IPMI collector
 
@@ -194,7 +194,7 @@ command. This needs `CAP_SETUID` and `CAP_SETGID` capabilities in order to able 
 - Last approach is to run `ceems_exporter` as root.
 
 We recommend to use either `sudo` or capabilities approach. More on the privileges
-can be consulted from [Systemd](./systemd.md) section.
+can be consulted from [Security](./security.md) section.
 
 :::important[IMPORTANT]
 

@@ -14,6 +14,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/mahendrapaipuri/ceems/internal/security"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/procfs/sysfs"
 )
@@ -24,7 +25,18 @@ type raplCollector struct {
 	fs               sysfs.FS
 	logger           log.Logger
 	hostname         string
+	securityContexts map[string]*security.SecurityContext
 	joulesMetricDesc *prometheus.Desc
+}
+
+// Security context names.
+const (
+	raplReadEnergyCounter = "rapl_read_energy_counters"
+)
+
+type raplCountersSecurityCtxData struct {
+	zones    []sysfs.RaplZone
+	counters map[sysfs.RaplZone]uint64
 }
 
 func init() {
@@ -43,6 +55,32 @@ func NewRaplCollector(logger log.Logger) (Collector, error) {
 		return nil, err
 	}
 
+	// Get kernel version
+	securityContexts := make(map[string]*security.SecurityContext)
+
+	if currentKernelVer, err := KernelVersion(); err == nil {
+		// Startin from kernel 5.10, RAPL counters are read only by root.
+		// So we need CAP_DAC_READ_SEARCH capability to read them.
+		if currentKernelVer >= KernelStringToNumeric("5.10") {
+			// Setup necessary capabilities. cap_perfmon is necessary to open perf events.
+			capabilities := []string{"cap_dac_read_search"}
+			reqCaps := setupCollectorCaps(logger, raplCollectorSubsystem, capabilities)
+
+			securityContexts[raplReadEnergyCounter], err = security.NewSecurityContext(
+				raplReadEnergyCounter,
+				reqCaps,
+				readCounters,
+				logger,
+			)
+			if err != nil {
+				level.Error(logger).
+					Log("msg", "Failed to create a security context for reading rapl counters", "err", err)
+
+				return nil, err
+			}
+		}
+	}
+
 	joulesMetricDesc := prometheus.NewDesc(
 		prometheus.BuildFQName(Namespace, raplCollectorSubsystem, "joules_total"),
 		"Current RAPL value in joules",
@@ -53,6 +91,7 @@ func NewRaplCollector(logger log.Logger) (Collector, error) {
 		fs:               fs,
 		logger:           logger,
 		hostname:         hostname,
+		securityContexts: securityContexts,
 		joulesMetricDesc: joulesMetricDesc,
 	}
 
@@ -80,19 +119,31 @@ func (c *raplCollector) Update(ch chan<- prometheus.Metric) error {
 		return fmt.Errorf("failed to fetch rapl stats: %w", err)
 	}
 
-	for _, rz := range zones {
-		microJoules, err := rz.GetEnergyMicrojoules()
-		if err != nil {
-			if errors.Is(err, os.ErrPermission) {
-				level.Error(c.logger).
-					Log("msg", "Can't access energy_uj file", "zone", rz.Name, "err", err)
+	// Data for security context
+	dataPtr := &raplCountersSecurityCtxData{
+		zones:    zones,
+		counters: make(map[sysfs.RaplZone]uint64),
+	}
 
-				return ErrNoData
+	if len(c.securityContexts) > 0 {
+		// Start new profilers within security context
+		if securityCtx, ok := c.securityContexts[raplReadEnergyCounter]; ok {
+			if err := securityCtx.Exec(dataPtr); err != nil {
+				return err
 			}
-
+		}
+	} else {
+		if err := readCounters(dataPtr); err != nil {
 			return err
 		}
+	}
 
+	// If counters map is empty return no data
+	if len(dataPtr.counters) == 0 {
+		return ErrNoData
+	}
+
+	for rz, microJoules := range dataPtr.counters {
 		joules := float64(microJoules) / 1000000.0
 
 		if *raplZoneLabel {
@@ -146,4 +197,26 @@ func (c *raplCollector) joulesMetricWithZoneLabel(z sysfs.RaplZone, v float64) p
 		z.Path,
 		z.Name,
 	)
+}
+
+// readCounters reads the RAPL counters of different zones inside a security context.
+func readCounters(data interface{}) error {
+	// Assert data
+	var d *raplCountersSecurityCtxData
+
+	var ok bool
+	if d, ok = data.(*raplCountersSecurityCtxData); !ok {
+		return security.ErrSecurityCtxDataAssertion
+	}
+
+	for _, rz := range d.zones {
+		microJoules, err := rz.GetEnergyMicrojoules()
+		if err != nil {
+			continue
+		}
+
+		d.counters[rz] = microJoules
+	}
+
+	return nil
 }

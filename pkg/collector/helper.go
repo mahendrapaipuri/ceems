@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -166,7 +167,7 @@ func GetNvidiaGPUDevices(nvidiaSmiPath string, logger log.Logger) (map[int]Devic
 	// Execute nvidia-smi command to get available GPUs
 	args := []string{"--query-gpu=index,name,uuid", "--format=csv"}
 
-	nvidiaSmiOutput, err := osexec.Execute(nvidiaSmiCmd, args, nil, logger)
+	nvidiaSmiOutput, err := osexec.Execute(nvidiaSmiCmd, args, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -235,7 +236,7 @@ func GetAMDGPUDevices(rocmSmiPath string, logger log.Logger) (map[int]Device, er
 	// Execute nvidia-smi command to get available GPUs
 	args := []string{"--showproductname", "--showserial", "--csv"}
 
-	rocmSmiOutput, err := osexec.Execute(rocmSmiCmd, args, nil, logger)
+	rocmSmiOutput, err := osexec.Execute(rocmSmiCmd, args, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -251,6 +252,25 @@ func fileExists(filename string) bool {
 	}
 
 	return !info.IsDir()
+}
+
+// lookPath is like exec.LookPath but looks only in /sbin, /usr/sbin,
+// /usr/local/sbin which are reserved for super user.
+func lookPath(f string) (string, error) {
+	locations := []string{
+		"/sbin",
+		"/usr/sbin",
+		"/usr/local/sbin",
+	}
+
+	for _, path := range locations {
+		fullPath := filepath.Join(path, f)
+		if fileExists(fullPath) {
+			return fullPath, nil
+		}
+	}
+
+	return "", errors.New("path does not exist")
 }
 
 // // Find named matches in regex groups and return a map.

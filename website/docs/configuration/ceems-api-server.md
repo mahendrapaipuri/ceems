@@ -4,7 +4,7 @@ sidebar_position: 3
 
 # CEEMS API Server
 
-The following shows the reference for CEEMS API server config. A valid sample configuration 
+The following shows the reference for CEEMS API server config. A valid sample configuration
 file can be found in the [repo](https://github.com/mahendrapaipuri/ceems/blob/main/build/config/ceems_api_server/ceems_api_server.yml)
 
 ```yaml
@@ -169,7 +169,7 @@ grafana:
 
 ## `<grafana_config>`
 
-A `grafana_config` allows configuring the Grafana client config to fetch members of 
+A `grafana_config` allows configuring the Grafana client config to fetch members of
 Grafana teams to be added to admin users of CEEMS API server.
 
 ```yaml

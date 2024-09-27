@@ -20,6 +20,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/internal/osexec"
+	"github.com/mahendrapaipuri/ceems/internal/security"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -33,18 +34,19 @@ var (
 // Execution modes.
 const (
 	sudoMode       = "sudo"
-	nativeMode     = "native"
 	capabilityMode = "cap"
+	testMode       = "test"
 	crayPowerCap   = "capmc"
 )
 
 type impiCollector struct {
-	logger       log.Logger
-	hostname     string
-	execMode     string
-	ipmiCmd      []string
-	cachedMetric map[string]float64
-	metricDesc   map[string]*prometheus.Desc
+	logger           log.Logger
+	hostname         string
+	execMode         string
+	ipmiCmd          []string
+	securityContexts map[string]*security.SecurityContext
+	cachedMetric     map[string]float64
+	metricDesc       map[string]*prometheus.Desc
 }
 
 /*
@@ -133,6 +135,12 @@ var (
 		"IPMI DCMI command to get system power statistics. Use full path to executables.",
 	).Default("").String()
 
+	// test flags. Hidden.
+	ipmiDcmiTestMode = CEEMSExporterApp.Flag(
+		"collector.ipmi_dcmi.test-mode",
+		"Enables IPMI DCMI collector in test mode. Only used in unit and e2e tests.",
+	).Default("false").Hidden().Bool()
+
 	ipmiDcmiCmds = []string{
 		"ipmi-dcmi --get-system-power-statistics",
 		"ipmitool dcmi power reading",
@@ -162,6 +170,11 @@ var (
 			`^\s*(?:Average Power over sampling duration|Average power reading over sample period|Avg Power over sample duration)\s*:\s*(?P<value>[0-9.]*)\s*[w|W]atts.*`,
 		),
 	}
+)
+
+// Security context names.
+const (
+	ipmiExecCmdCtx = "ipmi_exec_cmd"
 )
 
 func init() {
@@ -201,8 +214,16 @@ func NewIPMICollector(logger log.Logger) (Collector, error) {
 
 	// If no IPMI command is provided, try to find one
 	var cmdSlice []string
+
+	var err error
 	if *ipmiDcmiCmd == "" && *ipmiDcmiCmdDepr == "" {
-		cmdSlice = findIPMICmd()
+		if cmdSlice, err = findIPMICmd(); err != nil {
+			level.Error(logger).Log(
+				"msg", "No IPMI installation found", "err", err,
+			)
+
+			return nil, err
+		}
 	} else {
 		if *ipmiDcmiCmdDepr != "" {
 			cmdSlice = strings.Split(*ipmiDcmiCmdDepr, " ")
@@ -221,9 +242,22 @@ func NewIPMICollector(logger log.Logger) (Collector, error) {
 		cmdSlice = append(cmdSlice, "")
 	}
 
+	// If we are in test mode, set execMode to test
+	if *ipmiDcmiTestMode {
+		execMode = testMode
+
+		goto outside
+	}
+
 	// Verify if running ipmiDcmiCmd works
-	if _, err := osexec.Execute(cmdSlice[0], cmdSlice[1:], nil, logger); err == nil {
-		execMode = nativeMode
+	// If it works natively it means the current process is running as root.
+	// Note that the collectors are initiated before dropping privileges and so
+	// this command should succeed.
+	// Eventually we drop all the privileges and use cap_setuid and cap_setgid to
+	// execute ipmi command in subprocess as root.
+	// So we set execMode as capabilityMode here too.
+	if _, err := osexec.Execute(cmdSlice[0], cmdSlice[1:], nil); err == nil {
+		execMode = capabilityMode
 
 		goto outside
 	}
@@ -231,7 +265,7 @@ func NewIPMICollector(logger log.Logger) (Collector, error) {
 	// If ipmiDcmiCmd failed to run and if sudo is not already present in command,
 	// add sudo to command and execute. If current user has sudo rights it will be a success
 	if cmdSlice[0] != sudoMode {
-		if _, err := osexec.ExecuteWithTimeout(sudoMode, cmdSlice, 2, nil, logger); err == nil {
+		if _, err := osexec.ExecuteWithTimeout(sudoMode, cmdSlice, 1, nil); err == nil {
 			execMode = sudoMode
 
 			goto outside
@@ -240,20 +274,41 @@ func NewIPMICollector(logger log.Logger) (Collector, error) {
 
 	// As last attempt, run the command as root user by forking subprocess
 	// as root. If there is setuid cap on the process, it will be a success
-	if _, err := osexec.ExecuteAs(cmdSlice[0], cmdSlice[1:], 0, 0, nil, logger); err == nil {
+	if _, err := osexec.ExecuteAs(cmdSlice[0], cmdSlice[1:], 0, 0, nil); err == nil {
 		execMode = capabilityMode
 
 		goto outside
 	}
 
 outside:
+
+	// Setup necessary capabilities.
+	// For nativeMode and capabilityMode we need cap_setuid and cap_setgid. For sudoMode we
+	// wont need any more extra capabilities
+	var securityCtx *security.SecurityContext
+
+	if execMode == capabilityMode {
+		caps := setupCollectorCaps(logger, ipmiCollectorSubsystem, []string{"cap_setuid", "cap_setgid"})
+
+		// Setup new security context(s)
+		securityCtx, err = security.NewSecurityContext(ipmiExecCmdCtx, caps, security.ExecAsUser, logger)
+		if err != nil {
+			level.Error(logger).Log("msg", "Failed to create a security context for IPMI collector", "err", err)
+
+			return nil, err
+		}
+	}
+
+	level.Debug(logger).Log("msg", "IPMI DCMI command", "execution_mode", execMode)
+
 	collector := impiCollector{
-		logger:       logger,
-		hostname:     hostname,
-		execMode:     execMode,
-		ipmiCmd:      cmdSlice,
-		metricDesc:   metricDesc,
-		cachedMetric: cachedMetric,
+		logger:           logger,
+		hostname:         hostname,
+		execMode:         execMode,
+		ipmiCmd:          cmdSlice,
+		metricDesc:       metricDesc,
+		cachedMetric:     cachedMetric,
+		securityContexts: map[string]*security.SecurityContext{ipmiExecCmdCtx: securityCtx},
 	}
 
 	return &collector, nil
@@ -265,6 +320,11 @@ func (c *impiCollector) Update(ch chan<- prometheus.Metric) error {
 	// IPMI commands tend to fail frequently. If that happens we use last cached metric
 	powerReadings, err := c.getPowerReadings()
 	if err != nil {
+		// If there is no cached metric return
+		if len(c.cachedMetric) == 0 {
+			return ErrNoData
+		}
+
 		level.Error(c.logger).Log(
 			"msg", "Failed to get power statistics from IPMI. Using last cached values",
 			"err", err, "cached_metrics", fmt.Sprintf("%#v", c.cachedMetric),
@@ -386,13 +446,14 @@ func (c *impiCollector) executeIPMICmd() ([]byte, error) {
 	// Execute found ipmi command
 	switch c.execMode {
 	case capabilityMode:
-		stdOut, err = osexec.ExecuteAs(c.ipmiCmd[0], c.ipmiCmd[1:], 0, 0, nil, c.logger)
+		stdOut, err = c.executeInSecurityContext()
 	case sudoMode:
-		stdOut, err = osexec.ExecuteWithTimeout(sudoMode, c.ipmiCmd, 1, nil, c.logger)
-	case nativeMode:
-		stdOut, err = osexec.Execute(c.ipmiCmd[0], c.ipmiCmd[1:], nil, c.logger)
+		stdOut, err = osexec.ExecuteWithTimeout(sudoMode, c.ipmiCmd, 1, nil)
+	// Only used in e2e and unit tests
+	case testMode:
+		stdOut, err = osexec.Execute(c.ipmiCmd[0], c.ipmiCmd[1:], nil)
 	default:
-		err = fmt.Errorf("current process do not have permissions to execute %s", strings.Join(c.ipmiCmd, " "))
+		return nil, ErrNoData
 	}
 
 	if err != nil {
@@ -402,16 +463,43 @@ func (c *impiCollector) executeIPMICmd() ([]byte, error) {
 	return stdOut, nil
 }
 
+// executeInSecurityContext executes IPMI command within a security context.
+func (c *impiCollector) executeInSecurityContext() ([]byte, error) {
+	// Execute command as root
+	dataPtr := &security.ExecSecurityCtxData{
+		Cmd:    c.ipmiCmd,
+		Logger: c.logger,
+		UID:    0,
+		GID:    0,
+	}
+
+	// Read stdOut of command into data
+	if securityCtx, ok := c.securityContexts[ipmiExecCmdCtx]; ok {
+		if err := securityCtx.Exec(dataPtr); err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, security.ErrNoSecurityCtx
+	}
+
+	return dataPtr.StdOut, nil
+}
+
 // Find IPMI command from list of different IPMI implementations.
-func findIPMICmd() []string {
+func findIPMICmd() ([]string, error) {
 	for _, cmd := range ipmiDcmiCmds {
 		cmdSlice := strings.Split(cmd, " ")
 		if _, err := exec.LookPath(cmdSlice[0]); err == nil {
-			return cmdSlice
+			return cmdSlice, nil
+		}
+
+		// Check if binary exists in /sbin or /usr/sbin
+		if _, err := lookPath(cmdSlice[0]); err == nil {
+			return cmdSlice, nil
 		}
 	}
-	// Return a sane default and collector will handle even if bin does not exist
-	return strings.Split(ipmiDcmiCmds[0], " ")
+
+	return nil, errors.New("no ipmi command found")
 }
 
 // Get value based on regex from IPMI output.

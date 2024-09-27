@@ -20,6 +20,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/internal/common"
 	internal_runtime "github.com/mahendrapaipuri/ceems/internal/runtime"
+	"github.com/mahendrapaipuri/ceems/internal/security"
 	ceems_api "github.com/mahendrapaipuri/ceems/pkg/api/cli"
 	ceems_http "github.com/mahendrapaipuri/ceems/pkg/api/http"
 	ceems_api_models "github.com/mahendrapaipuri/ceems/pkg/api/models"
@@ -158,6 +159,12 @@ func (lb *CEEMSLoadBalancer) Main() error {
 		maxProcs = lb.App.Flag(
 			"runtime.gomaxprocs", "The target number of CPUs Go will run on (GOMAXPROCS)",
 		).Envar("GOMAXPROCS").Default("1").Int()
+
+		// Hidden test flags
+		dropPrivs = lb.App.Flag(
+			"security.drop-privileges",
+			"Drop privileges and run as nobody when exporter is started as root.",
+		).Default("true").Bool()
 	)
 
 	// Socket activation only available on Linux
@@ -196,6 +203,22 @@ func (lb *CEEMSLoadBalancer) Main() error {
 
 	runtime.GOMAXPROCS(*maxProcs)
 	level.Debug(logger).Log("msg", "Go MAXPROCS", "procs", runtime.GOMAXPROCS(0))
+
+	// We should STRONGLY advise in docs that CEEMS API server should not be started as root
+	// as that will end up dropping the privileges and running it as nobody user which can
+	// be strange as CEEMS API server writes data to DB.
+	if *dropPrivs {
+		securityCfg := &security.Config{
+			RunAsUser: "nobody",
+			Caps:      nil,
+			ReadPaths: []string{*webConfigFile, *configFile},
+		}
+
+		// Drop all unnecessary privileges
+		if err := security.DropPrivileges(securityCfg); err != nil {
+			return err
+		}
+	}
 
 	// Create context that listens for the interrupt signal from the OS.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)

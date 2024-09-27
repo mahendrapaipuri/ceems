@@ -83,7 +83,7 @@ ceems_lb:
 	configFilePath := makeConfigFile(configFile, tmpDir)
 
 	// Remove test related args and add a dummy arg
-	os.Args = append([]string{os.Args[0]}, "--log.level", "debug", "--config.file="+configFilePath)
+	os.Args = append([]string{os.Args[0]}, "--log.level", "debug", "--config.file="+configFilePath, "--no-security.drop-privileges")
 	a := CEEMSLoadBalancer{
 		appName: mockCEEMSLBAppName,
 		App:     mockCEEMSLBApp,

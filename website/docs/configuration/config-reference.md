@@ -5,9 +5,9 @@ sidebar_position: 7
 # Configuration Reference
 
 The following reference applies to configuration files of CEEMS API server, CEEMS LB and
-web configuration. CEEMS uses Prometheus' [client config](https://github.com/prometheus/common/tree/main/config) 
-to configure HTTP clients. Thus, most of the configuration that is used to configure 
-HTTP clients resemble that of Prometheus'. The configuration reference has also been 
+web configuration. CEEMS uses Prometheus' [client config](https://github.com/prometheus/common/tree/main/config)
+to configure HTTP clients. Thus, most of the configuration that is used to configure
+HTTP clients resemble that of Prometheus'. The configuration reference has also been
 inspired from Prometheus docs.
 
 The file is written in [YAML format](https://en.wikipedia.org/wiki/YAML),
@@ -28,7 +28,7 @@ Generic placeholders are defined as follows:
 * `<secret>`: a regular string that is a secret, such as a password
 * `<string>`: a regular string
 * `<size>`: a size in bytes, e.g. `512MB`. A unit is required. Supported units: B, KB, MB, GB, TB, PB, EB.
-* `<idname>`: a string matching the regular expression `[a-zA-Z_-][a-zA-Z0-9_-]*`. Any other unsupported 
+* `<idname>`: a string matching the regular expression `[a-zA-Z_-][a-zA-Z0-9_-]*`. Any other unsupported
 character in the source label should be converted to an underscore
 * `<managername>`: a string that identifies resource manager. Currently accepted values are `slurm`.
 * `<updatername>`: a string that identifies updater type. Currently accepted values are `tsdb`.
@@ -93,7 +93,7 @@ http_headers:
 
 ## `<oauth2>`
 
-OAuth 2.0 authentication using the client credentials grant type. Prometheus fetches an 
+OAuth 2.0 authentication using the client credentials grant type. Prometheus fetches an
 access token from the specified endpoint with the given client access and secret keys.
 
 ```yaml

@@ -13,6 +13,7 @@ import (
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/log/level"
 	internal_runtime "github.com/mahendrapaipuri/ceems/internal/runtime"
+	"github.com/mahendrapaipuri/ceems/internal/security"
 	"github.com/prometheus/common/promlog"
 	"github.com/prometheus/common/promlog/flag"
 	"github.com/prometheus/common/version"
@@ -87,6 +88,12 @@ func (b *CEEMSExporter) Main() error {
 			"web.debug-server",
 			"Enable debug server (default: disabled).",
 		).Default("false").Bool()
+
+		// test CLI flags hidden
+		dropPrivs = b.App.Flag(
+			"security.drop-privileges",
+			"Drop privileges and run as nobody when exporter is started as root.",
+		).Default("true").Bool()
 	)
 
 	// Socket activation only available on Linux
@@ -121,11 +128,6 @@ func (b *CEEMSExporter) Main() error {
 	level.Info(logger).Log("fd_limits", internal_runtime.Uname())
 	level.Info(logger).Log("fd_limits", internal_runtime.FdLimits())
 
-	if user, err := user.Current(); err == nil && user.Uid == "0" {
-		level.Warn(logger).
-			Log("msg", "CEEMS Exporter is running as root user. This exporter can be run as unprivileged user, root is not required.")
-	}
-
 	// Get hostname
 	if !*emptyHostnameLabel {
 		hostname, err = os.Hostname()
@@ -141,9 +143,41 @@ func (b *CEEMSExporter) Main() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	// Create a new instance of collector
+	collector, err := NewCEEMSCollector(logger)
+	if err != nil {
+		return err
+	}
+
+	if user, err := user.Current(); err == nil && user.Uid == "0" {
+		level.Info(logger).
+			Log("msg", "CEEMS Exporter is running as root user. Privileges will be dropped and process will be run as unprivileged user")
+	}
+
+	// Make security related config
+	// If the exporter is started as root, we pick up necessary privileges and
+	// change user to nobody.
+	// Why nobody? Because we are sure that this user exists on all distros and
+	// we do not/should not create users as it can have unwanted side-effects.
+	// We should be minimally intrusive but at the same time should provide maximum
+	// security
+	if *dropPrivs {
+		securityCfg := &security.Config{
+			RunAsUser: "nobody",
+			Caps:      allCollectorCaps,
+			ReadPaths: []string{*webConfigFile},
+		}
+
+		// Drop all unnecessary privileges
+		if err := security.DropPrivileges(securityCfg); err != nil {
+			return err
+		}
+	}
+
 	// Create web server config
 	config := &Config{
-		Logger: logger,
+		Logger:    logger,
+		Collector: collector,
 		Web: WebConfig{
 			Addresses:              *webListenAddresses,
 			WebSystemdSocket:       *systemdSocket,
@@ -169,8 +203,6 @@ func (b *CEEMSExporter) Main() error {
 	// Create a new exporter server instance
 	server, err := NewCEEMSExporterServer(config)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create ceems exporter server", "err", err)
-
 		return err
 	}
 

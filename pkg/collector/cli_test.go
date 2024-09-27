@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"syscall"
 	"testing"
 	"time"
@@ -26,8 +27,13 @@ func queryExporter(address string) error {
 }
 
 func TestCEEMSExporterMain(t *testing.T) {
+	// Add IPMI command to PATH
+	absPath, err := filepath.Abs("testdata/ipmi/ipmiutils/ipmiutil")
+	require.NoError(t, err)
+	// t.Setenv("PATH", absPath+":"+os.Getenv("PATH"))
+
 	// Remove test related args and add a dummy arg
-	os.Args = append([]string{os.Args[0]}, "--web.max-requests=2")
+	os.Args = append([]string{os.Args[0]}, "--web.max-requests=2", "--no-security.drop-privileges", "--collector.ipmi_dcmi.cmd", absPath)
 
 	// Create new instance of exporter CLI app
 	a, err := NewCEEMSExporter()
@@ -55,7 +61,7 @@ func TestCEEMSExporterMain(t *testing.T) {
 		}
 	}
 
-	// Send INT signal and wait a second to clean up server and DB
+	// Send INT signal and wait a second to clean up server
 	syscall.Kill(syscall.Getpid(), syscall.SIGINT)
 	time.Sleep(1 * time.Second)
 }

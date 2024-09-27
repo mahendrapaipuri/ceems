@@ -28,7 +28,8 @@ func TestCEEMSExporterServer(t *testing.T) {
 		{
 			name: "separate metrics and landing page",
 			config: &Config{
-				Logger: log.NewNopLogger(),
+				Logger:    log.NewNopLogger(),
+				Collector: &CEEMSCollector{},
 				Web: WebConfig{
 					MetricsPath: "/metrics",
 					MaxRequests: 5,
@@ -55,7 +56,8 @@ func TestCEEMSExporterServer(t *testing.T) {
 		{
 			name: "only metrics without landing page",
 			config: &Config{
-				Logger: log.NewNopLogger(),
+				Logger:    log.NewNopLogger(),
+				Collector: &CEEMSCollector{},
 				Web: WebConfig{
 					MetricsPath: "/",
 					MaxRequests: 5,
@@ -78,7 +80,8 @@ func TestCEEMSExporterServer(t *testing.T) {
 		{
 			name: "separate metrics and landing page and with debug server",
 			config: &Config{
-				Logger: log.NewNopLogger(),
+				Logger:    log.NewNopLogger(),
+				Collector: &CEEMSCollector{},
 				Web: WebConfig{
 					MetricsPath:       "/metrics",
 					MaxRequests:       5,

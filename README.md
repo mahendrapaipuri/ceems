@@ -31,6 +31,16 @@ workloads, it supports monitoring performance metrics as well. In addition, it l
 [eBPF](https://ebpf.io/what-is-ebpf/) framework to monitor IO and network metrics
 in a resource manager agnostic way.
 
+## Features
+
+- Monitor energy, performance, IO and network metrics for different types of resource
+managers (SLURM, Openstack, k8s)
+- Support NVIDIA and AMD GPUs
+- Realtime access to metrics *via* Grafana dashboards
+- Access control to Prometheus datasource in Grafana
+- Stores aggregated metrics in a separate DB that can be retained for long time
+- CEEMS apps are [capability aware](https://tbhaxor.com/understanding-linux-capabilities/)
+
 ## Install CEEMS
 
 > [!WARNING]

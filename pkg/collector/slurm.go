@@ -5,6 +5,7 @@ package collector
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/mahendrapaipuri/ceems/internal/security"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/procfs"
 )
@@ -25,50 +27,6 @@ const (
 
 // CLI opts.
 var (
-	// Perf opts.
-	slurmPerfHwProfilersFlag = CEEMSExporterApp.Flag(
-		"collector.slurm.perf-hardware-events",
-		"Enables collection of perf hardware events (default: disabled)",
-	).Default("false").Bool()
-	slurmPerfHwProfilers = CEEMSExporterApp.Flag(
-		"collector.slurm.perf-hardware-profilers",
-		"perf hardware profilers to collect",
-	).Strings()
-	slurmPerfSwProfilersFlag = CEEMSExporterApp.Flag(
-		"collector.slurm.perf-software-events",
-		"Enables collection of perf software events (default: disabled)",
-	).Default("false").Bool()
-	slurmPerfSwProfilers = CEEMSExporterApp.Flag(
-		"collector.slurm.perf-software-profilers",
-		"perf software profilers to collect",
-	).Strings()
-	slurmPerfCacheProfilersFlag = CEEMSExporterApp.Flag(
-		"collector.slurm.perf--hardware-cache-events",
-		"Enables collection of perf harware cache events (default: disabled)",
-	).Default("false").Bool()
-	slurmPerfCacheProfilers = CEEMSExporterApp.Flag(
-		"collector.slurm.perf-cache-profilers",
-		"perf cache profilers to collect",
-	).Strings()
-	slurmPerfProfilersEnvVars = CEEMSExporterApp.Flag(
-		"collector.slurm.perf-env-var",
-		"Processes having any of these environment variables set will be profiled. If empty, all processes will be profiled.",
-	).Strings()
-
-	// ebpf opts.
-	slurmIOMetricsFlag = CEEMSExporterApp.Flag(
-		"collector.slurm.io-metrics",
-		"Enables collection of IO metrics using ebpf (default: disabled)",
-	).Default("false").Bool()
-	slurmNetMetricsFlag = CEEMSExporterApp.Flag(
-		"collector.slurm.network-metrics",
-		"Enables collection of network metrics using ebpf (default: disabled)",
-	).Default("false").Bool()
-	slurmFSMountPoints = CEEMSExporterApp.Flag(
-		"collector.slurm.fs-mount-point",
-		"File system mount points to monitor for IO stats. If empty all mount points are monitored. It is strongly advised to choose appropriate mount points to reduce cardinality.",
-	).Strings()
-
 	// cgroup opts.
 	slurmCollectSwapMemoryStatsDepre = CEEMSExporterApp.Flag(
 		"collector.slurm.swap.memory.metrics",
@@ -108,6 +66,19 @@ var (
 	).Hidden().Default("").String()
 )
 
+// Security context names.
+const (
+	slurmReadProcCtx = "slurm_read_procs"
+)
+
+// slurmReadProcSecurityCtxData contains the input/output data for
+// reading processes inside a security context.
+type slurmReadProcSecurityCtxData struct {
+	procfs      procfs.FS
+	uuid        string
+	gpuOrdinals []string
+}
+
 // props contains SLURM job properties.
 type props struct {
 	uuid        string   // This is SLURM's job ID
@@ -125,17 +96,18 @@ type slurmMetrics struct {
 }
 
 type slurmCollector struct {
-	logger          log.Logger
-	cgroupManager   *cgroupManager
-	cgroupCollector *cgroupCollector
-	perfCollector   *perfCollector
-	ebpfCollector   *ebpfCollector
-	hostname        string
-	gpuDevs         map[int]Device
-	procFS          procfs.FS
-	jobGpuFlag      *prometheus.Desc
-	collectError    *prometheus.Desc
-	jobPropsCache   map[string]props
+	logger           log.Logger
+	cgroupManager    *cgroupManager
+	cgroupCollector  *cgroupCollector
+	perfCollector    *perfCollector
+	ebpfCollector    *ebpfCollector
+	hostname         string
+	gpuDevs          map[int]Device
+	procFS           procfs.FS
+	jobGpuFlag       *prometheus.Desc
+	collectError     *prometheus.Desc
+	jobPropsCache    map[string]props
+	securityContexts map[string]*security.SecurityContext
 }
 
 func init() {
@@ -183,17 +155,7 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 	var perfCollector *perfCollector
 
 	if perfCollectorEnabled() {
-		perfOpts := perfOpts{
-			perfHwProfilersEnabled:    *slurmPerfHwProfilersFlag,
-			perfSwProfilersEnabled:    *slurmPerfSwProfilersFlag,
-			perfCacheProfilersEnabled: *slurmPerfCacheProfilersFlag,
-			perfHwProfilers:           *slurmPerfHwProfilers,
-			perfSwProfilers:           *slurmPerfSwProfilers,
-			perfCacheProfilers:        *slurmPerfCacheProfilers,
-			targetEnvVars:             *slurmPerfProfilersEnvVars,
-		}
-
-		perfCollector, err = NewPerfCollector(logger, cgroupManager, perfOpts)
+		perfCollector, err = NewPerfCollector(logger, cgroupManager)
 		if err != nil {
 			level.Info(logger).Log("msg", "Failed to create perf collector", "err", err)
 
@@ -205,13 +167,7 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 	var ebpfCollector *ebpfCollector
 
 	if ebpfCollectorEnabled() {
-		ebpfOpts := ebpfOpts{
-			vfsStatsEnabled: *slurmIOMetricsFlag,
-			netStatsEnabled: *slurmNetMetricsFlag,
-			vfsMountPoints:  *slurmFSMountPoints,
-		}
-
-		ebpfCollector, err = NewEbpfCollector(logger, cgroupManager, ebpfOpts)
+		ebpfCollector, err = NewEbpfCollector(logger, cgroupManager)
 		if err != nil {
 			level.Info(logger).Log("msg", "Failed to create ebpf collector", "err", err)
 
@@ -247,15 +203,28 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 		return nil, err
 	}
 
+	// Setup necessary capabilities. These are the caps we need to read
+	// env vars in /proc file system to get SLURM job GPU indices
+	caps := setupCollectorCaps(logger, slurmCollectorSubsystem, []string{"cap_sys_ptrace", "cap_dac_read_search"})
+
+	// Setup new security context(s)
+	securityCtx, err := security.NewSecurityContext(slurmReadProcCtx, caps, readProcEnvirons, logger)
+	if err != nil {
+		level.Error(logger).Log("msg", "Failed to create a security context", "err", err)
+
+		return nil, err
+	}
+
 	return &slurmCollector{
-		cgroupManager:   cgroupManager,
-		cgroupCollector: cgCollector,
-		perfCollector:   perfCollector,
-		ebpfCollector:   ebpfCollector,
-		hostname:        hostname,
-		gpuDevs:         gpuDevs,
-		procFS:          procFS,
-		jobPropsCache:   make(map[string]props),
+		cgroupManager:    cgroupManager,
+		cgroupCollector:  cgCollector,
+		perfCollector:    perfCollector,
+		ebpfCollector:    ebpfCollector,
+		hostname:         hostname,
+		gpuDevs:          gpuDevs,
+		procFS:           procFS,
+		jobPropsCache:    make(map[string]props),
+		securityContexts: map[string]*security.SecurityContext{slurmReadProcCtx: securityCtx},
 		jobGpuFlag: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_gpu_index_flag"),
 			"Indicates running job on GPU, 1=job running",
@@ -284,7 +253,7 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 	// Discover all active cgroups
 	metrics, err := c.discoverCgroups()
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: %w", ErrNoData, err)
 	}
 
 	// Start a wait group
@@ -521,68 +490,29 @@ func (c *slurmCollector) gpuOrdinalsFromProlog(uuid string) []string {
 
 // gpuOrdinalsFromEnviron returns GPU ordinals of jobs by reading environment variables of jobs.
 func (c *slurmCollector) gpuOrdinalsFromEnviron(uuid string) []string {
-	var gpuOrdinals []string
+	// Read env vars in a security context that raises necessary capabilities
+	dataPtr := &slurmReadProcSecurityCtxData{
+		procfs: c.procFS,
+		uuid:   uuid,
+	}
 
-	// Attempt to get GPU ordinals from /proc file system by looking into
-	// environ for the process that has same SLURM_JOB_ID
-	// Get all procs from current proc fs if passed pids slice is nil
-	allProcs, err := c.procFS.AllProcs()
-	if err != nil {
-		level.Error(c.logger).Log("msg", "Failed to read /proc", "err", err)
+	if securityCtx, ok := c.securityContexts[slurmReadProcCtx]; ok {
+		if err := securityCtx.Exec(dataPtr); err != nil {
+			level.Error(c.logger).Log(
+				"msg", "Failed to run inside security contxt", "jobid", uuid, "err", err,
+			)
+
+			return nil
+		}
+	} else {
+		level.Error(c.logger).Log(
+			"msg", "Security context not found", "name", slurmReadProcCtx, "jobid", uuid,
+		)
 
 		return nil
 	}
 
-	// Env var that we will search
-	jobIDEnv := "SLURM_JOB_ID=" + uuid
-
-	// Initialize a waitgroup for all go routines that we will spawn later
-	wg := &sync.WaitGroup{}
-	wg.Add(allProcs.Len())
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel() // Make sure it's called to release resources
-
-	// Iterate through all procs and look for SLURM_JOB_ID env entry
-	for _, proc := range allProcs {
-		go func(p procfs.Proc) {
-			defer wg.Done()
-
-			select {
-			case <-ctx.Done():
-				return
-			// Default is must to avoid blocking
-			default:
-				// Read process environment variables
-				// NOTE: This needs CAP_SYS_PTRACE and CAP_DAC_READ_SEARCH caps
-				// on the current process
-				// Skip if we cannot read file or job ID env var is not found
-				environments, err := p.Environ()
-				if err != nil || !slices.Contains(environments, jobIDEnv) {
-					return
-				}
-
-				// When env var entry found, get all necessary env vars
-				// NOTE: This is not really concurrent safe. Multiple go routines might
-				// overwrite the variables. But I think we can live with it as for a gievn
-				// job cgroup these env vars should be identical in all procs
-				for _, env := range environments {
-					if strings.Contains(env, "SLURM_STEP_GPUS") || strings.Contains(env, "SLURM_JOB_GPUS") {
-						gpuOrdinals = strings.Split(strings.Split(env, "=")[1], ",")
-
-						cancel() // Cancel context so that all go routines will exit
-
-						return
-					}
-				}
-			}
-		}(proc)
-	}
-
-	// Wait for all go routines to finish
-	wg.Wait()
-
-	return gpuOrdinals
+	return dataPtr.gpuOrdinals
 }
 
 // gpuOrdinals returns GPU ordinals bound to current job.
@@ -611,12 +541,64 @@ func (c *slurmCollector) gpuOrdinals(uuid string) []string {
 	return gpuOrdinals
 }
 
-// perfCollectorEnabled returns true if any of perf profilers are enabled.
-func perfCollectorEnabled() bool {
-	return *slurmPerfHwProfilersFlag || *slurmPerfSwProfilersFlag || *slurmPerfCacheProfilersFlag
-}
+// readProcEnvirons reads the environment variables of processes and returns
+// GPU ordinals of job. This function will be executed in a security context.
+func readProcEnvirons(data interface{}) error {
+	// Assert data is of slurmSecurityCtxData
+	var d *slurmReadProcSecurityCtxData
 
-// ebpfCollectorEnabled returns true if any of ebpf stats are enabled.
-func ebpfCollectorEnabled() bool {
-	return *slurmIOMetricsFlag || *slurmNetMetricsFlag
+	var ok bool
+	if d, ok = data.(*slurmReadProcSecurityCtxData); !ok {
+		return errors.New("data type cannot be asserted")
+	}
+
+	var gpuOrdinals []string
+
+	// Attempt to get GPU ordinals from /proc file system by looking into
+	// environ for the process that has same SLURM_JOB_ID
+	// Get all procs from current proc fs if passed pids slice is nil
+	allProcs, err := d.procfs.AllProcs()
+	if err != nil {
+		return fmt.Errorf("failed to read /proc: %w", err)
+	}
+
+	// Env var that we will search
+	jobIDEnv := "SLURM_JOB_ID=" + d.uuid
+
+	// Iterate through all procs and look for SLURM_JOB_ID env entry
+	// Here we have to sacrifice multi-threading for security. We cannot
+	// spawn go-routines inside as we will execute this function inside
+	// a security context locked to OS thread. Any new go routines spawned
+	// WILL NOT BE scheduled on this locked thread and hence will not
+	// have capabilities to read environment variables. So, we just do
+	// old school loop on procs and attempt to find target env variables.
+	for _, proc := range allProcs {
+		// Read process environment variables
+		// NOTE: This needs CAP_SYS_PTRACE and CAP_DAC_READ_SEARCH caps
+		// on the current process
+		// Skip if we cannot read file or job ID env var is not found
+		environments, err := proc.Environ()
+		if err != nil || !slices.Contains(environments, jobIDEnv) {
+			continue
+		}
+
+		// When env var entry found, get all necessary env vars
+		// NOTE: This is not really concurrent safe. Multiple go routines might
+		// overwrite the variables. But I think we can live with it as for a gievn
+		// job cgroup these env vars should be identical in all procs
+		for _, env := range environments {
+			if strings.Contains(env, "SLURM_STEP_GPUS") || strings.Contains(env, "SLURM_JOB_GPUS") {
+				gpuOrdinals = strings.Split(strings.Split(env, "=")[1], ",")
+
+				goto outside
+			}
+		}
+	}
+
+outside:
+
+	// Set found gpuOrdinals on ctxData
+	d.gpuOrdinals = gpuOrdinals
+
+	return nil
 }

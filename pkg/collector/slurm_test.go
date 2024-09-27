@@ -13,6 +13,7 @@ import (
 
 	"github.com/containerd/cgroups/v3"
 	"github.com/go-kit/log"
+	"github.com/mahendrapaipuri/ceems/internal/security"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/procfs"
 	"github.com/stretchr/testify/assert"
@@ -34,10 +35,11 @@ func TestNewSlurmCollector(t *testing.T) {
 	_, err := CEEMSExporterApp.Parse(
 		[]string{
 			"--path.cgroupfs", "testdata/sys/fs/cgroup",
+			"--path.procfs", "testdata/proc",
 			"--collector.slurm.gpu-job-map-path", "testdata/gpujobmap",
 			"--collector.slurm.swap-memory-metrics",
 			"--collector.slurm.psi-metrics",
-			"--collector.slurm.perf-hardware-events",
+			"--collector.perf.hardware-events",
 			"--collector.slurm.nvidia-smi-path", "testdata/nvidia-smi",
 			"--collector.cgroups.force-version", "v2",
 		},
@@ -135,12 +137,22 @@ func TestSlurmJobPropsWithProcsFS(t *testing.T) {
 	}
 
 	c := slurmCollector{
-		cgroupManager: cgManager,
-		gpuDevs:       mockGPUDevices(),
-		logger:        log.NewNopLogger(),
-		jobPropsCache: make(map[string]props),
-		procFS:        procFS,
+		cgroupManager:    cgManager,
+		gpuDevs:          mockGPUDevices(),
+		logger:           log.NewNopLogger(),
+		jobPropsCache:    make(map[string]props),
+		procFS:           procFS,
+		securityContexts: make(map[string]*security.SecurityContext),
 	}
+
+	// Add dummy security context
+	c.securityContexts[slurmReadProcCtx], err = security.NewSecurityContext(
+		slurmReadProcCtx,
+		nil,
+		readProcEnvirons,
+		c.logger,
+	)
+	require.NoError(t, err)
 
 	expectedProps := props{
 		uuid:        "1009248",
@@ -209,7 +221,11 @@ func TestJobPropsCaching(t *testing.T) {
 
 	// Binds GPUs to first n jobs
 	for igpu := range mockGPUDevs {
-		err = os.WriteFile(fmt.Sprintf("%s/%d", gpuMapFilePath, igpu), []byte(strconv.FormatInt(int64(igpu), 10)), 0o600)
+		err = os.WriteFile(
+			fmt.Sprintf("%s/%d", gpuMapFilePath, igpu),
+			[]byte(strconv.FormatInt(int64(igpu), 10)),
+			0o600,
+		)
 		require.NoError(t, err)
 	}
 

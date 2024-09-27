@@ -17,11 +17,12 @@ wait_start() {
         fi
     done
 
+    docker logs "${container_id}"
     exit 1
 }
 
 docker_start() {
-    container_id=$(docker run -d -p "${port}":"${port}" "${docker_image}" ${app})
+    container_id=$(docker run --privileged -d -p "${port}":"${port}" "${docker_image}" ${app})
 }
 
 docker_cleanup() {

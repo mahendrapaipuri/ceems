@@ -98,6 +98,7 @@ ipmiutil dcmi, completed successfully
 func TestIPMICollector(t *testing.T) {
 	_, err := CEEMSExporterApp.Parse([]string{
 		"--collector.ipmi_dcmi.cmd", "testdata/ipmi/capmc/capmc",
+		"--collector.ipmi_dcmi.test-mode",
 	})
 	require.NoError(t, err)
 
@@ -172,7 +173,8 @@ func TestIpmiDcmiFinder(t *testing.T) {
 	require.NoError(t, err)
 
 	// findIPMICmd() should give ipmi-dcmi command
-	ipmiCmdSlice := findIPMICmd()
+	ipmiCmdSlice, err := findIPMICmd()
+	require.NoError(t, err)
 	assert.Equal(t, "ipmi-dcmi", ipmiCmdSlice[0])
 }
 
@@ -190,7 +192,8 @@ func TestIpmiToolFinder(t *testing.T) {
 	require.NoError(t, err)
 
 	// findIPMICmd() should give ipmitool command
-	ipmiCmdSlice := findIPMICmd()
+	ipmiCmdSlice, err := findIPMICmd()
+	require.NoError(t, err)
 	assert.Equal(t, "ipmitool", ipmiCmdSlice[0])
 }
 
@@ -208,6 +211,7 @@ func TestIpmiUtilFinder(t *testing.T) {
 	require.NoError(t, err)
 
 	// findIPMICmd() should give ipmiutil command
-	ipmiCmdSlice := findIPMICmd()
+	ipmiCmdSlice, err := findIPMICmd()
+	require.NoError(t, err)
 	assert.Equal(t, "ipmiutil", ipmiCmdSlice[0])
 }

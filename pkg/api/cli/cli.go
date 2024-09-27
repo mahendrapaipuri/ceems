@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"os/user"
 	"path/filepath"
 	"runtime"
 	"sync"
@@ -17,17 +18,18 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/internal/common"
 	internal_runtime "github.com/mahendrapaipuri/ceems/internal/runtime"
+	"github.com/mahendrapaipuri/ceems/internal/security"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	ceems_db "github.com/mahendrapaipuri/ceems/pkg/api/db"
 	ceems_http "github.com/mahendrapaipuri/ceems/pkg/api/http"
 	"github.com/mahendrapaipuri/ceems/pkg/api/resource"
 	"github.com/mahendrapaipuri/ceems/pkg/api/updater"
-	"github.com/mattn/go-sqlite3"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/common/promlog"
 	"github.com/prometheus/common/promlog/flag"
 	"github.com/prometheus/common/version"
+	"kernel.org/pub/linux/libs/security/libcap/cap"
 )
 
 // Custom errors.
@@ -139,6 +141,10 @@ func (b *CEEMSServer) Main() error {
 		maxProcs = b.App.Flag(
 			"runtime.gomaxprocs", "The target number of CPUs Go will run on (GOMAXPROCS)",
 		).Envar("GOMAXPROCS").Default("1").Int()
+		dropPrivs = b.App.Flag(
+			"security.drop-privileges",
+			"Drop privileges and run as nobody when exporter is started as root.",
+		).Default("true").Bool()
 	)
 
 	// Socket activation only available on Linux
@@ -159,14 +165,6 @@ func (b *CEEMSServer) Main() error {
 	_, err := b.App.Parse(os.Args[1:])
 	if err != nil {
 		return fmt.Errorf("failed to parse CLI flags: %w", err)
-	}
-
-	// Check SQLite version. Only versions >= 3.38.0 are supported as we are using
-	// JSON functions.
-	// Version number ref: https://www.sqlite.org/versionnumbers.html
-	sqliteVersion, sqliteVersionNumber, _ := sqlite3.Version()
-	if sqliteVersionNumber < 3038000 {
-		return fmt.Errorf("require SQLite >= 3.38.0. Current version is %s", sqliteVersion)
 	}
 
 	// Get absolute config file path global variable that will be used in resource manager
@@ -206,6 +204,55 @@ func (b *CEEMSServer) Main() error {
 
 	runtime.GOMAXPROCS(*maxProcs)
 	level.Debug(logger).Log("msg", "Go MAXPROCS", "procs", runtime.GOMAXPROCS(0))
+
+	if user, err := user.Current(); err == nil && user.Uid == "0" {
+		level.Info(logger).
+			Log("msg", "CEEMS API server is running as root user. Privileges will be dropped and process will be run as unprivileged user")
+	}
+
+	// Make security related config
+	// CEEMS API server should not need any privileges except executing SLURM sacct command.
+	//
+	// In future we should add SLURM API support as well which should avoid any privilege
+	// requirements for CEEMS API server.
+	//
+	// Until then the required privileges should not be more than cap_setuid and cap_setgid.
+	//
+	// So we start with that assumption and during the resource manager instantitation, if
+	// we are using sacct method, we keep the privilege or if the runtime config uses
+	// future SLURM API support, we drop those privileges as well.
+	//
+	// So, we keep the privileges only as a insurance and once we confirm with resource manager
+	// we decide to either keep them or drop them.
+	var allCaps []cap.Value
+
+	for _, name := range []string{"cap_setuid", "cap_setgid"} {
+		value, err := cap.FromName(name)
+		if err != nil {
+			level.Error(logger).Log("msg", "Error parsing capability %s: %w", name, err)
+
+			continue
+		}
+
+		allCaps = append(allCaps, value)
+	}
+
+	if *dropPrivs {
+		// We should STRONGLY advise in docs that CEEMS API server should not be started as root
+		// as that will end up dropping the privileges and running it as nobody user which can
+		// be strange as CEEMS API server writes data to DB.
+		securityCfg := &security.Config{
+			RunAsUser:      "nobody",
+			Caps:           allCaps,
+			ReadPaths:      []string{*webConfigFile, *configFile},
+			ReadWritePaths: []string{config.Server.Data.Path, config.Server.Data.BackupPath},
+		}
+
+		// Drop all unnecessary privileges
+		if err := security.DropPrivileges(securityCfg); err != nil {
+			return err
+		}
+	}
 
 	// Create context that listens for the interrupt signal from the OS.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)

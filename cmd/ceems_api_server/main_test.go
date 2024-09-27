@@ -36,6 +36,7 @@ func TestBatchjobStatsExecutable(t *testing.T) {
 	usagestats := exec.Command(
 		binary,
 		"--web.listen-address", address,
+		"--no-security.drop-privileges",
 	)
 	if err := runCommandAndTests(usagestats); err != nil {
 		t.Error(err)

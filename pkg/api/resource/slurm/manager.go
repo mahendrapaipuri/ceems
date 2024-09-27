@@ -5,14 +5,12 @@ package slurm
 import (
 	"context"
 	"fmt"
-	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	internal_osexec "github.com/mahendrapaipuri/ceems/internal/osexec"
+	"github.com/mahendrapaipuri/ceems/internal/security"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/mahendrapaipuri/ceems/pkg/api/resource"
@@ -29,12 +27,18 @@ const (
 	cliMode = "cli"
 )
 
+// Security contexts.
+const (
+	slurmExecCmdCtx = "slurm_exec_cmd"
+)
+
 // slurmScheduler is the struct containing the configuration of a given slurm cluster.
 type slurmScheduler struct {
-	logger      log.Logger
-	cluster     models.Cluster
-	fetchMode   string // Whether to fetch from REST API or CLI commands
-	cmdExecMode string // If sacct mode is chosen, the mode of executing command, ie, sudo or cap or native
+	logger           log.Logger
+	cluster          models.Cluster
+	fetchMode        string // Whether to fetch from REST API or CLI commands
+	cmdExecMode      string // If sacct mode is chosen, the mode of executing command, ie, sudo or cap or native
+	securityContexts map[string]*security.SecurityContext
 }
 
 const slurmBatchScheduler = "slurm"
@@ -70,7 +74,12 @@ func init() {
 // New returns a new SlurmScheduler that returns batch job stats.
 func New(cluster models.Cluster, logger log.Logger) (resource.Fetcher, error) {
 	// Make slurmCluster configs from clusters
-	slurmScheduler := slurmScheduler{logger: logger, cluster: cluster}
+	slurmScheduler := slurmScheduler{
+		logger:           logger,
+		cluster:          cluster,
+		securityContexts: make(map[string]*security.SecurityContext),
+	}
+
 	if err := preflightChecks(&slurmScheduler); err != nil {
 		return nil, err
 	}
@@ -173,91 +182,4 @@ func (s *slurmScheduler) fetchFromSacctMgr(
 			"cluster_id", s.cluster.ID, "num_users", len(users), "num_accounts", len(projects))
 
 	return users, projects, nil
-}
-
-// Run sacct command and return output.
-func (s *slurmScheduler) runSacctCmd(ctx context.Context, startTime string, endTime string) ([]byte, error) {
-	// If we are fetching historical data, do not use RUNNING state as it can report
-	// same job twice once when it was still in running state and once it is in completed
-	// state.
-	endTimeParsed, _ := time.Parse(base.DatetimeLayout, endTime)
-
-	var states []string
-	// When fetching current jobs, endTime should be very close to current time. Here we
-	// assume that if current time is more than 5 sec than end time, we are fetching
-	// historical data
-	if time.Since(endTimeParsed) > 5*time.Second {
-		// Strip RUNNING state from slice
-		states = slurmStates[:len(slurmStates)-1]
-	} else {
-		states = slurmStates
-	}
-
-	// Use jobIDRaw that outputs the array jobs as regular job IDs instead of id_array format
-	args := []string{
-		"-D", "-X", "--noheader", "--allusers", "--parsable2",
-		"--format", strings.Join(sacctFields, ","),
-		"--state", strings.Join(states, ","),
-		"--starttime", startTime,
-		"--endtime", endTime,
-	}
-
-	// sacct path
-	sacctPath := filepath.Join(s.cluster.CLI.Path, "sacct")
-
-	// Use SLURM_TIME_FORMAT env var to get timezone offset
-	env := []string{"SLURM_TIME_FORMAT=%Y-%m-%dT%H:%M:%S%z"}
-	for name, value := range s.cluster.CLI.EnvVars {
-		env = append(env, fmt.Sprintf("%s=%s", name, value))
-	}
-
-	// Run command as slurm user
-	if s.cmdExecMode == capabilityMode {
-		return internal_osexec.ExecuteAsContext(ctx, sacctPath, args, slurmUserUID, slurmUserGID, env, s.logger)
-	} else if s.cmdExecMode == sudoMode {
-		// Important that we need to export env as well as we set environment variables in the
-		// command execution
-		args = append([]string{"-E", sacctPath}, args...)
-
-		return internal_osexec.ExecuteContext(ctx, sudoMode, args, env, s.logger)
-	}
-
-	return internal_osexec.ExecuteContext(ctx, sacctPath, args, env, s.logger)
-}
-
-// Run sacctmgr command and return output.
-func (s *slurmScheduler) runSacctMgrCmd(ctx context.Context) ([]byte, error) {
-	// Use jobIDRaw that outputs the array jobs as regular job IDs instead of id_array format
-	args := []string{"--parsable2", "--noheader", "list", "associations", "format=Account,User"}
-
-	// sacctmgr path
-	sacctMgrPath := filepath.Join(s.cluster.CLI.Path, "sacctmgr")
-
-	// Set configured env vars
-	env := []string{}
-	for name, value := range s.cluster.CLI.EnvVars {
-		env = append(env, fmt.Sprintf("%s=%s", name, value))
-	}
-
-	// Run command as slurm user
-	if s.cmdExecMode == capabilityMode {
-		return internal_osexec.ExecuteAsContext(ctx, sacctMgrPath, args, slurmUserUID, slurmUserGID, env, s.logger)
-	} else if s.cmdExecMode == sudoMode {
-		// Important that we need to export env as well as we set environment variables in the
-		// command execution
-		args = append([]string{"-E", sacctMgrPath}, args...)
-
-		return internal_osexec.ExecuteContext(ctx, sudoMode, args, env, s.logger)
-	}
-
-	return internal_osexec.ExecuteContext(ctx, sacctMgrPath, args, env, s.logger)
-}
-
-// Run preflight checks on provided config.
-func preflightChecks(s *slurmScheduler) error {
-	// // Always prefer REST API mode if configured
-	// if clusterConfig.Web.URL != "" {
-	// 	return checkRESTAPI(clusterConfig, logger)
-	// }
-	return preflightsCLI(s)
 }

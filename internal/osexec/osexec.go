@@ -7,12 +7,8 @@ import (
 	"math"
 	"os"
 	"os/exec"
-	"strings"
 	"syscall"
 	"time"
-
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 )
 
 const (
@@ -26,9 +22,7 @@ var (
 )
 
 // Execute command and return stdout/stderr.
-func Execute(cmd string, args []string, env []string, logger log.Logger) ([]byte, error) {
-	level.Debug(logger).Log("msg", "Executing", "command", cmd, "args", strings.Join(args, " "))
-
+func Execute(cmd string, args []string, env []string) ([]byte, error) {
 	execCmd := exec.Command(cmd, args...)
 
 	// If env is not nil pointer, add env vars into subprocess cmd
@@ -50,34 +44,22 @@ func Execute(cmd string, args []string, env []string, logger log.Logger) ([]byte
 	}
 
 	// Execute command
-	out, err := execCmd.CombinedOutput()
-	if err != nil {
-		level.Error(logger).
-			Log("msg", "Error executing command", "command", cmd, "args", strings.Join(args, " "), "err", err)
-	}
-
-	return out, err
+	return execCmd.CombinedOutput()
 }
 
 // ExecuteAs executes a command as a given UID and GID and return stdout/stderr.
-func ExecuteAs(cmd string, args []string, uid int, gid int, env []string, logger log.Logger) ([]byte, error) {
-	level.Debug(logger).
-		Log("msg", "Executing as user", "command", cmd, "args", strings.Join(args, " "), "uid", uid, "gid", gid)
-
+func ExecuteAs(cmd string, args []string, uid int, gid int, env []string) ([]byte, error) {
 	execCmd := exec.Command(cmd, args...)
 
 	// Check bounds on uid and gid before converting into int32
-	var uidInt32, gidInt32 uint32
-	if uid > 0 && uid <= math.MaxInt32 {
-		uidInt32 = uint32(uid) //nolint:gosec
-	} else {
-		return nil, ErrInvalidUID
+	uidInt32, err := convertToUint(uid)
+	if err != nil {
+		return nil, err
 	}
 
-	if gid > 0 && gid <= math.MaxInt32 {
-		gidInt32 = uint32(gid) //nolint:gosec
-	} else {
-		return nil, ErrInvalidGID
+	gidInt32, err := convertToUint(gid)
+	if err != nil {
+		return nil, err
 	}
 
 	// According to setpgid docs (https://man7.org/linux/man-pages/man2/setpgid.2.html)
@@ -102,19 +84,11 @@ func ExecuteAs(cmd string, args []string, uid int, gid int, env []string, logger
 	}
 
 	// Execute command
-	out, err := execCmd.CombinedOutput()
-	if err != nil {
-		level.Error(logger).
-			Log("msg", "Error executing command as user", "command", cmd, "args", strings.Join(args, " "), "uid", uid, "gid", gid, "err", err)
-	}
-
-	return out, err
+	return execCmd.CombinedOutput()
 }
 
 // ExecuteContext executes a command with context and return stdout/stderr.
-func ExecuteContext(ctx context.Context, cmd string, args []string, env []string, logger log.Logger) ([]byte, error) {
-	level.Debug(logger).Log("msg", "Executing with context", "command", cmd, "args", strings.Join(args, " "))
-
+func ExecuteContext(ctx context.Context, cmd string, args []string, env []string) ([]byte, error) {
 	execCmd := exec.CommandContext(ctx, cmd, args...)
 
 	// If env is not nil pointer, add env vars into subprocess cmd
@@ -136,13 +110,7 @@ func ExecuteContext(ctx context.Context, cmd string, args []string, env []string
 	}
 
 	// Execute command
-	out, err := execCmd.CombinedOutput()
-	if err != nil {
-		level.Error(logger).
-			Log("msg", "Error executing command", "command", cmd, "args", strings.Join(args, " "), "err", err)
-	}
-
-	return out, err
+	return execCmd.CombinedOutput()
 }
 
 // ExecuteAsContext executes a command as a given UID and GID with context and return stdout/stderr.
@@ -153,25 +121,18 @@ func ExecuteAsContext(
 	uid int,
 	gid int,
 	env []string,
-	logger log.Logger,
 ) ([]byte, error) {
-	level.Debug(logger).
-		Log("msg", "Executing as user with context", "command", cmd, "args", strings.Join(args, " "), "uid", uid, "gid", gid)
-
 	execCmd := exec.CommandContext(ctx, cmd, args...)
 
 	// Check bounds on uid and gid before converting into int32
-	var uidInt32, gidInt32 uint32
-	if uid > 0 && uid <= math.MaxInt32 {
-		uidInt32 = uint32(uid) //nolint:gosec
-	} else {
-		return nil, ErrInvalidUID
+	uidInt32, err := convertToUint(uid)
+	if err != nil {
+		return nil, err
 	}
 
-	if gid > 0 && gid <= math.MaxInt32 {
-		gidInt32 = uint32(gid) //nolint:gosec
-	} else {
-		return nil, ErrInvalidGID
+	gidInt32, err := convertToUint(gid)
+	if err != nil {
+		return nil, err
 	}
 
 	// According to setpgid docs (https://man7.org/linux/man-pages/man2/setpgid.2.html)
@@ -195,21 +156,11 @@ func ExecuteAsContext(
 		execCmd.Env = append(os.Environ(), env...)
 	}
 
-	// Execute command
-	out, err := execCmd.CombinedOutput()
-	if err != nil {
-		level.Error(logger).
-			Log("msg", "Error executing command as user", "command", cmd, "args", strings.Join(args, " "), "uid", uid, "gid", gid, "err", err)
-	}
-
-	return out, err
+	return execCmd.CombinedOutput()
 }
 
 // ExecuteWithTimeout exwecutes a command with timeout and return stdout/stderr.
-func ExecuteWithTimeout(cmd string, args []string, timeout int, env []string, logger log.Logger) ([]byte, error) {
-	level.Debug(logger).
-		Log("msg", "Executing with timeout", "command", cmd, "args", strings.Join(args, " "), "timeout", timeout)
-
+func ExecuteWithTimeout(cmd string, args []string, timeout int, env []string) ([]byte, error) {
 	ctx := context.Background()
 
 	if timeout > 0 {
@@ -242,13 +193,7 @@ func ExecuteWithTimeout(cmd string, args []string, timeout int, env []string, lo
 	// execCmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGTERM}
 
 	// Execute command
-	out, err := execCmd.CombinedOutput()
-	if err != nil {
-		level.Error(logger).
-			Log("msg", "Error executing command", "command", cmd, "args", strings.Join(args, " "), "err", err)
-	}
-
-	return out, err
+	return execCmd.CombinedOutput()
 }
 
 // ExecuteAsWithTimeout executes a command with timeout as a given UID and GID and return stdout/stderr.
@@ -259,11 +204,7 @@ func ExecuteAsWithTimeout(
 	gid int,
 	timeout int,
 	env []string,
-	logger log.Logger,
 ) ([]byte, error) {
-	level.Debug(logger).
-		Log("msg", "Executing with timeout as user", "command", cmd, "args", strings.Join(args, " "), "uid", uid, "gid", gid, "timout", timeout)
-
 	ctx := context.Background()
 
 	if timeout > 0 {
@@ -280,17 +221,14 @@ func ExecuteAsWithTimeout(
 	}
 
 	// Check bounds on uid and gid before converting into int32
-	var uidInt32, gidInt32 uint32
-	if uid > 0 && uid <= math.MaxInt32 {
-		uidInt32 = uint32(uid) //nolint:gosec
-	} else {
-		return nil, ErrInvalidUID
+	uidInt32, err := convertToUint(uid)
+	if err != nil {
+		return nil, err
 	}
 
-	if gid > 0 && gid <= math.MaxInt32 {
-		gidInt32 = uint32(gid) //nolint:gosec
-	} else {
-		return nil, ErrInvalidGID
+	gidInt32, err := convertToUint(gid)
+	if err != nil {
+		return nil, err
 	}
 
 	// According to setpgid docs (https://man7.org/linux/man-pages/man2/setpgid.2.html)
@@ -310,11 +248,14 @@ func ExecuteAsWithTimeout(
 	execCmd.SysProcAttr.Credential = &syscall.Credential{Uid: uidInt32, Gid: gidInt32}
 
 	// Execute command
-	out, err := execCmd.CombinedOutput()
-	if err != nil {
-		level.Error(logger).
-			Log("msg", "Error executing command as user", "command", cmd, "args", strings.Join(args, " "), "uid", uid, "gid", gid, "err", err)
+	return execCmd.CombinedOutput()
+}
+
+// convertToUint converts int to uint32 after checking bounds.
+func convertToUint(i int) (uint32, error) {
+	if i >= 0 && i <= math.MaxInt32 {
+		return uint32(i), nil //nolint:gosec
 	}
 
-	return out, err
+	return 0, ErrInvalidUID
 }

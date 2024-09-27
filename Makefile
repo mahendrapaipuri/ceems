@@ -64,7 +64,7 @@ else
 	PROMU_CONF ?= .promu-go.yml
 	pkgs := ./pkg/collector ./pkg/emissions ./pkg/tsdb ./pkg/grafana \
 			./internal/common ./internal/osexec ./internal/structset \
-			./cmd/ceems_exporter
+			./internal/security ./cmd/ceems_exporter
 	checkmetrics := checkmetrics
 	checkrules := checkrules
 
@@ -265,7 +265,7 @@ skip-checkrules: $(PROMTOOL)
 .PHONY: test-docker
 test-docker:
 	@echo ">> testing docker image"
-	./scripts/test_image.sh "$(DOCKER_REPO)/$(DOCKER_IMAGE_NAME)-linux-amd64:$(DOCKER_IMAGE_TAG)" 9010 ceems_exporter
+	./scripts/test_image.sh "$(DOCKER_REPO)/$(DOCKER_IMAGE_NAME)-linux-amd64:$(DOCKER_IMAGE_TAG)" 9010 ceems_exporter --no-collector.ipmi_dcmi
 	./scripts/test_image.sh "$(DOCKER_REPO)/$(DOCKER_IMAGE_NAME)-linux-amd64:$(DOCKER_IMAGE_TAG)" 9020 ceems_api_server
 	./scripts/test_image.sh "$(DOCKER_REPO)/$(DOCKER_IMAGE_NAME)-linux-amd64:$(DOCKER_IMAGE_TAG)" 9030 ceems_lb
 

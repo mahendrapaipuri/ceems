@@ -162,6 +162,8 @@ func TestNewEbpfCollector(t *testing.T) {
 		[]string{
 			"--path.cgroupfs", "testdata/sys/fs/cgroup",
 			"--collector.cgroups.force-version", "v2",
+			"--collector.ebpf.io-metrics",
+			"--collector.ebpf.network-metrics",
 		},
 	)
 	require.NoError(t, err)
@@ -170,13 +172,7 @@ func TestNewEbpfCollector(t *testing.T) {
 	cgManager, err := NewCgroupManager("slurm")
 	require.NoError(t, err)
 
-	// ebpf opts
-	opts := ebpfOpts{
-		vfsStatsEnabled: true,
-		netStatsEnabled: true,
-	}
-
-	collector, err := NewEbpfCollector(log.NewNopLogger(), cgManager, opts)
+	collector, err := NewEbpfCollector(log.NewNopLogger(), cgManager)
 	require.NoError(t, err)
 
 	// Setup background goroutine to capture metrics.
@@ -328,8 +324,10 @@ func TestVFSBPFObjects(t *testing.T) {
 
 		*procfsPath = test.procfs
 
-		obj, err := bpfVFSObjs()
+		currentKernelVer, err := KernelVersion()
 		require.NoError(t, err)
+
+		obj := bpfVFSObjs(currentKernelVer)
 
 		assert.Equal(t, test.obj, obj, test.name)
 	}
@@ -368,8 +366,10 @@ func TestNetBPFObjects(t *testing.T) {
 
 		*procfsPath = test.procfs
 
-		obj, err := bpfNetObjs()
+		currentKernelVer, err := KernelVersion()
 		require.NoError(t, err)
+
+		obj := bpfNetObjs(currentKernelVer)
 
 		assert.Equal(t, test.obj, obj, test.name)
 	}

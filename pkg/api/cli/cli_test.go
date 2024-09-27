@@ -120,16 +120,16 @@ ceems_api_server:
 	os.MkdirAll(dataDir, os.ModePerm)
 
 	f, err := os.Create(filepath.Join(dataDir, base.CEEMSDBName))
-	if err != nil {
-		require.NoError(t, err)
-	}
+	require.NoError(t, err)
 
 	f.Close()
 
 	// Remove test related args
 	os.Args = append([]string{os.Args[0]}, "--config.file="+configFilePath)
 	os.Args = append(os.Args, "--log.level=debug")
-	a, _ := NewCEEMSServer()
+	os.Args = append(os.Args, "--no-security.drop-privileges")
+	a, err := NewCEEMSServer()
+	require.NoError(t, err)
 
 	// Start Main
 	go func() {

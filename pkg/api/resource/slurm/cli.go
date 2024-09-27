@@ -1,6 +1,8 @@
 package slurm
 
 import (
+	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"os/user"
@@ -14,8 +16,11 @@ import (
 
 	"github.com/go-kit/log/level"
 	internal_osexec "github.com/mahendrapaipuri/ceems/internal/osexec"
+	"github.com/mahendrapaipuri/ceems/internal/security"
+	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/helper"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
+	"kernel.org/pub/linux/libs/security/libcap/cap"
 )
 
 var (
@@ -96,16 +101,43 @@ func preflightsCLI(slurm *slurmScheduler) error {
 		goto sudomode
 	}
 
-	if _, err := internal_osexec.ExecuteAs(sacctPath, []string{"--help"}, slurmUserUID, slurmUserGID, nil, slurm.logger); err == nil {
+	if _, err := internal_osexec.ExecuteAs(sacctPath, []string{"--help"}, slurmUserUID, slurmUserGID, nil); err == nil {
 		slurm.cmdExecMode = "cap"
 		level.Info(slurm.logger).Log("msg", "Linux capabilities will be used to execute SLURM commands as slurm user")
+
+		var caps []cap.Value
+
+		for _, name := range []string{"cap_setuid", "cap_setgid"} {
+			value, err := cap.FromName(name)
+			if err != nil {
+				level.Error(slurm.logger).Log("msg", "Error parsing capability %s: %w", name, err)
+
+				continue
+			}
+
+			caps = append(caps, value)
+		}
+
+		// If we choose capability mode, setup security context
+		// Setup new security context(s)
+		slurm.securityContexts[slurmExecCmdCtx], err = security.NewSecurityContext(
+			slurmExecCmdCtx,
+			caps,
+			security.ExecAsUser,
+			slurm.logger,
+		)
+		if err != nil {
+			level.Error(slurm.logger).Log("msg", "Failed to create a security context for SLURM", "err", err)
+
+			return err
+		}
 
 		return nil
 	}
 
 sudomode:
 	// Last attempt to run sacct with sudo
-	if _, err := internal_osexec.ExecuteWithTimeout("sudo", []string{sacctPath, "--help"}, 5, nil, slurm.logger); err == nil {
+	if _, err := internal_osexec.ExecuteWithTimeout("sudo", []string{sacctPath, "--help"}, 5, nil); err == nil {
 		slurm.cmdExecMode = "sudo"
 		level.Info(slurm.logger).Log("msg", "sudo will be used to execute SLURM commands")
 
@@ -461,4 +493,146 @@ func parseSacctMgrCmdOutput(sacctMgrOutput string, currentTime string) ([]models
 	}
 
 	return userModels, projectModels
+}
+
+// runSacctCmd executes sacct command and return output.
+func (s *slurmScheduler) runSacctCmd(ctx context.Context, startTime string, endTime string) ([]byte, error) {
+	// If we are fetching historical data, do not use RUNNING state as it can report
+	// same job twice once when it was still in running state and once it is in completed
+	// state.
+	endTimeParsed, _ := time.Parse(base.DatetimeLayout, endTime)
+
+	var states []string
+	// When fetching current jobs, endTime should be very close to current time. Here we
+	// assume that if current time is more than 5 sec than end time, we are fetching
+	// historical data
+	if time.Since(endTimeParsed) > 5*time.Second {
+		// Strip RUNNING state from slice
+		states = slurmStates[:len(slurmStates)-1]
+	} else {
+		states = slurmStates
+	}
+
+	// sacct path
+	sacctPath := filepath.Join(s.cluster.CLI.Path, "sacct")
+
+	// Use SLURM_TIME_FORMAT env var to get timezone offset
+	env := []string{"SLURM_TIME_FORMAT=%Y-%m-%dT%H:%M:%S%z"}
+	for name, value := range s.cluster.CLI.EnvVars {
+		env = append(env, fmt.Sprintf("%s=%s", name, value))
+	}
+
+	// Use jobIDRaw that outputs the array jobs as regular job IDs instead of id_array format
+	args := []string{
+		"-D", "-X", "--noheader", "--allusers", "--parsable2",
+		"--format", strings.Join(sacctFields, ","),
+		"--state", strings.Join(states, ","),
+		"--starttime", startTime,
+		"--endtime", endTime,
+	}
+
+	// Run command as slurm user
+	if s.cmdExecMode == capabilityMode {
+		// Get security context
+		var securityCtx *security.SecurityContext
+
+		var ok bool
+		if securityCtx, ok = s.securityContexts[slurmExecCmdCtx]; !ok {
+			return nil, security.ErrNoSecurityCtx
+		}
+
+		cmd := []string{sacctPath}
+		cmd = append(cmd, args...)
+
+		// security context data
+		dataPtr := &security.ExecSecurityCtxData{
+			Context: ctx,
+			Cmd:     cmd,
+			Environ: env,
+			Logger:  s.logger,
+			UID:     slurmUserUID,
+			GID:     slurmUserGID,
+		}
+
+		return executeInSecurityContext(securityCtx, dataPtr)
+	} else if s.cmdExecMode == sudoMode {
+		// Important that we need to export env as well as we set environment variables in the
+		// command execution
+		args = append([]string{"-E", sacctPath}, args...)
+
+		return internal_osexec.ExecuteContext(ctx, sudoMode, args, env)
+	}
+
+	return internal_osexec.ExecuteContext(ctx, sacctPath, args, env)
+}
+
+// Run sacctmgr command and return output.
+func (s *slurmScheduler) runSacctMgrCmd(ctx context.Context) ([]byte, error) {
+	// Use jobIDRaw that outputs the array jobs as regular job IDs instead of id_array format
+	args := []string{"--parsable2", "--noheader", "list", "associations", "format=Account,User"}
+
+	// sacct path
+	sacctMgrPath := filepath.Join(s.cluster.CLI.Path, "sacctmgr")
+
+	// Use SLURM_TIME_FORMAT env var to get timezone offset
+	var env []string
+	for name, value := range s.cluster.CLI.EnvVars {
+		env = append(env, fmt.Sprintf("%s=%s", name, value))
+	}
+
+	// Run command as slurm user
+	if s.cmdExecMode == capabilityMode {
+		// Get security context
+		var securityCtx *security.SecurityContext
+
+		var ok bool
+		if securityCtx, ok = s.securityContexts[slurmExecCmdCtx]; !ok {
+			return nil, security.ErrNoSecurityCtx
+		}
+
+		cmd := []string{sacctMgrPath}
+		cmd = append(cmd, args...)
+
+		// security context data
+		dataPtr := &security.ExecSecurityCtxData{
+			Context: ctx,
+			Cmd:     cmd,
+			Environ: env,
+			Logger:  s.logger,
+			UID:     slurmUserUID,
+			GID:     slurmUserGID,
+		}
+
+		return executeInSecurityContext(securityCtx, dataPtr)
+	} else if s.cmdExecMode == sudoMode {
+		// Important that we need to export env as well as we set environment variables in the
+		// command execution
+		args = append([]string{"-E", sacctMgrPath}, args...)
+
+		return internal_osexec.ExecuteContext(ctx, sudoMode, args, env)
+	}
+
+	return internal_osexec.ExecuteContext(ctx, sacctMgrPath, args, env)
+}
+
+// executeInSecurityContext executes SLURM command within a security context.
+func executeInSecurityContext(
+	securityCtx *security.SecurityContext,
+	dataPtr *security.ExecSecurityCtxData,
+) ([]byte, error) {
+	// Read stdOut of command into data
+	if err := securityCtx.Exec(dataPtr); err != nil {
+		return nil, err
+	}
+
+	return dataPtr.StdOut, nil
+}
+
+// Run preflight checks on provided config.
+func preflightChecks(s *slurmScheduler) error {
+	// // Always prefer REST API mode if configured
+	// if clusterConfig.Web.URL != "" {
+	// 	return checkRESTAPI(clusterConfig, logger)
+	// }
+	return preflightsCLI(s)
 }
