@@ -240,6 +240,7 @@ outside:
 	//
 	// Make query parameters
 	step := time.Duration(period) / 5000
+
 	urlValues := url.Values{
 		"query": []string{fmt.Sprintf(`up{instance="%s:%s"}`, b.url.Hostname(), b.url.Port())},
 		"start": []string{time.Now().Add(-time.Duration(period)).UTC().Format(time.RFC3339Nano)},
