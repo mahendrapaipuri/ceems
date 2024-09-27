@@ -35,7 +35,9 @@ in a resource manager agnostic way.
 
 - Monitor energy, performance, IO and network metrics for different types of resource
 managers (SLURM, Openstack, k8s)
-- Realtime access to metrics _via_ Grafana dashboards
+- Support NVIDIA and AMD GPUs
+- Realtime access to metrics *via* Grafana dashboards
+- Access control to Prometheus datasource in Grafana
 - Stores aggregated metrics in a separate DB that can be retained for long time
 - CEEMS apps are [capability aware](https://tbhaxor.com/understanding-linux-capabilities/)
 

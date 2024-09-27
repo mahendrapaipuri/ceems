@@ -83,7 +83,7 @@ The basic auth password is hashed inside the web configuration file just like in
 In all the cases, it is important that either exporter binary or exporter process must
 have enough privileges to be able to export all the metrics. More info on the privileges
 necessary for the exporter are discussed in [Configuration](../configuration/ceems-exporter.md)
-section where as how to set privileges are briefed in [Systemd](../configuration/systemd.md)
+section where as how to set privileges are briefed in [Security](../configuration/security.md)
 section.
 
 :::

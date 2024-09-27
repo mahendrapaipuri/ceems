@@ -187,19 +187,26 @@ func NewEbpfCollector(logger log.Logger, cgManager *cgroupManager) (*ebpfCollect
 
 	var err error
 
-	// Make opts struct
-	opts := ebpfOpts{
-		vfsStatsEnabled: *ebpfIOMetricsFlag,
-		netStatsEnabled: *ebpfNetMetricsFlag,
-		vfsMountPoints:  *ebpfFSMountPoints,
-	}
-
 	// Get current kernel version
 	currentKernelVer, err := KernelVersion()
 	if err != nil {
 		level.Error(logger).Log("msg", "Failed to get current kernel version", "err", err)
 
 		return nil, err
+	}
+
+	// Check if current kernel version is atleast 5.8
+	if currentKernelVer < KernelStringToNumeric("5.8") {
+		level.Error(logger).Log("msg", "ebpf collector does not support kernel < 5.8")
+
+		return nil, errors.New("incompatible kernel")
+	}
+
+	// Make opts struct
+	opts := ebpfOpts{
+		vfsStatsEnabled: *ebpfIOMetricsFlag,
+		netStatsEnabled: *ebpfNetMetricsFlag,
+		vfsMountPoints:  *ebpfFSMountPoints,
 	}
 
 	// Remove resource limits for kernels <5.11.
