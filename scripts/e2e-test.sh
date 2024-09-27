@@ -240,6 +240,9 @@ then
   pidfile="${tmpdir}/ceems_lb.pid"
 fi
 
+# Current time stamp
+timestamp=$(date +%s)
+
 echo "using scenario: ${scenario}. Description: ${desc}"
 
 finish() {
@@ -630,7 +633,7 @@ then
 
     waitport "${port}"
 
-    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/slurm-0/api/v1/query?query=foo\{uuid=\"1479763\"\}&time=1713032179.506" > "${fixture_output}"
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/slurm-0/api/v1/query?query=foo\{uuid=\"1479763\"\}&time=${timestamp}" > "${fixture_output}"
 
   elif [[ "${scenario}" = "lb-forbid-user-query-api" ]] 
   then
@@ -674,7 +677,7 @@ then
 
     waitport "${port}"
 
-    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/slurm-1/api/v1/query?query=foo\{uuid=\"1481510\"\}&time=1713032179.506" > "${fixture_output}"
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/slurm-1/api/v1/query?query=foo\{uuid=\"1481510\"\}&time=${timestamp}" > "${fixture_output}"
 
   elif [[ "${scenario}" = "lb-allow-user-query-api" ]] 
   then
@@ -718,7 +721,7 @@ then
 
     waitport "${port}"
 
-    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/slurm-0/api/v1/query?query=foo\{uuid=\"1479763\"\}&time=1713032179.506" > "${fixture_output}"
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/slurm-0/api/v1/query?query=foo\{uuid=\"1479763\"\}&time=${timestamp}" > "${fixture_output}"
 
   elif [[ "${scenario}" = "lb-allow-admin-query" ]] 
   then
@@ -747,7 +750,7 @@ then
 
     waitport "${port}"
 
-    get -H "X-Grafana-User: grafana" -H "Content-Type: application/x-www-form-urlencoded" -X POST -d "query=foo{uuid=\"1479765\"}&time=1713032179.506" "127.0.0.1:${port}/slurm-1/api/v1/query" > "${fixture_output}"
+    get -H "X-Grafana-User: grafana" -H "Content-Type: application/x-www-form-urlencoded" -X POST -d "query=foo{uuid=\"1479765\"}&time=${timestamp}" "127.0.0.1:${port}/slurm-1/api/v1/query" > "${fixture_output}"
 
   elif [[ "${scenario}" = "lb-auth" ]] 
   then
