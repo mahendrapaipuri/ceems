@@ -27,7 +27,7 @@ else ifeq ($(GOARCH),amd64)
 else ifeq ($(GOARCH),arm64)
 	BPF_TARGET_ARCH = arm64
 	BPF_TARGET_MARCH = bpfel
-else ifeq ($(GOARCH),mpis)
+else ifeq ($(GOARCH),mips)
 	BPF_TARGET_ARCH = mips
 	BPF_TARGET_MARCH = bpfeb
 else ifeq ($(GOARCH),ppc64)
