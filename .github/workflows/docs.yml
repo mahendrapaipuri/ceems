@@ -1,0 +1,29 @@
+name: Docs
+on:
+  workflow_dispatch:
+
+  push:
+    paths:
+      - "website/**"
+      - ".github/workflows/docs.yml"
+      - "!.github/workflows/codeql.yml"
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  # All nested workflows will inherit these permissions and so no need to declare
+  # in each step file
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  docs:
+    uses: ./.github/workflows/step_docs.yml
+    # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
+    permissions:
+      pages: write      # to deploy to Pages
+      id-token: write   # to verify the deployment originates from an appropriate source
