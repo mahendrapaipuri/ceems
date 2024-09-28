@@ -51,13 +51,6 @@ jobs:
   test-lint:
     uses: ./.github/workflows/step_tests-lint.yml
 
-  docs:
-    uses: ./.github/workflows/step_docs.yml
-    # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
-    permissions:
-      pages: write      # to deploy to Pages
-      id-token: write   # to verify the deployment originates from an appropriate source
-
   test-unit:
     needs: [test-lint]
     uses: ./.github/workflows/step_tests-unit.yml
