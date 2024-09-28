@@ -27,8 +27,8 @@ metrics like IO, networking, performance _etc_. Currently available sub-collecto
 - Perf sub-collector: Exports hardware, software and cache performance metrics
 - eBPF sub-collector: Exports IO and network related metrics
 
-These sub-collectors are not meant to work alone and they are supposed to be enabled
-from within a main collector.
+These sub-collectors are not meant to work alone and they can enabled only when
+a main collector that monitors resource manager's compute units is activated.
 
 ## Sub-collectors
 
@@ -295,3 +295,8 @@ statistics by parsing `/proc/meminfo` file. These collectors are heavily inspire
 These metrics are mainly used to estimate the proportion of CPU and memory usage by the
 individual compute units and to estimate the energy consumption of compute unit
 based on these proportions.
+
+## Metrics
+
+Please look at [Metrics](./metrics.md) that lists all the metrics exposed by CEEMS
+exporter.

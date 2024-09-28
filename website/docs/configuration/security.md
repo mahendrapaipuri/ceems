@@ -99,7 +99,7 @@ directive of the `systemd`. An example is as follows:
 ```ini
 [Service]
 ExecStart=/usr/local/bin/ceems_exporter --collector.slurm --collector.perf.hardware-events --collector.ebpf.io-metrics
-AmbientCapabilities=CAP_SYS_PTRACE CAP_DAC_READ_SEARCH CAP_SETUID CAP_SETGID CAP_PERFMON CAP_BPF
+AmbientCapabilities=CAP_SYS_PTRACE CAP_DAC_READ_SEARCH CAP_SETUID CAP_SETGID CAP_PERFMON CAP_BPF CAP_SYS_RESOURCE
 ```
 
 Note that it is bare minimum service file and it is only to demonstrate on how to use
