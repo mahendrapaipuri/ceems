@@ -1472,6 +1472,126 @@ struct pt_regs {
 	u64 exit_rcu;
 };
 
+#elif defined(__TARGET_ARCH_mips)
+/*
+ * Definitions for the following architectures are nicked from
+ * https://github.com/eunomia-bpf/vmlinux/tree/main  
+ */
+
+struct user_pt_regs {
+	__u64 regs[32];
+	__u64 lo;
+	__u64 hi;
+	__u64 cp0_epc;
+	__u64 cp0_badvaddr;
+	__u64 cp0_status;
+	__u64 cp0_cause;
+};
+
+struct pt_regs {
+	long unsigned int pad0[8];
+	long unsigned int regs[32];
+	long unsigned int cp0_status;
+	long unsigned int hi;
+	long unsigned int lo;
+	long unsigned int cp0_badvaddr;
+	long unsigned int cp0_cause;
+	long unsigned int cp0_epc;
+	long unsigned int __last[0];
+};
+
+#elif defined(__TARGET_ARCH_powerpc)
+
+struct user_pt_regs {
+	long unsigned int gpr[32];
+	long unsigned int nip;
+	long unsigned int msr;
+	long unsigned int orig_gpr3;
+	long unsigned int ctr;
+	long unsigned int link;
+	long unsigned int xer;
+	long unsigned int ccr;
+	long unsigned int softe;
+	long unsigned int trap;
+	long unsigned int dar;
+	long unsigned int dsisr;
+	long unsigned int result;
+};
+
+struct pt_regs {
+	union {
+		struct user_pt_regs user_regs;
+		struct {
+			long unsigned int gpr[32];
+			long unsigned int nip;
+			long unsigned int msr;
+			long unsigned int orig_gpr3;
+			long unsigned int ctr;
+			long unsigned int link;
+			long unsigned int xer;
+			long unsigned int ccr;
+			long unsigned int softe;
+			long unsigned int trap;
+			long unsigned int dar;
+			long unsigned int dsisr;
+			long unsigned int result;
+		};
+	};
+	union {
+		struct {
+			long unsigned int ppr;
+			long unsigned int exit_result;
+			union {
+				long unsigned int kuap;
+				long unsigned int amr;
+			};
+			long unsigned int iamr;
+		};
+		long unsigned int __pad[4];
+	};
+};
+
+#elif defined(__TARGET_ARCH_riscv)
+
+struct pt_regs {
+	long unsigned int epc;
+	long unsigned int ra;
+	long unsigned int sp;
+	long unsigned int gp;
+	long unsigned int tp;
+	long unsigned int t0;
+	long unsigned int t1;
+	long unsigned int t2;
+	long unsigned int s0;
+	long unsigned int s1;
+	long unsigned int a0;
+	long unsigned int a1;
+	long unsigned int a2;
+	long unsigned int a3;
+	long unsigned int a4;
+	long unsigned int a5;
+	long unsigned int a6;
+	long unsigned int a7;
+	long unsigned int s2;
+	long unsigned int s3;
+	long unsigned int s4;
+	long unsigned int s5;
+	long unsigned int s6;
+	long unsigned int s7;
+	long unsigned int s8;
+	long unsigned int s9;
+	long unsigned int s10;
+	long unsigned int s11;
+	long unsigned int t3;
+	long unsigned int t4;
+	long unsigned int t5;
+	long unsigned int t6;
+	long unsigned int status;
+	long unsigned int badaddr;
+	long unsigned int cause;
+	long unsigned int orig_a0;
+};
+
 #endif
 
 struct desc_ptr {
@@ -21518,6 +21638,45 @@ struct user_i387_struct {
 	__u32 padding[24];
 };
 
+#if defined(__TARGET_ARCH_riscv)
+
+struct user_regs_struct {
+	long unsigned int pc;
+	long unsigned int ra;
+	long unsigned int sp;
+	long unsigned int gp;
+	long unsigned int tp;
+	long unsigned int t0;
+	long unsigned int t1;
+	long unsigned int t2;
+	long unsigned int s0;
+	long unsigned int s1;
+	long unsigned int a0;
+	long unsigned int a1;
+	long unsigned int a2;
+	long unsigned int a3;
+	long unsigned int a4;
+	long unsigned int a5;
+	long unsigned int a6;
+	long unsigned int a7;
+	long unsigned int s2;
+	long unsigned int s3;
+	long unsigned int s4;
+	long unsigned int s5;
+	long unsigned int s6;
+	long unsigned int s7;
+	long unsigned int s8;
+	long unsigned int s9;
+	long unsigned int s10;
+	long unsigned int s11;
+	long unsigned int t3;
+	long unsigned int t4;
+	long unsigned int t5;
+	long unsigned int t6;
+};
+
+#else
+
 struct user_regs_struct {
 	long unsigned int r15;
 	long unsigned int r14;
@@ -21547,6 +21706,8 @@ struct user_regs_struct {
 	long unsigned int fs;
 	long unsigned int gs;
 };
+
+#endif
 
 struct user {
 	struct user_regs_struct regs;

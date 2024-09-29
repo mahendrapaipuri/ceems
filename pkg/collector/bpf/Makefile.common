@@ -30,6 +30,15 @@ else ifeq ($(GOARCH),arm64)
 else ifeq ($(GOARCH),mips)
 	BPF_TARGET_ARCH = mips
 	BPF_TARGET_MARCH = bpfeb
+else ifeq ($(GOARCH),mipsle)
+	BPF_TARGET_ARCH = mips
+	BPF_TARGET_MARCH = bpfel
+else ifeq ($(GOARCH),mips64)
+	BPF_TARGET_ARCH = mips
+	BPF_TARGET_MARCH = bpfeb
+else ifeq ($(GOARCH),mips64le)
+	BPF_TARGET_ARCH = mips
+	BPF_TARGET_MARCH = bpfel
 else ifeq ($(GOARCH),ppc64)
 	BPF_TARGET_ARCH = powerpc
 	BPF_TARGET_MARCH = bpfeb
@@ -45,15 +54,20 @@ else ifeq ($(GOARCH),s390x)
 endif
 
 # Do not compile BPF assets for mipsle, mips64 and mips64le architectures
-ifeq ($(GOARCH),mipsle)   
-   BPF_TARGET_COMPILE = 0
-endif
-ifeq ($(GOARCH),mips64)  
-   BPF_TARGET_COMPILE = 0
-endif
-ifeq ($(GOARCH),mips64le)
-   BPF_TARGET_COMPILE = 0
-endif
+# Update 20240929: We are compiling all mips now as we added type defs in 
+# vmlinux.h. 
+# Atleast clang compiles them but not sure if it works in prod as we dont
+# test them in CI.
+#
+# ifeq ($(GOARCH),mipsle)   
+#    BPF_TARGET_COMPILE = 0
+# endif
+# ifeq ($(GOARCH),mips64)  
+#    BPF_TARGET_COMPILE = 0
+# endif
+# ifeq ($(GOARCH),mips64le)
+#    BPF_TARGET_COMPILE = 0
+# endif
 
 ROOT_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
 

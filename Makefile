@@ -57,6 +57,7 @@ ifeq ($(CGO_BUILD), 1)
 			./cmd/ceems_lb
 	checkmetrics := skip-checkmetrics
 	checkrules := skip-checkrules
+	checkbpf := skip-checkbpf
 
 	# go test flags
 	coverage-file := coverage-cgo.out
@@ -67,6 +68,7 @@ else
 			./internal/security ./cmd/ceems_exporter
 	checkmetrics := checkmetrics
 	checkrules := checkrules
+	checkbpf := checkbpf
 
 	# go test flags
 	coverage-file := coverage-go.out
@@ -107,7 +109,7 @@ $(eval $(call goarch_pair,amd64,386))
 $(eval $(call goarch_pair,mips64,mips))
 $(eval $(call goarch_pair,mips64el,mipsel))
 
-all:: vet common-all $(cross-test) $(test-docker) $(checkmetrics) $(checkrules) $(test-e2e)
+all:: vet common-all $(cross-test) $(test-docker) $(checkmetrics) $(checkrules) $(checkbpf) $(test-e2e)
 
 .PHONY: coverage
 coverage:
@@ -261,6 +263,15 @@ checkrules: $(PROMTOOL)
 .PHONY: skip-checkrules
 skip-checkrules: $(PROMTOOL)
 	@echo ">> SKIP checking rules for correctness"
+
+.PHONY: checkbpf
+checkbpf: $(PROMTOOL)
+	@echo ">> checking bpf assets compilation"
+	./scripts/checkbpf.sh
+
+.PHONY: skip-checkbpf
+skip-checkbpf: $(PROMTOOL)
+	@echo ">> SKIP checking bpf assets compilation"
 
 .PHONY: test-docker
 test-docker:
