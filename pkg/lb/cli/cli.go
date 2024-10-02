@@ -164,7 +164,7 @@ func (lb *CEEMSLoadBalancer) Main() error {
 		dropPrivs = lb.App.Flag(
 			"security.drop-privileges",
 			"Drop privileges and run as nobody when exporter is started as root.",
-		).Default("true").Bool()
+		).Default("true").Hidden().Bool()
 	)
 
 	// Socket activation only available on Linux
