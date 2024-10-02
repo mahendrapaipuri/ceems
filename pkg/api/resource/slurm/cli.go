@@ -67,45 +67,27 @@ func preflightsCLI(slurm *slurmScheduler) error {
 	// sacct path
 	sacctPath := filepath.Join(slurm.cluster.CLI.Path, "sacct")
 
-	// If current user is slurm or root pass checks
-	if currentUser, err := user.Current(); err == nil && (currentUser.Username == "slurm" || currentUser.Uid == "0") {
+	// If current user root pass checks
+	if currentUser, err := user.Current(); err == nil && currentUser.Uid == "0" {
+		slurm.cmdExecMode = capabilityMode
 		level.Info(slurm.logger).
 			Log("msg", "Current user have enough privileges to execute SLURM commands", "user", currentUser.Username)
 
-		return nil
+		goto secu_context
 	}
 
-	// First try to run as slurm user in a subprocess. If current process have capabilities
-	// it will be a success
-	slurmUser, err := user.Lookup("slurm")
-	if err != nil {
-		level.Debug(slurm.logger).
-			Log("msg", "User slurm not found. Next attempt to execute SLURM commands with sudo", "err", err)
-
-		goto sudomode
-	}
-
-	slurmUserUID, err = strconv.Atoi(slurmUser.Uid)
-	if err != nil {
-		level.Debug(slurm.logger).
-			Log("msg", "Failed to convert SLURM user uid to int. Next attempt to execute SLURM commands with sudo", "uid", slurmUserUID, "err", err)
-
-		goto sudomode
-	}
-
-	slurmUserGID, err = strconv.Atoi(slurmUser.Gid)
-	if err != nil {
-		level.Debug(slurm.logger).
-			Log("msg", "Failed to convert SLURM user gid to int. Next attempt to execute SLURM commands with sudo", "gid", slurmUserGID, "err", err)
-
-		goto sudomode
-	}
-
-	if _, err := internal_osexec.ExecuteAs(sacctPath, []string{"--help"}, slurmUserUID, slurmUserGID, nil); err == nil {
-		slurm.cmdExecMode = "cap"
+	// Check if current process has necessary caps
+	if currentCaps := cap.GetProc().String(); strings.Contains(currentCaps, "cap_setuid") && strings.Contains(currentCaps, "cap_setgid") {
+		slurm.cmdExecMode = capabilityMode
 		level.Info(slurm.logger).Log("msg", "Linux capabilities will be used to execute SLURM commands as slurm user")
+	}
 
+secu_context:
+	// If using capability mode, setup security context
+	if slurm.cmdExecMode == capabilityMode {
 		var caps []cap.Value
+
+		var err error
 
 		for _, name := range []string{"cap_setuid", "cap_setgid"} {
 			value, err := cap.FromName(name)
@@ -135,10 +117,9 @@ func preflightsCLI(slurm *slurmScheduler) error {
 		return nil
 	}
 
-sudomode:
 	// Last attempt to run sacct with sudo
 	if _, err := internal_osexec.ExecuteWithTimeout("sudo", []string{sacctPath, "--help"}, 5, nil); err == nil {
-		slurm.cmdExecMode = "sudo"
+		slurm.cmdExecMode = sudoMode
 		level.Info(slurm.logger).Log("msg", "sudo will be used to execute SLURM commands")
 
 		return nil
@@ -550,8 +531,8 @@ func (s *slurmScheduler) runSacctCmd(ctx context.Context, startTime string, endT
 			Cmd:     cmd,
 			Environ: env,
 			Logger:  s.logger,
-			UID:     slurmUserUID,
-			GID:     slurmUserGID,
+			UID:     0,
+			GID:     0,
 		}
 
 		return executeInSecurityContext(securityCtx, dataPtr)
@@ -599,8 +580,8 @@ func (s *slurmScheduler) runSacctMgrCmd(ctx context.Context) ([]byte, error) {
 			Cmd:     cmd,
 			Environ: env,
 			Logger:  s.logger,
-			UID:     slurmUserUID,
-			GID:     slurmUserGID,
+			UID:     0,
+			GID:     0,
 		}
 
 		return executeInSecurityContext(securityCtx, dataPtr)

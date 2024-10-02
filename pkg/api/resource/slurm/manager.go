@@ -44,8 +44,6 @@ type slurmScheduler struct {
 const slurmBatchScheduler = "slurm"
 
 var (
-	slurmUserUID    int
-	slurmUserGID    int
 	slurmTimeFormat = base.DatetimeLayout + "-0700"
 	jobLock         = sync.RWMutex{}
 	assocLock       = sync.RWMutex{}
@@ -150,6 +148,8 @@ func (s *slurmScheduler) fetchFromSacct(ctx context.Context, start time.Time, en
 	// Execute sacct command between start and end times
 	sacctOutput, err := s.runSacctCmd(ctx, startTime, endTime)
 	if err != nil {
+		level.Error(s.logger).Log("msg", "Failed to run sacct command", "cluster_id", s.cluster.ID, "err", err)
+
 		return []models.Unit{}, err
 	}
 
@@ -172,6 +172,8 @@ func (s *slurmScheduler) fetchFromSacctMgr(
 	// Execute sacctmgr command
 	sacctMgrOutput, err := s.runSacctMgrCmd(ctx)
 	if err != nil {
+		level.Error(s.logger).Log("msg", "Failed to run sacctmgr command", "cluster_id", s.cluster.ID, "err", err)
+
 		return nil, nil, err
 	}
 
