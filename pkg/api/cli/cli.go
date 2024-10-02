@@ -144,7 +144,7 @@ func (b *CEEMSServer) Main() error {
 		dropPrivs = b.App.Flag(
 			"security.drop-privileges",
 			"Drop privileges and run as nobody when exporter is started as root.",
-		).Default("true").Bool()
+		).Default("true").Hidden().Bool()
 	)
 
 	// Socket activation only available on Linux
