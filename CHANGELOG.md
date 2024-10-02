@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.1 / 2024-10-02
+
+- [BUGFIX] Hide test related CLI flags [#180](https://github.com/mahendrapaipuri/ceems/pull/180) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEAT] Add ebpf support for mips,ppc and risc archs [#179](https://github.com/mahendrapaipuri/ceems/pull/179) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+
 ## 0.3.0 / 2024-09-28
 
 - [CI] Move docs workflow to separate file [#178](https://github.com/mahendrapaipuri/ceems/pull/178) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
