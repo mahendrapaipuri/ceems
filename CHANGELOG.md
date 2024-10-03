@@ -1,7 +1,8 @@
 # Changelog
 
-## 0.3.1 / 2024-10-02
+## 0.3.1 / 2024-10-03
 
+- [BUGFIX] Fix cmd execution mode detection [#181](https://github.com/mahendrapaipuri/ceems/pull/181) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
 - [BUGFIX] Hide test related CLI flags [#180](https://github.com/mahendrapaipuri/ceems/pull/180) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
 - [FEAT] Add ebpf support for mips,ppc and risc archs [#179](https://github.com/mahendrapaipuri/ceems/pull/179) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
 
