@@ -357,6 +357,13 @@ func (c *slurmCollector) Stop(ctx context.Context) error {
 		}
 	}
 
+	// Stop rdmaCollector
+	if rdmaCollectorEnabled() {
+		if err := c.rdmaCollector.Stop(ctx); err != nil {
+			level.Error(c.logger).Log("msg", "Failed to stop RDMA collector", "err", err)
+		}
+	}
+
 	return nil
 }
 

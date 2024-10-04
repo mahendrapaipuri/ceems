@@ -59,17 +59,17 @@ type qp struct {
 }
 
 type rdmaCollector struct {
-	sysfs                 sysfs.FS
-	procfs                procfs.FS
-	logger                log.Logger
-	cgroupManager         *cgroupManager
-	hostname              string
-	isAvailable           bool
-	perPIDCountersEnabled bool
-	rdmaCmd               string
-	securityContexts      map[string]*security.SecurityContext
-	metricDescs           map[string]*prometheus.Desc
-	hwCounters            []string
+	sysfs            sysfs.FS
+	procfs           procfs.FS
+	logger           log.Logger
+	cgroupManager    *cgroupManager
+	hostname         string
+	isAvailable      bool
+	rdmaCmd          string
+	qpModes          map[string]bool
+	securityContexts map[string]*security.SecurityContext
+	metricDescs      map[string]*prometheus.Desc
+	hwCounters       []string
 }
 
 // Security context names.
@@ -102,7 +102,7 @@ func NewRDMACollector(logger log.Logger, cgManager *cgroupManager) (*rdmaCollect
 	}
 
 	// Check if RDMA devices exist
-	ibClass, err := sysfs.InfiniBandClass()
+	_, err = sysfs.InfiniBandClass()
 	if err != nil && errors.Is(err, os.ErrNotExist) {
 		level.Error(logger).
 			Log("msg", "RDMA devices do not exist. RDMA collector wont return any data", "err", err)
@@ -110,8 +110,17 @@ func NewRDMACollector(logger log.Logger, cgManager *cgroupManager) (*rdmaCollect
 		return &rdmaCollector{isAvailable: false}, nil
 	}
 
-	// Enable per QP counters
-	perPIDCountersEnabled := perPIDCounters(rdmaCmdPath, ibClass)
+	// Get current qp mode
+	// We cannot turn on per PID counters when link is already being used by a process.
+	// So we keep a state variable of modes of all links and attempt to turn them on
+	// on every scrape request if they are not turned on already.
+	// As this per PID counters are only supported by Mellanox devices, we setup
+	// this map only for them. This map will be nil for other types of devices
+	qpModes, err := qpMode(rdmaCmdPath)
+	if err != nil {
+		level.Error(logger).
+			Log("msg", "Failed to get RDMA qp mode", "err", err)
+	}
 
 	// If per QP counters are enabled, we need to disable them when exporter exits.
 	// So create a security context with cap_setuid and cap_setgid to be able to
@@ -120,7 +129,9 @@ func NewRDMACollector(logger log.Logger, cgManager *cgroupManager) (*rdmaCollect
 	// Setup necessary capabilities.
 	securityContexts := make(map[string]*security.SecurityContext)
 
-	if perPIDCountersEnabled {
+	if len(qpModes) > 0 {
+		level.Info(logger).Log("msg", "Per-PID QP stats available")
+
 		caps := setupCollectorCaps(logger, rdmaCollectorSubsystem, []string{"cap_setuid", "cap_setgid"})
 
 		// Setup new security context(s)
@@ -148,9 +159,9 @@ func NewRDMACollector(logger log.Logger, cgManager *cgroupManager) (*rdmaCollect
 
 	// HW counters descriptions.
 	hwCountersDecs := map[string]string{
-		"rx_write_requests":          "Number of received WRITE requests for the associated QPs",
-		"rx_read_requests":           "Number of received READ requests for the associated QPs",
-		"rx_atomic_requests":         "Number of received ATOMIC request for the associated QPs",
+		"rx_write_requests":          "Number of received write requests for the associated QPs",
+		"rx_read_requests":           "Number of received read requests for the associated QPs",
+		"rx_atomic_requests":         "Number of received atomic request for the associated QPs",
 		"req_cqe_error":              "Number of times requester detected CQEs completed with errors",
 		"req_cqe_flush_error":        "Number of times requester detected CQEs completed with flushed errors",
 		"req_remote_access_errors":   "Number of times requester detected remote access errors",
@@ -176,7 +187,7 @@ func NewRDMACollector(logger log.Logger, cgManager *cgroupManager) (*rdmaCollect
 		metricDescs[metricName] = prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, rdmaCollectorSubsystem, metricName),
 			description,
-			[]string{"hostname", "device", "port"},
+			[]string{"manager", "hostname", "device", "port"},
 			nil,
 		)
 	}
@@ -187,7 +198,7 @@ func NewRDMACollector(logger log.Logger, cgManager *cgroupManager) (*rdmaCollect
 		metricDescs[metricName] = prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, rdmaCollectorSubsystem, metricName),
 			description,
-			[]string{"hostname", "device", "port", "uuid"},
+			[]string{"manager", "hostname", "device", "port", "uuid"},
 			nil,
 		)
 	}
@@ -196,23 +207,23 @@ func NewRDMACollector(logger log.Logger, cgManager *cgroupManager) (*rdmaCollect
 		metricDescs[metricName] = prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, rdmaCollectorSubsystem, metricName),
 			description,
-			[]string{"hostname", "device", "port", "uuid"},
+			[]string{"manager", "hostname", "device", "port", "uuid"},
 			nil,
 		)
 	}
 
 	return &rdmaCollector{
-		sysfs:                 sysfs,
-		procfs:                procfs,
-		logger:                logger,
-		cgroupManager:         cgManager,
-		hostname:              hostname,
-		rdmaCmd:               rdmaCmdPath,
-		isAvailable:           true,
-		perPIDCountersEnabled: perPIDCountersEnabled,
-		securityContexts:      securityContexts,
-		metricDescs:           metricDescs,
-		hwCounters:            hwCounters,
+		sysfs:            sysfs,
+		procfs:           procfs,
+		logger:           logger,
+		cgroupManager:    cgManager,
+		hostname:         hostname,
+		rdmaCmd:          rdmaCmdPath,
+		isAvailable:      true,
+		qpModes:          qpModes,
+		securityContexts: securityContexts,
+		metricDescs:      metricDescs,
+		hwCounters:       hwCounters,
 	}, nil
 }
 
@@ -222,6 +233,11 @@ func (c *rdmaCollector) Update(ch chan<- prometheus.Metric) error {
 		return ErrNoData
 	}
 
+	// Check QP modes and attempt to enable PID if not already done
+	if err := c.perPIDCounters(true); err != nil {
+		level.Error(c.logger).Log("msg", "Failed to enable Per-PID QP stats", "err", err)
+	}
+
 	return c.update(ch)
 }
 
@@ -229,16 +245,14 @@ func (c *rdmaCollector) Update(ch chan<- prometheus.Metric) error {
 func (c *rdmaCollector) Stop(_ context.Context) error {
 	level.Debug(c.logger).Log("msg", "Stopping", "collector", rdmaCollectorSubsystem)
 
-	// If per PID counters are not enabled, nothing to do return
-	if !c.perPIDCountersEnabled {
+	return c.perPIDCounters(false)
+}
+
+// perPIDCounters enables/disables per PID counters for supported devices.
+func (c *rdmaCollector) perPIDCounters(enable bool) error {
+	// If there no supported devices, return
+	if c.qpModes == nil {
 		return nil
-	}
-
-	ibClass, err := c.sysfs.InfiniBandClass()
-	if err != nil {
-		level.Error(c.logger).Log("msg", "Failed to get RDMA devices", "err", err)
-
-		return err
 	}
 
 	// Return if there is no security context found
@@ -250,29 +264,34 @@ func (c *rdmaCollector) Stop(_ context.Context) error {
 	// Set per QP counters off when exiting
 	var allErrs error
 
-	for _, device := range ibClass {
-		if strings.HasPrefix(device.Name, "mlx") {
-			for _, port := range device.Ports {
-				// Execute command as root
-				dataPtr := &security.ExecSecurityCtxData{
-					Cmd:    []string{"rdma", "statistic", "qp", "set", "link", fmt.Sprintf("%s/%d", device.Name, port.Port), "auto", "off"},
-					Logger: c.logger,
-					UID:    0,
-					GID:    0,
-				}
+	for link, mode := range c.qpModes {
+		if mode != enable {
+			var cmd []string
+			if enable {
+				cmd = []string{"rdma", "statistic", "qp", "set", "link", link, "auto", "type,pid", "on"}
+			} else {
+				cmd = []string{"rdma", "statistic", "qp", "set", "link", link, "auto", "off"}
+			}
 
-				// Read stdOut of command into data
-				if err := securityCtx.Exec(dataPtr); err != nil {
-					allErrs = errors.Join(allErrs, err)
-				}
+			// Execute command as root
+			dataPtr := &security.ExecSecurityCtxData{
+				Cmd:    cmd,
+				Logger: c.logger,
+				UID:    0,
+				GID:    0,
+			}
+
+			// If command didnt return error, we successfully enabled/disabled mode
+			if err := securityCtx.Exec(dataPtr); err != nil {
+				allErrs = errors.Join(allErrs, err)
+			} else {
+				c.qpModes[link] = enable
 			}
 		}
 	}
 
 	if allErrs != nil {
-		level.Error(c.logger).Log("msg", "Failed to disable RDMA link per PID stats", "err", allErrs)
-
-		return err
+		return allErrs
 	}
 
 	return nil
@@ -305,8 +324,8 @@ func (c *rdmaCollector) update(ch chan<- prometheus.Metric) error {
 		}
 
 		for uuid, mr := range mrs {
-			ch <- prometheus.MustNewConstMetric(c.metricDescs["mrs_active"], prometheus.GaugeValue, float64(mr.num), c.hostname, mr.dev, "", uuid)
-			ch <- prometheus.MustNewConstMetric(c.metricDescs["mrs_len_active"], prometheus.GaugeValue, float64(mr.len), c.hostname, mr.dev, "", uuid)
+			ch <- prometheus.MustNewConstMetric(c.metricDescs["mrs_active"], prometheus.GaugeValue, float64(mr.num), c.cgroupManager.manager, c.hostname, mr.dev, "", uuid)
+			ch <- prometheus.MustNewConstMetric(c.metricDescs["mrs_len_active"], prometheus.GaugeValue, float64(mr.len), c.cgroupManager.manager, c.hostname, mr.dev, "", uuid)
 		}
 	}(procCgroup)
 
@@ -324,8 +343,8 @@ func (c *rdmaCollector) update(ch chan<- prometheus.Metric) error {
 		}
 
 		for uuid, cq := range cqs {
-			ch <- prometheus.MustNewConstMetric(c.metricDescs["cqs_active"], prometheus.GaugeValue, float64(cq.num), c.hostname, cq.dev, "", uuid)
-			ch <- prometheus.MustNewConstMetric(c.metricDescs["cqe_len_active"], prometheus.GaugeValue, float64(cq.len), c.hostname, cq.dev, "", uuid)
+			ch <- prometheus.MustNewConstMetric(c.metricDescs["cqs_active"], prometheus.GaugeValue, float64(cq.num), c.cgroupManager.manager, c.hostname, cq.dev, "", uuid)
+			ch <- prometheus.MustNewConstMetric(c.metricDescs["cqe_len_active"], prometheus.GaugeValue, float64(cq.len), c.cgroupManager.manager, c.hostname, cq.dev, "", uuid)
 		}
 	}(procCgroup)
 
@@ -343,11 +362,11 @@ func (c *rdmaCollector) update(ch chan<- prometheus.Metric) error {
 		}
 
 		for uuid, qp := range qps {
-			ch <- prometheus.MustNewConstMetric(c.metricDescs["qps_active"], prometheus.GaugeValue, float64(qp.num), c.hostname, qp.dev, qp.port, uuid)
+			ch <- prometheus.MustNewConstMetric(c.metricDescs["qps_active"], prometheus.GaugeValue, float64(qp.num), c.cgroupManager.manager, c.hostname, qp.dev, qp.port, uuid)
 
 			for _, hwCounter := range c.hwCounters {
 				if qp.hwCounters[hwCounter] > 0 {
-					ch <- prometheus.MustNewConstMetric(c.metricDescs[hwCounter], prometheus.CounterValue, float64(qp.hwCounters[hwCounter]), c.hostname, qp.dev, qp.port, uuid)
+					ch <- prometheus.MustNewConstMetric(c.metricDescs[hwCounter], prometheus.CounterValue, float64(qp.hwCounters[hwCounter]), c.cgroupManager.manager, c.hostname, qp.dev, qp.port, uuid)
 				}
 			}
 		}
@@ -380,7 +399,7 @@ func (c *rdmaCollector) update(ch chan<- prometheus.Metric) error {
 					} else {
 						vType = prometheus.CounterValue
 					}
-					ch <- prometheus.MustNewConstMetric(c.metricDescs[n], vType, float64(v), c.hostname, device, port)
+					ch <- prometheus.MustNewConstMetric(c.metricDescs[n], vType, float64(v), c.cgroupManager.manager, c.hostname, device, port)
 				}
 			}
 		}
@@ -533,7 +552,7 @@ func (c *rdmaCollector) linkQP(procCgroup map[string]string) (map[string]*qp, er
 	}
 
 	// If per PID counters are enabled, fetch them
-	if c.perPIDCountersEnabled {
+	if len(c.qpModes) > 0 {
 		// Arguments to command
 		args := []string{"statistic", "qp", "show"}
 
@@ -610,36 +629,36 @@ func sanitizeMetric(value *uint64) uint64 {
 	return *value
 }
 
-// perPIDCounters either enables or disables the per QP IB counters.
-func perPIDCounters(rdmaCmd string, ibClass sysfs.InfiniBandClass) bool {
-	wg := sync.WaitGroup{}
+// qpMode returns current QP mode for all links.
+func qpMode(rdmaCmd string) (map[string]bool, error) {
+	args := []string{"statistic", "qp", "mode"}
 
-	var perQPCountersEnabled bool
+	// Execute command
+	out, err := osexec.Execute(rdmaCmd, args, nil)
+	if err != nil {
+		return nil, err
+	}
 
-	for _, device := range ibClass {
-		// These per PID stats are only available for Mellanox devices
-		if strings.HasPrefix(device.Name, "mlx") {
-			for _, port := range device.Ports {
-				wg.Add(1)
+	// Define regexes
+	linkRegex := regexp.MustCompile(`^link\s*([a-z0-9_/]+)`)
+	autoRegex := regexp.MustCompile(`.+?auto\s*([a-z,]+)`)
 
-				go func(d string, p uint) {
-					defer wg.Done()
+	// Split output and get mode for each device
+	linkMode := make(map[string]bool)
 
-					args := []string{"statistic", "qp", "set", "link", fmt.Sprintf("%s/%d", d, p), "auto", "pid,type", "on"}
-
-					// Enable per QP counters for all devices and ports
-					if _, err := osexec.ExecuteAs(rdmaCmd, args, 0, 0, nil); err == nil {
-						perQPCountersEnabled = true
-					}
-				}(device.Name, port.Port)
+	for _, line := range strings.Split(string(out), "\n") {
+		if linkMatch := linkRegex.FindStringSubmatch(line); len(linkMatch) > 1 && strings.HasPrefix(linkMatch[1], "mlx") {
+			if autoMatch := autoRegex.FindStringSubmatch(line); len(autoMatch) > 1 {
+				if autoMatch[1] == "off" {
+					linkMode[linkMatch[1]] = false
+				} else {
+					linkMode[linkMatch[1]] = true
+				}
 			}
 		}
 	}
 
-	// Wait all go routines
-	wg.Wait()
-
-	return perQPCountersEnabled
+	return linkMode, nil
 }
 
 // rdmaCollectorEnabled returns true if RDMA stats are enabled.

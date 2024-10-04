@@ -158,12 +158,12 @@ func TestLinkQP(t *testing.T) {
 	require.NoError(t, err)
 
 	c := rdmaCollector{
-		logger:                log.NewNopLogger(),
-		rdmaCmd:               "testdata/rdma",
-		procfs:                procfs,
-		cgroupManager:         cgManager,
-		perPIDCountersEnabled: true,
-		hwCounters:            []string{"rx_write_requests", "rx_read_requests"},
+		logger:        log.NewNopLogger(),
+		rdmaCmd:       "testdata/rdma",
+		procfs:        procfs,
+		cgroupManager: cgManager,
+		qpModes:       map[string]bool{"mlx5_0": true},
+		hwCounters:    []string{"rx_write_requests", "rx_read_requests"},
 	}
 
 	// Get cgroup IDs
@@ -201,11 +201,10 @@ func TestLinkCountersSysWide(t *testing.T) {
 	require.NoError(t, err)
 
 	c := rdmaCollector{
-		logger:                log.NewNopLogger(),
-		sysfs:                 sysfs,
-		cgroupManager:         cgManager,
-		perPIDCountersEnabled: true,
-		hwCounters:            []string{"rx_write_requests", "rx_read_requests"},
+		logger:        log.NewNopLogger(),
+		sysfs:         sysfs,
+		cgroupManager: cgManager,
+		hwCounters:    []string{"rx_write_requests", "rx_read_requests"},
 	}
 
 	expected := map[string]map[string]uint64{
