@@ -1,0 +1,118 @@
+#!/bin/sh
+  
+sub_help(){
+    echo "Usage: rdma [ OPTIONS ] OBJECT { COMMAND | help }"
+    echo "       rdma [ -f[orce] ] -b[atch] filename"
+    echo "where  OBJECT := { dev | link | resource | system | statistic | help }"
+    echo "       OPTIONS := { -V[ersion] | -d[etails] | -j[son] | -p[retty] -r[aw]}"
+}
+
+print_mr(){
+    echo """dev mlx5_0 mrn 4 mrlen 2097152 pdn 9 pid 46231 comm ib_write_bw
+dev mlx5_0 mrn 5 mrlen 2097152 pdn 8 pid 46235 comm ib_write_bw
+dev mlx5_0 mrn 4 mrlen 2097152 pdn 9 pid 46236 comm ib_write_bw
+dev mlx5_0 mrn 5 mrlen 2097152 pdn 8 pid 46281 comm ib_write_bw"""
+}
+
+print_cq(){
+    echo """dev mlx5_0 cqn 1 cqe 2047 users 5 poll-ctx WORKQUEUE adaptive-moderation on comm [ib_core]
+dev mlx5_0 cqn 2 cqe 255 users 1 poll-ctx DIRECT adaptive-moderation on comm [mlx5_ib]
+dev mlx5_0 cqn 3 cqe 255 users 0 poll-ctx DIRECT adaptive-moderation on comm [mlx5_ib]
+dev mlx5_0 cqn 8 cqe 4095 users 32 adaptive-moderation off ctxn 4 pid 46231 comm ib_write_bw
+dev mlx5_0 cqn 9 cqe 4095 users 32 adaptive-moderation off ctxn 5 pid 46235 comm ib_write_bw
+dev mlx5_0 cqn 8 cqe 4095 users 32 adaptive-moderation off ctxn 4 pid 46236 comm ib_write_bw
+dev mlx5_0 cqn 9 cqe 4095 users 32 adaptive-moderation off ctxn 5 pid 46281 comm ib_write_bw"""
+}
+
+print_qp(){
+    echo """link mlx5_0/- lqpn 0 type SMI state RTS sq-psn 0 comm [ib_core]
+link mlx5_0/- lqpn 1 type GSI state RTS sq-psn 0 comm [ib_core]
+link mlx5_0/1 lqpn 101 type UD state RTS sq-psn 79 comm [ib_core]
+link mlx5_0/1 lqpn 813 rqpn 814 type RC state RTS rq-psn 9940491 sq-psn 2406910 path-mig-state MIGRATED pdn 8 pid 46231 comm ib_write_bw
+link mlx5_0/1 lqpn 814 rqpn 813 type RC state RTR rq-psn 2406926 sq-psn 0 path-mig-state MIGRATED pdn 9 pid 46235 comm ib_write_bw
+link mlx5_0/1 lqpn 815 rqpn 816 type RC state RTR rq-psn 13129518 sq-psn 0 path-mig-state MIGRATED pdn 9 pid 46235 comm ib_write_bw
+link mlx5_0/1 lqpn 816 rqpn 815 type RC state RTS rq-psn 5560784 sq-psn 13129534 path-mig-state MIGRATED pdn 8 pid 46231 comm ib_write_bw
+link mlx5_0/1 lqpn 817 rqpn 818 type RC state RTR rq-psn 11593195 sq-psn 0 path-mig-state MIGRATED pdn 9 pid 46235 comm ib_write_bw
+link mlx5_0/1 lqpn 818 rqpn 817 type RC state RTS rq-psn 9218980 sq-psn 11593210 path-mig-state MIGRATED pdn 8 pid 46231 comm ib_write_bw
+link mlx5_0/1 lqpn 819 rqpn 820 type RC state RTR rq-psn 5734471 sq-psn 0 path-mig-state MIGRATED pdn 9 pid 46235 comm ib_write_bw
+link mlx5_0/1 lqpn 820 rqpn 819 type RC state RTS rq-psn 16423148 sq-psn 5734486 path-mig-state MIGRATED pdn 8 pid 46231 comm ib_write_bw
+link mlx5_0/1 lqpn 821 rqpn 822 type RC state RTR rq-psn 869801 sq-psn 0 path-mig-state MIGRATED pdn 9 pid 46235 comm ib_write_bw
+link mlx5_0/1 lqpn 822 rqpn 821 type RC state RTS rq-psn 9391558 sq-psn 869817 path-mig-state MIGRATED pdn 8 pid 46231 comm ib_write_bw
+link mlx5_0/1 lqpn 823 rqpn 824 type RC state RTR rq-psn 5156666 sq-psn 0 path-mig-state MIGRATED pdn 9 pid 46235 comm ib_write_bw
+link mlx5_0/1 lqpn 824 rqpn 823 type RC state RTS rq-psn 9298810 sq-psn 5156682 path-mig-state MIGRATED pdn 8 pid 46231 comm ib_write_bw
+link mlx5_0/1 lqpn 825 rqpn 826 type RC state RTR rq-psn 15415907 sq-psn 0 path-mig-state MIGRATED pdn 9 pid 46235 comm ib_write_bw
+link mlx5_0/1 lqpn 826 rqpn 825 type RC state RTS rq-psn 11846939 sq-psn 15415923 path-mig-state MIGRATED pdn 8 pid 46231 comm ib_write_bw
+link mlx5_0/1 lqpn 827 rqpn 828 type RC state RTR rq-psn 6749855 sq-psn 0 path-mig-state MIGRATED pdn 9 pid 46235 comm ib_write_bw
+link mlx5_0/1 lqpn 828 rqpn 827 type RC state RTS rq-psn 4257602 sq-psn 6749872 path-mig-state MIGRATED pdn 8 pid 46231 comm ib_write_bw
+link mlx5_0/1 lqpn 829 rqpn 830 type RC state RTR rq-psn 4637926 sq-psn 0 path-mig-state MIGRATED pdn 9 pid 46235 comm ib_write_bw
+link mlx5_0/1 lqpn 830 rqpn 829 type RC state RTS rq-psn 16710024 sq-psn 4637942 path-mig-state MIGRATED pdn 8 pid 46231 comm ib_write_bw
+link mlx5_0/1 lqpn 831 rqpn 832 type RC state RTR rq-psn 15710300 sq-psn 0 path-mig-state MIGRATED pdn 9 pid 46235 comm ib_write_bw
+link mlx5_0/1 lqpn 832 rqpn 831 type RC state RTS rq-psn 7371059 sq-psn 15710316 path-mig-state MIGRATED pdn 8 pid 46231 comm ib_write_bw
+link mlx5_0/1 lqpn 833 rqpn 834 type RC state RTR rq-psn 9654443 sq-psn 0 path-mig-state MIGRATED pdn 9 pid 46235 comm ib_write_bw
+link mlx5_0/1 lqpn 834 rqpn 833 type RC state RTS rq-psn 5445009 sq-psn 9654460 path-mig-state MIGRATED pdn 8 pid 46231 comm ib_write_bw
+link mlx5_0/1 lqpn 835 rqpn 836 type RC state RTR rq-psn 14796958 sq-psn 0 path-mig-state MIGRATED pdn 9 pid 46235 comm ib_write_bw
+link mlx5_0/1 lqpn 836 rqpn 835 type RC state RTS rq-psn 1943687 sq-psn 14796974 path-mig-state MIGRATED pdn 8 pid 46231 comm ib_write_bw
+link mlx5_0/1 lqpn 837 rqpn 838 type RC state RTR rq-psn 1242029 sq-psn 0 path-mig-state MIGRATED pdn 9 pid 46235 comm ib_write_bw
+link mlx5_0/1 lqpn 838 rqpn 837 type RC state RTS rq-psn 1082929 sq-psn 1242045 path-mig-state MIGRATED pdn 8 pid 46231 comm ib_write_bw
+link mlx5_0/1 lqpn 839 rqpn 840 type RC state RTR rq-psn 15154813 sq-psn 0 path-mig-state MIGRATED pdn 9 pid 46235 comm ib_write_bw
+link mlx5_0/1 lqpn 840 rqpn 839 type RC state RTS rq-psn 10133331 sq-psn 15154829 path-mig-state MIGRATED pdn 8 pid 46231 comm ib_write_bw
+link mlx5_0/1 lqpn 841 rqpn 842 type RC state RTR rq-psn 9704396 sq-psn 0 path-mig-state MIGRATED pdn 9 pid 46235 comm ib_write_bw
+link mlx5_0/1 lqpn 842 rqpn 841 type RC state RTS rq-psn 7626827 sq-psn 9704413 path-mig-state MIGRATED pdn 8 pid 46231 comm ib_write_bw
+link mlx5_0/1 lqpn 843 rqpn 844 type RC state RTR rq-psn 11722317 sq-psn 0 path-mig-state MIGRATED pdn 9 pid 46235 comm ib_write_bw
+link mlx5_0/1 lqpn 844 rqpn 843 type RC state RTS rq-psn 16033001 sq-psn 11722333 path-mig-state MIGRATED pdn 8 pid 46231 comm ib_write_bw"""
+}
+
+print_qp_stat(){
+    echo """link mlx5_0/1 cntn 4 qp-type RC pid 46231 comm ib_write_bw rx_write_requests 0 rx_read_requests 0 rx_atomic_requests 0 out_of_buffer 0 out_of_sequence 0 duplicate_request 0 rnr_nak_retry_err 0 packet_seq_err 0 implied_nak_seq_err 0 local_ack_timeout_err 0 rp_cnp_ignored 0 rp_cnp_handled 0 np_ecn_marked_roce_packets 0 np_cnp_sent 0
+    LQPN: <813,816,818,820,822,824,826,828,830,832,834,836,838,840,842,844>
+link mlx5_0/1 cntn 5 qp-type RC pid 46235 comm ib_write_bw rx_write_requests 41988882 rx_read_requests 0 rx_atomic_requests 0 out_of_buffer 0 out_of_sequence 0 duplicate_request 0 rnr_nak_retry_err 0 packet_seq_err 0 implied_nak_seq_err 0 local_ack_timeout_err 0 rp_cnp_ignored 0 rp_cnp_handled 0 np_ecn_marked_roce_packets 0 np_cnp_sent 0
+    LQPN: <814,815,817,819,821,823,825,827,829,831,833,835,837,839,841,843>"""
+}
+  
+sub_resource(){
+    case $2 in
+        "mr")
+            print_mr
+            ;;
+        "cq")
+            print_cq
+            ;;
+        "qp")
+            print_qp
+            ;;
+        *)
+            shift
+            echo "Error: unknown subcommand for resource." >&2
+            exit 1
+            ;;
+    esac 
+}
+  
+sub_statistic(){
+    case $1 in
+        "qp")
+            print_qp_stat
+            ;;
+        *)
+            shift
+            echo "Error: unknown subcommand for statistic." >&2
+            exit 1
+            ;;
+    esac 
+}
+  
+subcommand=$1
+case $subcommand in
+    "" | "-h" | "--help")
+        sub_help
+        ;;
+    *)
+        shift
+        sub_${subcommand} $@
+        if [ $? = 127 ]; then
+            echo "Error: '$subcommand' is not a known subcommand." >&2
+            echo "       Run '$ProgName --help' for a list of known subcommands." >&2
+            exit 1
+        fi
+        ;;
+esac 

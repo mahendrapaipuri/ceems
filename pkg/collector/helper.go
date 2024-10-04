@@ -14,6 +14,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/internal/osexec"
+	"github.com/prometheus/procfs"
 )
 
 type Device struct {
@@ -242,6 +243,87 @@ func GetAMDGPUDevices(rocmSmiPath string, logger log.Logger) (map[int]Device, er
 	}
 
 	return parseAmdSmioutput(string(rocmSmiOutput), logger), nil
+}
+
+// cgroupProcs returns a map of active cgroups and processes contained in each cgroup.
+func cgroupProcs(fs procfs.FS, idRegex *regexp.Regexp, targetEnvVars []string, procFilter func(string) bool) (map[string][]procfs.Proc, error) {
+	// Get all active procs
+	allProcs, err := fs.AllProcs()
+	if err != nil {
+		return nil, err
+	}
+
+	// If no idRegex provided, return empty
+	if idRegex == nil {
+		return nil, errors.New("cgroup IDs cannot be retrieved due to empty regex")
+	}
+
+	cgroups := make(map[string][]procfs.Proc)
+
+	for _, proc := range allProcs {
+		// Get cgroup ID from regex
+		var cgroupID string
+
+		cgrps, err := proc.Cgroups()
+		if err != nil || len(cgrps) == 0 {
+			continue
+		}
+
+		for _, cgrp := range cgrps {
+			cgroupIDMatches := idRegex.FindStringSubmatch(cgrp.Path)
+			if len(cgroupIDMatches) <= 1 {
+				continue
+			}
+
+			cgroupID = cgroupIDMatches[1]
+
+			break
+		}
+
+		// If no cgroupID found, ignore
+		if cgroupID == "" {
+			continue
+		}
+
+		// if targetEnvVars is not empty check if this env vars is present for the process
+		// We dont check for the value of env var. Presence of env var is enough to
+		// trigger the profiling of that process
+		if len(targetEnvVars) > 0 {
+			environ, err := proc.Environ()
+			if err != nil {
+				continue
+			}
+
+			for _, env := range environ {
+				for _, targetEnvVar := range targetEnvVars {
+					if strings.HasPrefix(env, targetEnvVar) {
+						goto check_process
+					}
+				}
+			}
+
+			// If target env var(s) is not found, return
+			continue
+		}
+
+	check_process:
+		// Ignore processes where command line matches the regex
+		if procFilter != nil {
+			procCmdLine, err := proc.CmdLine()
+			if err != nil || len(procCmdLine) == 0 {
+				continue
+			}
+
+			// Ignore process if matches found
+			if procFilter(strings.Join(procCmdLine, " ")) {
+				continue
+			}
+		}
+
+		cgroups[cgroupID] = append(cgroups[cgroupID], proc)
+	}
+
+	return cgroups, nil
 }
 
 // fileExists checks if given file exists or not.

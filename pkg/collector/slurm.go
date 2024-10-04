@@ -101,6 +101,7 @@ type slurmCollector struct {
 	cgroupCollector  *cgroupCollector
 	perfCollector    *perfCollector
 	ebpfCollector    *ebpfCollector
+	rdmaCollector    *rdmaCollector
 	hostname         string
 	gpuDevs          map[int]Device
 	procFS           procfs.FS
@@ -175,6 +176,18 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 		}
 	}
 
+	// Start new instance of rdmaCollector
+	var rdmaCollector *rdmaCollector
+
+	if rdmaCollectorEnabled() {
+		rdmaCollector, err = NewRDMACollector(logger, cgroupManager)
+		if err != nil {
+			level.Info(logger).Log("msg", "Failed to create RDMA collector", "err", err)
+
+			return nil, err
+		}
+	}
+
 	// Attempt to get GPU devices
 	var gpuTypes []string
 
@@ -220,6 +233,7 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 		cgroupCollector:  cgCollector,
 		perfCollector:    perfCollector,
 		ebpfCollector:    ebpfCollector,
+		rdmaCollector:    rdmaCollector,
 		hostname:         hostname,
 		gpuDevs:          gpuDevs,
 		procFS:           procFS,
@@ -300,6 +314,19 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 		}()
 	}
 
+	if rdmaCollectorEnabled() {
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+
+			// Update RDMA metrics
+			if err := c.rdmaCollector.Update(ch); err != nil {
+				level.Error(c.logger).Log("msg", "Failed to update RDMA stats", "err", err)
+			}
+		}()
+	}
+
 	// Wait for all go routines
 	wg.Wait()
 
@@ -327,6 +354,13 @@ func (c *slurmCollector) Stop(ctx context.Context) error {
 	if ebpfCollectorEnabled() {
 		if err := c.ebpfCollector.Stop(ctx); err != nil {
 			level.Error(c.logger).Log("msg", "Failed to stop ebpf collector", "err", err)
+		}
+	}
+
+	// Stop rdmaCollector
+	if rdmaCollectorEnabled() {
+		if err := c.rdmaCollector.Stop(ctx); err != nil {
+			level.Error(c.logger).Log("msg", "Failed to stop RDMA collector", "err", err)
 		}
 	}
 

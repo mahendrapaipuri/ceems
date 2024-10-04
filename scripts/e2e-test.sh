@@ -349,6 +349,8 @@ then
         --collector.slurm.gpu-type="nvidia" \
         --collector.slurm.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
         --collector.slurm.gpu-job-map-path="pkg/collector/testdata/gpujobmap" \
+        --collector.rdma.stats \
+        --collector.rdma.cmd="pkg/collector/testdata/rdma" \
         --collector.empty-hostname-label \
         --collector.ipmi_dcmi.test-mode \
         --web.listen-address "127.0.0.1:${port}" \

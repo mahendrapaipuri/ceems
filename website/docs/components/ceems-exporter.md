@@ -26,6 +26,7 @@ metrics like IO, networking, performance _etc_. Currently available sub-collecto
 
 - Perf sub-collector: Exports hardware, software and cache performance metrics
 - eBPF sub-collector: Exports IO and network related metrics
+- RDMA sub-collector: Exports selected RDMA stats
 
 These sub-collectors are not meant to work alone and they can enabled only when
 a main collector that monitors resource manager's compute units is activated.
@@ -176,6 +177,53 @@ per protocol (TCP/UDP) and per IP family (IPv4/IPv6).
 - Number of ingress packets
 - Number of retransmission bytes (only for TCP)
 - Number of retransmission packets (only for TCP)
+
+### RDMA sub-collector
+
+Data transfer in RDMA happens directly between RDMA NIC and remote machine memory bypassing
+CPU. Thus, it is hard to trace the RDMA's data transfer on a compute unit granularity. However,
+the system wide data transfer metrics are readily available at `/sys/class/infiniband`
+pseudo-filesystem. Thus, this sub-collector exports important system wide RDMA stats along
+with few low-level metrics on a compute unit level.
+
+#### System wide RDMA stats
+
+- Number of data octets received on all links
+- Number of data octets transmitted on all links
+- Number of packets received on all VLs by this port (including errors)
+- Number of packets transmitted on all VLs from this port (including errors)
+- Number of packets received on the switch physical port that are discarded
+- Number of packets not transmitted from the switch physical port
+- Number of inbound packets discarded by the port because the port is down or congested
+- Number of outbound packets discarded by the port because the port is down or congested
+- Number of packets containing an error that were received on this port
+- State of the InfiniBand port
+
+#### Per compute unit RDMA stats
+
+- Number of active Queue Pairs (QPs)
+- Number of active Completion Queues (CQs)
+- Number of active Memory Regions (MRs)
+- Length of active CQs
+- Length of active MRs
+
+In the case of Mellanox devices, following metrics are available for each compute unit:
+
+- Number of received write requests for the associated QPs
+- Number of received read requests for the associated QPs
+- Number of received atomic request for the associated QPs
+- Number of times requester detected CQEs completed with errors
+- Number of times requester detected CQEs completed with flushed errors
+- Number of times requester detected remote access errors
+- Number of times requester detected remote invalid request errors
+- Number of times responder detected CQEs completed with errors
+- Number of times responder detected CQEs completed with flushed errors
+- Number of times responder detected local length errors
+- Number of times responder detected remote access errors
+
+In order to interpret these metrics, please take a look at this
+[very nice blog](https://cuterwrite.top/en/p/rdma-element/) which explains internals
+of RDMA very well.
 
 ## Collectors
 
