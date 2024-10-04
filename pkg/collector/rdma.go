@@ -111,7 +111,7 @@ func NewRDMACollector(logger log.Logger, cgManager *cgroupManager) (*rdmaCollect
 	}
 
 	// Enable per QP counters
-	perPIDCountersEnabled := perPIDCounters(ibClass)
+	perPIDCountersEnabled := perPIDCounters(rdmaCmdPath, ibClass)
 
 	// If per QP counters are enabled, we need to disable them when exporter exits.
 	// So create a security context with cap_setuid and cap_setgid to be able to
@@ -163,11 +163,11 @@ func NewRDMACollector(logger log.Logger, cgManager *cgroupManager) (*rdmaCollect
 
 	// HW counters descriptions.
 	wpsCountersDecs := map[string]string{
-		"qps_total":     "Number of active QPs",
-		"cqs_total":     "Number of active CQs",
-		"mrs_total":     "Number of active MRs",
-		"cqe_len_total": "Length of active CQs",
-		"mrs_len_total": "Length of active MRs",
+		"qps_active":     "Number of active QPs",
+		"cqs_active":     "Number of active CQs",
+		"mrs_active":     "Number of active MRs",
+		"cqe_len_active": "Length of active CQs",
+		"mrs_len_active": "Length of active MRs",
 	}
 
 	metricDescs := make(map[string]*prometheus.Desc)
@@ -305,8 +305,8 @@ func (c *rdmaCollector) update(ch chan<- prometheus.Metric) error {
 		}
 
 		for uuid, mr := range mrs {
-			ch <- prometheus.MustNewConstMetric(c.metricDescs["mrs_total"], prometheus.GaugeValue, float64(mr.num), c.hostname, mr.dev, "", uuid)
-			ch <- prometheus.MustNewConstMetric(c.metricDescs["mrs_len_total"], prometheus.GaugeValue, float64(mr.len), c.hostname, mr.dev, "", uuid)
+			ch <- prometheus.MustNewConstMetric(c.metricDescs["mrs_active"], prometheus.GaugeValue, float64(mr.num), c.hostname, mr.dev, "", uuid)
+			ch <- prometheus.MustNewConstMetric(c.metricDescs["mrs_len_active"], prometheus.GaugeValue, float64(mr.len), c.hostname, mr.dev, "", uuid)
 		}
 	}(procCgroup)
 
@@ -324,8 +324,8 @@ func (c *rdmaCollector) update(ch chan<- prometheus.Metric) error {
 		}
 
 		for uuid, cq := range cqs {
-			ch <- prometheus.MustNewConstMetric(c.metricDescs["cqs_total"], prometheus.GaugeValue, float64(cq.num), c.hostname, cq.dev, "", uuid)
-			ch <- prometheus.MustNewConstMetric(c.metricDescs["cqe_len_total"], prometheus.GaugeValue, float64(cq.len), c.hostname, cq.dev, "", uuid)
+			ch <- prometheus.MustNewConstMetric(c.metricDescs["cqs_active"], prometheus.GaugeValue, float64(cq.num), c.hostname, cq.dev, "", uuid)
+			ch <- prometheus.MustNewConstMetric(c.metricDescs["cqe_len_active"], prometheus.GaugeValue, float64(cq.len), c.hostname, cq.dev, "", uuid)
 		}
 	}(procCgroup)
 
@@ -343,7 +343,7 @@ func (c *rdmaCollector) update(ch chan<- prometheus.Metric) error {
 		}
 
 		for uuid, qp := range qps {
-			ch <- prometheus.MustNewConstMetric(c.metricDescs["qps_total"], prometheus.GaugeValue, float64(qp.num), c.hostname, qp.dev, qp.port, uuid)
+			ch <- prometheus.MustNewConstMetric(c.metricDescs["qps_active"], prometheus.GaugeValue, float64(qp.num), c.hostname, qp.dev, qp.port, uuid)
 
 			for _, hwCounter := range c.hwCounters {
 				if qp.hwCounters[hwCounter] > 0 {
@@ -366,6 +366,8 @@ func (c *rdmaCollector) update(ch chan<- prometheus.Metric) error {
 			return
 		}
 
+		var vType prometheus.ValueType
+
 		for link, cnts := range counters {
 			l := strings.Split(link, "/")
 			device := l[0]
@@ -373,7 +375,12 @@ func (c *rdmaCollector) update(ch chan<- prometheus.Metric) error {
 
 			for n, v := range cnts {
 				if v > 0 {
-					ch <- prometheus.MustNewConstMetric(c.metricDescs[n], prometheus.GaugeValue, float64(v), c.hostname, device, port)
+					if n == "state_id" {
+						vType = prometheus.GaugeValue
+					} else {
+						vType = prometheus.CounterValue
+					}
+					ch <- prometheus.MustNewConstMetric(c.metricDescs[n], vType, float64(v), c.hostname, device, port)
 				}
 			}
 		}
@@ -604,7 +611,7 @@ func sanitizeMetric(value *uint64) uint64 {
 }
 
 // perPIDCounters either enables or disables the per QP IB counters.
-func perPIDCounters(ibClass sysfs.InfiniBandClass) bool {
+func perPIDCounters(rdmaCmd string, ibClass sysfs.InfiniBandClass) bool {
 	wg := sync.WaitGroup{}
 
 	var perQPCountersEnabled bool
@@ -621,7 +628,7 @@ func perPIDCounters(ibClass sysfs.InfiniBandClass) bool {
 					args := []string{"statistic", "qp", "set", "link", fmt.Sprintf("%s/%d", d, p), "auto", "pid,type", "on"}
 
 					// Enable per QP counters for all devices and ports
-					if _, err := osexec.ExecuteAs("rmda", args, 0, 0, nil); err == nil {
+					if _, err := osexec.ExecuteAs(rdmaCmd, args, 0, 0, nil); err == nil {
 						perQPCountersEnabled = true
 					}
 				}(device.Name, port.Port)
