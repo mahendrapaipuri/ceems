@@ -102,6 +102,56 @@ ceems_meminfo_MemTotal_bytes{hostname=""} 1.6042172416e+10
 # TYPE ceems_rapl_package_joules_total counter
 ceems_rapl_package_joules_total{hostname="",index="0",path="pkg/collector/testdata/sys/class/powercap/intel-rapl:0"} 258218.293244
 ceems_rapl_package_joules_total{hostname="",index="1",path="pkg/collector/testdata/sys/class/powercap/intel-rapl:1"} 130570.505826
+# HELP ceems_rdma_cqe_len_total Length of active CQs
+# TYPE ceems_rdma_cqe_len_total gauge
+ceems_rdma_cqe_len_total{device="mlx5_0",hostname="",port="",uuid="1320003"} 8190
+ceems_rdma_cqe_len_total{device="mlx5_0",hostname="",port="",uuid="4824887"} 8190
+# HELP ceems_rdma_cqs_total Number of active CQs
+# TYPE ceems_rdma_cqs_total gauge
+ceems_rdma_cqs_total{device="mlx5_0",hostname="",port="",uuid="1320003"} 2
+ceems_rdma_cqs_total{device="mlx5_0",hostname="",port="",uuid="4824887"} 2
+# HELP ceems_rdma_mrs_len_total Length of active MRs
+# TYPE ceems_rdma_mrs_len_total gauge
+ceems_rdma_mrs_len_total{device="mlx5_0",hostname="",port="",uuid="1320003"} 4.194304e+06
+ceems_rdma_mrs_len_total{device="mlx5_0",hostname="",port="",uuid="4824887"} 4.194304e+06
+# HELP ceems_rdma_mrs_total Number of active MRs
+# TYPE ceems_rdma_mrs_total gauge
+ceems_rdma_mrs_total{device="mlx5_0",hostname="",port="",uuid="1320003"} 2
+ceems_rdma_mrs_total{device="mlx5_0",hostname="",port="",uuid="4824887"} 2
+# HELP ceems_rdma_port_data_received_bytes_total Number of data octets received on all links
+# TYPE ceems_rdma_port_data_received_bytes_total gauge
+ceems_rdma_port_data_received_bytes_total{device="hfi1_0",hostname="",port="1"} 1.380366808104e+12
+ceems_rdma_port_data_received_bytes_total{device="mlx4_0",hostname="",port="1"} 8.884894436e+09
+ceems_rdma_port_data_received_bytes_total{device="mlx4_0",hostname="",port="2"} 9.841747136e+09
+ceems_rdma_port_data_received_bytes_total{device="mlx5_0",hostname="",port="1"} 7.2505381512e+10
+# HELP ceems_rdma_port_data_transmitted_bytes_total Number of data octets transmitted on all links
+# TYPE ceems_rdma_port_data_transmitted_bytes_total gauge
+ceems_rdma_port_data_transmitted_bytes_total{device="hfi1_0",hostname="",port="1"} 1.094233306172e+12
+ceems_rdma_port_data_transmitted_bytes_total{device="mlx4_0",hostname="",port="1"} 1.0603645318e+11
+ceems_rdma_port_data_transmitted_bytes_total{device="mlx4_0",hostname="",port="2"} 1.0616142756e+11
+ceems_rdma_port_data_transmitted_bytes_total{device="mlx5_0",hostname="",port="1"} 1.1523046035392e+13
+# HELP ceems_rdma_port_packets_received_total Number of packets received on all VLs by this port (including errors)
+# TYPE ceems_rdma_port_packets_received_total gauge
+ceems_rdma_port_packets_received_total{device="hfi1_0",hostname="",port="1"} 6.38036947e+08
+ceems_rdma_port_packets_received_total{device="mlx4_0",hostname="",port="1"} 8.7169372e+07
+ceems_rdma_port_packets_received_total{device="mlx4_0",hostname="",port="2"} 8.9332064e+07
+ceems_rdma_port_packets_received_total{device="mlx5_0",hostname="",port="1"} 5.41889824e+08
+# HELP ceems_rdma_port_packets_transmitted_total Number of packets transmitted on all VLs from this port (including errors)
+# TYPE ceems_rdma_port_packets_transmitted_total gauge
+ceems_rdma_port_packets_transmitted_total{device="hfi1_0",hostname="",port="1"} 5.68318856e+08
+ceems_rdma_port_packets_transmitted_total{device="mlx4_0",hostname="",port="1"} 8.5734114e+07
+ceems_rdma_port_packets_transmitted_total{device="mlx4_0",hostname="",port="2"} 8.862285e+07
+ceems_rdma_port_packets_transmitted_total{device="mlx5_0",hostname="",port="1"} 1.0907922116e+10
+# HELP ceems_rdma_qps_total Number of active QPs
+# TYPE ceems_rdma_qps_total gauge
+ceems_rdma_qps_total{device="mlx5_0",hostname="",port="1",uuid="1320003"} 16
+ceems_rdma_qps_total{device="mlx5_0",hostname="",port="1",uuid="4824887"} 16
+# HELP ceems_rdma_state_id State of the InfiniBand port (0: no change, 1: down, 2: init, 3: armed, 4: active, 5: act defer)
+# TYPE ceems_rdma_state_id gauge
+ceems_rdma_state_id{device="hfi1_0",hostname="",port="1"} 4
+ceems_rdma_state_id{device="mlx4_0",hostname="",port="1"} 4
+ceems_rdma_state_id{device="mlx4_0",hostname="",port="2"} 4
+ceems_rdma_state_id{device="mlx5_0",hostname="",port="1"} 4
 # HELP ceems_scrape_collector_duration_seconds ceems_exporter: Duration of a collector scrape.
 # TYPE ceems_scrape_collector_duration_seconds gauge
 # HELP ceems_scrape_collector_success ceems_exporter: Whether a collector succeeded.

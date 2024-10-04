@@ -101,6 +101,7 @@ type slurmCollector struct {
 	cgroupCollector  *cgroupCollector
 	perfCollector    *perfCollector
 	ebpfCollector    *ebpfCollector
+	rdmaCollector    *rdmaCollector
 	hostname         string
 	gpuDevs          map[int]Device
 	procFS           procfs.FS
@@ -175,6 +176,18 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 		}
 	}
 
+	// Start new instance of rdmaCollector
+	var rdmaCollector *rdmaCollector
+
+	if rdmaCollectorEnabled() {
+		rdmaCollector, err = NewRDMACollector(logger, cgroupManager)
+		if err != nil {
+			level.Info(logger).Log("msg", "Failed to create RDMA collector", "err", err)
+
+			return nil, err
+		}
+	}
+
 	// Attempt to get GPU devices
 	var gpuTypes []string
 
@@ -220,6 +233,7 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 		cgroupCollector:  cgCollector,
 		perfCollector:    perfCollector,
 		ebpfCollector:    ebpfCollector,
+		rdmaCollector:    rdmaCollector,
 		hostname:         hostname,
 		gpuDevs:          gpuDevs,
 		procFS:           procFS,
@@ -296,6 +310,19 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 			// Update ebpf metrics
 			if err := c.ebpfCollector.Update(ch); err != nil {
 				level.Error(c.logger).Log("msg", "Failed to update IO and/or network stats", "err", err)
+			}
+		}()
+	}
+
+	if rdmaCollectorEnabled() {
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+
+			// Update RDMA metrics
+			if err := c.rdmaCollector.Update(ch); err != nil {
+				level.Error(c.logger).Log("msg", "Failed to update RDMA stats", "err", err)
 			}
 		}()
 	}

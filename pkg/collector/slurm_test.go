@@ -36,10 +36,12 @@ func TestNewSlurmCollector(t *testing.T) {
 		[]string{
 			"--path.cgroupfs", "testdata/sys/fs/cgroup",
 			"--path.procfs", "testdata/proc",
+			"--path.sysfs", "testdata/sys",
 			"--collector.slurm.gpu-job-map-path", "testdata/gpujobmap",
 			"--collector.slurm.swap-memory-metrics",
 			"--collector.slurm.psi-metrics",
 			"--collector.perf.hardware-events",
+			"--collector.rdma.stats",
 			"--collector.slurm.nvidia-smi-path", "testdata/nvidia-smi",
 			"--collector.cgroups.force-version", "v2",
 		},
