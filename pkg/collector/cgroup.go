@@ -50,8 +50,16 @@ var (
 )
 
 // Ref: https://libvirt.org/cgroups.html#legacy-cgroups-layout
+// Take escaped unicode characters in regex
+/*
+	For v1 possibilities are /cpuacct/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000001.scope
+							 /memory/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000001.scope
+
+	For v2 possibilities are /machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000001.scope
+							 /machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000001.scope/libvirt
+*/
 var (
-	libvirtCgroupPathRegex = regexp.MustCompile("^.*/(?:.+?)instance-([0-9]+)(?:.*$)")
+	libvirtCgroupPathRegex = regexp.MustCompile("^.*/(?:.+?)-qemu-(?:[0-9]+)-(instance-[0-9]+)(?:.*$)")
 )
 
 // CLI options.
@@ -206,7 +214,7 @@ func NewCgroupManager(name string) (*cgroupManager, error) {
 
 		// Add filter functions
 		manager.pathFilter = func(p string) bool {
-			return false
+			return strings.Contains(p, "/libvirt")
 		}
 		manager.procFilter = func(p string) bool {
 			return false
