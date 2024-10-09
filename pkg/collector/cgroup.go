@@ -19,6 +19,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/procfs/blockdevice"
 )
 
 const (
@@ -33,6 +34,12 @@ const (
 const (
 	slurm   = "slurm"
 	libvirt = "libvirt"
+)
+
+// Block IO Op names.
+const (
+	readOp  = "Read"
+	writeOp = "Write"
 )
 
 // Regular expressions of cgroup paths for different resource managers.
@@ -59,7 +66,7 @@ var (
 							 /machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000001.scope/libvirt
 */
 var (
-	libvirtCgroupPathRegex = regexp.MustCompile("^.*/(?:.+?)-qemu-(?:[0-9]+)-(instance-[0-9]+)(?:.*$)")
+	libvirtCgroupPathRegex = regexp.MustCompile("^.*/(?:.+?)-qemu-(?:[0-9]+)-(instance-[0-9a-f]+)(?:.*$)")
 )
 
 // CLI options.
@@ -247,6 +254,11 @@ type cgMetric struct {
 	memswTotal      float64
 	memswFailCount  float64
 	memoryPressure  float64
+	blkioReadBytes  map[string]float64
+	blkioWriteBytes map[string]float64
+	blkioReadReqs   map[string]float64
+	blkioWriteReqs  map[string]float64
+	blkioPressure   float64
 	rdmaHCAHandles  map[string]float64
 	rdmaHCAObjects  map[string]float64
 	uuid            string
@@ -260,6 +272,7 @@ type cgroupCollector struct {
 	opts              cgroupOpts
 	hostname          string
 	hostMemTotal      float64
+	blockDevices      map[string]string
 	numCgs            *prometheus.Desc
 	cgCPUUser         *prometheus.Desc
 	cgCPUSystem       *prometheus.Desc
@@ -274,6 +287,11 @@ type cgroupCollector struct {
 	cgMemswTotal      *prometheus.Desc
 	cgMemswFailCount  *prometheus.Desc
 	cgMemoryPressure  *prometheus.Desc
+	cgBlkioReadBytes  *prometheus.Desc
+	cgBlkioWriteBytes *prometheus.Desc
+	cgBlkioReadReqs   *prometheus.Desc
+	cgBlkioWriteReqs  *prometheus.Desc
+	cgBlkioPressure   *prometheus.Desc
 	cgRDMAHCAHandles  *prometheus.Desc
 	cgRDMAHCAObjects  *prometheus.Desc
 	collectError      *prometheus.Desc
@@ -281,6 +299,7 @@ type cgroupCollector struct {
 
 type cgroupOpts struct {
 	collectSwapMemStats bool
+	collectBlockIOStats bool
 	collectPSIStats     bool
 }
 
@@ -300,12 +319,29 @@ func NewCgroupCollector(logger log.Logger, cgManager *cgroupManager, opts cgroup
 
 	defer file.Close()
 
+	// Read block IO stats just to get block devices info.
+	// We construct a map from major:minor to device name using this info
+	blockDevices := make(map[string]string)
+
+	if blockdevice, err := blockdevice.NewFS(*procfsPath, *sysPath); err == nil {
+		if stats, err := blockdevice.ProcDiskstats(); err == nil {
+			for _, s := range stats {
+				blockDevices[fmt.Sprintf("%d:%d", s.Info.MajorNumber, s.Info.MinorNumber)] = s.Info.DeviceName
+			}
+		} else {
+			level.Error(logger).Log("msg", "Failed to get stats of block devices on the host", "err", err)
+		}
+	} else {
+		level.Error(logger).Log("msg", "Failed to get list of block devices on the host", "err", err)
+	}
+
 	return &cgroupCollector{
 		logger:        logger,
 		cgroupManager: cgManager,
 		opts:          opts,
 		hostMemTotal:  memTotal,
 		hostname:      hostname,
+		blockDevices:  blockDevices,
 		numCgs: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, genericSubsystem, "units"),
 			"Total number of jobs",
@@ -390,6 +426,36 @@ func NewCgroupCollector(logger log.Logger, cgManager *cgroupManager, opts cgroup
 			[]string{"manager", "hostname", "uuid"},
 			nil,
 		),
+		cgBlkioReadBytes: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_blkio_read_total_bytes"),
+			"Total block IO read bytes",
+			[]string{"manager", "hostname", "uuid", "device"},
+			nil,
+		),
+		cgBlkioWriteBytes: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_blkio_write_total_bytes"),
+			"Total block IO write bytes",
+			[]string{"manager", "hostname", "uuid", "device"},
+			nil,
+		),
+		cgBlkioReadReqs: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_blkio_read_total_requests"),
+			"Total block IO read requests",
+			[]string{"manager", "hostname", "uuid", "device"},
+			nil,
+		),
+		cgBlkioWriteReqs: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_blkio_write_total_requests"),
+			"Total block IO write requests",
+			[]string{"manager", "hostname", "uuid", "device"},
+			nil,
+		),
+		cgBlkioPressure: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_blkio_psi_seconds"),
+			"Total block IO PSI in seconds",
+			[]string{"manager", "hostname", "uuid", "device"},
+			nil,
+		),
 		cgRDMAHCAHandles: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_rdma_hca_handles"),
 			"Current number of RDMA HCA handles",
@@ -442,6 +508,27 @@ func (c *cgroupCollector) Update(ch chan<- prometheus.Metric, metrics []cgMetric
 			ch <- prometheus.MustNewConstMetric(c.cgMemswUsed, prometheus.GaugeValue, m.memswUsed, c.cgroupManager.manager, c.hostname, m.uuid)
 			ch <- prometheus.MustNewConstMetric(c.cgMemswTotal, prometheus.GaugeValue, m.memswTotal, c.cgroupManager.manager, c.hostname, m.uuid)
 			ch <- prometheus.MustNewConstMetric(c.cgMemswFailCount, prometheus.GaugeValue, m.memswFailCount, c.cgroupManager.manager, c.hostname, m.uuid)
+		}
+
+		// Block IO stats
+		if c.opts.collectBlockIOStats {
+			for device := range m.blkioReadBytes {
+				if v, ok := m.blkioReadBytes[device]; ok && v > 0 {
+					ch <- prometheus.MustNewConstMetric(c.cgBlkioReadBytes, prometheus.GaugeValue, v, c.cgroupManager.manager, c.hostname, m.uuid, device)
+				}
+
+				if v, ok := m.blkioWriteBytes[device]; ok && v > 0 {
+					ch <- prometheus.MustNewConstMetric(c.cgBlkioWriteBytes, prometheus.GaugeValue, v, c.cgroupManager.manager, c.hostname, m.uuid, device)
+				}
+
+				if v, ok := m.blkioReadReqs[device]; ok && v > 0 {
+					ch <- prometheus.MustNewConstMetric(c.cgBlkioReadReqs, prometheus.GaugeValue, v, c.cgroupManager.manager, c.hostname, m.uuid, device)
+				}
+
+				if v, ok := m.blkioWriteReqs[device]; ok && v > 0 {
+					ch <- prometheus.MustNewConstMetric(c.cgBlkioWriteReqs, prometheus.GaugeValue, v, c.cgroupManager.manager, c.hostname, m.uuid, device)
+				}
+			}
 		}
 
 		// PSI stats
@@ -654,6 +741,34 @@ func (c *cgroupCollector) statsV1(metric *cgMetric) {
 		}
 	}
 
+	// Get block IO stats
+	if stats.GetBlkio() != nil {
+		metric.blkioReadBytes = make(map[string]float64)
+		metric.blkioReadReqs = make(map[string]float64)
+		metric.blkioWriteBytes = make(map[string]float64)
+		metric.blkioWriteReqs = make(map[string]float64)
+
+		for _, stat := range stats.GetBlkio().GetIoServiceBytesRecursive() {
+			devName := c.blockDevices[fmt.Sprintf("%d:%d", stat.GetMajor(), stat.GetMinor())]
+
+			if stat.GetOp() == readOp {
+				metric.blkioReadBytes[devName] = float64(stat.GetValue())
+			} else if stat.GetOp() == writeOp {
+				metric.blkioWriteBytes[devName] = float64(stat.GetValue())
+			}
+		}
+
+		for _, stat := range stats.GetBlkio().GetIoServicedRecursive() {
+			devName := c.blockDevices[fmt.Sprintf("%d:%d", stat.GetMajor(), stat.GetMinor())]
+
+			if stat.GetOp() == readOp {
+				metric.blkioReadReqs[devName] = float64(stat.GetValue())
+			} else if stat.GetOp() == writeOp {
+				metric.blkioWriteReqs[devName] = float64(stat.GetValue())
+			}
+		}
+	}
+
 	// Get RDMA metrics if available
 	if stats.GetRdma() != nil {
 		metric.rdmaHCAHandles = make(map[string]float64)
@@ -745,6 +860,26 @@ func (c *cgroupCollector) statsV2(metric *cgMetric) {
 	// Get memory events
 	if stats.GetMemoryEvents() != nil {
 		metric.memoryFailCount = float64(stats.GetMemoryEvents().GetOom())
+	}
+
+	// Get block IO stats
+	if stats.GetIo() != nil {
+		metric.blkioReadBytes = make(map[string]float64)
+		metric.blkioReadReqs = make(map[string]float64)
+		metric.blkioWriteBytes = make(map[string]float64)
+		metric.blkioWriteReqs = make(map[string]float64)
+
+		for _, stat := range stats.GetIo().GetUsage() {
+			devName := c.blockDevices[fmt.Sprintf("%d:%d", stat.GetMajor(), stat.GetMinor())]
+			metric.blkioReadBytes[devName] = float64(stat.GetRbytes())
+			metric.blkioReadReqs[devName] = float64(stat.GetRios())
+			metric.blkioWriteBytes[devName] = float64(stat.GetWbytes())
+			metric.blkioWriteReqs[devName] = float64(stat.GetWios())
+		}
+
+		if stats.GetIo().GetPSI() != nil {
+			metric.blkioPressure = float64(stats.GetIo().GetPSI().GetFull().GetTotal()) / 1000000.0
+		}
 	}
 
 	// Get RDMA stats

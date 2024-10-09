@@ -35,7 +35,7 @@ func TestRDMACollector(t *testing.T) {
 		},
 	}
 
-	collector, err := NewPerfCollector(log.NewNopLogger(), cgManager)
+	collector, err := NewRDMACollector(log.NewNopLogger(), cgManager)
 	require.NoError(t, err)
 
 	// Setup background goroutine to capture metrics.
@@ -49,7 +49,7 @@ func TestRDMACollector(t *testing.T) {
 		}
 	}()
 
-	err = collector.Update(metrics)
+	err = collector.Update(metrics, nil)
 	require.NoError(t, err)
 
 	err = collector.Stop(context.Background())
@@ -83,7 +83,7 @@ func TestDevMR(t *testing.T) {
 	}
 
 	// Get cgroup IDs
-	procCgroup, err := c.procCgroups()
+	procCgroup, err := c.procCgroups(nil)
 	require.NoError(t, err)
 
 	expectedMRs := map[string]*mr{
@@ -124,7 +124,7 @@ func TestDevCQ(t *testing.T) {
 	}
 
 	// Get cgroup IDs
-	procCgroup, err := c.procCgroups()
+	procCgroup, err := c.procCgroups(nil)
 	require.NoError(t, err)
 
 	expectedCQs := map[string]*cq{
@@ -167,7 +167,7 @@ func TestLinkQP(t *testing.T) {
 	}
 
 	// Get cgroup IDs
-	procCgroup, err := c.procCgroups()
+	procCgroup, err := c.procCgroups(nil)
 	require.NoError(t, err)
 
 	expected := map[string]*qp{

@@ -1,3 +1,27 @@
+# HELP ceems_compute_unit_blkio_read_total_bytes Total block IO read bytes
+# TYPE ceems_compute_unit_blkio_read_total_bytes gauge
+ceems_compute_unit_blkio_read_total_bytes{device="sdc",hostname="",manager="libvirt",uuid="57f2d45e-8ddf-4338-91df-62d0044ff1b5"} 3.0206976e+07
+ceems_compute_unit_blkio_read_total_bytes{device="sdc",hostname="",manager="libvirt",uuid="5f7f6db0-7f7d-4c31-acc6-a03ec4d3ad4e"} 3.0206976e+07
+ceems_compute_unit_blkio_read_total_bytes{device="sdc",hostname="",manager="libvirt",uuid="b674a0a2-c300-4dc6-8c9c-65df16da6d69"} 3.0206976e+07
+ceems_compute_unit_blkio_read_total_bytes{device="sdc",hostname="",manager="libvirt",uuid="bf9ccd0f-4cd7-4ea2-8855-b56467326f61"} 3.0206976e+07
+# HELP ceems_compute_unit_blkio_read_total_requests Total block IO read requests
+# TYPE ceems_compute_unit_blkio_read_total_requests gauge
+ceems_compute_unit_blkio_read_total_requests{device="sdc",hostname="",manager="libvirt",uuid="57f2d45e-8ddf-4338-91df-62d0044ff1b5"} 1141
+ceems_compute_unit_blkio_read_total_requests{device="sdc",hostname="",manager="libvirt",uuid="5f7f6db0-7f7d-4c31-acc6-a03ec4d3ad4e"} 1141
+ceems_compute_unit_blkio_read_total_requests{device="sdc",hostname="",manager="libvirt",uuid="b674a0a2-c300-4dc6-8c9c-65df16da6d69"} 1141
+ceems_compute_unit_blkio_read_total_requests{device="sdc",hostname="",manager="libvirt",uuid="bf9ccd0f-4cd7-4ea2-8855-b56467326f61"} 1141
+# HELP ceems_compute_unit_blkio_write_total_bytes Total block IO write bytes
+# TYPE ceems_compute_unit_blkio_write_total_bytes gauge
+ceems_compute_unit_blkio_write_total_bytes{device="sdc",hostname="",manager="libvirt",uuid="57f2d45e-8ddf-4338-91df-62d0044ff1b5"} 1.00337664e+09
+ceems_compute_unit_blkio_write_total_bytes{device="sdc",hostname="",manager="libvirt",uuid="5f7f6db0-7f7d-4c31-acc6-a03ec4d3ad4e"} 1.00337664e+09
+ceems_compute_unit_blkio_write_total_bytes{device="sdc",hostname="",manager="libvirt",uuid="b674a0a2-c300-4dc6-8c9c-65df16da6d69"} 1.00337664e+09
+ceems_compute_unit_blkio_write_total_bytes{device="sdc",hostname="",manager="libvirt",uuid="bf9ccd0f-4cd7-4ea2-8855-b56467326f61"} 1.00337664e+09
+# HELP ceems_compute_unit_blkio_write_total_requests Total block IO write requests
+# TYPE ceems_compute_unit_blkio_write_total_requests gauge
+ceems_compute_unit_blkio_write_total_requests{device="sdc",hostname="",manager="libvirt",uuid="57f2d45e-8ddf-4338-91df-62d0044ff1b5"} 14997
+ceems_compute_unit_blkio_write_total_requests{device="sdc",hostname="",manager="libvirt",uuid="5f7f6db0-7f7d-4c31-acc6-a03ec4d3ad4e"} 14997
+ceems_compute_unit_blkio_write_total_requests{device="sdc",hostname="",manager="libvirt",uuid="b674a0a2-c300-4dc6-8c9c-65df16da6d69"} 14997
+ceems_compute_unit_blkio_write_total_requests{device="sdc",hostname="",manager="libvirt",uuid="bf9ccd0f-4cd7-4ea2-8855-b56467326f61"} 14997
 # HELP ceems_compute_unit_cpu_psi_seconds Total CPU PSI in seconds
 # TYPE ceems_compute_unit_cpu_psi_seconds gauge
 ceems_compute_unit_cpu_psi_seconds{hostname="",manager="libvirt",uuid="57f2d45e-8ddf-4338-91df-62d0044ff1b5"} 0

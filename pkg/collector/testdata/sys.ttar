@@ -1046,6 +1046,424 @@ Mode: 775
 Directory: sys/fs/cgroup
 Mode: 775
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/blkio
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/blkio/machine.slice
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000001.scope
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000001.scope/blkio.throttle.io_service_bytes
+Lines: 13
+11:0 Read 0
+11:0 Write 0
+11:0 Sync 0
+11:0 Async 0
+11:0 Discard 0
+11:0 Total 0
+8:0 Read 325280768
+8:0 Write 30883840
+8:0 Sync 337257472
+8:0 Async 18907136
+8:0 Discard 0
+8:0 Total 356164608
+Total 356164608
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000001.scope/blkio.throttle.io_service_bytes_recursive
+Lines: 13
+11:0 Read 0
+11:0 Write 0
+11:0 Sync 0
+11:0 Async 0
+11:0 Discard 0
+11:0 Total 0
+8:0 Read 325309440
+8:0 Write 31309824
+8:0 Sync 337351680
+8:0 Async 19267584
+8:0 Discard 0
+8:0 Total 356619264
+Total 356619264
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000001.scope/blkio.throttle.io_serviced
+Lines: 13
+11:0 Read 0
+11:0 Write 0
+11:0 Sync 0
+11:0 Async 0
+11:0 Discard 0
+11:0 Total 0
+8:0 Read 10957
+8:0 Write 4803
+8:0 Sync 12923
+8:0 Async 2837
+8:0 Discard 0
+8:0 Total 15760
+Total 15760
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000001.scope/blkio.throttle.io_serviced_recursive
+Lines: 13
+11:0 Read 0
+11:0 Write 0
+11:0 Sync 0
+11:0 Async 0
+11:0 Discard 0
+11:0 Total 0
+8:0 Read 10958
+8:0 Write 4819
+8:0 Sync 12932
+8:0 Async 2845
+8:0 Discard 0
+8:0 Total 15777
+Total 15777
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000001.scope/blkio.throttle.read_bps_device
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000001.scope/blkio.throttle.read_iops_device
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000001.scope/blkio.throttle.write_bps_device
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000001.scope/blkio.throttle.write_iops_device
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000001.scope/cgroup.clone_children
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000001.scope/cgroup.procs
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000001.scope/notify_on_release
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000001.scope/tasks
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000002.scope
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000002.scope/blkio.throttle.io_service_bytes
+Lines: 13
+11:0 Read 0
+11:0 Write 0
+11:0 Sync 0
+11:0 Async 0
+11:0 Discard 0
+11:0 Total 0
+8:0 Read 325280768
+8:0 Write 30883840
+8:0 Sync 337257472
+8:0 Async 18907136
+8:0 Discard 0
+8:0 Total 356164608
+Total 356164608
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000002.scope/blkio.throttle.io_service_bytes_recursive
+Lines: 13
+11:0 Read 0
+11:0 Write 0
+11:0 Sync 0
+11:0 Async 0
+11:0 Discard 0
+11:0 Total 0
+8:0 Read 325309440
+8:0 Write 31309824
+8:0 Sync 337351680
+8:0 Async 19267584
+8:0 Discard 0
+8:0 Total 356619264
+Total 356619264
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000002.scope/blkio.throttle.io_serviced
+Lines: 13
+11:0 Read 0
+11:0 Write 0
+11:0 Sync 0
+11:0 Async 0
+11:0 Discard 0
+11:0 Total 0
+8:0 Read 10957
+8:0 Write 4803
+8:0 Sync 12923
+8:0 Async 2837
+8:0 Discard 0
+8:0 Total 15760
+Total 15760
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000002.scope/blkio.throttle.io_serviced_recursive
+Lines: 13
+11:0 Read 0
+11:0 Write 0
+11:0 Sync 0
+11:0 Async 0
+11:0 Discard 0
+11:0 Total 0
+8:0 Read 10958
+8:0 Write 4819
+8:0 Sync 12932
+8:0 Async 2845
+8:0 Discard 0
+8:0 Total 15777
+Total 15777
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000002.scope/blkio.throttle.read_bps_device
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000002.scope/blkio.throttle.read_iops_device
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000002.scope/blkio.throttle.write_bps_device
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000002.scope/blkio.throttle.write_iops_device
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000002.scope/cgroup.clone_children
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000002.scope/cgroup.procs
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000002.scope/notify_on_release
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000002.scope/tasks
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000003.scope
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000003.scope/blkio.throttle.io_service_bytes
+Lines: 13
+11:0 Read 0
+11:0 Write 0
+11:0 Sync 0
+11:0 Async 0
+11:0 Discard 0
+11:0 Total 0
+8:0 Read 325280768
+8:0 Write 30883840
+8:0 Sync 337257472
+8:0 Async 18907136
+8:0 Discard 0
+8:0 Total 356164608
+Total 356164608
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000003.scope/blkio.throttle.io_service_bytes_recursive
+Lines: 13
+11:0 Read 0
+11:0 Write 0
+11:0 Sync 0
+11:0 Async 0
+11:0 Discard 0
+11:0 Total 0
+8:0 Read 325309440
+8:0 Write 31309824
+8:0 Sync 337351680
+8:0 Async 19267584
+8:0 Discard 0
+8:0 Total 356619264
+Total 356619264
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000003.scope/blkio.throttle.io_serviced
+Lines: 13
+11:0 Read 0
+11:0 Write 0
+11:0 Sync 0
+11:0 Async 0
+11:0 Discard 0
+11:0 Total 0
+8:0 Read 10957
+8:0 Write 4803
+8:0 Sync 12923
+8:0 Async 2837
+8:0 Discard 0
+8:0 Total 15760
+Total 15760
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000003.scope/blkio.throttle.io_serviced_recursive
+Lines: 13
+11:0 Read 0
+11:0 Write 0
+11:0 Sync 0
+11:0 Async 0
+11:0 Discard 0
+11:0 Total 0
+8:0 Read 10958
+8:0 Write 4819
+8:0 Sync 12932
+8:0 Async 2845
+8:0 Discard 0
+8:0 Total 15777
+Total 15777
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000003.scope/blkio.throttle.read_bps_device
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000003.scope/blkio.throttle.read_iops_device
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000003.scope/blkio.throttle.write_bps_device
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000003.scope/blkio.throttle.write_iops_device
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000003.scope/cgroup.clone_children
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000003.scope/cgroup.procs
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000003.scope/notify_on_release
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000003.scope/tasks
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000004.scope
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000004.scope/blkio.throttle.io_service_bytes
+Lines: 13
+11:0 Read 0
+11:0 Write 0
+11:0 Sync 0
+11:0 Async 0
+11:0 Discard 0
+11:0 Total 0
+8:0 Read 325280768
+8:0 Write 30883840
+8:0 Sync 337257472
+8:0 Async 18907136
+8:0 Discard 0
+8:0 Total 356164608
+Total 356164608
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000004.scope/blkio.throttle.io_service_bytes_recursive
+Lines: 13
+11:0 Read 0
+11:0 Write 0
+11:0 Sync 0
+11:0 Async 0
+11:0 Discard 0
+11:0 Total 0
+8:0 Read 325309440
+8:0 Write 31309824
+8:0 Sync 337351680
+8:0 Async 19267584
+8:0 Discard 0
+8:0 Total 356619264
+Total 356619264
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000004.scope/blkio.throttle.io_serviced
+Lines: 13
+11:0 Read 0
+11:0 Write 0
+11:0 Sync 0
+11:0 Async 0
+11:0 Discard 0
+11:0 Total 0
+8:0 Read 10957
+8:0 Write 4803
+8:0 Sync 12923
+8:0 Async 2837
+8:0 Discard 0
+8:0 Total 15760
+Total 15760
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000004.scope/blkio.throttle.io_serviced_recursive
+Lines: 13
+11:0 Read 0
+11:0 Write 0
+11:0 Sync 0
+11:0 Async 0
+11:0 Discard 0
+11:0 Total 0
+8:0 Read 10958
+8:0 Write 4819
+8:0 Sync 12932
+8:0 Async 2845
+8:0 Discard 0
+8:0 Total 15777
+Total 15777
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000004.scope/blkio.throttle.read_bps_device
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000004.scope/blkio.throttle.read_iops_device
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000004.scope/blkio.throttle.write_bps_device
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000004.scope/blkio.throttle.write_iops_device
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000004.scope/cgroup.clone_children
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000004.scope/cgroup.procs
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000004.scope/notify_on_release
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/blkio/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000004.scope/tasks
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Directory: sys/fs/cgroup/cpuacct
 Mode: 775
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -3509,122 +3927,6 @@ Mode: 644
 Directory: sys/fs/cgroup/machine.slice
 Mode: 775
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/cgroup.controllers
-Lines: 0
-Mode: 444
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/cgroup.events
-Lines: 0
-Mode: 444
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/cgroup.freeze
-Lines: 0
-Mode: 644
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/cgroup.max.depth
-Lines: 0
-Mode: 644
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/cgroup.max.descendants
-Lines: 0
-Mode: 644
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/cgroup.procs
-Lines: 0
-Mode: 644
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/cgroup.stat
-Lines: 0
-Mode: 444
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/cgroup.subtree_control
-Lines: 0
-Mode: 644
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/cgroup.threads
-Lines: 0
-Mode: 644
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/cgroup.type
-Lines: 0
-Mode: 644
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/cpu.idle
-Lines: 0
-Mode: 644
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/cpu.max
-Lines: 0
-Mode: 644
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/cpu.max.burst
-Lines: 0
-Mode: 644
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/cpu.pressure
-Lines: 0
-Mode: 644
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/cpu.stat
-Lines: 0
-Mode: 444
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/cpu.uclamp.max
-Lines: 0
-Mode: 644
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/cpu.uclamp.min
-Lines: 0
-Mode: 644
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/cpu.weight
-Lines: 0
-Mode: 644
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/cpu.weight.nice
-Lines: 0
-Mode: 644
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/cpuset.cpus
-Lines: 0
-Mode: 644
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/cpuset.cpus.effective
-Lines: 0
-Mode: 444
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/cpuset.cpus.partition
-Lines: 0
-Mode: 644
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/cpuset.mems
-Lines: 0
-Mode: 644
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/cpuset.mems.effective
-Lines: 0
-Mode: 444
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/io.max
-Lines: 0
-Mode: 644
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/io.pressure
-Lines: 0
-Mode: 644
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/io.prio.class
-Lines: 0
-Mode: 644
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/io.stat
-Lines: 0
-Mode: 444
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/io.weight
-Lines: 0
-Mode: 644
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Directory: sys/fs/cgroup/machine.slice/machine-qemu\x2d1\x2dinstance\x2d00000002.scope
 Mode: 775
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -3753,7 +4055,9 @@ Lines: 0
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/machine.slice/machine-qemu\x2d1\x2dinstance\x2d00000002.scope/io.pressure
-Lines: 0
+Lines: 2
+some avg10=0.00 avg60=0.00 avg300=0.00 total=434042
+full avg10=0.00 avg60=0.00 avg300=0.00 total=433924
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/machine.slice/machine-qemu\x2d1\x2dinstance\x2d00000002.scope/io.prio.class
@@ -3761,8 +4065,9 @@ Lines: 0
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/machine.slice/machine-qemu\x2d1\x2dinstance\x2d00000002.scope/io.stat
-Lines: 0
-Mode: 444
+Lines: 1
+8:0 rbytes=30206976 wbytes=1003376640 rios=1141 wios=14997 dbytes=0 dios=0
+Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/machine.slice/machine-qemu\x2d1\x2dinstance\x2d00000002.scope/io.weight
 Lines: 0
@@ -4449,7 +4754,9 @@ Lines: 0
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000001.scope/io.pressure
-Lines: 0
+Lines: 2
+some avg10=0.00 avg60=0.00 avg300=0.00 total=434042
+full avg10=0.00 avg60=0.00 avg300=0.00 total=433924
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000001.scope/io.prio.class
@@ -4457,8 +4764,9 @@ Lines: 0
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000001.scope/io.stat
-Lines: 0
-Mode: 444
+Lines: 1
+8:0 rbytes=30206976 wbytes=1003376640 rios=1141 wios=14997 dbytes=0 dios=0
+Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000001.scope/io.weight
 Lines: 0
@@ -5145,7 +5453,9 @@ Lines: 0
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/machine.slice/machine-qemu\x2d3\x2dinstance\x2d00000003.scope/io.pressure
-Lines: 0
+Lines: 2
+some avg10=0.00 avg60=0.00 avg300=0.00 total=434042
+full avg10=0.00 avg60=0.00 avg300=0.00 total=433924
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/machine.slice/machine-qemu\x2d3\x2dinstance\x2d00000003.scope/io.prio.class
@@ -5153,8 +5463,9 @@ Lines: 0
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/machine.slice/machine-qemu\x2d3\x2dinstance\x2d00000003.scope/io.stat
-Lines: 0
-Mode: 444
+Lines: 1
+8:0 rbytes=30206976 wbytes=1003376640 rios=1141 wios=14997 dbytes=0 dios=0
+Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/machine.slice/machine-qemu\x2d3\x2dinstance\x2d00000003.scope/io.weight
 Lines: 0
@@ -5948,7 +6259,9 @@ Lines: 0
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/machine.slice/machine-qemu\x2d4\x2dinstance\x2d00000004.scope/io.pressure
-Lines: 0
+Lines: 2
+some avg10=0.00 avg60=0.00 avg300=0.00 total=434042
+full avg10=0.00 avg60=0.00 avg300=0.00 total=433924
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/machine.slice/machine-qemu\x2d4\x2dinstance\x2d00000004.scope/io.prio.class
@@ -5956,8 +6269,9 @@ Lines: 0
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/machine.slice/machine-qemu\x2d4\x2dinstance\x2d00000004.scope/io.stat
-Lines: 0
-Mode: 444
+Lines: 1
+8:0 rbytes=30206976 wbytes=1003376640 rios=1141 wios=14997 dbytes=0 dios=0
+Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/machine.slice/machine-qemu\x2d4\x2dinstance\x2d00000004.scope/io.weight
 Lines: 0
@@ -6834,78 +7148,6 @@ Lines: 0
 Mode: 444
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/machine.slice/machine-qemu\x2d4\x2dinstance\x2d00000004.scope/pids.max
-Lines: 0
-Mode: 644
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/memory.current
-Lines: 0
-Mode: 444
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/memory.events
-Lines: 0
-Mode: 444
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/memory.events.local
-Lines: 0
-Mode: 444
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/memory.high
-Lines: 0
-Mode: 644
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/memory.low
-Lines: 0
-Mode: 644
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/memory.max
-Lines: 0
-Mode: 644
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/memory.min
-Lines: 0
-Mode: 644
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/memory.numa_stat
-Lines: 0
-Mode: 444
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/memory.oom.group
-Lines: 0
-Mode: 644
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/memory.pressure
-Lines: 0
-Mode: 644
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/memory.stat
-Lines: 0
-Mode: 444
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/memory.swap.current
-Lines: 0
-Mode: 444
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/memory.swap.events
-Lines: 0
-Mode: 444
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/memory.swap.high
-Lines: 0
-Mode: 644
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/memory.swap.max
-Lines: 0
-Mode: 644
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/pids.current
-Lines: 0
-Mode: 444
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/pids.events
-Lines: 0
-Mode: 444
-# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Path: sys/fs/cgroup/machine.slice/pids.max
 Lines: 0
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

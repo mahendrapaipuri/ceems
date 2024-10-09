@@ -103,31 +103,6 @@ func SanitizeMetricName(metricName string) string {
 	return metricNameRegex.ReplaceAllString(metricName, "_")
 }
 
-// parseBusID parses PCIe bus ID string to BusID struct.
-func parseBusID(id string) (BusID, error) {
-	// Bus ID is in form of <domain>:<bus>:<slot>.<function>
-	matches := pciBusIDRegex.FindStringSubmatch(id)
-
-	var values []uint64
-
-	for i, match := range matches {
-		if i != 0 {
-			value, err := strconv.ParseUint(match, 16, 16)
-			if err != nil {
-				return BusID{}, err
-			}
-
-			values = append(values, value)
-		}
-	}
-
-	if len(values) == 4 {
-		return BusID{domain: values[0], bus: values[1], slot: values[2], function: values[3]}, nil
-	}
-
-	return BusID{}, fmt.Errorf("error parsing PCIe bus ID: %s", id)
-}
-
 // GetGPUDevices returns GPU devices.
 func GetGPUDevices(gpuType string, logger log.Logger) (map[int]Device, error) {
 	if gpuType == "nvidia" {
@@ -323,7 +298,18 @@ func cgroupProcs(fs procfs.FS, idRegex *regexp.Regexp, targetEnvVars []string, p
 		}
 
 		for _, cgrp := range cgrps {
-			cgroupIDMatches := idRegex.FindStringSubmatch(cgrp.Path)
+			// If cgroup path is root, skip
+			if cgrp.Path == "/" {
+				continue
+			}
+
+			// Unescape UTF-8 characters in cgroup path
+			sanitizedPath, err := unescapeString(cgrp.Path)
+			if err != nil {
+				continue
+			}
+
+			cgroupIDMatches := idRegex.FindStringSubmatch(sanitizedPath)
 			if len(cgroupIDMatches) <= 1 {
 				continue
 			}
@@ -338,7 +324,7 @@ func cgroupProcs(fs procfs.FS, idRegex *regexp.Regexp, targetEnvVars []string, p
 			continue
 		}
 
-		// if targetEnvVars is not empty check if this env vars is present for the process
+		// If targetEnvVars is not empty check if this env vars is present for the process
 		// We dont check for the value of env var. Presence of env var is enough to
 		// trigger the profiling of that process
 		if len(targetEnvVars) > 0 {
@@ -408,18 +394,6 @@ func lookPath(f string) (string, error) {
 	return "", errors.New("path does not exist")
 }
 
-// // Find named matches in regex groups and return a map.
-// func findNamedMatches(regex *regexp.Regexp, str string) map[string]string {
-// 	match := regex.FindStringSubmatch(str)
-
-// 	results := map[string]string{}
-// 	for i, name := range match {
-// 		results[regex.SubexpNames()[i]] = name
-// 	}
-
-// 	return results
-// }
-
 // inode returns the inode of a given path.
 func inode(path string) (uint64, error) {
 	info, err := os.Stat(path)
@@ -433,4 +407,39 @@ func inode(path string) (uint64, error) {
 	}
 
 	return stat.Ino, nil
+}
+
+// parseBusID parses PCIe bus ID string to BusID struct.
+func parseBusID(id string) (BusID, error) {
+	// Bus ID is in form of <domain>:<bus>:<slot>.<function>
+	matches := pciBusIDRegex.FindStringSubmatch(id)
+
+	var values []uint64
+
+	for i, match := range matches {
+		if i != 0 {
+			value, err := strconv.ParseUint(match, 16, 16)
+			if err != nil {
+				return BusID{}, err
+			}
+
+			values = append(values, value)
+		}
+	}
+
+	if len(values) == 4 {
+		return BusID{domain: values[0], bus: values[1], slot: values[2], function: values[3]}, nil
+	}
+
+	return BusID{}, fmt.Errorf("error parsing PCIe bus ID: %s", id)
+}
+
+// unescapeString sanitizes the string by unescaping UTF-8 characters.
+func unescapeString(s string) (string, error) {
+	sanitized, err := strconv.Unquote("\"" + s + "\"")
+	if err != nil {
+		return "", err
+	}
+
+	return sanitized, nil
 }

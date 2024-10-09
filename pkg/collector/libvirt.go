@@ -32,6 +32,10 @@ var (
 		"collector.libvirt.swap-memory-metrics",
 		"Enables collection of swap memory metrics (default: disabled)",
 	).Default("false").Bool()
+	libvirtCollectBlkIOStats = CEEMSExporterApp.Flag(
+		"collector.libvirt.blkio-metrics",
+		"Enables collection of block IO metrics (default: disabled)",
+	).Default("false").Bool()
 	libvirtCollectPSIStats = CEEMSExporterApp.Flag(
 		"collector.libvirt.psi-metrics",
 		"Enables collection of PSI metrics (default: disabled)",
@@ -41,7 +45,7 @@ var (
 	libvirtXMLDir = CEEMSExporterApp.Flag(
 		"collector.libvirt.xml-dir",
 		"Directory containing XML files of instances",
-	).Default("").Hidden().String()
+	).Default("/etc/libvirt/qemu").Hidden().String()
 )
 
 // Security context names.
@@ -102,8 +106,9 @@ type instanceProps struct {
 }
 
 type libvirtMetrics struct {
-	cgMetrics     []cgMetric
-	instanceProps []instanceProps
+	cgMetrics         []cgMetric
+	instanceProps     []instanceProps
+	instanceIDUUIDMap map[string]string
 }
 
 type libvirtCollector struct {
@@ -140,11 +145,12 @@ func NewLibvirtCollector(logger log.Logger) (Collector, error) {
 	// Set cgroup options
 	opts := cgroupOpts{
 		collectSwapMemStats: *libvirtCollectSwapMemoryStats,
+		collectBlockIOStats: *libvirtCollectBlkIOStats,
 		collectPSIStats:     *libvirtCollectPSIStats,
 	}
 
 	// Start new instance of cgroupCollector
-	cgCollector, err := NewCgroupCollector(logger, cgroupManager, opts)
+	cgCollector, err := NewCgroupCollector(log.With(logger, "sub_collector", "cgroup"), cgroupManager, opts)
 	if err != nil {
 		level.Info(logger).Log("msg", "Failed to create cgroup collector", "err", err)
 
@@ -155,7 +161,7 @@ func NewLibvirtCollector(logger log.Logger) (Collector, error) {
 	var perfCollector *perfCollector
 
 	if perfCollectorEnabled() {
-		perfCollector, err = NewPerfCollector(logger, cgroupManager)
+		perfCollector, err = NewPerfCollector(log.With(logger, "sub_collector", "perf"), cgroupManager)
 		if err != nil {
 			level.Info(logger).Log("msg", "Failed to create perf collector", "err", err)
 
@@ -167,7 +173,7 @@ func NewLibvirtCollector(logger log.Logger) (Collector, error) {
 	var ebpfCollector *ebpfCollector
 
 	if ebpfCollectorEnabled() {
-		ebpfCollector, err = NewEbpfCollector(logger, cgroupManager)
+		ebpfCollector, err = NewEbpfCollector(log.With(logger, "sub_collector", "ebpf"), cgroupManager)
 		if err != nil {
 			level.Info(logger).Log("msg", "Failed to create ebpf collector", "err", err)
 
@@ -179,7 +185,7 @@ func NewLibvirtCollector(logger log.Logger) (Collector, error) {
 	var rdmaCollector *rdmaCollector
 
 	if rdmaCollectorEnabled() {
-		rdmaCollector, err = NewRDMACollector(logger, cgroupManager)
+		rdmaCollector, err = NewRDMACollector(log.With(logger, "sub_collector", "rdma"), cgroupManager)
 		if err != nil {
 			level.Info(logger).Log("msg", "Failed to create RDMA collector", "err", err)
 
@@ -285,7 +291,7 @@ func (c *libvirtCollector) Update(ch chan<- prometheus.Metric) error {
 			defer wg.Done()
 
 			// Update perf metrics
-			if err := c.perfCollector.Update(ch); err != nil {
+			if err := c.perfCollector.Update(ch, metrics.instanceIDUUIDMap); err != nil {
 				level.Error(c.logger).Log("msg", "Failed to update perf stats", "err", err)
 			}
 		}()
@@ -298,7 +304,7 @@ func (c *libvirtCollector) Update(ch chan<- prometheus.Metric) error {
 			defer wg.Done()
 
 			// Update ebpf metrics
-			if err := c.ebpfCollector.Update(ch); err != nil {
+			if err := c.ebpfCollector.Update(ch, metrics.instanceIDUUIDMap); err != nil {
 				level.Error(c.logger).Log("msg", "Failed to update IO and/or network stats", "err", err)
 			}
 		}()
@@ -311,7 +317,7 @@ func (c *libvirtCollector) Update(ch chan<- prometheus.Metric) error {
 			defer wg.Done()
 
 			// Update RDMA metrics
-			if err := c.rdmaCollector.Update(ch); err != nil {
+			if err := c.rdmaCollector.Update(ch, metrics.instanceIDUUIDMap); err != nil {
 				level.Error(c.logger).Log("msg", "Failed to update RDMA stats", "err", err)
 			}
 		}()
@@ -386,6 +392,8 @@ func (c *libvirtCollector) discoverCgroups() (libvirtMetrics, error) {
 
 	var cgMetrics []cgMetric
 
+	instanceIDUUIDMap := make(map[string]string)
+
 	// Walk through all cgroups and get cgroup paths
 	// https://goplay.tools/snippet/coVDkIozuhg
 	if err := filepath.WalkDir(c.cgroupManager.mountPoint, func(p string, info fs.DirEntry, err error) error {
@@ -407,9 +415,9 @@ func (c *libvirtCollector) discoverCgroups() (libvirtMetrics, error) {
 		}
 
 		// Unescape UTF-8 characters in cgroup path
-		sanitizedPath, err := strconv.Unquote("\"" + p + "\"")
+		sanitizedPath, err := unescapeString(p)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "Failed to unquote cgroup path", "path", p, "err", err)
+			level.Error(c.logger).Log("msg", "Failed to sanitize cgroup path", "path", p, "err", err)
 
 			return nil
 		}
@@ -433,18 +441,17 @@ func (c *libvirtCollector) discoverCgroups() (libvirtMetrics, error) {
 		}
 
 		// Get instance details
-		var instanceUUID string
 		if iProps, ok := c.instancePropsCache[instanceID]; !ok {
 			c.instancePropsCache[instanceID] = c.instanceProperties(instanceID)
 			instnProps = append(instnProps, c.instancePropsCache[instanceID])
-			instanceUUID = c.instancePropsCache[instanceID].uuid
+			instanceIDUUIDMap[instanceID] = c.instancePropsCache[instanceID].uuid
 		} else {
 			instnProps = append(instnProps, iProps)
-			instanceUUID = iProps.uuid
+			instanceIDUUIDMap[instanceID] = iProps.uuid
 		}
 
 		activeInstanceIDs = append(activeInstanceIDs, instanceID)
-		cgMetrics = append(cgMetrics, cgMetric{uuid: instanceUUID, path: "/" + rel})
+		cgMetrics = append(cgMetrics, cgMetric{uuid: instanceIDUUIDMap[instanceID], path: "/" + rel})
 
 		level.Debug(c.logger).Log("msg", "cgroup path", "path", p)
 
@@ -463,7 +470,7 @@ func (c *libvirtCollector) discoverCgroups() (libvirtMetrics, error) {
 		}
 	}
 
-	return libvirtMetrics{cgMetrics: cgMetrics, instanceProps: instnProps}, nil
+	return libvirtMetrics{cgMetrics: cgMetrics, instanceProps: instnProps, instanceIDUUIDMap: instanceIDUUIDMap}, nil
 }
 
 // instanceProperties returns instance properties parsed from XML file.

@@ -128,10 +128,11 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 	opts := cgroupOpts{
 		collectSwapMemStats: *slurmCollectSwapMemoryStatsDepre || *slurmCollectSwapMemoryStats,
 		collectPSIStats:     *slurmCollectPSIStatsDepre || *slurmCollectPSIStats,
+		collectBlockIOStats: false, // SLURM does not support blkio controller.
 	}
 
 	// Start new instance of cgroupCollector
-	cgCollector, err := NewCgroupCollector(logger, cgroupManager, opts)
+	cgCollector, err := NewCgroupCollector(log.With(logger, "sub_collector", "cgroup"), cgroupManager, opts)
 	if err != nil {
 		level.Info(logger).Log("msg", "Failed to create cgroup collector", "err", err)
 
@@ -142,7 +143,7 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 	var perfCollector *perfCollector
 
 	if perfCollectorEnabled() {
-		perfCollector, err = NewPerfCollector(logger, cgroupManager)
+		perfCollector, err = NewPerfCollector(log.With(logger, "sub_collector", "perf"), cgroupManager)
 		if err != nil {
 			level.Info(logger).Log("msg", "Failed to create perf collector", "err", err)
 
@@ -154,7 +155,7 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 	var ebpfCollector *ebpfCollector
 
 	if ebpfCollectorEnabled() {
-		ebpfCollector, err = NewEbpfCollector(logger, cgroupManager)
+		ebpfCollector, err = NewEbpfCollector(log.With(logger, "sub_collector", "ebpf"), cgroupManager)
 		if err != nil {
 			level.Info(logger).Log("msg", "Failed to create ebpf collector", "err", err)
 
@@ -166,7 +167,7 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 	var rdmaCollector *rdmaCollector
 
 	if rdmaCollectorEnabled() {
-		rdmaCollector, err = NewRDMACollector(logger, cgroupManager)
+		rdmaCollector, err = NewRDMACollector(log.With(logger, "sub_collector", "rdma"), cgroupManager)
 		if err != nil {
 			level.Info(logger).Log("msg", "Failed to create RDMA collector", "err", err)
 
@@ -281,7 +282,7 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 			defer wg.Done()
 
 			// Update perf metrics
-			if err := c.perfCollector.Update(ch); err != nil {
+			if err := c.perfCollector.Update(ch, nil); err != nil {
 				level.Error(c.logger).Log("msg", "Failed to update perf stats", "err", err)
 			}
 		}()
@@ -294,7 +295,7 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 			defer wg.Done()
 
 			// Update ebpf metrics
-			if err := c.ebpfCollector.Update(ch); err != nil {
+			if err := c.ebpfCollector.Update(ch, nil); err != nil {
 				level.Error(c.logger).Log("msg", "Failed to update IO and/or network stats", "err", err)
 			}
 		}()
@@ -307,7 +308,7 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 			defer wg.Done()
 
 			// Update RDMA metrics
-			if err := c.rdmaCollector.Update(ch); err != nil {
+			if err := c.rdmaCollector.Update(ch, nil); err != nil {
 				level.Error(c.logger).Log("msg", "Failed to update RDMA stats", "err", err)
 			}
 		}()

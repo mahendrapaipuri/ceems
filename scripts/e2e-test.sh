@@ -447,6 +447,7 @@ then
         --collector.libvirt.xml-dir="pkg/collector/testdata/qemu" \
         --collector.libvirt.swap-memory-metrics \
         --collector.libvirt.psi-metrics \
+        --collector.libvirt.blkio-metrics \
         --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/capmc/capmc" \
         --collector.ipmi_dcmi.test-mode \
         --collector.empty-hostname-label \
@@ -466,6 +467,7 @@ then
         --collector.libvirt.xml-dir="pkg/collector/testdata/qemu" \
         --collector.libvirt.swap-memory-metrics \
         --collector.libvirt.psi-metrics \
+        --collector.libvirt.blkio-metrics \
         --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/capmc/capmc" \
         --collector.ipmi_dcmi.test-mode \
         --collector.empty-hostname-label \
