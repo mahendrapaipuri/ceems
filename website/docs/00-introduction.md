@@ -45,7 +45,7 @@ with Grafana and Prometheus to show statistics to users.
 
 :::important[Note]
 
-Currently, only SLURM is supported as a resource manager. In future support for Openstack
-and Kubernetes will be added.
+Currently, only SLURM and Openstack are supported as a resource managers. In future support
+for Kubernetes will be added.
 
 :::

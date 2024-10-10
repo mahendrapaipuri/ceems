@@ -12,11 +12,5 @@ This directory provides those scripts that should be used with SLURM.
 An example [systemd service file](https://github.com/mahendrapaipuri/ceems/blob/main/init/systemd/ceems_exporter_no_privs.service)
 is also provided in the repo that can be used along with these prolog and epilog scripts.
 
-> [!IMPORTANT]
-> The CLI argument `--collector.slurm.gpu-job-map-path`
-is hidden and cannot be seen in `ceems_exporter --help` output. However, this argument
-exists in the exporter and can be used.
-
-Even with such prolog and epilog scripts, operators should grant the user running CEEMS
-exporter permissions to run `ipmi-dcmi` command as this command can be executable by only
-`root` by default.
+Even with such prolog and epilog scripts, operators should grant the CEEMS exporter
+process additional privileges for collectors like `ipmi_dcmi`, `ebpf`, _etc_.

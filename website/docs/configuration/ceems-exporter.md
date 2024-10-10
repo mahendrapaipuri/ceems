@@ -107,7 +107,7 @@ eBPF sub-collector needs a kernel version `>= 5.8`.
 :::
 
 ```bash
-ceems_exporter --collector.slurm --collector.slurm.perf-hardware-events --collector.slurm.perf-software-events --collector.slurm.perf-hardware-cache-events --collector.slurm.io-metrics --collector.slurm.network-metrics
+ceems_exporter --collector.slurm --collector.perf.hardware-events --collector.perf.software-events --collector.perf.hardware-cache-events --collector.ebpf.io-metrics --collector.ebpf.network-metrics
 ```
 
 The above command will enable hardware, software and hardware cache perf metrics along
@@ -120,7 +120,7 @@ a configured environment variable. Operators need to choose an environment varia
 name and configure it with the exporter as follows:
 
 ```bash
-ceems_exporter --collector.slurm --collector.slurm.perf-hardware-events --collector.slurm.perf-software-events --collector.slurm.perf-hardware-cache-events --collector.slurm.perf-env-var=CEEMS_ENABLE_PERF --collector.slurm.perf-env-var=ENABLE_PERF
+ceems_exporter --collector.slurm --collector.perf.hardware-events --collector.perf.software-events --collector.perf.hardware-cache-events --collector.perf.env-var=CEEMS_ENABLE_PERF --collector.perf.env-var=ENABLE_PERF
 ```
 
 The above example command will enable all available perf metrics and monitor the processes
@@ -147,6 +147,36 @@ hardware, software and hardware cache events. Unfortunately there is no easy way
 similar approach for IO and network metrics which are provided by eBPF sub-collector. This
 is due to the fact that these metrics are collected in the kernel space and ability to
 enable and disable them at runtime is more involved.
+
+:::
+
+Both perf and eBPF sub-collectors extra privileges to work and the necessary privileges
+are discussed in [Security](./security.md) section.
+
+## Libvirt collector
+
+Libvirt collector is meant to be used on Openstack cluster where VMs are managed by
+libvirt. Most of the options applicable to Slurm are applicable to libvirt as well.
+For the case of GPU mapping, the exporter will fetch this information directly from
+instance's XML file. The exporter can be launched as follows to enable libvirt
+collector:
+
+```bash
+ceems_exporter --collector.libvirt
+```
+
+Both ebpf and perf sub-collectors are supported by libvirt collector and they can
+be enabled as follows:
+
+```bash
+ceems_exporter --collector.libvirt --collector.perf.hardware-events --collector.perf.software-events --collector.perf.hardware-cache-events --collector.ebpf.io-metrics --collector.ebpf.network-metrics
+```
+
+:::note[NOTE]
+
+This is not possible to selectively profile processes inside the guest using
+`--collector.perf.env-var` as hypervisor will have no information about the
+processes inside the guest.
 
 :::
 
