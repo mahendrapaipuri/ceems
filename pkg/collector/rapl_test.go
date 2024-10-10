@@ -14,7 +14,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var expectedEnergyMetrics = []float64{258218293244, 130570505826}
+var (
+	expectedEnergyMetrics = []float64{258218293244, 130570505826}
+	expectedPowerLimits   = map[sysfs.RaplZone]uint64{
+		{
+			Name:           "package",
+			Index:          0,
+			Path:           "testdata/sys/class/powercap/intel-rapl:0",
+			MaxMicrojoules: 0x3d08f5c252,
+		}: 0xaba9500,
+		{
+			Name:           "package",
+			Index:          1,
+			Path:           "testdata/sys/class/powercap/intel-rapl:1",
+			MaxMicrojoules: 0x3d08f5c252,
+		}: 0xaba9500,
+	}
+)
 
 func TestRaplCollector(t *testing.T) {
 	_, err := CEEMSExporterApp.Parse([]string{
@@ -59,4 +75,8 @@ func TestRaplMetrics(t *testing.T) {
 		require.NoError(t, err)
 		assert.InEpsilon(t, expectedEnergyMetrics[iz], float64(microJoules), 0)
 	}
+
+	powerLimits, err := readPowerLimits(zones)
+	require.NoError(t, err)
+	assert.Equal(t, expectedPowerLimits, powerLimits)
 }

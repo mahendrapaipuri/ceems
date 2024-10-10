@@ -402,6 +402,7 @@ List of metrics exported by RAPL collector are:
 
 - RAPL package counters
 - RAPL DRAM counters (when available)
+- RAPL package power limits (when available)
 
 If the CPU architecture supports more RAPL domains otherthan CPU and DRAM, they will be
 exported as well.

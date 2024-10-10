@@ -10,7 +10,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
+	"sync"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -27,6 +29,7 @@ type raplCollector struct {
 	hostname         string
 	securityContexts map[string]*security.SecurityContext
 	joulesMetricDesc *prometheus.Desc
+	wattsMetricDesc  *prometheus.Desc
 }
 
 // Security context names.
@@ -87,12 +90,19 @@ func NewRaplCollector(logger log.Logger) (Collector, error) {
 		[]string{"hostname", "index", "path", "rapl_zone"}, nil,
 	)
 
+	wattsMetricDesc := prometheus.NewDesc(
+		prometheus.BuildFQName(Namespace, raplCollectorSubsystem, "power_limit_watts_total"),
+		"Current RAPL power Limit value in watts",
+		[]string{"hostname", "index", "path", "rapl_zone"}, nil,
+	)
+
 	collector := raplCollector{
 		fs:               fs,
 		logger:           logger,
 		hostname:         hostname,
 		securityContexts: securityContexts,
 		joulesMetricDesc: joulesMetricDesc,
+		wattsMetricDesc:  wattsMetricDesc,
 	}
 
 	return &collector, nil
@@ -119,6 +129,64 @@ func (c *raplCollector) Update(ch chan<- prometheus.Metric) error {
 		return fmt.Errorf("failed to fetch rapl stats: %w", err)
 	}
 
+	// Start wait group
+	wg := sync.WaitGroup{}
+
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+
+		if err := c.updateLimits(zones, ch); err != nil {
+			level.Error(c.logger).Log("msg", "Failed to update RAPL power limits", "err", err)
+		}
+	}()
+
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+
+		if err := c.updateEnergy(zones, ch); err != nil {
+			level.Error(c.logger).Log("msg", "Failed to update RAPL energy counters", "err", err)
+		}
+	}()
+
+	// Wait for go routines
+	wg.Wait()
+
+	return nil
+}
+
+// Stop releases system resources used by the collector.
+func (c *raplCollector) Stop(_ context.Context) error {
+	level.Debug(c.logger).Log("msg", "Stopping", "collector", raplCollectorSubsystem)
+
+	return nil
+}
+
+func (c *raplCollector) updateLimits(zones []sysfs.RaplZone, ch chan<- prometheus.Metric) error {
+	// Get current limits
+	powerLimits, err := readPowerLimits(zones)
+	if err != nil {
+		return err
+	}
+
+	// Update metrics
+	for rz, microWatts := range powerLimits {
+		joules := float64(microWatts) / 1000000.0
+
+		if *raplZoneLabel {
+			ch <- c.wattsMetricWithZoneLabel(rz, joules)
+		} else {
+			ch <- c.wattsMetric(rz, joules)
+		}
+	}
+
+	return nil
+}
+
+func (c *raplCollector) updateEnergy(zones []sysfs.RaplZone, ch chan<- prometheus.Metric) error {
 	// Data for security context
 	dataPtr := &raplCountersSecurityCtxData{
 		zones:    zones,
@@ -156,11 +224,40 @@ func (c *raplCollector) Update(ch chan<- prometheus.Metric) error {
 	return nil
 }
 
-// Stop releases system resources used by the collector.
-func (c *raplCollector) Stop(_ context.Context) error {
-	level.Debug(c.logger).Log("msg", "Stopping", "collector", raplCollectorSubsystem)
+func (c *raplCollector) wattsMetric(z sysfs.RaplZone, v float64) prometheus.Metric {
+	index := strconv.Itoa(z.Index)
+	descriptor := prometheus.NewDesc(
+		prometheus.BuildFQName(
+			Namespace,
+			raplCollectorSubsystem,
+			SanitizeMetricName(z.Name)+"_power_limit_watts_total",
+		),
+		fmt.Sprintf("Current RAPL %s power limit in watts", z.Name),
+		[]string{"hostname", "index", "path"}, nil,
+	)
 
-	return nil
+	return prometheus.MustNewConstMetric(
+		descriptor,
+		prometheus.CounterValue,
+		v,
+		c.hostname,
+		index,
+		z.Path,
+	)
+}
+
+func (c *raplCollector) wattsMetricWithZoneLabel(z sysfs.RaplZone, v float64) prometheus.Metric {
+	index := strconv.Itoa(z.Index)
+
+	return prometheus.MustNewConstMetric(
+		c.wattsMetricDesc,
+		prometheus.CounterValue,
+		v,
+		c.hostname,
+		index,
+		z.Path,
+		z.Name,
+	)
 }
 
 func (c *raplCollector) joulesMetric(z sysfs.RaplZone, v float64) prometheus.Metric {
@@ -197,6 +294,47 @@ func (c *raplCollector) joulesMetricWithZoneLabel(z sysfs.RaplZone, v float64) p
 		z.Path,
 		z.Name,
 	)
+}
+
+// powerLimits gets power limit for each zone. We are interested in long term limit.
+// According to powecap docs, only files power_limit_uw and time_window_us are
+// guaranteed to exist. So, we should rely only on them
+// Ref: https://www.kernel.org/doc/html/next/power/powercap/powercap.html
+func readPowerLimits(zones []sysfs.RaplZone) (map[sysfs.RaplZone]uint64, error) {
+	powerLimits := make(map[sysfs.RaplZone]uint64)
+
+	for _, rz := range zones {
+		var timeWindow uint64
+
+		var longtermConstraint int
+
+		for c := range 2 {
+			timeWindowFile := filepath.Join(rz.Path, fmt.Sprintf("constraint_%d_time_window_us", c))
+			if _, err := os.Stat(timeWindowFile); err != nil {
+				continue
+			}
+
+			// Read time window in micro seconds
+			if constTimeWindow, err := readUintFromFile(timeWindowFile); err == nil {
+				if constTimeWindow > timeWindow {
+					timeWindow = constTimeWindow
+					longtermConstraint = c
+				}
+			}
+		}
+
+		// Now read power_limit_uw for the selected constraint. Value is in micro watts.
+		powerLimitFile := filepath.Join(rz.Path, fmt.Sprintf("constraint_%d_power_limit_uw", longtermConstraint))
+		if powerLimit, err := readUintFromFile(powerLimitFile); err == nil {
+			powerLimits[rz] = powerLimit
+		}
+	}
+
+	if len(powerLimits) == 0 {
+		return nil, errors.New("no RAPL power limits found")
+	}
+
+	return powerLimits, nil
 }
 
 // readCounters reads the RAPL counters of different zones inside a security context.
