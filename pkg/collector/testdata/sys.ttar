@@ -661,7 +661,7 @@ Mode: 440
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/class/powercap/intel-rapl:0/constraint_0_power_limit_uw
 Lines: 1
-150000000
+300000000
 Mode: 640
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/class/powercap/intel-rapl:0/constraint_0_time_window_us
@@ -841,7 +841,7 @@ Mode: 440
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/class/powercap/intel-rapl:1/constraint_0_power_limit_uw
 Lines: 1
-150000000
+300000000
 Mode: 640
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/class/powercap/intel-rapl:1/constraint_0_time_window_us

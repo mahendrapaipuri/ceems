@@ -102,6 +102,10 @@ ceems_meminfo_MemTotal_bytes{hostname=""} 1.6042172416e+10
 # TYPE ceems_rapl_package_joules_total counter
 ceems_rapl_package_joules_total{hostname="",index="0",path="pkg/collector/testdata/sys/class/powercap/intel-rapl:0"} 258218.293244
 ceems_rapl_package_joules_total{hostname="",index="1",path="pkg/collector/testdata/sys/class/powercap/intel-rapl:1"} 130570.505826
+# HELP ceems_rapl_package_power_limit_watts_total Current RAPL package power limit in watts
+# TYPE ceems_rapl_package_power_limit_watts_total counter
+ceems_rapl_package_power_limit_watts_total{hostname="",index="0",path="pkg/collector/testdata/sys/class/powercap/intel-rapl:0"} 180
+ceems_rapl_package_power_limit_watts_total{hostname="",index="1",path="pkg/collector/testdata/sys/class/powercap/intel-rapl:1"} 180
 # HELP ceems_rdma_cqe_len_active Length of active CQs
 # TYPE ceems_rdma_cqe_len_active gauge
 ceems_rdma_cqe_len_active{device="mlx5_0",hostname="",manager="slurm",port="",uuid="1320003"} 8190

@@ -443,3 +443,13 @@ func unescapeString(s string) (string, error) {
 
 	return sanitized, nil
 }
+
+// readUintFromFile reads a file and attempts to parse a uint64 from it.
+func readUintFromFile(path string) (uint64, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return 0, err
+	}
+
+	return strconv.ParseUint(strings.TrimSpace(string(data)), 10, 64)
+}
