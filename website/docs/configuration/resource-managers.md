@@ -78,3 +78,9 @@ In the case of cgroups v2, SLURM should create a proper cgroup for every job wit
 special configuration. However, the configuration presented for [cgroups v1](#cgroups-v1)
 is applicable for cgroups v2 and it is advised to use that configuration for cgroups v2
 as well.
+
+## Libvirt
+
+The libvirt collector is meant to be used for Openstack clusters. There is no special
+configuration needed as Openstack will take care of confirguring libvirt and QEMU to
+enable all relevant cgroup controllers.

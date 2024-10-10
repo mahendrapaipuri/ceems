@@ -537,7 +537,9 @@ func NewPerfCollector(logger log.Logger, cgManager *cgroupManager) (*perfCollect
 }
 
 // Update implements the Collector interface and will collect metrics per compute unit.
-func (c *perfCollector) Update(ch chan<- prometheus.Metric) error {
+// cgroupIDUUIDMap provides a map to cgroupID to compute unit UUID. If the map is empty, it means
+// cgroup ID and compute unit UUID is identical.
+func (c *perfCollector) Update(ch chan<- prometheus.Metric, cgroupIDUUIDMap map[string]string) error {
 	// Discover new processes
 	cgroups, err := c.discoverProcess()
 	if err != nil {
@@ -564,21 +566,28 @@ func (c *perfCollector) Update(ch chan<- prometheus.Metric) error {
 
 	// Update metrics in go routines for each cgroup
 	for cgroupID, procs := range cgroups {
-		go func(cid string, ps []procfs.Proc) {
+		var uuid string
+		if cgroupIDUUIDMap != nil {
+			uuid = cgroupIDUUIDMap[cgroupID]
+		} else {
+			uuid = cgroupID
+		}
+
+		go func(u string, ps []procfs.Proc) {
 			defer wg.Done()
 
-			if err := c.updateHardwareCounters(cid, ps, ch); err != nil {
-				level.Error(c.logger).Log("msg", "failed to update hardware counters", "cgroup", cgroupID, "err", err)
+			if err := c.updateHardwareCounters(u, ps, ch); err != nil {
+				level.Error(c.logger).Log("msg", "failed to update hardware counters", "uuid", u, "err", err)
 			}
 
-			if err := c.updateSoftwareCounters(cid, ps, ch); err != nil {
-				level.Error(c.logger).Log("msg", "failed to update software counters", "cgroup", cgroupID, "err", err)
+			if err := c.updateSoftwareCounters(u, ps, ch); err != nil {
+				level.Error(c.logger).Log("msg", "failed to update software counters", "uuid", u, "err", err)
 			}
 
-			if err := c.updateCacheCounters(cid, ps, ch); err != nil {
-				level.Error(c.logger).Log("msg", "failed to update cache counters", "cgroup", cgroupID, "err", err)
+			if err := c.updateCacheCounters(u, ps, ch); err != nil {
+				level.Error(c.logger).Log("msg", "failed to update cache counters", "uuid", u, "err", err)
 			}
-		}(cgroupID, procs)
+		}(uuid, procs)
 	}
 
 	// Wait all go routines
@@ -843,7 +852,11 @@ func (c *perfCollector) discoverProcess() (map[string][]procfs.Proc, error) {
 		}
 	}
 
-	level.Debug(c.logger).Log("msg", "Discovered cgroups for profiling")
+	if len(dataPtr.cgroups) > 0 {
+		level.Debug(c.logger).Log("msg", "Discovered cgroups for profiling")
+	} else {
+		level.Debug(c.logger).Log("msg", "No cgroups found for profiling")
+	}
 
 	return dataPtr.cgroups, nil
 }

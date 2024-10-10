@@ -186,7 +186,7 @@ func TestNewEbpfCollector(t *testing.T) {
 		}
 	}()
 
-	err = collector.Update(metrics)
+	err = collector.Update(metrics, nil)
 	require.NoError(t, err)
 
 	err = collector.Stop(context.Background())
@@ -224,10 +224,10 @@ func TestActiveCgroupsV2(t *testing.T) {
 	}
 
 	// Get active cgroups
-	err = c.discoverCgroups()
+	err = c.discoverCgroups(nil)
 	require.NoError(t, err)
 
-	assert.Len(t, c.activeCgroupIDs, 39)
+	assert.Len(t, c.activeCgroupInodes, 39)
 	assert.Len(t, c.cgroupIDUUIDCache, 39)
 	assert.Len(t, c.cgroupPathIDCache, 39)
 
@@ -273,10 +273,10 @@ func TestActiveCgroupsV1(t *testing.T) {
 	}
 
 	// Get active cgroups
-	err = c.discoverCgroups()
+	err = c.discoverCgroups(nil)
 	require.NoError(t, err)
 
-	assert.Len(t, c.activeCgroupIDs, 6)
+	assert.Len(t, c.activeCgroupInodes, 6)
 	assert.Len(t, c.cgroupIDUUIDCache, 6)
 	assert.Len(t, c.cgroupPathIDCache, 6)
 

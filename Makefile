@@ -155,6 +155,8 @@ test-e2e: build pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc
 	./scripts/e2e-test.sh -s exporter-cgroups-v2-nogpu
 	./scripts/e2e-test.sh -s exporter-cgroups-v2-procfs
 	./scripts/e2e-test.sh -s exporter-cgroups-v2-all-metrics
+	./scripts/e2e-test.sh -s exporter-cgroups-v1-libvirt
+	./scripts/e2e-test.sh -s exporter-cgroups-v2-libvirt
 else
 .PHONY: test-e2e
 test-e2e: $(PROMTOOL) build pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked
@@ -204,6 +206,8 @@ test-e2e-update: build pkg/collector/testdata/sys/.unpacked pkg/collector/testda
 	./scripts/e2e-test.sh -s exporter-cgroups-v2-nogpu -u || true
 	./scripts/e2e-test.sh -s exporter-cgroups-v2-procfs -u || true
 	./scripts/e2e-test.sh -s exporter-cgroups-v2-all-metrics -u || true
+	./scripts/e2e-test.sh -s exporter-cgroups-v1-libvirt -u || true
+	./scripts/e2e-test.sh -s exporter-cgroups-v2-libvirt -u || true
 else
 .PHONY: test-e2e-update
 test-e2e-update: $(PROMTOOL) build pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked

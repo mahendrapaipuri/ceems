@@ -137,44 +137,44 @@ type aggMetrics struct {
 // ebpfReadMapsCtxData contains the input/output data for
 // reading eBPF maps to execute inside security context.
 type ebpfReadMapsCtxData struct {
-	opts              ebpfOpts
-	cgroupIDUUIDCache map[uint64]string
-	activeCgroupIDs   []uint64
-	netColl           *ebpf.Collection
-	vfsColl           *ebpf.Collection
-	aggMetrics        *aggMetrics
+	opts               ebpfOpts
+	cgroupIDUUIDCache  map[uint64]string
+	activeCgroupInodes []uint64
+	netColl            *ebpf.Collection
+	vfsColl            *ebpf.Collection
+	aggMetrics         *aggMetrics
 }
 
 type ebpfCollector struct {
-	logger            log.Logger
-	hostname          string
-	opts              ebpfOpts
-	cgroupManager     *cgroupManager
-	cgroupIDUUIDCache map[uint64]string
-	cgroupPathIDCache map[string]uint64
-	activeCgroupIDs   []uint64
-	netColl           *ebpf.Collection
-	vfsColl           *ebpf.Collection
-	links             map[string]link.Link
-	securityContexts  map[string]*security.SecurityContext
-	vfsWriteRequests  *prometheus.Desc
-	vfsWriteBytes     *prometheus.Desc
-	vfsWriteErrors    *prometheus.Desc
-	vfsReadRequests   *prometheus.Desc
-	vfsReadBytes      *prometheus.Desc
-	vfsReadErrors     *prometheus.Desc
-	vfsOpenRequests   *prometheus.Desc
-	vfsOpenErrors     *prometheus.Desc
-	vfsCreateRequests *prometheus.Desc
-	vfsCreateErrors   *prometheus.Desc
-	vfsUnlinkRequests *prometheus.Desc
-	vfsUnlinkErrors   *prometheus.Desc
-	netIngressPackets *prometheus.Desc
-	netIngressBytes   *prometheus.Desc
-	netEgressPackets  *prometheus.Desc
-	netEgressBytes    *prometheus.Desc
-	netRetransPackets *prometheus.Desc
-	netRetransBytes   *prometheus.Desc
+	logger             log.Logger
+	hostname           string
+	opts               ebpfOpts
+	cgroupManager      *cgroupManager
+	cgroupIDUUIDCache  map[uint64]string
+	cgroupPathIDCache  map[string]uint64
+	activeCgroupInodes []uint64
+	netColl            *ebpf.Collection
+	vfsColl            *ebpf.Collection
+	links              map[string]link.Link
+	securityContexts   map[string]*security.SecurityContext
+	vfsWriteRequests   *prometheus.Desc
+	vfsWriteBytes      *prometheus.Desc
+	vfsWriteErrors     *prometheus.Desc
+	vfsReadRequests    *prometheus.Desc
+	vfsReadBytes       *prometheus.Desc
+	vfsReadErrors      *prometheus.Desc
+	vfsOpenRequests    *prometheus.Desc
+	vfsOpenErrors      *prometheus.Desc
+	vfsCreateRequests  *prometheus.Desc
+	vfsCreateErrors    *prometheus.Desc
+	vfsUnlinkRequests  *prometheus.Desc
+	vfsUnlinkErrors    *prometheus.Desc
+	netIngressPackets  *prometheus.Desc
+	netIngressBytes    *prometheus.Desc
+	netEgressPackets   *prometheus.Desc
+	netEgressBytes     *prometheus.Desc
+	netRetransPackets  *prometheus.Desc
+	netRetransBytes    *prometheus.Desc
 }
 
 // NewEbpfCollector returns a new instance of ebpf collector.
@@ -507,9 +507,11 @@ func NewEbpfCollector(logger log.Logger, cgManager *cgroupManager) (*ebpfCollect
 }
 
 // Update implements Collector and update job metrics.
-func (c *ebpfCollector) Update(ch chan<- prometheus.Metric) error {
+// cgroupIDUUIDMap provides a map to cgroupID to compute unit UUID. If the map is empty, it means
+// cgroup ID and compute unit UUID is identical.
+func (c *ebpfCollector) Update(ch chan<- prometheus.Metric, cgroupIDUUIDMap map[string]string) error {
 	// Fetch all active cgroups
-	if err := c.discoverCgroups(); err != nil {
+	if err := c.discoverCgroups(cgroupIDUUIDMap); err != nil {
 		return err
 	}
 
@@ -814,11 +816,11 @@ func (c *ebpfCollector) updateNetRetrans(ch chan<- prometheus.Metric, aggMetrics
 // readMaps reads the BPF maps in a security context and returns aggregate metrics.
 func (c *ebpfCollector) readMaps() (*aggMetrics, error) {
 	dataPtr := &ebpfReadMapsCtxData{
-		opts:              c.opts,
-		cgroupIDUUIDCache: c.cgroupIDUUIDCache,
-		activeCgroupIDs:   c.activeCgroupIDs,
-		vfsColl:           c.vfsColl,
-		netColl:           c.netColl,
+		opts:               c.opts,
+		cgroupIDUUIDCache:  c.cgroupIDUUIDCache,
+		activeCgroupInodes: c.activeCgroupInodes,
+		vfsColl:            c.vfsColl,
+		netColl:            c.netColl,
 	}
 
 	// Start new profilers within security context
@@ -833,14 +835,14 @@ func (c *ebpfCollector) readMaps() (*aggMetrics, error) {
 
 // discoverCgroups walks through cgroup file system and discover all relevant cgroups based
 // on cgroupManager.
-func (c *ebpfCollector) discoverCgroups() error {
+func (c *ebpfCollector) discoverCgroups(cgroupIDUUIDMap map[string]string) error {
 	// Get currently active uuids and cgroup paths to evict older entries in caches
 	var activeCgroupUUIDs []string
 
 	var activeCgroupPaths []string
 
 	// Reset activeCgroups from last scrape
-	c.activeCgroupIDs = make([]uint64, 0)
+	c.activeCgroupInodes = make([]uint64, 0)
 
 	// Walk through all cgroups and get cgroup paths
 	if err := filepath.WalkDir(c.cgroupManager.mountPoint, func(p string, info fs.DirEntry, err error) error {
@@ -853,17 +855,33 @@ func (c *ebpfCollector) discoverCgroups() error {
 			return nil
 		}
 
+		// Unescape UTF-8 characters in cgroup path
+		sanitizedPath, err := unescapeString(p)
+		if err != nil {
+			level.Error(c.logger).Log("msg", "Failed to sanitize cgroup path", "path", p, "err", err)
+
+			return nil
+		}
+
 		// Get cgroup ID
-		cgroupIDMatches := c.cgroupManager.idRegex.FindStringSubmatch(p)
+		cgroupIDMatches := c.cgroupManager.idRegex.FindStringSubmatch(sanitizedPath)
 		if len(cgroupIDMatches) <= 1 {
 			return nil
 		}
 
-		uuid := strings.TrimSpace(cgroupIDMatches[1])
-		if uuid == "" {
-			level.Error(c.logger).Log("msg", "Empty UUID", "path", p)
+		cgroupID := strings.TrimSpace(cgroupIDMatches[1])
+		if cgroupID == "" {
+			level.Error(c.logger).Log("msg", "Empty cgroup ID", "path", p)
 
 			return nil
+		}
+
+		// Get compute unit UUID from cgroup ID
+		var uuid string
+		if cgroupIDUUIDMap != nil {
+			uuid = cgroupIDUUIDMap[cgroupID]
+		} else {
+			uuid = cgroupID
 		}
 
 		// Get inode of the cgroup path if not already present in the cache
@@ -877,10 +895,10 @@ func (c *ebpfCollector) discoverCgroups() error {
 			c.cgroupIDUUIDCache[c.cgroupPathIDCache[p]] = uuid
 		}
 
-		// Populate activeCgroupUUIDs, activeCgroupIDs and activeCgroupPaths
+		// Populate activeCgroupUUIDs, activeCgroupInodes and activeCgroupPaths
 		activeCgroupPaths = append(activeCgroupPaths, p)
 		activeCgroupUUIDs = append(activeCgroupUUIDs, uuid)
-		c.activeCgroupIDs = append(c.activeCgroupIDs, c.cgroupPathIDCache[p])
+		c.activeCgroupInodes = append(c.activeCgroupInodes, c.cgroupPathIDCache[p])
 
 		level.Debug(c.logger).Log("msg", "cgroup path", "path", p)
 
@@ -983,7 +1001,7 @@ func aggVFSStats(d *ebpfReadMapsCtxData) {
 			}
 
 			for entries.Next(&rwKey, &rwValue) {
-				if slices.Contains(d.activeCgroupIDs, uint64(rwKey.Cid)) {
+				if slices.Contains(d.activeCgroupInodes, uint64(rwKey.Cid)) {
 					mount := unix.ByteSliceToString(rwKey.Mnt[:])
 					if !containsMount(mount, d.opts.vfsMountPoints) {
 						continue
@@ -1010,7 +1028,7 @@ func aggVFSStats(d *ebpfReadMapsCtxData) {
 			}
 
 			for entries.Next(&inodeKey, &inodeValue) {
-				if slices.Contains(d.activeCgroupIDs, uint64(inodeKey)) {
+				if slices.Contains(d.activeCgroupInodes, uint64(inodeKey)) {
 					uuid := d.cgroupIDUUIDCache[uint64(inodeKey)]
 					if v, ok := d.aggMetrics.inode[mapName][uuid]; ok {
 						d.aggMetrics.inode[mapName][uuid] = bpfVfsInodeEvent{
@@ -1046,7 +1064,7 @@ func aggNetStats(d *ebpfReadMapsCtxData) {
 		}
 
 		for entries.Next(&key, &value) {
-			if slices.Contains(d.activeCgroupIDs, uint64(key.Cid)) {
+			if slices.Contains(d.activeCgroupInodes, uint64(key.Cid)) {
 				promKey := promNetEventKey{
 					UUID:   d.cgroupIDUUIDCache[uint64(key.Cid)],
 					Proto:  protoMap[int(key.Proto)],

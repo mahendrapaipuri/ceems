@@ -23,9 +23,21 @@ import (
 func mockGPUDevices() map[int]Device {
 	devs := make(map[int]Device, 4)
 
+	busIDs := []BusID{
+		{domain: 0, bus: 7, slot: 0, function: 0},
+		{domain: 0, bus: 11, slot: 0, function: 0},
+		{domain: 0, bus: 72, slot: 0, function: 0},
+		{domain: 0, bus: 76, slot: 0, function: 0},
+		{domain: 0, bus: 77, slot: 0, function: 0},
+	}
+
 	for i := 0; i <= 4; i++ {
 		idxString := strconv.Itoa(i)
-		devs[i] = Device{index: idxString, uuid: fmt.Sprintf("GPU-%d", i)}
+		devs[i] = Device{
+			index: idxString,
+			uuid:  fmt.Sprintf("GPU-%d", i),
+			busID: busIDs[i],
+		}
 	}
 
 	return devs
@@ -42,7 +54,7 @@ func TestNewSlurmCollector(t *testing.T) {
 			"--collector.slurm.psi-metrics",
 			"--collector.perf.hardware-events",
 			"--collector.rdma.stats",
-			"--collector.slurm.nvidia-smi-path", "testdata/nvidia-smi",
+			"--collector.gpu.nvidia-smi-path", "testdata/nvidia-smi",
 			"--collector.cgroups.force-version", "v2",
 		},
 	)
@@ -93,10 +105,10 @@ func TestSlurmJobPropsWithProlog(t *testing.T) {
 		gpuDevs:       mockGPUDevices(),
 		logger:        log.NewNopLogger(),
 		cgroupManager: cgManager,
-		jobPropsCache: make(map[string]props),
+		jobPropsCache: make(map[string]jobProps),
 	}
 
-	expectedProps := props{
+	expectedProps := jobProps{
 		gpuOrdinals: []string{"0"},
 		uuid:        "1009249",
 	}
@@ -104,7 +116,7 @@ func TestSlurmJobPropsWithProlog(t *testing.T) {
 	metrics, err := c.discoverCgroups()
 	require.NoError(t, err)
 
-	var gotProps props
+	var gotProps jobProps
 
 	for _, props := range metrics.jobProps {
 		if props.uuid == expectedProps.uuid {
@@ -142,7 +154,7 @@ func TestSlurmJobPropsWithProcsFS(t *testing.T) {
 		cgroupManager:    cgManager,
 		gpuDevs:          mockGPUDevices(),
 		logger:           log.NewNopLogger(),
-		jobPropsCache:    make(map[string]props),
+		jobPropsCache:    make(map[string]jobProps),
 		procFS:           procFS,
 		securityContexts: make(map[string]*security.SecurityContext),
 	}
@@ -156,7 +168,7 @@ func TestSlurmJobPropsWithProcsFS(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	expectedProps := props{
+	expectedProps := jobProps{
 		uuid:        "1009248",
 		gpuOrdinals: []string{"2", "3"},
 	}
@@ -164,7 +176,7 @@ func TestSlurmJobPropsWithProcsFS(t *testing.T) {
 	metrics, err := c.discoverCgroups()
 	require.NoError(t, err)
 
-	var gotProps props
+	var gotProps jobProps
 
 	for _, props := range metrics.jobProps {
 		if props.uuid == expectedProps.uuid {
@@ -210,7 +222,7 @@ func TestJobPropsCaching(t *testing.T) {
 		cgroupManager: cgManager,
 		logger:        log.NewNopLogger(),
 		gpuDevs:       mockGPUDevs,
-		jobPropsCache: make(map[string]props),
+		jobPropsCache: make(map[string]jobProps),
 	}
 
 	// Add cgroups

@@ -102,6 +102,11 @@ func TestCgroupsV2Metrics(t *testing.T) {
 		memoryPressure:  0,
 		rdmaHCAHandles:  map[string]float64{"hfi1_0": 479, "hfi1_1": 1479, "hfi1_2": 2479},
 		rdmaHCAObjects:  map[string]float64{"hfi1_0": 340, "hfi1_1": 1340, "hfi1_2": 2340},
+		blkioReadBytes:  map[string]float64{},
+		blkioWriteBytes: map[string]float64{},
+		blkioReadReqs:   map[string]float64{},
+		blkioWriteReqs:  map[string]float64{},
+		blkioPressure:   0,
 		err:             false,
 	}
 

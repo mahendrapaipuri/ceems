@@ -81,6 +81,16 @@ then
     cgroups_mode="unified"
     desc="Cgroups V2 enabling all available cgroups metrics"
     fixture='pkg/collector/testdata/output/e2e-test-cgroupsv2-all-metrics-output.txt'
+  elif [ "${scenario}" = "exporter-cgroups-v1-libvirt" ]
+  then
+    cgroups_mode="legacy"
+    desc="Cgroups V1 with libvirt"
+    fixture='pkg/collector/testdata/output/e2e-test-cgroupsv1-libvirt-output.txt'
+  elif [ "${scenario}" = "exporter-cgroups-v2-libvirt" ]
+  then
+    cgroups_mode="unified"
+    desc="Cgroups V2 with libvirt"
+    fixture='pkg/collector/testdata/output/e2e-test-cgroupsv2-libvirt-output.txt'
   fi
 
   logfile="${tmpdir}/ceems_exporter.log"
@@ -309,8 +319,8 @@ then
         --path.procfs="pkg/collector/testdata/proc" \
         --collector.cgroups.force-version="v1" \
         --collector.slurm \
-        --collector.slurm.gpu-type="nvidia" \
-        --collector.slurm.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
+        --collector.gpu.type="nvidia" \
+        --collector.gpu.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
         --collector.slurm.gpu-job-map-path="pkg/collector/testdata/gpujobmap" \
         --collector.ipmi_dcmi.test-mode \
         --collector.ipmi_dcmi.cmd="pkg/collector/testdata/ipmi/freeipmi/ipmi-dcmi" \
@@ -328,8 +338,8 @@ then
         --collector.cgroups.force-version="v1" \
         --collector.cgroup.active-subsystem="memory" \
         --collector.slurm \
-        --collector.slurm.gpu-type="nvidia" \
-        --collector.slurm.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
+        --collector.gpu.type="nvidia" \
+        --collector.gpu.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
         --collector.slurm.gpu-job-map-path="pkg/collector/testdata/gpujobmap" \
         --collector.ipmi_dcmi.cmd="pkg/collector/testdata/ipmi/freeipmi/ipmi-dcmi" \
         --collector.ipmi_dcmi.test-mode \
@@ -346,8 +356,8 @@ then
         --path.procfs="pkg/collector/testdata/proc" \
         --collector.cgroups.force-version="v2" \
         --collector.slurm \
-        --collector.slurm.gpu-type="nvidia" \
-        --collector.slurm.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
+        --collector.gpu.type="nvidia" \
+        --collector.gpu.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
         --collector.slurm.gpu-job-map-path="pkg/collector/testdata/gpujobmap" \
         --collector.rdma.stats \
         --collector.rdma.cmd="pkg/collector/testdata/rdma" \
@@ -365,8 +375,8 @@ then
         --path.procfs="pkg/collector/testdata/proc" \
         --collector.cgroups.force-version="v2" \
         --collector.slurm \
-        --collector.slurm.gpu-type="amd" \
-        --collector.slurm.rocm-smi-path="pkg/collector/testdata/rocm-smi" \
+        --collector.gpu.type="amd" \
+        --collector.gpu.rocm-smi-path="pkg/collector/testdata/rocm-smi" \
         --collector.slurm.gpu-job-map-path="pkg/collector/testdata/gpujobmap" \
         --collector.empty-hostname-label \
         --collector.ipmi_dcmi.test-mode \
@@ -396,8 +406,8 @@ then
         --path.procfs="pkg/collector/testdata/proc" \
         --collector.cgroups.force-version="v2" \
         --collector.slurm \
-        --collector.slurm.gpu-type="nvidia" \
-        --collector.slurm.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
+        --collector.gpu.type="nvidia" \
+        --collector.gpu.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
         --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/ipmiutils/ipmiutil" \
         --collector.ipmi_dcmi.test-mode \
         --collector.empty-hostname-label \
@@ -413,11 +423,51 @@ then
         --path.procfs="pkg/collector/testdata/proc" \
         --collector.cgroups.force-version="v2" \
         --collector.slurm \
-        --collector.slurm.gpu-type="amd" \
-        --collector.slurm.rocm-smi-path="pkg/collector/testdata/rocm-smi" \
+        --collector.gpu.type="amd" \
+        --collector.gpu.rocm-smi-path="pkg/collector/testdata/rocm-smi" \
         --collector.slurm.gpu-job-map-path="pkg/collector/testdata/gpujobmap" \
         --collector.slurm.swap.memory.metrics \
         --collector.slurm.psi.metrics \
+        --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/capmc/capmc" \
+        --collector.ipmi_dcmi.test-mode \
+        --collector.empty-hostname-label \
+        --web.listen-address "127.0.0.1:${port}" \
+        --web.disable-exporter-metrics \
+        --log.level="debug" > "${logfile}" 2>&1 &
+  elif [ "${scenario}" = "exporter-cgroups-v1-libvirt" ] 
+  then
+      ./bin/ceems_exporter \
+        --path.sysfs="pkg/collector/testdata/sys" \
+        --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
+        --path.procfs="pkg/collector/testdata/proc" \
+        --collector.cgroups.force-version="v1" \
+        --collector.libvirt \
+        --collector.gpu.type="nvidia" \
+        --collector.gpu.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
+        --collector.libvirt.xml-dir="pkg/collector/testdata/qemu" \
+        --collector.libvirt.swap-memory-metrics \
+        --collector.libvirt.psi-metrics \
+        --collector.libvirt.blkio-metrics \
+        --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/capmc/capmc" \
+        --collector.ipmi_dcmi.test-mode \
+        --collector.empty-hostname-label \
+        --web.listen-address "127.0.0.1:${port}" \
+        --web.disable-exporter-metrics \
+        --log.level="debug" > "${logfile}" 2>&1 &
+  elif [ "${scenario}" = "exporter-cgroups-v2-libvirt" ] 
+  then
+      ./bin/ceems_exporter \
+        --path.sysfs="pkg/collector/testdata/sys" \
+        --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
+        --path.procfs="pkg/collector/testdata/proc" \
+        --collector.cgroups.force-version="v2" \
+        --collector.libvirt \
+        --collector.gpu.type="nvidia" \
+        --collector.gpu.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
+        --collector.libvirt.xml-dir="pkg/collector/testdata/qemu" \
+        --collector.libvirt.swap-memory-metrics \
+        --collector.libvirt.psi-metrics \
+        --collector.libvirt.blkio-metrics \
         --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/capmc/capmc" \
         --collector.ipmi_dcmi.test-mode \
         --collector.empty-hostname-label \

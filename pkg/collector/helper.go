@@ -17,16 +17,75 @@ import (
 	"github.com/prometheus/procfs"
 )
 
+type BusID struct {
+	domain   uint64
+	bus      uint64
+	slot     uint64
+	function uint64
+}
+
+// Compare compares the provided bus ID with current bus ID and
+// returns true if they match and false in all other cases.
+func (b *BusID) Compare(bTest BusID) bool {
+	// Check equality component per component in ID
+	if b.domain == bTest.domain && b.bus == bTest.bus && b.slot == bTest.slot && b.function == bTest.function {
+		return true
+	} else {
+		return false
+	}
+}
+
+// Device contains the details of GPU devices.
 type Device struct {
-	index string
-	name  string
-	uuid  string
-	isMig bool
+	index  string
+	name   string
+	uuid   string
+	busID  BusID
+	isMig  bool
+	isvGPU bool
+}
+
+// String implements Stringer interface of the Device struct.
+func (d Device) String() string {
+	return fmt.Sprintf(
+		"name: %s; index: %s; uuid: %s; bus_id: %v; is_mig_instance: %t; is_vgpu_instance: %t",
+		d.name, d.index, d.uuid, d.busID, d.isMig, d.isvGPU,
+	)
+}
+
+// CompareBusID compares the provided bus ID with device bus ID and
+// returns true if they match and false in all other cases.
+func (d *Device) CompareBusID(id string) bool {
+	// Parse bus id that needs to be compared
+	busID, err := parseBusID(id)
+	if err != nil {
+		return false
+	}
+
+	// Check equality component per component in ID
+	return d.busID.Compare(busID)
 }
 
 var (
 	metricNameRegex = regexp.MustCompile(`_*[^0-9A-Za-z_]+_*`)
 	reParens        = regexp.MustCompile(`\((.*)\)`)
+	pciBusIDRegex   = regexp.MustCompile(`(?P<domain>[0-9a-fA-F]+):(?P<bus>[0-9a-fA-F]+):(?P<slot>[0-9a-fA-F]+)\.(?P<function>[0-9a-fA-F]+)`)
+)
+
+// Used for e2e tests.
+var (
+	gpuType = CEEMSExporterApp.Flag(
+		"collector.gpu.type",
+		"GPU device type. Currently only nvidia and amd devices are supported.",
+	).Hidden().Enum("nvidia", "amd")
+	nvidiaSmiPath = CEEMSExporterApp.Flag(
+		"collector.gpu.nvidia-smi-path",
+		"Absolute path to nvidia-smi binary. Use only for testing.",
+	).Hidden().Default("").String()
+	rocmSmiPath = CEEMSExporterApp.Flag(
+		"collector.gpu.rocm-smi-path",
+		"Absolute path to rocm-smi binary. Use only for testing.",
+	).Hidden().Default("").String()
 )
 
 // SanitizeMetricName sanitize the given metric name by replacing invalid characters by underscores.
@@ -42,49 +101,6 @@ var (
 // metricName does not begin with a digit.
 func SanitizeMetricName(metricName string) string {
 	return metricNameRegex.ReplaceAllString(metricName, "_")
-}
-
-// LoadCgroupsV2Metrics returns cgroup metrics from a given path.
-func LoadCgroupsV2Metrics(
-	name string,
-	cgroupfsPath string,
-	controllers []string,
-) (map[string]float64, error) {
-	data := make(map[string]float64)
-
-	for _, fName := range controllers {
-		contents, err := os.ReadFile(filepath.Join(cgroupfsPath, name, fName))
-		if err != nil {
-			return data, err
-		}
-
-		for _, line := range strings.Split(string(contents), "\n") {
-			// Some of the above have a single value and others have a "data_name 123"
-			parts := strings.Fields(line)
-			indName := fName
-			indData := 0
-
-			if len(parts) == 1 || len(parts) == 2 {
-				if len(parts) == 2 {
-					indName += "." + parts[0]
-					indData = 1
-				}
-
-				if parts[indData] == "max" {
-					data[indName] = -1.0
-				} else {
-					f, err := strconv.ParseFloat(parts[indData], 64)
-					if err == nil {
-						data[indName] = f
-					} else {
-						return data, err
-					}
-				}
-			}
-		}
-	}
-
-	return data, nil
 }
 
 // GetGPUDevices returns GPU devices.
@@ -111,7 +127,7 @@ func parseNvidiaSmiOutput(cmdOutput string, logger log.Logger) map[int]Device {
 		}
 
 		devDetails := strings.Split(line, ",")
-		if len(devDetails) < 3 {
+		if len(devDetails) < 4 {
 			continue
 		}
 
@@ -119,6 +135,13 @@ func parseNvidiaSmiOutput(cmdOutput string, logger log.Logger) map[int]Device {
 		devIndx := strings.TrimSpace(devDetails[0])
 		devName := strings.TrimSpace(devDetails[1])
 		devUUID := strings.TrimSpace(devDetails[2])
+		devBusID := strings.TrimSpace(devDetails[3])
+
+		// Parse bus ID
+		busID, err := parseBusID(devBusID)
+		if err != nil {
+			level.Error(logger).Log("msg", "Failed to parse GPU bus ID", "bus_id", devBusID, "err", err)
+		}
 
 		// Check if device is in MiG mode
 		isMig := false
@@ -126,10 +149,9 @@ func parseNvidiaSmiOutput(cmdOutput string, logger log.Logger) map[int]Device {
 			isMig = true
 		}
 
-		level.Debug(logger).
-			Log("msg", "Found nVIDIA GPU", "name", devName, "UUID", devUUID, "isMig:", isMig)
+		gpuDevices[devIndxInt] = Device{index: devIndx, name: devName, uuid: devUUID, busID: busID, isMig: isMig}
+		level.Debug(logger).Log("msg", "Found nVIDIA GPU", "gpu", gpuDevices[devIndxInt])
 
-		gpuDevices[devIndxInt] = Device{index: devIndx, name: devName, uuid: devUUID, isMig: isMig}
 		devIndxInt++
 	}
 
@@ -147,7 +169,7 @@ func parseNvidiaSmiOutput(cmdOutput string, logger log.Logger) map[int]Device {
 // nvml go bindings. This way we dont have deps on nvidia stuff and keep
 // exporter simple.
 //
-// NOTE: Hoping this command returns MIG devices too.
+// NOTE: This command does not return MIG devices.
 func GetNvidiaGPUDevices(nvidiaSmiPath string, logger log.Logger) (map[int]Device, error) {
 	// Check if nvidia-smi binary exists
 	var nvidiaSmiCmd string
@@ -166,7 +188,7 @@ func GetNvidiaGPUDevices(nvidiaSmiPath string, logger log.Logger) (map[int]Devic
 	}
 
 	// Execute nvidia-smi command to get available GPUs
-	args := []string{"--query-gpu=index,name,uuid", "--format=csv"}
+	args := []string{"--query-gpu=index,name,uuid,gpu_bus_id", "--format=csv"}
 
 	nvidiaSmiOutput, err := osexec.Execute(nvidiaSmiCmd, args, nil)
 	if err != nil {
@@ -187,22 +209,28 @@ func parseAmdSmioutput(cmdOutput string, logger log.Logger) map[int]Device {
 		}
 
 		devDetails := strings.Split(line, ",")
-		if len(devDetails) < 6 {
+		if len(devDetails) < 7 {
 			continue
 		}
 
 		// Get device index, name and UUID
 		devIndx := strings.TrimPrefix(devDetails[0], "card")
 		devUUID := strings.TrimSpace(devDetails[1])
-		devName := strings.TrimSpace(devDetails[2])
+		devBusID := strings.TrimSpace(devDetails[2])
+		devName := strings.TrimSpace(devDetails[3])
+
+		// Parse bus ID
+		busID, err := parseBusID(devBusID)
+		if err != nil {
+			level.Error(logger).Log("msg", "Failed to parse GPU bus ID", "bus_id", devBusID, "err", err)
+		}
 
 		// Set isMig to false as it does not apply for AMD GPUs
 		isMig := false
 
-		level.Debug(logger).
-			Log("msg", "Found AMD GPU", "name", devName, "UUID", devUUID)
+		gpuDevices[devIndxInt] = Device{index: devIndx, name: devName, uuid: devUUID, busID: busID, isMig: isMig}
+		level.Debug(logger).Log("msg", "Found AMD GPU", "gpu", gpuDevices[devIndxInt])
 
-		gpuDevices[devIndxInt] = Device{index: devIndx, name: devName, uuid: devUUID, isMig: isMig}
 		devIndxInt++
 	}
 
@@ -211,11 +239,11 @@ func parseAmdSmioutput(cmdOutput string, logger log.Logger) map[int]Device {
 
 // GetAMDGPUDevices returns all GPU devices using rocm-smi command
 // Example output:
-// bash-4.4$ rocm-smi --showproductname --showserial --csv
+// bash-4.4$ rocm-smi --showproductname --showserial --showbus --csv
 // device,Serial Number,Card series,Card model,Card vendor,Card SKU
-// card0,20170000800c,deon Instinct MI50 32GB,0x0834,Advanced Micro Devices Inc. [AMD/ATI],D16317
-// card1,20170003580c,deon Instinct MI50 32GB,0x0834,Advanced Micro Devices Inc. [AMD/ATI],D16317
-// card2,20180003050c,deon Instinct MI50 32GB,0x0834,Advanced Micro Devices Inc. [AMD/ATI],D16317.
+// card0,20170000800c,0000:C5:00.0,deon Instinct MI50 32GB,0x0834,Advanced Micro Devices Inc. [AMD/ATI],D16317
+// card1,20170003580c,0000:C5:00.0,deon Instinct MI50 32GB,0x0834,Advanced Micro Devices Inc. [AMD/ATI],D16317
+// card2,20180003050c,0000:C5:00.0,deon Instinct MI50 32GB,0x0834,Advanced Micro Devices Inc. [AMD/ATI],D16317.
 func GetAMDGPUDevices(rocmSmiPath string, logger log.Logger) (map[int]Device, error) {
 	// Check if rocm-smi binary exists
 	var rocmSmiCmd string
@@ -235,7 +263,7 @@ func GetAMDGPUDevices(rocmSmiPath string, logger log.Logger) (map[int]Device, er
 	}
 
 	// Execute nvidia-smi command to get available GPUs
-	args := []string{"--showproductname", "--showserial", "--csv"}
+	args := []string{"--showproductname", "--showserial", "--showbus", "--csv"}
 
 	rocmSmiOutput, err := osexec.Execute(rocmSmiCmd, args, nil)
 	if err != nil {
@@ -270,7 +298,18 @@ func cgroupProcs(fs procfs.FS, idRegex *regexp.Regexp, targetEnvVars []string, p
 		}
 
 		for _, cgrp := range cgrps {
-			cgroupIDMatches := idRegex.FindStringSubmatch(cgrp.Path)
+			// If cgroup path is root, skip
+			if cgrp.Path == "/" {
+				continue
+			}
+
+			// Unescape UTF-8 characters in cgroup path
+			sanitizedPath, err := unescapeString(cgrp.Path)
+			if err != nil {
+				continue
+			}
+
+			cgroupIDMatches := idRegex.FindStringSubmatch(sanitizedPath)
 			if len(cgroupIDMatches) <= 1 {
 				continue
 			}
@@ -285,7 +324,7 @@ func cgroupProcs(fs procfs.FS, idRegex *regexp.Regexp, targetEnvVars []string, p
 			continue
 		}
 
-		// if targetEnvVars is not empty check if this env vars is present for the process
+		// If targetEnvVars is not empty check if this env vars is present for the process
 		// We dont check for the value of env var. Presence of env var is enough to
 		// trigger the profiling of that process
 		if len(targetEnvVars) > 0 {
@@ -355,18 +394,6 @@ func lookPath(f string) (string, error) {
 	return "", errors.New("path does not exist")
 }
 
-// // Find named matches in regex groups and return a map.
-// func findNamedMatches(regex *regexp.Regexp, str string) map[string]string {
-// 	match := regex.FindStringSubmatch(str)
-
-// 	results := map[string]string{}
-// 	for i, name := range match {
-// 		results[regex.SubexpNames()[i]] = name
-// 	}
-
-// 	return results
-// }
-
 // inode returns the inode of a given path.
 func inode(path string) (uint64, error) {
 	info, err := os.Stat(path)
@@ -380,4 +407,39 @@ func inode(path string) (uint64, error) {
 	}
 
 	return stat.Ino, nil
+}
+
+// parseBusID parses PCIe bus ID string to BusID struct.
+func parseBusID(id string) (BusID, error) {
+	// Bus ID is in form of <domain>:<bus>:<slot>.<function>
+	matches := pciBusIDRegex.FindStringSubmatch(id)
+
+	var values []uint64
+
+	for i, match := range matches {
+		if i != 0 {
+			value, err := strconv.ParseUint(match, 16, 16)
+			if err != nil {
+				return BusID{}, err
+			}
+
+			values = append(values, value)
+		}
+	}
+
+	if len(values) == 4 {
+		return BusID{domain: values[0], bus: values[1], slot: values[2], function: values[3]}, nil
+	}
+
+	return BusID{}, fmt.Errorf("error parsing PCIe bus ID: %s", id)
+}
+
+// unescapeString sanitizes the string by unescaping UTF-8 characters.
+func unescapeString(s string) (string, error) {
+	sanitized, err := strconv.Unquote("\"" + s + "\"")
+	if err != nil {
+		return "", err
+	}
+
+	return sanitized, nil
 }

@@ -228,7 +228,9 @@ func NewRDMACollector(logger log.Logger, cgManager *cgroupManager) (*rdmaCollect
 }
 
 // Update implements Collector and exposes RDMA related metrics.
-func (c *rdmaCollector) Update(ch chan<- prometheus.Metric) error {
+// cgroupIDUUIDMap provides a map to cgroupID to compute unit UUID. If the map is empty, it means
+// cgroup ID and compute unit UUID is identical.
+func (c *rdmaCollector) Update(ch chan<- prometheus.Metric, cgroupIDUUIDMap map[string]string) error {
 	if !c.isAvailable {
 		return ErrNoData
 	}
@@ -238,7 +240,7 @@ func (c *rdmaCollector) Update(ch chan<- prometheus.Metric) error {
 		level.Error(c.logger).Log("msg", "Failed to enable Per-PID QP stats", "err", err)
 	}
 
-	return c.update(ch)
+	return c.update(ch, cgroupIDUUIDMap)
 }
 
 // Stop releases system resources used by the collector.
@@ -251,7 +253,7 @@ func (c *rdmaCollector) Stop(_ context.Context) error {
 // perPIDCounters enables/disables per PID counters for supported devices.
 func (c *rdmaCollector) perPIDCounters(enable bool) error {
 	// If there no supported devices, return
-	if c.qpModes == nil {
+	if len(c.qpModes) == 0 {
 		return nil
 	}
 
@@ -298,9 +300,9 @@ func (c *rdmaCollector) perPIDCounters(enable bool) error {
 }
 
 // update fetches different RDMA stats.
-func (c *rdmaCollector) update(ch chan<- prometheus.Metric) error {
+func (c *rdmaCollector) update(ch chan<- prometheus.Metric, cgroupIDUUIDMap map[string]string) error {
 	// First get cgroups and their associated procs
-	procCgroup, err := c.procCgroups()
+	procCgroup, err := c.procCgroups(cgroupIDUUIDMap)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "Failed to fetch active cgroups", "err", err)
 
@@ -412,7 +414,7 @@ func (c *rdmaCollector) update(ch chan<- prometheus.Metric) error {
 }
 
 // procCgroups returns cgroup ID of all relevant processes.
-func (c *rdmaCollector) procCgroups() (map[string]string, error) {
+func (c *rdmaCollector) procCgroups(cgroupIDUUIDMap map[string]string) (map[string]string, error) {
 	// First get cgroups and their associated procs
 	cgroups, err := cgroupProcs(c.procfs, c.cgroupManager.idRegex, nil, c.cgroupManager.procFilter)
 	if err != nil {
@@ -425,9 +427,16 @@ func (c *rdmaCollector) procCgroups() (map[string]string, error) {
 	procCgroup := make(map[string]string)
 
 	for cgroupID, procs := range cgroups {
+		var uuid string
+		if cgroupIDUUIDMap != nil {
+			uuid = cgroupIDUUIDMap[cgroupID]
+		} else {
+			uuid = cgroupID
+		}
+
 		for _, proc := range procs {
 			p := strconv.FormatInt(int64(proc.PID), 10)
-			procCgroup[p] = cgroupID
+			procCgroup[p] = uuid
 		}
 	}
 

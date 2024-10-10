@@ -78,14 +78,14 @@ DCGM_FI_DRIVER_VERSION,        label, Driver Version
 
 # Profiling metrics. Ref: https://docs.nvidia.com/datacenter/dcgm/latest/user-guide/feature-overview.html#profiling-metrics
 DCGM_FI_PROF_GR_ENGINE_ACTIVE,    gauge, Fraction of time any portion of the graphics or compute engines were active.
-DCGM_FI_PROF_SM_ACTIVE,           gauge, Fraction of time at least one warp was active on a multiprocessor, averaged over all multiprocessors.
-DCGM_FI_PROF_SM_OCCUPANCY,        gauge, Fraction of resident warps on a multiprocessor, relative to the maximum number of concurrent warps supported on a multiprocessor.
+DCGM_FI_PROF_SM_ACTIVE,           gauge, Fraction of time at least one warp was active on a multiprocessor averaged over all multiprocessors.
+DCGM_FI_PROF_SM_OCCUPANCY,        gauge, Fraction of resident warps on a multiprocessor relative to the maximum number of concurrent warps supported on a multiprocessor.
 DCGM_FI_PROF_PIPE_TENSOR_ACTIVE,  gauge, Fraction of cycles the tensor (HMMA / IMMA) pipe was active.
 DCGM_FI_PROF_PIPE_FP64_ACTIVE,    gauge, Fraction of cycles the FP64 (double precision) pipe was active. 
-DCGM_FI_PROF_PIPE_FP32_ACTIVE,    gauge, Fraction of cycles the FMA (FP32 (single precision), and integer) pipe was active. 
+DCGM_FI_PROF_PIPE_FP32_ACTIVE,    gauge, Fraction of cycles the FMA (FP32 (single precision) and integer) pipe was active. 
 DCGM_FI_PROF_PIPE_FP16_ACTIVE,    gauge, Fraction of cycles the FP16 (half precision) pipe was active. The value represents an average over a time interval and is not an instantaneous value.
 DCGM_FI_PROF_DRAM_ACTIVE,         gauge, Fraction of cycles where data was sent to or received from device memory.
-DCGM_FI_PROF_NVLINK_TX_BYTES,     gauge, Total rate of data transmitted over NVLink, not including protocol headers, in bytes per second.
-DCGM_FI_PROF_NVLINK_RX_BYTES,     gauge, Total rate of data received over NVLink, not including protocol headers, in bytes per second.
-DCGM_FI_PROF_PCIE_TX_BYTES,       gauge, Total rate of data transmitted over PCIE, not including protocol headers, in bytes per second.
-DCGM_FI_PROF_PCIE_RX_BYTES,       gauge, Total rate of data received over PCIE, not including protocol headers, in bytes per second.
+DCGM_FI_PROF_NVLINK_TX_BYTES,     gauge, Total rate of data transmitted over NVLink not including protocol headers in bytes per second.
+DCGM_FI_PROF_NVLINK_RX_BYTES,     gauge, Total rate of data received over NVLink not including protocol headers in bytes per second.
+DCGM_FI_PROF_PCIE_TX_BYTES,       gauge, Total rate of data transmitted over PCIE not including protocol headers in bytes per second.
+DCGM_FI_PROF_PCIE_RX_BYTES,       gauge, Total rate of data received over PCIE not including protocol headers in bytes per second.

@@ -10,15 +10,38 @@ sidebar_position: 1
 metrics, RAPL energy, IPMI power consumption, emission factor and GPU to compute unit
 mapping.
 
-Currently, the exporter supports only SLURM resource manager.
-`ceems_exporter` provides following collectors:
+`ceems_exporter` collectors can be categorized as follows:
+
+### Resource manager collectors
+
+These collectors exports metrics from different resource managers.
 
 - Slurm collector: Exports SLURM job metrics like CPU, memory and GPU indices to job ID maps
+- Libvirt collector: Exports libvirt managed VMs metrics like CPU, memory, IO, _etc_.
+
+### Energy related collectors
+
+These collectors exports energy related metrics from different
+sources on compute node.
+
 - IPMI collector: Exports power usage reported by `ipmi` tools
 - RAPL collector: Exports RAPL energy metrics
+
+### Emissions related collectors
+
+This collector exports emissions related metrics that are used
+in estimating carbon footprint
+
 - Emissions collector: Exports emission factor (g eCO2/kWh)
+
+### Node metrics collectors
+
+These collectors exports node level metrics
+
 - CPU collector: Exports CPU time in different modes (at node level)
 - Meminfo collector: Exports memory related statistics (at node level)
+
+### Perf related collectors
 
 In addition to above stated collectors, there are common "sub-collectors" that
 can be reused with different collectors. These sub-collectors provide auxiliary
@@ -282,6 +305,73 @@ Slurm collector supports [perf](./ceems-exporter.md#perf-sub-collector)
 and [eBPF](./ceems-exporter.md#ebpf-sub-collector) sub-collectors. Hence, in
 addition to above stated metrics, all the metrics available in the sub-collectors
 can also be reported for each cgroup.
+
+### Libvirt collector
+
+Similar to slurm collector, libvirt collector exports metrics of VMs managed
+by libvirt. This collector is useful monitor Openstack clusters where
+[nova](https://docs.openstack.org/nova/latest/) uses libvirt to manage lifecycle
+of the VMs. The exported metrics include usage of CPU, DRAM, block IO retrieved
+from cgroups. The collector supports both cgroups v1 and v2.
+
+When GPUs are present on the compute node, like in the case of Slurm, we will
+need information on which GPU is used by which VM. This information can be
+obtained in libvirt's XML file that keeps the state of the VM. However, there
+are few caveats here:
+
+- If a GPU is added to VM using PCI pass through, this GPU will not be available
+for the hypervisor and hence, it cannot be queried or monitored. This is due to
+the fact that the GPU will be unbound from the hypervisor and bound to guest.
+Thus, energy consumption and GPU metrics for GPUs using PCI passthrough
+**will only be available in the guest**.
+
+- NVIDIA's vGPU uses mediated devices to expose GPUs in the guest and thus,
+GPUs can be queried and monitored from both hypervisor and guest. However,
+CEEMS rely on [dcgm-exporter](https://github.com/NVIDIA/dcgm-exporter) to
+export GPU energy consumption and usage metrics and it does not support
+usage and energy consumption metrics for vGPUs.
+
+- NVIDIA's MIG instances uses a similar approach to vGPU to expose GPUs inside
+guests and hence, similar limitations apply.
+
+Thus, currently it is not possible to reliably monitor the energy and usage
+metrics of libvirt instances with GPUs. In any case, the exporter will always
+export the GPU UUID to instance UUID to keep track of which instance is using
+which GPU. If the above stated limitations are addressed upstream, CEEMS will
+allow us to track usage metrics of GPU instances as well.
+
+Currently, the list of metrics exported by Libvirt exporter are as follows:
+
+- Instance current CPU time in user and system mode
+- Instance CPUs limit (Number of CPUs allocated to the job)
+- Instance current total memory usage
+- Instance total memory limit (Memory allocated to the job)
+- Instance current RSS memory usage
+- Instance current cache memory usage
+- Instance current number of memory usage hits limits
+- Instance current memory and swap usage
+- Instance current memory and swap usage hits limits
+- Instance total memory and swap limit
+- Instance block IO read and write bytes
+- Instance block IO read and write requests
+- Instance CPU, memory and IO pressures
+- Instance to GPU ordinal mapping (when GPUs found on the compute node)
+- Current number of instances on the compute node
+
+Similar to Slurm, libvirt exporter supports
+[perf](./ceems-exporter.md#perf-sub-collector)
+and [eBPF](./ceems-exporter.md#ebpf-sub-collector) sub-collectors.
+
+:::warning[WARNING]
+
+Libvirt will have no information about the guest running inside the
+cgroup and hence, it is not possible to profile individual processes
+inside the guest. Therefore, metrics exported by
+[perf](./ceems-exporter.md#perf-sub-collector) are for entire VM and
+it is not possible to have more fine grained control on which processes
+inside the guest can be profiled.
+
+:::
 
 ### IPMI collector
 

@@ -50,20 +50,6 @@ var (
 		"collector.slurm.gpu-job-map-path",
 		"Path to file that maps GPU ordinals to job IDs.",
 	).Default("/run/gpujobmap").String()
-
-	// Used for e2e tests.
-	gpuType = CEEMSExporterApp.Flag(
-		"collector.slurm.gpu-type",
-		"GPU device type. Currently only nvidia and amd devices are supported.",
-	).Hidden().Enum("nvidia", "amd")
-	nvidiaSmiPath = CEEMSExporterApp.Flag(
-		"collector.slurm.nvidia-smi-path",
-		"Absolute path to nvidia-smi binary. Use only for testing.",
-	).Hidden().Default("").String()
-	rocmSmiPath = CEEMSExporterApp.Flag(
-		"collector.slurm.rocm-smi-path",
-		"Absolute path to rocm-smi binary. Use only for testing.",
-	).Hidden().Default("").String()
 )
 
 // Security context names.
@@ -79,20 +65,20 @@ type slurmReadProcSecurityCtxData struct {
 	gpuOrdinals []string
 }
 
-// props contains SLURM job properties.
-type props struct {
+// jobProps contains SLURM job properties.
+type jobProps struct {
 	uuid        string   // This is SLURM's job ID
 	gpuOrdinals []string // GPU ordinals bound to job
 }
 
 // emptyGPUOrdinals returns true if gpuOrdinals is empty.
-func (p *props) emptyGPUOrdinals() bool {
+func (p *jobProps) emptyGPUOrdinals() bool {
 	return len(p.gpuOrdinals) == 0
 }
 
 type slurmMetrics struct {
 	cgMetrics []cgMetric
-	jobProps  []props
+	jobProps  []jobProps
 }
 
 type slurmCollector struct {
@@ -107,7 +93,7 @@ type slurmCollector struct {
 	procFS           procfs.FS
 	jobGpuFlag       *prometheus.Desc
 	collectError     *prometheus.Desc
-	jobPropsCache    map[string]props
+	jobPropsCache    map[string]jobProps
 	securityContexts map[string]*security.SecurityContext
 }
 
@@ -142,10 +128,11 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 	opts := cgroupOpts{
 		collectSwapMemStats: *slurmCollectSwapMemoryStatsDepre || *slurmCollectSwapMemoryStats,
 		collectPSIStats:     *slurmCollectPSIStatsDepre || *slurmCollectPSIStats,
+		collectBlockIOStats: false, // SLURM does not support blkio controller.
 	}
 
 	// Start new instance of cgroupCollector
-	cgCollector, err := NewCgroupCollector(logger, cgroupManager, opts)
+	cgCollector, err := NewCgroupCollector(log.With(logger, "sub_collector", "cgroup"), cgroupManager, opts)
 	if err != nil {
 		level.Info(logger).Log("msg", "Failed to create cgroup collector", "err", err)
 
@@ -156,7 +143,7 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 	var perfCollector *perfCollector
 
 	if perfCollectorEnabled() {
-		perfCollector, err = NewPerfCollector(logger, cgroupManager)
+		perfCollector, err = NewPerfCollector(log.With(logger, "sub_collector", "perf"), cgroupManager)
 		if err != nil {
 			level.Info(logger).Log("msg", "Failed to create perf collector", "err", err)
 
@@ -168,7 +155,7 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 	var ebpfCollector *ebpfCollector
 
 	if ebpfCollectorEnabled() {
-		ebpfCollector, err = NewEbpfCollector(logger, cgroupManager)
+		ebpfCollector, err = NewEbpfCollector(log.With(logger, "sub_collector", "ebpf"), cgroupManager)
 		if err != nil {
 			level.Info(logger).Log("msg", "Failed to create ebpf collector", "err", err)
 
@@ -180,7 +167,7 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 	var rdmaCollector *rdmaCollector
 
 	if rdmaCollectorEnabled() {
-		rdmaCollector, err = NewRDMACollector(logger, cgroupManager)
+		rdmaCollector, err = NewRDMACollector(log.With(logger, "sub_collector", "rdma"), cgroupManager)
 		if err != nil {
 			level.Info(logger).Log("msg", "Failed to create RDMA collector", "err", err)
 
@@ -237,7 +224,7 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 		hostname:         hostname,
 		gpuDevs:          gpuDevs,
 		procFS:           procFS,
-		jobPropsCache:    make(map[string]props),
+		jobPropsCache:    make(map[string]jobProps),
 		securityContexts: map[string]*security.SecurityContext{slurmReadProcCtx: securityCtx},
 		jobGpuFlag: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_gpu_index_flag"),
@@ -295,7 +282,7 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 			defer wg.Done()
 
 			// Update perf metrics
-			if err := c.perfCollector.Update(ch); err != nil {
+			if err := c.perfCollector.Update(ch, nil); err != nil {
 				level.Error(c.logger).Log("msg", "Failed to update perf stats", "err", err)
 			}
 		}()
@@ -308,7 +295,7 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 			defer wg.Done()
 
 			// Update ebpf metrics
-			if err := c.ebpfCollector.Update(ch); err != nil {
+			if err := c.ebpfCollector.Update(ch, nil); err != nil {
 				level.Error(c.logger).Log("msg", "Failed to update IO and/or network stats", "err", err)
 			}
 		}()
@@ -321,7 +308,7 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 			defer wg.Done()
 
 			// Update RDMA metrics
-			if err := c.rdmaCollector.Update(ch); err != nil {
+			if err := c.rdmaCollector.Update(ch, nil); err != nil {
 				level.Error(c.logger).Log("msg", "Failed to update RDMA stats", "err", err)
 			}
 		}()
@@ -368,7 +355,7 @@ func (c *slurmCollector) Stop(ctx context.Context) error {
 }
 
 // updateGPUOrdinals updates the metrics channel with GPU ordinals for SLURM job.
-func (c *slurmCollector) updateGPUOrdinals(ch chan<- prometheus.Metric, jobProps []props) {
+func (c *slurmCollector) updateGPUOrdinals(ch chan<- prometheus.Metric, jobProps []jobProps) {
 	// Update slurm job properties
 	for _, p := range jobProps {
 		// GPU job mapping
@@ -392,7 +379,7 @@ func (c *slurmCollector) discoverCgroups() (slurmMetrics, error) {
 	// Get currently active jobs and set them in activeJobs state variable
 	var activeJobUUIDs []string
 
-	var jobProps []props
+	var jProps []jobProps
 
 	var cgMetrics []cgMetric
 
@@ -437,12 +424,12 @@ func (c *slurmCollector) discoverCgroups() (slurmMetrics, error) {
 
 		// Get GPU ordinals of the job
 		if len(c.gpuDevs) > 0 {
-			if jProps, ok := c.jobPropsCache[jobuuid]; !ok || (ok && jProps.emptyGPUOrdinals()) {
+			if jobPropsCached, ok := c.jobPropsCache[jobuuid]; !ok || (ok && jobPropsCached.emptyGPUOrdinals()) {
 				gpuOrdinals = c.gpuOrdinals(jobuuid)
-				c.jobPropsCache[jobuuid] = props{uuid: jobuuid, gpuOrdinals: gpuOrdinals}
-				jobProps = append(jobProps, c.jobPropsCache[jobuuid])
+				c.jobPropsCache[jobuuid] = jobProps{uuid: jobuuid, gpuOrdinals: gpuOrdinals}
+				jProps = append(jProps, c.jobPropsCache[jobuuid])
 			} else {
-				jobProps = append(jobProps, jProps)
+				jProps = append(jProps, jobPropsCached)
 			}
 		}
 
@@ -466,7 +453,7 @@ func (c *slurmCollector) discoverCgroups() (slurmMetrics, error) {
 		}
 	}
 
-	return slurmMetrics{cgMetrics: cgMetrics, jobProps: jobProps}, nil
+	return slurmMetrics{cgMetrics: cgMetrics, jobProps: jProps}, nil
 }
 
 // gpuOrdinalsFromProlog returns GPU ordinals of jobs from prolog generated run time files by SLURM.
