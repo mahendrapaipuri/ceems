@@ -227,7 +227,7 @@ func TestActiveCgroupsV2(t *testing.T) {
 	err = c.discoverCgroups(nil)
 	require.NoError(t, err)
 
-	assert.Len(t, c.activeCgroupINodes, 39)
+	assert.Len(t, c.activeCgroupInodes, 39)
 	assert.Len(t, c.cgroupIDUUIDCache, 39)
 	assert.Len(t, c.cgroupPathIDCache, 39)
 
@@ -276,7 +276,7 @@ func TestActiveCgroupsV1(t *testing.T) {
 	err = c.discoverCgroups(nil)
 	require.NoError(t, err)
 
-	assert.Len(t, c.activeCgroupINodes, 6)
+	assert.Len(t, c.activeCgroupInodes, 6)
 	assert.Len(t, c.cgroupIDUUIDCache, 6)
 	assert.Len(t, c.cgroupPathIDCache, 6)
 

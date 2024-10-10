@@ -139,7 +139,7 @@ type aggMetrics struct {
 type ebpfReadMapsCtxData struct {
 	opts               ebpfOpts
 	cgroupIDUUIDCache  map[uint64]string
-	activeCgroupINodes []uint64
+	activeCgroupInodes []uint64
 	netColl            *ebpf.Collection
 	vfsColl            *ebpf.Collection
 	aggMetrics         *aggMetrics
@@ -152,7 +152,7 @@ type ebpfCollector struct {
 	cgroupManager      *cgroupManager
 	cgroupIDUUIDCache  map[uint64]string
 	cgroupPathIDCache  map[string]uint64
-	activeCgroupINodes []uint64
+	activeCgroupInodes []uint64
 	netColl            *ebpf.Collection
 	vfsColl            *ebpf.Collection
 	links              map[string]link.Link
@@ -818,7 +818,7 @@ func (c *ebpfCollector) readMaps() (*aggMetrics, error) {
 	dataPtr := &ebpfReadMapsCtxData{
 		opts:               c.opts,
 		cgroupIDUUIDCache:  c.cgroupIDUUIDCache,
-		activeCgroupINodes: c.activeCgroupINodes,
+		activeCgroupInodes: c.activeCgroupInodes,
 		vfsColl:            c.vfsColl,
 		netColl:            c.netColl,
 	}
@@ -842,7 +842,7 @@ func (c *ebpfCollector) discoverCgroups(cgroupIDUUIDMap map[string]string) error
 	var activeCgroupPaths []string
 
 	// Reset activeCgroups from last scrape
-	c.activeCgroupINodes = make([]uint64, 0)
+	c.activeCgroupInodes = make([]uint64, 0)
 
 	// Walk through all cgroups and get cgroup paths
 	if err := filepath.WalkDir(c.cgroupManager.mountPoint, func(p string, info fs.DirEntry, err error) error {
@@ -895,10 +895,10 @@ func (c *ebpfCollector) discoverCgroups(cgroupIDUUIDMap map[string]string) error
 			c.cgroupIDUUIDCache[c.cgroupPathIDCache[p]] = uuid
 		}
 
-		// Populate activeCgroupUUIDs, activeCgroupINodes and activeCgroupPaths
+		// Populate activeCgroupUUIDs, activeCgroupInodes and activeCgroupPaths
 		activeCgroupPaths = append(activeCgroupPaths, p)
 		activeCgroupUUIDs = append(activeCgroupUUIDs, uuid)
-		c.activeCgroupINodes = append(c.activeCgroupINodes, c.cgroupPathIDCache[p])
+		c.activeCgroupInodes = append(c.activeCgroupInodes, c.cgroupPathIDCache[p])
 
 		level.Debug(c.logger).Log("msg", "cgroup path", "path", p)
 
@@ -1001,7 +1001,7 @@ func aggVFSStats(d *ebpfReadMapsCtxData) {
 			}
 
 			for entries.Next(&rwKey, &rwValue) {
-				if slices.Contains(d.activeCgroupINodes, uint64(rwKey.Cid)) {
+				if slices.Contains(d.activeCgroupInodes, uint64(rwKey.Cid)) {
 					mount := unix.ByteSliceToString(rwKey.Mnt[:])
 					if !containsMount(mount, d.opts.vfsMountPoints) {
 						continue
@@ -1028,7 +1028,7 @@ func aggVFSStats(d *ebpfReadMapsCtxData) {
 			}
 
 			for entries.Next(&inodeKey, &inodeValue) {
-				if slices.Contains(d.activeCgroupINodes, uint64(inodeKey)) {
+				if slices.Contains(d.activeCgroupInodes, uint64(inodeKey)) {
 					uuid := d.cgroupIDUUIDCache[uint64(inodeKey)]
 					if v, ok := d.aggMetrics.inode[mapName][uuid]; ok {
 						d.aggMetrics.inode[mapName][uuid] = bpfVfsInodeEvent{
@@ -1064,7 +1064,7 @@ func aggNetStats(d *ebpfReadMapsCtxData) {
 		}
 
 		for entries.Next(&key, &value) {
-			if slices.Contains(d.activeCgroupINodes, uint64(key.Cid)) {
+			if slices.Contains(d.activeCgroupInodes, uint64(key.Cid)) {
 				promKey := promNetEventKey{
 					UUID:   d.cgroupIDUUIDCache[uint64(key.Cid)],
 					Proto:  protoMap[int(key.Proto)],
