@@ -46,7 +46,7 @@ ceems_compute_unit_cpus{hostname="",manager="libvirt",uuid="2896bdd5-dbc2-4339-9
 ceems_compute_unit_cpus{hostname="",manager="libvirt",uuid="4de89c5b-50d7-4d30-a630-14e135380fe8"} 2
 ceems_compute_unit_cpus{hostname="",manager="libvirt",uuid="57f2d45e-8ddf-4338-91df-62d0044ff1b5"} 2
 ceems_compute_unit_cpus{hostname="",manager="libvirt",uuid="b674a0a2-c300-4dc6-8c9c-65df16da6d69"} 2
-# HELP ceems_compute_unit_gpu_index_flag Indicates running instance on GPU, 1=instance running
+# HELP ceems_compute_unit_gpu_index_flag A value > 0 indicates running instance using current GPU
 # TYPE ceems_compute_unit_gpu_index_flag gauge
 ceems_compute_unit_gpu_index_flag{gpuuuid="GPU-61a65011-6571-a64n-5ab8-66cbb6f7f9c3/",hindex="/gpu-9",hostname="",index="9",manager="libvirt",uuid="2896bdd5-dbc2-4339-9d8e-ddd838bf35d3"} 1
 ceems_compute_unit_gpu_index_flag{gpuuuid="GPU-61a65011-6571-a6d2-5ab8-66cbb6f7f9c3/",hindex="/gpu-1",hostname="",index="1",manager="libvirt",uuid="57f2d45e-8ddf-4338-91df-62d0044ff1b5"} 1

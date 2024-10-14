@@ -13,7 +13,7 @@ ceems_compute_unit_cpu_user_seconds_total{hostname="",manager="slurm",uuid="1009
 ceems_compute_unit_cpus{hostname="",manager="slurm",uuid="1009248"} 2
 ceems_compute_unit_cpus{hostname="",manager="slurm",uuid="1009249"} 2
 ceems_compute_unit_cpus{hostname="",manager="slurm",uuid="1009250"} 2
-# HELP ceems_compute_unit_gpu_index_flag Indicates running job on GPU, 1=job running
+# HELP ceems_compute_unit_gpu_index_flag A value > 0 indicates the job using current GPU
 # TYPE ceems_compute_unit_gpu_index_flag gauge
 ceems_compute_unit_gpu_index_flag{gpuuuid="GPU-61a65011-6571-a64n-5ab8-66cbb6f7f9c3/",hindex="/gpu-3",hostname="",index="3",manager="slurm",uuid="1009248"} 1
 ceems_compute_unit_gpu_index_flag{gpuuuid="GPU-61a65011-6571-a6d2-5ab8-66cbb6f7f9c3/",hindex="/gpu-1",hostname="",index="1",manager="slurm",uuid="1009250"} 1
