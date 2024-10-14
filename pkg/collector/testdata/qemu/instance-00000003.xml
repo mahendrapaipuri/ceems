@@ -7,7 +7,7 @@ or other application using the libvirt API.
 
 <domain type='kvm'>
   <name>instance-00000003</name>
-  <uuid>bf9ccd0f-4cd7-4ea2-8855-b56467326f61</uuid>
+  <uuid>2896bdd5-dbc2-4339-9d8e-ddd838bf35d3</uuid>
   <metadata>
     <nova:instance xmlns:nova="http://openstack.org/xmlns/libvirt/nova/1.1">
       <nova:package version="30.1.0"/>
@@ -116,9 +116,13 @@ or other application using the libvirt API.
     </rng>
     <hostdev mode='subsystem' type='pci' managed='yes'>
       <source>
-        <address domain='domain' bus='bus' slot='slot' function='function'/>
+        <address type='pci' domain='0x0000' bus='0x89' slot='0x00' function='0x0'/>
       </source>
-      <address type='pci' domain='0x0000' bus='0x48' slot='0x00' function='0x0'/>
+    </hostdev>
+    <hostdev mode='subsystem' type='mdev' model='vfio-pci'>
+      <source>
+        <address uuid='64c3c4ae-44e1-45b8-8d46-5f76a1fa9824'/>
+      </source>
     </hostdev>
   </devices>
 </domain>

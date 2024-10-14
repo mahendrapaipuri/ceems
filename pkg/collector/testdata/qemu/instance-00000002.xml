@@ -117,15 +117,13 @@ or other application using the libvirt API.
     </rng>
     <hostdev mode='subsystem' type='pci' managed='yes'>
       <source>
-        <address domain='domain' bus='bus' slot='slot' function='function'/>
+        <address type='pci' domain='0x0000' bus='0x15' slot='0x00' function='0x0'/>
       </source>
-      <address type='pci' domain='0x0000' bus='0x07' slot='0x00' function='0x0'/>
     </hostdev>
     <hostdev mode='subsystem' type='pci' managed='yes'>
       <source>
-        <address domain='domain' bus='bus' slot='slot' function='function'/>
+        <address type='pci' domain='0x0000' bus='0x83' slot='0x00' function='0x0'/>
       </source>
-      <address type='pci' domain='0x0000' bus='0x0B' slot='0x00' function='0x0'/>
     </hostdev>
   </devices>
 </domain>

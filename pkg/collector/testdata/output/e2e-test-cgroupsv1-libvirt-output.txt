@@ -1,110 +1,113 @@
 # HELP ceems_compute_unit_blkio_read_total_bytes Total block IO read bytes
 # TYPE ceems_compute_unit_blkio_read_total_bytes gauge
+ceems_compute_unit_blkio_read_total_bytes{device="sdc",hostname="",manager="libvirt",uuid="2896bdd5-dbc2-4339-9d8e-ddd838bf35d3"} 3.25280768e+08
+ceems_compute_unit_blkio_read_total_bytes{device="sdc",hostname="",manager="libvirt",uuid="4de89c5b-50d7-4d30-a630-14e135380fe8"} 3.25280768e+08
 ceems_compute_unit_blkio_read_total_bytes{device="sdc",hostname="",manager="libvirt",uuid="57f2d45e-8ddf-4338-91df-62d0044ff1b5"} 3.25280768e+08
-ceems_compute_unit_blkio_read_total_bytes{device="sdc",hostname="",manager="libvirt",uuid="5f7f6db0-7f7d-4c31-acc6-a03ec4d3ad4e"} 3.25280768e+08
 ceems_compute_unit_blkio_read_total_bytes{device="sdc",hostname="",manager="libvirt",uuid="b674a0a2-c300-4dc6-8c9c-65df16da6d69"} 3.25280768e+08
-ceems_compute_unit_blkio_read_total_bytes{device="sdc",hostname="",manager="libvirt",uuid="bf9ccd0f-4cd7-4ea2-8855-b56467326f61"} 3.25280768e+08
 # HELP ceems_compute_unit_blkio_read_total_requests Total block IO read requests
 # TYPE ceems_compute_unit_blkio_read_total_requests gauge
+ceems_compute_unit_blkio_read_total_requests{device="sdc",hostname="",manager="libvirt",uuid="2896bdd5-dbc2-4339-9d8e-ddd838bf35d3"} 10957
+ceems_compute_unit_blkio_read_total_requests{device="sdc",hostname="",manager="libvirt",uuid="4de89c5b-50d7-4d30-a630-14e135380fe8"} 10957
 ceems_compute_unit_blkio_read_total_requests{device="sdc",hostname="",manager="libvirt",uuid="57f2d45e-8ddf-4338-91df-62d0044ff1b5"} 10957
-ceems_compute_unit_blkio_read_total_requests{device="sdc",hostname="",manager="libvirt",uuid="5f7f6db0-7f7d-4c31-acc6-a03ec4d3ad4e"} 10957
 ceems_compute_unit_blkio_read_total_requests{device="sdc",hostname="",manager="libvirt",uuid="b674a0a2-c300-4dc6-8c9c-65df16da6d69"} 10957
-ceems_compute_unit_blkio_read_total_requests{device="sdc",hostname="",manager="libvirt",uuid="bf9ccd0f-4cd7-4ea2-8855-b56467326f61"} 10957
 # HELP ceems_compute_unit_blkio_write_total_bytes Total block IO write bytes
 # TYPE ceems_compute_unit_blkio_write_total_bytes gauge
+ceems_compute_unit_blkio_write_total_bytes{device="sdc",hostname="",manager="libvirt",uuid="2896bdd5-dbc2-4339-9d8e-ddd838bf35d3"} 3.088384e+07
+ceems_compute_unit_blkio_write_total_bytes{device="sdc",hostname="",manager="libvirt",uuid="4de89c5b-50d7-4d30-a630-14e135380fe8"} 3.088384e+07
 ceems_compute_unit_blkio_write_total_bytes{device="sdc",hostname="",manager="libvirt",uuid="57f2d45e-8ddf-4338-91df-62d0044ff1b5"} 3.088384e+07
-ceems_compute_unit_blkio_write_total_bytes{device="sdc",hostname="",manager="libvirt",uuid="5f7f6db0-7f7d-4c31-acc6-a03ec4d3ad4e"} 3.088384e+07
 ceems_compute_unit_blkio_write_total_bytes{device="sdc",hostname="",manager="libvirt",uuid="b674a0a2-c300-4dc6-8c9c-65df16da6d69"} 3.088384e+07
-ceems_compute_unit_blkio_write_total_bytes{device="sdc",hostname="",manager="libvirt",uuid="bf9ccd0f-4cd7-4ea2-8855-b56467326f61"} 3.088384e+07
 # HELP ceems_compute_unit_blkio_write_total_requests Total block IO write requests
 # TYPE ceems_compute_unit_blkio_write_total_requests gauge
+ceems_compute_unit_blkio_write_total_requests{device="sdc",hostname="",manager="libvirt",uuid="2896bdd5-dbc2-4339-9d8e-ddd838bf35d3"} 4803
+ceems_compute_unit_blkio_write_total_requests{device="sdc",hostname="",manager="libvirt",uuid="4de89c5b-50d7-4d30-a630-14e135380fe8"} 4803
 ceems_compute_unit_blkio_write_total_requests{device="sdc",hostname="",manager="libvirt",uuid="57f2d45e-8ddf-4338-91df-62d0044ff1b5"} 4803
-ceems_compute_unit_blkio_write_total_requests{device="sdc",hostname="",manager="libvirt",uuid="5f7f6db0-7f7d-4c31-acc6-a03ec4d3ad4e"} 4803
 ceems_compute_unit_blkio_write_total_requests{device="sdc",hostname="",manager="libvirt",uuid="b674a0a2-c300-4dc6-8c9c-65df16da6d69"} 4803
-ceems_compute_unit_blkio_write_total_requests{device="sdc",hostname="",manager="libvirt",uuid="bf9ccd0f-4cd7-4ea2-8855-b56467326f61"} 4803
 # HELP ceems_compute_unit_cpu_psi_seconds Total CPU PSI in seconds
 # TYPE ceems_compute_unit_cpu_psi_seconds gauge
+ceems_compute_unit_cpu_psi_seconds{hostname="",manager="libvirt",uuid="2896bdd5-dbc2-4339-9d8e-ddd838bf35d3"} 0
+ceems_compute_unit_cpu_psi_seconds{hostname="",manager="libvirt",uuid="4de89c5b-50d7-4d30-a630-14e135380fe8"} 0
 ceems_compute_unit_cpu_psi_seconds{hostname="",manager="libvirt",uuid="57f2d45e-8ddf-4338-91df-62d0044ff1b5"} 0
-ceems_compute_unit_cpu_psi_seconds{hostname="",manager="libvirt",uuid="5f7f6db0-7f7d-4c31-acc6-a03ec4d3ad4e"} 0
 ceems_compute_unit_cpu_psi_seconds{hostname="",manager="libvirt",uuid="b674a0a2-c300-4dc6-8c9c-65df16da6d69"} 0
-ceems_compute_unit_cpu_psi_seconds{hostname="",manager="libvirt",uuid="bf9ccd0f-4cd7-4ea2-8855-b56467326f61"} 0
 # HELP ceems_compute_unit_cpu_system_seconds_total Total job CPU system seconds
 # TYPE ceems_compute_unit_cpu_system_seconds_total counter
+ceems_compute_unit_cpu_system_seconds_total{hostname="",manager="libvirt",uuid="2896bdd5-dbc2-4339-9d8e-ddd838bf35d3"} 0.45
+ceems_compute_unit_cpu_system_seconds_total{hostname="",manager="libvirt",uuid="4de89c5b-50d7-4d30-a630-14e135380fe8"} 0.45
 ceems_compute_unit_cpu_system_seconds_total{hostname="",manager="libvirt",uuid="57f2d45e-8ddf-4338-91df-62d0044ff1b5"} 0.45
-ceems_compute_unit_cpu_system_seconds_total{hostname="",manager="libvirt",uuid="5f7f6db0-7f7d-4c31-acc6-a03ec4d3ad4e"} 0.45
 ceems_compute_unit_cpu_system_seconds_total{hostname="",manager="libvirt",uuid="b674a0a2-c300-4dc6-8c9c-65df16da6d69"} 0.45
-ceems_compute_unit_cpu_system_seconds_total{hostname="",manager="libvirt",uuid="bf9ccd0f-4cd7-4ea2-8855-b56467326f61"} 0.45
 # HELP ceems_compute_unit_cpu_user_seconds_total Total job CPU user seconds
 # TYPE ceems_compute_unit_cpu_user_seconds_total counter
+ceems_compute_unit_cpu_user_seconds_total{hostname="",manager="libvirt",uuid="2896bdd5-dbc2-4339-9d8e-ddd838bf35d3"} 0.39
+ceems_compute_unit_cpu_user_seconds_total{hostname="",manager="libvirt",uuid="4de89c5b-50d7-4d30-a630-14e135380fe8"} 0.39
 ceems_compute_unit_cpu_user_seconds_total{hostname="",manager="libvirt",uuid="57f2d45e-8ddf-4338-91df-62d0044ff1b5"} 0.39
-ceems_compute_unit_cpu_user_seconds_total{hostname="",manager="libvirt",uuid="5f7f6db0-7f7d-4c31-acc6-a03ec4d3ad4e"} 0.39
 ceems_compute_unit_cpu_user_seconds_total{hostname="",manager="libvirt",uuid="b674a0a2-c300-4dc6-8c9c-65df16da6d69"} 0.39
-ceems_compute_unit_cpu_user_seconds_total{hostname="",manager="libvirt",uuid="bf9ccd0f-4cd7-4ea2-8855-b56467326f61"} 0.39
 # HELP ceems_compute_unit_cpus Total number of job CPUs
 # TYPE ceems_compute_unit_cpus gauge
+ceems_compute_unit_cpus{hostname="",manager="libvirt",uuid="2896bdd5-dbc2-4339-9d8e-ddd838bf35d3"} 0
+ceems_compute_unit_cpus{hostname="",manager="libvirt",uuid="4de89c5b-50d7-4d30-a630-14e135380fe8"} 0
 ceems_compute_unit_cpus{hostname="",manager="libvirt",uuid="57f2d45e-8ddf-4338-91df-62d0044ff1b5"} 0
-ceems_compute_unit_cpus{hostname="",manager="libvirt",uuid="5f7f6db0-7f7d-4c31-acc6-a03ec4d3ad4e"} 0
 ceems_compute_unit_cpus{hostname="",manager="libvirt",uuid="b674a0a2-c300-4dc6-8c9c-65df16da6d69"} 0
-ceems_compute_unit_cpus{hostname="",manager="libvirt",uuid="bf9ccd0f-4cd7-4ea2-8855-b56467326f61"} 0
-# HELP ceems_compute_unit_gpu_index_flag Indicates running instance on GPU, 1=instance running
+# HELP ceems_compute_unit_gpu_index_flag A value > 0 indicates running instance using current GPU
 # TYPE ceems_compute_unit_gpu_index_flag gauge
-ceems_compute_unit_gpu_index_flag{gpuuuid="GPU-61a65011-6571-a6d2-5ab8-66cbb6f7f9c3",hindex="-gpu-1",hostname="",index="1",manager="libvirt",uuid="57f2d45e-8ddf-4338-91df-62d0044ff1b5"} 1
-ceems_compute_unit_gpu_index_flag{gpuuuid="GPU-61a65011-6571-a6d2-5th8-66cbb6f7f9c3",hindex="-gpu-2",hostname="",index="2",manager="libvirt",uuid="bf9ccd0f-4cd7-4ea2-8855-b56467326f61"} 1
-ceems_compute_unit_gpu_index_flag{gpuuuid="GPU-f124aa59-d406-d45b-9481-8fcd694e6c9e",hindex="-gpu-0",hostname="",index="0",manager="libvirt",uuid="57f2d45e-8ddf-4338-91df-62d0044ff1b5"} 1
+ceems_compute_unit_gpu_index_flag{gpuuuid="GPU-61a65011-6571-a64n-5ab8-66cbb6f7f9c3/",hindex="/gpu-9",hostname="",index="9",manager="libvirt",uuid="2896bdd5-dbc2-4339-9d8e-ddd838bf35d3"} 1
+ceems_compute_unit_gpu_index_flag{gpuuuid="GPU-61a65011-6571-a6d2-5ab8-66cbb6f7f9c3/",hindex="/gpu-1",hostname="",index="1",manager="libvirt",uuid="57f2d45e-8ddf-4338-91df-62d0044ff1b5"} 1
+ceems_compute_unit_gpu_index_flag{gpuuuid="GPU-61a65011-6571-a6d2-5th8-66cbb6f7f9c3/",hindex="/gpu-8",hostname="",index="8",manager="libvirt",uuid="57f2d45e-8ddf-4338-91df-62d0044ff1b5"} 1
+ceems_compute_unit_gpu_index_flag{gpuuuid="GPU-6cc98505-fdde-461e-a93c-6935fba45a27/",hindex="/gpu-11",hostname="",index="11",manager="libvirt",uuid="2896bdd5-dbc2-4339-9d8e-ddd838bf35d3"} 1
+ceems_compute_unit_gpu_index_flag{gpuuuid="GPU-956348bc-d43d-23ed-53d4-857749fa2b67/5",hindex="/gpu-3",hostname="",index="3",manager="libvirt",uuid="b674a0a2-c300-4dc6-8c9c-65df16da6d69"} 0.1
+ceems_compute_unit_gpu_index_flag{gpuuuid="GPU-f124aa59-d406-d45b-9481-8fcd694e6c9e/",hindex="/gpu-0",hostname="",index="0",manager="libvirt",uuid="b674a0a2-c300-4dc6-8c9c-65df16da6d69"} 0.5
 # HELP ceems_compute_unit_memory_cache_bytes Memory cache used in bytes
 # TYPE ceems_compute_unit_memory_cache_bytes gauge
+ceems_compute_unit_memory_cache_bytes{hostname="",manager="libvirt",uuid="2896bdd5-dbc2-4339-9d8e-ddd838bf35d3"} 2.1086208e+07
+ceems_compute_unit_memory_cache_bytes{hostname="",manager="libvirt",uuid="4de89c5b-50d7-4d30-a630-14e135380fe8"} 2.1086208e+07
 ceems_compute_unit_memory_cache_bytes{hostname="",manager="libvirt",uuid="57f2d45e-8ddf-4338-91df-62d0044ff1b5"} 2.1086208e+07
-ceems_compute_unit_memory_cache_bytes{hostname="",manager="libvirt",uuid="5f7f6db0-7f7d-4c31-acc6-a03ec4d3ad4e"} 2.1086208e+07
 ceems_compute_unit_memory_cache_bytes{hostname="",manager="libvirt",uuid="b674a0a2-c300-4dc6-8c9c-65df16da6d69"} 2.1086208e+07
-ceems_compute_unit_memory_cache_bytes{hostname="",manager="libvirt",uuid="bf9ccd0f-4cd7-4ea2-8855-b56467326f61"} 2.1086208e+07
 # HELP ceems_compute_unit_memory_fail_count Memory fail count
 # TYPE ceems_compute_unit_memory_fail_count gauge
+ceems_compute_unit_memory_fail_count{hostname="",manager="libvirt",uuid="2896bdd5-dbc2-4339-9d8e-ddd838bf35d3"} 0
+ceems_compute_unit_memory_fail_count{hostname="",manager="libvirt",uuid="4de89c5b-50d7-4d30-a630-14e135380fe8"} 0
 ceems_compute_unit_memory_fail_count{hostname="",manager="libvirt",uuid="57f2d45e-8ddf-4338-91df-62d0044ff1b5"} 0
-ceems_compute_unit_memory_fail_count{hostname="",manager="libvirt",uuid="5f7f6db0-7f7d-4c31-acc6-a03ec4d3ad4e"} 0
 ceems_compute_unit_memory_fail_count{hostname="",manager="libvirt",uuid="b674a0a2-c300-4dc6-8c9c-65df16da6d69"} 0
-ceems_compute_unit_memory_fail_count{hostname="",manager="libvirt",uuid="bf9ccd0f-4cd7-4ea2-8855-b56467326f61"} 0
 # HELP ceems_compute_unit_memory_psi_seconds Total memory PSI in seconds
 # TYPE ceems_compute_unit_memory_psi_seconds gauge
+ceems_compute_unit_memory_psi_seconds{hostname="",manager="libvirt",uuid="2896bdd5-dbc2-4339-9d8e-ddd838bf35d3"} 0
+ceems_compute_unit_memory_psi_seconds{hostname="",manager="libvirt",uuid="4de89c5b-50d7-4d30-a630-14e135380fe8"} 0
 ceems_compute_unit_memory_psi_seconds{hostname="",manager="libvirt",uuid="57f2d45e-8ddf-4338-91df-62d0044ff1b5"} 0
-ceems_compute_unit_memory_psi_seconds{hostname="",manager="libvirt",uuid="5f7f6db0-7f7d-4c31-acc6-a03ec4d3ad4e"} 0
 ceems_compute_unit_memory_psi_seconds{hostname="",manager="libvirt",uuid="b674a0a2-c300-4dc6-8c9c-65df16da6d69"} 0
-ceems_compute_unit_memory_psi_seconds{hostname="",manager="libvirt",uuid="bf9ccd0f-4cd7-4ea2-8855-b56467326f61"} 0
 # HELP ceems_compute_unit_memory_rss_bytes Memory RSS used in bytes
 # TYPE ceems_compute_unit_memory_rss_bytes gauge
+ceems_compute_unit_memory_rss_bytes{hostname="",manager="libvirt",uuid="2896bdd5-dbc2-4339-9d8e-ddd838bf35d3"} 1.0407936e+07
+ceems_compute_unit_memory_rss_bytes{hostname="",manager="libvirt",uuid="4de89c5b-50d7-4d30-a630-14e135380fe8"} 1.0407936e+07
 ceems_compute_unit_memory_rss_bytes{hostname="",manager="libvirt",uuid="57f2d45e-8ddf-4338-91df-62d0044ff1b5"} 1.0407936e+07
-ceems_compute_unit_memory_rss_bytes{hostname="",manager="libvirt",uuid="5f7f6db0-7f7d-4c31-acc6-a03ec4d3ad4e"} 1.0407936e+07
 ceems_compute_unit_memory_rss_bytes{hostname="",manager="libvirt",uuid="b674a0a2-c300-4dc6-8c9c-65df16da6d69"} 1.0407936e+07
-ceems_compute_unit_memory_rss_bytes{hostname="",manager="libvirt",uuid="bf9ccd0f-4cd7-4ea2-8855-b56467326f61"} 1.0407936e+07
 # HELP ceems_compute_unit_memory_total_bytes Memory total in bytes
 # TYPE ceems_compute_unit_memory_total_bytes gauge
+ceems_compute_unit_memory_total_bytes{hostname="",manager="libvirt",uuid="2896bdd5-dbc2-4339-9d8e-ddd838bf35d3"} 2.01362030592e+11
+ceems_compute_unit_memory_total_bytes{hostname="",manager="libvirt",uuid="4de89c5b-50d7-4d30-a630-14e135380fe8"} 2.01362030592e+11
 ceems_compute_unit_memory_total_bytes{hostname="",manager="libvirt",uuid="57f2d45e-8ddf-4338-91df-62d0044ff1b5"} 2.01362030592e+11
-ceems_compute_unit_memory_total_bytes{hostname="",manager="libvirt",uuid="5f7f6db0-7f7d-4c31-acc6-a03ec4d3ad4e"} 2.01362030592e+11
 ceems_compute_unit_memory_total_bytes{hostname="",manager="libvirt",uuid="b674a0a2-c300-4dc6-8c9c-65df16da6d69"} 2.01362030592e+11
-ceems_compute_unit_memory_total_bytes{hostname="",manager="libvirt",uuid="bf9ccd0f-4cd7-4ea2-8855-b56467326f61"} 2.01362030592e+11
 # HELP ceems_compute_unit_memory_used_bytes Memory used in bytes
 # TYPE ceems_compute_unit_memory_used_bytes gauge
+ceems_compute_unit_memory_used_bytes{hostname="",manager="libvirt",uuid="2896bdd5-dbc2-4339-9d8e-ddd838bf35d3"} 4.0194048e+07
+ceems_compute_unit_memory_used_bytes{hostname="",manager="libvirt",uuid="4de89c5b-50d7-4d30-a630-14e135380fe8"} 4.0194048e+07
 ceems_compute_unit_memory_used_bytes{hostname="",manager="libvirt",uuid="57f2d45e-8ddf-4338-91df-62d0044ff1b5"} 4.0194048e+07
-ceems_compute_unit_memory_used_bytes{hostname="",manager="libvirt",uuid="5f7f6db0-7f7d-4c31-acc6-a03ec4d3ad4e"} 4.0194048e+07
 ceems_compute_unit_memory_used_bytes{hostname="",manager="libvirt",uuid="b674a0a2-c300-4dc6-8c9c-65df16da6d69"} 4.0194048e+07
-ceems_compute_unit_memory_used_bytes{hostname="",manager="libvirt",uuid="bf9ccd0f-4cd7-4ea2-8855-b56467326f61"} 4.0194048e+07
 # HELP ceems_compute_unit_memsw_fail_count Swap fail count
 # TYPE ceems_compute_unit_memsw_fail_count gauge
+ceems_compute_unit_memsw_fail_count{hostname="",manager="libvirt",uuid="2896bdd5-dbc2-4339-9d8e-ddd838bf35d3"} 0
+ceems_compute_unit_memsw_fail_count{hostname="",manager="libvirt",uuid="4de89c5b-50d7-4d30-a630-14e135380fe8"} 0
 ceems_compute_unit_memsw_fail_count{hostname="",manager="libvirt",uuid="57f2d45e-8ddf-4338-91df-62d0044ff1b5"} 0
-ceems_compute_unit_memsw_fail_count{hostname="",manager="libvirt",uuid="5f7f6db0-7f7d-4c31-acc6-a03ec4d3ad4e"} 0
 ceems_compute_unit_memsw_fail_count{hostname="",manager="libvirt",uuid="b674a0a2-c300-4dc6-8c9c-65df16da6d69"} 0
-ceems_compute_unit_memsw_fail_count{hostname="",manager="libvirt",uuid="bf9ccd0f-4cd7-4ea2-8855-b56467326f61"} 0
 # HELP ceems_compute_unit_memsw_total_bytes Swap total in bytes
 # TYPE ceems_compute_unit_memsw_total_bytes gauge
+ceems_compute_unit_memsw_total_bytes{hostname="",manager="libvirt",uuid="2896bdd5-dbc2-4339-9d8e-ddd838bf35d3"} 9.223372036854772e+18
+ceems_compute_unit_memsw_total_bytes{hostname="",manager="libvirt",uuid="4de89c5b-50d7-4d30-a630-14e135380fe8"} 9.223372036854772e+18
 ceems_compute_unit_memsw_total_bytes{hostname="",manager="libvirt",uuid="57f2d45e-8ddf-4338-91df-62d0044ff1b5"} 9.223372036854772e+18
-ceems_compute_unit_memsw_total_bytes{hostname="",manager="libvirt",uuid="5f7f6db0-7f7d-4c31-acc6-a03ec4d3ad4e"} 9.223372036854772e+18
 ceems_compute_unit_memsw_total_bytes{hostname="",manager="libvirt",uuid="b674a0a2-c300-4dc6-8c9c-65df16da6d69"} 9.223372036854772e+18
-ceems_compute_unit_memsw_total_bytes{hostname="",manager="libvirt",uuid="bf9ccd0f-4cd7-4ea2-8855-b56467326f61"} 9.223372036854772e+18
 # HELP ceems_compute_unit_memsw_used_bytes Swap used in bytes
 # TYPE ceems_compute_unit_memsw_used_bytes gauge
+ceems_compute_unit_memsw_used_bytes{hostname="",manager="libvirt",uuid="2896bdd5-dbc2-4339-9d8e-ddd838bf35d3"} 4.032512e+07
+ceems_compute_unit_memsw_used_bytes{hostname="",manager="libvirt",uuid="4de89c5b-50d7-4d30-a630-14e135380fe8"} 4.032512e+07
 ceems_compute_unit_memsw_used_bytes{hostname="",manager="libvirt",uuid="57f2d45e-8ddf-4338-91df-62d0044ff1b5"} 4.032512e+07
-ceems_compute_unit_memsw_used_bytes{hostname="",manager="libvirt",uuid="5f7f6db0-7f7d-4c31-acc6-a03ec4d3ad4e"} 4.032512e+07
 ceems_compute_unit_memsw_used_bytes{hostname="",manager="libvirt",uuid="b674a0a2-c300-4dc6-8c9c-65df16da6d69"} 4.032512e+07
-ceems_compute_unit_memsw_used_bytes{hostname="",manager="libvirt",uuid="bf9ccd0f-4cd7-4ea2-8855-b56467326f61"} 4.032512e+07
 # HELP ceems_compute_units Total number of jobs
 # TYPE ceems_compute_units gauge
 ceems_compute_units{hostname="",manager="libvirt"} 4

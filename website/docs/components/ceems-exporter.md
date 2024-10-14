@@ -255,16 +255,9 @@ of RDMA very well.
 Slurm collector exports the job related metrics like usage of CPU, DRAM, RDMA, _etc_.
 This is done by walking through the cgroups created by SLURM daemon on compute node on
 every scrape request. As walking through the cgroups pseudo file system is _very cheap_,
-this will zero zero to negligible impact on the actual job.
-
-The exporter has been heavily inspired by
-[cgroups_exporter](https://github.com/treydock/cgroup_exporter) and it supports both
-cgroups **v1** and **v2**. For jobs with GPUs, we must the GPU ordinals allocated to
-each job so that we can match GPU metrics scrapped by either
-[dcgm-exporter](https://github.com/NVIDIA/dcgm-exporter) or
-[amd-smi-exporter](https://github.com/amd/amd_smi_exporter) to jobs. Unfortunately,
-this information is not available post-mortem of the job and hence, we need to export
-the mapping related to job ID to GPU ordinals.
+this will zero zero to negligible impact on the actual job. The exporter has been
+heavily inspired by [cgroups_exporter](https://github.com/treydock/cgroup_exporter)
+and it supports both cgroups **v1** and **v2**.
 
 :::warning[WARNING]
 
@@ -278,6 +271,13 @@ More details on how to configure SLURM to get accounting information from cgroup
 be found in [Configuration](../configuration/resource-managers.md) section.
 
 :::
+
+For jobs with GPUs, we must the GPU ordinals allocated to
+each job so that we can match GPU metrics scrapped by either
+[dcgm-exporter](https://github.com/NVIDIA/dcgm-exporter) or
+[amd-smi-exporter](https://github.com/amd/amd_smi_exporter) to jobs. Unfortunately,
+this information is not available post-mortem of the job and hence, the CEEMS exporter
+exports a metric thats maps the job ID to GPU ordinals.
 
 Currently, the list of job related metrics exported by SLURM exporter are as follows:
 
@@ -316,20 +316,7 @@ from cgroups. The collector supports both cgroups v1 and v2.
 
 When GPUs are present on the compute node, like in the case of Slurm, we will
 need information on which GPU is used by which VM. This information can be
-obtained in libvirt's XML file that keeps the state of the VM. However, there
-are few caveats here:
-
-- If a GPU is added to VM using PCI pass through, this GPU will not be available
-for the hypervisor and hence, it cannot be queried or monitored. This is due to
-the fact that the GPU will be unbound from the hypervisor and bound to guest.
-Thus, energy consumption and GPU metrics for GPUs using PCI passthrough
-**will only be available in the guest**.
-
-- NVIDIA's vGPU uses mediated devices to expose GPUs in the guest and thus,
-GPUs can be queried and monitored from both hypervisor and guest. However,
-CEEMS rely on [dcgm-exporter](https://github.com/NVIDIA/dcgm-exporter) to
-export GPU energy consumption and usage metrics and it does not support
-usage and energy consumption metrics for vGPUs.
+obtained in libvirt's XML file that keeps the state of the VM.
 
 - NVIDIA's MIG instances uses a similar approach to vGPU to expose GPUs inside
 guests and hence, similar limitations apply.

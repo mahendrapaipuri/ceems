@@ -20,23 +20,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func mockGPUDevices() map[int]Device {
-	devs := make(map[int]Device, 4)
+func mockGPUDevices() []Device {
+	devs := make([]Device, 5)
 
 	busIDs := []BusID{
-		{domain: 0, bus: 7, slot: 0, function: 0},
-		{domain: 0, bus: 11, slot: 0, function: 0},
-		{domain: 0, bus: 72, slot: 0, function: 0},
-		{domain: 0, bus: 76, slot: 0, function: 0},
-		{domain: 0, bus: 77, slot: 0, function: 0},
+		{domain: 0, bus: 7, device: 0, function: 0},
+		{domain: 0, bus: 11, device: 0, function: 0},
+		{domain: 0, bus: 72, device: 0, function: 0},
+		{domain: 0, bus: 76, device: 0, function: 0},
+		{domain: 0, bus: 77, device: 0, function: 0},
 	}
 
 	for i := 0; i <= 4; i++ {
-		idxString := strconv.Itoa(i)
 		devs[i] = Device{
-			index: idxString,
-			uuid:  fmt.Sprintf("GPU-%d", i),
-			busID: busIDs[i],
+			globalIndex: strconv.Itoa(i),
+			uuid:        fmt.Sprintf("GPU-%d", i),
+			busID:       busIDs[i],
 		}
 	}
 

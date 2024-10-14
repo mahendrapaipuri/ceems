@@ -61,7 +61,12 @@ then
     cgroups_mode="unified"
     desc="Cgroups V2 with nVIDIA GPU and ipmiutil"
     fixture='pkg/collector/testdata/output/e2e-test-cgroupsv2-nvidia-ipmiutil-output.txt'
-   elif [ "${scenario}" = "exporter-cgroups-v2-amd-ipmitool" ]
+  elif [ "${scenario}" = "exporter-cgroups-v2-nvidia-gpu-reordering" ]
+  then
+    cgroups_mode="unified"
+    desc="Cgroups V2 with nVIDIA GPU reordering"
+    fixture='pkg/collector/testdata/output/e2e-test-cgroupsv2-nvidia-gpu-reordering.txt'
+  elif [ "${scenario}" = "exporter-cgroups-v2-amd-ipmitool" ]
   then
     cgroups_mode="unified"
     desc="Cgroups V2 with AMD GPU and ipmitool"
@@ -356,6 +361,26 @@ then
         --path.procfs="pkg/collector/testdata/proc" \
         --collector.cgroups.force-version="v2" \
         --collector.slurm \
+        --collector.gpu.type="nvidia" \
+        --collector.gpu.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
+        --collector.slurm.gpu-job-map-path="pkg/collector/testdata/gpujobmap" \
+        --collector.rdma.stats \
+        --collector.rdma.cmd="pkg/collector/testdata/rdma" \
+        --collector.empty-hostname-label \
+        --collector.ipmi_dcmi.test-mode \
+        --web.listen-address "127.0.0.1:${port}" \
+        --web.disable-exporter-metrics \
+        --log.level="debug" > "${logfile}" 2>&1 &
+
+  elif [ "${scenario}" = "exporter-cgroups-v2-nvidia-gpu-reordering" ] 
+  then
+      PATH="${PWD}/pkg/collector/testdata/ipmi/ipmiutils:${PATH}" ./bin/ceems_exporter \
+        --path.sysfs="pkg/collector/testdata/sys" \
+        --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
+        --path.procfs="pkg/collector/testdata/proc" \
+        --collector.cgroups.force-version="v2" \
+        --collector.slurm \
+        --collector.slurm.gpu-order-map="0:0,1:1,2:4,3:5,4:2.1,5:2.5,6:2.13,7:3.1,8:3.5,9:3.13,10:6,11:7" \
         --collector.gpu.type="nvidia" \
         --collector.gpu.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
         --collector.slurm.gpu-job-map-path="pkg/collector/testdata/gpujobmap" \

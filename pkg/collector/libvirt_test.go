@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/containerd/cgroups/v3"
 	"github.com/go-kit/log"
@@ -27,6 +28,7 @@ func TestNewLibvirtCollector(t *testing.T) {
 			"--path.sysfs", "testdata/sys",
 			"--collector.libvirt.swap-memory-metrics",
 			"--collector.libvirt.psi-metrics",
+			"--collector.libvirt.xml-dir", "testdata/qemu",
 			"--collector.perf.hardware-events",
 			"--collector.rdma.stats",
 			"--collector.gpu.nvidia-smi-path", "testdata/nvidia-smi",
@@ -62,6 +64,7 @@ func TestLibvirtInstanceProps(t *testing.T) {
 			"--path.cgroupfs", "testdata/sys/fs/cgroup",
 			"--collector.libvirt.xml-dir", "testdata/qemu",
 			"--collector.cgroups.force-version", "v2",
+			"--collector.gpu.nvidia-smi-path", "testdata/nvidia-smi",
 		},
 	)
 	require.NoError(t, err)
@@ -76,13 +79,24 @@ func TestLibvirtInstanceProps(t *testing.T) {
 		},
 	}
 
+	noOpLogger := log.NewNopLogger()
+
+	gpuDevs, err := GetGPUDevices("nvidia", noOpLogger)
+	require.NoError(t, err)
+
 	c := libvirtCollector{
-		gpuDevs:            mockGPUDevices(),
-		logger:             log.NewNopLogger(),
-		cgroupManager:      cgManager,
-		instancePropsCache: make(map[string]instanceProps),
-		securityContexts:   make(map[string]*security.SecurityContext),
+		gpuDevs:                     gpuDevs,
+		logger:                      noOpLogger,
+		cgroupManager:               cgManager,
+		vGPUActivated:               true,
+		instancePropsCache:          make(map[string]instanceProps),
+		instancePropsCacheTTL:       500 * time.Millisecond,
+		instancePropslastUpdateTime: time.Now(),
+		securityContexts:            make(map[string]*security.SecurityContext),
 	}
+
+	// Last update time
+	lastUpdateTime := c.instancePropslastUpdateTime
 
 	// Add dummy security context
 	c.securityContexts[libvirtReadXMLCtx], err = security.NewSecurityContext(
@@ -93,23 +107,26 @@ func TestLibvirtInstanceProps(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	expectedProps := instanceProps{
-		gpuOrdinals: []string{"0", "1"},
-		uuid:        "57f2d45e-8ddf-4338-91df-62d0044ff1b5",
+	expectedProps := []instanceProps{
+		{uuid: "57f2d45e-8ddf-4338-91df-62d0044ff1b5", gpuOrdinals: []string{"1", "8"}},
+		{uuid: "b674a0a2-c300-4dc6-8c9c-65df16da6d69", gpuOrdinals: []string{"0", "3"}},
+		{uuid: "2896bdd5-dbc2-4339-9d8e-ddd838bf35d3", gpuOrdinals: []string{"11", "9"}},
+		{uuid: "4de89c5b-50d7-4d30-a630-14e135380fe8", gpuOrdinals: []string(nil)},
 	}
 
 	metrics, err := c.discoverCgroups()
 	require.NoError(t, err)
 
-	var gotProps instanceProps
+	assert.EqualValues(t, expectedProps, metrics.instanceProps)
 
-	for _, props := range metrics.instanceProps {
-		if props.uuid == expectedProps.uuid {
-			gotProps = props
-		}
-	}
+	// Sleep for 0.5 seconds to ensure we invalidate cache
+	time.Sleep(500 * time.Millisecond)
 
-	assert.Equal(t, expectedProps, gotProps)
+	_, err = c.discoverCgroups()
+	require.NoError(t, err)
+
+	// Now check if lastUpdateTime is less than 0.5 se
+	assert.Greater(t, c.instancePropslastUpdateTime.Sub(lastUpdateTime), 500*time.Millisecond)
 }
 
 func TestInstancePropsCaching(t *testing.T) {
@@ -127,6 +144,7 @@ func TestInstancePropsCaching(t *testing.T) {
 		[]string{
 			"--path.cgroupfs", cgroupsPath,
 			"--collector.libvirt.xml-dir", xmlFilePath,
+			"--collector.gpu.nvidia-smi-path", "testdata/nvidia-smi",
 		},
 	)
 	require.NoError(t, err)
@@ -142,13 +160,20 @@ func TestInstancePropsCaching(t *testing.T) {
 		},
 	}
 
-	mockGPUDevs := mockGPUDevices()
+	noOpLogger := log.NewNopLogger()
+
+	gpuDevs, err := GetGPUDevices("nvidia", noOpLogger)
+	require.NoError(t, err)
+
 	c := libvirtCollector{
-		cgroupManager:      cgManager,
-		logger:             log.NewNopLogger(),
-		gpuDevs:            mockGPUDevs,
-		instancePropsCache: make(map[string]instanceProps),
-		securityContexts:   make(map[string]*security.SecurityContext),
+		cgroupManager:               cgManager,
+		logger:                      noOpLogger,
+		gpuDevs:                     gpuDevs,
+		vGPUActivated:               true,
+		instancePropsCache:          make(map[string]instanceProps),
+		instancePropsCacheTTL:       500 * time.Millisecond,
+		instancePropslastUpdateTime: time.Now(),
+		securityContexts:            make(map[string]*security.SecurityContext),
 	}
 
 	// Add dummy security context
@@ -168,27 +193,35 @@ func TestInstancePropsCaching(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	// Binds GPUs to first n jobs
-	for igpu := range mockGPUDevs {
+	// Binds GPUs to first n instances
+	var iInstance int
+
+	var fullGPUInstances []string
+
+	for _, dev := range gpuDevs {
 		xmlContentPH := `<domain type='kvm'>
 <name>instance-%[1]d</name>
 <uuid>%[1]d</uuid>
 <devices>
 <hostdev mode='subsystem' type='pci' managed='yes'>
 	<source>
-	<address domain='domain' bus='bus' slot='slot' function='function'/>
+		<address type='pci' domain='0x0000' bus='0x%[2]s' slot='0x0' function='0x0'/>
 	</source>
-	<address type='pci' domain='0x0000' bus='0x%[2]s' slot='0x0' function='0x0'/>
 </hostdev>
 </devices>
 </domain>`
-		xmlContent := fmt.Sprintf(xmlContentPH, igpu, strconv.FormatUint(mockGPUDevs[igpu].busID.bus, 16))
-		err = os.WriteFile(
-			fmt.Sprintf("%s/instance-0000000%d.xml", xmlFilePath, igpu),
-			[]byte(xmlContent),
-			0o600,
-		)
-		require.NoError(t, err)
+		if !dev.vgpuEnabled && !dev.migEnabled {
+			xmlContent := fmt.Sprintf(xmlContentPH, iInstance, strconv.FormatUint(dev.busID.bus, 16))
+			err = os.WriteFile(
+				fmt.Sprintf("%s/instance-0000000%d.xml", xmlFilePath, iInstance),
+				[]byte(xmlContent),
+				0o600,
+			)
+			require.NoError(t, err)
+
+			fullGPUInstances = append(fullGPUInstances, dev.globalIndex)
+			iInstance++
+		}
 	}
 
 	// Now call get metrics which should populate instancePropsCache
@@ -198,9 +231,9 @@ func TestInstancePropsCaching(t *testing.T) {
 	// Check if instancePropsCache has 20 instances and GPU ordinals are correct
 	assert.Len(t, c.instancePropsCache, 20)
 
-	for igpu := range mockGPUDevs {
-		gpuIDString := strconv.FormatInt(int64(igpu), 10)
-		assert.Equal(t, []string{gpuIDString}, c.instancePropsCache["instance-0000000"+gpuIDString].gpuOrdinals)
+	for i, gpuIDString := range fullGPUInstances {
+		instanceIDString := strconv.FormatInt(int64(i), 10)
+		assert.Equal(t, []string{gpuIDString}, c.instancePropsCache["instance-0000000"+instanceIDString].gpuOrdinals)
 	}
 
 	// Remove first 10 instances and add new 10 more instances

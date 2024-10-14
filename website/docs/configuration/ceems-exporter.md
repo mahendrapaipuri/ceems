@@ -25,8 +25,7 @@ a consistent styling. They will be removed in `v1.0.0`.
 
 Although fetching metrics from cgroups do not need any additional privileges, getting
 GPU ordinal to job ID needs extra privileges. This is due to the fact that this
-information is not readily available in cgroups (at least in v2 where devices are
-bound to cgroups using BPF programs). Currently, the exporter supports two different
+information is not readily available in cgroups. Currently, the exporter supports two different
 ways to get the GPU ordinals to job ID map.
 
 - Reading environment variables `SLURM_STEP_GPUS` and/or `SLURM_JOB_GPUS` of job from
@@ -43,20 +42,6 @@ section.
 On the other hand, if the operators do not wish to add any privileges to exporter
 process, they can use the second approach but this requires some configuration additions
 to SLURM controller to execute a prolog and epilog script for each job.
-
-<!-- A sample prolog script to get job meta data is as follows:
-
-```bash
-#!/bin/bash
-
-# Need to use this path in --collector.slurm.job-props-path flag for ceems_exporter
-DEST=/run/slurmjobprops
-[ -e $DEST ] || mkdir -m 755 $DEST
-
-# Important to keep the order as SLURM_JOB_USER SLURM_JOB_ACCOUNT SLURM_JOB_NODELIST
-echo $SLURM_JOB_USER $SLURM_JOB_ACCOUNT $SLURM_JOB_NODELIST > $DEST/$SLURM_JOB_ID
-exit 0 
-``` -->
 
 A sample prolog script to get GPU ordinals is as follows:
 
@@ -94,6 +79,96 @@ ceems_exporter --collector.slum --collector.slurm.gpu-job-map-path=/run/gpujobma
 
 With above configuration, the exporter should export GPU ordinal mapping
 along with other metrics of slurm collector.
+
+When compute nodes uses a mix of full physical GPUs and MIG instances (NVIDIA), the
+ordering of GPUs by SLURM is undefined and it can depend on how the compute nodes are
+configured. More details can be found in this
+[bug report](https://support.schedmd.com/show_bug.cgi?id=21163). If ordering of GPUs
+does not match between `nvidia-smi` and SLURM, operators need to configure CEEMS
+exporter appropriately to provide the information about ordering of GPUs known to SLURM.
+
+For example if there are 2 A100 GPUs on a compute node where MIG is enabled only on
+GPU 0.
+
+```bash
+$ nvidia-smi
+Fri Oct 11 12:04:56 2024       
++---------------------------------------------------------------------------------------+
+| NVIDIA-SMI 535.129.03             Driver Version: 535.129.03   CUDA Version: 12.2     |
+|-----------------------------------------+----------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id        Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |         Memory-Usage | GPU-Util  Compute M. |
+|                                         |                      |               MIG M. |
+|=========================================+======================+======================|
+|   0  NVIDIA A100-PCIE-40GB          On  | 00000000:21:00.0 Off |                   On |
+| N/A   28C    P0              31W / 250W |     50MiB / 40960MiB |     N/A      Default |
+|                                         |                      |              Enabled |
++-----------------------------------------+----------------------+----------------------+
+|   1  NVIDIA A100-PCIE-40GB          On  | 00000000:81:00.0 Off |                    0 |
+| N/A   27C    P0              34W / 250W |      4MiB / 40960MiB |      0%      Default |
+|                                         |                      |             Disabled |
++-----------------------------------------+----------------------+----------------------+
+
++---------------------------------------------------------------------------------------+
+| MIG devices:                                                                          |
++------------------+--------------------------------+-----------+-----------------------+
+| GPU  GI  CI  MIG |                   Memory-Usage |        Vol|      Shared           |
+|      ID  ID  Dev |                     BAR1-Usage | SM     Unc| CE ENC DEC OFA JPG    |
+|                  |                                |        ECC|                       |
+|==================+================================+===========+=======================|
+|  0    3   0   0  |              12MiB /  9856MiB  | 14      0 |  1   0    1    0    0 |
+|                  |               0MiB / 16383MiB  |           |                       |
++------------------+--------------------------------+-----------+-----------------------+
+|  0    4   0   1  |              12MiB /  9856MiB  | 14      0 |  1   0    1    0    0 |
+|                  |               0MiB / 16383MiB  |           |                       |
++------------------+--------------------------------+-----------+-----------------------+
+|  0    5   0   2  |              12MiB /  9856MiB  | 14      0 |  1   0    1    0    0 |
+|                  |               0MiB / 16383MiB  |           |                       |
++------------------+--------------------------------+-----------+-----------------------+
+|  0    6   0   3  |              12MiB /  9856MiB  | 14      0 |  1   0    1    0    0 |
+|                  |               0MiB / 16383MiB  |           |                       |
++------------------+--------------------------------+-----------+-----------------------+
+                                                                                         
++---------------------------------------------------------------------------------------+
+| Processes:                                                                            |
+|  GPU   GI   CI        PID   Type   Process name                            GPU Memory |
+|        ID   ID                                                             Usage      |
+|=======================================================================================|
+|  No running processes found                                                           |
++---------------------------------------------------------------------------------------+
+```
+
+In this case `nvidia-smi` orders GPUs and MIG instances as follows:
+
+- 0.3
+- 0.4
+- 0.5
+- 0.6
+- 1
+
+where `0.3` indicates GPU 0 and GPU Instance ID (GI ID) 3. However, SLURM can order these
+GPUs as follows depending on certain configurations:
+
+- 1
+- 0.3
+- 0.4
+- 0.5
+- 0.6
+
+The difference between two orderings is that SLURM is placing full physical GPU at the top
+and then enumerating MIG instances. The operators can verify the ordering of SLURM GPUs
+by reserving a job and looking at `SLURM_JOB_GPUS` or `SLURM_STEP_GPUS` environment variables.
+If the odering is different between `nvidia-smi` and SLURM as demonstrated in this example,
+we need to define a map from SLURM order to `nvidia-smi` order and pass it to exporter using
+`--collector.slurm.gpu-order-map` CLI flag. In this case, the map definition would be
+`--collector.slurm.gpu-order-map=0:1,1:0.3,2:0.4,3:0.5,4:0.6`. The nomenclature is
+`<slurm_gpu_index>:<nvidia_gpu_idex>.[<mig_gpu_instance_id>]` delimited by `,`. From
+SLURM's point-of-view, GPU 0 is GPU 1 from `nvidia-smi`'s point-of-view and hence first
+element is `0:1`. Similarly, SLURM's GPU 1 is `nvidia-smi`'s GPU `0.3` (GPU 0 with GI ID 3)
+and hence second element is `1:0.3` and so on. As stated above, if the compute node uses
+either full GPUs and if all GPUs are MIG partitioned, the order between SLURM and `nvidia-smi`
+would be the same. In any case, it is a good idea to ensure the GPU indexes agree between
+SLURM and `nvidia-smi` and configuring CEEMS exporter appropriately.
 
 As discussed in [Components](../components/ceems-exporter.md#slurm-collector), Slurm
 collector supports [perf](../components/ceems-exporter.md#perf-sub-collector) and

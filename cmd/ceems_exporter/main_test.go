@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/prometheus/procfs"
+	"github.com/stretchr/testify/require"
 )
 
 var binary, _ = filepath.Abs("../../bin/ceems_exporter")
@@ -37,14 +38,10 @@ func TestFileDescriptorLeak(t *testing.T) {
 	}
 
 	sysfsPath, err := filepath.Abs("../../pkg/collector/testdata/sys/fs/cgroup")
-	if err != nil {
-		t.Errorf("Failed to read testdata: %s", err)
-	}
+	require.NoError(t, err)
 
 	procfsPath, err := filepath.Abs("../../pkg/collector/testdata/proc")
-	if err != nil {
-		t.Errorf("Failed to read testdata: %s", err)
-	}
+	require.NoError(t, err)
 
 	exporter := exec.Command(
 		binary,
@@ -91,9 +88,7 @@ func TestFileDescriptorLeak(t *testing.T) {
 		return nil
 	}
 
-	if err := runCommandAndTests(exporter, address, test); err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, runCommandAndTests(exporter, address, test))
 }
 
 func queryExporter(address string) error {

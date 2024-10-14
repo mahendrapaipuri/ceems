@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -95,7 +96,7 @@ type Address struct {
 type libvirtReadXMLSecurityCtxData struct {
 	xmlPath       string
 	instanceID    string
-	devices       map[int]Device
+	devices       []Device
 	instanceProps instanceProps
 }
 
@@ -112,18 +113,21 @@ type libvirtMetrics struct {
 }
 
 type libvirtCollector struct {
-	logger             log.Logger
-	cgroupManager      *cgroupManager
-	cgroupCollector    *cgroupCollector
-	perfCollector      *perfCollector
-	ebpfCollector      *ebpfCollector
-	rdmaCollector      *rdmaCollector
-	hostname           string
-	gpuDevs            map[int]Device
-	instanceGpuFlag    *prometheus.Desc
-	collectError       *prometheus.Desc
-	instancePropsCache map[string]instanceProps
-	securityContexts   map[string]*security.SecurityContext
+	logger                      log.Logger
+	cgroupManager               *cgroupManager
+	cgroupCollector             *cgroupCollector
+	perfCollector               *perfCollector
+	ebpfCollector               *ebpfCollector
+	rdmaCollector               *rdmaCollector
+	hostname                    string
+	gpuDevs                     []Device
+	vGPUActivated               bool
+	instanceGpuFlag             *prometheus.Desc
+	collectError                *prometheus.Desc
+	instancePropsCache          map[string]instanceProps
+	instancePropsCacheTTL       time.Duration
+	instancePropslastUpdateTime time.Time
+	securityContexts            map[string]*security.SecurityContext
 }
 
 func init() {
@@ -196,7 +200,7 @@ func NewLibvirtCollector(logger log.Logger) (Collector, error) {
 	// Attempt to get GPU devices
 	var gpuTypes []string
 
-	var gpuDevs map[int]Device
+	var gpuDevs []Device
 
 	if *gpuType != "" {
 		gpuTypes = []string{*gpuType}
@@ -208,6 +212,17 @@ func NewLibvirtCollector(logger log.Logger) (Collector, error) {
 		gpuDevs, err = GetGPUDevices(gpuType, logger)
 		if err == nil {
 			level.Info(logger).Log("gpu", gpuType)
+
+			break
+		}
+	}
+
+	// Check if vGPU is activated on atleast one GPU
+	vGPUActivated := false
+
+	for _, gpu := range gpuDevs {
+		if gpu.vgpuEnabled {
+			vGPUActivated = true
 
 			break
 		}
@@ -226,18 +241,21 @@ func NewLibvirtCollector(logger log.Logger) (Collector, error) {
 	}
 
 	return &libvirtCollector{
-		cgroupManager:      cgroupManager,
-		cgroupCollector:    cgCollector,
-		perfCollector:      perfCollector,
-		ebpfCollector:      ebpfCollector,
-		rdmaCollector:      rdmaCollector,
-		hostname:           hostname,
-		gpuDevs:            gpuDevs,
-		instancePropsCache: make(map[string]instanceProps),
-		securityContexts:   map[string]*security.SecurityContext{libvirtReadXMLCtx: securityCtx},
+		cgroupManager:               cgroupManager,
+		cgroupCollector:             cgCollector,
+		perfCollector:               perfCollector,
+		ebpfCollector:               ebpfCollector,
+		rdmaCollector:               rdmaCollector,
+		hostname:                    hostname,
+		gpuDevs:                     gpuDevs,
+		vGPUActivated:               vGPUActivated,
+		instancePropsCache:          make(map[string]instanceProps),
+		instancePropsCacheTTL:       3 * time.Hour,
+		instancePropslastUpdateTime: time.Now(),
+		securityContexts:            map[string]*security.SecurityContext{libvirtReadXMLCtx: securityCtx},
 		instanceGpuFlag: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_gpu_index_flag"),
-			"Indicates running instance on GPU, 1=instance running",
+			"A value > 0 indicates running instance using current GPU",
 			[]string{
 				"manager",
 				"hostname",
@@ -369,16 +387,57 @@ func (c *libvirtCollector) updateGPUOrdinals(ch chan<- prometheus.Metric, instan
 	for _, p := range instanceProps {
 		// GPU instance mapping
 		for _, gpuOrdinal := range p.gpuOrdinals {
-			var gpuuuid string
+			var gpuuuid, miggid string
+
+			flagValue := float64(1)
 			// Check the int index of devices where gpuOrdinal == dev.index
 			for _, dev := range c.gpuDevs {
-				if gpuOrdinal == dev.index {
+				// If the device has MIG enabled loop over them as well
+				for _, mig := range dev.migInstances {
+					if gpuOrdinal == mig.globalIndex {
+						gpuuuid = dev.uuid
+						miggid = strconv.FormatUint(mig.gpuInstID, 10)
+
+						// For MIG, we export SM fraction as flag value
+						// For vGPU enabled GPUs this fraction must be
+						// further divided by number of active vGPU instances
+						if dev.vgpuEnabled && len(mig.mdevUUIDs) > 1 {
+							flagValue = mig.smFraction / float64(len(mig.mdevUUIDs))
+						} else {
+							flagValue = mig.smFraction
+						}
+
+						goto update_chan
+					}
+				}
+
+				if gpuOrdinal == dev.globalIndex {
 					gpuuuid = dev.uuid
 
-					break
+					if dev.vgpuEnabled && len(dev.mdevUUIDs) > 1 {
+						flagValue = 1.0 / float64(len(dev.mdevUUIDs))
+					}
+
+					goto update_chan
 				}
 			}
-			ch <- prometheus.MustNewConstMetric(c.instanceGpuFlag, prometheus.GaugeValue, float64(1), c.cgroupManager.manager, c.hostname, p.uuid, gpuOrdinal, fmt.Sprintf("%s-gpu-%s", c.hostname, gpuOrdinal), gpuuuid)
+
+		update_chan:
+			// We set label of gpuuuid of format <gpu_uuid>/<mig_instance_id>
+			// On the DCGM side, we need to use relabel magic to merge UUID
+			// and GPU_I_ID labels and set them exactly as <uuid>/<gpu_i_id>
+			// as well
+			ch <- prometheus.MustNewConstMetric(
+				c.instanceGpuFlag,
+				prometheus.GaugeValue,
+				flagValue,
+				c.cgroupManager.manager,
+				c.hostname,
+				p.uuid,
+				gpuOrdinal,
+				fmt.Sprintf("%s/gpu-%s", c.hostname, gpuOrdinal),
+				fmt.Sprintf("%s/%s", gpuuuid, miggid),
+			)
 		}
 	}
 }
@@ -393,6 +452,15 @@ func (c *libvirtCollector) discoverCgroups() (libvirtMetrics, error) {
 	var cgMetrics []cgMetric
 
 	instanceIDUUIDMap := make(map[string]string)
+
+	// It is possible from Openstack to resize instances by changing flavour. It means
+	// it is possible to add GPUs to non-GPU instances, so we need to invalidate
+	// instancePropsCache once in a while to ensure we capture any changes in instance
+	// flavours
+	if time.Since(c.instancePropslastUpdateTime) > c.instancePropsCacheTTL {
+		c.instancePropsCache = make(map[string]instanceProps)
+		c.instancePropslastUpdateTime = time.Now()
+	}
 
 	// Walk through all cgroups and get cgroup paths
 	// https://goplay.tools/snippet/coVDkIozuhg
@@ -475,6 +543,14 @@ func (c *libvirtCollector) discoverCgroups() (libvirtMetrics, error) {
 
 // instanceProperties returns instance properties parsed from XML file.
 func (c *libvirtCollector) instanceProperties(instanceID string) instanceProps {
+	// If vGPU is activated on atleast one GPU, update mdevs
+	if c.vGPUActivated {
+		if updatedGPUDevs, err := updateGPUMdevs(c.gpuDevs); err == nil {
+			c.gpuDevs = updatedGPUDevs
+			level.Debug(c.logger).Log("msg", "GPU mdevs updated")
+		}
+	}
+
 	// Read XML file in a security context that raises necessary capabilities
 	dataPtr := &libvirtReadXMLSecurityCtxData{
 		xmlPath:    *libvirtXMLDir,
@@ -539,25 +615,49 @@ func readLibvirtXMLFile(data interface{}) error {
 		if hostDev.Type == "pci" {
 			gpuBusID := fmt.Sprintf(
 				"%s:%s:%s.%s",
-				strings.TrimPrefix(hostDev.Address.Domain, "0x"),
-				strings.TrimPrefix(hostDev.Address.Bus, "0x"),
-				strings.TrimPrefix(hostDev.Address.Slot, "0x"),
-				strings.TrimPrefix(hostDev.Address.Function, "0x"),
+				strings.TrimPrefix(hostDev.Source.Address.Domain, "0x"),
+				strings.TrimPrefix(hostDev.Source.Address.Bus, "0x"),
+				strings.TrimPrefix(hostDev.Source.Address.Slot, "0x"),
+				strings.TrimPrefix(hostDev.Source.Address.Function, "0x"),
 			)
 
 			// Check if the current Bus ID matches with any existing GPUs
-			for idx, dev := range d.devices {
+			for _, dev := range d.devices {
 				if dev.CompareBusID(gpuBusID) {
-					gpuOrdinals = append(gpuOrdinals, strconv.FormatInt(int64(idx), 10))
+					gpuOrdinals = append(gpuOrdinals, dev.globalIndex)
 
 					break
+				}
+			}
+		} else if hostDev.Type == "mdev" {
+			mdevUUID := hostDev.Source.Address.UUID
+
+			// Check which GPU has this mdev UUID
+			for _, dev := range d.devices {
+				if dev.migEnabled {
+					for _, mig := range dev.migInstances {
+						if slices.Contains(mig.mdevUUIDs, mdevUUID) {
+							gpuOrdinals = append(gpuOrdinals, mig.globalIndex)
+
+							break
+						}
+					}
+				} else {
+					if slices.Contains(dev.mdevUUIDs, mdevUUID) {
+						gpuOrdinals = append(gpuOrdinals, dev.globalIndex)
+
+						break
+					}
 				}
 			}
 		}
 	}
 
 	// Read instance properties into dataPointer
-	d.instanceProps = instanceProps{uuid: domain.UUID, gpuOrdinals: gpuOrdinals}
+	d.instanceProps = instanceProps{
+		uuid:        domain.UUID,
+		gpuOrdinals: gpuOrdinals,
+	}
 
 	return nil
 }
