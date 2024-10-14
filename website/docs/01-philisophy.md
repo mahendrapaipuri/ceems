@@ -80,6 +80,12 @@ current exporter takes care of the GPU index to compute unit mapping. These two 
 can be used together using PromQL to show the metrics of GPU metrics of a given compute
 unit.
 
+In the case of vGPUs supported by NVIDIA Grid, the energy consumed by each vGPU is
+estimated using the total energy consumption of physical GPU and number of active
+vGPUs scheduled on that physical GPU. Similarly, in the case of Multi GPU Instances (MIG),
+the energy consumption of each MIG instance is estimated based on the relative number
+of Streaming Multiprocessors (SM) and total energy consumption of the physical GPU.
+
 ## Performance metrics
 
 Presenting energy and emission metrics is only one side of the story. This will
@@ -93,5 +99,6 @@ energy efficient.
 
 Currently, CEEMS provides performance metrics for CPU. It is possible to gather
 performance metrics for nVIDIA GPUs as well as long as operators install and enable
-nVIDIA DCGM libraries. More details can be found in [DCGM](https://docs.nvidia.com/datacenter/dcgm/latest/user-guide/feature-overview.html#profiling-metrics)
+nVIDIA DCGM libraries. More details can be found in
+[DCGM](https://docs.nvidia.com/datacenter/dcgm/latest/user-guide/feature-overview.html#profiling-metrics)
 docs.

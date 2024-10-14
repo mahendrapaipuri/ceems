@@ -35,7 +35,7 @@ in a resource manager agnostic way.
 
 - Monitor energy, performance, IO and network metrics for different types of resource
 managers (SLURM, Openstack, k8s)
-- Support NVIDIA and AMD GPUs
+- Support NVIDIA (MIG and vGPU) and AMD GPUs
 - Realtime access to metrics *via* Grafana dashboards
 - Access control to Prometheus datasource in Grafana
 - Stores aggregated metrics in a separate DB that can be retained for long time

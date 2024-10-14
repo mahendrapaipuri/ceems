@@ -15,10 +15,10 @@ ceems_compute_unit_cpus{hostname="",manager="slurm",uuid="1009249"} 2
 ceems_compute_unit_cpus{hostname="",manager="slurm",uuid="1009250"} 2
 # HELP ceems_compute_unit_gpu_index_flag Indicates running job on GPU, 1=job running
 # TYPE ceems_compute_unit_gpu_index_flag gauge
-ceems_compute_unit_gpu_index_flag{gpuuuid="GPU-61a65011-6571-a64n-5ab8-66cbb6f7f9c3",hindex="-gpu-3",hostname="",index="3",manager="slurm",uuid="1009248"} 1
-ceems_compute_unit_gpu_index_flag{gpuuuid="GPU-61a65011-6571-a6d2-5ab8-66cbb6f7f9c3",hindex="-gpu-1",hostname="",index="1",manager="slurm",uuid="1009250"} 1
-ceems_compute_unit_gpu_index_flag{gpuuuid="GPU-61a65011-6571-a6d2-5th8-66cbb6f7f9c3",hindex="-gpu-2",hostname="",index="2",manager="slurm",uuid="1009248"} 1
-ceems_compute_unit_gpu_index_flag{gpuuuid="GPU-f124aa59-d406-d45b-9481-8fcd694e6c9e",hindex="-gpu-0",hostname="",index="0",manager="slurm",uuid="1009249"} 1
+ceems_compute_unit_gpu_index_flag{gpuuuid="GPU-61a65011-6571-a6d2-5ab8-66cbb6f7f9c3/",hindex="/gpu-1",hostname="",index="1",manager="slurm",uuid="1009250"} 1
+ceems_compute_unit_gpu_index_flag{gpuuuid="GPU-956348bc-d43d-23ed-53d4-857749fa2b67/1",hindex="/gpu-2",hostname="",index="2",manager="slurm",uuid="1009248"} 0.6
+ceems_compute_unit_gpu_index_flag{gpuuuid="GPU-956348bc-d43d-23ed-53d4-857749fa2b67/5",hindex="/gpu-3",hostname="",index="3",manager="slurm",uuid="1009248"} 0.2
+ceems_compute_unit_gpu_index_flag{gpuuuid="GPU-f124aa59-d406-d45b-9481-8fcd694e6c9e/",hindex="/gpu-0",hostname="",index="0",manager="slurm",uuid="1009249"} 1
 # HELP ceems_compute_unit_memory_cache_bytes Memory cache used in bytes
 # TYPE ceems_compute_unit_memory_cache_bytes gauge
 ceems_compute_unit_memory_cache_bytes{hostname="",manager="slurm",uuid="1009248"} 0

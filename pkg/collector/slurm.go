@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -45,11 +46,16 @@ var (
 		"Enables collection of PSI metrics (default: disabled)",
 	).Default("false").Bool()
 
-	// Generic.
+	// GPU opts.
+	slurmGPUOrdering = CEEMSExporterApp.Flag(
+		"collector.slurm.gpu-order-map",
+		`GPU order mapping between SLURM and NVIDIA SMI/ROCm SMI tools. 
+It should be of format <slurm_gpu_index>: <nvidia_or_rocm_smi_index>[.<mig_gpu_instance_id>] delimited by ",".`,
+	).Default("").PlaceHolder("0:1,1:0.3,2:0.4,3:0.5,4:0.6").String()
 	slurmGPUStatPath = CEEMSExporterApp.Flag(
 		"collector.slurm.gpu-job-map-path",
-		"Path to file that maps GPU ordinals to job IDs.",
-	).Default("/run/gpujobmap").String()
+		"Path to directory that maps GPU ordinals to job IDs.",
+	).Default("").String()
 )
 
 // Security context names.
@@ -89,7 +95,7 @@ type slurmCollector struct {
 	ebpfCollector    *ebpfCollector
 	rdmaCollector    *rdmaCollector
 	hostname         string
-	gpuDevs          map[int]Device
+	gpuDevs          []Device
 	procFS           procfs.FS
 	jobGpuFlag       *prometheus.Desc
 	collectError     *prometheus.Desc
@@ -178,7 +184,7 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 	// Attempt to get GPU devices
 	var gpuTypes []string
 
-	var gpuDevs map[int]Device
+	var gpuDevs []Device
 
 	if *gpuType != "" {
 		gpuTypes = []string{*gpuType}
@@ -193,6 +199,13 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 
 			break
 		}
+	}
+
+	// Correct GPU ordering based on CLI flag when provided
+	if *slurmGPUOrdering != "" {
+		gpuDevs = reindexGPUs(*slurmGPUOrdering, gpuDevs)
+
+		level.Debug(logger).Log("msg", "GPU reindexed based")
 	}
 
 	// Instantiate a new Proc FS
@@ -228,7 +241,7 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 		securityContexts: map[string]*security.SecurityContext{slurmReadProcCtx: securityCtx},
 		jobGpuFlag: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_gpu_index_flag"),
-			"Indicates running job on GPU, 1=job running",
+			"A value > 0 indicates the job using current GPU",
 			[]string{
 				"manager",
 				"hostname",
@@ -360,16 +373,47 @@ func (c *slurmCollector) updateGPUOrdinals(ch chan<- prometheus.Metric, jobProps
 	for _, p := range jobProps {
 		// GPU job mapping
 		for _, gpuOrdinal := range p.gpuOrdinals {
-			var gpuuuid string
+			var gpuuuid, miggid string
+
+			flagValue := float64(1)
 			// Check the int index of devices where gpuOrdinal == dev.index
 			for _, dev := range c.gpuDevs {
-				if gpuOrdinal == dev.index {
+				// If the device has MIG enabled loop over them as well
+				for _, mig := range dev.migInstances {
+					if gpuOrdinal == mig.globalIndex {
+						gpuuuid = dev.uuid
+						miggid = strconv.FormatUint(mig.gpuInstID, 10)
+
+						// For MIG, we export SM fraction as flag value
+						flagValue = mig.smFraction
+
+						goto update_chan
+					}
+				}
+
+				if gpuOrdinal == dev.globalIndex {
 					gpuuuid = dev.uuid
 
-					break
+					goto update_chan
 				}
 			}
-			ch <- prometheus.MustNewConstMetric(c.jobGpuFlag, prometheus.GaugeValue, float64(1), c.cgroupManager.manager, c.hostname, p.uuid, gpuOrdinal, fmt.Sprintf("%s-gpu-%s", c.hostname, gpuOrdinal), gpuuuid)
+
+		update_chan:
+			// We set label of gpuuuid of format <gpu_uuid>/<mig_instance_id>
+			// On the DCGM side, we need to use relabel magic to merge UUID
+			// and GPU_I_ID labels and set them exactly as <uuid>/<gpu_i_id>
+			// as well
+			ch <- prometheus.MustNewConstMetric(
+				c.jobGpuFlag,
+				prometheus.GaugeValue,
+				flagValue,
+				c.cgroupManager.manager,
+				c.hostname,
+				p.uuid,
+				gpuOrdinal,
+				fmt.Sprintf("%s/gpu-%s", c.hostname, gpuOrdinal),
+				fmt.Sprintf("%s/%s", gpuuuid, miggid),
+			)
 		}
 	}
 }
@@ -456,10 +500,43 @@ func (c *slurmCollector) discoverCgroups() (slurmMetrics, error) {
 	return slurmMetrics{cgMetrics: cgMetrics, jobProps: jProps}, nil
 }
 
+// readGPUMapFile reads file created by prolog script to retrieve job ID of a given GPU.
+func (c *slurmCollector) readGPUMapFile(index string) string {
+	gpuJobMapInfo := fmt.Sprintf("%s/%s", *slurmGPUStatPath, index)
+
+	// NOTE: Look for file name with UUID as it will be more appropriate with
+	// MIG instances.
+	// If /run/gpustat/0 file is not found, check for the file with UUID as name?
+	var uuid string
+
+	if _, err := os.Stat(gpuJobMapInfo); err == nil {
+		content, err := os.ReadFile(gpuJobMapInfo)
+		if err != nil {
+			level.Error(c.logger).Log(
+				"msg", "Failed to get job ID for GPU",
+				"index", index, "err", err,
+			)
+
+			return ""
+		}
+
+		if _, err := fmt.Sscanf(string(content), "%s", &uuid); err != nil {
+			level.Error(c.logger).Log(
+				"msg", "Failed to scan job ID for GPU",
+				"index", index, "err", err,
+			)
+
+			return ""
+		}
+
+		return uuid
+	}
+
+	return ""
+}
+
 // gpuOrdinalsFromProlog returns GPU ordinals of jobs from prolog generated run time files by SLURM.
 func (c *slurmCollector) gpuOrdinalsFromProlog(uuid string) []string {
-	var gpuJobID string
-
 	var gpuOrdinals []string
 
 	// If there are no GPUs this loop will be skipped anyways
@@ -473,35 +550,16 @@ func (c *slurmCollector) gpuOrdinalsFromProlog(uuid string) []string {
 	// it but just to be safe. This will have a small overhead as we need to check the
 	// correct integer index for each device index. We can live with it as there are
 	// typically 2/4/8 GPUs per node.
-	for i := range c.gpuDevs {
-		dev := c.gpuDevs[i]
-		gpuJobMapInfo := fmt.Sprintf("%s/%s", *slurmGPUStatPath, dev.index)
-
-		// NOTE: Look for file name with UUID as it will be more appropriate with
-		// MIG instances.
-		// If /run/gpustat/0 file is not found, check for the file with UUID as name?
-		if _, err := os.Stat(gpuJobMapInfo); err == nil {
-			content, err := os.ReadFile(gpuJobMapInfo)
-			if err != nil {
-				level.Error(c.logger).Log(
-					"msg", "Failed to get job ID for GPU",
-					"index", dev.index, "uuid", dev.uuid, "err", err,
-				)
-
-				continue
+	for _, dev := range c.gpuDevs {
+		if dev.migEnabled {
+			for _, mig := range dev.migInstances {
+				if c.readGPUMapFile(mig.globalIndex) == uuid {
+					gpuOrdinals = append(gpuOrdinals, mig.globalIndex)
+				}
 			}
-
-			if _, err := fmt.Sscanf(string(content), "%s", &gpuJobID); err != nil {
-				level.Error(c.logger).Log(
-					"msg", "Failed to scan job ID for GPU",
-					"index", dev.index, "uuid", dev.uuid, "err", err,
-				)
-
-				continue
-			}
-
-			if gpuJobID == uuid {
-				gpuOrdinals = append(gpuOrdinals, dev.index)
+		} else {
+			if c.readGPUMapFile(dev.globalIndex) == uuid {
+				gpuOrdinals = append(gpuOrdinals, dev.globalIndex)
 			}
 		}
 	}

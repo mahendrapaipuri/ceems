@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 var binary, _ = filepath.Abs("../../bin/ceems_api_server")
@@ -24,23 +26,17 @@ func TestBatchjobStatsExecutable(t *testing.T) {
 	tmpSacctPath := tmpDir + "/sacct"
 
 	sacctPath, err := filepath.Abs("../../pkg/api/testdata/sacct")
-	if err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, err)
 
 	err = os.Link(sacctPath, tmpSacctPath)
-	if err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, err)
 
 	usagestats := exec.Command(
 		binary,
 		"--web.listen-address", address,
 		"--no-security.drop-privileges",
 	)
-	if err := runCommandAndTests(usagestats); err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, runCommandAndTests(usagestats))
 }
 
 func runCommandAndTests(cmd *exec.Cmd) error {

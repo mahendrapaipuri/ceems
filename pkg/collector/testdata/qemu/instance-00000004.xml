@@ -7,7 +7,7 @@ or other application using the libvirt API.
 
 <domain type='kvm'>
   <name>instance-00000004</name>
-  <uuid>5f7f6db0-7f7d-4c31-acc6-a03ec4d3ad4e</uuid>
+  <uuid>4de89c5b-50d7-4d30-a630-14e135380fe8</uuid>
   <metadata>
     <nova:instance xmlns:nova="http://openstack.org/xmlns/libvirt/nova/1.1">
       <nova:package version="30.1.0"/>

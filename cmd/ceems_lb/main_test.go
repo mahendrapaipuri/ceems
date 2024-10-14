@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 var binary, _ = filepath.Abs("../../bin/ceems_lb")
@@ -24,14 +26,10 @@ func TestCEEMSLBExecutable(t *testing.T) {
 	tmpConfigPath := tmpDir + "/config.yaml"
 
 	configPath, err := filepath.Abs("../../build/config/ceems_lb/ceems_lb.yml")
-	if err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, err)
 
 	err = os.Link(configPath, tmpConfigPath)
-	if err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, err)
 
 	lb := exec.Command(
 		binary, "--path.data", tmpDir,
@@ -39,9 +37,7 @@ func TestCEEMSLBExecutable(t *testing.T) {
 		"--web.listen-address", address,
 		"--no-security.drop-privileges",
 	)
-	if err := runCommandAndTests(lb); err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, runCommandAndTests(lb))
 }
 
 func runCommandAndTests(cmd *exec.Cmd) error {

@@ -1,7 +1,773 @@
 #!/bin/bash
 
-printf """index, name, uuid, bus_id
-0, Tesla V100-SXM2-32GB, GPU-f124aa59-d406-d45b-9481-8fcd694e6c9e, 00000000:07:00.0
-1, Tesla V100-SXM2-32GB, GPU-61a65011-6571-a6d2-5ab8-66cbb6f7f9c3, 00000000:0B:00.0
-2, Tesla V100-SXM2-32GB, GPU-61a65011-6571-a6d2-5th8-66cbb6f7f9c3, 00000000:48:00.0
-3, Tesla V100-SXM2-32GB, GPU-61a65011-6571-a64n-5ab8-66cbb6f7f9c3, 00000000:4C:00.0"""
+sub_help(){
+    echo "nvidia-smi help"
+}
+
+sub_--query(){
+    printf """<?xml version="1.0" ?>
+<!DOCTYPE nvidia_smi_log SYSTEM "nvsmi_device_v12.dtd">
+<nvidia_smi_log>
+        <timestamp>Fri Oct 11 18:24:09 2024</timestamp>
+        <driver_version>535.129.03</driver_version>
+        <cuda_version>12.2</cuda_version>
+        <attached_gpus>8</attached_gpus>
+        <gpu id=\"00000000:10:00.0\">
+                <product_name>NVIDIA A100-PCIE-40GB</product_name>
+                <product_brand>NVIDIA</product_brand>
+                <product_architecture>Ampere</product_architecture>
+                <display_mode>Enabled</display_mode>
+                <display_active>Disabled</display_active>
+                <persistence_mode>Enabled</persistence_mode>
+                <addressing_mode>None</addressing_mode>
+                <mig_mode>
+                        <current_mig>N/A</current_mig>
+                        <pending_mig>N/A</pending_mig>
+                </mig_mode>
+                <mig_devices>
+                        None
+                </mig_devices>
+                <accounting_mode>Disabled</accounting_mode>
+                <accounting_mode_buffer_size>4000</accounting_mode_buffer_size>
+                <driver_model>
+                        <current_dm>N/A</current_dm>
+                        <pending_dm>N/A</pending_dm>
+                </driver_model>
+                <serial>1323920023230</serial>
+                <uuid>GPU-f124aa59-d406-d45b-9481-8fcd694e6c9e</uuid>
+                <minor_number>0</minor_number>
+                <vbios_version>92.00.25.00.08</vbios_version>
+                <multigpu_board>No</multigpu_board>
+                <gpu_virtualization_mode>
+                        <virtualization_mode>VGPU</virtualization_mode>
+                        <host_vgpu_mode>N/A</host_vgpu_mode>
+                </gpu_virtualization_mode>
+        </gpu>
+        <gpu id=\"00000000:15:00.0\">
+                <product_name>NVIDIA A100-PCIE-40GB</product_name>
+                <product_brand>NVIDIA</product_brand>
+                <product_architecture>Ampere</product_architecture>
+                <display_mode>Enabled</display_mode>
+                <display_active>Disabled</display_active>
+                <persistence_mode>Enabled</persistence_mode>
+                <addressing_mode>None</addressing_mode>
+                <mig_mode>
+                        <current_mig>N/A</current_mig>
+                        <pending_mig>N/A</pending_mig>
+                </mig_mode>
+                <mig_devices>
+                        None
+                </mig_devices>
+                <accounting_mode>Disabled</accounting_mode>
+                <accounting_mode_buffer_size>4000</accounting_mode_buffer_size>
+                <driver_model>
+                        <current_dm>N/A</current_dm>
+                        <pending_dm>N/A</pending_dm>
+                </driver_model>
+                <serial>1323920023230</serial>
+                <uuid>GPU-61a65011-6571-a6d2-5ab8-66cbb6f7f9c3</uuid>
+                <minor_number>1</minor_number>
+                <vbios_version>92.00.25.00.08</vbios_version>
+                <multigpu_board>No</multigpu_board>
+                <gpu_virtualization_mode>
+                        <virtualization_mode>None</virtualization_mode>
+                        <host_vgpu_mode>N/A</host_vgpu_mode>
+                </gpu_virtualization_mode>
+        </gpu>
+        <gpu id=\"00000000:21:00.0\">
+                <product_name>NVIDIA A100-PCIE-40GB</product_name>
+                <product_brand>NVIDIA</product_brand>
+                <product_architecture>Ampere</product_architecture>
+                <display_mode>Enabled</display_mode>
+                <display_active>Disabled</display_active>
+                <persistence_mode>Enabled</persistence_mode>
+                <addressing_mode>None</addressing_mode>
+                <mig_mode>
+                        <current_mig>Enabled</current_mig>
+                        <pending_mig>Enabled</pending_mig>
+                </mig_mode>
+                <mig_devices>
+                <mig_device>
+                        <index>0</index>
+                        <gpu_instance_id>1</gpu_instance_id>
+                        <compute_instance_id>0</compute_instance_id>
+                        <device_attributes>
+                                <shared>
+                                        <multiprocessor_count>42</multiprocessor_count>
+                                        <copy_engine_count>3</copy_engine_count>
+                                        <encoder_count>0</encoder_count>
+                                        <decoder_count>2</decoder_count>
+                                        <ofa_count>0</ofa_count>
+                                        <jpg_count>0</jpg_count>
+                                </shared>
+                        </device_attributes>
+                        <ecc_error_count>
+                                <volatile_count>
+                                        <sram_uncorrectable>0</sram_uncorrectable>
+                                </volatile_count>
+                        </ecc_error_count>
+                        <fb_memory_usage>
+                                <total>19968 MiB</total>
+                                <reserved>0 MiB</reserved>
+                                <used>37 MiB</used>
+                                <free>19930 MiB</free>
+                        </fb_memory_usage>
+                        <bar1_memory_usage>
+                                <total>32767 MiB</total>
+                                <used>0 MiB</used>
+                                <free>32767 MiB</free>
+                        </bar1_memory_usage>
+                </mig_device>
+                <mig_device>
+                        <index>1</index>
+                        <gpu_instance_id>5</gpu_instance_id>
+                        <compute_instance_id>0</compute_instance_id>
+                        <device_attributes>
+                                <shared>
+                                        <multiprocessor_count>14</multiprocessor_count>
+                                        <copy_engine_count>1</copy_engine_count>
+                                        <encoder_count>0</encoder_count>
+                                        <decoder_count>1</decoder_count>
+                                        <ofa_count>0</ofa_count>
+                                        <jpg_count>0</jpg_count>
+                                </shared>
+                        </device_attributes>
+                        <ecc_error_count>
+                                <volatile_count>
+                                        <sram_uncorrectable>0</sram_uncorrectable>
+                                </volatile_count>
+                        </ecc_error_count>
+                        <fb_memory_usage>
+                                <total>9856 MiB</total>
+                                <reserved>0 MiB</reserved>
+                                <used>12 MiB</used>
+                                <free>9843 MiB</free>
+                        </fb_memory_usage>
+                        <bar1_memory_usage>
+                                <total>16383 MiB</total>
+                                <used>0 MiB</used>
+                                <free>16383 MiB</free>
+                        </bar1_memory_usage>
+                </mig_device>
+                <mig_device>
+                        <index>2</index>
+                        <gpu_instance_id>13</gpu_instance_id>
+                        <compute_instance_id>0</compute_instance_id>
+                        <device_attributes>
+                                <shared>
+                                        <multiprocessor_count>14</multiprocessor_count>
+                                        <copy_engine_count>1</copy_engine_count>
+                                        <encoder_count>0</encoder_count>
+                                        <decoder_count>0</decoder_count>
+                                        <ofa_count>0</ofa_count>
+                                        <jpg_count>0</jpg_count>
+                                </shared>
+                        </device_attributes>
+                        <ecc_error_count>
+                                <volatile_count>
+                                        <sram_uncorrectable>0</sram_uncorrectable>
+                                </volatile_count>
+                        </ecc_error_count>
+                        <fb_memory_usage>
+                                <total>4864 MiB</total>
+                                <reserved>0 MiB</reserved>
+                                <used>12 MiB</used>
+                                <free>4851 MiB</free>
+                        </fb_memory_usage>
+                        <bar1_memory_usage>
+                                <total>8191 MiB</total>
+                                <used>0 MiB</used>
+                                <free>8191 MiB</free>
+                        </bar1_memory_usage>
+                </mig_device>
+                </mig_devices>
+                <accounting_mode>Disabled</accounting_mode>
+                <accounting_mode_buffer_size>4000</accounting_mode_buffer_size>
+                <driver_model>
+                        <current_dm>N/A</current_dm>
+                        <pending_dm>N/A</pending_dm>
+                </driver_model>
+                <serial>1323920022972</serial>
+                <uuid>GPU-956348bc-d43d-23ed-53d4-857749fa2b67</uuid>
+                <minor_number>2</minor_number>
+                <vbios_version>92.00.25.00.08</vbios_version>
+                <multigpu_board>No</multigpu_board>
+                <gpu_virtualization_mode>
+                        <virtualization_mode>VGPU</virtualization_mode>
+                        <host_vgpu_mode>N/A</host_vgpu_mode>
+                </gpu_virtualization_mode>
+        </gpu>
+
+        <gpu id=\"00000000:81:00.0\">
+                <product_name>NVIDIA A100-PCIE-40GB</product_name>
+                <product_brand>NVIDIA</product_brand>
+                <product_architecture>Ampere</product_architecture>
+                <display_mode>Enabled</display_mode>
+                <display_active>Disabled</display_active>
+                <persistence_mode>Enabled</persistence_mode>
+                <addressing_mode>None</addressing_mode>
+                <mig_mode>
+                        <current_mig>Enabled</current_mig>
+                        <pending_mig>Enabled</pending_mig>
+                </mig_mode>
+                <mig_devices>
+                <mig_device>
+                        <index>0</index>
+                        <gpu_instance_id>1</gpu_instance_id>
+                        <compute_instance_id>0</compute_instance_id>
+                        <device_attributes>
+                                <shared>
+                                        <multiprocessor_count>56</multiprocessor_count>
+                                        <copy_engine_count>4</copy_engine_count>
+                                        <encoder_count>0</encoder_count>
+                                        <decoder_count>2</decoder_count>
+                                        <ofa_count>0</ofa_count>
+                                        <jpg_count>0</jpg_count>
+                                </shared>
+                        </device_attributes>
+                        <ecc_error_count>
+                                <volatile_count>
+                                        <sram_uncorrectable>0</sram_uncorrectable>
+                                </volatile_count>
+                        </ecc_error_count>
+                        <fb_memory_usage>
+                                <total>19968 MiB</total>
+                                <reserved>0 MiB</reserved>
+                                <used>49 MiB</used>
+                                <free>19918 MiB</free>
+                        </fb_memory_usage>
+                        <bar1_memory_usage>
+                                <total>32767 MiB</total>
+                                <used>0 MiB</used>
+                                <free>32767 MiB</free>
+                        </bar1_memory_usage>
+                </mig_device>
+                <mig_device>
+                        <index>1</index>
+                        <gpu_instance_id>5</gpu_instance_id>
+                        <compute_instance_id>0</compute_instance_id>
+                        <device_attributes>
+                                <shared>
+                                        <multiprocessor_count>28</multiprocessor_count>
+                                        <copy_engine_count>2</copy_engine_count>
+                                        <encoder_count>0</encoder_count>
+                                        <decoder_count>1</decoder_count>
+                                        <ofa_count>0</ofa_count>
+                                        <jpg_count>0</jpg_count>
+                                </shared>
+                        </device_attributes>
+                        <ecc_error_count>
+                                <volatile_count>
+                                        <sram_uncorrectable>0</sram_uncorrectable>
+                                </volatile_count>
+                        </ecc_error_count>
+                        <fb_memory_usage>
+                                <total>9856 MiB</total>
+                                <reserved>0 MiB</reserved>
+                                <used>25 MiB</used>
+                                <free>9831 MiB</free>
+                        </fb_memory_usage>
+                        <bar1_memory_usage>
+                                <total>16383 MiB</total>
+                                <used>0 MiB</used>
+                                <free>16383 MiB</free>
+                        </bar1_memory_usage>
+                </mig_device>
+                <mig_device>
+                        <index>2</index>
+                        <gpu_instance_id>6</gpu_instance_id>
+                        <compute_instance_id>0</compute_instance_id>
+                        <device_attributes>
+                                <shared>
+                                        <multiprocessor_count>14</multiprocessor_count>
+                                        <copy_engine_count>1</copy_engine_count>
+                                        <encoder_count>0</encoder_count>
+                                        <decoder_count>1</decoder_count>
+                                        <ofa_count>0</ofa_count>
+                                        <jpg_count>0</jpg_count>
+                                </shared>
+                        </device_attributes>
+                        <ecc_error_count>
+                                <volatile_count>
+                                        <sram_uncorrectable>0</sram_uncorrectable>
+                                </volatile_count>
+                        </ecc_error_count>
+                        <fb_memory_usage>
+                                <total>9856 MiB</total>
+                                <reserved>0 MiB</reserved>
+                                <used>12 MiB</used>
+                                <free>9843 MiB</free>
+                        </fb_memory_usage>
+                        <bar1_memory_usage>
+                                <total>16383 MiB</total>
+                                <used>0 MiB</used>
+                                <free>16383 MiB</free>
+                        </bar1_memory_usage>
+                </mig_device>
+                </mig_devices>
+                <accounting_mode>Disabled</accounting_mode>
+                <accounting_mode_buffer_size>4000</accounting_mode_buffer_size>
+                <driver_model>
+                        <current_dm>N/A</current_dm>
+                        <pending_dm>N/A</pending_dm>
+                </driver_model>
+                <serial>1323920023230</serial>
+                <uuid>GPU-feba7e40-d724-01ff-b00f-3a439a28a6c7</uuid>
+                <minor_number>3</minor_number>
+                <vbios_version>92.00.25.00.08</vbios_version>
+                <multigpu_board>No</multigpu_board>
+                <gpu_virtualization_mode>
+                        <virtualization_mode>VGPU</virtualization_mode>
+                        <host_vgpu_mode>N/A</host_vgpu_mode>
+                </gpu_virtualization_mode>
+        </gpu>
+        <gpu id=\"00000000:83:00.0\">
+                <product_name>NVIDIA A100-PCIE-40GB</product_name>
+                <product_brand>NVIDIA</product_brand>
+                <product_architecture>Ampere</product_architecture>
+                <display_mode>Enabled</display_mode>
+                <display_active>Disabled</display_active>
+                <persistence_mode>Enabled</persistence_mode>
+                <addressing_mode>None</addressing_mode>
+                <mig_mode>
+                        <current_mig>N/A</current_mig>
+                        <pending_mig>N/A</pending_mig>
+                </mig_mode>
+                <mig_devices>
+                        None
+                </mig_devices>
+                <accounting_mode>Disabled</accounting_mode>
+                <accounting_mode_buffer_size>4000</accounting_mode_buffer_size>
+                <driver_model>
+                        <current_dm>N/A</current_dm>
+                        <pending_dm>N/A</pending_dm>
+                </driver_model>
+                <serial>1323920023230</serial>
+                <uuid>GPU-61a65011-6571-a6d2-5th8-66cbb6f7f9c3</uuid>
+                <minor_number>4</minor_number>
+                <vbios_version>92.00.25.00.08</vbios_version>
+                <multigpu_board>No</multigpu_board>
+                <gpu_virtualization_mode>
+                        <virtualization_mode>None</virtualization_mode>
+                        <host_vgpu_mode>N/A</host_vgpu_mode>
+                </gpu_virtualization_mode>
+        </gpu>
+        <gpu id=\"00000000:85:00.0\">
+                <product_name>NVIDIA A100-PCIE-40GB</product_name>
+                <product_brand>NVIDIA</product_brand>
+                <product_architecture>Ampere</product_architecture>
+                <display_mode>Enabled</display_mode>
+                <display_active>Disabled</display_active>
+                <persistence_mode>Enabled</persistence_mode>
+                <addressing_mode>None</addressing_mode>
+                <mig_mode>
+                        <current_mig>N/A</current_mig>
+                        <pending_mig>N/A</pending_mig>
+                </mig_mode>
+                <mig_devices>
+                        None
+                </mig_devices>
+                <accounting_mode>Disabled</accounting_mode>
+                <accounting_mode_buffer_size>4000</accounting_mode_buffer_size>
+                <driver_model>
+                        <current_dm>N/A</current_dm>
+                        <pending_dm>N/A</pending_dm>
+                </driver_model>
+                <serial>1323920023230</serial>
+                <uuid>GPU-61a65011-6571-a64n-5ab8-66cbb6f7f9c3</uuid>
+                <minor_number>5</minor_number>
+                <vbios_version>92.00.25.00.08</vbios_version>
+                <multigpu_board>No</multigpu_board>
+                <gpu_virtualization_mode>
+                        <virtualization_mode>VGPU</virtualization_mode>
+                        <host_vgpu_mode>N/A</host_vgpu_mode>
+                </gpu_virtualization_mode>
+        </gpu>
+        <gpu id=\"00000000:87:00.0\">
+                <product_name>NVIDIA A100-PCIE-40GB</product_name>
+                <product_brand>NVIDIA</product_brand>
+                <product_architecture>Ampere</product_architecture>
+                <display_mode>Enabled</display_mode>
+                <display_active>Disabled</display_active>
+                <persistence_mode>Enabled</persistence_mode>
+                <addressing_mode>None</addressing_mode>
+                <mig_mode>
+                        <current_mig>N/A</current_mig>
+                        <pending_mig>N/A</pending_mig>
+                </mig_mode>
+                <mig_devices>
+                        None
+                </mig_devices>
+                <accounting_mode>Disabled</accounting_mode>
+                <accounting_mode_buffer_size>4000</accounting_mode_buffer_size>
+                <driver_model>
+                        <current_dm>N/A</current_dm>
+                        <pending_dm>N/A</pending_dm>
+                </driver_model>
+                <serial>1323920023230</serial>
+                <uuid>GPU-1d4d0f3e-b51a-4040-96e3-bf380f7c5728</uuid>
+                <minor_number>6</minor_number>
+                <vbios_version>92.00.25.00.08</vbios_version>
+                <multigpu_board>No</multigpu_board>
+                <gpu_virtualization_mode>
+                        <virtualization_mode>None</virtualization_mode>
+                        <host_vgpu_mode>N/A</host_vgpu_mode>
+                </gpu_virtualization_mode>
+        </gpu>
+        <gpu id=\"00000000:89:00.0\">
+                <product_name>NVIDIA A100-PCIE-40GB</product_name>
+                <product_brand>NVIDIA</product_brand>
+                <product_architecture>Ampere</product_architecture>
+                <display_mode>Enabled</display_mode>
+                <display_active>Disabled</display_active>
+                <persistence_mode>Enabled</persistence_mode>
+                <addressing_mode>None</addressing_mode>
+                <mig_mode>
+                        <current_mig>N/A</current_mig>
+                        <pending_mig>N/A</pending_mig>
+                </mig_mode>
+                <mig_devices>
+                        None
+                </mig_devices>
+                <accounting_mode>Disabled</accounting_mode>
+                <accounting_mode_buffer_size>4000</accounting_mode_buffer_size>
+                <driver_model>
+                        <current_dm>N/A</current_dm>
+                        <pending_dm>N/A</pending_dm>
+                </driver_model>
+                <serial>1323920023230</serial>
+                <uuid>GPU-6cc98505-fdde-461e-a93c-6935fba45a27</uuid>
+                <minor_number>7</minor_number>
+                <vbios_version>92.00.25.00.08</vbios_version>
+                <multigpu_board>No</multigpu_board>
+                <gpu_virtualization_mode>
+                        <virtualization_mode>None</virtualization_mode>
+                        <host_vgpu_mode>N/A</host_vgpu_mode>
+                </gpu_virtualization_mode>
+        </gpu>
+
+</nvidia_smi_log>
+"""
+}
+
+sub_vgpu(){
+    printf """GPU 00000000:10:00.0
+    Active vGPUs                      : 2
+    vGPU ID                           : 3251634213
+        VM UUID                       : 3418ce09-7aad-4506-9305-618522870574
+        VM Name                       : ubuntu-vm-0
+        vGPU Name                     : GRID A100-20C
+        vGPU Type                     : 472
+        vGPU UUID                     : 9a0a5219-8563-11ef-bc81-d4857749fa2b
+        MDEV UUID                     : c73f1fa6-489e-4834-9476-d70dabd98c40
+        Guest Driver Version          : 470.256.02
+        License Status                : Unlicensed (Restricted)
+        GPU Instance ID               : N/A
+        Accounting Mode               : Disabled
+        ECC Mode                      : Enabled
+        Accounting Buffer Size        : 4000
+        Frame Rate Limit              : 15 FPS
+        FB Memory Usage
+            Total                     : 20480 MiB
+            Used                      : 640 MiB
+            Free                      : 19840 MiB
+        Utilization
+            Gpu                       : 0 %%
+            Memory                    : 0 %%
+            Encoder                   : 0 %%
+            Decoder                   : 0 %%
+        Encoder Stats
+            Active Sessions           : 0
+            Average FPS               : 0
+            Average Latency           : 0
+        FBC Stats
+            Active Sessions           : 0
+            Average FPS               : 0
+            Average Latency           : 0
+    vGPU ID                           : 3251634217
+        VM UUID                       : c77c546c-c5a2-4093-bc1b-8051983e7a61
+        VM Name                       : ubuntu-vm-1
+        vGPU Name                     : GRID A100-20C
+        vGPU Type                     : 472
+        vGPU UUID                     : ca12c613-8563-11ef-85cd-bcd43d23ed53
+        MDEV UUID                     : f9702ffa-fa28-414e-a52f-e7831fd5ce41
+        Guest Driver Version          : N/A
+        License Status                : N/A
+        GPU Instance ID               : N/A
+        Accounting Mode               : N/A
+        ECC Mode                      : Enabled
+        Accounting Buffer Size        : 4000
+        Frame Rate Limit              : N/A
+        FB Memory Usage
+            Total                     : 20480 MiB
+            Used                      : 0 MiB
+            Free                      : 20480 MiB
+        Utilization
+            Gpu                       : 0 %%
+            Memory                    : 0 %%
+            Encoder                   : 0 %%
+            Decoder                   : 0 %%
+        Encoder Stats
+            Active Sessions           : 0
+            Average FPS               : 0
+            Average Latency           : 0
+        FBC Stats
+            Active Sessions           : 0
+            Average FPS               : 0
+            Average Latency           : 0
+
+GPU 00000000:15:00.0
+    Active vGPUs                      : 0
+
+GPU 00000000:21:00.0
+    Active vGPUs                      : 3
+    vGPU ID                           : 3251634213
+        VM UUID                       : 66712440-b722-432b-a212-f9ce01acc646
+        VM Name                       : ubuntu-vm-2
+        vGPU Name                     : GRID A100-1-10C
+        vGPU Type                     : 472
+        vGPU UUID                     : 8d8b33a5-88c0-45b8-a213-7e936f9cd63b
+        MDEV UUID                     : f0f4b97c-6580-48a6-ae1b-a807d6dfe08f
+        Guest Driver Version          : 470.256.02
+        License Status                : Unlicensed (Restricted)
+        GPU Instance ID               : 1
+        Accounting Mode               : Disabled
+        ECC Mode                      : Enabled
+        Accounting Buffer Size        : 4000
+        Frame Rate Limit              : 15 FPS
+        FB Memory Usage
+            Total                     : 20480 MiB
+            Used                      : 640 MiB
+            Free                      : 19840 MiB
+        Utilization
+            Gpu                       : 0 %%
+            Memory                    : 0 %%
+            Encoder                   : 0 %%
+            Decoder                   : 0 %%
+        Encoder Stats
+            Active Sessions           : 0
+            Average FPS               : 0
+            Average Latency           : 0
+        FBC Stats
+            Active Sessions           : 0
+            Average FPS               : 0
+            Average Latency           : 0
+    vGPU ID                           : 3251634217
+        VM UUID                       : c77c546c-c5a2-4093-bc1b-8051983e7a61
+        VM Name                       : ubuntu-vm-3
+        vGPU Name                     : GRID A100-5-20C
+        vGPU Type                     : 452
+        vGPU UUID                     : ca12c613-8563-11ef-85cd-bcd43d23ed53
+        MDEV UUID                     : 3b356d38-854e-48be-b376-00c72c7d119c
+        Guest Driver Version          : N/A
+        License Status                : N/A
+        GPU Instance ID               : 5
+        Accounting Mode               : N/A
+        ECC Mode                      : Enabled
+        Accounting Buffer Size        : 4000
+        Frame Rate Limit              : N/A
+        FB Memory Usage
+            Total                     : 20480 MiB
+            Used                      : 0 MiB
+            Free                      : 20480 MiB
+        Utilization
+            Gpu                       : 0 %%
+            Memory                    : 0 %%
+            Encoder                   : 0 %%
+            Decoder                   : 0 %%
+        Encoder Stats
+            Active Sessions           : 0
+            Average FPS               : 0
+            Average Latency           : 0
+        FBC Stats
+            Active Sessions           : 0
+            Average FPS               : 0
+            Average Latency           : 0
+    vGPU ID                           : 3251634217
+        VM UUID                       : c77c546c-c5a2-4093-bc1b-8051983e7a61
+        VM Name                       : ubuntu-vm-4
+        vGPU Name                     : GRID A100-13-20C
+        vGPU Type                     : 462
+        vGPU UUID                     : ca12c613-8563-11ef-85cd-bcd43d23ed53
+        MDEV UUID                     : 5bb3bad7-ce3b-4aa5-84d7-b5b33cf9d45e
+        Guest Driver Version          : N/A
+        License Status                : N/A
+        GPU Instance ID               : 5
+        Accounting Mode               : N/A
+        ECC Mode                      : Enabled
+        Accounting Buffer Size        : 4000
+        Frame Rate Limit              : N/A
+        FB Memory Usage
+            Total                     : 20480 MiB
+            Used                      : 0 MiB
+            Free                      : 20480 MiB
+        Utilization
+            Gpu                       : 0 %%
+            Memory                    : 0 %%
+            Encoder                   : 0 %%
+            Decoder                   : 0 %%
+        Encoder Stats
+            Active Sessions           : 0
+            Average FPS               : 0
+            Average Latency           : 0
+        FBC Stats
+            Active Sessions           : 0
+            Average FPS               : 0
+            Average Latency           : 0
+
+GPU 00000000:81:00.0
+    Active vGPUs                      : 3
+    vGPU ID                           : 3251634213
+        VM UUID                       : 66712440-b722-432b-a212-f9ce01acc646
+        VM Name                       : ubuntu-vm-5
+        vGPU Name                     : GRID A100-1-10C
+        vGPU Type                     : 472
+        vGPU UUID                     : 8d8b33a5-88c0-45b8-a213-7e936f9cd63b
+        MDEV UUID                     : 4f84d324-5897-48f3-a4ef-94c9ddf23d78
+        Guest Driver Version          : 470.256.02
+        License Status                : Unlicensed (Restricted)
+        GPU Instance ID               : 1
+        Accounting Mode               : Disabled
+        ECC Mode                      : Enabled
+        Accounting Buffer Size        : 4000
+        Frame Rate Limit              : 15 FPS
+        FB Memory Usage
+            Total                     : 20480 MiB
+            Used                      : 640 MiB
+            Free                      : 19840 MiB
+        Utilization
+            Gpu                       : 0 %%
+            Memory                    : 0 %%
+            Encoder                   : 0 %%
+            Decoder                   : 0 %%
+        Encoder Stats
+            Active Sessions           : 0
+            Average FPS               : 0
+            Average Latency           : 0
+        FBC Stats
+            Active Sessions           : 0
+            Average FPS               : 0
+            Average Latency           : 0
+    vGPU ID                           : 3251634213
+        VM UUID                       : 66712440-b722-432b-a212-f9ce01acc646
+        VM Name                       : ubuntu-vm-6
+        vGPU Name                     : GRID A100-5-10C
+        vGPU Type                     : 472
+        vGPU UUID                     : 8d8b33a5-88c0-45b8-a213-7e936f9cd63b
+        MDEV UUID                     : 3058eb95-0899-4c3d-90e9-e20b6c14789f
+        Guest Driver Version          : 470.256.02
+        License Status                : Unlicensed (Restricted)
+        GPU Instance ID               : 5
+        Accounting Mode               : Disabled
+        ECC Mode                      : Enabled
+        Accounting Buffer Size        : 4000
+        Frame Rate Limit              : 15 FPS
+        FB Memory Usage
+            Total                     : 20480 MiB
+            Used                      : 640 MiB
+            Free                      : 19840 MiB
+        Utilization
+            Gpu                       : 0 %%
+            Memory                    : 0 %%
+            Encoder                   : 0 %%
+            Decoder                   : 0 %%
+        Encoder Stats
+            Active Sessions           : 0
+            Average FPS               : 0
+            Average Latency           : 0
+        FBC Stats
+            Active Sessions           : 0
+            Average FPS               : 0
+            Average Latency           : 0
+    vGPU ID                           : 3251634213
+        VM UUID                       : 66712440-b722-432b-a212-f9ce01acc646
+        VM Name                       : ubuntu-vm-7
+        vGPU Name                     : GRID A100-6-10C
+        vGPU Type                     : 472
+        vGPU UUID                     : 8d8b33a5-88c0-45b8-a213-7e936f9cd63b
+        MDEV UUID                     : 9f0d5993-9778-40c7-a721-3fec93d6b3a9
+        Guest Driver Version          : 470.256.02
+        License Status                : Unlicensed (Restricted)
+        GPU Instance ID               : 6
+        Accounting Mode               : Disabled
+        ECC Mode                      : Enabled
+        Accounting Buffer Size        : 4000
+        Frame Rate Limit              : 15 FPS
+        FB Memory Usage
+            Total                     : 20480 MiB
+            Used                      : 640 MiB
+            Free                      : 19840 MiB
+        Utilization
+            Gpu                       : 0 %%
+            Memory                    : 0 %%
+            Encoder                   : 0 %%
+            Decoder                   : 0 %%
+        Encoder Stats
+            Active Sessions           : 0
+            Average FPS               : 0
+            Average Latency           : 0
+        FBC Stats
+            Active Sessions           : 0
+            Average FPS               : 0
+            Average Latency           : 0
+
+GPU 00000000:83:00.0
+    Active vGPUs                      : 0
+
+GPU 00000000:85:00.0
+    Active vGPUs                      : 1
+    vGPU ID                           : 3251634213
+        VM UUID                       : 3418ce09-7aad-4506-9305-618522870574
+        VM Name                       : ubuntu-vm-8
+        vGPU Name                     : GRID A100-20C
+        vGPU Type                     : 472
+        vGPU UUID                     : 9a0a5219-8563-11ef-bc81-d4857749fa2b
+        MDEV UUID                     : 64c3c4ae-44e1-45b8-8d46-5f76a1fa9824
+        Guest Driver Version          : 470.256.02
+        License Status                : Unlicensed (Restricted)
+        GPU Instance ID               : N/A
+        Accounting Mode               : Disabled
+        ECC Mode                      : Enabled
+        Accounting Buffer Size        : 4000
+        Frame Rate Limit              : 15 FPS
+        FB Memory Usage
+            Total                     : 20480 MiB
+            Used                      : 640 MiB
+            Free                      : 19840 MiB
+        Utilization
+            Gpu                       : 0 %%
+            Memory                    : 0 %%
+            Encoder                   : 0 %%
+            Decoder                   : 0 %%
+        Encoder Stats
+            Active Sessions           : 0
+            Average FPS               : 0
+            Average Latency           : 0
+        FBC Stats
+            Active Sessions           : 0
+            Average FPS               : 0
+            Average Latency           : 0
+
+GPU 00000000:87:00.0
+    Active vGPUs                      : 0
+
+GPU 00000000:89:00.0
+    Active vGPUs                      : 0
+"""
+}
+
+subcommand=$1
+case $subcommand in
+    "" | "-h" | "--help")
+        sub_help
+        ;;
+    *)
+        shift
+        sub_${subcommand} $@
+        if [ $? = 127 ]; then
+            echo "Error: '$subcommand' is not a known subcommand." >&2
+            echo "       Run '$ProgName --help' for a list of known subcommands." >&2
+            exit 1
+        fi
+        ;;
+esac 
