@@ -27,6 +27,39 @@ clusters:
     cli: 
       path: pkg/api/testdata
 
+  - id: os-0
+    manager: openstack
+    updaters:
+      - tsdb-0
+    web: 
+      http_headers:
+        X-Auth-Token:
+          secrets:
+            - supersecrettoken
+        X-OpenStack-Nova-API-Version:
+          values:
+            - latest
+    extra_config:
+      compute_api_url: http://localhost:8080/v2.1
+      identity_api_url: http://localhost:7070
+
+  - id: os-1
+    manager: openstack
+    updaters:
+      - tsdb-0
+      - tsdb-1
+    web: 
+      http_headers:
+        X-Auth-Token:
+          secrets:
+            - supersecrettoken
+        X-OpenStack-Nova-API-Version:
+          values:
+            - latest
+    extra_config:
+      compute_api_url: http://localhost:8080/v2.1
+      identity_api_url: http://localhost:7070
+
 updaters:
   - id: tsdb-0
     updater: tsdb

@@ -49,7 +49,7 @@ ifeq ($(CGO_BUILD), 1)
 	PROMU_CONF ?= .promu-cgo.yml
 	pkgs := ./pkg/sqlite3 ./pkg/api/cli \
 			./pkg/api/db ./pkg/api/helper \
-			./pkg/api/resource ./pkg/api/resource/slurm \
+			./pkg/api/resource ./pkg/api/resource/slurm ./pkg/api/resource/openstack \
 			./pkg/api/updater \
 			./pkg/api/http ./cmd/ceems_api_server \
 			./pkg/lb/backend ./pkg/lb/cli \

@@ -1,0 +1,23 @@
+{
+    "projects": [
+        {
+            "id": "b964a9e51c0046a4a84d3f83a135a97c",
+            "name": "test-project-4",
+            "domain_id": "default",
+            "description": "",
+            "enabled": true,
+            "parent_id": "default",
+            "is_domain": false,
+            "tags": [],
+            "options": {},
+            "links": {
+                "self": "http://172.16.20.4/identity/v3/projects/b964a9e51c0046a4a84d3f83a135a97c"
+            }
+        }
+    ],
+    "links": {
+        "next": null,
+        "self": "http://172.16.20.4/identity/v3/users/adbc53ea724f4e2bb954e27725b6cf5b/projects",
+        "previous": null
+    }
+}

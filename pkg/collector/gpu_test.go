@@ -603,6 +603,82 @@ func TestUpdateMdevs(t *testing.T) {
 	assert.EqualValues(t, expectedDevs, updatedGPUDevs)
 }
 
+func TestUpdateMdevsEviction(t *testing.T) {
+	nvidiaVGPULog := `GPU 00000000:10:00.0
+    Active vGPUs                      : 1
+    vGPU ID                           : 3251634213
+        MDEV UUID                     : c73f1fa6-489e-4834-9476-d70dabd98c40
+        GPU Instance ID               : N/A
+
+		`
+	tempDir := t.TempDir()
+	nvidiaSMIPath := filepath.Join(tempDir, "nvidia-smi")
+	content := fmt.Sprintf(`#!/bin/bash
+echo """%s"""	
+`, nvidiaVGPULog)
+	os.WriteFile(nvidiaSMIPath, []byte(content), 0o700) // #nosec
+
+	_, err := CEEMSExporterApp.Parse(
+		[]string{
+			"--collector.gpu.nvidia-smi-path", nvidiaSMIPath,
+		},
+	)
+	require.NoError(t, err)
+
+	// Set devices
+	devs := []Device{
+		{
+			busID:       BusID{0x0, 0x10, 0x0, 0x0},
+			vgpuEnabled: true,
+		},
+	}
+
+	// Now updates gpuDevices with mdevs
+	updatedGPUDevs, err := updateGPUMdevs(devs)
+	require.NoError(t, err)
+	assert.EqualValues(t, []string{"c73f1fa6-489e-4834-9476-d70dabd98c40"}, updatedGPUDevs[0].mdevUUIDs)
+
+	// Update nvidia-smi output to simulate a new mdev addition
+	nvidiaVGPULog = `GPU 00000000:10:00.0
+    Active vGPUs                      : 2
+    vGPU ID                           : 3251634213
+        MDEV UUID                     : c73f1fa6-489e-4834-9476-d70dabd98c40
+        GPU Instance ID               : N/A
+
+	vGPU ID                           : 3251634214
+        MDEV UUID                     : 741ac383-27e9-49a9-9955-b513ad2e2e16
+        GPU Instance ID               : N/A
+
+		`
+	content = fmt.Sprintf(`#!/bin/bash
+echo """%s"""	
+`, nvidiaVGPULog)
+	os.WriteFile(nvidiaSMIPath, []byte(content), 0o700) // #nosec
+
+	// Now update gpuDevices again with mdevs
+	updatedGPUDevs, err = updateGPUMdevs(devs)
+	require.NoError(t, err)
+	assert.EqualValues(t, []string{"c73f1fa6-489e-4834-9476-d70dabd98c40", "741ac383-27e9-49a9-9955-b513ad2e2e16"}, updatedGPUDevs[0].mdevUUIDs)
+
+	// Update nvidia-smi output to simulate removal of an existing mdev
+	nvidiaVGPULog = `GPU 00000000:10:00.0
+    Active vGPUs                      : 1
+	vGPU ID                           : 3251634214
+        MDEV UUID                     : 741ac383-27e9-49a9-9955-b513ad2e2e16
+        GPU Instance ID               : N/A
+
+		`
+	content = fmt.Sprintf(`#!/bin/bash
+echo """%s"""	
+`, nvidiaVGPULog)
+	os.WriteFile(nvidiaSMIPath, []byte(content), 0o700) // #nosec
+
+	// Now update gpuDevices again with mdevs
+	updatedGPUDevs, err = updateGPUMdevs(devs)
+	require.NoError(t, err)
+	assert.EqualValues(t, []string{"741ac383-27e9-49a9-9955-b513ad2e2e16"}, updatedGPUDevs[0].mdevUUIDs)
+}
+
 func TestParseBusIDPass(t *testing.T) {
 	id := "00000000:AD:00.0"
 	busID, err := parseBusID(id)
