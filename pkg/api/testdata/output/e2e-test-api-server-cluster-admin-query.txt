@@ -1,1 +1,1 @@
-{"status":"success","data":[{"id":"slurm-0","manager":"slurm"},{"id":"slurm-1","manager":"slurm"}]}
+{"status":"success","data":[{"id":"os-0","manager":"openstack"},{"id":"os-1","manager":"openstack"},{"id":"slurm-0","manager":"slurm"},{"id":"slurm-1","manager":"slurm"}]}

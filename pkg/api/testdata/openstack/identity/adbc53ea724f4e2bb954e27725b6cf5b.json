@@ -1,0 +1,37 @@
+{
+    "projects": [
+        {
+            "id": "066a633fd999424faa3409ab60221fbf",
+            "name": "admin",
+            "domain_id": "default",
+            "description": "Bootstrap project for initializing the cloud.",
+            "enabled": true,
+            "parent_id": "default",
+            "is_domain": false,
+            "tags": [],
+            "options": {},
+            "links": {
+                "self": "http://172.16.20.4/identity/v3/projects/066a633fd999424faa3409ab60221fbf"
+            }
+        },
+        {
+            "id": "9d87d46f8af54da2adc3e7b94c9d3c30",
+            "name": "demo",
+            "domain_id": "default",
+            "description": "",
+            "enabled": true,
+            "parent_id": "default",
+            "is_domain": false,
+            "tags": [],
+            "options": {},
+            "links": {
+                "self": "http://172.16.20.4/identity/v3/projects/9d87d46f8af54da2adc3e7b94c9d3c30"
+            }
+        }
+    ],
+    "links": {
+        "next": null,
+        "self": "http://172.16.20.4/identity/v3/users/adbc53ea724f4e2bb954e27725b6cf5b/projects",
+        "previous": null
+    }
+}

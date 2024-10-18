@@ -53,7 +53,7 @@ Installation instructions of CEEMS components can be found in
 ## Visualizing metrics with Grafana
 
 CEEMS is meant to be used with Grafana for visualization and below are some of the
-screenshots few possible metrics.
+screenshots of dashboards.
 
 ### Time series compute unit CPU metrics
 
