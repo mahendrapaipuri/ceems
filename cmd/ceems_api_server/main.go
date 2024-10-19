@@ -1,13 +1,13 @@
 package main
 
+// We need to import each resource manager and updater package here.
 import (
 	"log"
 	"os"
 
 	"github.com/mahendrapaipuri/ceems/pkg/api/cli"
-	// We need to import each resource manager package here to call init function.
+	_ "github.com/mahendrapaipuri/ceems/pkg/api/resource/openstack"
 	_ "github.com/mahendrapaipuri/ceems/pkg/api/resource/slurm"
-	// We need to import each updater package here to call init function.
 	_ "github.com/mahendrapaipuri/ceems/pkg/api/updater/tsdb"
 )
 

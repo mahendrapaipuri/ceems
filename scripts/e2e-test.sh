@@ -516,10 +516,12 @@ then
   fi
 
   export PATH="${GOBIN:-}:${PATH}"
-  ./bin/mock_tsdb >> "${logfile}" 2>&1 &
-  PROMETHEUS_PID=$!
+  ./bin/mock_servers prom os-compute os-identity >> "${logfile}" 2>&1 &
+  MOCK_SERVERS_PID=$!
 
   waitport "9090"
+  waitport "8080"
+  waitport "7070"
 
   # Copy config file to tmpdir
   cp pkg/api/testdata/config.yml "${tmpdir}/config.yml"
@@ -535,7 +537,7 @@ then
     --log.level="debug" >> "${logfile}" 2>&1 &
   CEEMS_API=$!
 
-  echo "${PROMETHEUS_PID} ${CEEMS_API}" > "${pidfile}"
+  echo "${MOCK_SERVERS_PID} ${CEEMS_API}" > "${pidfile}"
 
   sleep 2
   waitport "${port}"
@@ -548,7 +550,7 @@ then
     get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/projects?project=acc3" > "${fixture_output}"
   elif [ "${scenario}" = "api-project-admin-query" ]
   then
-    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/projects/admin?project=acc1" > "${fixture_output}"
+    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/projects/admin?project=test-project-3" > "${fixture_output}"
   elif [ "${scenario}" = "api-user-query" ]
   then
     get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/users" > "${fixture_output}"
@@ -569,7 +571,7 @@ then
     get -H "X-Grafana-User: usr2" "127.0.0.1:${port}/api/${api_version}/units?cluster_id=slurm-0&from=1676934000&to=1677538800&field=uuiid" > "${fixture_output}"
   elif [ "${scenario}" = "api-running-query" ]
   then
-    get -H "X-Grafana-User: usr3" "127.0.0.1:${port}/api/${api_version}/units?running&cluster_id=slurm-1&from=1676934000&to=1677538800&field=uuid&field=state&field=started_at&field=allocation&field=tags" > "${fixture_output}"
+    get -H "X-Grafana-User: test-user-1" "127.0.0.1:${port}/api/${api_version}/units?running&cluster_id=os-1&field=uuid&field=state&field=started_at&field=allocation&field=tags" > "${fixture_output}"
   elif [ "${scenario}" = "api-admin-query" ]
   then
     get -H "X-Grafana-User: grafana" -H "X-Dashboard-User: usr3" "127.0.0.1:${port}/api/${api_version}/units?cluster_id=slurm-0&project=acc3&from=1676934000&to=1677538800" > "${fixture_output}"
@@ -578,7 +580,7 @@ then
     get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/units/admin?cluster_id=slurm-1&from=1676934000&to=1677538800" > "${fixture_output}"
   elif [ "${scenario}" = "api-admin-query-all-selected-fields" ]
   then
-    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/units/admin?cluster_id=slurm-0&from=1676934000&to=1677538800&field=uuid&field=started_at&field=ended_at&field=foo" > "${fixture_output}"
+    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/units/admin?cluster_id=os-0&running&from=1728990800&to=1728995400&field=uuid&field=started_at&field=ended_at&field=foo" > "${fixture_output}"
   elif [ "${scenario}" = "api-admin-denied-query" ]
   then
     get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/units/admin" > "${fixture_output}"
@@ -587,7 +589,7 @@ then
     get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/usage/current?cluster_id=slurm-1&from=1676934000&to=1677538800" > "${fixture_output}"
   elif [ "${scenario}" = "api-current-usage-experimental-query" ]
   then
-    get -H "X-Grafana-User: usr4" "127.0.0.1:${port}/api/${api_version}/usage/current?cluster_id=slurm-1&from=1676934000&experimental" > "${fixture_output}"
+    get -H "X-Grafana-User: test-user-4" "127.0.0.1:${port}/api/${api_version}/usage/current?cluster_id=os-1&from=1728990800&experimental" > "${fixture_output}"
   elif [ "${scenario}" = "api-global-usage-query" ]
   then
     get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/usage/global?cluster_id=slurm-0&field=username&field=project&field=num_units" > "${fixture_output}"
@@ -596,13 +598,13 @@ then
     get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/usage/current/admin?cluster_id=slurm-1&user=usr15&user=usr3&from=1676934000&to=1677538800" > "${fixture_output}"
   elif [ "${scenario}" = "api-current-usage-admin-experimental-query" ]
   then
-    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/usage/current/admin?cluster_id=slurm-1&user=usr15&user=usr4&from=1676934000&experimental" > "${fixture_output}"
+    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/usage/current/admin?cluster_id=slurm-1&user=usr15&user=usr4&cluster_id=os-1&user=test-user-4&from=1728990800&running&experimental" > "${fixture_output}"
   elif [ "${scenario}" = "api-global-usage-admin-query" ]
   then
     get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/usage/global/admin?cluster_id=slurm-0&field=username&field=project&field=num_units" > "${fixture_output}"
   elif [ "${scenario}" = "api-current-stats-admin-query" ]
   then
-    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/stats/current/admin?cluster_id=slurm-1&from=1676934000&to=1677538800" > "${fixture_output}"
+    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/stats/current/admin?cluster_id=os-1&from=1728994800&to=1729005000" > "${fixture_output}"
   elif [ "${scenario}" = "api-global-stats-admin-query" ]
   then
     get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/stats/global/admin" > "${fixture_output}"
@@ -729,6 +731,12 @@ then
 
     waitport "9090"
 
+    ./bin/mock_servers os-compute os-identity >> "${logfile}" 2>&1 &
+    MOCK_SERVERS_PID=$!
+
+    waitport "8080"
+    waitport "7070"
+
     # Copy config file to tmpdir
     cp pkg/api/testdata/config.yml "${tmpdir}/config.yml"
 
@@ -750,7 +758,7 @@ then
       --log.level="debug" >> "${logfile}" 2>&1 &
     LB_PID=$!
 
-    echo "${PROMETHEUS_PID} ${CEEMS_API_PID} ${LB_PID}" > "${pidfile}"
+    echo "${PROMETHEUS_PID} ${MOCK_SERVERS_PID} ${CEEMS_API_PID} ${LB_PID}" > "${pidfile}"
 
     waitport "${port}"
 
@@ -773,6 +781,12 @@ then
 
     waitport "9090"
 
+    ./bin/mock_servers os-compute os-identity >> "${logfile}" 2>&1 &
+    MOCK_SERVERS_PID=$!
+
+    waitport "8080"
+    waitport "7070"
+
     # Copy config file to tmpdir
     cp pkg/api/testdata/config.yml "${tmpdir}/config.yml"
 
@@ -794,7 +808,7 @@ then
       --log.level="debug" >> "${logfile}" 2>&1 &
     LB_PID=$!
 
-    echo "${PROMETHEUS_PID} ${CEEMS_API_PID} ${LB_PID}" > "${pidfile}"
+    echo "${PROMETHEUS_PID} ${MOCK_SERVERS_PID} ${CEEMS_API_PID} ${LB_PID}" > "${pidfile}"
 
     waitport "${port}"
 

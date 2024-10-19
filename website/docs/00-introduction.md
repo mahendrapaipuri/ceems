@@ -23,6 +23,18 @@ of backward compatibility.
 
 :::
 
+## Features
+
+- Monitor energy, performance, IO and network metrics for different types of resource
+managers (SLURM, Openstack, k8s)
+- Support NVIDIA (MIG and vGPU) and AMD GPUs
+- Realtime access to metrics *via* Grafana dashboards
+- Access control to Prometheus datasource in Grafana
+- Stores aggregated metrics in a separate DB that can be retained for long time
+- CEEMS apps are [capability aware](https://tbhaxor.com/understanding-linux-capabilities/)
+
+## Components
+
 CEEMS provide a set of components that enable operators to monitor the consumption of
 resources of the compute units of different resource managers like SLURM, Openstack and
 Kubernetes.

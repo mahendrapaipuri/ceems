@@ -1,0 +1,76 @@
+{
+    "users": [
+        {
+            "id": "adbc53ea724f4e2bb954e27725b6cf5b",
+            "name": "admin",
+            "domain_id": "default",
+            "enabled": true,
+            "password_expires_at": null,
+            "options": {},
+            "links": {
+                "self": "http://172.16.20.4/identity/v3/users/adbc53ea724f4e2bb954e27725b6cf5b"
+            }
+        },
+        {
+            "id": "03b060551ecc488b8756c9f27258d71e",
+            "name": "test-user-1",
+            "domain_id": "default",
+            "enabled": true,
+            "default_project_id": "cca105ea0cff426e96f096887b7f4b82",
+            "password_expires_at": null,
+            "options": {
+                "lock_password": false
+            },
+            "links": {
+                "self": "http://172.16.20.4/identity/v3/users/03b060551ecc488b8756c9f27258d71e"
+            }
+        },
+        {
+            "id": "5fd1986befa042a4b866944f5adbefeb",
+            "name": "test-user-2",
+            "domain_id": "default",
+            "enabled": true,
+            "default_project_id": "706f9e5f3e174feebcce4e7f08a7b7e3",
+            "password_expires_at": null,
+            "options": {
+                "lock_password": false
+            },
+            "links": {
+                "self": "http://172.16.20.4/identity/v3/users/5fd1986befa042a4b866944f5adbefeb"
+            }
+        },
+        {
+            "id": "4223638a14e44980bf8557cd3ba14e76",
+            "name": "test-user-3",
+            "domain_id": "default",
+            "enabled": true,
+            "default_project_id": "bdb137e6ee6d427a899ac22de5d76b8c",
+            "password_expires_at": null,
+            "options": {
+                "lock_password": false
+            },
+            "links": {
+                "self": "http://172.16.20.4/identity/v3/users/4223638a14e44980bf8557cd3ba14e76"
+            }
+        },
+        {
+            "id": "dc87e591c0d247d5ac04e873bd8a1646",
+            "name": "test-user-4",
+            "domain_id": "default",
+            "enabled": true,
+            "default_project_id": "b964a9e51c0046a4a84d3f83a135a97c",
+            "password_expires_at": null,
+            "options": {
+                "lock_password": false
+            },
+            "links": {
+                "self": "http://172.16.20.4/identity/v3/users/dc87e591c0d247d5ac04e873bd8a1646"
+            }
+        }
+    ],
+    "links": {
+        "next": null,
+        "self": "http://172.16.20.4/identity/v3/users",
+        "previous": null
+    }
+}

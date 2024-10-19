@@ -1,0 +1,316 @@
+{
+  "servers": [
+    {
+      "id": "16af784a-4fa1-429e-953f-4ef5dc462960",
+      "name": "new-2",
+      "status": "DELETED",
+      "tenant_id": "066a633fd999424faa3409ab60221fbf",
+      "user_id": "adbc53ea724f4e2bb954e27725b6cf5b",
+      "metadata": {},
+      "hostId": "328934663ff29af3f46e70889eb46bf2a367883d1025c02e6365aca1",
+      "image": "",
+      "flavor": {
+        "vcpus": 1,
+        "ram": 192,
+        "disk": 1,
+        "ephemeral": 0,
+        "swap": 0,
+        "original_name": "m1.micro",
+        "extra_specs": {
+          "hw_rng:allowed": "True"
+        }
+      },
+      "created": "2024-10-15T13:32:25Z",
+      "updated": "2024-10-15T14:21:29Z",
+      "addresses": {},
+      "accessIPv4": "",
+      "accessIPv6": "",
+      "links": [
+        {
+          "rel": "self",
+          "href": "http://172.16.20.4/compute/v2.1/servers/16af784a-4fa1-429e-953f-4ef5dc462960"
+        },
+        {
+          "rel": "bookmark",
+          "href": "http://172.16.20.4/compute/servers/16af784a-4fa1-429e-953f-4ef5dc462960"
+        }
+      ],
+      "OS-DCF:diskConfig": "AUTO",
+      "OS-EXT-AZ:availability_zone": "nova",
+      "config_drive": "",
+      "key_name": null,
+      "OS-SRV-USG:launched_at": "2024-10-15T13:32:45.000000",
+      "OS-SRV-USG:terminated_at": "2024-10-15T14:21:29.000000",
+      "OS-EXT-SRV-ATTR:host": "cpu-node-4",
+      "OS-EXT-SRV-ATTR:instance_name": "instance-0000000c",
+      "OS-EXT-SRV-ATTR:hypervisor_hostname": "cpu-node-4",
+      "OS-EXT-SRV-ATTR:reservation_id": "r-rcywwpf9",
+      "OS-EXT-SRV-ATTR:launch_index": 1,
+      "OS-EXT-SRV-ATTR:hostname": "new-2",
+      "OS-EXT-SRV-ATTR:kernel_id": "",
+      "OS-EXT-SRV-ATTR:ramdisk_id": "",
+      "OS-EXT-SRV-ATTR:root_device_name": "/dev/vda",
+      "OS-EXT-SRV-ATTR:user_data": null,
+      "OS-EXT-STS:task_state": null,
+      "OS-EXT-STS:vm_state": "deleted",
+      "OS-EXT-STS:power_state": 0,
+      "os-extended-volumes:volumes_attached": [],
+      "locked": false,
+      "locked_reason": null,
+      "description": null,
+      "tags": [],
+      "trusted_image_certificates": null,
+      "host_status": ""
+    },
+    {
+      "id": "d0d60434-4bf1-4eb1-9469-d7b38083a88f",
+      "name": "new-vgpu-3",
+      "status": "DELETED",
+      "tenant_id": "066a633fd999424faa3409ab60221fbf",
+      "user_id": "adbc53ea724f4e2bb954e27725b6cf5b",
+      "metadata": {},
+      "hostId": "328934663ff29af3f46e70889eb46bf2a367883d1025c02e6365aca1",
+      "image": "",
+      "flavor": {
+        "vcpus": 8,
+        "ram": 8192,
+        "disk": 1,
+        "ephemeral": 0,
+        "swap": 0,
+        "original_name": "m10.vgpu",
+        "extra_specs": {
+          "hw_rng:allowed": "True",
+          "resources:VGPU": "1"
+        }
+      },
+      "created": "2024-10-15T13:32:25Z",
+      "updated": "2024-10-15T14:32:10Z",
+      "addresses": {},
+      "accessIPv4": "",
+      "accessIPv6": "",
+      "links": [
+        {
+          "rel": "self",
+          "href": "http://172.16.20.4/compute/v2.1/servers/d0d60434-4bf1-4eb1-9469-d7b38083a88f"
+        },
+        {
+          "rel": "bookmark",
+          "href": "http://172.16.20.4/compute/servers/d0d60434-4bf1-4eb1-9469-d7b38083a88f"
+        }
+      ],
+      "OS-DCF:diskConfig": "AUTO",
+      "OS-EXT-AZ:availability_zone": "nova",
+      "config_drive": "",
+      "key_name": null,
+      "OS-SRV-USG:launched_at": "2024-10-15T13:32:43.000000",
+      "OS-SRV-USG:terminated_at": "2024-10-15T14:32:09.000000",
+      "OS-EXT-SRV-ATTR:host": "gpu-node-4",
+      "OS-EXT-SRV-ATTR:instance_name": "instance-0000000d",
+      "OS-EXT-SRV-ATTR:hypervisor_hostname": "gpu-node-4",
+      "OS-EXT-SRV-ATTR:reservation_id": "r-rcywwpf9",
+      "OS-EXT-SRV-ATTR:launch_index": 2,
+      "OS-EXT-SRV-ATTR:hostname": "new-vgpu-3",
+      "OS-EXT-SRV-ATTR:kernel_id": "",
+      "OS-EXT-SRV-ATTR:ramdisk_id": "",
+      "OS-EXT-SRV-ATTR:root_device_name": "/dev/vda",
+      "OS-EXT-SRV-ATTR:user_data": null,
+      "OS-EXT-STS:task_state": null,
+      "OS-EXT-STS:vm_state": "deleted",
+      "OS-EXT-STS:power_state": 0,
+      "os-extended-volumes:volumes_attached": [],
+      "locked": false,
+      "locked_reason": null,
+      "description": null,
+      "tags": [],
+      "trusted_image_certificates": null,
+      "host_status": ""
+    },
+    {
+      "id": "d8af1245-4639-4981-95db-ae097021401d",
+      "name": "tp-4-1",
+      "status": "DELETED",
+      "tenant_id": "bdb137e6ee6d427a899ac22de5d76b8c",
+      "user_id": "4223638a14e44980bf8557cd3ba14e76",
+      "metadata": {},
+      "hostId": "2113644da507f27b464f562cca634d3ad32bee8e2128555ee03c8e3e",
+      "image": "",
+      "flavor": {
+        "vcpus": 1,
+        "ram": 256,
+        "disk": 1,
+        "ephemeral": 0,
+        "swap": 0,
+        "original_name": "cirros256",
+        "extra_specs": {
+          "hw_rng:allowed": "True"
+        }
+      },
+      "created": "2024-10-15T13:17:53Z",
+      "updated": "2024-10-15T14:21:57Z",
+      "addresses": {},
+      "accessIPv4": "",
+      "accessIPv6": "",
+      "links": [
+        {
+          "rel": "self",
+          "href": "http://172.16.20.4/compute/v2.1/servers/d8af1245-4639-4981-95db-ae097021401d"
+        },
+        {
+          "rel": "bookmark",
+          "href": "http://172.16.20.4/compute/servers/d8af1245-4639-4981-95db-ae097021401d"
+        }
+      ],
+      "OS-DCF:diskConfig": "AUTO",
+      "OS-EXT-AZ:availability_zone": "nova",
+      "config_drive": "",
+      "key_name": null,
+      "OS-SRV-USG:launched_at": "2024-10-15T13:18:08.000000",
+      "OS-SRV-USG:terminated_at": "2024-10-15T14:21:57.000000",
+      "OS-EXT-SRV-ATTR:host": "cpu-node-4",
+      "OS-EXT-SRV-ATTR:instance_name": "instance-00000008",
+      "OS-EXT-SRV-ATTR:hypervisor_hostname": "cpu-node-4",
+      "OS-EXT-SRV-ATTR:reservation_id": "r-63s45rdp",
+      "OS-EXT-SRV-ATTR:launch_index": 0,
+      "OS-EXT-SRV-ATTR:hostname": "tp-4-1",
+      "OS-EXT-SRV-ATTR:kernel_id": "",
+      "OS-EXT-SRV-ATTR:ramdisk_id": "",
+      "OS-EXT-SRV-ATTR:root_device_name": "/dev/vda",
+      "OS-EXT-SRV-ATTR:user_data": null,
+      "OS-EXT-STS:task_state": null,
+      "OS-EXT-STS:vm_state": "deleted",
+      "OS-EXT-STS:power_state": 0,
+      "os-extended-volumes:volumes_attached": [],
+      "locked": false,
+      "locked_reason": null,
+      "description": null,
+      "tags": [],
+      "trusted_image_certificates": null,
+      "host_status": ""
+    },
+    {
+      "id": "6330d17c-6fe8-419c-a044-58e590480e18",
+      "name": "tp-4-11",
+      "status": "DELETED",
+      "tenant_id": "b964a9e51c0046a4a84d3f83a135a97c",
+      "user_id": "dc87e591c0d247d5ac04e873bd8a1646",
+      "metadata": {},
+      "hostId": "2113644da507f27b464f562cca634d3ad32bee8e2128555ee03c8e3e",
+      "image": "",
+      "flavor": {
+        "vcpus": 1,
+        "ram": 256,
+        "disk": 1,
+        "ephemeral": 0,
+        "swap": 0,
+        "original_name": "cirros256",
+        "extra_specs": {
+          "hw_rng:allowed": "True"
+        }
+      },
+      "created": "2024-10-15T13:17:53Z",
+      "updated": "2024-10-15T14:21:57Z",
+      "addresses": {},
+      "accessIPv4": "",
+      "accessIPv6": "",
+      "links": [
+        {
+          "rel": "self",
+          "href": "http://172.16.20.4/compute/v2.1/servers/6330d17c-6fe8-419c-a044-58e590480e18"
+        },
+        {
+          "rel": "bookmark",
+          "href": "http://172.16.20.4/compute/servers/6330d17c-6fe8-419c-a044-58e590480e18"
+        }
+      ],
+      "OS-DCF:diskConfig": "AUTO",
+      "OS-EXT-AZ:availability_zone": "nova",
+      "config_drive": "",
+      "key_name": null,
+      "OS-SRV-USG:launched_at": "2024-10-15T13:18:08.000000",
+      "OS-SRV-USG:terminated_at": "2024-10-15T14:21:57.000000",
+      "OS-EXT-SRV-ATTR:host": "cpu-node-4",
+      "OS-EXT-SRV-ATTR:instance_name": "instance-00000008",
+      "OS-EXT-SRV-ATTR:hypervisor_hostname": "cpu-node-4",
+      "OS-EXT-SRV-ATTR:reservation_id": "r-63s45rdp",
+      "OS-EXT-SRV-ATTR:launch_index": 0,
+      "OS-EXT-SRV-ATTR:hostname": "tp-4-1",
+      "OS-EXT-SRV-ATTR:kernel_id": "",
+      "OS-EXT-SRV-ATTR:ramdisk_id": "",
+      "OS-EXT-SRV-ATTR:root_device_name": "/dev/vda",
+      "OS-EXT-SRV-ATTR:user_data": null,
+      "OS-EXT-STS:task_state": null,
+      "OS-EXT-STS:vm_state": "deleted",
+      "OS-EXT-STS:power_state": 0,
+      "os-extended-volumes:volumes_attached": [],
+      "locked": false,
+      "locked_reason": null,
+      "description": null,
+      "tags": [],
+      "trusted_image_certificates": null,
+      "host_status": ""
+    },
+    {
+      "id": "38c14d24-2e8a-4cb6-ad5b-851612e800ab",
+      "name": "tp-4-12",
+      "status": "DELETED",
+      "tenant_id": "b964a9e51c0046a4a84d3f83a135a97c",
+      "user_id": "dc87e591c0d247d5ac04e873bd8a1646",
+      "metadata": {},
+      "hostId": "2113644da507f27b464f562cca634d3ad32bee8e2128555ee03c8e3e",
+      "image": "",
+      "flavor": {
+        "vcpus": 1,
+        "ram": 256,
+        "disk": 1,
+        "ephemeral": 0,
+        "swap": 0,
+        "original_name": "cirros256",
+        "extra_specs": {
+          "hw_rng:allowed": "True"
+        }
+      },
+      "created": "2024-10-15T13:17:53Z",
+      "updated": "2024-10-15T14:21:57Z",
+      "addresses": {},
+      "accessIPv4": "",
+      "accessIPv6": "",
+      "links": [
+        {
+          "rel": "self",
+          "href": "http://172.16.20.4/compute/v2.1/servers/38c14d24-2e8a-4cb6-ad5b-851612e800ab"
+        },
+        {
+          "rel": "bookmark",
+          "href": "http://172.16.20.4/compute/servers/38c14d24-2e8a-4cb6-ad5b-851612e800ab"
+        }
+      ],
+      "OS-DCF:diskConfig": "AUTO",
+      "OS-EXT-AZ:availability_zone": "nova",
+      "config_drive": "",
+      "key_name": null,
+      "OS-SRV-USG:launched_at": "2024-10-15T13:18:08.000000",
+      "OS-SRV-USG:terminated_at": "2024-10-15T14:21:57.000000",
+      "OS-EXT-SRV-ATTR:host": "cpu-node-4",
+      "OS-EXT-SRV-ATTR:instance_name": "instance-00000008",
+      "OS-EXT-SRV-ATTR:hypervisor_hostname": "cpu-node-4",
+      "OS-EXT-SRV-ATTR:reservation_id": "r-63s45rdp",
+      "OS-EXT-SRV-ATTR:launch_index": 0,
+      "OS-EXT-SRV-ATTR:hostname": "tp-4-1",
+      "OS-EXT-SRV-ATTR:kernel_id": "",
+      "OS-EXT-SRV-ATTR:ramdisk_id": "",
+      "OS-EXT-SRV-ATTR:root_device_name": "/dev/vda",
+      "OS-EXT-SRV-ATTR:user_data": null,
+      "OS-EXT-STS:task_state": null,
+      "OS-EXT-STS:vm_state": "deleted",
+      "OS-EXT-STS:power_state": 0,
+      "os-extended-volumes:volumes_attached": [],
+      "locked": false,
+      "locked_reason": null,
+      "description": null,
+      "tags": [],
+      "trusted_image_certificates": null,
+      "host_status": ""
+    }
+  ]
+}
+

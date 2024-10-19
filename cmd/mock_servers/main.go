@@ -1,22 +1,31 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"hash/fnv"
 	"log"
 	"math"
 	"net/http"
+	"os"
+	"os/signal"
 	"regexp"
 	"slices"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
 )
 
-// Default port Prometheus listens on.
-const portNum string = ":9090"
+// Default ports.
+const (
+	promPortNum   = ":9090"
+	osNovaPortNum = ":8080"
+	osKSPortNum   = ":7070"
+)
 
 // Regex to capture query.
 var (
@@ -211,25 +220,171 @@ func ConfigHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func main() {
+// ServersHandler handles OS compute servers.
+func ServersHandler(w http.ResponseWriter, r *http.Request) {
+	var fileName string
+	if _, ok := r.URL.Query()["deleted"]; ok {
+		fileName = "deleted"
+	} else {
+		fileName = "servers"
+	}
+
+	if data, err := os.ReadFile(fmt.Sprintf("pkg/api/testdata/openstack/compute/%s.json", fileName)); err == nil {
+		w.Write(data)
+
+		return
+	}
+
+	w.WriteHeader(http.StatusInternalServerError)
+	w.Write([]byte("KO"))
+}
+
+// UsersHandler handles OS users.
+func UsersHandler(w http.ResponseWriter, r *http.Request) {
+	if data, err := os.ReadFile("pkg/api/testdata/openstack/identity/users.json"); err == nil {
+		w.Write(data)
+
+		return
+	}
+
+	w.WriteHeader(http.StatusInternalServerError)
+	w.Write([]byte("KO"))
+}
+
+// ProjectsHandler handles OS projects.
+func ProjectsHandler(w http.ResponseWriter, r *http.Request) {
+	userID := r.PathValue("id")
+	if data, err := os.ReadFile(fmt.Sprintf("pkg/api/testdata/openstack/identity/%s.json", userID)); err == nil {
+		w.Write(data)
+
+		return
+	}
+
+	w.WriteHeader(http.StatusInternalServerError)
+	w.Write([]byte("KO"))
+}
+
+func promServer(ctx context.Context) {
 	log.Println("Starting fake prometheus server")
 
 	// Registering our handler functions, and creating paths.
-	http.HandleFunc("/api/v1/query", QueryHandler)
-	http.HandleFunc("/api/v1/status/config", ConfigHandler)
+	promMux := http.NewServeMux()
+	promMux.HandleFunc("/api/v1/query", QueryHandler)
+	promMux.HandleFunc("/api/v1/status/config", ConfigHandler)
 
-	log.Println("Started on port", portNum)
+	log.Println("Started Prometheus on port", promPortNum)
 	log.Println("To close connection CTRL+C :-)")
 
 	// Start server
 	server := &http.Server{
-		Addr:              portNum,
+		Addr:              promPortNum,
 		ReadHeaderTimeout: 3 * time.Second,
+		Handler:           promMux,
 	}
+	defer func() {
+		if err := server.Shutdown(ctx); err != nil {
+			log.Println("Failed to shutdown fake Prometheus server", err)
+		}
+	}()
 
 	// Spinning up the server.
 	err := server.ListenAndServe()
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func osNovaServer(ctx context.Context) {
+	log.Println("Starting fake Openstack compute API server")
+
+	// Registering our handler functions, and creating paths.
+	osNovaMux := http.NewServeMux()
+	osNovaMux.HandleFunc("/v2.1/servers/detail", ServersHandler)
+
+	log.Println("Started Openstack compute API server on port", osNovaPortNum)
+	log.Println("To close connection CTRL+C :-)")
+
+	// Start server
+	server := &http.Server{
+		Addr:              osNovaPortNum,
+		ReadHeaderTimeout: 3 * time.Second,
+		Handler:           osNovaMux,
+	}
+	defer func() {
+		if err := server.Shutdown(ctx); err != nil {
+			log.Println("Failed to shutdown fake Openstack compute API server", err)
+		}
+	}()
+
+	// Spinning up the server.
+	err := server.ListenAndServe()
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func osKSServer(ctx context.Context) {
+	log.Println("Starting fake Openstack identity API server")
+
+	// Registering our handler functions, and creating paths.
+	osKSMux := http.NewServeMux()
+	osKSMux.HandleFunc("/v3/users", UsersHandler)
+	osKSMux.HandleFunc("/v3/users/{id}/projects", ProjectsHandler)
+
+	log.Println("Started Prometheus on port", osKSPortNum)
+	log.Println("To close connection CTRL+C :-)")
+
+	// Start server
+	server := &http.Server{
+		Addr:              osKSPortNum,
+		ReadHeaderTimeout: 3 * time.Second,
+		Handler:           osKSMux,
+	}
+	defer func() {
+		if err := server.Shutdown(ctx); err != nil {
+			log.Println("Failed to shutdown fake Openstack identity API server", err)
+		}
+	}()
+
+	// Spinning up the server.
+	err := server.ListenAndServe()
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func main() {
+	log.Println("Starting fake test servers")
+
+	args := os.Args[1:]
+
+	// Registering our handler functions, and creating paths.
+	ctx, cancel := context.WithCancel(context.Background())
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT)
+
+	if slices.Contains(args, "prom") {
+		go func() {
+			promServer(ctx)
+		}()
+	}
+
+	if slices.Contains(args, "os-compute") {
+		go func() {
+			osNovaServer(ctx)
+		}()
+	}
+
+	if slices.Contains(args, "os-identity") {
+		go func() {
+			osKSServer(ctx)
+		}()
+	}
+
+	sig := <-sigs
+	log.Println(sig)
+
+	cancel()
+
+	log.Println("Fake test servers have been stopped")
 }

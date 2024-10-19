@@ -10,7 +10,7 @@ const projectName = "ceems";
 const config: Config = {
   title: "Compute Energy & Emissions Monitoring Stack (CEEMS)",
   tagline:
-    "Monitor the energy consumption and equivalent emissions of your workloads in realtime",
+    "Monitor the energy consumption and carbon footprint of your workloads in realtime",
   favicon: "img/favicon.ico",
 
   // Set the production url of your site here
