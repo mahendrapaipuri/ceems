@@ -2,7 +2,6 @@ package openstack
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"strconv"
 	"time"
@@ -16,8 +15,6 @@ func init() {
 	} else {
 		currentLocation = time.Now().Location()
 	}
-
-	fmt.Println("QQQQ", os.Getenv("CI"), currentLocation, time.Now()) //nolint:forbidigo
 }
 
 const RFC3339MilliNoZ = "2006-01-02T15:04:05.999999"
@@ -179,7 +176,6 @@ func (r *Server) UnmarshalJSON(b []byte) error {
 		r.UpdatedAt.Nanosecond(),
 		currentLocation,
 	)
-	fmt.Println("BBB", r.CreatedAt, r.UpdatedAt, r.LaunchedAt, r.TerminatedAt, r.CreatedAt.Format(osTimeFormat), r.UpdatedAt.Format(osTimeFormat), r.LaunchedAt.Format(osTimeFormat), r.TerminatedAt.Format(osTimeFormat), currentLocation) //nolint:forbidigo
 
 	return err
 }
