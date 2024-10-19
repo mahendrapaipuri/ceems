@@ -12,13 +12,12 @@ func init() {
 	// If we are in CI env, use fixed time location
 	// for e2e tests
 	if os.Getenv("CI") != "" {
-		t, _ := time.Parse("2006-01-02 15:04:05 MST", "2023-09-27 18:00:00 CEST")
-		currentLocation = t.Location()
+		currentLocation, _ = time.LoadLocation("CET")
 	} else {
 		currentLocation = time.Now().Location()
 	}
 
-	fmt.Println("QQQQ", os.Getenv("CI"), currentLocation) //nolint:forbidigo
+	fmt.Println("QQQQ", os.Getenv("CI"), currentLocation, time.Now()) //nolint:forbidigo
 }
 
 const RFC3339MilliNoZ = "2006-01-02T15:04:05.999999"
