@@ -30,6 +30,6 @@ scrape_configs:
 ```
 
 The `metric_relabel_configs` is replacing the label `UUID` which is
-the UUID of GPU with `gpuuuuid` which is compatible with CEEMS
+the UUID of GPU with `gpuuuid` which is compatible with CEEMS
 exporter. Moreover the config also drops unused `UUID` and `modelName`
 labels to reduce storage and cardinality.
