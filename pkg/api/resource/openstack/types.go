@@ -17,7 +17,8 @@ func init() {
 	} else {
 		currentLocation = time.Now().Location()
 	}
-	fmt.Println("QQQQ", os.Getenv("CI"), currentLocation)
+
+	fmt.Println("QQQQ", os.Getenv("CI"), currentLocation) //nolint:forbidigo
 }
 
 const RFC3339MilliNoZ = "2006-01-02T15:04:05.999999"
@@ -54,7 +55,7 @@ func (jt *JSONRFC3339MilliNoZ) UnmarshalJSON(data []byte) error {
 			currentLocation,
 		),
 	)
-	fmt.Println("BBB", jt, currentLocation)
+	fmt.Println("BBB", jt, currentLocation) //nolint:forbidigo
 
 	return nil
 }
