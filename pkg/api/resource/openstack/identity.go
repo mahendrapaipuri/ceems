@@ -181,8 +181,6 @@ func (o *openstackManager) usersProjectsAssoc(ctx context.Context, current time.
 			Users:         usersList,
 			LastUpdatedAt: currentTime,
 		}
-
-		fmt.Println("project", fmt.Sprintf("%#v", projectModels[iproject])) //nolint:forbidigo
 	}
 
 	// Transform map into slice of users
@@ -206,8 +204,6 @@ func (o *openstackManager) usersProjectsAssoc(ctx context.Context, current time.
 			Projects:      projectsList,
 			LastUpdatedAt: currentTime,
 		}
-
-		fmt.Println("user", fmt.Sprintf("%#v", userModels[iuser])) //nolint:forbidigo
 	}
 
 	level.Info(o.logger).

@@ -237,8 +237,6 @@ func (o *openstackManager) activeInstances(ctx context.Context, start time.Time,
 			Tags:            tags,
 		}
 
-		fmt.Println("unit", fmt.Sprintf("%#v", units[iServer])) //nolint:forbidigo
-
 		iServer++
 	}
 

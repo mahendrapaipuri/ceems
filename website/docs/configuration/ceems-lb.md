@@ -4,125 +4,246 @@ sidebar_position: 4
 
 # CEEMS Load Balancer
 
-The following shows the reference for CEEMS load balancer config. A valid sample 
-configuration file can be found in the 
+CEEMS Load Balancer configuration has one main section and two optional
+section. A basic skeleton of the configuration is as follows:
+
+```yaml
+# CEEMS Load Balancer configuration skeleton
+
+ceems_lb: <CEEMS LB CONFIG>
+
+# Optional section
+ceems_api_server: <CEEMS API SERVER CONFIG>
+
+# Optional section
+clusters: <CLUSTERS CONFIG>
+```
+
+CEEMS LB uses the same configuration section of `ceems_api_server` and
+`clusters` and hence, it is **possible to merge config files** of CEEMS
+API server and CEEMS LB. Each component will read the necessary config
+from the same file.
+
+A valid sample
+configuration file can be found in the
 [repo](https://github.com/mahendrapaipuri/ceems/blob/main/build/config/ceems_lb/ceems_lb.yml).
 
+## CEEMS Load Balancer Configuration
+
+A sample CEEMS LB config file is shown below:
+
 ```yaml
-# Configuration file to configure CEEMS Load Balancer
-#
-# This config file has following sections:
-#  - `ceems_lb`: Core configuration of CEEMS LB
-#  - `ceems_api_server`: Client configuration of CEEMS API server
-#  - `clusters`: This is optional config which can be used to validate backends IDs
-#
----
+
 ceems_lb:
-  # Load balancing strategy. Three possibilites
-  #
-  # - round-robin
-  # - least-connection
-  # - resource-based
-  #
-  # Round robin and least connection are classic strategies.
-  # Resource based works based on the query range in the TSDB query. The 
-  # query will be proxied to the backend that covers the query_range
-  #
-  [ strategy: <lbstrategy> | default = round-robin ]
-
-  # List of backends for each cluster
-  #
+  strategy: resource-based
   backends:
-    [ - <backend_config> ] 
-      
+    - id: slurm-0
+      tsdb_urls: 
+        - http://localhost:9090
 
-# CEEMS API server config.
-# This config is essential to enable access control on the TSDB. By excluding 
-# this config, no access control is imposed on the TSDB and a basic load balancing
-# based on the chosen strategy will be made.
-#
-# Essentially, basic access control is implemented by checking the ownership of the
-# queried unit. Users that belong to the same project can query the units belong
-# to that project. 
-# 
-# For example, if there is a unit U that belongs to User A and 
-# Project P. Any user that belongs to same project P can query for the metrics of unit U
-# but not users from other projects.
-#
-ceems_api_server:
-  # The DB contains the information of user and projet units and LB will verify
-  # if user/project is the owner of the uuid under request to decide whether to
-  # proxy request to backend or not.
-  #
-  # To identify the current user, X-Grafana-User header will be used that Grafana
-  # is capable of sending to the datasource. Grafana essenatially adds this header
-  # on the backend server and hence it is not possible for the users to spoof this 
-  # header from the browser. 
-  # In order to enable this feature, it is essential to set `send_user_header = true`
-  # in Grafana config file.
-  #
-  # If both CEEMS API and CEEMS LB is running on the same host, it is preferable to
-  # use the DB directly using `data.path` as DB query is way faster than a API request
-  # If both apps are deployed on the same host, ensure that the user running `ceems_lb`
-  # has permissions to open CEEMS API data files
-  #
-  data:
-    [ <data_config> ]
-
-  # In the case where CEEMS API and ceems LB are deployed on different hosts, we can
-  # still perform access control using CEEMS API server by making a API request to
-  # check the ownership of the queried unit. This method should be only preferred when
-  # DB cannot be access directly as API request has additional latency than querying DB
-  # directly.
-  #
-  # If both `data.path` and `web.url` are provided, DB will be preferred as it has lower
-  # latencies.
-  #
-  web:
-    [ <web_client_config> ]
+    - id: slurm-1
+      tsdb_urls: 
+        - http://localhost:9090
 ```
 
-## `<backend_config>`
+- `strategy`: Load balancing strategy. Besides classical `round-robin` and
+`least-connection` strategies, a custom `resource-based` strategy is supported.
+In the  `resource-based` strategy, the query will be proxied to the TSDB instance
+that has the data based on the time period in the query.
+- `backends`: A list of objects describing each TSDB backend.
+  - `backends.id`: It is **important**
+     that the `id` in the backend must be the same `id` used in the
+     [Clusters Configuration](./ceems-api-server.md#clusters-configuration). This
+     is how CEEMS LB will know which cluster to target.
+  - `backends.tsdb_urls`: A list of TSDB servers that scrape metrics from this
+     cluster identified by `id`.
 
-A `backend_config` allows configuring backend TSDB servers for load balancer.
+:::warning[WARNING]
+
+CEEMS LB is meant to deploy in the same DMZ as the TSDB servers and hence, it
+does not support TLS for the backends.
+
+:::
+
+### Matching `backends.id` with `clusters.id`
+
+This is the tricky part of the configuration which can be better explained with
+an example. Consider we are running CEEMS API server with the following
+configuration:
 
 ```yaml
-# Identifier of the cluster
-#
-# This ID must match with the ones defined in `clusters` config. CEEMS API server
-# will tag each compute unit from that cluster with this ID and when verifying
-# for compute unit ownership, CEEMS LB will use the ID to query for the compute 
-# units of that cluster.
-#
-# This identifier needs to be in the path parameter for requests to CEEMS LB
-# to target correct cluster. For instance there are two different clusters,
-# say `cluster-0` and `cluster-1`, that have different TSDBs configured. Using CEEMS 
-# LB we can load balance the traffic for these two clusters using a single CEEMS LB 
-# deployement. However, we need to tell CEEMS LB which cluster to target for the 
-# incoming traffic. This is done via path parameter. 
-#
-# If CEEMS LB is running at http://localhost:9030, then the `cluster-0` is reachable at 
-# `http://localhost:9030/cluster-0` and `cluster-1` at `http://localhost:9030/cluster-1`.
-# Internally, CEEMS will strip the first part in the URL path, use it to identify
-# cluster and proxy the rest of URL path to underlying TSDB backend. 
-# Thus, all the requests to `http://localhost:9030/cluster-0` will be load 
-# balanced across TSDB backends of `cluster-0`. 
-#
-id: <idname>
+ceems_api_server:
+  data:
+    path: /var/lib/ceems
+    update_interval: 15m
 
-# List of TSDBs for this cluster. Load balancing between these TSDBs will be 
-# made based on the strategy chosen.
-#
-# TLS is not supported for backends. CEEMS LB supports TLS and TLS terminates
-# at the LB and requests are proxied to backends on HTTP. 
-#
-# LB and backend servers are meant to be in the same DMZ so that we do not need
-# to encrypt communications. Backends however support basic auth and they can 
-# be configured in URL with usual syntax.
-#
-# An example of configuring the basic auth username and password with backend
-# - http://alice:password@localhost:9090
-#
-tsdb_urls: 
-  [ - <host> ]
+clusters:
+  - id: slurm-0
+    manager: slurm
+    updaters:
+      - tsdb-0
+    cli: 
+      <omitted for brevity>
+
+  - id: slurm-1
+    manager: slurm
+    updaters:
+      - tsdb-1
+    cli: 
+      <omitted for brevity>
+
+updaters:
+  - id: tsdb-0
+    updater: tsdb
+    web:
+      url: http://tsdb-0
+    extra_config:
+        <omitted for brevity>
+  
+  - id: tsdb-1
+    updater: tsdb
+    web:
+      url: http://tsdb-1
+    extra_config:
+        <omitted for brevity>
 ```
+
+Here are we monitoring two SLURM clusters: `slurm-0`and `slurm-1`.
+There are two different TSDB servers `tsdb-0`
+and `tsdb-1` where `tsdb-0` is scrapping metrics from `slurm-0`
+and `tsdb-1` scrapping metrics from only `slurm-1`. Assuming
+`tsdb-0` is replicating data onto `tsdb-0-replica` and `tsdb-1`
+onto `tsdb-1-replica`, we need to use the following config for
+`ceems_lb`
+
+```yaml
+ceems_lb:
+  strategy: resource-based
+  backends:
+    - id: slurm-0
+      tsdb_urls: 
+        - http://tsdb-0
+        - http://tsdb-0-replica
+
+    - id: slurm-1
+      tsdb_urls: 
+        - http://tsdb-1
+        - http://tsdb-1-replica
+
+```
+
+As metrics data of `slurm-0` only exists in either `tsdb-0` or
+`tsdb-0-replica`, we need to set `backends.id` to `slurm-0` for
+these TSDB backends.
+
+Effectively we will use CEEMS LB as a Prometheus datasource in
+Grafana and while doing so, we need to target correct cluster
+using path parameter. For instance, for `slurm-0` cluster the
+datasource URL must be configured as `http://ceems-lb:9030/slurm-0`
+assuming `ceems_lb` is running on port `9030`. Now, CEEMS LB will
+know which cluster to target (in this case `slurm-0`), strips
+the path parameter `slurm-0` from the path and proxies the request
+to one of the configured backends. This allows a single instance
+of CEEMS to load balance across different clusters.
+
+## CEEMS API Server Configuration
+
+This is an optional config when provided will enforce access
+control for the backend TSDBs. A sample config file is given
+below:
+
+```yaml
+ceems_api_server:
+  web:
+    url: http://localhost:9020
+```
+
+- `web.url`: Address at which CEEMS API server is running. CEEMS LB
+will make a request to CEEMS API request to verify the ownership of
+the comput unit before proxying request to TSDB. All the possible
+configuration parameters for `web` can be found in
+[Web Client Configuration Reference](./config-reference.md#web_client_config).
+
+If both CEEMS API server and CEEMS LB has access to CEEMS data path,
+it is possible to use the `ceems_api_server.db.path` as well to
+query the DB directly instead of making an API request. This will have
+much lower latency and higher performance.
+
+## Clusters Configuration
+
+Same configuration as discussed in
+[CEEMS API Server's Cluster Configuration](./ceems-api-server.md#clusters-configuration)
+can be provided as an optional configuration to verify the `backends` configuration.
+This is not mandatory and if not provided, CEEMS LB will verify the backend
+`ids` by making an API request to CEEMS API server.
+
+## Example configuration files
+
+As it is clear from above sections, there is a lot of common configuration
+between CEEMS API server and CEEMS LB. Thus, when it is possible, it is
+advised to merge two configurations in one file.
+
+Taking one of the [examples](./ceems-api-server.md#examples) in CEEMS API
+server section, we can add CEEMS LB config as follows:
+
+```yaml
+ceems_api_server:
+  data:
+    path: /var/lib/ceems
+    update_interval: 15m
+
+  admin:
+    users:
+      - adm1
+  
+  web:
+    url: http://localhost:9020
+    requests_limit: 30
+
+clusters:
+  - id: slurm-0
+    manager: slurm
+    updaters:
+      - tsdb-0
+    cli: 
+      <omitted for brevity>
+
+  - id: os-0
+    manager: openstack
+    updaters:
+      - tsdb-1
+    web: 
+      <omitted for brevity>
+
+updaters:
+  - id: tsdb-0
+    updater: tsdb
+    web:
+      url: http://tsdb-0
+    extra_config:
+      <omitted for brevity>
+  
+  - id: tsdb-1
+    updater: tsdb
+    web:
+      url: http://tsdb-1
+    extra_config:
+      <omitted for brevity>
+
+ceems_lb:
+  strategy: resource-based
+  backends:
+    - id: slurm-0
+      tsdb_urls: 
+        - http://tsdb-0
+        - http://tsdb-0-replica
+
+    - id: os-0
+      tsdb_urls: 
+        - http://tsdb-1
+        - http://tsdb-1-replica
+```
+
+This config assumes `tsdb-0` is replicating data to `tsdb-0-replica`,
+`tsdb-1` to `tsbd-1-replica` and CEEMS API server is running on
+port `9020` on the same host as CEEMS LB.
