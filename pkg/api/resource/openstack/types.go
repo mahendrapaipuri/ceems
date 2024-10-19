@@ -55,7 +55,6 @@ func (jt *JSONRFC3339MilliNoZ) UnmarshalJSON(data []byte) error {
 			currentLocation,
 		),
 	)
-	fmt.Println("BBB", jt, currentLocation) //nolint:forbidigo
 
 	return nil
 }
@@ -181,6 +180,7 @@ func (r *Server) UnmarshalJSON(b []byte) error {
 		r.UpdatedAt.Nanosecond(),
 		currentLocation,
 	)
+	fmt.Println("BBB", r.CreatedAt, r.UpdatedAt, r.LaunchedAt, r.TerminatedAt, r.CreatedAt.Format(osTimeFormat), r.UpdatedAt.Format(osTimeFormat), r.LaunchedAt.Format(osTimeFormat), r.TerminatedAt.Format(osTimeFormat), currentLocation) //nolint:forbidigo
 
 	return err
 }
