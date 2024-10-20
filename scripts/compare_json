@@ -24,8 +24,8 @@ def main():
 
     # Read file contents into dicts
     try:
-         with open(path_1, 'r') as f:
-        dict_1 = ordered(json.loads(f.read()))
+        with open(path_1, 'r') as f:
+            dict_1 = ordered(json.loads(f.read()))
         with open(path_2, 'r') as f:
             dict_2 = ordered(json.loads(f.read()))
     except:
