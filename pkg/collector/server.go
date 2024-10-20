@@ -25,6 +25,7 @@ type WebConfig struct {
 	WebSystemdSocket       bool
 	WebConfigFile          string
 	MetricsPath            string
+	TargetsPath            string
 	MaxRequests            int
 	IncludeExporterMetrics bool
 	EnableDebugServer      bool
@@ -33,22 +34,24 @@ type WebConfig struct {
 
 // Config makes a server config.
 type Config struct {
-	Logger    log.Logger
-	Collector *CEEMSCollector
-	Web       WebConfig
+	Logger     log.Logger
+	Collector  *CEEMSCollector
+	Discoverer *CEEMSAlloyTargetDiscoverer
+	Web        WebConfig
 }
 
 // CEEMSExporterServer struct implements HTTP server for exporter.
 type CEEMSExporterServer struct {
-	logger    log.Logger
-	server    *http.Server
-	webConfig *web.FlagConfig
-	collector *CEEMSCollector
-	handler   *metricsHandler
+	logger         log.Logger
+	server         *http.Server
+	webConfig      *web.FlagConfig
+	collector      *CEEMSCollector
+	discoverer     *CEEMSAlloyTargetDiscoverer
+	metricsHandler *metricsHandler
+	targetsHandler *targetsHandler
 }
 
-// metricsHandler wraps an metrics http.Handler. Create instances with
-// newHandler.
+// metricsHandler wraps an metrics http.Handler.
 type metricsHandler struct {
 	handler http.Handler
 	// exporterMetricsRegistry is a separate registry for the metrics about
@@ -64,12 +67,24 @@ func (h *metricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.handler.ServeHTTP(w, r)
 }
 
+// targetsHandler wraps an Alloy targets http.Handler.
+type targetsHandler struct {
+	handler     http.Handler
+	maxRequests int
+}
+
+// ServeHTTP implements http.Handler.
+func (h *targetsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.handler.ServeHTTP(w, r)
+}
+
 // NewCEEMSExporterServer creates new CEEMSExporterServer struct instance.
 func NewCEEMSExporterServer(c *Config) (*CEEMSExporterServer, error) {
 	router := mux.NewRouter()
 	server := &CEEMSExporterServer{
-		logger:    c.Logger,
-		collector: c.Collector,
+		logger:     c.Logger,
+		collector:  c.Collector,
+		discoverer: c.Discoverer,
 		server: &http.Server{
 			Addr:              c.Web.Addresses[0],
 			Handler:           router,
@@ -82,26 +97,29 @@ func NewCEEMSExporterServer(c *Config) (*CEEMSExporterServer, error) {
 			WebSystemdSocket:   &c.Web.WebSystemdSocket,
 			WebConfigFile:      &c.Web.WebConfigFile,
 		},
-		handler: &metricsHandler{
+		metricsHandler: &metricsHandler{
 			metricsRegistry:         prometheus.NewRegistry(),
 			exporterMetricsRegistry: prometheus.NewRegistry(),
 			includeExporterMetrics:  c.Web.IncludeExporterMetrics,
 			maxRequests:             c.Web.MaxRequests,
 		},
+		targetsHandler: &targetsHandler{
+			maxRequests: c.Web.MaxRequests,
+		},
 	}
 
 	// Register exporter metrics when requested
 	if c.Web.IncludeExporterMetrics {
-		server.handler.exporterMetricsRegistry.MustRegister(
+		server.metricsHandler.exporterMetricsRegistry.MustRegister(
 			promcollectors.NewProcessCollector(promcollectors.ProcessCollectorOpts{}),
 			promcollectors.NewGoCollector(),
 		)
 	}
 
 	// Register metrics collector with Prometheus
-	server.handler.metricsRegistry.MustRegister(version.NewCollector(CEEMSExporterAppName))
+	server.metricsHandler.metricsRegistry.MustRegister(version.NewCollector(CEEMSExporterAppName))
 
-	if err := server.handler.metricsRegistry.Register(server.collector); err != nil {
+	if err := server.metricsHandler.metricsRegistry.Register(server.collector); err != nil {
 		return nil, fmt.Errorf("couldn't register compute resource collector: %w", err)
 	}
 
@@ -116,7 +134,10 @@ func NewCEEMSExporterServer(c *Config) (*CEEMSExporterServer, error) {
 	}
 
 	// Handle metrics path
-	router.Handle(c.Web.MetricsPath, server.metricsHandler())
+	router.Handle(c.Web.MetricsPath, server.newMetricsHandler())
+
+	// Handle targets path
+	router.Handle(c.Web.TargetsPath, server.newTargetsHandler())
 
 	// If EnableDebugServer is true add debug endpoints
 	if c.Web.EnableDebugServer {
@@ -166,34 +187,46 @@ func (s *CEEMSExporterServer) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-// metricsHandler creates a new handler for exporting metrics.
-func (s *CEEMSExporterServer) metricsHandler() http.Handler {
+// newMetricsHandler creates a new handler for exporting metrics.
+func (s *CEEMSExporterServer) newMetricsHandler() http.Handler {
 	var handler http.Handler
-	if s.handler.includeExporterMetrics {
+	if s.metricsHandler.includeExporterMetrics {
 		handler = promhttp.HandlerFor(
-			prometheus.Gatherers{s.handler.exporterMetricsRegistry, s.handler.metricsRegistry},
+			prometheus.Gatherers{s.metricsHandler.exporterMetricsRegistry, s.metricsHandler.metricsRegistry},
 			promhttp.HandlerOpts{
 				ErrorLog:            stdlog.New(log.NewStdlibAdapter(level.Error(s.logger)), "", 0),
 				ErrorHandling:       promhttp.ContinueOnError,
-				MaxRequestsInFlight: s.handler.maxRequests,
-				Registry:            s.handler.exporterMetricsRegistry,
+				MaxRequestsInFlight: s.metricsHandler.maxRequests,
+				Registry:            s.metricsHandler.exporterMetricsRegistry,
 			},
 		)
 		// Note that we have to use h.exporterMetricsRegistry here to
 		// use the same promhttp metrics for all expositions.
 		handler = promhttp.InstrumentMetricHandler(
-			s.handler.exporterMetricsRegistry, handler,
+			s.metricsHandler.exporterMetricsRegistry, handler,
 		)
 	} else {
 		handler = promhttp.HandlerFor(
-			s.handler.metricsRegistry,
+			s.metricsHandler.metricsRegistry,
 			promhttp.HandlerOpts{
 				ErrorLog:            stdlog.New(log.NewStdlibAdapter(level.Error(s.logger)), "", 0),
 				ErrorHandling:       promhttp.ContinueOnError,
-				MaxRequestsInFlight: s.handler.maxRequests,
+				MaxRequestsInFlight: s.metricsHandler.maxRequests,
 			},
 		)
 	}
 
 	return handler
+}
+
+// newTargetsHandler creates a new handler for exporting Grafana Alloy targets.
+func (s *CEEMSExporterServer) newTargetsHandler() http.Handler {
+	return TargetsHandlerFor(
+		s.discoverer,
+		promhttp.HandlerOpts{
+			ErrorLog:            stdlog.New(log.NewStdlibAdapter(level.Error(s.logger)), "", 0),
+			ErrorHandling:       promhttp.ContinueOnError,
+			MaxRequestsInFlight: s.targetsHandler.maxRequests,
+		},
+	)
 }

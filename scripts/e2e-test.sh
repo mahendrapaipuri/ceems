@@ -41,7 +41,7 @@ do
   esac
 done
 
-if [[ "${scenario}" =~ ^"exporter" ]]
+if [[ "${scenario}" =~ ^"exporter" ]] || [[ "${scenario}" =~ ^"discoverer" ]]
 then
   # cgroups_mode=$([ $(stat -fc %T /sys/fs/cgroup/) = "cgroup2fs" ] && echo "unified" || ( [ -e /sys/fs/cgroup/unified/ ] && echo "hybrid" || echo "legacy"))
   # cgroups_mode="legacy"
@@ -50,52 +50,62 @@ then
   then
     cgroups_mode="legacy"
     desc="Cgroups V1"
-    fixture='pkg/collector/testdata/output/e2e-test-cgroupsv1-output.txt'
+    fixture='pkg/collector/testdata/output/exporter/e2e-test-cgroupsv1-output.txt'
   elif [ "${scenario}" = "exporter-cgroups-v1-memory-subsystem" ]
   then
     cgroups_mode="legacy"
     desc="Cgroups V1 with memory subsystem"
-    fixture='pkg/collector/testdata/output/e2e-test-cgroupsv1-memory-subsystem-output.txt'
+    fixture='pkg/collector/testdata/output/exporter/e2e-test-cgroupsv1-memory-subsystem-output.txt'
   elif [ "${scenario}" = "exporter-cgroups-v2-nvidia-ipmiutil" ]
   then
     cgroups_mode="unified"
     desc="Cgroups V2 with nVIDIA GPU and ipmiutil"
-    fixture='pkg/collector/testdata/output/e2e-test-cgroupsv2-nvidia-ipmiutil-output.txt'
+    fixture='pkg/collector/testdata/output/exporter/e2e-test-cgroupsv2-nvidia-ipmiutil-output.txt'
   elif [ "${scenario}" = "exporter-cgroups-v2-nvidia-gpu-reordering" ]
   then
     cgroups_mode="unified"
     desc="Cgroups V2 with nVIDIA GPU reordering"
-    fixture='pkg/collector/testdata/output/e2e-test-cgroupsv2-nvidia-gpu-reordering.txt'
+    fixture='pkg/collector/testdata/output/exporter/e2e-test-cgroupsv2-nvidia-gpu-reordering.txt'
   elif [ "${scenario}" = "exporter-cgroups-v2-amd-ipmitool" ]
   then
     cgroups_mode="unified"
     desc="Cgroups V2 with AMD GPU and ipmitool"
-    fixture='pkg/collector/testdata/output/e2e-test-cgroupsv2-amd-ipmitool-output.txt'
+    fixture='pkg/collector/testdata/output/exporter/e2e-test-cgroupsv2-amd-ipmitool-output.txt'
   elif [ "${scenario}" = "exporter-cgroups-v2-nogpu" ]
   then
     cgroups_mode="unified"
     desc="Cgroups V2 when there are no GPUs"
-    fixture='pkg/collector/testdata/output/e2e-test-cgroupsv2-nogpu-output.txt'
+    fixture='pkg/collector/testdata/output/exporter/e2e-test-cgroupsv2-nogpu-output.txt'
   elif [ "${scenario}" = "exporter-cgroups-v2-procfs" ]
   then
     cgroups_mode="unified"
     desc="Cgroups V2 using /proc for fetching job properties"
-    fixture='pkg/collector/testdata/output/e2e-test-cgroupsv2-procfs-output.txt'
+    fixture='pkg/collector/testdata/output/exporter/e2e-test-cgroupsv2-procfs-output.txt'
   elif [ "${scenario}" = "exporter-cgroups-v2-all-metrics" ]
   then
     cgroups_mode="unified"
     desc="Cgroups V2 enabling all available cgroups metrics"
-    fixture='pkg/collector/testdata/output/e2e-test-cgroupsv2-all-metrics-output.txt'
+    fixture='pkg/collector/testdata/output/exporter/e2e-test-cgroupsv2-all-metrics-output.txt'
   elif [ "${scenario}" = "exporter-cgroups-v1-libvirt" ]
   then
     cgroups_mode="legacy"
     desc="Cgroups V1 with libvirt"
-    fixture='pkg/collector/testdata/output/e2e-test-cgroupsv1-libvirt-output.txt'
+    fixture='pkg/collector/testdata/output/exporter/e2e-test-cgroupsv1-libvirt-output.txt'
   elif [ "${scenario}" = "exporter-cgroups-v2-libvirt" ]
   then
     cgroups_mode="unified"
     desc="Cgroups V2 with libvirt"
-    fixture='pkg/collector/testdata/output/e2e-test-cgroupsv2-libvirt-output.txt'
+    fixture='pkg/collector/testdata/output/exporter/e2e-test-cgroupsv2-libvirt-output.txt'
+  elif [ "${scenario}" = "discoverer-cgroups-v2-slurm" ]
+  then
+    cgroups_mode="unified"
+    desc="Cgroups V2 discoverer for Slurm"
+    fixture='pkg/collector/testdata/output/discoverer/e2e-test-discoverer-cgroupsv2-slurm-output.txt'
+  elif [ "${scenario}" = "discoverer-cgroups-v1-slurm" ]
+  then
+    cgroups_mode="legacy"
+    desc="Cgroups V1 discoverer for Slurm"
+    fixture='pkg/collector/testdata/output/discoverer/e2e-test-discoverer-cgroupsv1-slurm-output.txt'
   fi
 
   logfile="${tmpdir}/ceems_exporter.log"
@@ -308,7 +318,7 @@ waitport() {
   sleep 1
 }
 
-if [[ "${scenario}" =~ ^"exporter" ]] 
+if [[ "${scenario}" =~ ^"exporter" ]] || [[ "${scenario}" =~ ^"discoverer" ]]
 then
   if [ ! -x ./bin/ceems_exporter ]
   then
@@ -499,6 +509,36 @@ then
         --web.listen-address "127.0.0.1:${port}" \
         --web.disable-exporter-metrics \
         --log.level="debug" > "${logfile}" 2>&1 &
+  elif [ "${scenario}" = "discoverer-cgroups-v2-slurm" ] 
+  then
+      ./bin/ceems_exporter \
+        --path.sysfs="pkg/collector/testdata/sys" \
+        --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
+        --path.procfs="pkg/collector/testdata/proc" \
+        --discoverer.alloy-targets.resource-manager="slurm" \
+        --collector.cgroups.force-version="v2" \
+        --collector.slurm \
+        --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/capmc/capmc" \
+        --collector.ipmi_dcmi.test-mode \
+        --collector.empty-hostname-label \
+        --web.listen-address "127.0.0.1:${port}" \
+        --web.disable-exporter-metrics \
+        --log.level="debug" > "${logfile}" 2>&1 &
+  elif [ "${scenario}" = "discoverer-cgroups-v1-slurm" ] 
+  then
+      ./bin/ceems_exporter \
+        --path.sysfs="pkg/collector/testdata/sys" \
+        --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
+        --path.procfs="pkg/collector/testdata/proc" \
+        --discoverer.alloy-targets.resource-manager="slurm" \
+        --collector.slurm \
+        --collector.cgroups.force-version="v1" \
+        --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/capmc/capmc" \
+        --collector.ipmi_dcmi.test-mode \
+        --collector.empty-hostname-label \
+        --web.listen-address "127.0.0.1:${port}" \
+        --web.disable-exporter-metrics \
+        --log.level="debug" > "${logfile}" 2>&1 &
   fi
 
   echo $! > "${pidfile}"
@@ -506,7 +546,12 @@ then
   # sleep 1
   waitport "${port}"
 
-  get "127.0.0.1:${port}/metrics" | grep -E -v "${skip_re}" > "${fixture_output}"
+  if [[ "${scenario}" =~ ^"discoverer" ]]
+  then
+    get "127.0.0.1:${port}/alloy-targets" | grep -E -v "${skip_re}" > "${fixture_output}"
+  else
+    get "127.0.0.1:${port}/metrics" | grep -E -v "${skip_re}" > "${fixture_output}"
+  fi
 elif [[ "${scenario}" =~ ^"api" ]] 
 then
   if [ ! -x ./bin/ceems_api_server ]

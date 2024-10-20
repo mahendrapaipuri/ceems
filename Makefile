@@ -109,7 +109,7 @@ $(eval $(call goarch_pair,amd64,386))
 $(eval $(call goarch_pair,mips64,mips))
 $(eval $(call goarch_pair,mips64el,mipsel))
 
-all:: vet common-all $(cross-test) $(test-docker) $(checkmetrics) $(checkrules) $(checkbpf) $(test-e2e)
+all:: vet common-all $(checkbpf) $(cross-test) $(test-docker) $(checkmetrics) $(checkrules) $(test-e2e)
 
 .PHONY: coverage
 coverage:
@@ -158,6 +158,8 @@ test-e2e: build pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc
 	./scripts/e2e-test.sh -s exporter-cgroups-v2-all-metrics
 	./scripts/e2e-test.sh -s exporter-cgroups-v1-libvirt
 	./scripts/e2e-test.sh -s exporter-cgroups-v2-libvirt
+	./scripts/e2e-test.sh -s discoverer-cgroups-v2-slurm
+	./scripts/e2e-test.sh -s discoverer-cgroups-v1-slurm
 else
 .PHONY: test-e2e
 test-e2e: $(PROMTOOL) build pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked
@@ -210,6 +212,8 @@ test-e2e-update: build pkg/collector/testdata/sys/.unpacked pkg/collector/testda
 	./scripts/e2e-test.sh -s exporter-cgroups-v2-all-metrics -u || true
 	./scripts/e2e-test.sh -s exporter-cgroups-v1-libvirt -u || true
 	./scripts/e2e-test.sh -s exporter-cgroups-v2-libvirt -u || true
+	./scripts/e2e-test.sh -s discoverer-cgroups-v2-slurm -u || true
+	./scripts/e2e-test.sh -s discoverer-cgroups-v1-slurm -u || true
 else
 .PHONY: test-e2e-update
 test-e2e-update: $(PROMTOOL) build pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked
@@ -255,7 +259,7 @@ skip-test-e2e:
 .PHONY: checkmetrics
 checkmetrics: $(PROMTOOL)
 	@echo ">> checking metrics for correctness"
-	./scripts/checkmetrics.sh $(PROMTOOL) $(e2e-out)
+	./scripts/checkmetrics.sh $(PROMTOOL) $(e2e-out)/exporter
 
 .PHONY: skip-checkmetrics
 skip-checkmetrics: $(PROMTOOL)

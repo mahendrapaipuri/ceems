@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
+	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	internal_runtime "github.com/mahendrapaipuri/ceems/internal/runtime"
 	"github.com/mahendrapaipuri/ceems/internal/security"
@@ -69,6 +70,10 @@ func (b *CEEMSExporter) Main() error {
 			"web.telemetry-path",
 			"Path under which to expose metrics.",
 		).Default("/metrics").String()
+		targetsPath = b.App.Flag(
+			"web.targets-path",
+			"Path under which to expose Grafana Alloy targets.",
+		).Default("/alloy-targets").String()
 		disableExporterMetrics = b.App.Flag(
 			"web.disable-exporter-metrics",
 			"Exclude metrics about the exporter itself (promhttp_*, process_*, go_*).",
@@ -149,6 +154,12 @@ func (b *CEEMSExporter) Main() error {
 		return err
 	}
 
+	// Create a new instance of Alloy targets discoverer
+	discoverer, err := NewAlloyTargetDiscoverer(log.With(logger, "discoverer", "alloy_targets"))
+	if err != nil {
+		return err
+	}
+
 	if user, err := user.Current(); err == nil && user.Uid == "0" {
 		level.Info(logger).
 			Log("msg", "CEEMS Exporter is running as root user. Privileges will be dropped and process will be run as unprivileged user")
@@ -176,13 +187,15 @@ func (b *CEEMSExporter) Main() error {
 
 	// Create web server config
 	config := &Config{
-		Logger:    logger,
-		Collector: collector,
+		Logger:     logger,
+		Collector:  collector,
+		Discoverer: discoverer,
 		Web: WebConfig{
 			Addresses:              *webListenAddresses,
 			WebSystemdSocket:       *systemdSocket,
 			WebConfigFile:          *webConfigFile,
 			MetricsPath:            *metricsPath,
+			TargetsPath:            *targetsPath,
 			MaxRequests:            *maxRequests,
 			IncludeExporterMetrics: !*disableExporterMetrics,
 			EnableDebugServer:      *enableDebugServer,
@@ -194,6 +207,10 @@ func (b *CEEMSExporter) Main() error {
 					{
 						Address: *metricsPath,
 						Text:    "Metrics",
+					},
+					{
+						Address: *targetsPath,
+						Text:    "Grafana Alloy Targets",
 					},
 				},
 			},

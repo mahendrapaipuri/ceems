@@ -13,14 +13,16 @@ import (
 )
 
 func queryExporter(address string) error {
-	resp, err := http.Get(fmt.Sprintf("http://%s/metrics", address)) //nolint:noctx
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
+	for _, path := range []string{"metrics", "alloy-targets"} {
+		resp, err := http.Get(fmt.Sprintf("http://%s/%s", address, path)) //nolint:noctx
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
 
-	if want, have := http.StatusOK, resp.StatusCode; want != have {
-		return fmt.Errorf("want /metrics status code %d, have %d.", want, have)
+		if want, have := http.StatusOK, resp.StatusCode; want != have {
+			return fmt.Errorf("want /%s status code %d, have %d.", path, want, have)
+		}
 	}
 
 	return nil

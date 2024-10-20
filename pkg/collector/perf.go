@@ -49,7 +49,7 @@ var (
 	).Strings()
 	perfProfilersEnvVars = CEEMSExporterApp.Flag(
 		"collector.perf.env-var",
-		"Processes having any of these environment variables set will be profiled. If empty, all processes will be profiled.",
+		"Enable profiling only on the processes having any of these environment variables set will be profiled. If empty, all processes will be profiled.",
 	).Strings()
 )
 
