@@ -1,0 +1,42 @@
+#!/usr/bin/env python3
+
+import sys
+import json
+
+
+def ordered(obj):
+    "Sort dict recursively"
+    if isinstance(obj, dict):
+        return sorted((k, ordered(v)) for k, v in obj.items())
+    if isinstance(obj, list):
+        return sorted(ordered(x) for x in obj)
+    else:
+        return obj
+
+
+def main():
+    if len(sys.argv) < 3:
+        sys.exit('Two arguments needed')
+
+    # Get paths of JSON files
+    path_1 = sys.argv[1]
+    path_2 = sys.argv[2]
+
+    # Read file contents into dicts
+    try:
+         with open(path_1, 'r') as f:
+        dict_1 = ordered(json.loads(f.read()))
+        with open(path_2, 'r') as f:
+            dict_2 = ordered(json.loads(f.read()))
+    except:
+        sys.exit(1)
+
+    # Compare ordered dicts
+    if dict_1 != dict_2:
+        sys.exit(1)
+    else:
+        sys.exit(0)
+
+
+if __name__ == '__main__':
+    main()

@@ -41,7 +41,7 @@ do
   esac
 done
 
-if [[ "${scenario}" =~ ^"exporter" ]] || [[ "${scenario}" =~ ^"discoverer" ]]
+if [[ "${scenario}" =~ ^"exporter" ]]
 then
   # cgroups_mode=$([ $(stat -fc %T /sys/fs/cgroup/) = "cgroup2fs" ] && echo "unified" || ( [ -e /sys/fs/cgroup/unified/ ] && echo "hybrid" || echo "legacy"))
   # cgroups_mode="legacy"
@@ -97,6 +97,24 @@ then
     desc="Cgroups V2 with libvirt"
     fixture='pkg/collector/testdata/output/exporter/e2e-test-cgroupsv2-libvirt-output.txt'
   elif [ "${scenario}" = "discoverer-cgroups-v2-slurm" ]
+  then
+    cgroups_mode="unified"
+    desc="Cgroups V2 discoverer for Slurm"
+    fixture='pkg/collector/testdata/output/discoverer/e2e-test-discoverer-cgroupsv2-slurm-output.txt'
+  elif [ "${scenario}" = "discoverer-cgroups-v1-slurm" ]
+  then
+    cgroups_mode="legacy"
+    desc="Cgroups V1 discoverer for Slurm"
+    fixture='pkg/collector/testdata/output/discoverer/e2e-test-discoverer-cgroupsv1-slurm-output.txt'
+  fi
+
+  logfile="${tmpdir}/ceems_exporter.log"
+  fixture_output="${tmpdir}/e2e-test-exporter-output.txt"
+  pidfile="${tmpdir}/ceems_exporter.pid"
+elif [[ "${scenario}" =~ ^"discoverer" ]] 
+then
+
+  if [ "${scenario}" = "discoverer-cgroups-v2-slurm" ]
   then
     cgroups_mode="unified"
     desc="Cgroups V2 discoverer for Slurm"
@@ -920,6 +938,5 @@ then
   fi
 fi
 
-diff -u \
-    "${fixture}" \
-    "${fixture_output}"
+# Make classic diff and if it fails attempt to compare JSON
+diff -u "${fixture}" "${fixture_output}" || ./scripts/compare_json "${fixture}" "${fixture_output}"
