@@ -416,7 +416,7 @@ func (c *rdmaCollector) update(ch chan<- prometheus.Metric, cgroupIDUUIDMap map[
 // procCgroups returns cgroup ID of all relevant processes.
 func (c *rdmaCollector) procCgroups(cgroupIDUUIDMap map[string]string) (map[string]string, error) {
 	// First get cgroups and their associated procs
-	cgroups, err := cgroupProcs(c.procfs, c.cgroupManager.idRegex, nil, c.cgroupManager.procFilter)
+	cgroups, err := getCgroups(c.procfs, c.cgroupManager.idRegex, nil, c.cgroupManager.procFilter)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "Failed to fetch active cgroups", "err", err)
 
@@ -426,15 +426,15 @@ func (c *rdmaCollector) procCgroups(cgroupIDUUIDMap map[string]string) (map[stri
 	// Make invert mapping of cgroups
 	procCgroup := make(map[string]string)
 
-	for cgroupID, procs := range cgroups {
+	for _, cgroup := range cgroups {
 		var uuid string
 		if cgroupIDUUIDMap != nil {
-			uuid = cgroupIDUUIDMap[cgroupID]
+			uuid = cgroupIDUUIDMap[cgroup.id]
 		} else {
-			uuid = cgroupID
+			uuid = cgroup.id
 		}
 
-		for _, proc := range procs {
+		for _, proc := range cgroup.procs {
 			p := strconv.FormatInt(int64(proc.PID), 10)
 			procCgroup[p] = uuid
 		}

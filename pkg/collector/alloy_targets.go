@@ -19,11 +19,11 @@ import (
 var (
 	cgManager = CEEMSExporterApp.Flag(
 		"discoverer.alloy-targets.resource-manager",
-		"Discover Grafana Alloy targets from this resource manager [supported: slurm and libvirt].",
-	).Enum("slurm", "libvirt")
+		"Discover Grafana Alloy targets from this resource manager [supported: slurm].",
+	).Enum("slurm")
 	alloyTargetEnvVars = CEEMSExporterApp.Flag(
 		"discoverer.alloy-targets.env-var",
-		"Enable continuous profiling by Pyroscope only on the processes having any of these environment variables.",
+		"Enable continuous profiling by Grafana Alloy only on the processes having any of these environment variables.",
 	).Strings()
 )
 
@@ -185,8 +185,8 @@ func (d *CEEMSAlloyTargetDiscoverer) discover() ([]Target, error) {
 	// Make targets from cgrpoups
 	var targets []Target
 
-	for uuid, procs := range dataPtr.cgroups {
-		for _, proc := range procs {
+	for _, cgroup := range dataPtr.cgroups {
+		for _, proc := range cgroup.procs {
 			exe, _ := proc.Executable()
 			comm, _ := proc.CmdLine()
 
@@ -197,14 +197,14 @@ func (d *CEEMSAlloyTargetDiscoverer) discover() ([]Target, error) {
 			}
 
 			target := Target{
-				Targets: []string{uuid},
+				Targets: []string{cgroup.id},
 				Labels: map[string]string{
 					"__process_pid__":         strconv.FormatInt(int64(proc.PID), 10),
 					"__process_exe":           exe,
 					"__process_commandline":   strings.Join(comm, " "),
 					"__process_real_uid":      strconv.FormatUint(realUID, 10),
 					"__process_effective_uid": strconv.FormatUint(effecUID, 10),
-					"service_name":            uuid,
+					"service_name":            cgroup.id,
 				},
 			}
 
@@ -230,7 +230,7 @@ func targetDiscoverer(data interface{}) error {
 		return security.ErrSecurityCtxDataAssertion
 	}
 
-	cgroups, err := cgroupProcs(d.procfs, d.cgroupManager.idRegex, d.targetEnvVars, d.cgroupManager.procFilter)
+	cgroups, err := getCgroups(d.procfs, d.cgroupManager.idRegex, d.targetEnvVars, d.cgroupManager.procFilter)
 	if err != nil {
 		return err
 	}

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -17,6 +18,11 @@ var (
 	metricNameRegex = regexp.MustCompile(`_*[^0-9A-Za-z_]+_*`)
 	reParens        = regexp.MustCompile(`\((.*)\)`)
 )
+
+type cgroup struct {
+	id    string
+	procs []procfs.Proc
+}
 
 // SanitizeMetricName sanitize the given metric name by replacing invalid characters by underscores.
 //
@@ -33,8 +39,8 @@ func SanitizeMetricName(metricName string) string {
 	return metricNameRegex.ReplaceAllString(metricName, "_")
 }
 
-// cgroupProcs returns a map of active cgroups and processes contained in each cgroup.
-func cgroupProcs(fs procfs.FS, idRegex *regexp.Regexp, targetEnvVars []string, procFilter func(string) bool) (map[string][]procfs.Proc, error) {
+// getCgroups returns a slice of active cgroups and processes contained in each cgroup.
+func getCgroups(fs procfs.FS, idRegex *regexp.Regexp, targetEnvVars []string, procFilter func(string) bool) ([]cgroup, error) {
 	// Get all active procs
 	allProcs, err := fs.AllProcs()
 	if err != nil {
@@ -46,7 +52,9 @@ func cgroupProcs(fs procfs.FS, idRegex *regexp.Regexp, targetEnvVars []string, p
 		return nil, errors.New("cgroup IDs cannot be retrieved due to empty regex")
 	}
 
-	cgroups := make(map[string][]procfs.Proc)
+	cgroupsMap := make(map[string][]procfs.Proc)
+
+	var cgroupIDs []string
 
 	for _, proc := range allProcs {
 		// Get cgroup ID from regex
@@ -119,7 +127,20 @@ func cgroupProcs(fs procfs.FS, idRegex *regexp.Regexp, targetEnvVars []string, p
 			}
 		}
 
-		cgroups[cgroupID] = append(cgroups[cgroupID], proc)
+		cgroupsMap[cgroupID] = append(cgroupsMap[cgroupID], proc)
+		cgroupIDs = append(cgroupIDs, cgroupID)
+	}
+
+	// Sort cgroupIDs and make slice of cgProcs
+	cgroups := make([]cgroup, len(cgroupsMap))
+
+	slices.Sort(cgroupIDs)
+
+	for icgroup, cgroupID := range slices.Compact(cgroupIDs) {
+		cgroups[icgroup] = cgroup{
+			id:    cgroupID,
+			procs: cgroupsMap[cgroupID],
+		}
 	}
 
 	return cgroups, nil

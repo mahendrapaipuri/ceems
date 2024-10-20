@@ -101,14 +101,14 @@ type perfDiscovererSecurityCtxData struct {
 	procfs        procfs.FS
 	cgroupManager *cgroupManager
 	targetEnvVars []string
-	cgroups       map[string][]procfs.Proc
+	cgroups       []cgroup
 }
 
 // perfProfilerSecurityCtxData contains the input/output data for
 // opening/closing profilers inside security context.
 type perfProfilerSecurityCtxData struct {
 	logger                    log.Logger
-	cgroups                   map[string][]procfs.Proc
+	cgroups                   []cgroup
 	activePIDs                []int
 	perfHwProfilers           map[int]*perf.HardwareProfiler
 	perfSwProfilers           map[int]*perf.SoftwareProfiler
@@ -565,12 +565,12 @@ func (c *perfCollector) Update(ch chan<- prometheus.Metric, cgroupIDUUIDMap map[
 	wg.Add(len(cgroups))
 
 	// Update metrics in go routines for each cgroup
-	for cgroupID, procs := range cgroups {
+	for _, cgroup := range cgroups {
 		var uuid string
 		if cgroupIDUUIDMap != nil {
-			uuid = cgroupIDUUIDMap[cgroupID]
+			uuid = cgroupIDUUIDMap[cgroup.id]
 		} else {
-			uuid = cgroupID
+			uuid = cgroup.id
 		}
 
 		go func(u string, ps []procfs.Proc) {
@@ -587,7 +587,7 @@ func (c *perfCollector) Update(ch chan<- prometheus.Metric, cgroupIDUUIDMap map[
 			if err := c.updateCacheCounters(u, ps, ch); err != nil {
 				level.Error(c.logger).Log("msg", "failed to update cache counters", "uuid", u, "err", err)
 			}
-		}(uuid, procs)
+		}(uuid, cgroup.procs)
 	}
 
 	// Wait all go routines
@@ -828,7 +828,7 @@ func (c *perfCollector) updateCacheCounters(cgroupID string, procs []procfs.Proc
 
 // discoverProcess returns a map of cgroup ID to procs. Depending on presence
 // of targetEnvVars, this may be executed in a security context.
-func (c *perfCollector) discoverProcess() (map[string][]procfs.Proc, error) {
+func (c *perfCollector) discoverProcess() ([]cgroup, error) {
 	// Read discovered cgroups into data pointer
 	dataPtr := &perfDiscovererSecurityCtxData{
 		procfs:        c.fs,
@@ -862,7 +862,7 @@ func (c *perfCollector) discoverProcess() (map[string][]procfs.Proc, error) {
 }
 
 // newProfilers open new perf profilers if they are not already in profilers map.
-func (c *perfCollector) newProfilers(cgroups map[string][]procfs.Proc) []int {
+func (c *perfCollector) newProfilers(cgroups []cgroup) []int {
 	dataPtr := &perfProfilerSecurityCtxData{
 		logger:                    c.logger,
 		cgroups:                   cgroups,
@@ -926,8 +926,8 @@ func openProfilers(data interface{}) error {
 
 	var activePIDs []int
 
-	for _, procs := range d.cgroups {
-		for _, proc := range procs {
+	for _, cgroup := range d.cgroups {
+		for _, proc := range cgroup.procs {
 			pid := proc.PID
 
 			activePIDs = append(activePIDs, pid)
@@ -1136,7 +1136,7 @@ func discoverer(data interface{}) error {
 		return security.ErrSecurityCtxDataAssertion
 	}
 
-	cgroups, err := cgroupProcs(d.procfs, d.cgroupManager.idRegex, d.targetEnvVars, d.cgroupManager.procFilter)
+	cgroups, err := getCgroups(d.procfs, d.cgroupManager.idRegex, d.targetEnvVars, d.cgroupManager.procFilter)
 	if err != nil {
 		return err
 	}
