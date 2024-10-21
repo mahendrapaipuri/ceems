@@ -97,7 +97,7 @@ func TestDiscoverProcess(t *testing.T) {
 	require.NoError(t, err)
 
 	// Discover processes
-	cgroupIDProcMap, err := collector.discoverProcess()
+	cgroups, err := collector.discoverProcess()
 	require.NoError(t, err)
 
 	// expected
@@ -112,15 +112,15 @@ func TestDiscoverProcess(t *testing.T) {
 
 	cgroupProcs := make(map[string][]int)
 
-	for cgroupID, procs := range cgroupIDProcMap {
-		cgroupIDs = append(cgroupIDs, cgroupID)
+	for _, cgroup := range cgroups {
+		cgroupIDs = append(cgroupIDs, cgroup.id)
 
 		var pids []int
-		for _, proc := range procs {
+		for _, proc := range cgroup.procs {
 			pids = append(pids, proc.PID)
 		}
 
-		cgroupProcs[cgroupID] = pids
+		cgroupProcs[cgroup.id] = pids
 	}
 
 	assert.ElementsMatch(t, cgroupIDs, expectedCgroupIDs)
@@ -156,10 +156,11 @@ func TestNewProfilers(t *testing.T) {
 	require.NoError(t, err)
 
 	// Use fake cgroupID for current process
-	cgroupIDProcMap := map[string][]procfs.Proc{
-		"1234": {
-			{
-				PID: os.Getpid(),
+	cgroups := []cgroup{
+		{
+			id: "1234",
+			procs: []procfs.Proc{
+				{PID: os.Getpid()},
 			},
 		},
 	}
@@ -176,7 +177,7 @@ func TestNewProfilers(t *testing.T) {
 	}()
 
 	// make new profilers
-	pids := collector.newProfilers(cgroupIDProcMap)
+	pids := collector.newProfilers(cgroups)
 	assert.ElementsMatch(t, pids, []int{os.Getpid()})
 
 	// update counters

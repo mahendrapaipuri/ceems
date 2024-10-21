@@ -21,7 +21,12 @@ a consistent styling. They will be removed in `v1.0.0`.
 
 :::
 
-## Slurm collector
+## Collectors
+
+The following collectors are supported by Prometheus exporter and they can be configured
+from CLI arguments as briefed below:
+
+### Slurm collector
 
 Although fetching metrics from cgroups do not need any additional privileges, getting
 GPU ordinal to job ID needs extra privileges. This is due to the fact that this
@@ -228,7 +233,7 @@ enable and disable them at runtime is more involved.
 Both perf and eBPF sub-collectors extra privileges to work and the necessary privileges
 are discussed in [Security](./security.md) section.
 
-## Libvirt collector
+### Libvirt collector
 
 Libvirt collector is meant to be used on Openstack cluster where VMs are managed by
 libvirt. Most of the options applicable to Slurm are applicable to libvirt as well.
@@ -258,7 +263,7 @@ processes inside the guest.
 Both perf and eBPF sub-collectors extra privileges to work and the necessary privileges
 are discussed in [Security](./security.md) section.
 
-## IPMI collector
+### IPMI collector
 
 Currently, collector supports FreeIPMI, OpenIMPI, IPMIUtils and Cray's [`capmc`](https://cray-hpe.github.io/docs-csm/en-10/operations/power_management/cray_advanced_platform_monitoring_and_control_capmc/)
 framework. If one of these binaries exist on `PATH`, the exporter will automatically
@@ -309,7 +314,7 @@ might not include the power consumption of GPUs.
 
 :::
 
-## RAPL collector
+### RAPL collector
 
 For the kernels that are `<5.3`, there is no special configuration to be done. If the
 kernel version is `>=5.3`, RAPL metrics are only available for `root`. Three approaches
@@ -323,7 +328,7 @@ directory to give read permissions to the user that is running `ceems_exporter`.
 
 We recommend the capabilities approach as it requires minimum configuration.
 
-## Emissions collector
+### Emissions collector
 
 The only configuration needed for emissions collector is an API token for
 [Electricity Maps](https://app.electricitymaps.com/map). For non commercial uses,
@@ -338,3 +343,77 @@ This collector can be run separately on a node that has internet access by disab
 rest of the collectors.
 
 :::
+
+## Grafana Alloy targets discoverer
+
+CEEMS exporter exposes a special endpoint that can be used as
+[HTTP discovery component](https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.http/)
+which can provide a list of targets to Pyroscope eBPF component for continuous profiling.
+
+Currently, the discovery component supports **only SLURM resource manager**. There is
+no added value to continuously profile a VM instance managed by Libvirt from hypervisor
+as we will not be able ease to resolve symbols of guest instance from the hypervisor. By
+default the discovery component is disabled and it can be enabled using the following
+component:
+
+```bash
+ceems_exporter --discoverer.alloy-targets.resource-manager=slurm
+```
+
+which will collect targets from SLURM jobs on the current node.
+
+:::tip[TIP]
+
+The discovery component runs at a dedicated endpoint which can be configured
+using `--web.targets-path`. Thus, it is possible to run both discovery
+components and Prometheus collectors at the same time as follows:
+
+```bash
+ceems_exporter --collector.slurm --discoverer.alloy-targets.resource-manager=slurm
+```
+
+:::
+
+Similar to `perf` sub-collector, it is possible to configure the discovery component
+to discover the targets only when certain environment variable is set in the process. For
+example if we use the following CLI arguments to the exporter
+
+```bash
+ceems_exporter --discoverer.alloy-targets.resource-manager=slurm --discoverer.alloy-targets.env-var=ENABLE_CONTINUOUS_PROFILING
+```
+
+only SLURM jobs that have a environment variable `ENABLE_CONTINUOUS_PROFILING` set
+in their jobs will be continuously profiled. Multiple environment variable names can
+be passed by repeating the CLI argument `--discoverer.alloy-targets.env-var`. The
+presence of environment variable triggers the continuous profiling irrespective of
+the value set to it.
+
+Once the discovery component is enabled, Grafana Alloy can be configured to get
+the targets from this component using following config:
+
+```river
+discovery.http "processes" {
+  url = "http://localhost:9010/alloy-targets"
+  refresh_interval = "10s"
+}
+
+pyroscope.write "staging" {
+  endpoint {
+    url = "http://pyroscope:4040"
+  }
+}
+
+pyroscope.ebpf "default" {
+  collect_interval = "10s"
+  forward_to   = [ pyroscope.write.staging.receiver ]
+  targets      = discovery.http.processes.output
+}
+```
+
+The above configuration makes Grafana Alloy to scrape the discovery component
+of the exporter every 10 seconds. The output of the discovery component is passed
+to Pyroscope eBPF component which will continuously profile the processes and
+collect those profiles every 10 seconds. Finally, Pyroscope eBPF components will
+send these profiles to Pyroscope. More details on how to configure authentication
+and TLS for various components can be consulted from [Grafana Alloy](https://grafana.com/docs/alloy) and
+[Grafana Pyroscope](https://grafana.com/docs/pyroscope/latest/introduction/) docs.

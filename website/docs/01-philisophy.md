@@ -1,6 +1,8 @@
 # Philosophy
 
-## CPU, memory, IO and network metrics
+## Supported metrics
+
+### CPU, memory, IO and network
 
 The idea we are leveraging here is that every resource manager has to resort to cgroups
 on Linux to manage CPU, memory and IO resources. Each resource manager does it
@@ -27,15 +29,15 @@ agnostic to resource manager and underlying file system. Similarly network metri
 TCP and UDP protocols for both IPv4 and IPv6 can be gathered by using carefully crafted
 bpf programs and attaching to relevant kernel functions.
 
-This is a distributed approach where a daemon exporter will run on each compute node. Whenever
-Prometheus make a scrape request, the exporter will walk through cgroup file system and
-bpf program maps and
+This is a distributed approach where a daemon Prometheus exporter will run on
+each compute node. Whenever Prometheus make a scrape request, the exporter will
+walk through cgroup file system and bpf program maps and
 exposes the data to Prometheus. As reading cgroups file system is relatively cheap,
 there is a very little overhead running this daemon service. Similarly, BPF programs are
 extremely fast and efficient as they are run in kernel space. On average the exporter
 takes less than 20 MB of memory.
 
-## Energy consumption
+### Energy metrics
 
 In an age where green computing is becoming more and more important, it is essential to
 expose the energy consumed by the compute units to the users to make them more aware.
@@ -55,7 +57,7 @@ This node level power consumption can be split into consumption of individual co
 by using relative CPU times used by the compute unit. Although, this is not an exact
 estimation of power consumed by the compute unit, it stays a very good approximation.
 
-## Emissions
+### Emission metrics
 
 The exporter is capable of exporting emission factors from different data sources
 which can be used to estimate equivalent CO2 emissions. Currently, for
@@ -70,7 +72,7 @@ constant global average emission factor can also be used.
 Emissions collector is capable of exporting emission factors from different sources
 and users can choose the factor that suits their needs.
 
-## GPU metrics
+### GPU metrics
 
 Currently, only nVIDIA and AMD GPUs are supported. This exporter leverages
 [DCGM exporter](https://github.com/NVIDIA/dcgm-exporter/tree/main) for nVIDIA GPUs and
@@ -86,7 +88,7 @@ vGPUs scheduled on that physical GPU. Similarly, in the case of Multi GPU Instan
 the energy consumption of each MIG instance is estimated based on the relative number
 of Streaming Multiprocessors (SM) and total energy consumption of the physical GPU.
 
-## Performance metrics
+### Performance metrics
 
 Presenting energy and emission metrics is only one side of the story. This will
 help end users to quickly and cheaply identify their workloads that are consuming
@@ -102,3 +104,42 @@ performance metrics for nVIDIA GPUs as well as long as operators install and ena
 nVIDIA DCGM libraries. More details can be found in
 [DCGM](https://docs.nvidia.com/datacenter/dcgm/latest/user-guide/feature-overview.html#profiling-metrics)
 docs.
+
+### Continuous Profiling
+
+[Continuous Profiling](https://www.cncf.io/blog/2022/05/31/what-is-continuous-profiling/) enables
+users to profile their codes on production systems which can help them to fix abnormal CPU
+usage, memory leaks, _etc_. A good primer for the continuous profiling can be consulted from
+[Elastic Docs](https://www.elastic.co/what-is/continuous-profiling). CEEMS stack lets the users
+and developers to identify which applications or processes to continuously profiling where CEEMS
+will work in tandem with continuous profiling software to profile these applications and processes.
+
+## Technologies involved
+
+### Databases
+
+One of the principal objectives of CEEMS stack is to avoid creating new software and use
+open source components as much as possible. It is clear that stack needs a Time Series
+Database (TSDB) to store time series metrics of compute units and [Prometheus](https://prometheus.io/)
+proved to be the _defacto_ standard in cloud-native community for its performance. Thus,
+CEEMS use Prometheus (or PromQL compliant TSDB) as its TSDB. CEEMS also use a relational
+DB for storing a list of compute units along with their aggregate metrics from different
+resource managers. CEEMS uses [SQLite](https://www.sqlite.org/) for its simplicity and
+performance. Moreover CEEMS relational DB does not need concurrent writes as there is always
+a single thread (go routine) is fetching compute units from underlying resource manager
+and writing them to the DB. Thus, SQLite can be a very good option and avoids having to
+maintain complex DB servers.
+
+For the case of continuous profiling, [Grafana Pyroscope](https://grafana.com/oss/pyroscope/)
+provides an OSS version of continuous profiling database which can be regarded as equivalent
+of Prometheus for profiling data. [Grafana Alloy](https://grafana.com/docs/alloy/latest/)
+is the agent that runs on all compute nodes like Prometheus exporter which in-turn sends
+profiling data to Pyroscope server. CEEMS stack provides a list of targets (processes)
+that needs to continuously profiling to Grafana Alloy.
+
+### Visualization
+
+Once the metrics are gathered, we need an application to visualize metrics for the end-users
+in a user-friendly way. CEEMS uses [Grafana](https://grafana.com/grafana/) which is also
+the _de facto_ standard in cloud-native community. Grafana has very good integration for
+Prometheus and also for Grafana Pyroscope.
