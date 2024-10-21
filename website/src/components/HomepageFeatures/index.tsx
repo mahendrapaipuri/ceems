@@ -32,6 +32,16 @@ const FeatureList: FeatureItem[] = [
     ),
   },
   {
+    title: "Supports Grafana Alloy/Pyroscope for Continuous Profiling",
+    Svg: require("@site/static/img/pyroscope.svg").default,
+    description: (
+      <>
+        CEEMS is capable of providing targets to Grafana Alloy eBPF
+        component for continuous profiling of compute workloads and apps.
+      </>
+    ),
+  },
+  {
     title: "ML/AI workloads",
     Svg: require("@site/static/img/ml_ai.svg").default,
     description: (
@@ -56,7 +66,7 @@ const FeatureList: FeatureItem[] = [
 
 function Feature({title, Svg, description}: FeatureItem) {
   return (
-    <div className={clsx('col col--3')}>
+    <div className={clsx('col col--4')}>
       <div className="text--center">
         <Svg className={styles.featureSvg} role="img" />
       </div>

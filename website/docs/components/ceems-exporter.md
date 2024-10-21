@@ -7,8 +7,10 @@ sidebar_position: 1
 ## Background
 
 `ceems_exporter` is the Prometheus exporter that exposes individual compute unit
-metrics, RAPL energy, IPMI power consumption, emission factor and GPU to compute unit
-mapping.
+metrics, RAPL energy, IPMI power consumption, emission factor, GPU to compute unit
+mapping, performance metrics, IO and network metrics. Besides, the exporter supports
+a [HTTP discovery component](https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.http/)
+that can provide a list of targets to [Grafana Alloy](https://grafana.com/docs/alloy/latest/).
 
 `ceems_exporter` collectors can be categorized as follows:
 
@@ -421,6 +423,17 @@ statistics by parsing `/proc/meminfo` file. These collectors are heavily inspire
 These metrics are mainly used to estimate the proportion of CPU and memory usage by the
 individual compute units and to estimate the energy consumption of compute unit
 based on these proportions.
+
+## Grafana Alloy target discovery
+
+Grafana Alloy provides a [eBPF based continuous profiling](https://grafana.com/docs/alloy/latest/reference/components/pyroscope/pyroscope.ebpf/)
+component. It needs a list of targets (processes in the current case) and label those
+targets appropriately with unique identifier of the compute unit. For instance, for a
+given compute unit (like batch job for SLURM), there can be multiple processes in the
+job and we need to provide a list of all these processes PID labelled by the ID of
+that compute unit to Grafana Alloy. CEEMS exporter can provide a list of these processes
+correctly labelled by the compute unit identifier and eventually these profiles will be
+aggregated by compute unit identifier on Pyroscope server.
 
 ## Metrics
 
