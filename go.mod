@@ -20,7 +20,7 @@ require (
 	github.com/prometheus/procfs v0.15.1
 	github.com/stretchr/testify v1.9.0
 	github.com/swaggo/http-swagger/v2 v2.0.2
-	github.com/swaggo/swag v1.16.3
+	github.com/swaggo/swag v1.16.4
 	github.com/zeebo/xxh3 v1.0.2
 	golang.org/x/sys v0.26.0
 	gopkg.in/yaml.v3 v3.0.1
