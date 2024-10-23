@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.0 / 2024-10-23
+
+- [FEATURE] Add support for HTTP alloy discovery [#198](https://github.com/mahendrapaipuri/ceems/pull/198) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Add openstack resource manager support to API server [#196](https://github.com/mahendrapaipuri/ceems/pull/196) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Add support for MIG and vGPUs in exporter [#193](https://github.com/mahendrapaipuri/ceems/pull/193) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Export power limit from RAPL counters [#189](https://github.com/mahendrapaipuri/ceems/pull/189) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Add libvirt collector [#186](https://github.com/mahendrapaipuri/ceems/pull/186) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Add RDMA collector [#182](https://github.com/mahendrapaipuri/ceems/pull/182) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [BUGFIX] Fix cmd execution mode detection [#181](https://github.com/mahendrapaipuri/ceems/pull/181) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [BUGFIX] Hide test related CLI flags [#180](https://github.com/mahendrapaipuri/ceems/pull/180) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Add ebpf support for mips,ppc and risc archs [#179](https://github.com/mahendrapaipuri/ceems/pull/179) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [MAINT] Bump dependencies [#183](https://github.com/mahendrapaipuri/ceems/pull/183), [#184](https://github.com/mahendrapaipuri/ceems/pull/184), [#185](https://github.com/mahendrapaipuri/ceems/pull/185), [#192](https://github.com/mahendrapaipuri/ceems/pull/192), [#194](https://github.com/mahendrapaipuri/ceems/pull/194), [#199](https://github.com/mahendrapaipuri/ceems/pull/199), [#200](https://github.com/mahendrapaipuri/ceems/pull/200), [#201](https://github.com/mahendrapaipuri/ceems/pull/201), [#202](https://github.com/mahendrapaipuri/ceems/pull/202) ([@dependabot](https://github.com/dependabot))
+
 ## 0.3.1 / 2024-10-03
 
 - [BUGFIX] Fix cmd execution mode detection [#181](https://github.com/mahendrapaipuri/ceems/pull/181) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
