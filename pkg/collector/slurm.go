@@ -267,7 +267,7 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 	// Discover all active cgroups
 	metrics, err := c.discoverCgroups()
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrNoData, err)
+		return fmt.Errorf("failed to discover cgroups: %w", err)
 	}
 
 	// Start a wait group

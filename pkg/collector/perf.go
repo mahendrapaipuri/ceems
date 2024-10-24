@@ -543,7 +543,7 @@ func (c *perfCollector) Update(ch chan<- prometheus.Metric, cgroupIDUUIDMap map[
 	// Discover new processes
 	cgroups, err := c.discoverProcess()
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrNoData, err)
+		return fmt.Errorf("failed to discover processes: %w", err)
 	}
 
 	// Start new profilers for new processes
@@ -557,7 +557,7 @@ func (c *perfCollector) Update(ch chan<- prometheus.Metric, cgroupIDUUIDMap map[
 
 	// Ensure cgroups is non empty
 	if len(cgroups) == 0 {
-		return ErrNoData
+		return nil
 	}
 
 	// Start a wait group

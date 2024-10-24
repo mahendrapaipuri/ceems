@@ -512,13 +512,13 @@ func NewEbpfCollector(logger log.Logger, cgManager *cgroupManager) (*ebpfCollect
 func (c *ebpfCollector) Update(ch chan<- prometheus.Metric, cgroupIDUUIDMap map[string]string) error {
 	// Fetch all active cgroups
 	if err := c.discoverCgroups(cgroupIDUUIDMap); err != nil {
-		return err
+		return fmt.Errorf("failed to discover cgroups: %w", err)
 	}
 
 	// Fetch metrics from maps
 	aggMetrics, err := c.readMaps()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to read bpf maps: %w", err)
 	}
 
 	// Start wait group
@@ -827,10 +827,12 @@ func (c *ebpfCollector) readMaps() (*aggMetrics, error) {
 	if securityCtx, ok := c.securityContexts[ebpfReadBPFMapsCtx]; ok {
 		if err := securityCtx.Exec(dataPtr); err == nil {
 			return dataPtr.aggMetrics, nil
+		} else {
+			return nil, err
 		}
 	}
 
-	return nil, ErrNoData
+	return nil, security.ErrNoSecurityCtx
 }
 
 // discoverCgroups walks through cgroup file system and discover all relevant cgroups based
