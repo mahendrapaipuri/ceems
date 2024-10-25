@@ -185,13 +185,15 @@ func TestMiddlewareWithDB(t *testing.T) {
 	tests := []struct {
 		name   string
 		req    string
+		id     string
 		user   string
 		header bool
 		code   int
 	}{
 		{
 			name:   "forbid due to mismatch uuid",
-			req:    "/rm-0/query?query=foo{uuid=~\"1479765|1481510\"}",
+			req:    "/query?query=foo{uuid=~\"1479765|1481510\"}",
+			id:     "rm-0",
 			user:   "usr1",
 			header: true,
 			code:   403,
@@ -201,59 +203,67 @@ func TestMiddlewareWithDB(t *testing.T) {
 			req:    "/query?query=foo{uuid=~\"1481508|1479765\"}",
 			user:   "usr2",
 			header: true,
-			code:   403,
+			code:   400,
 		},
 		{
 			name:   "allow query for admins",
-			req:    "/rm-0/query_range?query=foo{uuid=~\"1479765|1481510\"}",
+			req:    "/query_range?query=foo{uuid=~\"1479765|1481510\"}",
+			id:     "rm-0",
 			user:   "adm1",
 			header: true,
 			code:   200,
 		},
 		{
 			name:   "forbid due to missing project",
-			req:    "/rm-1/query_range?query=foo{uuid=~\"123|345\"}",
+			req:    "/query_range?query=foo{uuid=~\"123|345\"}",
+			id:     "rm-1",
 			user:   "usr1",
 			header: true,
 			code:   403,
 		},
 		{
 			name:   "forbid due to missing header",
-			req:    "/rm-0/query?query=foo{uuid=~\"123|345\"}",
+			req:    "/query?query=foo{uuid=~\"123|345\"}",
+			id:     "rm-0",
 			header: false,
 			code:   401,
 		},
 		{
 			name:   "pass due to correct uuid",
-			req:    "/rm-0/query_range?query=foo{uuid=\"1479763\"}",
+			req:    "/query_range?query=foo{uuid=\"1479763\"}",
+			id:     "rm-0",
 			user:   "usr1",
 			header: true,
 			code:   200,
 		},
 		{
 			name:   "pass due to correct uuid with gpuuuid in query",
-			req:    "/rm-1/query?query=foo{uuid=\"1479763\",gpuuuid=\"GPU-01234\"}",
+			req:    "/query?query=foo{uuid=\"1479763\",gpuuuid=\"GPU-01234\"}",
+			id:     "rm-1",
 			user:   "usr1",
 			header: true,
 			code:   200,
 		},
 		{
 			name:   "pass due to uuid from same project",
-			req:    "/rm-0/query?query=foo{uuid=\"1481508\"}",
+			req:    "/query?query=foo{uuid=\"1481508\"}",
+			id:     "rm-0",
 			user:   "usr1",
 			header: true,
 			code:   200,
 		},
 		{
 			name:   "pass due to no uuid",
-			req:    "/rm-0/query_range?query=foo{uuid=\"\"}",
+			req:    "/query_range?query=foo{uuid=\"\"}",
+			id:     "rm-0",
 			header: true,
 			user:   "usr3",
 			code:   200,
 		},
 		{
 			name:   "pass due to no uuid and non-empty gpuuuid",
-			req:    "/rm-0/query?query=foo{uuid=\"\",gpuuuid=\"GPU-01234\"}",
+			req:    "/query?query=foo{uuid=\"\",gpuuuid=\"GPU-01234\"}",
+			id:     "rm-0",
 			header: true,
 			user:   "usr2",
 			code:   200,
@@ -263,7 +273,11 @@ func TestMiddlewareWithDB(t *testing.T) {
 	for _, test := range tests {
 		request := httptest.NewRequest(http.MethodGet, test.req, nil)
 		if test.header {
-			request.Header.Set("X-Grafana-User", test.user)
+			request.Header.Set(grafanaUserHeader, test.user)
+		}
+
+		if test.id != "" {
+			request.Header.Set(ceemsClusterIDHeader, test.id)
 		}
 
 		// Tests with CEEMS DB
@@ -273,7 +287,7 @@ func TestMiddlewareWithDB(t *testing.T) {
 
 		resDB := responseRecorderDB.Result()
 		defer resDB.Body.Close()
-		assert.Equal(t, resDB.StatusCode, test.code, "DB")
+		assert.Equal(t, test.code, resDB.StatusCode, "%s with DB", test.name)
 
 		// Tests with CEEMS API
 		apiRequest := request.Clone(request.Context())
@@ -282,6 +296,6 @@ func TestMiddlewareWithDB(t *testing.T) {
 
 		resAPI := responseRecorderAPI.Result()
 		defer resAPI.Body.Close()
-		assert.Equal(t, resAPI.StatusCode, test.code, "API")
+		assert.Equal(t, test.code, resAPI.StatusCode, "%s with API", test.name)
 	}
 }

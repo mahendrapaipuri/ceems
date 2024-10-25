@@ -67,6 +67,8 @@ does not support TLS for the backends.
 
 ### Matching `backends.id` with `clusters.id`
 
+#### Using custom header
+
 This is the tricky part of the configuration which can be better explained with
 an example. Consider we are running CEEMS API server with the following
 configuration:
@@ -137,14 +139,67 @@ As metrics data of `slurm-0` only exists in either `tsdb-0` or
 these TSDB backends.
 
 Effectively we will use CEEMS LB as a Prometheus datasource in
-Grafana and while doing so, we need to target correct cluster
-using path parameter. For instance, for `slurm-0` cluster the
-datasource URL must be configured as `http://ceems-lb:9030/slurm-0`
-assuming `ceems_lb` is running on port `9030`. Now, CEEMS LB will
-know which cluster to target (in this case `slurm-0`), strips
-the path parameter `slurm-0` from the path and proxies the request
-to one of the configured backends. This allows a single instance
+Grafana and while doing so, we need to target correct cluster.
+This is done using a custom header `X-Ceems-Cluster-Id`. When
+configuring the datasource in Grafana, we need to add `X-Ceems-Cluster-Id`
+to the custom headers section and set the value to cluster ID.
+
+For instance, for `slurm-0` cluster the provisioned datasource
+config for Grafana will look as follows:
+
+```yaml
+- name: CEEMS-LB
+  type: prometheus
+  access: proxy
+  url: http://localhost:9030
+  basicAuth: true
+  basicAuthUser: ceems
+  jsonData:
+    prometheusVersion: 2.51
+    prometheusType: Prometheus
+    timeInterval: 30s
+    incrementalQuerying: true
+    cacheLevel: Medium
+    httpHeaderName1: X-Ceems-Cluster-Id
+  secureJsonData:
+    basicAuthPassword: <ceems_lb_basic_auth_password>
+    httpHeaderValue1: slurm-0
+  isDefault: true
+```
+
+assuming CEEMS LB is running at port 9030 on the same host as Grafana.
+Notice that we set the header and value in `jsonData` and `secureJsonData`,
+respectively. This ensures that datasource will send the header with
+every request to CEEMS LB and then LB will redirect the query request
+to correct backend. This allows a single instance
 of CEEMS to load balance across different clusters.
+
+#### Using query label
+
+If for any reason, the above strategy does not work for a given deployment,
+it is also possible to identify target clusters using query labels. However,
+for this strategy to work, it is needed to inject labels to Prometheus metrics.
+For example in the above case, using [static_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#static_config)
+we can set a custom label as follows:
+
+```yaml
+- job_name: ceems                        
+  static_configs:                     
+  - targets:                          
+    - compute-0:9100          
+    labels:                           
+      ceems_id: slurm-0
+```
+
+CEEMS LB will read value of `ceems_id` label and then redirects the query
+to the appropriate backend.
+
+:::important[IMPORTANT]
+
+If both custom header and label `ceems_id` are present in the request to
+CEEMS LB, the query label will take the precedence.
+
+:::
 
 ## CEEMS API Server Configuration
 

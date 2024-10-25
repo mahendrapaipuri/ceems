@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/go-kit/log"
@@ -16,11 +17,12 @@ import (
 
 // Headers.
 const (
-	grafanaUserHeader   = "X-Grafana-User"
-	dashboardUserHeader = "X-Dashboard-User"
-	loggedUserHeader    = "X-Logged-User"
-	adminUserHeader     = "X-Admin-User"
-	ceemsUserHeader     = "X-Ceems-User"
+	grafanaUserHeader    = "X-Grafana-User"
+	dashboardUserHeader  = "X-Dashboard-User"
+	loggedUserHeader     = "X-Logged-User"
+	adminUserHeader      = "X-Admin-User"
+	ceemsUserHeader      = "X-Ceems-User"
+	ceemsClusterIDHeader = "X-Ceems-Cluster-Id"
 )
 
 var (
@@ -30,7 +32,7 @@ var (
 	// Playground: https://goplay.tools/snippet/kq_r_1SOgnG
 	regexpUUID = regexp.MustCompile("(?:.+?)[^gpu]uuid=[~]{0,1}\"(?P<uuid>[a-zA-Z0-9-|]+)\"(?:.*)")
 
-	// Regex that will match unit's ID.
+	// Regex that will match cluster's ID.
 	regexID = regexp.MustCompile("(?:.+?)ceems_id=[~]{0,1}\"(?P<id>[a-zA-Z0-9-|_]+)\"(?:.*)")
 )
 
@@ -124,7 +126,7 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var loggedUser string
 
-		var id string
+		var clusterID string
 
 		var uuids []string
 
@@ -132,7 +134,7 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 
 		// Clone request, parse query params and set them in request context
 		// This will ensure we set query params in request's context always
-		r = parseQueryParams(r, amw.clusterIDs, amw.logger)
+		r = parseQueryParams(r, amw.logger)
 
 		// Apply middleware only for following endpoints:
 		// - query
@@ -140,7 +142,8 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 		// - labels
 		// - labels values
 		// - series
-		if !strings.HasSuffix(r.URL.Path, "query") && !strings.HasSuffix(r.URL.Path, "query_range") &&
+		if !strings.HasSuffix(r.URL.Path, "query") &&
+			!strings.HasSuffix(r.URL.Path, "query_range") &&
 			!strings.HasSuffix(r.URL.Path, "values") &&
 			!strings.HasSuffix(r.URL.Path, "labels") &&
 			!strings.HasSuffix(r.URL.Path, "series") {
@@ -206,9 +209,30 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 
 		// Check type assertions
 		if v, ok := queryParams.(*QueryParams); ok {
-			id = v.id
+			clusterID = v.clusterID
 			uuids = v.uuids
+
+			// Verify clusterID is in list of valid cluster IDs
+			if !slices.Contains(amw.clusterIDs, clusterID) {
+				// Write an error and stop the handler chain
+				w.WriteHeader(http.StatusBadRequest)
+
+				response := ceems_api.Response[any]{
+					Status:    "error",
+					ErrorType: "bad_request",
+					Error:     "invalid cluster ID",
+				}
+				if err := json.NewEncoder(w).Encode(&response); err != nil {
+					level.Error(amw.logger).Log("msg", "Failed to encode response", "err", err)
+					w.Write([]byte("KO"))
+				}
+
+				return
+			}
 		} else {
+			// Write an error and stop the handler chain
+			w.WriteHeader(http.StatusBadRequest)
+
 			response := ceems_api.Response[any]{
 				Status:    "error",
 				ErrorType: "bad_request",
@@ -223,7 +247,7 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 		}
 
 		// Check if user is querying for his/her own compute units by looking to DB
-		if !amw.isUserUnit(r.Context(), loggedUser, []string{id}, uuids) { //nolint:contextcheck // False positive
+		if !amw.isUserUnit(r.Context(), loggedUser, []string{clusterID}, uuids) { //nolint:contextcheck // False positive
 			// Write an error and stop the handler chain
 			w.WriteHeader(http.StatusForbidden)
 

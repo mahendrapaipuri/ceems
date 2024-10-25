@@ -22,13 +22,14 @@ var mockCEEMSLBApp = *kingpin.New(
 	"Mock Load Balancer App.",
 )
 
-func queryLB(address string) error {
+func queryLB(address, clusterID string) error {
 	req, err := http.NewRequest(http.MethodGet, "http://"+address, nil) //nolint:noctx
 	if err != nil {
 		return err
 	}
 
 	req.Header.Add("X-Grafana-User", "usr1")
+	req.Header.Add("X-Ceems-Cluster-Id", clusterID)
 
 	client := &http.Client{Timeout: 10 * time.Second}
 
@@ -96,7 +97,7 @@ ceems_lb:
 
 	// Query LB
 	for i := range 10 {
-		if err := queryLB("localhost:9030/default"); err == nil {
+		if err := queryLB("localhost:9030", "default"); err == nil {
 			break
 		}
 

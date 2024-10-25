@@ -70,10 +70,10 @@ func setQueryParams(r *http.Request, queryParams *QueryParams) *http.Request {
 }
 
 // Parse query in the request after cloning it and add query params to context.
-func parseQueryParams(r *http.Request, rmIDs []string, logger log.Logger) *http.Request {
+func parseQueryParams(r *http.Request, logger log.Logger) *http.Request {
 	var body []byte
 
-	var id string
+	var clusterID string
 
 	var uuids []string
 
@@ -81,48 +81,51 @@ func parseQueryParams(r *http.Request, rmIDs []string, logger log.Logger) *http.
 
 	var err error
 
-	// Get id from path parameter.
-	// Requested paths will be of form /{id}/<rest of path>. Here will strip `id`
-	// part and proxy the rest to backend
-	var pathParts []string
+	// Get cluster id from X-Ceems-Cluster-Id header
+	clusterID = r.Header.Get(ceemsClusterIDHeader)
 
-	for _, p := range strings.Split(r.URL.Path, "/") {
-		if strings.TrimSpace(p) == "" {
-			continue
-		}
+	// // Get id from path parameter.
+	// // Requested paths will be of form /{id}/<rest of path>. Here will strip `id`
+	// // part and proxy the rest to backend
+	// var pathParts []string
 
-		pathParts = append(pathParts, p)
-	}
+	// for _, p := range strings.Split(r.URL.Path, "/") {
+	// 	if strings.TrimSpace(p) == "" {
+	// 		continue
+	// 	}
 
-	// First path part must be resource manager ID and check if it is in the valid IDs
-	if len(pathParts) > 0 {
-		if slices.Contains(rmIDs, pathParts[0]) {
-			id = pathParts[0]
+	// 	pathParts = append(pathParts, p)
+	// }
 
-			// If there is more than 1 pathParts, make URL or set / as URL
-			if len(pathParts) > 1 {
-				r.URL.Path = "/" + strings.Join(pathParts[1:], "/")
-				r.RequestURI = r.URL.Path
-			} else {
-				r.URL.Path = "/"
-				r.RequestURI = "/"
-			}
-		}
-	}
+	// // First path part must be resource manager ID and check if it is in the valid IDs
+	// if len(pathParts) > 0 {
+	// 	if slices.Contains(rmIDs, pathParts[0]) {
+	// 		id = pathParts[0]
+
+	// 		// If there is more than 1 pathParts, make URL or set / as URL
+	// 		if len(pathParts) > 1 {
+	// 			r.URL.Path = "/" + strings.Join(pathParts[1:], "/")
+	// 			r.RequestURI = r.URL.Path
+	// 		} else {
+	// 			r.URL.Path = "/"
+	// 			r.RequestURI = "/"
+	// 		}
+	// 	}
+	// }
 
 	// Make a new request and add newReader to that request body
 	clonedReq := r.Clone(r.Context())
 
 	// If request has no body go to proxy directly
 	if r.Body == nil {
-		return setQueryParams(r, &QueryParams{id, uuids, queryPeriod})
+		return setQueryParams(r, &QueryParams{clusterID, uuids, queryPeriod})
 	}
 
 	// If failed to read body, skip verification and go to request proxy
 	if body, err = io.ReadAll(r.Body); err != nil {
 		level.Error(logger).Log("msg", "Failed to read request body", "err", err)
 
-		return setQueryParams(r, &QueryParams{id, uuids, queryPeriod})
+		return setQueryParams(r, &QueryParams{clusterID, uuids, queryPeriod})
 	}
 
 	// clone body to existing request and new request
@@ -133,7 +136,7 @@ func parseQueryParams(r *http.Request, rmIDs []string, logger log.Logger) *http.
 	if err = clonedReq.ParseForm(); err != nil {
 		level.Error(logger).Log("msg", "Could not parse request body", "err", err)
 
-		return setQueryParams(r, &QueryParams{id, uuids, queryPeriod})
+		return setQueryParams(r, &QueryParams{clusterID, uuids, queryPeriod})
 	}
 
 	// Parse TSDB's query in request query params
@@ -159,7 +162,7 @@ func parseQueryParams(r *http.Request, rmIDs []string, logger log.Logger) *http.
 				for _, idMatch := range strings.Split(match[1], "|") {
 					// Ignore empty strings
 					if strings.TrimSpace(idMatch) != "" {
-						id = strings.TrimSpace(idMatch)
+						clusterID = strings.TrimSpace(idMatch)
 					}
 				}
 			}
@@ -184,7 +187,7 @@ func parseQueryParams(r *http.Request, rmIDs []string, logger log.Logger) *http.
 	}
 
 	// Set query params to request's context
-	return setQueryParams(r, &QueryParams{id, uuids, queryPeriod})
+	return setQueryParams(r, &QueryParams{clusterID, uuids, queryPeriod})
 }
 
 // Parse time parameter in request.

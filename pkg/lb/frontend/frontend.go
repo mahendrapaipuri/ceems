@@ -42,7 +42,7 @@ type QueryParamsContextKey struct{}
 
 // QueryParams is the context value.
 type QueryParams struct {
-	id          string
+	clusterID   string
 	uuids       []string
 	queryPeriod time.Duration
 }
@@ -315,7 +315,7 @@ func (lb *loadBalancer) Serve(w http.ResponseWriter, r *http.Request) {
 
 	if v, ok := queryParams.(*QueryParams); ok {
 		queryPeriod = v.queryPeriod
-		id = v.id
+		id = v.clusterID
 	} else {
 		http.Error(w, "Invalid query parameters", http.StatusBadRequest)
 
