@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1 / 2024-10-25
+
+- [FEATURE] Use custom header to find target cluster [#203](https://github.com/mahendrapaipuri/ceems/pull/203) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+
 ## 0.4.0 / 2024-10-23
 
 - [FEATURE] Add support for HTTP alloy discovery [#198](https://github.com/mahendrapaipuri/ceems/pull/198) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
