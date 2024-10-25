@@ -140,7 +140,7 @@ func TestNewFrontendSingleGroup(t *testing.T) {
 			newReq = request.WithContext(
 				context.WithValue(
 					request.Context(), QueryParamsContextKey{},
-					&QueryParams{queryPeriod: period, id: clusterID},
+					&QueryParams{queryPeriod: period, clusterID: clusterID},
 				),
 			)
 		} else {
@@ -164,7 +164,7 @@ func TestNewFrontendSingleGroup(t *testing.T) {
 	newReq := request.WithContext(
 		context.WithValue(
 			request.Context(), QueryParamsContextKey{},
-			&QueryParams{id: "default"},
+			&QueryParams{clusterID: "default"},
 		),
 	)
 	responseRecorder := httptest.NewRecorder()
@@ -260,7 +260,7 @@ func TestNewFrontendTwoGroups(t *testing.T) {
 			newReq = request.WithContext(
 				context.WithValue(
 					request.Context(), QueryParamsContextKey{},
-					&QueryParams{queryPeriod: period, id: test.clusterID},
+					&QueryParams{queryPeriod: period, clusterID: test.clusterID},
 				),
 			)
 		} else {
@@ -284,7 +284,7 @@ func TestNewFrontendTwoGroups(t *testing.T) {
 	newReq := request.WithContext(
 		context.WithValue(
 			request.Context(), QueryParamsContextKey{},
-			&QueryParams{id: "rm-0"},
+			&QueryParams{clusterID: "rm-0"},
 		),
 	)
 	responseRecorder := httptest.NewRecorder()

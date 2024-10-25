@@ -204,10 +204,10 @@ func TestParseQueryParams(t *testing.T) {
 			req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 		}
 
-		newReq := parseQueryParams(req, test.rmIDs, log.NewNopLogger())
+		newReq := parseQueryParams(req, log.NewNopLogger())
 		queryParams := newReq.Context().Value(QueryParamsContextKey{}).(*QueryParams) //nolint:forcetypeassert
 		assert.Equal(t, queryParams.uuids, test.uuids)
-		assert.Equal(t, queryParams.id, test.rmID)
+		assert.Equal(t, queryParams.clusterID, test.rmID)
 
 		if test.method == "POST" {
 			// Check the new request body can still be parsed
