@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/xml"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -107,9 +106,9 @@ type instanceProps struct {
 }
 
 type libvirtMetrics struct {
-	cgMetrics         []cgMetric
-	instanceProps     []instanceProps
-	instanceIDUUIDMap map[string]string
+	cgMetrics     []cgMetric
+	instanceProps []instanceProps
+	cgroups       []cgroup
 }
 
 type libvirtCollector struct {
@@ -136,8 +135,8 @@ func init() {
 
 // NewLibvirtCollector returns a new libvirt collector exposing a summary of cgroups.
 func NewLibvirtCollector(logger log.Logger) (Collector, error) {
-	// Get SLURM's cgroup details
-	cgroupManager, err := NewCgroupManager("libvirt")
+	// Get libvirt's cgroup details
+	cgroupManager, err := NewCgroupManager("libvirt", logger)
 	if err != nil {
 		level.Info(logger).Log("msg", "Failed to create cgroup manager", "err", err)
 
@@ -278,10 +277,9 @@ func NewLibvirtCollector(logger log.Logger) (Collector, error) {
 
 // Update implements Collector and update instance metrics.
 func (c *libvirtCollector) Update(ch chan<- prometheus.Metric) error {
-	// Discover all active cgroups
-	metrics, err := c.discoverCgroups()
+	metrics, err := c.instanceMetrics()
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrNoData, err)
+		return err
 	}
 
 	// Start a wait group
@@ -309,7 +307,7 @@ func (c *libvirtCollector) Update(ch chan<- prometheus.Metric) error {
 			defer wg.Done()
 
 			// Update perf metrics
-			if err := c.perfCollector.Update(ch, metrics.instanceIDUUIDMap); err != nil {
+			if err := c.perfCollector.Update(ch, metrics.cgroups); err != nil {
 				level.Error(c.logger).Log("msg", "Failed to update perf stats", "err", err)
 			}
 		}()
@@ -322,7 +320,7 @@ func (c *libvirtCollector) Update(ch chan<- prometheus.Metric) error {
 			defer wg.Done()
 
 			// Update ebpf metrics
-			if err := c.ebpfCollector.Update(ch, metrics.instanceIDUUIDMap); err != nil {
+			if err := c.ebpfCollector.Update(ch, metrics.cgroups); err != nil {
 				level.Error(c.logger).Log("msg", "Failed to update IO and/or network stats", "err", err)
 			}
 		}()
@@ -335,7 +333,7 @@ func (c *libvirtCollector) Update(ch chan<- prometheus.Metric) error {
 			defer wg.Done()
 
 			// Update RDMA metrics
-			if err := c.rdmaCollector.Update(ch, metrics.instanceIDUUIDMap); err != nil {
+			if err := c.rdmaCollector.Update(ch, metrics.cgroups); err != nil {
 				level.Error(c.logger).Log("msg", "Failed to update RDMA stats", "err", err)
 			}
 		}()
@@ -442,16 +440,14 @@ func (c *libvirtCollector) updateGPUOrdinals(ch chan<- prometheus.Metric, instan
 	}
 }
 
-// discoverCgroups finds active cgroup paths and returns initialised metric structs.
-func (c *libvirtCollector) discoverCgroups() (libvirtMetrics, error) {
+// instanceProperties finds properties for each cgroup and returns initialised metric structs.
+func (c *libvirtCollector) instanceProperties(cgroups []cgroup) libvirtMetrics {
 	// Get currently active instances and set them in activeInstanceIDs state variable
 	var activeInstanceIDs []string
 
 	var instnProps []instanceProps
 
 	var cgMetrics []cgMetric
-
-	instanceIDUUIDMap := make(map[string]string)
 
 	// It is possible from Openstack to resize instances by changing flavour. It means
 	// it is possible to add GPUs to non-GPU instances, so we need to invalidate
@@ -462,73 +458,25 @@ func (c *libvirtCollector) discoverCgroups() (libvirtMetrics, error) {
 		c.instancePropslastUpdateTime = time.Now()
 	}
 
-	// Walk through all cgroups and get cgroup paths
-	// https://goplay.tools/snippet/coVDkIozuhg
-	if err := filepath.WalkDir(c.cgroupManager.mountPoint, func(p string, info fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		// Ignore inner cgroups of instances
-		if !info.IsDir() || c.cgroupManager.pathFilter(p) {
-			return nil
-		}
-
-		// Get relative path of cgroup
-		rel, err := filepath.Rel(c.cgroupManager.root, p)
-		if err != nil {
-			level.Error(c.logger).Log("msg", "Failed to resolve relative path for cgroup", "path", p, "err", err)
-
-			return nil
-		}
-
-		// Unescape UTF-8 characters in cgroup path
-		sanitizedPath, err := unescapeString(p)
-		if err != nil {
-			level.Error(c.logger).Log("msg", "Failed to sanitize cgroup path", "path", p, "err", err)
-
-			return nil
-		}
-
-		// Get cgroup ID which is instance ID
-		cgroupIDMatches := c.cgroupManager.idRegex.FindStringSubmatch(sanitizedPath)
-		if len(cgroupIDMatches) <= 1 {
-			return nil
-		}
-
-		instanceID := strings.TrimSpace(cgroupIDMatches[1])
-		if instanceID == "" {
-			level.Error(c.logger).Log("msg", "Empty instance ID", "path", p)
-
-			return nil
-		}
-
-		// Check if we already passed through this instance
-		if slices.Contains(activeInstanceIDs, instanceID) {
-			return nil
-		}
+	for icgrp := range cgroups {
+		instanceID := cgroups[icgrp].id
 
 		// Get instance details
 		if iProps, ok := c.instancePropsCache[instanceID]; !ok {
-			c.instancePropsCache[instanceID] = c.instanceProperties(instanceID)
+			c.instancePropsCache[instanceID] = c.getInstanceProperties(instanceID)
 			instnProps = append(instnProps, c.instancePropsCache[instanceID])
-			instanceIDUUIDMap[instanceID] = c.instancePropsCache[instanceID].uuid
+			cgroups[icgrp].uuid = c.instancePropsCache[instanceID].uuid
 		} else {
 			instnProps = append(instnProps, iProps)
-			instanceIDUUIDMap[instanceID] = iProps.uuid
+			cgroups[icgrp].uuid = iProps.uuid
 		}
 
-		activeInstanceIDs = append(activeInstanceIDs, instanceID)
-		cgMetrics = append(cgMetrics, cgMetric{uuid: instanceIDUUIDMap[instanceID], path: "/" + rel})
+		// Check if we already passed through this instance
+		if !slices.Contains(activeInstanceIDs, instanceID) {
+			activeInstanceIDs = append(activeInstanceIDs, instanceID)
+		}
 
-		level.Debug(c.logger).Log("msg", "cgroup path", "path", p)
-
-		return nil
-	}); err != nil {
-		level.Error(c.logger).
-			Log("msg", "Error walking cgroup subsystem", "path", c.cgroupManager.mountPoint, "err", err)
-
-		return libvirtMetrics{}, err
+		cgMetrics = append(cgMetrics, cgMetric{uuid: cgroups[icgrp].uuid, path: "/" + cgroups[icgrp].path.rel})
 	}
 
 	// Remove terminated instances from instancePropsCache
@@ -538,11 +486,11 @@ func (c *libvirtCollector) discoverCgroups() (libvirtMetrics, error) {
 		}
 	}
 
-	return libvirtMetrics{cgMetrics: cgMetrics, instanceProps: instnProps, instanceIDUUIDMap: instanceIDUUIDMap}, nil
+	return libvirtMetrics{cgMetrics: cgMetrics, instanceProps: instnProps, cgroups: cgroups}
 }
 
-// instanceProperties returns instance properties parsed from XML file.
-func (c *libvirtCollector) instanceProperties(instanceID string) instanceProps {
+// getInstanceProperties returns instance properties parsed from XML file.
+func (c *libvirtCollector) getInstanceProperties(instanceID string) instanceProps {
 	// If vGPU is activated on atleast one GPU, update mdevs
 	if c.vGPUActivated {
 		if updatedGPUDevs, err := updateGPUMdevs(c.gpuDevs); err == nil {
@@ -575,6 +523,18 @@ func (c *libvirtCollector) instanceProperties(instanceID string) instanceProps {
 	}
 
 	return dataPtr.instanceProps
+}
+
+// instanceMetrics returns initialised instance metrics structs.
+func (c *libvirtCollector) instanceMetrics() (libvirtMetrics, error) {
+	// Get active cgroups
+	cgroups, err := c.cgroupManager.discover()
+	if err != nil {
+		return libvirtMetrics{}, fmt.Errorf("failed to discover cgroups: %w", err)
+	}
+
+	// Get all instance properties and initialise metric structs
+	return c.instanceProperties(cgroups), nil
 }
 
 // readLibvirtXMLFile reads the libvirt's XML file inside a security context.

@@ -71,10 +71,11 @@ func TestLibvirtInstanceProps(t *testing.T) {
 
 	// cgroup Manager
 	cgManager := &cgroupManager{
+		logger:     log.NewNopLogger(),
 		mode:       cgroups.Unified,
 		mountPoint: "testdata/sys/fs/cgroup/machine.slice",
 		idRegex:    libvirtCgroupPathRegex,
-		pathFilter: func(p string) bool {
+		isChild: func(p string) bool {
 			return strings.Contains(p, "/libvirt")
 		},
 	}
@@ -114,7 +115,7 @@ func TestLibvirtInstanceProps(t *testing.T) {
 		{uuid: "4de89c5b-50d7-4d30-a630-14e135380fe8", gpuOrdinals: []string(nil)},
 	}
 
-	metrics, err := c.discoverCgroups()
+	metrics, err := c.instanceMetrics()
 	require.NoError(t, err)
 
 	assert.EqualValues(t, expectedProps, metrics.instanceProps)
@@ -122,7 +123,7 @@ func TestLibvirtInstanceProps(t *testing.T) {
 	// Sleep for 0.5 seconds to ensure we invalidate cache
 	time.Sleep(500 * time.Millisecond)
 
-	_, err = c.discoverCgroups()
+	_, err = c.instanceMetrics()
 	require.NoError(t, err)
 
 	// Now check if lastUpdateTime is less than 0.5 se
@@ -151,11 +152,12 @@ func TestInstancePropsCaching(t *testing.T) {
 
 	// cgroup Manager
 	cgManager := &cgroupManager{
+		logger:     log.NewNopLogger(),
 		mode:       cgroups.Unified,
 		root:       cgroupsPath,
 		mountPoint: cgroupsPath + "/cpuacct/machine.slice",
 		idRegex:    libvirtCgroupPathRegex,
-		pathFilter: func(p string) bool {
+		isChild: func(p string) bool {
 			return strings.Contains(p, "/libvirt")
 		},
 	}
@@ -225,7 +227,7 @@ func TestInstancePropsCaching(t *testing.T) {
 	}
 
 	// Now call get metrics which should populate instancePropsCache
-	_, err = c.discoverCgroups()
+	_, err = c.instanceMetrics()
 	require.NoError(t, err)
 
 	// Check if instancePropsCache has 20 instances and GPU ordinals are correct
@@ -252,7 +254,7 @@ func TestInstancePropsCaching(t *testing.T) {
 	}
 
 	// Now call again get metrics which should populate instancePropsCache
-	_, err = c.discoverCgroups()
+	_, err = c.instanceMetrics()
 	require.NoError(t, err)
 
 	// Check if instancePropsCache has only 15 instances and GPU ordinals are empty

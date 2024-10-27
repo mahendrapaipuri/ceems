@@ -177,20 +177,28 @@ func TestNewCgroupManagerV2(t *testing.T) {
 	require.NoError(t, err)
 
 	// Slurm case
-	manager, err := NewCgroupManager("slurm")
+	manager, err := NewCgroupManager("slurm", log.NewNopLogger())
 	require.NoError(t, err)
 
 	assert.Equal(t, "testdata/sys/fs/cgroup/system.slice/slurmstepd.scope", manager.mountPoint)
-	assert.NotNil(t, manager.pathFilter)
-	assert.NotNil(t, manager.procFilter)
+	assert.NotNil(t, manager.isChild)
+	assert.NotNil(t, manager.ignoreProc)
+
+	cgroups, err := manager.discover()
+	require.NoError(t, err)
+	assert.Len(t, cgroups, 3)
 
 	// libvirt case
-	manager, err = NewCgroupManager("libvirt")
+	manager, err = NewCgroupManager("libvirt", log.NewNopLogger())
 	require.NoError(t, err)
 
 	assert.Equal(t, "testdata/sys/fs/cgroup/machine.slice", manager.mountPoint)
-	assert.NotNil(t, manager.pathFilter)
-	assert.NotNil(t, manager.procFilter)
+	assert.NotNil(t, manager.isChild)
+	assert.NotNil(t, manager.ignoreProc)
+
+	cgroups, err = manager.discover()
+	require.NoError(t, err)
+	assert.Len(t, cgroups, 4)
 }
 
 func TestNewCgroupManagerV1(t *testing.T) {
@@ -203,23 +211,31 @@ func TestNewCgroupManagerV1(t *testing.T) {
 	require.NoError(t, err)
 
 	// Slurm case
-	manager, err := NewCgroupManager("slurm")
+	manager, err := NewCgroupManager("slurm", log.NewNopLogger())
 	require.NoError(t, err)
 
 	assert.Equal(t, "testdata/sys/fs/cgroup/cpuacct/slurm", manager.mountPoint)
-	assert.NotNil(t, manager.pathFilter)
-	assert.NotNil(t, manager.procFilter)
+	assert.NotNil(t, manager.isChild)
+	assert.NotNil(t, manager.ignoreProc)
+
+	cgroups, err := manager.discover()
+	require.NoError(t, err)
+	assert.Len(t, cgroups, 3)
 
 	// libvirt case
-	manager, err = NewCgroupManager("libvirt")
+	manager, err = NewCgroupManager("libvirt", log.NewNopLogger())
 	require.NoError(t, err)
 
 	assert.Equal(t, "testdata/sys/fs/cgroup/cpuacct/machine.slice", manager.mountPoint)
-	assert.NotNil(t, manager.pathFilter)
-	assert.NotNil(t, manager.procFilter)
+	assert.NotNil(t, manager.isChild)
+	assert.NotNil(t, manager.ignoreProc)
+
+	cgroups, err = manager.discover()
+	require.NoError(t, err)
+	assert.Len(t, cgroups, 4)
 
 	// Check error for unknown resource manager
-	_, err = NewCgroupManager("unknown")
+	_, err = NewCgroupManager("unknown", log.NewNopLogger())
 	assert.Error(t, err)
 }
 

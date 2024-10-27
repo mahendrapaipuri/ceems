@@ -354,7 +354,6 @@ then
         --collector.slurm \
         --collector.gpu.type="nvidia" \
         --collector.gpu.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
-        --collector.slurm.gpu-job-map-path="pkg/collector/testdata/gpujobmap" \
         --collector.ipmi_dcmi.test-mode \
         --collector.ipmi_dcmi.cmd="pkg/collector/testdata/ipmi/freeipmi/ipmi-dcmi" \
         --collector.empty-hostname-label \
@@ -373,7 +372,6 @@ then
         --collector.slurm \
         --collector.gpu.type="nvidia" \
         --collector.gpu.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
-        --collector.slurm.gpu-job-map-path="pkg/collector/testdata/gpujobmap" \
         --collector.ipmi_dcmi.cmd="pkg/collector/testdata/ipmi/freeipmi/ipmi-dcmi" \
         --collector.ipmi_dcmi.test-mode \
         --collector.empty-hostname-label \
@@ -391,7 +389,6 @@ then
         --collector.slurm \
         --collector.gpu.type="nvidia" \
         --collector.gpu.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
-        --collector.slurm.gpu-job-map-path="pkg/collector/testdata/gpujobmap" \
         --collector.rdma.stats \
         --collector.rdma.cmd="pkg/collector/testdata/rdma" \
         --collector.empty-hostname-label \
@@ -411,7 +408,6 @@ then
         --collector.slurm.gpu-order-map="0:0,1:1,2:4,3:5,4:2.1,5:2.5,6:2.13,7:3.1,8:3.5,9:3.13,10:6,11:7" \
         --collector.gpu.type="nvidia" \
         --collector.gpu.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
-        --collector.slurm.gpu-job-map-path="pkg/collector/testdata/gpujobmap" \
         --collector.rdma.stats \
         --collector.rdma.cmd="pkg/collector/testdata/rdma" \
         --collector.empty-hostname-label \
@@ -430,7 +426,6 @@ then
         --collector.slurm \
         --collector.gpu.type="amd" \
         --collector.gpu.rocm-smi-path="pkg/collector/testdata/rocm-smi" \
-        --collector.slurm.gpu-job-map-path="pkg/collector/testdata/gpujobmap" \
         --collector.empty-hostname-label \
         --collector.ipmi_dcmi.test-mode \
         --web.listen-address "127.0.0.1:${port}" \
@@ -478,7 +473,6 @@ then
         --collector.slurm \
         --collector.gpu.type="amd" \
         --collector.gpu.rocm-smi-path="pkg/collector/testdata/rocm-smi" \
-        --collector.slurm.gpu-job-map-path="pkg/collector/testdata/gpujobmap" \
         --collector.slurm.swap.memory.metrics \
         --collector.slurm.psi.metrics \
         --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/capmc/capmc" \

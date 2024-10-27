@@ -27,10 +27,11 @@ func TestRDMACollector(t *testing.T) {
 
 	// cgroup manager
 	cgManager := &cgroupManager{
+		logger:     log.NewNopLogger(),
 		mode:       cgroups.Unified,
 		mountPoint: "testdata/sys/fs/cgroup/system.slice/slurmstepd.scope",
 		idRegex:    slurmCgroupPathRegex,
-		procFilter: func(p string) bool {
+		ignoreProc: func(p string) bool {
 			return slurmIgnoreProcsRegex.MatchString(p)
 		},
 	}
@@ -59,17 +60,14 @@ func TestRDMACollector(t *testing.T) {
 func TestDevMR(t *testing.T) {
 	_, err := CEEMSExporterApp.Parse([]string{
 		"--path.procfs", "testdata/proc",
+		"--path.cgroupfs", "testdata/sys/fs/cgroup",
+		"--collector.cgroups.force-version", "v2",
 	})
 	require.NoError(t, err)
 
 	// cgroup manager
-	cgManager := &cgroupManager{
-		mode:    cgroups.Unified,
-		idRegex: slurmCgroupPathRegex,
-		procFilter: func(p string) bool {
-			return slurmIgnoreProcsRegex.MatchString(p)
-		},
-	}
+	cgManager, err := NewCgroupManager("slurm", log.NewNopLogger())
+	require.NoError(t, err)
 
 	// Instantiate a new Proc FS
 	procfs, err := procfs.NewFS(*procfsPath)
@@ -82,13 +80,15 @@ func TestDevMR(t *testing.T) {
 		cgroupManager: cgManager,
 	}
 
-	// Get cgroup IDs
-	procCgroup, err := c.procCgroups(nil)
+	// Get cgroups
+	cgroups, err := cgManager.discover()
 	require.NoError(t, err)
 
+	procCgroup := c.procCgroupMapper(cgroups)
+
 	expectedMRs := map[string]*mr{
-		"1320003": {2, 4194304, "mlx5_0"},
-		"4824887": {2, 4194304, "mlx5_0"},
+		"1009248": {2, 4194304, "mlx5_0"},
+		"1009249": {2, 4194304, "mlx5_0"},
 	}
 
 	// Get MR stats
@@ -100,17 +100,14 @@ func TestDevMR(t *testing.T) {
 func TestDevCQ(t *testing.T) {
 	_, err := CEEMSExporterApp.Parse([]string{
 		"--path.procfs", "testdata/proc",
+		"--path.cgroupfs", "testdata/sys/fs/cgroup",
+		"--collector.cgroups.force-version", "v1",
 	})
 	require.NoError(t, err)
 
 	// cgroup manager
-	cgManager := &cgroupManager{
-		mode:    cgroups.Unified,
-		idRegex: slurmCgroupPathRegex,
-		procFilter: func(p string) bool {
-			return slurmIgnoreProcsRegex.MatchString(p)
-		},
-	}
+	cgManager, err := NewCgroupManager("slurm", log.NewNopLogger())
+	require.NoError(t, err)
 
 	// Instantiate a new Proc FS
 	procfs, err := procfs.NewFS(*procfsPath)
@@ -124,12 +121,14 @@ func TestDevCQ(t *testing.T) {
 	}
 
 	// Get cgroup IDs
-	procCgroup, err := c.procCgroups(nil)
+	cgroups, err := cgManager.discover()
 	require.NoError(t, err)
 
+	procCgroup := c.procCgroupMapper(cgroups)
+
 	expectedCQs := map[string]*cq{
-		"1320003": {2, 8190, "mlx5_0"},
-		"4824887": {2, 8190, "mlx5_0"},
+		"1009248": {2, 8190, "mlx5_0"},
+		"1009249": {2, 8190, "mlx5_0"},
 	}
 
 	// Get MR stats
@@ -141,17 +140,14 @@ func TestDevCQ(t *testing.T) {
 func TestLinkQP(t *testing.T) {
 	_, err := CEEMSExporterApp.Parse([]string{
 		"--path.procfs", "testdata/proc",
+		"--path.cgroupfs", "testdata/sys/fs/cgroup",
+		"--collector.cgroups.force-version", "v1",
 	})
 	require.NoError(t, err)
 
 	// cgroup manager
-	cgManager := &cgroupManager{
-		mode:    cgroups.Unified,
-		idRegex: slurmCgroupPathRegex,
-		procFilter: func(p string) bool {
-			return slurmIgnoreProcsRegex.MatchString(p)
-		},
-	}
+	cgManager, err := NewCgroupManager("slurm", log.NewNopLogger())
+	require.NoError(t, err)
 
 	// Instantiate a new Proc FS
 	procfs, err := procfs.NewFS(*procfsPath)
@@ -167,12 +163,14 @@ func TestLinkQP(t *testing.T) {
 	}
 
 	// Get cgroup IDs
-	procCgroup, err := c.procCgroups(nil)
+	cgroups, err := cgManager.discover()
 	require.NoError(t, err)
 
+	procCgroup := c.procCgroupMapper(cgroups)
+
 	expected := map[string]*qp{
-		"1320003": {16, "mlx5_0", "1", map[string]uint64{"rx_read_requests": 0, "rx_write_requests": 41988882}},
-		"4824887": {16, "mlx5_0", "1", map[string]uint64{"rx_write_requests": 0, "rx_read_requests": 0}},
+		"1009249": {16, "mlx5_0", "1", map[string]uint64{"rx_read_requests": 0, "rx_write_requests": 41988882}},
+		"1009248": {16, "mlx5_0", "1", map[string]uint64{"rx_write_requests": 0, "rx_read_requests": 0}},
 	}
 
 	// Get MR stats
@@ -189,9 +187,10 @@ func TestLinkCountersSysWide(t *testing.T) {
 
 	// cgroup manager
 	cgManager := &cgroupManager{
+		logger:  log.NewNopLogger(),
 		mode:    cgroups.Unified,
 		idRegex: slurmCgroupPathRegex,
-		procFilter: func(p string) bool {
+		ignoreProc: func(p string) bool {
 			return slurmIgnoreProcsRegex.MatchString(p)
 		},
 	}

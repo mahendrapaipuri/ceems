@@ -2,9 +2,11 @@ package collector
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"math"
 	"os"
 	"path/filepath"
@@ -19,6 +21,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/procfs"
 	"github.com/prometheus/procfs/blockdevice"
 )
 
@@ -83,8 +86,38 @@ var (
 	).Hidden().Enum("v1", "v2")
 )
 
+type cgroupPath struct {
+	abs, rel string
+}
+
+// String implements stringer interface of the struct.
+func (c *cgroupPath) String() string {
+	return c.abs
+}
+
+type cgroup struct {
+	id       string
+	uuid     string // uuid is the identifier known to user whereas id is identifier used by resource manager internally
+	procs    []procfs.Proc
+	path     cgroupPath
+	children []cgroupPath // All the children under this root cgroup
+}
+
+// String implements stringer interface of the struct.
+func (c *cgroup) String() string {
+	return fmt.Sprintf(
+		"id: %s path: %s num_procs: %d num_children: %d",
+		c.id,
+		c.path,
+		len(c.procs),
+		len(c.children),
+	)
+}
+
 // cgroupManager is the container that have cgroup information of resource manager.
 type cgroupManager struct {
+	logger           log.Logger
+	fs               procfs.FS
 	mode             cgroups.CGMode    // cgroups mode: unified, legacy, hybrid
 	root             string            // cgroups root
 	slice            string            // Slice under which cgroups are managed eg system.slice, machine.slice
@@ -93,8 +126,8 @@ type cgroupManager struct {
 	mountPoint       string            // Path under which resource manager creates cgroups
 	manager          string            // cgroup manager
 	idRegex          *regexp.Regexp    // Regular expression to capture cgroup ID set by resource manager
-	pathFilter       func(string) bool // Function to filter cgroup paths. Function must return true if cgroup path must be ignored
-	procFilter       func(string) bool // Function to filter processes in cgroup based on cmdline. Function must return true if process must be ignored
+	isChild          func(string) bool // Function to identify child cgroup paths. Function must return true if cgroup is a child to root cgroup
+	ignoreProc       func(string) bool // Function to filter processes in cgroup based on cmdline. Function must return true if process must be ignored
 }
 
 // String implements stringer interface of the struct.
@@ -142,18 +175,130 @@ func (c *cgroupManager) setMountPoint() {
 	}
 }
 
+// discover finds all the active cgroups in the given mountpoint.
+func (c *cgroupManager) discover() ([]cgroup, error) {
+	var cgroups []cgroup
+
+	cgroupProcs := make(map[string][]procfs.Proc)
+
+	cgroupChildren := make(map[string][]cgroupPath)
+
+	// Walk through all cgroups and get cgroup paths
+	// https://goplay.tools/snippet/coVDkIozuhg
+	if err := filepath.WalkDir(c.mountPoint, func(p string, info fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Ignore paths that are not directories
+		if !info.IsDir() {
+			return nil
+		}
+
+		// Get relative path of cgroup
+		rel, err := filepath.Rel(c.root, p)
+		if err != nil {
+			level.Error(c.logger).Log("msg", "Failed to resolve relative path for cgroup", "path", p, "err", err)
+
+			return nil
+		}
+
+		// Unescape UTF-8 characters in cgroup path
+		sanitizedPath, err := unescapeString(p)
+		if err != nil {
+			level.Error(c.logger).Log("msg", "Failed to sanitize cgroup path", "path", p, "err", err)
+
+			return nil
+		}
+
+		// Get cgroup ID which is instance ID
+		cgroupIDMatches := c.idRegex.FindStringSubmatch(sanitizedPath)
+		if len(cgroupIDMatches) <= 1 {
+			return nil
+		}
+
+		id := strings.TrimSpace(cgroupIDMatches[1])
+		if id == "" {
+			level.Error(c.logger).Log("msg", "Empty cgroup ID", "path", p)
+
+			return nil
+		}
+
+		// Find procs in this cgroup
+		if data, err := os.ReadFile(filepath.Join(p, "cgroup.procs")); err == nil {
+			scanner := bufio.NewScanner(bytes.NewReader(data))
+			for scanner.Scan() {
+				if pid, err := strconv.ParseInt(scanner.Text(), 10, 0); err == nil {
+					if proc, err := c.fs.Proc(int(pid)); err == nil {
+						cgroupProcs[id] = append(cgroupProcs[id], proc)
+					}
+				}
+			}
+		}
+
+		// Ignore child cgroups. We are only interested in root cgroup
+		if c.isChild(p) {
+			cgroupChildren[id] = append(cgroupChildren[id], cgroupPath{abs: sanitizedPath, rel: rel})
+
+			return nil
+		}
+
+		// By default set id and uuid to same cgroup ID and if the resource
+		// manager has two representations, override it in corresponding
+		// collector. For instance, it applies only to libvirt
+		cgrp := cgroup{
+			id:   id,
+			uuid: id,
+			path: cgroupPath{abs: sanitizedPath, rel: rel},
+		}
+
+		cgroups = append(cgroups, cgrp)
+		cgroupChildren[id] = append(cgroupChildren[id], cgroupPath{abs: sanitizedPath, rel: rel})
+
+		return nil
+	}); err != nil {
+		level.Error(c.logger).
+			Log("msg", "Error walking cgroup subsystem", "path", c.mountPoint, "err", err)
+
+		return nil, err
+	}
+
+	// Merge cgroupProcs and cgroupChildren with cgroups slice
+	for icgrp := range cgroups {
+		if procs, ok := cgroupProcs[cgroups[icgrp].id]; ok {
+			cgroups[icgrp].procs = procs
+		}
+
+		if children, ok := cgroupChildren[cgroups[icgrp].id]; ok {
+			cgroups[icgrp].children = children
+		}
+	}
+
+	return cgroups, nil
+}
+
 // NewCgroupManager returns an instance of cgroupManager based on resource manager.
-func NewCgroupManager(name string) (*cgroupManager, error) {
+func NewCgroupManager(name string, logger log.Logger) (*cgroupManager, error) {
+	// Instantiate a new Proc FS
+	fs, err := procfs.NewFS(*procfsPath)
+	if err != nil {
+		level.Error(logger).Log("msg", "Unable to open procfs", "path", *procfsPath, "err", err)
+
+		return nil, err
+	}
+
 	var manager *cgroupManager
 
 	switch name {
 	case slurm:
 		if (*forceCgroupsVersion == "" && cgroups.Mode() == cgroups.Unified) || *forceCgroupsVersion == "v2" {
 			manager = &cgroupManager{
-				mode:  cgroups.Unified,
-				root:  *cgroupfsPath,
-				slice: "system.slice",
-				scope: "slurmstepd.scope",
+				logger: logger,
+				fs:     fs,
+				mode:   cgroups.Unified,
+				root:   *cgroupfsPath,
+				slice:  "system.slice",
+				scope:  "slurmstepd.scope",
 			}
 		} else {
 			var mode cgroups.CGMode
@@ -164,6 +309,8 @@ func NewCgroupManager(name string) (*cgroupManager, error) {
 			}
 
 			manager = &cgroupManager{
+				logger:           logger,
+				fs:               fs,
 				mode:             mode,
 				root:             *cgroupfsPath,
 				activeController: *activeController,
@@ -177,11 +324,11 @@ func NewCgroupManager(name string) (*cgroupManager, error) {
 		// Add path regex
 		manager.idRegex = slurmCgroupPathRegex
 
-		// Add filter functions
-		manager.pathFilter = func(p string) bool {
+		// Identify child cgroup
+		manager.isChild = func(p string) bool {
 			return strings.Contains(p, "/step_")
 		}
-		manager.procFilter = func(p string) bool {
+		manager.ignoreProc = func(p string) bool {
 			return slurmIgnoreProcsRegex.MatchString(p)
 		}
 
@@ -193,9 +340,11 @@ func NewCgroupManager(name string) (*cgroupManager, error) {
 	case libvirt:
 		if (*forceCgroupsVersion == "" && cgroups.Mode() == cgroups.Unified) || *forceCgroupsVersion == "v2" {
 			manager = &cgroupManager{
-				mode:  cgroups.Unified,
-				root:  *cgroupfsPath,
-				slice: "machine.slice",
+				logger: logger,
+				fs:     fs,
+				mode:   cgroups.Unified,
+				root:   *cgroupfsPath,
+				slice:  "machine.slice",
 			}
 		} else {
 			var mode cgroups.CGMode
@@ -206,6 +355,8 @@ func NewCgroupManager(name string) (*cgroupManager, error) {
 			}
 
 			manager = &cgroupManager{
+				logger:           logger,
+				fs:               fs,
 				mode:             mode,
 				root:             *cgroupfsPath,
 				activeController: *activeController,
@@ -219,11 +370,13 @@ func NewCgroupManager(name string) (*cgroupManager, error) {
 		// Add path regex
 		manager.idRegex = libvirtCgroupPathRegex
 
-		// Add filter functions
-		manager.pathFilter = func(p string) bool {
-			return strings.Contains(p, "/libvirt")
+		// Identify child cgroup
+		// In cgroups v1, all the child cgroups like emulator, vcpu* are flat whereas
+		// in v2 they are all inside libvirt child
+		manager.isChild = func(p string) bool {
+			return strings.Contains(p, "/libvirt") || strings.Contains(p, "/emulator") || strings.Contains(p, "/vcpu")
 		}
-		manager.procFilter = func(p string) bool {
+		manager.ignoreProc = func(p string) bool {
 			return false
 		}
 

@@ -228,9 +228,7 @@ func NewRDMACollector(logger log.Logger, cgManager *cgroupManager) (*rdmaCollect
 }
 
 // Update implements Collector and exposes RDMA related metrics.
-// cgroupIDUUIDMap provides a map to cgroupID to compute unit UUID. If the map is empty, it means
-// cgroup ID and compute unit UUID is identical.
-func (c *rdmaCollector) Update(ch chan<- prometheus.Metric, cgroupIDUUIDMap map[string]string) error {
+func (c *rdmaCollector) Update(ch chan<- prometheus.Metric, cgroups []cgroup) error {
 	if !c.isAvailable {
 		return ErrNoData
 	}
@@ -240,7 +238,7 @@ func (c *rdmaCollector) Update(ch chan<- prometheus.Metric, cgroupIDUUIDMap map[
 		level.Error(c.logger).Log("msg", "Failed to enable Per-PID QP stats", "err", err)
 	}
 
-	return c.update(ch, cgroupIDUUIDMap)
+	return c.update(ch, cgroups)
 }
 
 // Stop releases system resources used by the collector.
@@ -300,14 +298,9 @@ func (c *rdmaCollector) perPIDCounters(enable bool) error {
 }
 
 // update fetches different RDMA stats.
-func (c *rdmaCollector) update(ch chan<- prometheus.Metric, cgroupIDUUIDMap map[string]string) error {
-	// First get cgroups and their associated procs
-	procCgroup, err := c.procCgroups(cgroupIDUUIDMap)
-	if err != nil {
-		level.Error(c.logger).Log("msg", "Failed to fetch active cgroups", "err", err)
-
-		return ErrNoData
-	}
+func (c *rdmaCollector) update(ch chan<- prometheus.Metric, cgroups []cgroup) error {
+	// Make invert mapping of cgroups
+	procCgroup := c.procCgroupMapper(cgroups)
 
 	// Initialise a wait group
 	wg := sync.WaitGroup{}
@@ -413,26 +406,13 @@ func (c *rdmaCollector) update(ch chan<- prometheus.Metric, cgroupIDUUIDMap map[
 	return nil
 }
 
-// procCgroups returns cgroup ID of all relevant processes.
-func (c *rdmaCollector) procCgroups(cgroupIDUUIDMap map[string]string) (map[string]string, error) {
-	// First get cgroups and their associated procs
-	cgroups, err := getCgroups(c.procfs, c.cgroupManager.idRegex, nil, c.cgroupManager.procFilter)
-	if err != nil {
-		level.Error(c.logger).Log("msg", "Failed to fetch active cgroups", "err", err)
-
-		return nil, err
-	}
-
+// procCgroupMapper returns cgroup ID of all relevant processes map.
+func (c *rdmaCollector) procCgroupMapper(cgroups []cgroup) map[string]string {
 	// Make invert mapping of cgroups
 	procCgroup := make(map[string]string)
 
 	for _, cgroup := range cgroups {
-		var uuid string
-		if cgroupIDUUIDMap != nil {
-			uuid = cgroupIDUUIDMap[cgroup.id]
-		} else {
-			uuid = cgroup.id
-		}
+		uuid := cgroup.uuid
 
 		for _, proc := range cgroup.procs {
 			p := strconv.FormatInt(int64(proc.PID), 10)
@@ -440,7 +420,7 @@ func (c *rdmaCollector) procCgroups(cgroupIDUUIDMap map[string]string) (map[stri
 		}
 	}
 
-	return procCgroup, nil
+	return procCgroup
 }
 
 // devMR returns Memory Regions (MRs) stats of all active cgroups.

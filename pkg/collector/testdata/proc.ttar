@@ -1559,7 +1559,7 @@ SymlinkTo: /usr/bin
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: proc/26242/environ
 Lines: 1
-PATH=/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/binNULLBYTEHOSTNAME=cd24e11f73a5NULLBYTETERM=xtermNULLBYTEGOLANG_VERSION=1.12.5NULLBYTEGOPATH=/goNULLBYTEHOME=/rootNULLBYTESLURM_JOB_UID=1000NULLBYTESLURM_JOB_ID=11000NULLBYTESLURM_JOB_ACCOUNT=testaccNULLBYTESLURM_JOB_NODELIST=compute-[0-2]NULLBYTESLURM_STEP_GPUS=1NULLBYTE
+PATH=/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/binNULLBYTEHOSTNAME=cd24e11f73a5NULLBYTETERM=xtermNULLBYTEGOLANG_VERSION=1.12.5NULLBYTEGOPATH=/goNULLBYTEHOME=/rootNULLBYTESLURM_JOB_UID=1000NULLBYTESLURM_JOB_ID=1009250NULLBYTESLURM_JOB_ACCOUNT=testaccNULLBYTESLURM_JOB_NODELIST=compute-[0-2]NULLBYTESLURM_STEP_GPUS=1NULLBYTE
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: proc/26242/exe
@@ -7159,7 +7159,7 @@ SymlinkTo: /usr/bin
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: proc/46235/environ
 Lines: 1
-PATH=/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/binNULLBYTEHOSTNAME=cd24e11f73a5NULLBYTETERM=xtermNULLBYTEGOLANG_VERSION=1.12.5NULLBYTEGOPATH=/goNULLBYTEHOME=/rootNULLBYTEENABLE_PROFILING=1NULLBYTE
+PATH=/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/binNULLBYTEHOSTNAME=cd24e11f73a5NULLBYTETERM=xtermNULLBYTEGOLANG_VERSION=1.12.5NULLBYTEGOPATH=/goNULLBYTEHOME=/rootNULLBYTEENABLE_PROFILING=1NULLBYTESLURM_STEP_GPUS=0NULLBYTESLURM_JOB_ID=1009249NULLBYTE
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: proc/46235/exe
@@ -8550,7 +8550,7 @@ SymlinkTo: /usr/bin
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: proc/46281/environ
 Lines: 1
-PATH=/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/binNULLBYTEHOSTNAME=cd24e11f73a5NULLBYTETERM=xtermNULLBYTEGOLANG_VERSION=1.12.5NULLBYTEGOPATH=/goNULLBYTEHOME=/rootNULLBYTEENABLE_PROFILING=1NULLBYTE
+PATH=/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/binNULLBYTEHOSTNAME=cd24e11f73a5NULLBYTETERM=xtermNULLBYTEGOLANG_VERSION=1.12.5NULLBYTEGOPATH=/goNULLBYTEHOME=/rootNULLBYTEENABLE_PROFILING=1NULLBYTESLURM_JOB_GPUS=2,3NULLBYTESLURM_JOB_ID=1009248NULLBYTE
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: proc/46281/exe

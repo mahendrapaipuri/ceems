@@ -6,6 +6,7 @@ package collector
 import (
 	"context"
 	"os"
+	"slices"
 	"testing"
 
 	"github.com/containerd/cgroups/v3"
@@ -31,7 +32,7 @@ func TestPerfCollector(t *testing.T) {
 		mode:       cgroups.Unified,
 		mountPoint: "testdata/sys/fs/cgroup/system.slice/slurmstepd.scope",
 		idRegex:    slurmCgroupPathRegex,
-		procFilter: func(p string) bool {
+		ignoreProc: func(p string) bool {
 			return slurmIgnoreProcsRegex.MatchString(p)
 		},
 	}
@@ -58,16 +59,16 @@ func TestPerfCollector(t *testing.T) {
 }
 
 func TestDiscoverProcess(t *testing.T) {
-	var err error
+	_, err := CEEMSExporterApp.Parse([]string{
+		"--path.procfs", "testdata/proc",
+		"--path.cgroupfs", "testdata/sys/fs/cgroup",
+		"--collector.cgroups.force-version", "v2",
+	})
+	require.NoError(t, err)
 
 	// cgroup manager
-	cgManager := &cgroupManager{
-		mode:    cgroups.Unified,
-		idRegex: slurmCgroupPathRegex,
-		procFilter: func(p string) bool {
-			return slurmIgnoreProcsRegex.MatchString(p)
-		},
-	}
+	cgManager, err := NewCgroupManager("slurm", log.NewNopLogger())
+	require.NoError(t, err)
 
 	// perf opts
 	opts := perfOpts{
@@ -85,10 +86,10 @@ func TestDiscoverProcess(t *testing.T) {
 	}
 
 	// Create dummy security context
-	collector.securityContexts[perfDiscovererCtx], err = security.NewSecurityContext(
-		perfDiscovererCtx,
+	collector.securityContexts[perfProcFilterCtx], err = security.NewSecurityContext(
+		perfProcFilterCtx,
 		nil,
-		discoverer,
+		filterPerfProcs,
 		collector.logger,
 	)
 	require.NoError(t, err)
@@ -96,15 +97,19 @@ func TestDiscoverProcess(t *testing.T) {
 	collector.fs, err = procfs.NewFS("testdata/proc")
 	require.NoError(t, err)
 
-	// Discover processes
-	cgroups, err := collector.discoverProcess()
+	// Discover cgroups
+	cgroups, err := cgManager.discover()
+	require.NoError(t, err)
+
+	// Filter processes
+	cgroups, err = collector.filterProcs(cgroups)
 	require.NoError(t, err)
 
 	// expected
-	expectedCgroupIDs := []string{"1320003", "4824887"}
+	expectedCgroupIDs := []string{"1009248", "1009249"}
 	expectedCgroupProcs := map[string][]int{
-		"4824887": {46231, 46281},
-		"1320003": {46235, 46236},
+		"1009248": {46231, 46281},
+		"1009249": {46235, 46236},
 	}
 
 	// Get cgroup IDs
@@ -113,20 +118,19 @@ func TestDiscoverProcess(t *testing.T) {
 	cgroupProcs := make(map[string][]int)
 
 	for _, cgroup := range cgroups {
-		cgroupIDs = append(cgroupIDs, cgroup.id)
-
-		var pids []int
-		for _, proc := range cgroup.procs {
-			pids = append(pids, proc.PID)
+		if !slices.Contains(cgroupIDs, cgroup.id) {
+			cgroupIDs = append(cgroupIDs, cgroup.id)
 		}
 
-		cgroupProcs[cgroup.id] = pids
+		for _, proc := range cgroup.procs {
+			cgroupProcs[cgroup.id] = append(cgroupProcs[cgroup.id], proc.PID)
+		}
 	}
 
 	assert.ElementsMatch(t, cgroupIDs, expectedCgroupIDs)
 
 	for _, cgroupID := range cgroupIDs {
-		assert.ElementsMatch(t, cgroupProcs[cgroupID], expectedCgroupProcs[cgroupID])
+		assert.ElementsMatch(t, cgroupProcs[cgroupID], expectedCgroupProcs[cgroupID], "cgroup %s", cgroupID)
 	}
 }
 
@@ -137,20 +141,17 @@ func TestNewProfilers(t *testing.T) {
 
 	_, err = CEEMSExporterApp.Parse([]string{
 		"--path.procfs", "testdata/proc",
+		"--path.cgroupfs", "testdata/sys/fs/cgroup",
 		"--collector.perf.hardware-events",
 		"--collector.perf.software-events",
 		"--collector.perf.hardware-cache-events",
+		"--collector.cgroups.force-version", "v1",
 	})
 	require.NoError(t, err)
 
 	// cgroup manager
-	cgManager := &cgroupManager{
-		mode:    cgroups.Legacy,
-		idRegex: slurmCgroupPathRegex,
-		procFilter: func(p string) bool {
-			return slurmIgnoreProcsRegex.MatchString(p)
-		},
-	}
+	cgManager, err := NewCgroupManager("slurm", log.NewNopLogger())
+	require.NoError(t, err)
 
 	collector, err := NewPerfCollector(log.NewNopLogger(), cgManager)
 	require.NoError(t, err)

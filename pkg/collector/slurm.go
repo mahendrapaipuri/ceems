@@ -7,9 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/fs"
-	"os"
-	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -52,10 +49,6 @@ var (
 		`GPU order mapping between SLURM and NVIDIA SMI/ROCm SMI tools. 
 It should be of format <slurm_gpu_index>: <nvidia_or_rocm_smi_index>[.<mig_gpu_instance_id>] delimited by ",".`,
 	).Default("").PlaceHolder("0:1,1:0.3,2:0.4,3:0.5,4:0.6").String()
-	slurmGPUStatPath = CEEMSExporterApp.Flag(
-		"collector.slurm.gpu-job-map-path",
-		"Path to directory that maps GPU ordinals to job IDs.",
-	).Default("").String()
 )
 
 // Security context names.
@@ -66,7 +59,7 @@ const (
 // slurmReadProcSecurityCtxData contains the input/output data for
 // reading processes inside a security context.
 type slurmReadProcSecurityCtxData struct {
-	procfs      procfs.FS
+	procs       []procfs.Proc
 	uuid        string
 	gpuOrdinals []string
 }
@@ -85,6 +78,7 @@ func (p *jobProps) emptyGPUOrdinals() bool {
 type slurmMetrics struct {
 	cgMetrics []cgMetric
 	jobProps  []jobProps
+	cgroups   []cgroup
 }
 
 type slurmCollector struct {
@@ -121,7 +115,7 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 	}
 
 	// Get SLURM's cgroup details
-	cgroupManager, err := NewCgroupManager("slurm")
+	cgroupManager, err := NewCgroupManager("slurm", logger)
 	if err != nil {
 		level.Info(logger).Log("msg", "Failed to create cgroup manager", "err", err)
 
@@ -205,7 +199,7 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 	if *slurmGPUOrdering != "" {
 		gpuDevs = reindexGPUs(*slurmGPUOrdering, gpuDevs)
 
-		level.Debug(logger).Log("msg", "GPU reindexed based")
+		level.Debug(logger).Log("msg", "GPUs reindexed")
 	}
 
 	// Instantiate a new Proc FS
@@ -264,10 +258,10 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 
 // Update implements Collector and update job metrics.
 func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
-	// Discover all active cgroups
-	metrics, err := c.discoverCgroups()
+	// Initialise job metrics
+	metrics, err := c.jobMetrics()
 	if err != nil {
-		return fmt.Errorf("failed to discover cgroups: %w", err)
+		return err
 	}
 
 	// Start a wait group
@@ -295,7 +289,7 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 			defer wg.Done()
 
 			// Update perf metrics
-			if err := c.perfCollector.Update(ch, nil); err != nil {
+			if err := c.perfCollector.Update(ch, metrics.cgroups); err != nil {
 				level.Error(c.logger).Log("msg", "Failed to update perf stats", "err", err)
 			}
 		}()
@@ -308,7 +302,7 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 			defer wg.Done()
 
 			// Update ebpf metrics
-			if err := c.ebpfCollector.Update(ch, nil); err != nil {
+			if err := c.ebpfCollector.Update(ch, metrics.cgroups); err != nil {
 				level.Error(c.logger).Log("msg", "Failed to update IO and/or network stats", "err", err)
 			}
 		}()
@@ -321,7 +315,7 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 			defer wg.Done()
 
 			// Update RDMA metrics
-			if err := c.rdmaCollector.Update(ch, nil); err != nil {
+			if err := c.rdmaCollector.Update(ch, metrics.cgroups); err != nil {
 				level.Error(c.logger).Log("msg", "Failed to update RDMA stats", "err", err)
 			}
 		}()
@@ -418,8 +412,8 @@ func (c *slurmCollector) updateGPUOrdinals(ch chan<- prometheus.Metric, jobProps
 	}
 }
 
-// discoverCgroups finds active cgroup paths and returns initialised metric structs.
-func (c *slurmCollector) discoverCgroups() (slurmMetrics, error) {
+// jobProperties finds job properties for each active cgroup and returns initialised metric structs.
+func (c *slurmCollector) jobProperties(cgroups []cgroup) slurmMetrics {
 	// Get currently active jobs and set them in activeJobs state variable
 	var activeJobUUIDs []string
 
@@ -429,65 +423,28 @@ func (c *slurmCollector) discoverCgroups() (slurmMetrics, error) {
 
 	var gpuOrdinals []string
 
-	// Walk through all cgroups and get cgroup paths
-	if err := filepath.WalkDir(c.cgroupManager.mountPoint, func(p string, info fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		// Ignore step jobs
-		if !info.IsDir() || c.cgroupManager.pathFilter(p) {
-			return nil
-		}
-
-		// Get relative path of cgroup
-		rel, err := filepath.Rel(c.cgroupManager.root, p)
-		if err != nil {
-			level.Error(c.logger).Log("msg", "Failed to resolve relative path for cgroup", "path", p, "err", err)
-
-			return nil
-		}
-
-		// Get cgroup ID which is job ID
-		cgroupIDMatches := c.cgroupManager.idRegex.FindStringSubmatch(p)
-		if len(cgroupIDMatches) <= 1 {
-			return nil
-		}
-
-		jobuuid := strings.TrimSpace(cgroupIDMatches[1])
-		if jobuuid == "" {
-			level.Error(c.logger).Log("msg", "Empty job ID", "path", p)
-
-			return nil
-		}
-
-		// Check if we already passed through this job
-		if slices.Contains(activeJobUUIDs, jobuuid) {
-			return nil
-		}
+	// Iterate over all active cgroups and get job properties
+	for _, cgrp := range cgroups {
+		jobuuid := cgrp.uuid
 
 		// Get GPU ordinals of the job
 		if len(c.gpuDevs) > 0 {
 			if jobPropsCached, ok := c.jobPropsCache[jobuuid]; !ok || (ok && jobPropsCached.emptyGPUOrdinals()) {
-				gpuOrdinals = c.gpuOrdinals(jobuuid)
+				gpuOrdinals = c.gpuOrdinals(jobuuid, cgrp.procs)
 				c.jobPropsCache[jobuuid] = jobProps{uuid: jobuuid, gpuOrdinals: gpuOrdinals}
 				jProps = append(jProps, c.jobPropsCache[jobuuid])
 			} else {
-				jProps = append(jProps, jobPropsCached)
+				jProps = append(jProps, c.jobPropsCache[jobuuid])
 			}
 		}
 
-		activeJobUUIDs = append(activeJobUUIDs, jobuuid)
-		cgMetrics = append(cgMetrics, cgMetric{uuid: jobuuid, path: "/" + rel})
+		// Check if we already passed through this job
+		if !slices.Contains(activeJobUUIDs, jobuuid) {
+			activeJobUUIDs = append(activeJobUUIDs, jobuuid)
+		}
 
-		level.Debug(c.logger).Log("msg", "cgroup path", "path", p)
-
-		return nil
-	}); err != nil {
-		level.Error(c.logger).
-			Log("msg", "Error walking cgroup subsystem", "path", c.cgroupManager.mountPoint, "err", err)
-
-		return slurmMetrics{}, err
+		// Add to cgroups only if it is a root cgroup
+		cgMetrics = append(cgMetrics, cgMetric{uuid: jobuuid, path: "/" + cgrp.path.rel})
 	}
 
 	// Remove expired jobs from jobPropsCache
@@ -497,82 +454,29 @@ func (c *slurmCollector) discoverCgroups() (slurmMetrics, error) {
 		}
 	}
 
-	return slurmMetrics{cgMetrics: cgMetrics, jobProps: jProps}, nil
+	return slurmMetrics{cgMetrics: cgMetrics, jobProps: jProps, cgroups: cgroups}
 }
 
-// readGPUMapFile reads file created by prolog script to retrieve job ID of a given GPU.
-func (c *slurmCollector) readGPUMapFile(index string) string {
-	gpuJobMapInfo := fmt.Sprintf("%s/%s", *slurmGPUStatPath, index)
-
-	// NOTE: Look for file name with UUID as it will be more appropriate with
-	// MIG instances.
-	// If /run/gpustat/0 file is not found, check for the file with UUID as name?
-	var uuid string
-
-	if _, err := os.Stat(gpuJobMapInfo); err == nil {
-		content, err := os.ReadFile(gpuJobMapInfo)
-		if err != nil {
-			level.Error(c.logger).Log(
-				"msg", "Failed to get job ID for GPU",
-				"index", index, "err", err,
-			)
-
-			return ""
-		}
-
-		if _, err := fmt.Sscanf(string(content), "%s", &uuid); err != nil {
-			level.Error(c.logger).Log(
-				"msg", "Failed to scan job ID for GPU",
-				"index", index, "err", err,
-			)
-
-			return ""
-		}
-
-		return uuid
+// jobMetrics returns initialised metric structs.
+func (c *slurmCollector) jobMetrics() (slurmMetrics, error) {
+	// Get active cgroups
+	cgroups, err := c.cgroupManager.discover()
+	if err != nil {
+		return slurmMetrics{}, fmt.Errorf("failed to discover cgroups: %w", err)
 	}
 
-	return ""
+	// Get job properties and initialise metric structs
+	return c.jobProperties(cgroups), nil
 }
 
-// gpuOrdinalsFromProlog returns GPU ordinals of jobs from prolog generated run time files by SLURM.
-func (c *slurmCollector) gpuOrdinalsFromProlog(uuid string) []string {
+// gpuOrdinals returns GPU ordinals bound to current job.
+func (c *slurmCollector) gpuOrdinals(uuid string, procs []procfs.Proc) []string {
 	var gpuOrdinals []string
 
-	// If there are no GPUs this loop will be skipped anyways
-	// NOTE: In go loop over map is not reproducible. The order is undefined and thus
-	// we might end up with a situation where jobGPUOrdinals will [1 2] or [2 1] if
-	// current Job has two GPUs. This will fail unit tests as order in Slice is important
-	// in Go
-	//
-	// So we use map[int]Device to have int indices for devices which we use internally
-	// We are not using device index as it might be a non-integer. We are not sure about
-	// it but just to be safe. This will have a small overhead as we need to check the
-	// correct integer index for each device index. We can live with it as there are
-	// typically 2/4/8 GPUs per node.
-	for _, dev := range c.gpuDevs {
-		if dev.migEnabled {
-			for _, mig := range dev.migInstances {
-				if c.readGPUMapFile(mig.globalIndex) == uuid {
-					gpuOrdinals = append(gpuOrdinals, mig.globalIndex)
-				}
-			}
-		} else {
-			if c.readGPUMapFile(dev.globalIndex) == uuid {
-				gpuOrdinals = append(gpuOrdinals, dev.globalIndex)
-			}
-		}
-	}
-
-	return gpuOrdinals
-}
-
-// gpuOrdinalsFromEnviron returns GPU ordinals of jobs by reading environment variables of jobs.
-func (c *slurmCollector) gpuOrdinalsFromEnviron(uuid string) []string {
 	// Read env vars in a security context that raises necessary capabilities
 	dataPtr := &slurmReadProcSecurityCtxData{
-		procfs: c.procFS,
-		uuid:   uuid,
+		procs: procs,
+		uuid:  uuid,
 	}
 
 	if securityCtx, ok := c.securityContexts[slurmReadProcCtx]; ok {
@@ -591,24 +495,8 @@ func (c *slurmCollector) gpuOrdinalsFromEnviron(uuid string) []string {
 		return nil
 	}
 
-	return dataPtr.gpuOrdinals
-}
-
-// gpuOrdinals returns GPU ordinals bound to current job.
-func (c *slurmCollector) gpuOrdinals(uuid string) []string {
-	var gpuOrdinals []string
-
-	// First try to read files that might be created by SLURM prolog scripts
-	gpuOrdinals = c.gpuOrdinalsFromProlog(uuid)
-
-	// If we fail to get necessary job properties, try to get these properties
-	// by looking into environment variables
-	if len(gpuOrdinals) == 0 {
-		gpuOrdinals = c.gpuOrdinalsFromEnviron(uuid)
-	}
-
 	// Emit warning when there are GPUs but no job to GPU map found
-	if len(gpuOrdinals) == 0 {
+	if len(dataPtr.gpuOrdinals) == 0 {
 		level.Warn(c.logger).
 			Log("msg", "Failed to get GPU ordinals for job", "jobid", uuid)
 	} else {
@@ -617,7 +505,7 @@ func (c *slurmCollector) gpuOrdinals(uuid string) []string {
 		)
 	}
 
-	return gpuOrdinals
+	return dataPtr.gpuOrdinals
 }
 
 // readProcEnvirons reads the environment variables of processes and returns
@@ -633,14 +521,6 @@ func readProcEnvirons(data interface{}) error {
 
 	var gpuOrdinals []string
 
-	// Attempt to get GPU ordinals from /proc file system by looking into
-	// environ for the process that has same SLURM_JOB_ID
-	// Get all procs from current proc fs if passed pids slice is nil
-	allProcs, err := d.procfs.AllProcs()
-	if err != nil {
-		return fmt.Errorf("failed to read /proc: %w", err)
-	}
-
 	// Env var that we will search
 	jobIDEnv := "SLURM_JOB_ID=" + d.uuid
 
@@ -651,7 +531,7 @@ func readProcEnvirons(data interface{}) error {
 	// WILL NOT BE scheduled on this locked thread and hence will not
 	// have capabilities to read environment variables. So, we just do
 	// old school loop on procs and attempt to find target env variables.
-	for _, proc := range allProcs {
+	for _, proc := range d.procs {
 		// Read process environment variables
 		// NOTE: This needs CAP_SYS_PTRACE and CAP_DAC_READ_SEARCH caps
 		// on the current process

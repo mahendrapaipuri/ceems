@@ -48,7 +48,6 @@ func TestNewSlurmCollector(t *testing.T) {
 			"--path.cgroupfs", "testdata/sys/fs/cgroup",
 			"--path.procfs", "testdata/proc",
 			"--path.sysfs", "testdata/sys",
-			"--collector.slurm.gpu-job-map-path", "testdata/gpujobmap",
 			"--collector.slurm.swap-memory-metrics",
 			"--collector.slurm.psi-metrics",
 			"--collector.perf.hardware-events",
@@ -80,51 +79,52 @@ func TestNewSlurmCollector(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestSlurmJobPropsWithProlog(t *testing.T) {
-	_, err := CEEMSExporterApp.Parse(
-		[]string{
-			"--path.cgroupfs", "testdata/sys/fs/cgroup",
-			"--collector.slurm.gpu-job-map-path", "testdata/gpujobmap",
-			"--collector.cgroups.force-version", "v2",
-		},
-	)
-	require.NoError(t, err)
+// func TestSlurmJobPropsWithProlog(t *testing.T) {
+// 	_, err := CEEMSExporterApp.Parse(
+// 		[]string{
+// 			"--path.cgroupfs", "testdata/sys/fs/cgroup",
+// 			"--collector.slurm.gpu-job-map-path", "testdata/gpujobmap",
+// 			"--collector.cgroups.force-version", "v2",
+// 		},
+// 	)
+// 	require.NoError(t, err)
 
-	// cgroup Manager
-	cgManager := &cgroupManager{
-		mode:       cgroups.Unified,
-		mountPoint: "testdata/sys/fs/cgroup/system.slice/slurmstepd.scope",
-		idRegex:    slurmCgroupPathRegex,
-		pathFilter: func(p string) bool {
-			return strings.Contains(p, "/step_")
-		},
-	}
+// 	// cgroup Manager
+// 	cgManager := &cgroupManager{
+// 		logger:     log.NewNopLogger(),
+// 		mode:       cgroups.Unified,
+// 		mountPoint: "testdata/sys/fs/cgroup/system.slice/slurmstepd.scope",
+// 		idRegex:    slurmCgroupPathRegex,
+// 		ignoreCgroup: func(p string) bool {
+// 			return strings.Contains(p, "/step_")
+// 		},
+// 	}
 
-	c := slurmCollector{
-		gpuDevs:       mockGPUDevices(),
-		logger:        log.NewNopLogger(),
-		cgroupManager: cgManager,
-		jobPropsCache: make(map[string]jobProps),
-	}
+// 	c := slurmCollector{
+// 		gpuDevs:       mockGPUDevices(),
+// 		logger:        log.NewNopLogger(),
+// 		cgroupManager: cgManager,
+// 		jobPropsCache: make(map[string]jobProps),
+// 	}
 
-	expectedProps := jobProps{
-		gpuOrdinals: []string{"0"},
-		uuid:        "1009249",
-	}
+// 	expectedProps := jobProps{
+// 		gpuOrdinals: []string{"0"},
+// 		uuid:        "1009249",
+// 	}
 
-	metrics, err := c.discoverCgroups()
-	require.NoError(t, err)
+// 	metrics, err := c.jobMetrics()
+// 	require.NoError(t, err)
 
-	var gotProps jobProps
+// 	var gotProps jobProps
 
-	for _, props := range metrics.jobProps {
-		if props.uuid == expectedProps.uuid {
-			gotProps = props
-		}
-	}
+// 	for _, props := range metrics.jobProps {
+// 		if props.uuid == expectedProps.uuid {
+// 			gotProps = props
+// 		}
+// 	}
 
-	assert.Equal(t, expectedProps, gotProps)
-}
+// 	assert.Equal(t, expectedProps, gotProps)
+// }
 
 func TestSlurmJobPropsWithProcsFS(t *testing.T) {
 	_, err := CEEMSExporterApp.Parse(
@@ -139,15 +139,9 @@ func TestSlurmJobPropsWithProcsFS(t *testing.T) {
 	procFS, err := procfs.NewFS(*procfsPath)
 	require.NoError(t, err)
 
-	// cgroup Manager
-	cgManager := &cgroupManager{
-		mode:       cgroups.Legacy,
-		mountPoint: "testdata/sys/fs/cgroup/cpuacct/slurm",
-		idRegex:    slurmCgroupPathRegex,
-		pathFilter: func(p string) bool {
-			return strings.Contains(p, "/step_")
-		},
-	}
+	// cgroup manager
+	cgManager, err := NewCgroupManager("slurm", log.NewNopLogger())
+	require.NoError(t, err)
 
 	c := slurmCollector{
 		cgroupManager:    cgManager,
@@ -167,23 +161,25 @@ func TestSlurmJobPropsWithProcsFS(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	expectedProps := jobProps{
-		uuid:        "1009248",
-		gpuOrdinals: []string{"2", "3"},
+	expectedProps := []jobProps{
+		{
+			uuid:        "1009248",
+			gpuOrdinals: []string{"2", "3"},
+		},
+		{
+			uuid:        "1009249",
+			gpuOrdinals: []string{"0"},
+		},
+		{
+			uuid:        "1009250",
+			gpuOrdinals: []string{"1"},
+		},
 	}
 
-	metrics, err := c.discoverCgroups()
+	metrics, err := c.jobMetrics()
 	require.NoError(t, err)
 
-	var gotProps jobProps
-
-	for _, props := range metrics.jobProps {
-		if props.uuid == expectedProps.uuid {
-			gotProps = props
-		}
-	}
-
-	assert.Equal(t, expectedProps, gotProps)
+	assert.Equal(t, expectedProps, metrics.jobProps)
 }
 
 func TestJobPropsCaching(t *testing.T) {
@@ -193,36 +189,43 @@ func TestJobPropsCaching(t *testing.T) {
 	err := os.Mkdir(cgroupsPath, 0o750)
 	require.NoError(t, err)
 
-	gpuMapFilePath := path + "/gpu-map"
-	err = os.Mkdir(gpuMapFilePath, 0o750)
+	procFS := path + "/proc"
+	err = os.Mkdir(procFS, 0o750)
 	require.NoError(t, err)
 
-	_, err = CEEMSExporterApp.Parse(
-		[]string{
-			"--path.cgroupfs", cgroupsPath,
-			"--collector.slurm.gpu-job-map-path", gpuMapFilePath,
-		},
-	)
+	fs, err := procfs.NewFS(procFS)
 	require.NoError(t, err)
 
 	// cgroup Manager
 	cgManager := &cgroupManager{
+		logger:     log.NewNopLogger(),
+		fs:         fs,
 		mode:       cgroups.Legacy,
 		root:       cgroupsPath,
 		idRegex:    slurmCgroupPathRegex,
 		mountPoint: cgroupsPath + "/cpuacct/slurm",
-		pathFilter: func(p string) bool {
+		isChild: func(p string) bool {
 			return false
 		},
 	}
 
 	mockGPUDevs := mockGPUDevices()
 	c := slurmCollector{
-		cgroupManager: cgManager,
-		logger:        log.NewNopLogger(),
-		gpuDevs:       mockGPUDevs,
-		jobPropsCache: make(map[string]jobProps),
+		cgroupManager:    cgManager,
+		logger:           log.NewNopLogger(),
+		gpuDevs:          mockGPUDevs,
+		jobPropsCache:    make(map[string]jobProps),
+		securityContexts: make(map[string]*security.SecurityContext),
 	}
+
+	// Add dummy security context
+	c.securityContexts[slurmReadProcCtx], err = security.NewSecurityContext(
+		slurmReadProcCtx,
+		nil,
+		readProcEnvirons,
+		c.logger,
+	)
+	require.NoError(t, err)
 
 	// Add cgroups
 	for i := range 20 {
@@ -230,20 +233,32 @@ func TestJobPropsCaching(t *testing.T) {
 
 		err = os.MkdirAll(dir, 0o750)
 		require.NoError(t, err)
+
+		err = os.WriteFile(
+			dir+"/cgroup.procs",
+			[]byte(fmt.Sprintf("%d\n", i)),
+			0o600,
+		)
+		require.NoError(t, err)
 	}
 
 	// Binds GPUs to first n jobs
 	for igpu := range mockGPUDevs {
+		dir := fmt.Sprintf("%s/%d", procFS, igpu)
+
+		err = os.MkdirAll(dir, 0o750)
+		require.NoError(t, err)
+
 		err = os.WriteFile(
-			fmt.Sprintf("%s/%d", gpuMapFilePath, igpu),
-			[]byte(strconv.FormatInt(int64(igpu), 10)),
+			dir+"/environ",
+			[]byte(strings.Join([]string{fmt.Sprintf("SLURM_JOB_ID=%d", igpu), fmt.Sprintf("SLURM_JOB_GPUS=%d", igpu)}, "\000")+"\000"),
 			0o600,
 		)
 		require.NoError(t, err)
 	}
 
 	// Now call get metrics which should populate jobPropsCache
-	_, err = c.discoverCgroups()
+	_, err = c.jobMetrics()
 	require.NoError(t, err)
 
 	// Check if jobPropsCache has 20 jobs and GPU ordinals are correct
@@ -270,7 +285,7 @@ func TestJobPropsCaching(t *testing.T) {
 	}
 
 	// Now call again get metrics which should populate jobPropsCache
-	_, err = c.discoverCgroups()
+	_, err = c.jobMetrics()
 	require.NoError(t, err)
 
 	// Check if jobPropsCache has only 15 jobs and GPU ordinals are empty

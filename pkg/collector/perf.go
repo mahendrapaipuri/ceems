@@ -90,18 +90,17 @@ var (
 
 // Security context names.
 const (
-	perfDiscovererCtx     = "perf_discoverer"
+	perfProcFilterCtx     = "perf_proc_filter"
 	perfOpenProfilersCtx  = "perf_open_profilers"
 	perfCloseProfilersCtx = "perf_close_profilers"
 )
 
-// perfDiscovererSecurityCtxData contains the input/output data for
-// discoverer function to execute inside security context.
-type perfDiscovererSecurityCtxData struct {
-	procfs        procfs.FS
-	cgroupManager *cgroupManager
+// perfProcFilterSecurityCtxData contains the input/output data for
+// filterProc function to execute inside security context.
+type perfProcFilterSecurityCtxData struct {
 	targetEnvVars []string
 	cgroups       []cgroup
+	ignoreProc    func(string) bool
 }
 
 // perfProfilerSecurityCtxData contains the input/output data for
@@ -520,14 +519,14 @@ func NewPerfCollector(logger log.Logger, cgManager *cgroupManager) (*perfCollect
 		capabilities = []string{"cap_sys_ptrace", "cap_dac_read_search"}
 		auxCaps := setupCollectorCaps(logger, perfCollectorSubsystem, capabilities)
 
-		collector.securityContexts[perfDiscovererCtx], err = security.NewSecurityContext(
-			perfDiscovererCtx,
+		collector.securityContexts[perfProcFilterCtx], err = security.NewSecurityContext(
+			perfProcFilterCtx,
 			auxCaps,
-			discoverer,
+			filterPerfProcs,
 			logger,
 		)
 		if err != nil {
-			level.Error(logger).Log("msg", "Failed to create a security context for perf discoverer", "err", err)
+			level.Error(logger).Log("msg", "Failed to create a security context for perf process filter", "err", err)
 
 			return nil, err
 		}
@@ -539,11 +538,15 @@ func NewPerfCollector(logger log.Logger, cgManager *cgroupManager) (*perfCollect
 // Update implements the Collector interface and will collect metrics per compute unit.
 // cgroupIDUUIDMap provides a map to cgroupID to compute unit UUID. If the map is empty, it means
 // cgroup ID and compute unit UUID is identical.
-func (c *perfCollector) Update(ch chan<- prometheus.Metric, cgroupIDUUIDMap map[string]string) error {
-	// Discover new processes
-	cgroups, err := c.discoverProcess()
-	if err != nil {
-		return fmt.Errorf("failed to discover processes: %w", err)
+func (c *perfCollector) Update(ch chan<- prometheus.Metric, cgroups []cgroup) error {
+	var err error
+
+	// Filter processes in cgroups based on target env vars
+	if len(c.opts.targetEnvVars) > 0 {
+		cgroups, err = c.filterProcs(cgroups)
+		if err != nil {
+			return fmt.Errorf("failed to discover processes: %w", err)
+		}
 	}
 
 	// Start new profilers for new processes
@@ -566,12 +569,7 @@ func (c *perfCollector) Update(ch chan<- prometheus.Metric, cgroupIDUUIDMap map[
 
 	// Update metrics in go routines for each cgroup
 	for _, cgroup := range cgroups {
-		var uuid string
-		if cgroupIDUUIDMap != nil {
-			uuid = cgroupIDUUIDMap[cgroup.id]
-		} else {
-			uuid = cgroup.id
-		}
+		uuid := cgroup.uuid
 
 		go func(u string, ps []procfs.Proc) {
 			defer wg.Done()
@@ -826,30 +824,23 @@ func (c *perfCollector) updateCacheCounters(cgroupID string, procs []procfs.Proc
 	return errs
 }
 
-// discoverProcess returns a map of cgroup ID to procs. Depending on presence
-// of targetEnvVars, this may be executed in a security context.
-func (c *perfCollector) discoverProcess() ([]cgroup, error) {
-	// Read discovered cgroups into data pointer
-	dataPtr := &perfDiscovererSecurityCtxData{
-		procfs:        c.fs,
-		cgroupManager: c.cgroupManager,
+// filterProcs filters the processes that need to be profiled by looking at the
+// presence of targetEnvVars.
+func (c *perfCollector) filterProcs(cgroups []cgroup) ([]cgroup, error) {
+	// Setup data pointer
+	dataPtr := &perfProcFilterSecurityCtxData{
+		cgroups:       cgroups,
 		targetEnvVars: c.opts.targetEnvVars,
+		ignoreProc:    c.cgroupManager.ignoreProc,
 	}
 
-	// If there is a need to read processes' environ, use security context
-	// else execute function natively
-	if len(c.opts.targetEnvVars) > 0 {
-		if securityCtx, ok := c.securityContexts[perfDiscovererCtx]; ok {
-			if err := securityCtx.Exec(dataPtr); err != nil {
-				return nil, err
-			}
-		} else {
-			return nil, security.ErrNoSecurityCtx
-		}
-	} else {
-		if err := discoverer(dataPtr); err != nil {
+	// Use security context as reading procs env vars is a privileged action
+	if securityCtx, ok := c.securityContexts[perfProcFilterCtx]; ok {
+		if err := securityCtx.Exec(dataPtr); err != nil {
 			return nil, err
 		}
+	} else {
+		return nil, security.ErrNoSecurityCtx
 	}
 
 	if len(dataPtr.cgroups) > 0 {
@@ -1121,28 +1112,19 @@ func closeCacheProfiler(profiler *perf.CacheProfiler) error {
 	return nil
 }
 
-// discoverer returns a map of discovered cgroup ID to procs by looking at each process
-// in proc FS. Walking through cgroup fs is not really an option here as cgroups v1
-// wont have all PIDs of cgroup if the PID controller is not turned on.
-// The current implementation should work for both cgroups v1 and v2.
-// This function might be executed in a security context if targetEnvVars is not
-// empty.
-func discoverer(data interface{}) error {
+// filterPerfProcs filters the processes of each cgroup inside data pointer based on
+// presence of target env vars.
+func filterPerfProcs(data interface{}) error {
 	// Assert data is of perfSecurityCtxData
-	var d *perfDiscovererSecurityCtxData
+	var d *perfProcFilterSecurityCtxData
 
 	var ok bool
-	if d, ok = data.(*perfDiscovererSecurityCtxData); !ok {
+	if d, ok = data.(*perfProcFilterSecurityCtxData); !ok {
 		return security.ErrSecurityCtxDataAssertion
 	}
 
-	cgroups, err := getCgroups(d.procfs, d.cgroupManager.idRegex, d.targetEnvVars, d.cgroupManager.procFilter)
-	if err != nil {
-		return err
-	}
-
-	// Read cgroups proc map into d
-	d.cgroups = cgroups
+	// Read filtered cgroups into d
+	d.cgroups = cgroupProcFilterer(d.cgroups, d.targetEnvVars, d.ignoreProc)
 
 	return nil
 }
