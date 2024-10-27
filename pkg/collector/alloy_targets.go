@@ -4,15 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/internal/security"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/prometheus/procfs"
 )
 
 // CLI opts.
@@ -25,7 +24,13 @@ var (
 		"discoverer.alloy-targets.env-var",
 		"Enable continuous profiling by Grafana Alloy only on the processes having any of these environment variables.",
 	).Strings()
+	alloySelfTarget = CEEMSExporterApp.Flag(
+		"discoverer.alloy-targets.self-profiler",
+		"Enable continuous profiling by Grafana Alloy on current process (default: false).",
+	).Default("false").Bool()
 )
+
+var selfTargetID = "__internal_ceems_exporter"
 
 const (
 	contentTypeHeader = "Content-Type"
@@ -38,12 +43,12 @@ const (
 
 // Security context names.
 const (
-	alloyTargetDiscovererCtx = "alloy_targets_discoverer"
+	alloyTargetFilterCtx = "alloy_targets_filter"
 )
 
 // alloyTargetDiscovererSecurityCtxData contains the input/output data for
 // discoverer function to execute inside security context.
-type alloyTargetDiscovererSecurityCtxData = perfDiscovererSecurityCtxData
+type alloyTargetFilterSecurityCtxData = perfProcFilterSecurityCtxData
 
 type Target struct {
 	Targets []string          `json:"targets"`
@@ -57,7 +62,6 @@ type alloyTargetOpts struct {
 type CEEMSAlloyTargetDiscoverer struct {
 	logger           log.Logger
 	cgroupManager    *cgroupManager
-	fs               procfs.FS
 	opts             alloyTargetOpts
 	enabled          bool
 	securityContexts map[string]*security.SecurityContext
@@ -77,16 +81,8 @@ func NewAlloyTargetDiscoverer(logger log.Logger) (*CEEMSAlloyTargetDiscoverer, e
 		targetEnvVars: *alloyTargetEnvVars,
 	}
 
-	// Instantiate a new Proc FS
-	fs, err := procfs.NewFS(*procfsPath)
-	if err != nil {
-		level.Error(logger).Log("msg", "Unable to open procfs", "path", *procfsPath, "err", err)
-
-		return nil, err
-	}
-
 	// Get SLURM's cgroup details
-	cgroupManager, err := NewCgroupManager(*cgManager)
+	cgroupManager, err := NewCgroupManager(*cgManager, logger)
 	if err != nil {
 		level.Info(logger).Log("msg", "Failed to create cgroup manager", "err", err)
 
@@ -97,7 +93,6 @@ func NewAlloyTargetDiscoverer(logger log.Logger) (*CEEMSAlloyTargetDiscoverer, e
 
 	discoverer := &CEEMSAlloyTargetDiscoverer{
 		logger:        logger,
-		fs:            fs,
 		cgroupManager: cgroupManager,
 		opts:          opts,
 		enabled:       true,
@@ -113,10 +108,10 @@ func NewAlloyTargetDiscoverer(logger log.Logger) (*CEEMSAlloyTargetDiscoverer, e
 		capabilities := []string{"cap_sys_ptrace", "cap_dac_read_search"}
 		auxCaps := setupCollectorCaps(logger, alloyTargetDiscovererSubSystem, capabilities)
 
-		discoverer.securityContexts[alloyTargetDiscovererCtx], err = security.NewSecurityContext(
-			alloyTargetDiscovererCtx,
+		discoverer.securityContexts[alloyTargetFilterCtx], err = security.NewSecurityContext(
+			alloyTargetFilterCtx,
 			auxCaps,
-			targetDiscoverer,
+			filterTargets,
 			logger,
 		)
 		if err != nil {
@@ -153,33 +148,35 @@ func (d *CEEMSAlloyTargetDiscoverer) discover() ([]Target, error) {
 		return []Target{}, nil
 	}
 
+	// Get active cgroups
+	cgroups, err := d.cgroupManager.discover()
+	if err != nil {
+		return nil, fmt.Errorf("failed to discover cgroups: %w", err)
+	}
+
 	// Read discovered cgroups into data pointer
-	dataPtr := &alloyTargetDiscovererSecurityCtxData{
-		procfs:        d.fs,
-		cgroupManager: d.cgroupManager,
+	dataPtr := &alloyTargetFilterSecurityCtxData{
+		cgroups:       cgroups,
 		targetEnvVars: d.opts.targetEnvVars,
+		ignoreProc:    d.cgroupManager.ignoreProc,
 	}
 
 	// If there is a need to read processes' environ, use security context
 	// else execute function natively
 	if len(d.opts.targetEnvVars) > 0 {
-		if securityCtx, ok := d.securityContexts[alloyTargetDiscovererCtx]; ok {
+		if securityCtx, ok := d.securityContexts[alloyTargetFilterCtx]; ok {
 			if err := securityCtx.Exec(dataPtr); err != nil {
 				return nil, err
 			}
 		} else {
 			return nil, security.ErrNoSecurityCtx
 		}
-	} else {
-		if err := targetDiscoverer(dataPtr); err != nil {
-			return nil, err
-		}
 	}
 
-	if len(dataPtr.cgroups) > 0 {
-		level.Debug(d.logger).Log("msg", "Discovered targets for Grafana Alloy")
-	} else {
+	if len(dataPtr.cgroups) == 0 {
 		level.Debug(d.logger).Log("msg", "No targets found for Grafana Alloy")
+
+		return []Target{}, nil
 	}
 
 	// Make targets from cgrpoups
@@ -187,24 +184,13 @@ func (d *CEEMSAlloyTargetDiscoverer) discover() ([]Target, error) {
 
 	for _, cgroup := range dataPtr.cgroups {
 		for _, proc := range cgroup.procs {
-			exe, _ := proc.Executable()
-			comm, _ := proc.CmdLine()
-
-			var realUID, effecUID uint64
-			if status, err := proc.NewStatus(); err == nil {
-				realUID = status.UIDs[0]
-				effecUID = status.UIDs[1]
-			}
-
+			// Reading files in /proc is expensive. So, return minimal
+			// info needed for target
 			target := Target{
 				Targets: []string{cgroup.id},
 				Labels: map[string]string{
-					"__process_pid__":         strconv.FormatInt(int64(proc.PID), 10),
-					"__process_exe":           exe,
-					"__process_commandline":   strings.Join(comm, " "),
-					"__process_real_uid":      strconv.FormatUint(realUID, 10),
-					"__process_effective_uid": strconv.FormatUint(effecUID, 10),
-					"service_name":            cgroup.id,
+					"__process_pid__": strconv.FormatInt(int64(proc.PID), 10),
+					"service_name":    cgroup.uuid,
 				},
 			}
 
@@ -212,31 +198,32 @@ func (d *CEEMSAlloyTargetDiscoverer) discover() ([]Target, error) {
 		}
 	}
 
+	// If self profiler is enabled add current process to targets
+	if *alloySelfTarget {
+		targets = append(targets, Target{
+			Targets: []string{selfTargetID},
+			Labels: map[string]string{
+				"__process_pid__": strconv.FormatInt(int64(os.Getpid()), 10),
+				"service_name":    selfTargetID,
+			},
+		})
+	}
+
 	return targets, nil
 }
 
-// discoverer returns a map of discovered cgroup ID to procs by looking at each process
-// in proc FS. Walking through cgroup fs is not really an option here as cgroups v1
-// wont have all PIDs of cgroup if the PID controller is not turned on.
-// The current implementation should work for both cgroups v1 and v2.
-// This function might be executed in a security context if targetEnvVars is not
-// empty.
-func targetDiscoverer(data interface{}) error {
+// filterTargets filters the targets based on target env vars and return filtered targets.
+func filterTargets(data interface{}) error {
 	// Assert data is of alloyTargetDiscovererSecurityCtxData
-	var d *alloyTargetDiscovererSecurityCtxData
+	var d *alloyTargetFilterSecurityCtxData
 
 	var ok bool
-	if d, ok = data.(*alloyTargetDiscovererSecurityCtxData); !ok {
+	if d, ok = data.(*alloyTargetFilterSecurityCtxData); !ok {
 		return security.ErrSecurityCtxDataAssertion
 	}
 
-	cgroups, err := getCgroups(d.procfs, d.cgroupManager.idRegex, d.targetEnvVars, d.cgroupManager.procFilter)
-	if err != nil {
-		return err
-	}
-
-	// Read cgroups proc map into d
-	d.cgroups = cgroups
+	// Read filtered cgroups into d
+	d.cgroups = cgroupProcFilterer(d.cgroups, d.targetEnvVars, d.ignoreProc)
 
 	return nil
 }

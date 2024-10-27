@@ -35,14 +35,16 @@ func TestCEEMSExporterMain(t *testing.T) {
 	// t.Setenv("PATH", absPath+":"+os.Getenv("PATH"))
 
 	// Remove test related args and add a dummy arg
-	os.Args = append([]string{os.Args[0]}, "--web.max-requests=2", "--no-security.drop-privileges", "--collector.ipmi_dcmi.cmd", absPath)
+	os.Args = append([]string{os.Args[0]},
+		"--web.max-requests=2",
+		"--no-security.drop-privileges",
+		"--collector.ipmi_dcmi.cmd", absPath,
+		"--path.procfs", "testdata/proc",
+		"--path.cgroupfs", "testdata/sys/fs/cgroup",
+	)
 
 	// Create new instance of exporter CLI app
 	a, err := NewCEEMSExporter()
-	require.NoError(t, err)
-
-	// Add procfs path
-	_, err = a.App.Parse([]string{"--path.procfs", "testdata/proc"})
 	require.NoError(t, err)
 
 	// Start Main

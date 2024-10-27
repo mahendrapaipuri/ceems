@@ -3134,12 +3134,9 @@ Lines: 1
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009248/step_0/cgroup.procs
-Lines: 5
-9544
-9562
-9563
-9616
-9870
+Lines: 2
+46231
+46281
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009248/step_0/cpu.cfs_period_us
@@ -3450,12 +3447,9 @@ Lines: 1
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009249/step_0/cgroup.procs
-Lines: 5
-9544
-9562
-9563
-9616
-9870
+Lines: 2
+46235
+46236
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009249/step_0/cpu.cfs_period_us
@@ -3766,12 +3760,9 @@ Lines: 1
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009250/step_0/cgroup.procs
-Lines: 5
-9544
-9562
-9563
-9616
-9870
+Lines: 2
+26242
+46233
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/cpuacct/slurm/uid_1000/job_1009250/step_0/cpu.cfs_period_us
@@ -8245,12 +8236,9 @@ Lines: 1
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/step_0/cgroup.procs
-Lines: 5
-9544
-9562
-9563
-9616
-9870
+Lines: 2
+46231
+46281
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009248/step_0/memory.failcnt
@@ -8633,12 +8621,9 @@ Lines: 1
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009249/step_0/cgroup.procs
-Lines: 5
-9544
-9562
-9563
-9616
-9870
+Lines: 2
+46235
+46236
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009249/step_0/memory.failcnt
@@ -9021,12 +9006,9 @@ Lines: 1
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009250/step_0/cgroup.procs
-Lines: 5
-9544
-9562
-9563
-9616
-9870
+Lines: 2
+26242
+46233
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/memory/slurm/uid_1000/job_1009250/step_0/memory.failcnt
@@ -10200,7 +10182,7 @@ Mode: 640
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/cgroup.procs
 Lines: 1
-3401149
+46282
 Mode: 640
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/slurm/cgroup.stat
@@ -10723,8 +10705,8 @@ Mode: 640
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/cgroup.procs
 Lines: 2
-3401154
-3401163
+46231
+46281
 Mode: 640
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009248/step_3/user/task_0/cgroup.stat
@@ -14119,8 +14101,8 @@ Mode: 640
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009249/step_3/user/task_0/cgroup.procs
 Lines: 2
-3401154
-3401163
+46235
+46236
 Mode: 640
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009249/step_3/user/task_0/cgroup.stat
@@ -15161,11 +15143,8 @@ max
 Mode: 640
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009249/step_batch/user/task_0/cgroup.procs
-Lines: 4
-3346596
-3346674
-3401141
-3401142
+Lines: 1
+46233
 Mode: 640
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009249/step_batch/user/task_0/cgroup.stat
@@ -17511,8 +17490,8 @@ Mode: 640
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009250/step_3/user/task_0/cgroup.procs
 Lines: 2
-3401154
-3401163
+26242
+46233
 Mode: 640
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/fs/cgroup/system.slice/slurmstepd.scope/job_1009250/step_3/user/task_0/cgroup.stat

@@ -81,35 +81,41 @@ datasources:
   - name: SLURM-TSDB
     type: prometheus
     access: proxy
-    # Notice the path parameter `slurm-0` at the end.
-    # IT IS IMPORTANT TO HAVE IT
-    url: http://ceems-lb:9030/slurm-0
+    url: http://ceems-lb:9030
     basicAuth: true
     basicAuthUser: <ceems_lb_basic_auth_user>
+    # Notice we are setting custom header X-Ceems-Cluster-Id to `slurm-0`.
+    # IT IS IMPORTANT TO HAVE IT
+    jsonData:
+      httpHeaderName1: X-Ceems-Cluster-Id
     secureJsonData:
       basicAuthPassword: <ceems_lb_basic_auth_password>
+      httpHeaderValue1: slurm-0
 
   - name: OS-TSDB
     type: prometheus
     access: proxy
-    # Notice the path parameter `os-0` at the end.
-    # IT IS IMPORTANT TO HAVE IT
-    url: http://ceems-lb:9030/os-0
+    url: http://ceems-lb:9030
     basicAuth: true
     basicAuthUser: <ceems_lb_basic_auth_user>
+    # Notice we are setting custom header X-Ceems-Cluster-Id to `slurm-0`.
+    # IT IS IMPORTANT TO HAVE IT
+    jsonData:
+      httpHeaderName1: X-Ceems-Cluster-Id
     secureJsonData:
       basicAuthPassword: <ceems_lb_basic_auth_password>
+      httpHeaderValue1: os-0
 ```
 
-Internally, CEEMS LB will strip the path parameter and forwards the request
-to the correct backends group based on the provided path parameter. This ensures
+Internally, CEEMS LB will check the header `X-Ceems-Cluster-Id` and forwards the request
+to the correct backends group based on the provided cluster ID. This ensures
 that we can use a single instance of CEEMS LB to load balance across multiple
 clusters.
 
 :::important[IMPORTANT]
 
 Even if there is only one cluster and one TSDB instance for that cluster, we need
-to configure the datasource on Grafana as explained above if we wish to use
+to configure the datasource on Grafana with custom header as explained above if we wish to use
 CEEMS LB. This is the only way for the CEEMS LB to know which cluster to target.
 
 :::

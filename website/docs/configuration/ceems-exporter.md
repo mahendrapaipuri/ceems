@@ -30,21 +30,14 @@ from CLI arguments as briefed below:
 
 Although fetching metrics from cgroups do not need any additional privileges, getting
 GPU ordinal to job ID needs extra privileges. This is due to the fact that this
-information is not readily available in cgroups. Currently, the exporter supports two different
-ways to get the GPU ordinals to job ID map.
+information is not readily available in cgroups. Currently, the exporter gets this
+information by reading environment variables `SLURM_STEP_GPUS` and/or `SLURM_JOB_GPUS`
+of job from `/proc` file system which contains GPU ordinal numbers of job. CEEMS exporter
+process will need some privileges to be able to read the environment variables in `/proc`
+file system. The privileges can be set in different ways and it is discussed in
+[Security](./security.md) section.
 
-- Reading environment variables `SLURM_STEP_GPUS` and/or `SLURM_JOB_GPUS` of job from
-`/proc` file system which contains GPU ordinal numbers of job.
-- Use prolog and epilog scripts to get the GPU to job ID map. Example prolog script
-is provided in the [repo](https://github.com/mahendrapaipuri/ceems/tree/main/etc/slurm).
-
-We recommend to use the first approach as it requires minimum configuration to maintain
-for the operators. The downside is that the CEEMS exporter process will need some
-privileges to be able to read the environment variables in `/proc` file system. The
-privileges can be set in different ways and it is discussed in [Security](./security.md)
-section.
-
-On the other hand, if the operators do not wish to add any privileges to exporter
+<!-- On the other hand, if the operators do not wish to add any privileges to exporter
 process, they can use the second approach but this requires some configuration additions
 to SLURM controller to execute a prolog and epilog script for each job.
 
@@ -83,7 +76,7 @@ ceems_exporter --collector.slum --collector.slurm.gpu-job-map-path=/run/gpujobma
 ```
 
 With above configuration, the exporter should export GPU ordinal mapping
-along with other metrics of slurm collector.
+along with other metrics of slurm collector. -->
 
 When compute nodes uses a mix of full physical GPUs and MIG instances (NVIDIA), the
 ordering of GPUs by SLURM is undefined and it can depend on how the compute nodes are

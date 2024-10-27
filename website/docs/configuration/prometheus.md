@@ -16,11 +16,9 @@ contains NVIDIA GPUs:
 scrape_configs:
   - job_name: "gpu-node-group"
     metric_relabel_configs:
-      - source_labels: [UUID]
-        regex: (.*)
+      - source_labels: [UUID,GPU_I_ID]
+        separator: '/'
         target_label: gpuuuid
-        replacement: $1
-        action: replace
       - regex: UUID
         action: labeldrop
       - regex: modelName
@@ -29,7 +27,7 @@ scrape_configs:
       - targets: ["http://gpu-0:9400", "http://gpu-1:9400", ...]
 ```
 
-The `metric_relabel_configs` is replacing the label `UUID` which is
-the UUID of GPU with `gpuuuid` which is compatible with CEEMS
-exporter. Moreover the config also drops unused `UUID` and `modelName`
-labels to reduce storage and cardinality.
+The `metric_relabel_configs` is merges labels `UUID` and `GPU_I_ID` which are
+the UUID and MIG instance ID of GPU, respectively and sets it to `gpuuuid`
+which is compatible with CEEMS exporter. Moreover the config also drops unused
+`UUID` and `modelName` labels to reduce storage and cardinality.

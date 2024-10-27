@@ -7,7 +7,6 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/containerd/cgroups/v3"
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
@@ -169,7 +168,7 @@ func TestNewEbpfCollector(t *testing.T) {
 	require.NoError(t, err)
 
 	// cgroup manager
-	cgManager, err := NewCgroupManager("slurm")
+	cgManager, err := NewCgroupManager("slurm", log.NewNopLogger())
 	require.NoError(t, err)
 
 	collector, err := NewEbpfCollector(log.NewNopLogger(), cgManager)
@@ -197,16 +196,15 @@ func TestActiveCgroupsV2(t *testing.T) {
 	_, err := CEEMSExporterApp.Parse(
 		[]string{
 			"--path.cgroupfs", "testdata/sys/fs/cgroup",
+			"--path.procfs", "testdata/proc",
+			"--collector.cgroups.force-version", "v2",
 		},
 	)
 	require.NoError(t, err)
 
 	// cgroup manager
-	cgManager := &cgroupManager{
-		mode:       cgroups.Unified,
-		mountPoint: "testdata/sys/fs/cgroup/system.slice/slurmstepd.scope",
-		idRegex:    slurmCgroupPathRegex,
-	}
+	cgManager, err := NewCgroupManager("slurm", log.NewNopLogger())
+	require.NoError(t, err)
 
 	// ebpf opts
 	opts := ebpfOpts{
@@ -223,9 +221,12 @@ func TestActiveCgroupsV2(t *testing.T) {
 		cgroupPathIDCache: make(map[string]uint64),
 	}
 
-	// Get active cgroups
-	err = c.discoverCgroups(nil)
+	// Discover cgroups
+	cgroups, err := cgManager.discover()
 	require.NoError(t, err)
+
+	// Get active cgroups
+	c.discoverCgroups(cgroups)
 
 	assert.Len(t, c.activeCgroupInodes, 39)
 	assert.Len(t, c.cgroupIDUUIDCache, 39)
@@ -246,16 +247,15 @@ func TestActiveCgroupsV1(t *testing.T) {
 	_, err := CEEMSExporterApp.Parse(
 		[]string{
 			"--path.cgroupfs", "testdata/sys/fs/cgroup",
+			"--path.procfs", "testdata/proc",
+			"--collector.cgroups.force-version", "v1",
 		},
 	)
 	require.NoError(t, err)
 
 	// cgroup manager
-	cgManager := &cgroupManager{
-		mode:       cgroups.Legacy,
-		mountPoint: "testdata/sys/fs/cgroup/cpuacct/slurm",
-		idRegex:    slurmCgroupPathRegex,
-	}
+	cgManager, err := NewCgroupManager("slurm", log.NewNopLogger())
+	require.NoError(t, err)
 
 	// ebpf opts
 	opts := ebpfOpts{
@@ -272,9 +272,12 @@ func TestActiveCgroupsV1(t *testing.T) {
 		cgroupPathIDCache: make(map[string]uint64),
 	}
 
-	// Get active cgroups
-	err = c.discoverCgroups(nil)
+	// Discover cgroups
+	cgroups, err := cgManager.discover()
 	require.NoError(t, err)
+
+	// Get active cgroups
+	c.discoverCgroups(cgroups)
 
 	assert.Len(t, c.activeCgroupInodes, 6)
 	assert.Len(t, c.cgroupIDUUIDCache, 6)

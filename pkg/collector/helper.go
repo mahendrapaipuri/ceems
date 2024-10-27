@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -18,11 +17,6 @@ var (
 	metricNameRegex = regexp.MustCompile(`_*[^0-9A-Za-z_]+_*`)
 	reParens        = regexp.MustCompile(`\((.*)\)`)
 )
-
-type cgroup struct {
-	id    string
-	procs []procfs.Proc
-}
 
 // SanitizeMetricName sanitize the given metric name by replacing invalid characters by underscores.
 //
@@ -39,63 +33,33 @@ func SanitizeMetricName(metricName string) string {
 	return metricNameRegex.ReplaceAllString(metricName, "_")
 }
 
-// getCgroups returns a slice of active cgroups and processes contained in each cgroup.
-func getCgroups(fs procfs.FS, idRegex *regexp.Regexp, targetEnvVars []string, procFilter func(string) bool) ([]cgroup, error) {
-	// Get all active procs
-	allProcs, err := fs.AllProcs()
-	if err != nil {
-		return nil, err
+// cgroupProcFilterer returns a slice of filtered cgroups based on the presence of targetEnvVars
+// in the processes of each cgroup.
+func cgroupProcFilterer(cgroups []cgroup, targetEnvVars []string, procFilter func(string) bool) []cgroup {
+	// If targetEnvVars is empty return
+	if len(targetEnvVars) == 0 {
+		return cgroups
 	}
 
-	// If no idRegex provided, return empty
-	if idRegex == nil {
-		return nil, errors.New("cgroup IDs cannot be retrieved due to empty regex")
-	}
+	var filteredCgroups []cgroup
 
-	cgroupsMap := make(map[string][]procfs.Proc)
+	for _, cgrp := range cgroups {
+		var filteredProcs []procfs.Proc
 
-	var cgroupIDs []string
+		for _, proc := range cgrp.procs {
+			// Ignore processes where command line matches the regex
+			if procFilter != nil {
+				procCmdLine, err := proc.CmdLine()
+				if err != nil || len(procCmdLine) == 0 {
+					continue
+				}
 
-	for _, proc := range allProcs {
-		// Get cgroup ID from regex
-		var cgroupID string
-
-		cgrps, err := proc.Cgroups()
-		if err != nil || len(cgrps) == 0 {
-			continue
-		}
-
-		for _, cgrp := range cgrps {
-			// If cgroup path is root, skip
-			if cgrp.Path == "/" {
-				continue
+				// Ignore process if matches found
+				if procFilter(strings.Join(procCmdLine, " ")) {
+					continue
+				}
 			}
 
-			// Unescape UTF-8 characters in cgroup path
-			sanitizedPath, err := unescapeString(cgrp.Path)
-			if err != nil {
-				continue
-			}
-
-			cgroupIDMatches := idRegex.FindStringSubmatch(sanitizedPath)
-			if len(cgroupIDMatches) <= 1 {
-				continue
-			}
-
-			cgroupID = cgroupIDMatches[1]
-
-			break
-		}
-
-		// If no cgroupID found, ignore
-		if cgroupID == "" {
-			continue
-		}
-
-		// If targetEnvVars is not empty check if this env vars is present for the process
-		// We dont check for the value of env var. Presence of env var is enough to
-		// trigger the profiling of that process
-		if len(targetEnvVars) > 0 {
 			environ, err := proc.Environ()
 			if err != nil {
 				continue
@@ -104,46 +68,27 @@ func getCgroups(fs procfs.FS, idRegex *regexp.Regexp, targetEnvVars []string, pr
 			for _, env := range environ {
 				for _, targetEnvVar := range targetEnvVars {
 					if strings.HasPrefix(env, targetEnvVar) {
-						goto check_process
+						goto add_proc
 					}
 				}
 			}
 
-			// If target env var(s) is not found, return
+			// If we didnt find any target env vars, continue to next process
 			continue
+
+		add_proc:
+			filteredProcs = append(filteredProcs, proc)
 		}
 
-	check_process:
-		// Ignore processes where command line matches the regex
-		if procFilter != nil {
-			procCmdLine, err := proc.CmdLine()
-			if err != nil || len(procCmdLine) == 0 {
-				continue
-			}
-
-			// Ignore process if matches found
-			if procFilter(strings.Join(procCmdLine, " ")) {
-				continue
-			}
-		}
-
-		cgroupsMap[cgroupID] = append(cgroupsMap[cgroupID], proc)
-		cgroupIDs = append(cgroupIDs, cgroupID)
-	}
-
-	// Sort cgroupIDs and make slice of cgProcs
-	cgroups := make([]cgroup, len(cgroupsMap))
-
-	slices.Sort(cgroupIDs)
-
-	for icgroup, cgroupID := range slices.Compact(cgroupIDs) {
-		cgroups[icgroup] = cgroup{
-			id:    cgroupID,
-			procs: cgroupsMap[cgroupID],
+		// If there is atleast one process that is filtered, replace procs field
+		// in cgroup to filteredProcs and append to filteredCgroups
+		if len(filteredProcs) > 0 {
+			cgrp.procs = filteredProcs
+			filteredCgroups = append(filteredCgroups, cgrp)
 		}
 	}
 
-	return cgroups, nil
+	return filteredCgroups
 }
 
 // fileExists checks if given file exists or not.

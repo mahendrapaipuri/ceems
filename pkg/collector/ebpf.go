@@ -9,8 +9,6 @@ import (
 	"embed"
 	"errors"
 	"fmt"
-	"io/fs"
-	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -509,11 +507,9 @@ func NewEbpfCollector(logger log.Logger, cgManager *cgroupManager) (*ebpfCollect
 // Update implements Collector and update job metrics.
 // cgroupIDUUIDMap provides a map to cgroupID to compute unit UUID. If the map is empty, it means
 // cgroup ID and compute unit UUID is identical.
-func (c *ebpfCollector) Update(ch chan<- prometheus.Metric, cgroupIDUUIDMap map[string]string) error {
-	// Fetch all active cgroups
-	if err := c.discoverCgroups(cgroupIDUUIDMap); err != nil {
-		return fmt.Errorf("failed to discover cgroups: %w", err)
-	}
+func (c *ebpfCollector) Update(ch chan<- prometheus.Metric, cgroups []cgroup) error {
+	// Update active cgroups
+	c.discoverCgroups(cgroups)
 
 	// Fetch metrics from maps
 	aggMetrics, err := c.readMaps()
@@ -837,7 +833,7 @@ func (c *ebpfCollector) readMaps() (*aggMetrics, error) {
 
 // discoverCgroups walks through cgroup file system and discover all relevant cgroups based
 // on cgroupManager.
-func (c *ebpfCollector) discoverCgroups(cgroupIDUUIDMap map[string]string) error {
+func (c *ebpfCollector) discoverCgroups(cgroups []cgroup) {
 	// Get currently active uuids and cgroup paths to evict older entries in caches
 	var activeCgroupUUIDs []string
 
@@ -846,70 +842,29 @@ func (c *ebpfCollector) discoverCgroups(cgroupIDUUIDMap map[string]string) error
 	// Reset activeCgroups from last scrape
 	c.activeCgroupInodes = make([]uint64, 0)
 
-	// Walk through all cgroups and get cgroup paths
-	if err := filepath.WalkDir(c.cgroupManager.mountPoint, func(p string, info fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
+	for _, cgrp := range cgroups {
+		uuid := cgrp.uuid
 
-		// Ignore irrelevant cgroup paths
-		if !info.IsDir() {
-			return nil
-		}
+		for _, child := range cgrp.children {
+			path := child.abs
 
-		// Unescape UTF-8 characters in cgroup path
-		sanitizedPath, err := unescapeString(p)
-		if err != nil {
-			level.Error(c.logger).Log("msg", "Failed to sanitize cgroup path", "path", p, "err", err)
-
-			return nil
-		}
-
-		// Get cgroup ID
-		cgroupIDMatches := c.cgroupManager.idRegex.FindStringSubmatch(sanitizedPath)
-		if len(cgroupIDMatches) <= 1 {
-			return nil
-		}
-
-		cgroupID := strings.TrimSpace(cgroupIDMatches[1])
-		if cgroupID == "" {
-			level.Error(c.logger).Log("msg", "Empty cgroup ID", "path", p)
-
-			return nil
-		}
-
-		// Get compute unit UUID from cgroup ID
-		var uuid string
-		if cgroupIDUUIDMap != nil {
-			uuid = cgroupIDUUIDMap[cgroupID]
-		} else {
-			uuid = cgroupID
-		}
-
-		// Get inode of the cgroup path if not already present in the cache
-		if _, ok := c.cgroupPathIDCache[p]; !ok {
-			if inode, err := inode(p); err == nil {
-				c.cgroupPathIDCache[p] = inode
-				c.cgroupIDUUIDCache[inode] = uuid
+			// Get inode of the cgroup path if not already present in the cache
+			if _, ok := c.cgroupPathIDCache[path]; !ok {
+				if inode, err := inode(path); err == nil {
+					c.cgroupPathIDCache[path] = inode
+					c.cgroupIDUUIDCache[inode] = uuid
+				}
 			}
+
+			if _, ok := c.cgroupIDUUIDCache[c.cgroupPathIDCache[path]]; !ok {
+				c.cgroupIDUUIDCache[c.cgroupPathIDCache[path]] = uuid
+			}
+
+			// Populate activeCgroupUUIDs, activeCgroupInodes and activeCgroupPaths
+			activeCgroupPaths = append(activeCgroupPaths, path)
+			activeCgroupUUIDs = append(activeCgroupUUIDs, uuid)
+			c.activeCgroupInodes = append(c.activeCgroupInodes, c.cgroupPathIDCache[path])
 		}
-		if _, ok := c.cgroupIDUUIDCache[c.cgroupPathIDCache[p]]; !ok {
-			c.cgroupIDUUIDCache[c.cgroupPathIDCache[p]] = uuid
-		}
-
-		// Populate activeCgroupUUIDs, activeCgroupInodes and activeCgroupPaths
-		activeCgroupPaths = append(activeCgroupPaths, p)
-		activeCgroupUUIDs = append(activeCgroupUUIDs, uuid)
-		c.activeCgroupInodes = append(c.activeCgroupInodes, c.cgroupPathIDCache[p])
-
-		level.Debug(c.logger).Log("msg", "cgroup path", "path", p)
-
-		return nil
-	}); err != nil {
-		level.Error(c.logger).
-			Log("msg", "Error walking cgroup subsystem", "path", c.cgroupManager.mountPoint, "err", err)
-
-		return err
 	}
 
 	// Evict older entries from caches
@@ -924,8 +879,6 @@ func (c *ebpfCollector) discoverCgroups(cgroupIDUUIDMap map[string]string) error
 			delete(c.cgroupPathIDCache, path)
 		}
 	}
-
-	return nil
 }
 
 // aggStats returns aggregate VFS and network metrics by reading
