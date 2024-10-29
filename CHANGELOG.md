@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0-rc.1 / 2024-10-29
+
+- [MAINT] Major refactor to improve performance of exporter [#204](https://github.com/mahendrapaipuri/ceems/pull/204) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [MAINT] Bump dependencies [#205](https://github.com/mahendrapaipuri/ceems/pull/205), [#206](https://github.com/mahendrapaipuri/ceems/pull/206), [#207](https://github.com/mahendrapaipuri/ceems/pull/207) ([@dependabot](https://github.com/dependabot))
+
 ## 0.4.1 / 2024-10-25
 
 - [FEATURE] Use custom header to find target cluster [#203](https://github.com/mahendrapaipuri/ceems/pull/203) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
