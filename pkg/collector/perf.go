@@ -625,6 +625,8 @@ func (c *perfCollector) updateHardwareCounters(
 	for _, proc := range procs {
 		pid = proc.PID
 
+		var scale float64 = 1.0
+
 		if hwProfiler, ok := c.perfHwProfilers[pid]; ok {
 			hwProfile := &perf.HardwareProfile{}
 			if err := (*hwProfiler).Profile(hwProfile); err != nil {
@@ -633,32 +635,37 @@ func (c *perfCollector) updateHardwareCounters(
 				continue
 			}
 
+			// Ensure that TimeRunning is always > 0. If it is zero, counters will be zero as well
+			if hwProfile.TimeEnabled != nil && hwProfile.TimeRunning != nil && *hwProfile.TimeRunning > 0 {
+				scale = float64(*hwProfile.TimeEnabled) / float64(*hwProfile.TimeRunning)
+			}
+
 			if hwProfile.CPUCycles != nil {
-				cgroupHwPerfCounters["cpucycles_total"] += float64(*hwProfile.CPUCycles)
+				cgroupHwPerfCounters["cpucycles_total"] += scale * float64(*hwProfile.CPUCycles)
 			}
 
 			if hwProfile.Instructions != nil {
-				cgroupHwPerfCounters["instructions_total"] += float64(*hwProfile.Instructions)
+				cgroupHwPerfCounters["instructions_total"] += scale * float64(*hwProfile.Instructions)
 			}
 
 			if hwProfile.BranchInstr != nil {
-				cgroupHwPerfCounters["branch_instructions_total"] += float64(*hwProfile.BranchInstr)
+				cgroupHwPerfCounters["branch_instructions_total"] += scale * float64(*hwProfile.BranchInstr)
 			}
 
 			if hwProfile.BranchMisses != nil {
-				cgroupHwPerfCounters["branch_misses_total"] += float64(*hwProfile.BranchMisses)
+				cgroupHwPerfCounters["branch_misses_total"] += scale * float64(*hwProfile.BranchMisses)
 			}
 
 			if hwProfile.CacheRefs != nil {
-				cgroupHwPerfCounters["cache_refs_total"] += float64(*hwProfile.CacheRefs)
+				cgroupHwPerfCounters["cache_refs_total"] += scale * float64(*hwProfile.CacheRefs)
 			}
 
 			if hwProfile.CacheMisses != nil {
-				cgroupHwPerfCounters["cache_misses_total"] += float64(*hwProfile.CacheMisses)
+				cgroupHwPerfCounters["cache_misses_total"] += scale * float64(*hwProfile.CacheMisses)
 			}
 
 			if hwProfile.RefCPUCycles != nil {
-				cgroupHwPerfCounters["ref_cpucycles_total"] += float64(*hwProfile.RefCPUCycles)
+				cgroupHwPerfCounters["ref_cpucycles_total"] += scale * float64(*hwProfile.RefCPUCycles)
 			}
 		}
 	}
@@ -695,6 +702,8 @@ func (c *perfCollector) updateSoftwareCounters(
 	for _, proc := range procs {
 		pid = proc.PID
 
+		var scale float64 = 1.0
+
 		if swProfiler, ok := c.perfSwProfilers[pid]; ok {
 			swProfile := &perf.SoftwareProfile{}
 			if err := (*swProfiler).Profile(swProfile); err != nil {
@@ -703,24 +712,28 @@ func (c *perfCollector) updateSoftwareCounters(
 				continue
 			}
 
+			if swProfile.TimeEnabled != nil && swProfile.TimeRunning != nil && *swProfile.TimeRunning > 0 {
+				scale = float64(*swProfile.TimeEnabled) / float64(*swProfile.TimeRunning)
+			}
+
 			if swProfile.PageFaults != nil {
-				cgroupSwPerfCounters["page_faults_total"] += float64(*swProfile.PageFaults)
+				cgroupSwPerfCounters["page_faults_total"] += scale * float64(*swProfile.PageFaults)
 			}
 
 			if swProfile.ContextSwitches != nil {
-				cgroupSwPerfCounters["context_switches_total"] += float64(*swProfile.ContextSwitches)
+				cgroupSwPerfCounters["context_switches_total"] += scale * float64(*swProfile.ContextSwitches)
 			}
 
 			if swProfile.CPUMigrations != nil {
-				cgroupSwPerfCounters["cpu_migrations_total"] += float64(*swProfile.CPUMigrations)
+				cgroupSwPerfCounters["cpu_migrations_total"] += scale * float64(*swProfile.CPUMigrations)
 			}
 
 			if swProfile.MinorPageFaults != nil {
-				cgroupSwPerfCounters["minor_faults_total"] += float64(*swProfile.MinorPageFaults)
+				cgroupSwPerfCounters["minor_faults_total"] += scale * float64(*swProfile.MinorPageFaults)
 			}
 
 			if swProfile.MajorPageFaults != nil {
-				cgroupSwPerfCounters["major_faults_total"] += float64(*swProfile.MajorPageFaults)
+				cgroupSwPerfCounters["major_faults_total"] += scale * float64(*swProfile.MajorPageFaults)
 			}
 		}
 	}
@@ -753,6 +766,8 @@ func (c *perfCollector) updateCacheCounters(cgroupID string, procs []procfs.Proc
 	for _, proc := range procs {
 		pid = proc.PID
 
+		var scale float64 = 1.0
+
 		if cacheProfiler, ok := c.perfCacheProfilers[pid]; ok {
 			cacheProfile := &perf.CacheProfile{}
 			if err := (*cacheProfiler).Profile(cacheProfile); err != nil {
@@ -761,52 +776,56 @@ func (c *perfCollector) updateCacheCounters(cgroupID string, procs []procfs.Proc
 				continue
 			}
 
+			if cacheProfile.TimeEnabled != nil && cacheProfile.TimeRunning != nil && *cacheProfile.TimeRunning > 0 {
+				scale = float64(*cacheProfile.TimeEnabled) / float64(*cacheProfile.TimeRunning)
+			}
+
 			if cacheProfile.L1DataReadHit != nil {
-				cgroupCachePerfCounters["cache_l1d_read_hits_total"] += float64(*cacheProfile.L1DataReadHit)
+				cgroupCachePerfCounters["cache_l1d_read_hits_total"] += scale * float64(*cacheProfile.L1DataReadHit)
 			}
 
 			if cacheProfile.L1DataReadMiss != nil {
-				cgroupCachePerfCounters["cache_l1d_read_misses_total"] += float64(*cacheProfile.L1DataReadMiss)
+				cgroupCachePerfCounters["cache_l1d_read_misses_total"] += scale * float64(*cacheProfile.L1DataReadMiss)
 			}
 
 			if cacheProfile.L1DataWriteHit != nil {
-				cgroupCachePerfCounters["cache_l1d_write_hits_total"] += float64(*cacheProfile.L1DataWriteHit)
+				cgroupCachePerfCounters["cache_l1d_write_hits_total"] += scale * float64(*cacheProfile.L1DataWriteHit)
 			}
 
 			if cacheProfile.L1InstrReadMiss != nil {
-				cgroupCachePerfCounters["cache_l1_instr_read_misses_total"] += float64(*cacheProfile.L1InstrReadMiss)
+				cgroupCachePerfCounters["cache_l1_instr_read_misses_total"] += scale * float64(*cacheProfile.L1InstrReadMiss)
 			}
 
 			if cacheProfile.InstrTLBReadHit != nil {
-				cgroupCachePerfCounters["cache_tlb_instr_read_hits_total"] += float64(*cacheProfile.InstrTLBReadHit)
+				cgroupCachePerfCounters["cache_tlb_instr_read_hits_total"] += scale * float64(*cacheProfile.InstrTLBReadHit)
 			}
 
 			if cacheProfile.InstrTLBReadMiss != nil {
-				cgroupCachePerfCounters["cache_tlb_instr_read_misses_total"] += float64(*cacheProfile.InstrTLBReadMiss)
+				cgroupCachePerfCounters["cache_tlb_instr_read_misses_total"] += scale * float64(*cacheProfile.InstrTLBReadMiss)
 			}
 
 			if cacheProfile.LastLevelReadHit != nil {
-				cgroupCachePerfCounters["cache_ll_read_hits_total"] += float64(*cacheProfile.LastLevelReadHit)
+				cgroupCachePerfCounters["cache_ll_read_hits_total"] += scale * float64(*cacheProfile.LastLevelReadHit)
 			}
 
 			if cacheProfile.LastLevelReadMiss != nil {
-				cgroupCachePerfCounters["cache_ll_read_misses_total"] += float64(*cacheProfile.LastLevelReadMiss)
+				cgroupCachePerfCounters["cache_ll_read_misses_total"] += scale * float64(*cacheProfile.LastLevelReadMiss)
 			}
 
 			if cacheProfile.LastLevelWriteHit != nil {
-				cgroupCachePerfCounters["cache_ll_write_hits_total"] += float64(*cacheProfile.LastLevelWriteHit)
+				cgroupCachePerfCounters["cache_ll_write_hits_total"] += scale * float64(*cacheProfile.LastLevelWriteHit)
 			}
 
 			if cacheProfile.LastLevelWriteMiss != nil {
-				cgroupCachePerfCounters["cache_ll_write_misses_total"] += float64(*cacheProfile.LastLevelWriteMiss)
+				cgroupCachePerfCounters["cache_ll_write_misses_total"] += scale * float64(*cacheProfile.LastLevelWriteMiss)
 			}
 
 			if cacheProfile.BPUReadHit != nil {
-				cgroupCachePerfCounters["cache_bpu_read_hits_total"] += float64(*cacheProfile.BPUReadHit)
+				cgroupCachePerfCounters["cache_bpu_read_hits_total"] += scale * float64(*cacheProfile.BPUReadHit)
 			}
 
 			if cacheProfile.BPUReadMiss != nil {
-				cgroupCachePerfCounters["cache_bpu_read_misses_total"] += float64(*cacheProfile.BPUReadMiss)
+				cgroupCachePerfCounters["cache_bpu_read_misses_total"] += scale * float64(*cacheProfile.BPUReadMiss)
 			}
 		}
 	}
