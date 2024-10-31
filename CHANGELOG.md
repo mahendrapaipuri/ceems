@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.0-rc.2 / 2024-10-31
+
+- [BUFGIX] Scale perf counters based on times enabled and ran [#209](https://github.com/mahendrapaipuri/ceems/pull/209) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+
 ## 0.5.0-rc.1 / 2024-10-29
 
 - [MAINT] Major refactor to improve performance of exporter [#204](https://github.com/mahendrapaipuri/ceems/pull/204) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
