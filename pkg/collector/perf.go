@@ -626,6 +626,7 @@ func (c *perfCollector) updateHardwareCounters(
 		pid = proc.PID
 
 		var scale float64 = 1.0
+
 		if hwProfiler, ok := c.perfHwProfilers[pid]; ok {
 			hwProfile := &perf.HardwareProfile{}
 			if err := (*hwProfiler).Profile(hwProfile); err != nil {
@@ -701,6 +702,7 @@ func (c *perfCollector) updateSoftwareCounters(
 		pid = proc.PID
 
 		var scale float64 = 1.0
+
 		if swProfiler, ok := c.perfSwProfilers[pid]; ok {
 			swProfile := &perf.SoftwareProfile{}
 			if err := (*swProfiler).Profile(swProfile); err != nil {
@@ -764,6 +766,7 @@ func (c *perfCollector) updateCacheCounters(cgroupID string, procs []procfs.Proc
 		pid = proc.PID
 
 		var scale float64 = 1.0
+
 		if cacheProfiler, ok := c.perfCacheProfilers[pid]; ok {
 			cacheProfile := &perf.CacheProfile{}
 			if err := (*cacheProfiler).Profile(cacheProfile); err != nil {
