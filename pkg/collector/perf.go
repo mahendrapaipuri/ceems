@@ -635,7 +635,8 @@ func (c *perfCollector) updateHardwareCounters(
 				continue
 			}
 
-			if hwProfile.TimeEnabled != nil && hwProfile.TimeRunning != nil {
+			// Ensure that TimeRunning is always > 0. If it is zero, counters will be zero as well
+			if hwProfile.TimeEnabled != nil && hwProfile.TimeRunning != nil && *hwProfile.TimeRunning > 0 {
 				scale = float64(*hwProfile.TimeEnabled) / float64(*hwProfile.TimeRunning)
 			}
 
@@ -711,7 +712,7 @@ func (c *perfCollector) updateSoftwareCounters(
 				continue
 			}
 
-			if swProfile.TimeEnabled != nil && swProfile.TimeRunning != nil {
+			if swProfile.TimeEnabled != nil && swProfile.TimeRunning != nil && *swProfile.TimeRunning > 0 {
 				scale = float64(*swProfile.TimeEnabled) / float64(*swProfile.TimeRunning)
 			}
 
@@ -775,7 +776,7 @@ func (c *perfCollector) updateCacheCounters(cgroupID string, procs []procfs.Proc
 				continue
 			}
 
-			if cacheProfile.TimeEnabled != nil && cacheProfile.TimeRunning != nil {
+			if cacheProfile.TimeEnabled != nil && cacheProfile.TimeRunning != nil && *cacheProfile.TimeRunning > 0 {
 				scale = float64(*cacheProfile.TimeEnabled) / float64(*cacheProfile.TimeRunning)
 			}
 
