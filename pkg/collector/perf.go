@@ -572,7 +572,7 @@ func (c *perfCollector) Update(ch chan<- prometheus.Metric, cgroups []cgroup) er
 	}
 
 	// Update metrics in go routines for each cgroup
-	// TODO: Update concurrently and manage state variables better?
+	// NOTE: Update concurrently and manage state variables better?
 	for _, cgroup := range cgroups {
 		uuid := cgroup.uuid
 
