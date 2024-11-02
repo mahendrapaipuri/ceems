@@ -7,14 +7,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"slices"
 	"strings"
 	"sync"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/hodgesds/perf-utils"
 	"github.com/mahendrapaipuri/ceems/internal/security"
+	"github.com/mahendrapaipuri/perf-utils"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/procfs"
 )
@@ -49,7 +50,7 @@ var (
 	).Strings()
 	perfProfilersEnvVars = CEEMSExporterApp.Flag(
 		"collector.perf.env-var",
-		"Enable profiling only on the processes having any of these environment variables set will be profiled. If empty, all processes will be profiled.",
+		"Enable profiling only on the processes having any of these environment variables set. If empty, all processes will be profiled.",
 	).Strings()
 )
 
@@ -136,19 +137,23 @@ type perfOpts struct {
 // settings not all profiler values may be exposed on the target system at any
 // given time.
 type perfCollector struct {
-	logger                 log.Logger
-	hostname               string
-	cgroupManager          *cgroupManager
-	fs                     procfs.FS
-	opts                   perfOpts
-	securityContexts       map[string]*security.SecurityContext
-	perfHwProfilers        map[int]*perf.HardwareProfiler
-	perfSwProfilers        map[int]*perf.SoftwareProfiler
-	perfCacheProfilers     map[int]*perf.CacheProfiler
-	perfHwProfilerTypes    perf.HardwareProfilerType
-	perfSwProfilerTypes    perf.SoftwareProfilerType
-	perfCacheProfilerTypes perf.CacheProfilerType
-	desc                   map[string]*prometheus.Desc
+	logger                  log.Logger
+	hostname                string
+	cgroupManager           *cgroupManager
+	fs                      procfs.FS
+	opts                    perfOpts
+	securityContexts        map[string]*security.SecurityContext
+	perfHwProfilers         map[int]*perf.HardwareProfiler
+	perfSwProfilers         map[int]*perf.SoftwareProfiler
+	perfCacheProfilers      map[int]*perf.CacheProfiler
+	perfHwProfilerTypes     perf.HardwareProfilerType
+	perfSwProfilerTypes     perf.SoftwareProfilerType
+	perfCacheProfilerTypes  perf.CacheProfilerType
+	desc                    map[string]*prometheus.Desc
+	lastRawHwCounters       map[int]map[string]perf.ProfileValue
+	lastRawCacheCounters    map[int]map[string]perf.ProfileValue
+	lastScaledHwCounters    map[int]map[string]float64
+	lastScaledCacheCounters map[int]map[string]float64
 }
 
 // NewPerfCollector returns a new perf based collector, it creates a profiler
@@ -199,14 +204,18 @@ func NewPerfCollector(logger log.Logger, cgManager *cgroupManager) (*perfCollect
 	}
 
 	collector := &perfCollector{
-		logger:             logger,
-		fs:                 fs,
-		hostname:           hostname,
-		cgroupManager:      cgManager,
-		opts:               opts,
-		perfHwProfilers:    make(map[int]*perf.HardwareProfiler),
-		perfSwProfilers:    make(map[int]*perf.SoftwareProfiler),
-		perfCacheProfilers: make(map[int]*perf.CacheProfiler),
+		logger:                  logger,
+		fs:                      fs,
+		hostname:                hostname,
+		cgroupManager:           cgManager,
+		opts:                    opts,
+		perfHwProfilers:         make(map[int]*perf.HardwareProfiler),
+		perfSwProfilers:         make(map[int]*perf.SoftwareProfiler),
+		perfCacheProfilers:      make(map[int]*perf.CacheProfiler),
+		lastRawHwCounters:       make(map[int]map[string]perf.ProfileValue),
+		lastRawCacheCounters:    make(map[int]map[string]perf.ProfileValue),
+		lastScaledHwCounters:    make(map[int]map[string]float64),
+		lastScaledCacheCounters: make(map[int]map[string]float64),
 	}
 
 	// Configure perf profilers
@@ -606,6 +615,92 @@ func (c *perfCollector) Stop(_ context.Context) error {
 	return nil
 }
 
+// aggHardwareCounters aggregates process hardware counters of a given cgroup.
+func (c *perfCollector) aggHardwareCounters(hwProfiles map[int]*perf.HardwareProfile) map[string]float64 {
+	cgroupHwPerfCounters := make(map[string]float64)
+
+	for pid, hwProfile := range hwProfiles {
+		// // Ensure that TimeRunning is always > 0. If it is zero, counters will be zero as well
+		// if hwProfile.TimeEnabled != nil && hwProfile.TimeRunning != nil && *hwProfile.TimeRunning > 0 {
+		// 	timeEnabled := float64(*hwProfile.TimeEnabled)
+		// 	timeRunning := float64(*hwProfile.TimeRunning)
+		// 	scale = estimateScale(
+		// 		c.lastRawHwCounters[pid]["time_enabled"],
+		// 		c.lastRawHwCounters[pid]["time_running"],
+		// 		timeEnabled,
+		// 		timeRunning,
+		// 	)
+		// 	fmt.Println("QQ111", pid, timeEnabled, timeEnabled-c.lastRawHwCounters[pid]["time_enabled"], timeRunning, timeRunning-c.lastRawHwCounters[pid]["time_running"])
+		// 	c.lastRawHwCounters[pid]["time_enabled"] = timeEnabled
+		// 	c.lastRawHwCounters[pid]["time_running"] = timeRunning
+		// }
+		if hwProfile.CPUCycles != nil {
+			metricName := "cpucycles_total"
+			profileValue := *hwProfile.CPUCycles
+			scaledCounter := c.lastScaledHwCounters[pid][metricName] + scaleCounter(c.lastRawHwCounters[pid][metricName], profileValue)
+			cgroupHwPerfCounters[metricName] += scaledCounter
+			c.lastRawHwCounters[pid][metricName] = profileValue
+			c.lastScaledHwCounters[pid][metricName] = scaledCounter
+		}
+
+		if hwProfile.Instructions != nil {
+			metricName := "instructions_total"
+			profileValue := *hwProfile.Instructions
+			scaledCounter := c.lastScaledHwCounters[pid][metricName] + scaleCounter(c.lastRawHwCounters[pid][metricName], profileValue)
+			cgroupHwPerfCounters[metricName] += scaledCounter
+			c.lastRawHwCounters[pid][metricName] = profileValue
+			c.lastScaledHwCounters[pid][metricName] = scaledCounter
+		}
+
+		if hwProfile.BranchInstr != nil {
+			metricName := "branch_instructions_total"
+			profileValue := *hwProfile.BranchInstr
+			scaledCounter := c.lastScaledHwCounters[pid][metricName] + scaleCounter(c.lastRawHwCounters[pid][metricName], profileValue)
+			cgroupHwPerfCounters[metricName] += scaledCounter
+			c.lastRawHwCounters[pid][metricName] = profileValue
+			c.lastScaledHwCounters[pid][metricName] = scaledCounter
+		}
+
+		if hwProfile.BranchMisses != nil {
+			metricName := "branch_misses_total"
+			profileValue := *hwProfile.BranchMisses
+			scaledCounter := c.lastScaledHwCounters[pid][metricName] + scaleCounter(c.lastRawHwCounters[pid][metricName], profileValue)
+			cgroupHwPerfCounters[metricName] += scaledCounter
+			c.lastRawHwCounters[pid][metricName] = profileValue
+			c.lastScaledHwCounters[pid][metricName] = scaledCounter
+		}
+
+		if hwProfile.CacheRefs != nil {
+			metricName := "cache_refs_total"
+			profileValue := *hwProfile.CacheRefs
+			scaledCounter := c.lastScaledHwCounters[pid][metricName] + scaleCounter(c.lastRawHwCounters[pid][metricName], profileValue)
+			cgroupHwPerfCounters[metricName] += scaledCounter
+			c.lastRawHwCounters[pid][metricName] = profileValue
+			c.lastScaledHwCounters[pid][metricName] = scaledCounter
+		}
+
+		if hwProfile.CacheMisses != nil {
+			metricName := "cache_misses_total"
+			profileValue := *hwProfile.CacheMisses
+			scaledCounter := c.lastScaledHwCounters[pid][metricName] + scaleCounter(c.lastRawHwCounters[pid][metricName], profileValue)
+			cgroupHwPerfCounters[metricName] += scaledCounter
+			c.lastRawHwCounters[pid][metricName] = profileValue
+			c.lastScaledHwCounters[pid][metricName] = scaledCounter
+		}
+
+		if hwProfile.RefCPUCycles != nil {
+			metricName := "ref_cpucycles_total"
+			profileValue := *hwProfile.RefCPUCycles
+			scaledCounter := c.lastScaledHwCounters[pid][metricName] + scaleCounter(c.lastRawHwCounters[pid][metricName], profileValue)
+			cgroupHwPerfCounters[metricName] += scaledCounter
+			c.lastRawHwCounters[pid][metricName] = profileValue
+			c.lastScaledHwCounters[pid][metricName] = scaledCounter
+		}
+	}
+
+	return cgroupHwPerfCounters
+}
+
 // updateHardwareCounters collects hardware counters for the given cgroup.
 func (c *perfCollector) updateHardwareCounters(
 	cgroupID string,
@@ -616,16 +711,26 @@ func (c *perfCollector) updateHardwareCounters(
 		return nil
 	}
 
-	cgroupHwPerfCounters := make(map[string]float64)
+	hwProfiles := make(map[int]*perf.HardwareProfile, len(procs))
+
+	activePIDs := make([]int, len(procs))
 
 	var pid int
 
 	var errs error
 
-	for _, proc := range procs {
+	for iproc, proc := range procs {
 		pid = proc.PID
 
-		var scale float64 = 1.0
+		activePIDs[iproc] = pid
+
+		if c.lastRawHwCounters[pid] == nil {
+			c.lastRawHwCounters[pid] = make(map[string]perf.ProfileValue)
+		}
+
+		if c.lastScaledHwCounters[pid] == nil {
+			c.lastScaledHwCounters[pid] = make(map[string]float64)
+		}
 
 		if hwProfiler, ok := c.perfHwProfilers[pid]; ok {
 			hwProfile := &perf.HardwareProfile{}
@@ -635,38 +740,23 @@ func (c *perfCollector) updateHardwareCounters(
 				continue
 			}
 
-			// Ensure that TimeRunning is always > 0. If it is zero, counters will be zero as well
-			if hwProfile.TimeEnabled != nil && hwProfile.TimeRunning != nil && *hwProfile.TimeRunning > 0 {
-				scale = float64(*hwProfile.TimeEnabled) / float64(*hwProfile.TimeRunning)
-			}
+			hwProfiles[pid] = hwProfile
+		}
+	}
 
-			if hwProfile.CPUCycles != nil {
-				cgroupHwPerfCounters["cpucycles_total"] += scale * float64(*hwProfile.CPUCycles)
-			}
+	// Aggregate perf counters
+	cgroupHwPerfCounters := c.aggHardwareCounters(hwProfiles)
 
-			if hwProfile.Instructions != nil {
-				cgroupHwPerfCounters["instructions_total"] += scale * float64(*hwProfile.Instructions)
-			}
+	// Evict entries that are not in activePIDs
+	for pid := range c.lastRawHwCounters {
+		if !slices.Contains(activePIDs, pid) {
+			delete(c.lastRawHwCounters, pid)
+		}
+	}
 
-			if hwProfile.BranchInstr != nil {
-				cgroupHwPerfCounters["branch_instructions_total"] += scale * float64(*hwProfile.BranchInstr)
-			}
-
-			if hwProfile.BranchMisses != nil {
-				cgroupHwPerfCounters["branch_misses_total"] += scale * float64(*hwProfile.BranchMisses)
-			}
-
-			if hwProfile.CacheRefs != nil {
-				cgroupHwPerfCounters["cache_refs_total"] += scale * float64(*hwProfile.CacheRefs)
-			}
-
-			if hwProfile.CacheMisses != nil {
-				cgroupHwPerfCounters["cache_misses_total"] += scale * float64(*hwProfile.CacheMisses)
-			}
-
-			if hwProfile.RefCPUCycles != nil {
-				cgroupHwPerfCounters["ref_cpucycles_total"] += scale * float64(*hwProfile.RefCPUCycles)
-			}
+	for pid := range c.lastScaledHwCounters {
+		if !slices.Contains(activePIDs, pid) {
+			delete(c.lastScaledHwCounters, pid)
 		}
 	}
 
@@ -683,6 +773,45 @@ func (c *perfCollector) updateHardwareCounters(
 	return errs
 }
 
+// aggSoftwareCounters aggregates process software counters of a given cgroup.
+func (c *perfCollector) aggSoftwareCounters(swProfiles map[int]*perf.SoftwareProfile) map[string]float64 {
+	cgroupSwPerfCounters := make(map[string]float64)
+
+	for _, swProfile := range swProfiles {
+		if swProfile.PageFaults != nil {
+			metricName := "page_faults_total"
+			profileValue := *swProfile.PageFaults
+			cgroupSwPerfCounters[metricName] += float64(profileValue.Value)
+		}
+
+		if swProfile.ContextSwitches != nil {
+			metricName := "context_switches_total"
+			profileValue := *swProfile.ContextSwitches
+			cgroupSwPerfCounters[metricName] += float64(profileValue.Value)
+		}
+
+		if swProfile.CPUMigrations != nil {
+			metricName := "cpu_migrations_total"
+			profileValue := *swProfile.CPUMigrations
+			cgroupSwPerfCounters[metricName] += float64(profileValue.Value)
+		}
+
+		if swProfile.MinorPageFaults != nil {
+			metricName := "minor_faults_total"
+			profileValue := *swProfile.MinorPageFaults
+			cgroupSwPerfCounters[metricName] += float64(profileValue.Value)
+		}
+
+		if swProfile.MajorPageFaults != nil {
+			metricName := "major_faults_total"
+			profileValue := *swProfile.MajorPageFaults
+			cgroupSwPerfCounters[metricName] += float64(profileValue.Value)
+		}
+	}
+
+	return cgroupSwPerfCounters
+}
+
 // updateSoftwareCounters collects software counters for the given cgroup.
 func (c *perfCollector) updateSoftwareCounters(
 	cgroupID string,
@@ -693,16 +822,18 @@ func (c *perfCollector) updateSoftwareCounters(
 		return nil
 	}
 
-	cgroupSwPerfCounters := make(map[string]float64)
+	swProfiles := make(map[int]*perf.SoftwareProfile, len(procs))
+
+	activePIDs := make([]int, len(procs))
 
 	var pid int
 
 	var errs error
 
-	for _, proc := range procs {
+	for iproc, proc := range procs {
 		pid = proc.PID
 
-		var scale float64 = 1.0
+		activePIDs[iproc] = pid
 
 		if swProfiler, ok := c.perfSwProfilers[pid]; ok {
 			swProfile := &perf.SoftwareProfile{}
@@ -712,31 +843,12 @@ func (c *perfCollector) updateSoftwareCounters(
 				continue
 			}
 
-			if swProfile.TimeEnabled != nil && swProfile.TimeRunning != nil && *swProfile.TimeRunning > 0 {
-				scale = float64(*swProfile.TimeEnabled) / float64(*swProfile.TimeRunning)
-			}
-
-			if swProfile.PageFaults != nil {
-				cgroupSwPerfCounters["page_faults_total"] += scale * float64(*swProfile.PageFaults)
-			}
-
-			if swProfile.ContextSwitches != nil {
-				cgroupSwPerfCounters["context_switches_total"] += scale * float64(*swProfile.ContextSwitches)
-			}
-
-			if swProfile.CPUMigrations != nil {
-				cgroupSwPerfCounters["cpu_migrations_total"] += scale * float64(*swProfile.CPUMigrations)
-			}
-
-			if swProfile.MinorPageFaults != nil {
-				cgroupSwPerfCounters["minor_faults_total"] += scale * float64(*swProfile.MinorPageFaults)
-			}
-
-			if swProfile.MajorPageFaults != nil {
-				cgroupSwPerfCounters["major_faults_total"] += scale * float64(*swProfile.MajorPageFaults)
-			}
+			swProfiles[pid] = swProfile
 		}
 	}
+
+	// Aggregate perf counters
+	cgroupSwPerfCounters := c.aggSoftwareCounters(swProfiles)
 
 	for counter, value := range cgroupSwPerfCounters {
 		if value > 0 {
@@ -751,22 +863,149 @@ func (c *perfCollector) updateSoftwareCounters(
 	return errs
 }
 
+// aggCacheCounters aggregates process cache counters of a given cgroup.
+func (c *perfCollector) aggCacheCounters(cacheProfiles map[int]*perf.CacheProfile) map[string]float64 {
+	cgroupCachePerfCounters := make(map[string]float64)
+
+	for pid, cacheProfile := range cacheProfiles {
+		if cacheProfile.L1DataReadHit != nil {
+			metricName := "cache_l1d_read_hits_total"
+			profileValue := *cacheProfile.L1DataReadHit
+			scaledCounter := c.lastScaledCacheCounters[pid][metricName] + scaleCounter(c.lastRawCacheCounters[pid][metricName], profileValue)
+			cgroupCachePerfCounters[metricName] += scaledCounter
+			c.lastRawCacheCounters[pid][metricName] = profileValue
+			c.lastScaledCacheCounters[pid][metricName] = scaledCounter
+		}
+
+		if cacheProfile.L1DataReadMiss != nil {
+			metricName := "cache_l1d_read_misses_total"
+			profileValue := *cacheProfile.L1DataReadMiss
+			scaledCounter := c.lastScaledCacheCounters[pid][metricName] + scaleCounter(c.lastRawCacheCounters[pid][metricName], profileValue)
+			cgroupCachePerfCounters[metricName] += scaledCounter
+			c.lastRawCacheCounters[pid][metricName] = profileValue
+			c.lastScaledCacheCounters[pid][metricName] = scaledCounter
+		}
+
+		if cacheProfile.L1DataWriteHit != nil {
+			metricName := "cache_l1d_write_hits_total"
+			profileValue := *cacheProfile.L1DataWriteHit
+			scaledCounter := c.lastScaledCacheCounters[pid][metricName] + scaleCounter(c.lastRawCacheCounters[pid][metricName], profileValue)
+			cgroupCachePerfCounters[metricName] += scaledCounter
+			c.lastRawCacheCounters[pid][metricName] = profileValue
+			c.lastScaledCacheCounters[pid][metricName] = scaledCounter
+		}
+
+		if cacheProfile.L1InstrReadMiss != nil {
+			metricName := "cache_l1_instr_read_misses_total"
+			profileValue := *cacheProfile.L1InstrReadMiss
+			scaledCounter := c.lastScaledCacheCounters[pid][metricName] + scaleCounter(c.lastRawCacheCounters[pid][metricName], profileValue)
+			cgroupCachePerfCounters[metricName] += scaledCounter
+			c.lastRawCacheCounters[pid][metricName] = profileValue
+			c.lastScaledCacheCounters[pid][metricName] = scaledCounter
+		}
+
+		if cacheProfile.InstrTLBReadHit != nil {
+			metricName := "cache_tlb_instr_read_hits_total"
+			profileValue := *cacheProfile.InstrTLBReadHit
+			scaledCounter := c.lastScaledCacheCounters[pid][metricName] + scaleCounter(c.lastRawCacheCounters[pid][metricName], profileValue)
+			cgroupCachePerfCounters[metricName] += scaledCounter
+			c.lastRawCacheCounters[pid][metricName] = profileValue
+			c.lastScaledCacheCounters[pid][metricName] = scaledCounter
+		}
+
+		if cacheProfile.InstrTLBReadMiss != nil {
+			metricName := "cache_tlb_instr_read_misses_total"
+			profileValue := *cacheProfile.InstrTLBReadMiss
+			scaledCounter := c.lastScaledCacheCounters[pid][metricName] + scaleCounter(c.lastRawCacheCounters[pid][metricName], profileValue)
+			cgroupCachePerfCounters[metricName] += scaledCounter
+			c.lastRawCacheCounters[pid][metricName] = profileValue
+			c.lastScaledCacheCounters[pid][metricName] = scaledCounter
+		}
+
+		if cacheProfile.LastLevelReadHit != nil {
+			metricName := "cache_ll_read_hits_total"
+			profileValue := *cacheProfile.LastLevelReadHit
+			scaledCounter := c.lastScaledCacheCounters[pid][metricName] + scaleCounter(c.lastRawCacheCounters[pid][metricName], profileValue)
+			cgroupCachePerfCounters[metricName] += scaledCounter
+			c.lastRawCacheCounters[pid][metricName] = profileValue
+			c.lastScaledCacheCounters[pid][metricName] = scaledCounter
+		}
+
+		if cacheProfile.LastLevelReadMiss != nil {
+			metricName := "cache_ll_read_misses_total"
+			profileValue := *cacheProfile.LastLevelReadMiss
+			scaledCounter := c.lastScaledCacheCounters[pid][metricName] + scaleCounter(c.lastRawCacheCounters[pid][metricName], profileValue)
+			cgroupCachePerfCounters[metricName] += scaledCounter
+			c.lastRawCacheCounters[pid][metricName] = profileValue
+			c.lastScaledCacheCounters[pid][metricName] = scaledCounter
+		}
+
+		if cacheProfile.LastLevelWriteHit != nil {
+			metricName := "cache_ll_write_hits_total"
+			profileValue := *cacheProfile.LastLevelWriteHit
+			scaledCounter := c.lastScaledCacheCounters[pid][metricName] + scaleCounter(c.lastRawCacheCounters[pid][metricName], profileValue)
+			cgroupCachePerfCounters[metricName] += scaledCounter
+			c.lastRawCacheCounters[pid][metricName] = profileValue
+			c.lastScaledCacheCounters[pid][metricName] = scaledCounter
+		}
+
+		if cacheProfile.LastLevelWriteMiss != nil {
+			metricName := "cache_ll_write_misses_total"
+			profileValue := *cacheProfile.LastLevelWriteMiss
+			scaledCounter := c.lastScaledCacheCounters[pid][metricName] + scaleCounter(c.lastRawCacheCounters[pid][metricName], profileValue)
+			cgroupCachePerfCounters[metricName] += scaledCounter
+			c.lastRawCacheCounters[pid][metricName] = profileValue
+			c.lastScaledCacheCounters[pid][metricName] = scaledCounter
+		}
+
+		if cacheProfile.BPUReadHit != nil {
+			metricName := "cache_bpu_read_hits_total"
+			profileValue := *cacheProfile.BPUReadHit
+			scaledCounter := c.lastScaledCacheCounters[pid][metricName] + scaleCounter(c.lastRawCacheCounters[pid][metricName], profileValue)
+			cgroupCachePerfCounters[metricName] += scaledCounter
+			c.lastRawCacheCounters[pid][metricName] = profileValue
+			c.lastScaledCacheCounters[pid][metricName] = scaledCounter
+		}
+
+		if cacheProfile.BPUReadMiss != nil {
+			metricName := "cache_bpu_read_misses_total"
+			profileValue := *cacheProfile.BPUReadMiss
+			scaledCounter := c.lastScaledCacheCounters[pid][metricName] + scaleCounter(c.lastRawCacheCounters[pid][metricName], profileValue)
+			cgroupCachePerfCounters[metricName] += scaledCounter
+			c.lastRawCacheCounters[pid][metricName] = profileValue
+			c.lastScaledCacheCounters[pid][metricName] = scaledCounter
+		}
+	}
+
+	return cgroupCachePerfCounters
+}
+
 // updateCacheCounters collects cache counters for the given cgroup.
 func (c *perfCollector) updateCacheCounters(cgroupID string, procs []procfs.Proc, ch chan<- prometheus.Metric) error {
 	if !c.opts.perfCacheProfilersEnabled {
 		return nil
 	}
 
-	cgroupCachePerfCounters := make(map[string]float64)
+	cacheProfiles := make(map[int]*perf.CacheProfile, len(procs))
+
+	activePIDs := make([]int, len(procs))
 
 	var pid int
 
 	var errs error
 
-	for _, proc := range procs {
+	for iproc, proc := range procs {
 		pid = proc.PID
 
-		var scale float64 = 1.0
+		activePIDs[iproc] = pid
+
+		if c.lastRawCacheCounters[pid] == nil {
+			c.lastRawCacheCounters[pid] = make(map[string]perf.ProfileValue)
+		}
+
+		if c.lastScaledCacheCounters[pid] == nil {
+			c.lastScaledCacheCounters[pid] = make(map[string]float64)
+		}
 
 		if cacheProfiler, ok := c.perfCacheProfilers[pid]; ok {
 			cacheProfile := &perf.CacheProfile{}
@@ -776,59 +1015,25 @@ func (c *perfCollector) updateCacheCounters(cgroupID string, procs []procfs.Proc
 				continue
 			}
 
-			if cacheProfile.TimeEnabled != nil && cacheProfile.TimeRunning != nil && *cacheProfile.TimeRunning > 0 {
-				scale = float64(*cacheProfile.TimeEnabled) / float64(*cacheProfile.TimeRunning)
-			}
-
-			if cacheProfile.L1DataReadHit != nil {
-				cgroupCachePerfCounters["cache_l1d_read_hits_total"] += scale * float64(*cacheProfile.L1DataReadHit)
-			}
-
-			if cacheProfile.L1DataReadMiss != nil {
-				cgroupCachePerfCounters["cache_l1d_read_misses_total"] += scale * float64(*cacheProfile.L1DataReadMiss)
-			}
-
-			if cacheProfile.L1DataWriteHit != nil {
-				cgroupCachePerfCounters["cache_l1d_write_hits_total"] += scale * float64(*cacheProfile.L1DataWriteHit)
-			}
-
-			if cacheProfile.L1InstrReadMiss != nil {
-				cgroupCachePerfCounters["cache_l1_instr_read_misses_total"] += scale * float64(*cacheProfile.L1InstrReadMiss)
-			}
-
-			if cacheProfile.InstrTLBReadHit != nil {
-				cgroupCachePerfCounters["cache_tlb_instr_read_hits_total"] += scale * float64(*cacheProfile.InstrTLBReadHit)
-			}
-
-			if cacheProfile.InstrTLBReadMiss != nil {
-				cgroupCachePerfCounters["cache_tlb_instr_read_misses_total"] += scale * float64(*cacheProfile.InstrTLBReadMiss)
-			}
-
-			if cacheProfile.LastLevelReadHit != nil {
-				cgroupCachePerfCounters["cache_ll_read_hits_total"] += scale * float64(*cacheProfile.LastLevelReadHit)
-			}
-
-			if cacheProfile.LastLevelReadMiss != nil {
-				cgroupCachePerfCounters["cache_ll_read_misses_total"] += scale * float64(*cacheProfile.LastLevelReadMiss)
-			}
-
-			if cacheProfile.LastLevelWriteHit != nil {
-				cgroupCachePerfCounters["cache_ll_write_hits_total"] += scale * float64(*cacheProfile.LastLevelWriteHit)
-			}
-
-			if cacheProfile.LastLevelWriteMiss != nil {
-				cgroupCachePerfCounters["cache_ll_write_misses_total"] += scale * float64(*cacheProfile.LastLevelWriteMiss)
-			}
-
-			if cacheProfile.BPUReadHit != nil {
-				cgroupCachePerfCounters["cache_bpu_read_hits_total"] += scale * float64(*cacheProfile.BPUReadHit)
-			}
-
-			if cacheProfile.BPUReadMiss != nil {
-				cgroupCachePerfCounters["cache_bpu_read_misses_total"] += scale * float64(*cacheProfile.BPUReadMiss)
-			}
+			cacheProfiles[pid] = cacheProfile
 		}
 	}
+
+	// Evict entries that are not in activePIDs
+	for pid := range c.lastRawCacheCounters {
+		if !slices.Contains(activePIDs, pid) {
+			delete(c.lastRawCacheCounters, pid)
+		}
+	}
+
+	for pid := range c.lastScaledCacheCounters {
+		if !slices.Contains(activePIDs, pid) {
+			delete(c.lastScaledCacheCounters, pid)
+		}
+	}
+
+	// Aggregate perf counters
+	cgroupCachePerfCounters := c.aggCacheCounters(cacheProfiles)
 
 	for counter, value := range cgroupCachePerfCounters {
 		if value > 0 {
@@ -1146,6 +1351,34 @@ func filterPerfProcs(data interface{}) error {
 	d.cgroups = cgroupProcFilterer(d.cgroups, d.targetEnvVars, d.ignoreProc)
 
 	return nil
+}
+
+// // estimateScale estimates the scaling factor only for the current interval
+// // Since last scrape, we estimate running and enabled times and estimate a scale factor
+// // We also estimate the counters that have been increased since last scrape and scale
+// // those incremented metrics using the scaling factor.
+// func estimateScale(lastTimeEnabled, lastTimeRunning, currentTimeEnabled, currentTimeRunning float64) float64 {
+// 	deltaEnabled := currentTimeEnabled - lastTimeEnabled
+// 	deltaRunning := currentTimeRunning - lastTimeRunning
+
+// 	if deltaRunning > 0 {
+// 		return deltaEnabled / deltaRunning
+// 	}
+
+// 	return 1.0
+// }
+
+// scaleCounter uses the enabled and running times of counter to extrapolate counter value.
+func scaleCounter(lastProfileValue, currentProfileValue perf.ProfileValue) float64 {
+	deltaEnabled := currentProfileValue.TimeEnabled - lastProfileValue.TimeEnabled
+	deltaRunning := currentProfileValue.TimeRunning - lastProfileValue.TimeRunning
+	deltaCounter := currentProfileValue.Value - lastProfileValue.Value
+
+	if deltaRunning > 0 {
+		return math.Round((float64(deltaEnabled) / float64(deltaRunning)) * float64(deltaCounter))
+	}
+
+	return float64(deltaCounter)
 }
 
 // perfCollectorEnabled returns true if any of perf profilers are enabled.

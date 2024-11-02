@@ -11,8 +11,8 @@ require (
 	github.com/golang-migrate/migrate/v4 v4.18.1
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
-	github.com/hodgesds/perf-utils v0.7.0
 	github.com/jellydator/ttlcache/v3 v3.3.0
+	github.com/mahendrapaipuri/perf-utils v0.0.0-20241102115757-6c72709e1c07
 	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/prometheus/client_golang v1.20.5
 	github.com/prometheus/common v0.60.1
