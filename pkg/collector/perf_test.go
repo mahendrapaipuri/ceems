@@ -12,6 +12,7 @@ import (
 	"github.com/containerd/cgroups/v3"
 	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/ceems/internal/security"
+	"github.com/mahendrapaipuri/perf-utils"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/procfs"
 	"github.com/stretchr/testify/assert"
@@ -203,4 +204,478 @@ func TestNewProfilers(t *testing.T) {
 
 	_, ok = collector.perfCacheProfilers[os.Getpid()]
 	assert.False(t, ok)
+}
+
+func TestAggProfiles(t *testing.T) {
+	// // Return address of constant
+	// i := func(i uint64) *uint64 { return &i }
+	var err error
+
+	_, err = CEEMSExporterApp.Parse([]string{
+		"--path.procfs", "testdata/proc",
+		"--path.cgroupfs", "testdata/sys/fs/cgroup",
+		"--collector.perf.hardware-events",
+		"--collector.perf.software-events",
+		"--collector.perf.hardware-cache-events",
+		"--collector.cgroups.force-version", "v1",
+	})
+	require.NoError(t, err)
+
+	// cgroup manager
+	cgManager, err := NewCgroupManager("slurm", log.NewNopLogger())
+	require.NoError(t, err)
+
+	collector, err := NewPerfCollector(log.NewNopLogger(), cgManager)
+	require.NoError(t, err)
+
+	// Initialise state counters
+	collector.lastRawHwCounters[46231] = make(map[string]perf.ProfileValue)
+	collector.lastRawHwCounters[46281] = make(map[string]perf.ProfileValue)
+	collector.lastRawCacheCounters[46231] = make(map[string]perf.ProfileValue)
+	collector.lastRawCacheCounters[46281] = make(map[string]perf.ProfileValue)
+
+	collector.lastScaledHwCounters[46231] = make(map[string]float64)
+	collector.lastScaledHwCounters[46281] = make(map[string]float64)
+	collector.lastScaledCacheCounters[46231] = make(map[string]float64)
+	collector.lastScaledCacheCounters[46281] = make(map[string]float64)
+
+	// First update
+	// hardware counters
+	hwProfiles := map[int]*perf.HardwareProfile{
+		46231: {
+			CPUCycles: &perf.ProfileValue{
+				Value:       40,
+				TimeEnabled: 10,
+				TimeRunning: 4,
+			},
+			Instructions: &perf.ProfileValue{
+				Value:       50,
+				TimeEnabled: 10,
+				TimeRunning: 5,
+			},
+			BranchInstr: &perf.ProfileValue{
+				Value:       10,
+				TimeEnabled: 10,
+				TimeRunning: 1,
+			},
+			BranchMisses: &perf.ProfileValue{
+				Value:       90,
+				TimeEnabled: 10,
+				TimeRunning: 9,
+			},
+			CacheRefs: &perf.ProfileValue{
+				Value:       50,
+				TimeEnabled: 10,
+				TimeRunning: 5,
+			},
+			CacheMisses: &perf.ProfileValue{
+				Value:       40,
+				TimeEnabled: 10,
+				TimeRunning: 4,
+			},
+			RefCPUCycles: &perf.ProfileValue{
+				Value:       20,
+				TimeEnabled: 10,
+				TimeRunning: 2,
+			},
+		},
+		46281: {
+			CPUCycles: &perf.ProfileValue{
+				Value:       60,
+				TimeEnabled: 10,
+				TimeRunning: 6,
+			},
+			Instructions: &perf.ProfileValue{
+				Value:       60,
+				TimeEnabled: 10,
+				TimeRunning: 6,
+			},
+			BranchInstr: &perf.ProfileValue{
+				Value:       60,
+				TimeEnabled: 10,
+				TimeRunning: 6,
+			},
+			BranchMisses: &perf.ProfileValue{
+				Value:       60,
+				TimeEnabled: 10,
+				TimeRunning: 6,
+			},
+			CacheRefs: &perf.ProfileValue{
+				Value:       60,
+				TimeEnabled: 10,
+				TimeRunning: 6,
+			},
+			CacheMisses: &perf.ProfileValue{
+				Value:       60,
+				TimeEnabled: 10,
+				TimeRunning: 6,
+			},
+			RefCPUCycles: &perf.ProfileValue{
+				Value:       60,
+				TimeEnabled: 10,
+				TimeRunning: 6,
+			},
+		},
+	}
+	expectedRawLastValues := map[int]map[string]perf.ProfileValue{
+		46231: {
+			"cpucycles_total": perf.ProfileValue{
+				Value:       40,
+				TimeEnabled: 10,
+				TimeRunning: 4,
+			},
+			"branch_instructions_total": perf.ProfileValue{
+				Value:       10,
+				TimeEnabled: 10,
+				TimeRunning: 1,
+			},
+			"instructions_total": perf.ProfileValue{
+				Value:       50,
+				TimeEnabled: 10,
+				TimeRunning: 5,
+			},
+			"branch_misses_total": perf.ProfileValue{
+				Value:       90,
+				TimeEnabled: 10,
+				TimeRunning: 9,
+			},
+			"cache_refs_total": perf.ProfileValue{
+				Value:       50,
+				TimeEnabled: 10,
+				TimeRunning: 5,
+			},
+			"cache_misses_total": perf.ProfileValue{
+				Value:       40,
+				TimeEnabled: 10,
+				TimeRunning: 4,
+			},
+			"ref_cpucycles_total": perf.ProfileValue{
+				Value:       20,
+				TimeEnabled: 10,
+				TimeRunning: 2,
+			},
+		},
+		46281: {
+			"cpucycles_total": perf.ProfileValue{
+				Value:       60,
+				TimeEnabled: 10,
+				TimeRunning: 6,
+			},
+			"branch_instructions_total": perf.ProfileValue{
+				Value:       60,
+				TimeEnabled: 10,
+				TimeRunning: 6,
+			},
+			"instructions_total": perf.ProfileValue{
+				Value:       60,
+				TimeEnabled: 10,
+				TimeRunning: 6,
+			},
+			"branch_misses_total": perf.ProfileValue{
+				Value:       60,
+				TimeEnabled: 10,
+				TimeRunning: 6,
+			},
+			"cache_refs_total": perf.ProfileValue{
+				Value:       60,
+				TimeEnabled: 10,
+				TimeRunning: 6,
+			},
+			"cache_misses_total": perf.ProfileValue{
+				Value:       60,
+				TimeEnabled: 10,
+				TimeRunning: 6,
+			},
+			"ref_cpucycles_total": perf.ProfileValue{
+				Value:       60,
+				TimeEnabled: 10,
+				TimeRunning: 6,
+			},
+		},
+	}
+	expectedScaledLastValues := map[int]map[string]float64{
+		46231: {
+			"cpucycles_total":           100,
+			"branch_instructions_total": 100,
+			"instructions_total":        100,
+			"branch_misses_total":       100,
+			"cache_refs_total":          100,
+			"cache_misses_total":        100,
+			"ref_cpucycles_total":       100,
+		},
+		46281: {
+			"cpucycles_total":           100,
+			"branch_instructions_total": 100,
+			"instructions_total":        100,
+			"branch_misses_total":       100,
+			"cache_refs_total":          100,
+			"cache_misses_total":        100,
+			"ref_cpucycles_total":       100,
+		},
+	}
+	expectedAggValues := map[string]float64{
+		"cpucycles_total": 200, "branch_instructions_total": 200, "instructions_total": 200, "branch_misses_total": 200, "cache_refs_total": 200, "cache_misses_total": 200, "ref_cpucycles_total": 200,
+	}
+
+	cgroupCounters := collector.aggHardwareCounters(hwProfiles)
+	assert.EqualValues(t, expectedRawLastValues, collector.lastRawHwCounters)
+	assert.EqualValues(t, expectedScaledLastValues, collector.lastScaledHwCounters)
+	assert.EqualValues(t, expectedAggValues, cgroupCounters)
+
+	cacheProfiles := map[int]*perf.CacheProfile{
+		46231: {
+			L1DataReadHit: &perf.ProfileValue{
+				Value:       40,
+				TimeEnabled: 10,
+				TimeRunning: 4,
+			},
+			L1DataReadMiss: &perf.ProfileValue{
+				Value:       40,
+				TimeEnabled: 10,
+				TimeRunning: 4,
+			},
+			L1DataWriteHit: &perf.ProfileValue{
+				Value:       40,
+				TimeEnabled: 10,
+				TimeRunning: 4,
+			},
+			L1InstrReadMiss: &perf.ProfileValue{
+				Value:       40,
+				TimeEnabled: 10,
+				TimeRunning: 4,
+			},
+			InstrTLBReadHit: &perf.ProfileValue{
+				Value:       40,
+				TimeEnabled: 10,
+				TimeRunning: 4,
+			},
+		},
+		46281: {
+			L1DataReadHit: &perf.ProfileValue{
+				Value:       60,
+				TimeEnabled: 10,
+				TimeRunning: 6,
+			},
+			L1DataReadMiss: &perf.ProfileValue{
+				Value:       60,
+				TimeEnabled: 10,
+				TimeRunning: 6,
+			},
+			L1DataWriteHit: &perf.ProfileValue{
+				Value:       60,
+				TimeEnabled: 10,
+				TimeRunning: 6,
+			},
+			L1InstrReadMiss: &perf.ProfileValue{
+				Value:       60,
+				TimeEnabled: 10,
+				TimeRunning: 6,
+			},
+			InstrTLBReadHit: &perf.ProfileValue{
+				Value:       60,
+				TimeEnabled: 10,
+				TimeRunning: 6,
+			},
+		},
+	}
+	expectedRawLastValues = map[int]map[string]perf.ProfileValue{
+		46231: {
+			"cache_l1d_read_hits_total": perf.ProfileValue{
+				Value:       40,
+				TimeEnabled: 10,
+				TimeRunning: 4,
+			},
+			"cache_l1d_read_misses_total": perf.ProfileValue{
+				Value:       40,
+				TimeEnabled: 10,
+				TimeRunning: 4,
+			},
+			"cache_l1d_write_hits_total": perf.ProfileValue{
+				Value:       40,
+				TimeEnabled: 10,
+				TimeRunning: 4,
+			},
+			"cache_l1_instr_read_misses_total": perf.ProfileValue{
+				Value:       40,
+				TimeEnabled: 10,
+				TimeRunning: 4,
+			},
+			"cache_tlb_instr_read_hits_total": perf.ProfileValue{
+				Value:       40,
+				TimeEnabled: 10,
+				TimeRunning: 4,
+			},
+		},
+		46281: {
+			"cache_l1d_read_hits_total": perf.ProfileValue{
+				Value:       60,
+				TimeEnabled: 10,
+				TimeRunning: 6,
+			},
+			"cache_l1d_read_misses_total": perf.ProfileValue{
+				Value:       60,
+				TimeEnabled: 10,
+				TimeRunning: 6,
+			},
+			"cache_l1d_write_hits_total": perf.ProfileValue{
+				Value:       60,
+				TimeEnabled: 10,
+				TimeRunning: 6,
+			},
+			"cache_l1_instr_read_misses_total": perf.ProfileValue{
+				Value:       60,
+				TimeEnabled: 10,
+				TimeRunning: 6,
+			},
+			"cache_tlb_instr_read_hits_total": perf.ProfileValue{
+				Value:       60,
+				TimeEnabled: 10,
+				TimeRunning: 6,
+			},
+		},
+	}
+	expectedScaledLastValues = map[int]map[string]float64{
+		46231: {
+			"cache_l1d_read_hits_total":        100,
+			"cache_l1d_read_misses_total":      100,
+			"cache_l1d_write_hits_total":       100,
+			"cache_l1_instr_read_misses_total": 100,
+			"cache_tlb_instr_read_hits_total":  100,
+		},
+		46281: {
+			"cache_l1d_read_hits_total":        100,
+			"cache_l1d_read_misses_total":      100,
+			"cache_l1d_write_hits_total":       100,
+			"cache_l1_instr_read_misses_total": 100,
+			"cache_tlb_instr_read_hits_total":  100,
+		},
+	}
+	expectedAggValues = map[string]float64{
+		"cache_l1d_read_hits_total":        200,
+		"cache_l1d_read_misses_total":      200,
+		"cache_l1d_write_hits_total":       200,
+		"cache_l1_instr_read_misses_total": 200,
+		"cache_tlb_instr_read_hits_total":  200,
+	}
+
+	cgroupCounters = collector.aggCacheCounters(cacheProfiles)
+	assert.EqualValues(t, expectedRawLastValues, collector.lastRawCacheCounters)
+	assert.EqualValues(t, expectedScaledLastValues, collector.lastScaledCacheCounters)
+	assert.EqualValues(t, expectedAggValues, cgroupCounters)
+
+	// Second update
+	hwProfiles = map[int]*perf.HardwareProfile{
+		46231: {
+			CPUCycles: &perf.ProfileValue{
+				Value:       45,
+				TimeEnabled: 20,
+				TimeRunning: 5,
+			},
+		},
+		46281: {CPUCycles: &perf.ProfileValue{
+			Value:       80,
+			TimeEnabled: 20,
+			TimeRunning: 10,
+		}},
+	}
+
+	cgroupCounters = collector.aggHardwareCounters(hwProfiles)
+	assert.EqualValues(t, map[string]float64{"cpucycles_total": 300}, cgroupCounters)
+
+	cacheProfiles = map[int]*perf.CacheProfile{
+		46231: {L1DataReadHit: &perf.ProfileValue{
+			Value:       45,
+			TimeEnabled: 20,
+			TimeRunning: 5,
+		}},
+		46281: {L1DataReadHit: &perf.ProfileValue{
+			Value:       80,
+			TimeEnabled: 20,
+			TimeRunning: 10,
+		}},
+	}
+
+	cgroupCounters = collector.aggCacheCounters(cacheProfiles)
+	assert.EqualValues(t, map[string]float64{"cache_l1d_read_hits_total": 300}, cgroupCounters)
+}
+
+func TestPIDEviction(t *testing.T) {
+	var err error
+
+	_, err = CEEMSExporterApp.Parse([]string{
+		"--path.procfs", "testdata/proc",
+		"--path.cgroupfs", "testdata/sys/fs/cgroup",
+		"--collector.perf.hardware-events",
+		"--collector.perf.software-events",
+		"--collector.perf.hardware-cache-events",
+		"--collector.cgroups.force-version", "v1",
+	})
+	require.NoError(t, err)
+
+	// cgroup manager
+	cgManager, err := NewCgroupManager("slurm", log.NewNopLogger())
+	require.NoError(t, err)
+
+	collector, err := NewPerfCollector(log.NewNopLogger(), cgManager)
+	require.NoError(t, err)
+
+	// Use fake processes
+	procs := []procfs.Proc{
+		{PID: 12341},
+		{PID: 12342},
+		{PID: 12343},
+	}
+
+	// Setup background goroutine to capture metrics.
+	metrics := make(chan prometheus.Metric)
+	defer close(metrics)
+
+	go func() {
+		i := 0
+		for range metrics {
+			i++
+		}
+	}()
+
+	// update counters
+	collector.updateHardwareCounters("1234", procs, metrics)
+	collector.updateSoftwareCounters("1234", procs, metrics)
+	collector.updateCacheCounters("1234", procs, metrics)
+
+	// check if last raw and scaled counters are populated
+	for _, pid := range []int{12341, 12342, 12343} {
+		assert.NotNil(t, collector.lastRawHwCounters[pid])
+		assert.NotNil(t, collector.lastRawCacheCounters[pid])
+
+		assert.NotNil(t, collector.lastScaledHwCounters[pid])
+		assert.NotNil(t, collector.lastScaledCacheCounters[pid])
+	}
+
+	// Updated procs
+	procs = []procfs.Proc{
+		{PID: 12342},
+		{PID: 12343},
+		{PID: 12344},
+	}
+
+	// update counters
+	collector.updateHardwareCounters("1234", procs, metrics)
+	collector.updateSoftwareCounters("1234", procs, metrics)
+	collector.updateCacheCounters("1234", procs, metrics)
+
+	// check if last raw and scaled counters are populated
+	for _, pid := range []int{12342, 12343, 12344} {
+		assert.NotNil(t, collector.lastRawHwCounters[pid])
+		assert.NotNil(t, collector.lastRawCacheCounters[pid])
+
+		assert.NotNil(t, collector.lastScaledHwCounters[pid])
+		assert.NotNil(t, collector.lastScaledCacheCounters[pid])
+	}
+
+	// Check if we evicted finished process
+	assert.Nil(t, collector.lastRawHwCounters[12341])
+	assert.Nil(t, collector.lastRawCacheCounters[12341])
+
+	assert.Nil(t, collector.lastScaledHwCounters[12341])
+	assert.Nil(t, collector.lastScaledCacheCounters[12341])
 }
