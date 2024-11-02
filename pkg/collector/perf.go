@@ -10,7 +10,6 @@ import (
 	"math"
 	"slices"
 	"strings"
-	"sync"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -572,33 +571,23 @@ func (c *perfCollector) Update(ch chan<- prometheus.Metric, cgroups []cgroup) er
 		return nil
 	}
 
-	// Start a wait group
-	wg := sync.WaitGroup{}
-	wg.Add(len(cgroups))
-
 	// Update metrics in go routines for each cgroup
+	// TODO: Update concurrently and manage state variables better?
 	for _, cgroup := range cgroups {
 		uuid := cgroup.uuid
 
-		go func(u string, ps []procfs.Proc) {
-			defer wg.Done()
+		if err := c.updateHardwareCounters(uuid, cgroup.procs, ch); err != nil {
+			level.Error(c.logger).Log("msg", "failed to update hardware counters", "uuid", uuid, "err", err)
+		}
 
-			if err := c.updateHardwareCounters(u, ps, ch); err != nil {
-				level.Error(c.logger).Log("msg", "failed to update hardware counters", "uuid", u, "err", err)
-			}
+		if err := c.updateSoftwareCounters(uuid, cgroup.procs, ch); err != nil {
+			level.Error(c.logger).Log("msg", "failed to update software counters", "uuid", uuid, "err", err)
+		}
 
-			if err := c.updateSoftwareCounters(u, ps, ch); err != nil {
-				level.Error(c.logger).Log("msg", "failed to update software counters", "uuid", u, "err", err)
-			}
-
-			if err := c.updateCacheCounters(u, ps, ch); err != nil {
-				level.Error(c.logger).Log("msg", "failed to update cache counters", "uuid", u, "err", err)
-			}
-		}(uuid, cgroup.procs)
+		if err := c.updateCacheCounters(uuid, cgroup.procs, ch); err != nil {
+			level.Error(c.logger).Log("msg", "failed to update cache counters", "uuid", uuid, "err", err)
+		}
 	}
-
-	// Wait all go routines
-	wg.Wait()
 
 	return nil
 }
@@ -615,86 +604,52 @@ func (c *perfCollector) Stop(_ context.Context) error {
 	return nil
 }
 
+func (c *perfCollector) updateHwCounter(pid int, metricName string, profileValue perf.ProfileValue) float64 {
+	scaledCounter := c.lastScaledHwCounters[pid][metricName] + scaleCounter(c.lastRawHwCounters[pid][metricName], profileValue)
+	c.lastRawHwCounters[pid][metricName] = profileValue
+	c.lastScaledHwCounters[pid][metricName] = scaledCounter
+
+	return scaledCounter
+}
+
 // aggHardwareCounters aggregates process hardware counters of a given cgroup.
 func (c *perfCollector) aggHardwareCounters(hwProfiles map[int]*perf.HardwareProfile) map[string]float64 {
 	cgroupHwPerfCounters := make(map[string]float64)
 
 	for pid, hwProfile := range hwProfiles {
-		// // Ensure that TimeRunning is always > 0. If it is zero, counters will be zero as well
-		// if hwProfile.TimeEnabled != nil && hwProfile.TimeRunning != nil && *hwProfile.TimeRunning > 0 {
-		// 	timeEnabled := float64(*hwProfile.TimeEnabled)
-		// 	timeRunning := float64(*hwProfile.TimeRunning)
-		// 	scale = estimateScale(
-		// 		c.lastRawHwCounters[pid]["time_enabled"],
-		// 		c.lastRawHwCounters[pid]["time_running"],
-		// 		timeEnabled,
-		// 		timeRunning,
-		// 	)
-		// 	fmt.Println("QQ111", pid, timeEnabled, timeEnabled-c.lastRawHwCounters[pid]["time_enabled"], timeRunning, timeRunning-c.lastRawHwCounters[pid]["time_running"])
-		// 	c.lastRawHwCounters[pid]["time_enabled"] = timeEnabled
-		// 	c.lastRawHwCounters[pid]["time_running"] = timeRunning
-		// }
 		if hwProfile.CPUCycles != nil {
 			metricName := "cpucycles_total"
-			profileValue := *hwProfile.CPUCycles
-			scaledCounter := c.lastScaledHwCounters[pid][metricName] + scaleCounter(c.lastRawHwCounters[pid][metricName], profileValue)
-			cgroupHwPerfCounters[metricName] += scaledCounter
-			c.lastRawHwCounters[pid][metricName] = profileValue
-			c.lastScaledHwCounters[pid][metricName] = scaledCounter
+			cgroupHwPerfCounters[metricName] += c.updateHwCounter(pid, metricName, *hwProfile.CPUCycles)
 		}
 
 		if hwProfile.Instructions != nil {
 			metricName := "instructions_total"
-			profileValue := *hwProfile.Instructions
-			scaledCounter := c.lastScaledHwCounters[pid][metricName] + scaleCounter(c.lastRawHwCounters[pid][metricName], profileValue)
-			cgroupHwPerfCounters[metricName] += scaledCounter
-			c.lastRawHwCounters[pid][metricName] = profileValue
-			c.lastScaledHwCounters[pid][metricName] = scaledCounter
+			cgroupHwPerfCounters[metricName] += c.updateHwCounter(pid, metricName, *hwProfile.Instructions)
 		}
 
 		if hwProfile.BranchInstr != nil {
 			metricName := "branch_instructions_total"
-			profileValue := *hwProfile.BranchInstr
-			scaledCounter := c.lastScaledHwCounters[pid][metricName] + scaleCounter(c.lastRawHwCounters[pid][metricName], profileValue)
-			cgroupHwPerfCounters[metricName] += scaledCounter
-			c.lastRawHwCounters[pid][metricName] = profileValue
-			c.lastScaledHwCounters[pid][metricName] = scaledCounter
+			cgroupHwPerfCounters[metricName] += c.updateHwCounter(pid, metricName, *hwProfile.BranchInstr)
 		}
 
 		if hwProfile.BranchMisses != nil {
 			metricName := "branch_misses_total"
-			profileValue := *hwProfile.BranchMisses
-			scaledCounter := c.lastScaledHwCounters[pid][metricName] + scaleCounter(c.lastRawHwCounters[pid][metricName], profileValue)
-			cgroupHwPerfCounters[metricName] += scaledCounter
-			c.lastRawHwCounters[pid][metricName] = profileValue
-			c.lastScaledHwCounters[pid][metricName] = scaledCounter
+			cgroupHwPerfCounters[metricName] += c.updateHwCounter(pid, metricName, *hwProfile.BranchMisses)
 		}
 
 		if hwProfile.CacheRefs != nil {
 			metricName := "cache_refs_total"
-			profileValue := *hwProfile.CacheRefs
-			scaledCounter := c.lastScaledHwCounters[pid][metricName] + scaleCounter(c.lastRawHwCounters[pid][metricName], profileValue)
-			cgroupHwPerfCounters[metricName] += scaledCounter
-			c.lastRawHwCounters[pid][metricName] = profileValue
-			c.lastScaledHwCounters[pid][metricName] = scaledCounter
+			cgroupHwPerfCounters[metricName] += c.updateHwCounter(pid, metricName, *hwProfile.CacheRefs)
 		}
 
 		if hwProfile.CacheMisses != nil {
 			metricName := "cache_misses_total"
-			profileValue := *hwProfile.CacheMisses
-			scaledCounter := c.lastScaledHwCounters[pid][metricName] + scaleCounter(c.lastRawHwCounters[pid][metricName], profileValue)
-			cgroupHwPerfCounters[metricName] += scaledCounter
-			c.lastRawHwCounters[pid][metricName] = profileValue
-			c.lastScaledHwCounters[pid][metricName] = scaledCounter
+			cgroupHwPerfCounters[metricName] += c.updateHwCounter(pid, metricName, *hwProfile.CacheMisses)
 		}
 
 		if hwProfile.RefCPUCycles != nil {
 			metricName := "ref_cpucycles_total"
-			profileValue := *hwProfile.RefCPUCycles
-			scaledCounter := c.lastScaledHwCounters[pid][metricName] + scaleCounter(c.lastRawHwCounters[pid][metricName], profileValue)
-			cgroupHwPerfCounters[metricName] += scaledCounter
-			c.lastRawHwCounters[pid][metricName] = profileValue
-			c.lastScaledHwCounters[pid][metricName] = scaledCounter
+			cgroupHwPerfCounters[metricName] += c.updateHwCounter(pid, metricName, *hwProfile.RefCPUCycles)
 		}
 	}
 
@@ -863,6 +818,14 @@ func (c *perfCollector) updateSoftwareCounters(
 	return errs
 }
 
+func (c *perfCollector) updateCacheCounter(pid int, metricName string, profileValue perf.ProfileValue) float64 {
+	scaledCounter := c.lastScaledCacheCounters[pid][metricName] + scaleCounter(c.lastRawCacheCounters[pid][metricName], profileValue)
+	c.lastRawCacheCounters[pid][metricName] = profileValue
+	c.lastScaledCacheCounters[pid][metricName] = scaledCounter
+
+	return scaledCounter
+}
+
 // aggCacheCounters aggregates process cache counters of a given cgroup.
 func (c *perfCollector) aggCacheCounters(cacheProfiles map[int]*perf.CacheProfile) map[string]float64 {
 	cgroupCachePerfCounters := make(map[string]float64)
@@ -870,110 +833,62 @@ func (c *perfCollector) aggCacheCounters(cacheProfiles map[int]*perf.CacheProfil
 	for pid, cacheProfile := range cacheProfiles {
 		if cacheProfile.L1DataReadHit != nil {
 			metricName := "cache_l1d_read_hits_total"
-			profileValue := *cacheProfile.L1DataReadHit
-			scaledCounter := c.lastScaledCacheCounters[pid][metricName] + scaleCounter(c.lastRawCacheCounters[pid][metricName], profileValue)
-			cgroupCachePerfCounters[metricName] += scaledCounter
-			c.lastRawCacheCounters[pid][metricName] = profileValue
-			c.lastScaledCacheCounters[pid][metricName] = scaledCounter
+			cgroupCachePerfCounters[metricName] += c.updateCacheCounter(pid, metricName, *cacheProfile.L1DataReadHit)
 		}
 
 		if cacheProfile.L1DataReadMiss != nil {
 			metricName := "cache_l1d_read_misses_total"
-			profileValue := *cacheProfile.L1DataReadMiss
-			scaledCounter := c.lastScaledCacheCounters[pid][metricName] + scaleCounter(c.lastRawCacheCounters[pid][metricName], profileValue)
-			cgroupCachePerfCounters[metricName] += scaledCounter
-			c.lastRawCacheCounters[pid][metricName] = profileValue
-			c.lastScaledCacheCounters[pid][metricName] = scaledCounter
+			cgroupCachePerfCounters[metricName] += c.updateCacheCounter(pid, metricName, *cacheProfile.L1DataReadMiss)
 		}
 
 		if cacheProfile.L1DataWriteHit != nil {
 			metricName := "cache_l1d_write_hits_total"
-			profileValue := *cacheProfile.L1DataWriteHit
-			scaledCounter := c.lastScaledCacheCounters[pid][metricName] + scaleCounter(c.lastRawCacheCounters[pid][metricName], profileValue)
-			cgroupCachePerfCounters[metricName] += scaledCounter
-			c.lastRawCacheCounters[pid][metricName] = profileValue
-			c.lastScaledCacheCounters[pid][metricName] = scaledCounter
+			cgroupCachePerfCounters[metricName] += c.updateCacheCounter(pid, metricName, *cacheProfile.L1DataWriteHit)
 		}
 
 		if cacheProfile.L1InstrReadMiss != nil {
 			metricName := "cache_l1_instr_read_misses_total"
-			profileValue := *cacheProfile.L1InstrReadMiss
-			scaledCounter := c.lastScaledCacheCounters[pid][metricName] + scaleCounter(c.lastRawCacheCounters[pid][metricName], profileValue)
-			cgroupCachePerfCounters[metricName] += scaledCounter
-			c.lastRawCacheCounters[pid][metricName] = profileValue
-			c.lastScaledCacheCounters[pid][metricName] = scaledCounter
+			cgroupCachePerfCounters[metricName] += c.updateCacheCounter(pid, metricName, *cacheProfile.L1InstrReadMiss)
 		}
 
 		if cacheProfile.InstrTLBReadHit != nil {
 			metricName := "cache_tlb_instr_read_hits_total"
-			profileValue := *cacheProfile.InstrTLBReadHit
-			scaledCounter := c.lastScaledCacheCounters[pid][metricName] + scaleCounter(c.lastRawCacheCounters[pid][metricName], profileValue)
-			cgroupCachePerfCounters[metricName] += scaledCounter
-			c.lastRawCacheCounters[pid][metricName] = profileValue
-			c.lastScaledCacheCounters[pid][metricName] = scaledCounter
+			cgroupCachePerfCounters[metricName] += c.updateCacheCounter(pid, metricName, *cacheProfile.InstrTLBReadHit)
 		}
 
 		if cacheProfile.InstrTLBReadMiss != nil {
 			metricName := "cache_tlb_instr_read_misses_total"
-			profileValue := *cacheProfile.InstrTLBReadMiss
-			scaledCounter := c.lastScaledCacheCounters[pid][metricName] + scaleCounter(c.lastRawCacheCounters[pid][metricName], profileValue)
-			cgroupCachePerfCounters[metricName] += scaledCounter
-			c.lastRawCacheCounters[pid][metricName] = profileValue
-			c.lastScaledCacheCounters[pid][metricName] = scaledCounter
+			cgroupCachePerfCounters[metricName] += c.updateCacheCounter(pid, metricName, *cacheProfile.InstrTLBReadMiss)
 		}
 
 		if cacheProfile.LastLevelReadHit != nil {
 			metricName := "cache_ll_read_hits_total"
-			profileValue := *cacheProfile.LastLevelReadHit
-			scaledCounter := c.lastScaledCacheCounters[pid][metricName] + scaleCounter(c.lastRawCacheCounters[pid][metricName], profileValue)
-			cgroupCachePerfCounters[metricName] += scaledCounter
-			c.lastRawCacheCounters[pid][metricName] = profileValue
-			c.lastScaledCacheCounters[pid][metricName] = scaledCounter
+			cgroupCachePerfCounters[metricName] += c.updateCacheCounter(pid, metricName, *cacheProfile.LastLevelReadHit)
 		}
 
 		if cacheProfile.LastLevelReadMiss != nil {
 			metricName := "cache_ll_read_misses_total"
-			profileValue := *cacheProfile.LastLevelReadMiss
-			scaledCounter := c.lastScaledCacheCounters[pid][metricName] + scaleCounter(c.lastRawCacheCounters[pid][metricName], profileValue)
-			cgroupCachePerfCounters[metricName] += scaledCounter
-			c.lastRawCacheCounters[pid][metricName] = profileValue
-			c.lastScaledCacheCounters[pid][metricName] = scaledCounter
+			cgroupCachePerfCounters[metricName] += c.updateCacheCounter(pid, metricName, *cacheProfile.LastLevelReadMiss)
 		}
 
 		if cacheProfile.LastLevelWriteHit != nil {
 			metricName := "cache_ll_write_hits_total"
-			profileValue := *cacheProfile.LastLevelWriteHit
-			scaledCounter := c.lastScaledCacheCounters[pid][metricName] + scaleCounter(c.lastRawCacheCounters[pid][metricName], profileValue)
-			cgroupCachePerfCounters[metricName] += scaledCounter
-			c.lastRawCacheCounters[pid][metricName] = profileValue
-			c.lastScaledCacheCounters[pid][metricName] = scaledCounter
+			cgroupCachePerfCounters[metricName] += c.updateCacheCounter(pid, metricName, *cacheProfile.LastLevelWriteHit)
 		}
 
 		if cacheProfile.LastLevelWriteMiss != nil {
 			metricName := "cache_ll_write_misses_total"
-			profileValue := *cacheProfile.LastLevelWriteMiss
-			scaledCounter := c.lastScaledCacheCounters[pid][metricName] + scaleCounter(c.lastRawCacheCounters[pid][metricName], profileValue)
-			cgroupCachePerfCounters[metricName] += scaledCounter
-			c.lastRawCacheCounters[pid][metricName] = profileValue
-			c.lastScaledCacheCounters[pid][metricName] = scaledCounter
+			cgroupCachePerfCounters[metricName] += c.updateCacheCounter(pid, metricName, *cacheProfile.LastLevelWriteMiss)
 		}
 
 		if cacheProfile.BPUReadHit != nil {
 			metricName := "cache_bpu_read_hits_total"
-			profileValue := *cacheProfile.BPUReadHit
-			scaledCounter := c.lastScaledCacheCounters[pid][metricName] + scaleCounter(c.lastRawCacheCounters[pid][metricName], profileValue)
-			cgroupCachePerfCounters[metricName] += scaledCounter
-			c.lastRawCacheCounters[pid][metricName] = profileValue
-			c.lastScaledCacheCounters[pid][metricName] = scaledCounter
+			cgroupCachePerfCounters[metricName] += c.updateCacheCounter(pid, metricName, *cacheProfile.BPUReadHit)
 		}
 
 		if cacheProfile.BPUReadMiss != nil {
 			metricName := "cache_bpu_read_misses_total"
-			profileValue := *cacheProfile.BPUReadMiss
-			scaledCounter := c.lastScaledCacheCounters[pid][metricName] + scaleCounter(c.lastRawCacheCounters[pid][metricName], profileValue)
-			cgroupCachePerfCounters[metricName] += scaledCounter
-			c.lastRawCacheCounters[pid][metricName] = profileValue
-			c.lastScaledCacheCounters[pid][metricName] = scaledCounter
+			cgroupCachePerfCounters[metricName] += c.updateCacheCounter(pid, metricName, *cacheProfile.BPUReadMiss)
 		}
 	}
 
