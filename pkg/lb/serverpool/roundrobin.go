@@ -2,11 +2,10 @@ package serverpool
 
 import (
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/backend"
 )
 
@@ -15,7 +14,7 @@ type roundRobin struct {
 	backends map[string][]backend.TSDBServer
 	mux      sync.RWMutex
 	current  int
-	logger   log.Logger
+	logger   *slog.Logger
 }
 
 // Rotate returns the backend server to be used for next request.
@@ -31,7 +30,7 @@ func (s *roundRobin) Rotate(id string) backend.TSDBServer {
 func (s *roundRobin) Target(id string, d time.Duration) backend.TSDBServer {
 	// If the ID is unknown return
 	if _, ok := s.backends[id]; !ok {
-		level.Error(s.logger).Log("msg", "Round Robin strategy", "err", fmt.Errorf("unknown backend ID: %s", id))
+		s.logger.Error("Round Robin strategy", "err", fmt.Errorf("unknown backend ID: %s", id))
 
 		return nil
 	}
@@ -39,7 +38,7 @@ func (s *roundRobin) Target(id string, d time.Duration) backend.TSDBServer {
 	for range s.Size(id) {
 		nextPeer := s.Rotate(id)
 		if nextPeer.IsAlive() {
-			level.Debug(s.logger).Log("msg", "Round Robin strategy", "selected_backend", nextPeer.String())
+			s.logger.Debug("Round Robin strategy", "selected_backend", nextPeer.String())
 
 			return nextPeer
 		}

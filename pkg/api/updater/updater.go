@@ -9,12 +9,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"path/filepath"
 	"slices"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/internal/common"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
@@ -55,18 +54,18 @@ type Updater interface {
 // UnitUpdater implements the interface to update compute units from different updaters.
 type UnitUpdater struct {
 	Updaters map[string]Updater
-	Logger   log.Logger
+	Logger   *slog.Logger
 }
 
 // Slice of updaters.
 var (
-	updaterFactories = make(map[string]func(instance Instance, logger log.Logger) (Updater, error))
+	updaterFactories = make(map[string]func(instance Instance, logger *slog.Logger) (Updater, error))
 )
 
 // Register registers updater struct into factories.
 func Register(
 	name string,
-	factory func(instance Instance, logger log.Logger) (Updater, error),
+	factory func(instance Instance, logger *slog.Logger) (Updater, error),
 ) {
 	updaterFactories[name] = factory
 }
@@ -116,7 +115,7 @@ func updaterConfig() (*Config[Instance], error) {
 }
 
 // New creates a new UnitUpdater.
-func New(logger log.Logger) (*UnitUpdater, error) {
+func New(logger *slog.Logger) (*UnitUpdater, error) {
 	var updater Updater
 
 	updaters := make(map[string]Updater)
@@ -133,7 +132,7 @@ func New(logger log.Logger) (*UnitUpdater, error) {
 	// Get current config
 	config, err := updaterConfig()
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to parse updater config", "err", err)
+		logger.Error("Failed to parse updater config", "err", err)
 
 		return nil, err
 	}
@@ -141,7 +140,7 @@ func New(logger log.Logger) (*UnitUpdater, error) {
 	// Preflight checks on config
 	configMap, err := checkConfig(registeredUpdaters, config)
 	if err != nil {
-		level.Error(logger).Log("msg", "Invalid updater config", "err", err)
+		logger.Error("Invalid updater config", "err", err)
 
 		return nil, err
 	}
@@ -149,9 +148,9 @@ func New(logger log.Logger) (*UnitUpdater, error) {
 	// Loop over factories and create new instances
 	for key, factory := range updaterFactories {
 		for _, config := range configMap[key] {
-			updater, err = factory(config, log.With(logger, "updater", key))
+			updater, err = factory(config, logger.With("updater", key))
 			if err != nil {
-				level.Error(logger).Log("msg", "Failed to setup unit updater", "name", key, "err", err)
+				logger.Error("Failed to setup unit updater", "name", key, "err", err)
 
 				return nil, err
 			}
@@ -199,10 +198,9 @@ func (u UnitUpdater) Update(
 					clusterUnits[i].Units = updatedClusterUnits[0].Units
 				}
 
-				level.Info(u.Logger).
-					Log("msg", "Updater", "cluster_id", clusterUnits[i].Cluster.ID, "updater_id", updaterID)
+				u.Logger.Info("Updater", "cluster_id", clusterUnits[i].Cluster.ID, "updater_id", updaterID)
 			} else {
-				level.Error(u.Logger).Log("msg", "Unknown updater ID", "cluster_id", clusterUnits[i].Cluster.ID, "updater_id", updaterID)
+				u.Logger.Error("Unknown updater ID", "cluster_id", clusterUnits[i].Cluster.ID, "updater_id", updaterID)
 			}
 		}
 	}

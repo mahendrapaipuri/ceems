@@ -3,10 +3,11 @@ package migrator
 import (
 	"database/sql"
 	"embed"
+	"io"
+	"log/slog"
 	"path/filepath"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -19,7 +20,7 @@ var testMigrationsFS embed.FS
 
 func TestMigratorError(t *testing.T) {
 	// Setup Migrator
-	migrator, err := New(testMigrationsFS, testMigrationsDir, log.NewNopLogger())
+	migrator, err := New(testMigrationsFS, testMigrationsDir, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err, "failed to create migrator")
 
 	db, err := sql.Open("sqlite3", filepath.Join(t.TempDir(), "test.db"))

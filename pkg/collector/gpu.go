@@ -3,6 +3,7 @@ package collector
 import (
 	"encoding/xml"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"regexp"
@@ -10,8 +11,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/internal/osexec"
 )
 
@@ -178,7 +177,7 @@ func (d *Device) CompareBusID(id string) bool {
 }
 
 // GetGPUDevices returns GPU devices.
-func GetGPUDevices(gpuType string, logger log.Logger) ([]Device, error) {
+func GetGPUDevices(gpuType string, logger *slog.Logger) ([]Device, error) {
 	if gpuType == "nvidia" {
 		return GetNvidiaGPUDevices(logger)
 	} else if gpuType == "amd" {
@@ -200,7 +199,7 @@ func GetGPUDevices(gpuType string, logger log.Logger) ([]Device, error) {
 // exporter simple.
 //
 // NOTE: This command does not return MIG devices.
-func GetNvidiaGPUDevices(logger log.Logger) ([]Device, error) {
+func GetNvidiaGPUDevices(logger *slog.Logger) ([]Device, error) {
 	// Look up nvidia-smi command
 	nvidiaSmiCmd, err := lookupNvidiaSmiCmd()
 	if err != nil {
@@ -225,7 +224,7 @@ func GetNvidiaGPUDevices(logger log.Logger) ([]Device, error) {
 // card0,20170000800c,0000:C5:00.0,deon Instinct MI50 32GB,0x0834,Advanced Micro Devices Inc. [AMD/ATI],D16317
 // card1,20170003580c,0000:C5:00.0,deon Instinct MI50 32GB,0x0834,Advanced Micro Devices Inc. [AMD/ATI],D16317
 // card2,20180003050c,0000:C5:00.0,deon Instinct MI50 32GB,0x0834,Advanced Micro Devices Inc. [AMD/ATI],D16317.
-func GetAMDGPUDevices(logger log.Logger) ([]Device, error) {
+func GetAMDGPUDevices(logger *slog.Logger) ([]Device, error) {
 	// Look up nvidia-smi command
 	rocmSmiCmd, err := lookupRocmSmiCmd()
 	if err != nil {
@@ -282,7 +281,7 @@ func lookupRocmSmiCmd() (string, error) {
 }
 
 // parseNvidiaSmiOutput parses nvidia-smi output and return GPU Devices map.
-func parseNvidiaSmiOutput(cmdOutput []byte, logger log.Logger) ([]Device, error) {
+func parseNvidiaSmiOutput(cmdOutput []byte, logger *slog.Logger) ([]Device, error) {
 	// Get all devices
 	var gpuDevices []Device
 
@@ -308,7 +307,7 @@ func parseNvidiaSmiOutput(cmdOutput []byte, logger log.Logger) ([]Device, error)
 		// Parse bus ID
 		dev.busID, err = parseBusID(gpu.ID)
 		if err != nil {
-			level.Error(logger).Log("msg", "Failed to parse GPU bus ID", "bus_id", gpu.ID, "err", err)
+			logger.Error("Failed to parse GPU bus ID", "bus_id", gpu.ID, "err", err)
 		}
 
 		// Check MIG stats
@@ -354,14 +353,14 @@ func parseNvidiaSmiOutput(cmdOutput []byte, logger log.Logger) ([]Device, error)
 		}
 
 		gpuDevices = append(gpuDevices, dev)
-		level.Debug(logger).Log("msg", "Found nVIDIA GPU", "gpu", dev)
+		logger.Debug("Found nVIDIA GPU", "gpu", dev)
 	}
 
 	return gpuDevices, nil
 }
 
 // parseAmdSmioutput parses rocm-smi output and return AMD devices.
-func parseAmdSmioutput(cmdOutput string, logger log.Logger) []Device {
+func parseAmdSmioutput(cmdOutput string, logger *slog.Logger) []Device {
 	var gpuDevices []Device
 
 	for _, line := range strings.Split(strings.TrimSpace(cmdOutput), "\n") {
@@ -384,11 +383,11 @@ func parseAmdSmioutput(cmdOutput string, logger log.Logger) []Device {
 		// Parse bus ID
 		busID, err := parseBusID(devBusID)
 		if err != nil {
-			level.Error(logger).Log("msg", "Failed to parse GPU bus ID", "bus_id", devBusID, "err", err)
+			logger.Error("Failed to parse GPU bus ID", "bus_id", devBusID, "err", err)
 		}
 
 		dev := Device{localIndex: devIndx, globalIndex: devIndx, name: devName, uuid: devUUID, busID: busID, migEnabled: false}
-		level.Debug(logger).Log("msg", "Found AMD GPU", "gpu", dev)
+		logger.Debug("Found AMD GPU", "gpu", dev)
 
 		gpuDevices = append(gpuDevices, dev)
 	}

@@ -9,6 +9,7 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"log/slog"
 	"slices"
 	"strings"
 	"sync"
@@ -17,8 +18,6 @@ import (
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/rlimit"
 	"github.com/containerd/cgroups/v3"
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/internal/security"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sys/unix"
@@ -144,7 +143,7 @@ type ebpfReadMapsCtxData struct {
 }
 
 type ebpfCollector struct {
-	logger             log.Logger
+	logger             *slog.Logger
 	hostname           string
 	opts               ebpfOpts
 	cgroupManager      *cgroupManager
@@ -176,7 +175,7 @@ type ebpfCollector struct {
 }
 
 // NewEbpfCollector returns a new instance of ebpf collector.
-func NewEbpfCollector(logger log.Logger, cgManager *cgroupManager) (*ebpfCollector, error) {
+func NewEbpfCollector(logger *slog.Logger, cgManager *cgroupManager) (*ebpfCollector, error) {
 	var netColl, vfsColl *ebpf.Collection
 
 	var configMap *ebpf.Map
@@ -188,14 +187,14 @@ func NewEbpfCollector(logger log.Logger, cgManager *cgroupManager) (*ebpfCollect
 	// Get current kernel version
 	currentKernelVer, err := KernelVersion()
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to get current kernel version", "err", err)
+		logger.Error("Failed to get current kernel version", "err", err)
 
 		return nil, err
 	}
 
 	// Check if current kernel version is atleast 5.8
 	if currentKernelVer < KernelStringToNumeric("5.8") {
-		level.Error(logger).Log("msg", "ebpf collector does not support kernel < 5.8")
+		logger.Error("ebpf collector does not support kernel < 5.8")
 
 		return nil, errors.New("incompatible kernel")
 	}
@@ -218,7 +217,7 @@ func NewEbpfCollector(logger log.Logger, cgManager *cgroupManager) (*ebpfCollect
 
 		netColl, err = loadObject("bpf/objs/" + objFile)
 		if err != nil {
-			level.Error(logger).Log("msg", "Unable to load network bpf objects", "err", err)
+			logger.Error("Unable to load network bpf objects", "err", err)
 
 			return nil, err
 		}
@@ -237,7 +236,7 @@ func NewEbpfCollector(logger log.Logger, cgManager *cgroupManager) (*ebpfCollect
 
 		vfsColl, err = loadObject("bpf/objs/" + objFile)
 		if err != nil {
-			level.Error(logger).Log("msg", "Unable to load VFS bpf objects", "err", err)
+			logger.Error("Unable to load VFS bpf objects", "err", err)
 
 			return nil, err
 		}
@@ -265,7 +264,7 @@ func NewEbpfCollector(logger log.Logger, cgManager *cgroupManager) (*ebpfCollect
 		// Get all cgroup subsystems
 		cgroupControllers, err := parseCgroupSubSysIds()
 		if err != nil {
-			level.Warn(logger).Log("msg", "Error fetching cgroup controllers", "err", err)
+			logger.Warn("Error fetching cgroup controllers", "err", err)
 		}
 
 		for _, cgroupController := range cgroupControllers {
@@ -299,17 +298,16 @@ func NewEbpfCollector(logger log.Logger, cgManager *cgroupManager) (*ebpfCollect
 			if funcName := strings.TrimPrefix(name, "kprobe_"); funcName != "" {
 				kernFuncName, err := ksyms.GetArchSpecificName(funcName)
 				if err != nil {
-					level.Error(logger).
-						Log("msg", "Failed to find kernel specific function name", "func", funcName, "err", err)
+					logger.Error("Failed to find kernel specific function name", "func", funcName, "err", err)
 
 					continue
 				}
 
 				if links[kernFuncName], err = link.Kprobe(kernFuncName, prog, nil); err != nil {
-					level.Error(logger).Log("msg", "Failed to open kprobe", "func", kernFuncName, "err", err)
+					logger.Error("Failed to open kprobe", "func", kernFuncName, "err", err)
 				}
 
-				level.Debug(logger).Log("msg", "kprobe linked", "prog", name, "func", kernFuncName)
+				logger.Debug("kprobe linked", "prog", name, "func", kernFuncName)
 			}
 		}
 
@@ -318,17 +316,16 @@ func NewEbpfCollector(logger log.Logger, cgManager *cgroupManager) (*ebpfCollect
 			if funcName := strings.TrimPrefix(name, "kretprobe_"); funcName != "" {
 				kernFuncName, err := ksyms.GetArchSpecificName(funcName)
 				if err != nil {
-					level.Error(logger).
-						Log("msg", "Failed to find kernel specific function name", "func", funcName, "err", err)
+					logger.Error("Failed to find kernel specific function name", "func", funcName, "err", err)
 
 					continue
 				}
 
 				if links[kernFuncName], err = link.Kretprobe(kernFuncName, prog, nil); err != nil {
-					level.Error(logger).Log("msg", "Failed to open kretprobe", "func", kernFuncName, "err", err)
+					logger.Error("Failed to open kretprobe", "func", kernFuncName, "err", err)
 				}
 
-				level.Debug(logger).Log("msg", "kretprobe linked", "prog", name, "func", kernFuncName)
+				logger.Debug("kretprobe linked", "prog", name, "func", kernFuncName)
 			}
 		}
 
@@ -339,10 +336,10 @@ func NewEbpfCollector(logger log.Logger, cgManager *cgroupManager) (*ebpfCollect
 				Program:    prog,
 				AttachType: ebpf.AttachTraceFEntry,
 			}); err != nil {
-				level.Error(logger).Log("msg", "Failed to open fentry", "func", kernFuncName, "err", err)
+				logger.Error("Failed to open fentry", "func", kernFuncName, "err", err)
 			}
 
-			level.Debug(logger).Log("msg", "fentry linked", "prog", name, "func", kernFuncName)
+			logger.Debug("fentry linked", "prog", name, "func", kernFuncName)
 		}
 
 		// fexit/* programs
@@ -352,10 +349,10 @@ func NewEbpfCollector(logger log.Logger, cgManager *cgroupManager) (*ebpfCollect
 				Program:    prog,
 				AttachType: ebpf.AttachTraceFExit,
 			}); err != nil {
-				level.Error(logger).Log("msg", "Failed to open fexit", "func", kernFuncName, "err", err)
+				logger.Error("Failed to open fexit", "func", kernFuncName, "err", err)
 			}
 
-			level.Debug(logger).Log("msg", "fexit linked", "prog", name, "func", kernFuncName)
+			logger.Debug("fexit linked", "prog", name, "func", kernFuncName)
 		}
 	}
 
@@ -377,7 +374,7 @@ func NewEbpfCollector(logger log.Logger, cgManager *cgroupManager) (*ebpfCollect
 
 	securityContexts[ebpfReadBPFMapsCtx], err = security.NewSecurityContext(ebpfReadBPFMapsCtx, caps, aggStats, logger)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create a security context for reading BPF maps", "err", err)
+		logger.Error("Failed to create a security context for reading BPF maps", "err", err)
 
 		return nil, err
 	}
@@ -528,7 +525,7 @@ func (c *ebpfCollector) Update(ch chan<- prometheus.Metric, cgroups []cgroup) er
 			defer wg.Done()
 
 			if err := c.updateVFSWrite(ch, aggMetrics); err != nil {
-				level.Error(c.logger).Log("msg", "Failed to update VFS write stats", "err", err)
+				c.logger.Error("Failed to update VFS write stats", "err", err)
 			}
 		}()
 
@@ -536,7 +533,7 @@ func (c *ebpfCollector) Update(ch chan<- prometheus.Metric, cgroups []cgroup) er
 			defer wg.Done()
 
 			if err := c.updateVFSRead(ch, aggMetrics); err != nil {
-				level.Error(c.logger).Log("msg", "Failed to update VFS read stats", "err", err)
+				c.logger.Error("Failed to update VFS read stats", "err", err)
 			}
 		}()
 
@@ -544,7 +541,7 @@ func (c *ebpfCollector) Update(ch chan<- prometheus.Metric, cgroups []cgroup) er
 			defer wg.Done()
 
 			if err := c.updateVFSOpen(ch, aggMetrics); err != nil {
-				level.Error(c.logger).Log("msg", "Failed to update VFS open stats", "err", err)
+				c.logger.Error("Failed to update VFS open stats", "err", err)
 			}
 		}()
 
@@ -552,7 +549,7 @@ func (c *ebpfCollector) Update(ch chan<- prometheus.Metric, cgroups []cgroup) er
 			defer wg.Done()
 
 			if err := c.updateVFSCreate(ch, aggMetrics); err != nil {
-				level.Error(c.logger).Log("msg", "Failed to update VFS create stats", "err", err)
+				c.logger.Error("Failed to update VFS create stats", "err", err)
 			}
 		}()
 
@@ -560,7 +557,7 @@ func (c *ebpfCollector) Update(ch chan<- prometheus.Metric, cgroups []cgroup) er
 			defer wg.Done()
 
 			if err := c.updateVFSUnlink(ch, aggMetrics); err != nil {
-				level.Error(c.logger).Log("msg", "Failed to update VFS unlink stats", "err", err)
+				c.logger.Error("Failed to update VFS unlink stats", "err", err)
 			}
 		}()
 	}
@@ -572,7 +569,7 @@ func (c *ebpfCollector) Update(ch chan<- prometheus.Metric, cgroups []cgroup) er
 			defer wg.Done()
 
 			if err := c.updateNetEgress(ch, aggMetrics); err != nil {
-				level.Error(c.logger).Log("msg", "Failed to update network egress stats", "err", err)
+				c.logger.Error("Failed to update network egress stats", "err", err)
 			}
 		}()
 
@@ -580,7 +577,7 @@ func (c *ebpfCollector) Update(ch chan<- prometheus.Metric, cgroups []cgroup) er
 			defer wg.Done()
 
 			if err := c.updateNetIngress(ch, aggMetrics); err != nil {
-				level.Error(c.logger).Log("msg", "Failed to update network ingress stats", "err", err)
+				c.logger.Error("Failed to update network ingress stats", "err", err)
 			}
 		}()
 
@@ -588,7 +585,7 @@ func (c *ebpfCollector) Update(ch chan<- prometheus.Metric, cgroups []cgroup) er
 			defer wg.Done()
 
 			if err := c.updateNetRetrans(ch, aggMetrics); err != nil {
-				level.Error(c.logger).Log("msg", "Failed to update network retransmission stats", "err", err)
+				c.logger.Error("Failed to update network retransmission stats", "err", err)
 			}
 		}()
 	}
@@ -601,12 +598,12 @@ func (c *ebpfCollector) Update(ch chan<- prometheus.Metric, cgroups []cgroup) er
 
 // Stop releases system resources used by the collector.
 func (c *ebpfCollector) Stop(_ context.Context) error {
-	level.Debug(c.logger).Log("msg", "Stopping", "collector", ebpfCollectorSubsystem)
+	c.logger.Debug("Stopping", "collector", ebpfCollectorSubsystem)
 
 	// Close all probes
 	for name, link := range c.links {
 		if err := link.Close(); err != nil {
-			level.Error(c.logger).Log("msg", "Failed to close link", "func", name, "err", err)
+			c.logger.Error("Failed to close link", "func", name, "err", err)
 		}
 	}
 

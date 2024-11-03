@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -14,8 +15,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	config_util "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"gopkg.in/yaml.v3"
@@ -47,7 +46,7 @@ type Response struct {
 type TSDB struct {
 	URL                *url.URL
 	Client             *http.Client
-	Logger             log.Logger
+	Logger             *slog.Logger
 	scrapeInterval     time.Duration
 	evaluationInterval time.Duration
 	lastUpdate         time.Time
@@ -61,10 +60,10 @@ const (
 )
 
 // New returns a new instance of TSDB.
-func New(webURL string, config config_util.HTTPClientConfig, logger log.Logger) (*TSDB, error) {
+func New(webURL string, config config_util.HTTPClientConfig, logger *slog.Logger) (*TSDB, error) {
 	// If webURL is empty return empty struct with available set to false
 	if webURL == "" {
-		level.Warn(logger).Log("msg", "TSDB web URL not found")
+		logger.Warn("TSDB web URL not found")
 
 		return &TSDB{
 			available: false,

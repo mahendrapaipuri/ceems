@@ -4,18 +4,17 @@ package resource
 
 import (
 	"context"
+	"log/slog"
 	"os"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/mahendrapaipuri/ceems/pkg/api/resource"
 )
 
 type mockManager struct {
-	logger log.Logger
+	logger *slog.Logger
 }
 
 const mockResourceManager = "mock"
@@ -33,9 +32,9 @@ func init() {
 }
 
 // Do all basic checks here
-func preflightChecks(logger log.Logger) error {
+func preflightChecks(logger *slog.Logger) error {
 	if _, err := os.Stat(*macctPath); err != nil {
-		level.Error(logger).Log("msg", "Failed to open executable", "path", *macctPath, "err", err)
+		logger.Error("Failed to open executable", "path", *macctPath, "err", err)
 		return err
 	}
 
@@ -43,14 +42,14 @@ func preflightChecks(logger log.Logger) error {
 }
 
 // NewMockManager returns a new MockManager that returns compute units
-func NewMockManager(cluster models.Cluster, logger log.Logger) (resource.Fetcher, error) {
+func NewMockManager(cluster models.Cluster, logger *slog.Logger) (resource.Fetcher, error) {
 	err := preflightChecks(logger)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create mock manager.", "err", err)
+		logger.Error("Failed to create mock manager.", "err", err)
 		return nil, err
 	}
 
-	level.Info(logger).Log("msg", "Compute units from mock resource manager will be retrieved.")
+	logger.Info("Compute units from mock resource manager will be retrieved.")
 
 	return &mockManager{
 		logger: logger,

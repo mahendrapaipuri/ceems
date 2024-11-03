@@ -6,9 +6,8 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"log/slog"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/sqlite3"
 	"github.com/golang-migrate/migrate/v4/source"
@@ -17,12 +16,12 @@ import (
 
 // Migrator implements DB migrations.
 type Migrator struct {
-	logger    log.Logger
+	logger    *slog.Logger
 	srcDriver source.Driver
 }
 
 // New returns new instance of Migrator.
-func New(sqlFiles embed.FS, dirName string, logger log.Logger) (*Migrator, error) {
+func New(sqlFiles embed.FS, dirName string, logger *slog.Logger) (*Migrator, error) {
 	d, err := iofs.New(sqlFiles, dirName)
 	if err != nil {
 		return nil, err
@@ -46,16 +45,16 @@ func (m *Migrator) ApplyMigrations(db *sql.DB) error {
 		return fmt.Errorf("unable to create migration: %w", err)
 	}
 
-	level.Info(m.logger).Log("msg", "Applying DB migrations")
+	m.logger.Info("Applying DB migrations")
 
 	if err = migrator.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		return fmt.Errorf("unable to apply migrations %w", err)
 	}
 
 	if version, dirty, err := migrator.Version(); err != nil {
-		level.Error(m.logger).Log("msg", "Failed to get DB migration version", "err", err)
+		m.logger.Error("Failed to get DB migration version", "err", err)
 	} else {
-		level.Debug(m.logger).Log("msg", "Current DB migration version", "version", version, "dirty", dirty)
+		m.logger.Debug("Current DB migration version", "version", version, "dirty", dirty)
 	}
 
 	return nil

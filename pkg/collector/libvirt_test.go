@@ -6,6 +6,8 @@ package collector
 import (
 	"context"
 	"fmt"
+	"io"
+	"log/slog"
 	"os"
 	"strconv"
 	"strings"
@@ -13,7 +15,6 @@ import (
 	"time"
 
 	"github.com/containerd/cgroups/v3"
-	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/ceems/internal/security"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
@@ -37,7 +38,7 @@ func TestNewLibvirtCollector(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	collector, err := NewLibvirtCollector(log.NewNopLogger())
+	collector, err := NewLibvirtCollector(slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	// Setup background goroutine to capture metrics.
@@ -71,7 +72,7 @@ func TestLibvirtInstanceProps(t *testing.T) {
 
 	// cgroup Manager
 	cgManager := &cgroupManager{
-		logger:     log.NewNopLogger(),
+		logger:     slog.New(slog.NewTextHandler(io.Discard, nil)),
 		mode:       cgroups.Unified,
 		mountPoint: "testdata/sys/fs/cgroup/machine.slice",
 		idRegex:    libvirtCgroupPathRegex,
@@ -80,7 +81,7 @@ func TestLibvirtInstanceProps(t *testing.T) {
 		},
 	}
 
-	noOpLogger := log.NewNopLogger()
+	noOpLogger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
 	gpuDevs, err := GetGPUDevices("nvidia", noOpLogger)
 	require.NoError(t, err)
@@ -152,7 +153,7 @@ func TestInstancePropsCaching(t *testing.T) {
 
 	// cgroup Manager
 	cgManager := &cgroupManager{
-		logger:     log.NewNopLogger(),
+		logger:     slog.New(slog.NewTextHandler(io.Discard, nil)),
 		mode:       cgroups.Unified,
 		root:       cgroupsPath,
 		mountPoint: cgroupsPath + "/cpuacct/machine.slice",
@@ -162,7 +163,7 @@ func TestInstancePropsCaching(t *testing.T) {
 		},
 	}
 
-	noOpLogger := log.NewNopLogger()
+	noOpLogger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
 	gpuDevs, err := GetGPUDevices("nvidia", noOpLogger)
 	require.NoError(t, err)

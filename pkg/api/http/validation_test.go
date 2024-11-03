@@ -4,10 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
+	"log/slog"
 	"path/filepath"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -169,7 +170,7 @@ func TestVerifyOwnership(t *testing.T) {
 			[]string{test.rmID},
 			test.uuids,
 			db,
-			log.NewNopLogger(),
+			slog.New(slog.NewTextHandler(io.Discard, nil)),
 		)
 		assert.Equal(t, test.verify, result)
 	}
@@ -182,6 +183,6 @@ func TestAdminUsers(t *testing.T) {
 	// Expected users
 	expectedUsers := []string{"adm1", "adm2", "adm3", "adm4", "adm5", "adm6"}
 
-	users := adminUsers(context.Background(), db, log.NewNopLogger())
+	users := adminUsers(context.Background(), db, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	assert.Equal(t, expectedUsers, users)
 }

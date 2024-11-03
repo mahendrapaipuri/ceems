@@ -3,18 +3,19 @@ package grafana
 import (
 	"context"
 	"encoding/json"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/go-kit/log"
 	config_util "github.com/prometheus/common/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNewGrafanaWithNoURL(t *testing.T) {
-	grafana, err := New("", config_util.HTTPClientConfig{}, log.NewNopLogger())
+	grafana, err := New("", config_util.HTTPClientConfig{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 	assert.False(t, grafana.Available())
 }
@@ -30,7 +31,7 @@ func TestNewGrafanaWithURL(t *testing.T) {
 	}))
 	defer server.Close()
 
-	grafana, err := New(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
+	grafana, err := New(server.URL, config_util.HTTPClientConfig{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 	assert.True(t, grafana.Available())
 
@@ -53,7 +54,7 @@ func TestGrafanaTeamMembersQuerySuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	grafana, err := New(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
+	grafana, err := New(server.URL, config_util.HTTPClientConfig{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 	assert.True(t, grafana.Available())
 
@@ -77,7 +78,7 @@ func TestGrafanaTeamMembersQueryFailNoTeamID(t *testing.T) {
 	}))
 	defer server.Close()
 
-	grafana, err := New(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
+	grafana, err := New(server.URL, config_util.HTTPClientConfig{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 	assert.True(t, grafana.Available())
 

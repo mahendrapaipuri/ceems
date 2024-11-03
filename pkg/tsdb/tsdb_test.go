@@ -3,19 +3,20 @@ package tsdb
 import (
 	"context"
 	"encoding/json"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	config_util "github.com/prometheus/common/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNewWithNoURL(t *testing.T) {
-	tsdb, err := New("", config_util.HTTPClientConfig{}, log.NewNopLogger())
+	tsdb, err := New("", config_util.HTTPClientConfig{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 	assert.False(t, tsdb.Available())
 }
@@ -29,7 +30,7 @@ func TestNewWithURL(t *testing.T) {
 	}))
 	defer server.Close()
 
-	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
+	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 	assert.True(t, tsdb.Available())
 
@@ -56,7 +57,7 @@ func TestTSDBConfigSuccess(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
+	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	// Check if Ping is working
@@ -158,7 +159,7 @@ func TestTSDBFlagsSuccess(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
+	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	// Check if Ping is working
@@ -186,7 +187,7 @@ func TestTSDBConfigFail(t *testing.T) {
 	}))
 	defer server.Close()
 
-	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
+	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 	assert.True(t, tsdb.Available())
 
@@ -242,7 +243,7 @@ func TestTSDBQuerySuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
+	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 	assert.True(t, tsdb.Available())
 
@@ -264,7 +265,7 @@ func TestTSDBQueryFail(t *testing.T) {
 	}))
 	defer server.Close()
 
-	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
+	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 	assert.True(t, tsdb.Available())
 
@@ -300,7 +301,7 @@ func TestTSDBQueryRangeSuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
+	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 	assert.True(t, tsdb.Available())
 
@@ -328,7 +329,7 @@ func TestTSDBQueryRangeFail(t *testing.T) {
 	}))
 	defer server.Close()
 
-	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
+	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 	assert.True(t, tsdb.Available())
 
@@ -357,7 +358,7 @@ func TestTSDBDeleteSuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
+	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 	assert.True(t, tsdb.Available())
 
@@ -383,7 +384,7 @@ func TestTSDBDeleteFail(t *testing.T) {
 	}))
 	defer server.Close()
 
-	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, log.NewNopLogger())
+	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 	assert.True(t, tsdb.Available())
 

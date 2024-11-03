@@ -4,9 +4,9 @@ package serverpool
 
 import (
 	"errors"
+	"log/slog"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/backend"
 )
 
@@ -24,7 +24,7 @@ type Manager interface {
 }
 
 // New returns a new instance of server pool manager.
-func New(strategy string, logger log.Logger) (Manager, error) {
+func New(strategy string, logger *slog.Logger) (Manager, error) {
 	switch strategy {
 	case "round-robin":
 		return &roundRobin{

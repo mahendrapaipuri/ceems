@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 )
 
@@ -117,7 +116,7 @@ func (o *openstackManager) activeInstances(ctx context.Context, start time.Time,
 	// for _, server := range allServers {
 	// 	if _, ok := o.activeFlavors[server.Flavor.ID]; !ok {
 	// 		if err := o.updateFlavors(ctx); err != nil {
-	// 			level.Info(o.logger).Log("msg", "Failed to update instance flavors for Openstack cluster", "id", o.cluster.ID, "err", err)
+	// 			level.Info(o.logger).Log("Failed to update instance flavors for Openstack cluster", "id", o.cluster.ID, "err", err)
 	// 		}
 
 	// 		break
@@ -240,8 +239,7 @@ func (o *openstackManager) activeInstances(ctx context.Context, start time.Time,
 		iServer++
 	}
 
-	level.Info(o.logger).
-		Log("msg", "Openstack VM instances fetched", "cluster_id", o.cluster.ID, "start", start, "end", end, "num_instances", len(units))
+	o.logger.Info("Openstack VM instances fetched", "cluster_id", o.cluster.ID, "start", start, "end", end, "num_instances", len(units))
 
 	return units, nil
 }

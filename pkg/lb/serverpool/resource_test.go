@@ -2,6 +2,8 @@ package serverpool
 
 import (
 	"encoding/json"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
@@ -11,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/backend"
 	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
 	"github.com/stretchr/testify/assert"
@@ -43,7 +44,7 @@ func dummyTSDBServer(retention string) *httptest.Server {
 
 func TestResourceBasedLB(t *testing.T) {
 	// Create a manager
-	manager, err := New("resource-based", log.NewNopLogger())
+	manager, err := New("resource-based", slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	// Retention periods
@@ -67,7 +68,7 @@ func TestResourceBasedLB(t *testing.T) {
 			backendURLs[id][i] = backendURL
 
 			rp := httputil.NewSingleHostReverseProxy(backendURL)
-			backend := backend.New(backendURL, rp, log.NewNopLogger())
+			backend := backend.New(backendURL, rp, slog.New(slog.NewTextHandler(io.Discard, nil)))
 			manager.Add(id, backend)
 			backends[id][i] = backend
 		}

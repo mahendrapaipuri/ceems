@@ -8,12 +8,11 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"strconv"
 	"strings"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -22,7 +21,7 @@ const (
 )
 
 type meminfoCollector struct {
-	logger   log.Logger
+	logger   *slog.Logger
 	hostname string
 }
 
@@ -42,10 +41,9 @@ func init() {
 }
 
 // NewMeminfoCollector returns a new Collector exposing memory stats.
-func NewMeminfoCollector(logger log.Logger) (Collector, error) {
+func NewMeminfoCollector(logger *slog.Logger) (Collector, error) {
 	if *meminfoAllStatisticsDepr {
-		level.Warn(logger).
-			Log("msg", "flag --collector.meminfo.all.stats has been deprecated. Use --collector.meminfo.all-stats instead")
+		logger.Warn("flag --collector.meminfo.all.stats has been deprecated. Use --collector.meminfo.all-stats instead")
 	}
 
 	return &meminfoCollector{
@@ -99,7 +97,7 @@ func (c *meminfoCollector) Update(ch chan<- prometheus.Metric) error {
 
 // Stop releases system resources used by the collector.
 func (c *meminfoCollector) Stop(_ context.Context) error {
-	level.Debug(c.logger).Log("msg", "Stopping", "collector", memInfoSubsystem)
+	c.logger.Warn("Stopping", "collector", memInfoSubsystem)
 
 	return nil
 }

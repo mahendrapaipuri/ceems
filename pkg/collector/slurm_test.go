@@ -6,13 +6,14 @@ package collector
 import (
 	"context"
 	"fmt"
+	"io"
+	"log/slog"
 	"os"
 	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/containerd/cgroups/v3"
-	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/ceems/internal/security"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/procfs"
@@ -58,7 +59,7 @@ func TestNewSlurmCollector(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	collector, err := NewSlurmCollector(log.NewNopLogger())
+	collector, err := NewSlurmCollector(slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	// Setup background goroutine to capture metrics.
@@ -91,7 +92,7 @@ func TestNewSlurmCollector(t *testing.T) {
 
 // 	// cgroup Manager
 // 	cgManager := &cgroupManager{
-// 		logger:     log.NewNopLogger(),
+// 		logger:     slog.New(slog.NewTextHandler(io.Discard, nil)),
 // 		mode:       cgroups.Unified,
 // 		mountPoint: "testdata/sys/fs/cgroup/system.slice/slurmstepd.scope",
 // 		idRegex:    slurmCgroupPathRegex,
@@ -102,7 +103,7 @@ func TestNewSlurmCollector(t *testing.T) {
 
 // 	c := slurmCollector{
 // 		gpuDevs:       mockGPUDevices(),
-// 		logger:        log.NewNopLogger(),
+// 		logger:        slog.New(slog.NewTextHandler(io.Discard, nil)),
 // 		cgroupManager: cgManager,
 // 		jobPropsCache: make(map[string]jobProps),
 // 	}
@@ -140,13 +141,13 @@ func TestSlurmJobPropsWithProcsFS(t *testing.T) {
 	require.NoError(t, err)
 
 	// cgroup manager
-	cgManager, err := NewCgroupManager("slurm", log.NewNopLogger())
+	cgManager, err := NewCgroupManager("slurm", slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	c := slurmCollector{
 		cgroupManager:    cgManager,
 		gpuDevs:          mockGPUDevices(),
-		logger:           log.NewNopLogger(),
+		logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
 		jobPropsCache:    make(map[string]jobProps),
 		procFS:           procFS,
 		securityContexts: make(map[string]*security.SecurityContext),
@@ -198,7 +199,7 @@ func TestJobPropsCaching(t *testing.T) {
 
 	// cgroup Manager
 	cgManager := &cgroupManager{
-		logger:     log.NewNopLogger(),
+		logger:     slog.New(slog.NewTextHandler(io.Discard, nil)),
 		fs:         fs,
 		mode:       cgroups.Legacy,
 		root:       cgroupsPath,
@@ -212,7 +213,7 @@ func TestJobPropsCaching(t *testing.T) {
 	mockGPUDevs := mockGPUDevices()
 	c := slurmCollector{
 		cgroupManager:    cgManager,
-		logger:           log.NewNopLogger(),
+		logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
 		gpuDevs:          mockGPUDevs,
 		jobPropsCache:    make(map[string]jobProps),
 		securityContexts: make(map[string]*security.SecurityContext),

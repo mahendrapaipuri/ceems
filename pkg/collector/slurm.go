@@ -7,13 +7,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"slices"
 	"strconv"
 	"strings"
 	"sync"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/internal/security"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/procfs"
@@ -82,7 +81,7 @@ type slurmMetrics struct {
 }
 
 type slurmCollector struct {
-	logger           log.Logger
+	logger           *slog.Logger
 	cgroupManager    *cgroupManager
 	cgroupCollector  *cgroupCollector
 	perfCollector    *perfCollector
@@ -102,27 +101,25 @@ func init() {
 }
 
 // NewSlurmCollector returns a new Collector exposing a summary of cgroups.
-func NewSlurmCollector(logger log.Logger) (Collector, error) {
+func NewSlurmCollector(logger *slog.Logger) (Collector, error) {
 	// Log deprecation notices
 	if *slurmCollectPSIStatsDepre {
-		level.Warn(logger).
-			Log("msg", "flag --collector.slurm.psi.metrics has been deprecated. Use --collector.slurm.psi-metrics instead")
+		logger.Warn("flag --collector.slurm.psi.metrics has been deprecated. Use --collector.slurm.psi-metrics instead")
 	}
 
 	if *slurmCollectSwapMemoryStatsDepre {
-		level.Warn(logger).
-			Log("msg", "flag --collector.slurm.swap.memory.metrics has been deprecated. Use --collector.slurm.swap-memory-metrics instead")
+		logger.Warn("flag --collector.slurm.swap.memory.metrics has been deprecated. Use --collector.slurm.swap-memory-metrics instead")
 	}
 
 	// Get SLURM's cgroup details
 	cgroupManager, err := NewCgroupManager("slurm", logger)
 	if err != nil {
-		level.Info(logger).Log("msg", "Failed to create cgroup manager", "err", err)
+		logger.Info("Failed to create cgroup manager", "err", err)
 
 		return nil, err
 	}
 
-	level.Info(logger).Log("cgroup", cgroupManager)
+	logger.Info("cgroup: " + cgroupManager.String())
 
 	// Set cgroup options
 	opts := cgroupOpts{
@@ -132,9 +129,9 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 	}
 
 	// Start new instance of cgroupCollector
-	cgCollector, err := NewCgroupCollector(log.With(logger, "sub_collector", "cgroup"), cgroupManager, opts)
+	cgCollector, err := NewCgroupCollector(logger.With("sub_collector", "cgroup"), cgroupManager, opts)
 	if err != nil {
-		level.Info(logger).Log("msg", "Failed to create cgroup collector", "err", err)
+		logger.Info("Failed to create cgroup collector", "err", err)
 
 		return nil, err
 	}
@@ -143,9 +140,9 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 	var perfCollector *perfCollector
 
 	if perfCollectorEnabled() {
-		perfCollector, err = NewPerfCollector(log.With(logger, "sub_collector", "perf"), cgroupManager)
+		perfCollector, err = NewPerfCollector(logger.With("sub_collector", "perf"), cgroupManager)
 		if err != nil {
-			level.Info(logger).Log("msg", "Failed to create perf collector", "err", err)
+			logger.Info("Failed to create perf collector", "err", err)
 
 			return nil, err
 		}
@@ -155,9 +152,9 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 	var ebpfCollector *ebpfCollector
 
 	if ebpfCollectorEnabled() {
-		ebpfCollector, err = NewEbpfCollector(log.With(logger, "sub_collector", "ebpf"), cgroupManager)
+		ebpfCollector, err = NewEbpfCollector(logger.With("sub_collector", "ebpf"), cgroupManager)
 		if err != nil {
-			level.Info(logger).Log("msg", "Failed to create ebpf collector", "err", err)
+			logger.Info("Failed to create ebpf collector", "err", err)
 
 			return nil, err
 		}
@@ -167,9 +164,9 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 	var rdmaCollector *rdmaCollector
 
 	if rdmaCollectorEnabled() {
-		rdmaCollector, err = NewRDMACollector(log.With(logger, "sub_collector", "rdma"), cgroupManager)
+		rdmaCollector, err = NewRDMACollector(logger.With("sub_collector", "rdma"), cgroupManager)
 		if err != nil {
-			level.Info(logger).Log("msg", "Failed to create RDMA collector", "err", err)
+			logger.Info("Failed to create RDMA collector", "err", err)
 
 			return nil, err
 		}
@@ -189,7 +186,7 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 	for _, gpuType := range gpuTypes {
 		gpuDevs, err = GetGPUDevices(gpuType, logger)
 		if err == nil {
-			level.Info(logger).Log("gpu", gpuType)
+			logger.Info("gpu: " + gpuType)
 
 			break
 		}
@@ -199,13 +196,13 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 	if *slurmGPUOrdering != "" {
 		gpuDevs = reindexGPUs(*slurmGPUOrdering, gpuDevs)
 
-		level.Debug(logger).Log("msg", "GPUs reindexed")
+		logger.Debug("GPUs reindexed")
 	}
 
 	// Instantiate a new Proc FS
 	procFS, err := procfs.NewFS(*procfsPath)
 	if err != nil {
-		level.Error(logger).Log("msg", "Unable to open procfs", "path", *procfsPath, "err", err)
+		logger.Error("Unable to open procfs", "path", *procfsPath, "err", err)
 
 		return nil, err
 	}
@@ -217,7 +214,7 @@ func NewSlurmCollector(logger log.Logger) (Collector, error) {
 	// Setup new security context(s)
 	securityCtx, err := security.NewSecurityContext(slurmReadProcCtx, caps, readProcEnvirons, logger)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create a security context", "err", err)
+		logger.Error("Failed to create a security context", "err", err)
 
 		return nil, err
 	}
@@ -273,7 +270,7 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 
 		// Update cgroup metrics
 		if err := c.cgroupCollector.Update(ch, metrics.cgMetrics); err != nil {
-			level.Error(c.logger).Log("msg", "Failed to update cgroup stats", "err", err)
+			c.logger.Error("Failed to update cgroup stats", "err", err)
 		}
 
 		// Update slurm job GPU ordinals
@@ -290,7 +287,7 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 
 			// Update perf metrics
 			if err := c.perfCollector.Update(ch, metrics.cgroups); err != nil {
-				level.Error(c.logger).Log("msg", "Failed to update perf stats", "err", err)
+				c.logger.Error("Failed to update perf stats", "err", err)
 			}
 		}()
 	}
@@ -303,7 +300,7 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 
 			// Update ebpf metrics
 			if err := c.ebpfCollector.Update(ch, metrics.cgroups); err != nil {
-				level.Error(c.logger).Log("msg", "Failed to update IO and/or network stats", "err", err)
+				c.logger.Error("Failed to update IO and/or network stats", "err", err)
 			}
 		}()
 	}
@@ -316,7 +313,7 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 
 			// Update RDMA metrics
 			if err := c.rdmaCollector.Update(ch, metrics.cgroups); err != nil {
-				level.Error(c.logger).Log("msg", "Failed to update RDMA stats", "err", err)
+				c.logger.Error("Failed to update RDMA stats", "err", err)
 			}
 		}()
 	}
@@ -329,32 +326,32 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 
 // Stop releases system resources used by the collector.
 func (c *slurmCollector) Stop(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", "Stopping", "collector", slurmCollectorSubsystem)
+	c.logger.Debug("Stopping", "collector", slurmCollectorSubsystem)
 
 	// Stop all sub collectors
 	// Stop cgroupCollector
 	if err := c.cgroupCollector.Stop(ctx); err != nil {
-		level.Error(c.logger).Log("msg", "Failed to stop cgroup collector", "err", err)
+		c.logger.Error("Failed to stop cgroup collector", "err", err)
 	}
 
 	// Stop perfCollector
 	if perfCollectorEnabled() {
 		if err := c.perfCollector.Stop(ctx); err != nil {
-			level.Error(c.logger).Log("msg", "Failed to stop perf collector", "err", err)
+			c.logger.Error("Failed to stop perf collector", "err", err)
 		}
 	}
 
 	// Stop ebpfCollector
 	if ebpfCollectorEnabled() {
 		if err := c.ebpfCollector.Stop(ctx); err != nil {
-			level.Error(c.logger).Log("msg", "Failed to stop ebpf collector", "err", err)
+			c.logger.Error("Failed to stop ebpf collector", "err", err)
 		}
 	}
 
 	// Stop rdmaCollector
 	if rdmaCollectorEnabled() {
 		if err := c.rdmaCollector.Stop(ctx); err != nil {
-			level.Error(c.logger).Log("msg", "Failed to stop RDMA collector", "err", err)
+			c.logger.Error("Failed to stop RDMA collector", "err", err)
 		}
 	}
 
@@ -481,15 +478,15 @@ func (c *slurmCollector) gpuOrdinals(uuid string, procs []procfs.Proc) []string 
 
 	if securityCtx, ok := c.securityContexts[slurmReadProcCtx]; ok {
 		if err := securityCtx.Exec(dataPtr); err != nil {
-			level.Error(c.logger).Log(
-				"msg", "Failed to run inside security contxt", "jobid", uuid, "err", err,
+			c.logger.Error(
+				"Failed to run inside security contxt", "jobid", uuid, "err", err,
 			)
 
 			return nil
 		}
 	} else {
-		level.Error(c.logger).Log(
-			"msg", "Security context not found", "name", slurmReadProcCtx, "jobid", uuid,
+		c.logger.Error(
+			"Security context not found", "name", slurmReadProcCtx, "jobid", uuid,
 		)
 
 		return nil
@@ -497,11 +494,10 @@ func (c *slurmCollector) gpuOrdinals(uuid string, procs []procfs.Proc) []string 
 
 	// Emit warning when there are GPUs but no job to GPU map found
 	if len(dataPtr.gpuOrdinals) == 0 {
-		level.Warn(c.logger).
-			Log("msg", "Failed to get GPU ordinals for job", "jobid", uuid)
+		c.logger.Warn("Failed to get GPU ordinals for job", "jobid", uuid)
 	} else {
-		level.Debug(c.logger).Log(
-			"msg", "GPU ordinals", "jobid", uuid, "ordinals", strings.Join(gpuOrdinals, ","),
+		c.logger.Debug(
+			"GPU ordinals", "jobid", uuid, "ordinals", strings.Join(gpuOrdinals, ","),
 		)
 	}
 

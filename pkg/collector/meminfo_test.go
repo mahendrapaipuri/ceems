@@ -5,10 +5,11 @@ package collector
 
 import (
 	"context"
+	"io"
+	"log/slog"
 	"os"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,7 +21,7 @@ func TestMeminfoCollector(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	collector, err := NewMeminfoCollector(log.NewNopLogger())
+	collector, err := NewMeminfoCollector(slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	// Setup background goroutine to capture metrics.

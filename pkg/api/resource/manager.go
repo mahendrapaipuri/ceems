@@ -6,14 +6,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/internal/common"
 	"github.com/mahendrapaipuri/ceems/internal/security"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
@@ -46,10 +45,10 @@ type Fetcher interface {
 // Manager implements the interface to fetch compute units from different resource managers.
 type Manager struct {
 	Fetchers []Fetcher
-	Logger   log.Logger
+	Logger   *slog.Logger
 }
 
-var factories = make(map[string]func(cluster models.Cluster, logger log.Logger) (Fetcher, error))
+var factories = make(map[string]func(cluster models.Cluster, logger *slog.Logger) (Fetcher, error))
 
 // Mutex lock.
 var (
@@ -60,7 +59,7 @@ var (
 // Register registers the resource manager into factory.
 func Register(
 	manager string,
-	factory func(cluster models.Cluster, logger log.Logger) (Fetcher, error),
+	factory func(cluster models.Cluster, logger *slog.Logger) (Fetcher, error),
 ) {
 	factories[manager] = factory
 }
@@ -110,7 +109,7 @@ func managerConfig() (*Config[models.Cluster], error) {
 }
 
 // New creates a new Manager struct instance.
-func New(logger log.Logger) (*Manager, error) {
+func New(logger *slog.Logger) (*Manager, error) {
 	var fetcher Fetcher
 
 	var registeredManagers []string
@@ -129,7 +128,7 @@ func New(logger log.Logger) (*Manager, error) {
 	// Get current config
 	config, err := managerConfig()
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to parse resource manager config", "err", err)
+		logger.Error("Failed to parse resource manager config", "err", err)
 
 		return nil, err
 	}
@@ -137,7 +136,7 @@ func New(logger log.Logger) (*Manager, error) {
 	// Preflight checks on config
 	configMap, err := checkConfig(registeredManagers, config)
 	if err != nil {
-		level.Error(logger).Log("msg", "Invalid resource manager config", "err", err)
+		logger.Error("Invalid resource manager config", "err", err)
 
 		return nil, err
 	}
@@ -147,9 +146,9 @@ func New(logger log.Logger) (*Manager, error) {
 
 	for key, factory := range factories {
 		for _, config := range configMap[key] {
-			fetcher, err = factory(config, log.With(logger, "manager", key))
+			fetcher, err = factory(config, logger.With("manager", key))
 			if err != nil {
-				level.Error(logger).Log("msg", "Failed to setup resource manager", "name", key, "err", err)
+				logger.Error("Failed to setup resource manager", "name", key, "err", err)
 
 				return nil, err
 			}
@@ -165,14 +164,14 @@ func New(logger log.Logger) (*Manager, error) {
 
 	// Return an instance of default manager
 	if len(fetchers) == 0 {
-		level.Warn(logger).Log(
-			"msg", "No clusters found in config. Using a default cluster",
+		logger.Warn(
+			"No clusters found in config. Using a default cluster",
 			"available_resource_managers", strings.Join(registeredManagers, ","),
 		)
 
-		fetcher, err = factories[defaultManager](models.Cluster{}, log.With(logger, "manager", defaultManager))
+		fetcher, err = factories[defaultManager](models.Cluster{}, logger.With("manager", defaultManager))
 		if err != nil {
-			level.Error(logger).Log("msg", "Failed to setup default resource manager", "err", err)
+			logger.Error("Failed to setup default resource manager", "err", err)
 
 			return nil, err
 		}
@@ -183,7 +182,7 @@ func New(logger log.Logger) (*Manager, error) {
 	// If we dont need to keep any privileges, drop any existing capabilities
 	if !keepPrivs {
 		if err := security.DropCapabilities(); err != nil {
-			level.Warn(logger).Log("msg", "Failed to drop capabilities", "err", err)
+			logger.Warn("Failed to drop capabilities", "err", err)
 		}
 	}
 

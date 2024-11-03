@@ -1,9 +1,10 @@
 package emissions
 
 import (
+	"io"
+	"log/slog"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -35,6 +36,6 @@ Algeria,DZA,2001,494.60645
 }
 
 func TestNewOWIDProvider(t *testing.T) {
-	_, err := NewOWIDProvider(log.NewNopLogger())
+	_, err := NewOWIDProvider(slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 }

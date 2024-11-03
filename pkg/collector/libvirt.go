@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/xml"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
@@ -15,8 +16,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/internal/security"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -112,7 +111,7 @@ type libvirtMetrics struct {
 }
 
 type libvirtCollector struct {
-	logger                      log.Logger
+	logger                      *slog.Logger
 	cgroupManager               *cgroupManager
 	cgroupCollector             *cgroupCollector
 	perfCollector               *perfCollector
@@ -134,16 +133,16 @@ func init() {
 }
 
 // NewLibvirtCollector returns a new libvirt collector exposing a summary of cgroups.
-func NewLibvirtCollector(logger log.Logger) (Collector, error) {
+func NewLibvirtCollector(logger *slog.Logger) (Collector, error) {
 	// Get libvirt's cgroup details
 	cgroupManager, err := NewCgroupManager("libvirt", logger)
 	if err != nil {
-		level.Info(logger).Log("msg", "Failed to create cgroup manager", "err", err)
+		logger.Info("Failed to create cgroup manager", "err", err)
 
 		return nil, err
 	}
 
-	level.Info(logger).Log("cgroup", cgroupManager)
+	logger.Info("cgroup: " + cgroupManager.String())
 
 	// Set cgroup options
 	opts := cgroupOpts{
@@ -153,9 +152,9 @@ func NewLibvirtCollector(logger log.Logger) (Collector, error) {
 	}
 
 	// Start new instance of cgroupCollector
-	cgCollector, err := NewCgroupCollector(log.With(logger, "sub_collector", "cgroup"), cgroupManager, opts)
+	cgCollector, err := NewCgroupCollector(logger.With("sub_collector", "cgroup"), cgroupManager, opts)
 	if err != nil {
-		level.Info(logger).Log("msg", "Failed to create cgroup collector", "err", err)
+		logger.Info("Failed to create cgroup collector", "err", err)
 
 		return nil, err
 	}
@@ -164,9 +163,9 @@ func NewLibvirtCollector(logger log.Logger) (Collector, error) {
 	var perfCollector *perfCollector
 
 	if perfCollectorEnabled() {
-		perfCollector, err = NewPerfCollector(log.With(logger, "sub_collector", "perf"), cgroupManager)
+		perfCollector, err = NewPerfCollector(logger.With("sub_collector", "perf"), cgroupManager)
 		if err != nil {
-			level.Info(logger).Log("msg", "Failed to create perf collector", "err", err)
+			logger.Info("Failed to create perf collector", "err", err)
 
 			return nil, err
 		}
@@ -176,9 +175,9 @@ func NewLibvirtCollector(logger log.Logger) (Collector, error) {
 	var ebpfCollector *ebpfCollector
 
 	if ebpfCollectorEnabled() {
-		ebpfCollector, err = NewEbpfCollector(log.With(logger, "sub_collector", "ebpf"), cgroupManager)
+		ebpfCollector, err = NewEbpfCollector(logger.With("sub_collector", "ebpf"), cgroupManager)
 		if err != nil {
-			level.Info(logger).Log("msg", "Failed to create ebpf collector", "err", err)
+			logger.Info("Failed to create ebpf collector", "err", err)
 
 			return nil, err
 		}
@@ -188,9 +187,9 @@ func NewLibvirtCollector(logger log.Logger) (Collector, error) {
 	var rdmaCollector *rdmaCollector
 
 	if rdmaCollectorEnabled() {
-		rdmaCollector, err = NewRDMACollector(log.With(logger, "sub_collector", "rdma"), cgroupManager)
+		rdmaCollector, err = NewRDMACollector(logger.With("sub_collector", "rdma"), cgroupManager)
 		if err != nil {
-			level.Info(logger).Log("msg", "Failed to create RDMA collector", "err", err)
+			logger.Info("Failed to create RDMA collector", "err", err)
 
 			return nil, err
 		}
@@ -210,7 +209,7 @@ func NewLibvirtCollector(logger log.Logger) (Collector, error) {
 	for _, gpuType := range gpuTypes {
 		gpuDevs, err = GetGPUDevices(gpuType, logger)
 		if err == nil {
-			level.Info(logger).Log("gpu", gpuType)
+			logger.Info("gpu: " + gpuType)
 
 			break
 		}
@@ -234,7 +233,7 @@ func NewLibvirtCollector(logger log.Logger) (Collector, error) {
 	// Setup new security context(s)
 	securityCtx, err := security.NewSecurityContext(libvirtReadXMLCtx, caps, readLibvirtXMLFile, logger)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create a security context", "err", err)
+		logger.Error("Failed to create a security context", "err", err)
 
 		return nil, err
 	}
@@ -291,7 +290,7 @@ func (c *libvirtCollector) Update(ch chan<- prometheus.Metric) error {
 
 		// Update cgroup metrics
 		if err := c.cgroupCollector.Update(ch, metrics.cgMetrics); err != nil {
-			level.Error(c.logger).Log("msg", "Failed to update cgroup stats", "err", err)
+			c.logger.Error("Failed to update cgroup stats", "err", err)
 		}
 
 		// Update instance GPU ordinals
@@ -308,7 +307,7 @@ func (c *libvirtCollector) Update(ch chan<- prometheus.Metric) error {
 
 			// Update perf metrics
 			if err := c.perfCollector.Update(ch, metrics.cgroups); err != nil {
-				level.Error(c.logger).Log("msg", "Failed to update perf stats", "err", err)
+				c.logger.Error("Failed to update perf stats", "err", err)
 			}
 		}()
 	}
@@ -321,7 +320,7 @@ func (c *libvirtCollector) Update(ch chan<- prometheus.Metric) error {
 
 			// Update ebpf metrics
 			if err := c.ebpfCollector.Update(ch, metrics.cgroups); err != nil {
-				level.Error(c.logger).Log("msg", "Failed to update IO and/or network stats", "err", err)
+				c.logger.Error("Failed to update IO and/or network stats", "err", err)
 			}
 		}()
 	}
@@ -334,7 +333,7 @@ func (c *libvirtCollector) Update(ch chan<- prometheus.Metric) error {
 
 			// Update RDMA metrics
 			if err := c.rdmaCollector.Update(ch, metrics.cgroups); err != nil {
-				level.Error(c.logger).Log("msg", "Failed to update RDMA stats", "err", err)
+				c.logger.Error("Failed to update RDMA stats", "err", err)
 			}
 		}()
 	}
@@ -347,32 +346,32 @@ func (c *libvirtCollector) Update(ch chan<- prometheus.Metric) error {
 
 // Stop releases system resources used by the collector.
 func (c *libvirtCollector) Stop(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", "Stopping", "collector", libvirtCollectorSubsystem)
+	c.logger.Debug("Stopping", "collector", libvirtCollectorSubsystem)
 
 	// Stop all sub collectors
 	// Stop cgroupCollector
 	if err := c.cgroupCollector.Stop(ctx); err != nil {
-		level.Error(c.logger).Log("msg", "Failed to stop cgroup collector", "err", err)
+		c.logger.Error("Failed to stop cgroup collector", "err", err)
 	}
 
 	// Stop perfCollector
 	if perfCollectorEnabled() {
 		if err := c.perfCollector.Stop(ctx); err != nil {
-			level.Error(c.logger).Log("msg", "Failed to stop perf collector", "err", err)
+			c.logger.Error("Failed to stop perf collector", "err", err)
 		}
 	}
 
 	// Stop ebpfCollector
 	if ebpfCollectorEnabled() {
 		if err := c.ebpfCollector.Stop(ctx); err != nil {
-			level.Error(c.logger).Log("msg", "Failed to stop ebpf collector", "err", err)
+			c.logger.Error("Failed to stop ebpf collector", "err", err)
 		}
 	}
 
 	// Stop rdmaCollector
 	if rdmaCollectorEnabled() {
 		if err := c.rdmaCollector.Stop(ctx); err != nil {
-			level.Error(c.logger).Log("msg", "Failed to stop RDMA collector", "err", err)
+			c.logger.Error("Failed to stop RDMA collector", "err", err)
 		}
 	}
 
@@ -495,7 +494,7 @@ func (c *libvirtCollector) getInstanceProperties(instanceID string) instanceProp
 	if c.vGPUActivated {
 		if updatedGPUDevs, err := updateGPUMdevs(c.gpuDevs); err == nil {
 			c.gpuDevs = updatedGPUDevs
-			level.Debug(c.logger).Log("msg", "GPU mdevs updated")
+			c.logger.Debug("GPU mdevs updated")
 		}
 	}
 
@@ -508,15 +507,15 @@ func (c *libvirtCollector) getInstanceProperties(instanceID string) instanceProp
 
 	if securityCtx, ok := c.securityContexts[libvirtReadXMLCtx]; ok {
 		if err := securityCtx.Exec(dataPtr); err != nil {
-			level.Error(c.logger).Log(
-				"msg", "Failed to run inside security contxt", "instance_id", instanceID, "err", err,
+			c.logger.Error(
+				"Failed to run inside security contxt", "instance_id", instanceID, "err", err,
 			)
 
 			return instanceProps{}
 		}
 	} else {
-		level.Error(c.logger).Log(
-			"msg", "Security context not found", "name", libvirtReadXMLCtx, "instance_id", instanceID,
+		c.logger.Error(
+			"Security context not found", "name", libvirtReadXMLCtx, "instance_id", instanceID,
 		)
 
 		return instanceProps{}

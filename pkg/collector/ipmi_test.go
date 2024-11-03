@@ -6,11 +6,12 @@ package collector
 import (
 	"context"
 	"fmt"
+	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -102,7 +103,7 @@ func TestIPMICollector(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	collector, err := NewIPMICollector(log.NewNopLogger())
+	collector, err := NewIPMICollector(slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	// Setup background goroutine to capture metrics.
@@ -124,7 +125,7 @@ func TestIPMICollector(t *testing.T) {
 }
 
 func TestIpmiMetrics(t *testing.T) {
-	c := impiCollector{logger: log.NewNopLogger()}
+	c := impiCollector{logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
 
 	for testName, testString := range ipmidcmiStdout {
 		var value map[string]float64
@@ -145,7 +146,7 @@ func TestIpmiMetrics(t *testing.T) {
 }
 
 func TestIpmiMetricsDisactive(t *testing.T) {
-	c := impiCollector{logger: log.NewNopLogger()}
+	c := impiCollector{logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
 
 	for testName, testString := range ipmidcmiStdoutDisactive {
 		var value map[string]float64

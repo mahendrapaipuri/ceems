@@ -4,10 +4,8 @@ package emissions
 import (
 	"embed"
 	"errors"
+	"log/slog"
 	"sync"
-
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 )
 
 //go:embed data
@@ -20,7 +18,7 @@ var (
 
 var (
 	emissionsLock = sync.RWMutex{}
-	factories     = make(map[string]func(logger log.Logger) (Provider, error))
+	factories     = make(map[string]func(logger *slog.Logger) (Provider, error))
 	factoryNames  = make(map[string]string)
 )
 
@@ -28,22 +26,22 @@ var (
 func Register(
 	provider string,
 	providerName string,
-	factory func(logger log.Logger) (Provider, error),
+	factory func(logger *slog.Logger) (Provider, error),
 ) {
 	factories[provider] = factory
 	factoryNames[provider] = providerName
 }
 
 // NewFactorProviders creates a new EmissionProviders.
-func NewFactorProviders(logger log.Logger) (*FactorProviders, error) {
+func NewFactorProviders(logger *slog.Logger) (*FactorProviders, error) {
 	providers := make(map[string]Provider)
 	providerNames := make(map[string]string)
 
 	// Loop over factories and create new instances
 	for key, factory := range factories {
-		provider, err := factory(log.With(logger, "provider", key))
+		provider, err := factory(logger.With("provider", key))
 		if err != nil {
-			level.Error(logger).Log("msg", "Failed to create data provider", "provider", key, "err", err)
+			logger.Error("Failed to create data provider", "provider", key, "err", err)
 
 			continue
 		}
@@ -66,7 +64,7 @@ func (e FactorProviders) Collect() map[string]PayLoad {
 		go func(name string, s Provider) {
 			factor, err := s.Update()
 			if err != nil {
-				level.Error(e.logger).Log("msg", "Failed to fetch emission factor", "provider", name, "err", err)
+				e.logger.Error("Failed to fetch emission factor", "provider", name, "err", err)
 				wg.Done()
 
 				return

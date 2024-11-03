@@ -3,6 +3,8 @@ package openstack
 import (
 	"context"
 	"fmt"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -10,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	config_util "github.com/prometheus/common/config"
 	"github.com/stretchr/testify/assert"
@@ -270,7 +271,7 @@ func TestOpenstackFetcher(t *testing.T) {
 	ctx := context.Background()
 
 	for _, cluster := range clusters {
-		os, err := New(cluster, log.NewNopLogger())
+		os, err := New(cluster, slog.New(slog.NewTextHandler(io.Discard, nil)))
 		require.NoError(t, err)
 
 		units, err := os.FetchUnits(ctx, start, end)
@@ -321,7 +322,7 @@ func TestOpenstackFetcherFail(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	os, err := New(cluster, log.NewNopLogger())
+	os, err := New(cluster, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	// Stop test servers to simulate when OS services are offline
@@ -363,7 +364,7 @@ func TestOpenstackServiceError(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	os, err := New(cluster, log.NewNopLogger())
+	os, err := New(cluster, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	// Attempt to fetch instances and we should get an error

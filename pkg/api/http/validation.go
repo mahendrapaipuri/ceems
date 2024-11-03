@@ -3,17 +3,16 @@ package http
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 	"slices"
 	"strings"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 )
 
 // adminUsers returns a slice of admin users fetched from DB.
-func adminUsers(ctx context.Context, dbConn *sql.DB, logger log.Logger) []string {
+func adminUsers(ctx context.Context, dbConn *sql.DB, logger *slog.Logger) []string {
 	var users []string
 
 	//nolint:gosec
@@ -21,7 +20,7 @@ func adminUsers(ctx context.Context, dbConn *sql.DB, logger log.Logger) []string
 		ctx, "SELECT users FROM "+base.AdminUsersDBTableName,
 	)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to query for admin users", "err", err)
+		logger.Error("Failed to query for admin users", "err", err)
 
 		return nil
 	}
@@ -31,7 +30,7 @@ func adminUsers(ctx context.Context, dbConn *sql.DB, logger log.Logger) []string
 	var usersList models.List
 	for rows.Next() {
 		if err := rows.Scan(&usersList); err != nil {
-			level.Error(logger).Log("msg", "Failed to scan row for admin users query", "err", err)
+			logger.Error("Failed to scan row for admin users query", "err", err)
 
 			continue
 		}
@@ -46,7 +45,7 @@ func adminUsers(ctx context.Context, dbConn *sql.DB, logger log.Logger) []string
 	// Ref: http://go-database-sql.org/errors.html
 	// Get all the errors during iteration
 	if err := rows.Err(); err != nil {
-		level.Error(logger).Log("msg", "Errors during scanning rows", "err", err)
+		logger.Error("Errors during scanning rows", "err", err)
 	}
 
 	return users
@@ -59,12 +58,12 @@ func VerifyOwnership(
 	clusterIDs []string,
 	uuids []string,
 	db *sql.DB,
-	logger log.Logger,
+	logger *slog.Logger,
 ) bool {
 	// If the data is incomplete, forbid the request
 	if db == nil || len(clusterIDs) == 0 || user == "" {
-		level.Debug(logger).Log(
-			"msg", "Incomplete data for unit ownership verification", "user", user,
+		logger.Debug(
+			"Incomplete data for unit ownership verification", "user", user,
 			"cluster_id", strings.Join(clusterIDs, ","), "queried_uuids", strings.Join(uuids, ","),
 		)
 
@@ -76,10 +75,7 @@ func VerifyOwnership(
 		return true
 	}
 
-	level.Debug(logger).
-		Log("msg", "UUIDs in query", "user", user,
-			"cluster_id", strings.Join(clusterIDs, ","), "queried_uuids", strings.Join(uuids, ","),
-		)
+	logger.Debug("UUIDs in query", "user", user, "cluster_id", strings.Join(clusterIDs, ","), "queried_uuids", strings.Join(uuids, ","))
 
 	// Get sub query for projects
 	qSub := projectsSubQuery([]string{user})
@@ -103,11 +99,10 @@ func VerifyOwnership(
 	// Run query and get response
 	units, err := Querier[models.Unit](ctx, db, q, logger)
 	if err != nil {
-		level.Error(logger).
-			Log("msg", "Failed to check uuid ownership. Query unauthorized", "user", user,
-				"queried_uuids", strings.Join(uuids, ","),
-				"cluster_id", strings.Join(clusterIDs, ","), "err", err,
-			)
+		logger.Error("Failed to check uuid ownership. Query unauthorized", "user", user,
+			"queried_uuids", strings.Join(uuids, ","),
+			"cluster_id", strings.Join(clusterIDs, ","), "err", err,
+		)
 
 		return false
 	}
@@ -115,10 +110,9 @@ func VerifyOwnership(
 	// If returned number of UUIDs is not same as queried UUIDs, user is attempting
 	// to query for jobs of other user
 	if len(units) != len(uuids) {
-		level.Debug(logger).
-			Log("msg", "Unauthorized query", "user", user,
-				"queried_uuids", len(uuids), "found_uuids", len(units),
-			)
+		logger.Debug("Unauthorized query", "user", user,
+			"queried_uuids", len(uuids), "found_uuids", len(units),
+		)
 
 		return false
 	}

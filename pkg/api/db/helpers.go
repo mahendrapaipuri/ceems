@@ -3,11 +3,10 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	ceems_sqlite3 "github.com/mahendrapaipuri/ceems/pkg/sqlite3"
 )
 
@@ -60,12 +59,12 @@ func openDBConnection(dbFilePath string) (*sql.DB, *ceems_sqlite3.Conn, error) {
 }
 
 // Setup DB and create table.
-func setupDB(dbFilePath string, logger log.Logger) (*sql.DB, *ceems_sqlite3.Conn, error) {
+func setupDB(dbFilePath string, logger *slog.Logger) (*sql.DB, *ceems_sqlite3.Conn, error) {
 	if _, err := os.Stat(dbFilePath); err == nil {
 		// Open the created SQLite File
 		db, dbConn, err := openDBConnection(dbFilePath)
 		if err != nil {
-			level.Error(logger).Log("msg", "Failed to open DB file", "err", err)
+			logger.Error("Failed to open DB file", "err", err)
 
 			return nil, nil, err
 		}
@@ -76,7 +75,7 @@ func setupDB(dbFilePath string, logger log.Logger) (*sql.DB, *ceems_sqlite3.Conn
 	// If file does not exist, create SQLite file
 	file, err := os.Create(dbFilePath)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create DB file", "err", err)
+		logger.Error("Failed to create DB file", "err", err)
 
 		return nil, nil, err
 	}
@@ -85,7 +84,7 @@ func setupDB(dbFilePath string, logger log.Logger) (*sql.DB, *ceems_sqlite3.Conn
 
 	// Set strict permissions
 	if err := os.Chmod(dbFilePath, 0o640); err != nil {
-		level.Error(logger).Log("msg", "Failed to harden permissions on DB file", "err", err)
+		logger.Error("Failed to harden permissions on DB file", "err", err)
 
 		return nil, nil, err
 	}
@@ -93,7 +92,7 @@ func setupDB(dbFilePath string, logger log.Logger) (*sql.DB, *ceems_sqlite3.Conn
 	// Open the created SQLite File
 	db, dbConn, err := openDBConnection(dbFilePath)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to open DB file", "err", err)
+		logger.Error("Failed to open DB file", "err", err)
 
 		return nil, nil, err
 	}

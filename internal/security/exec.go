@@ -4,10 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/internal/osexec"
 	"kernel.org/pub/linux/libs/security/libcap/cap"
 )
@@ -21,7 +20,7 @@ var (
 // SecurityContext implements a security context where functions can be
 // safely executed with required privileges on a thread locked to OS.
 type SecurityContext struct {
-	Logger   log.Logger
+	Logger   *slog.Logger
 	Launcher *cap.Launcher
 	Func     func(interface{}) error
 	Caps     []cap.Value
@@ -34,7 +33,7 @@ func NewSecurityContext(
 	name string,
 	caps []cap.Value,
 	f func(interface{}) error,
-	logger log.Logger,
+	logger *slog.Logger,
 ) (*SecurityContext, error) {
 	// Create a SecurityContext
 	s := &SecurityContext{
@@ -110,18 +109,16 @@ func (s *SecurityContext) targetFunc(data interface{}) error {
 	// Log an error so that operators will be aware that the reason
 	// for the error is lack of privileges.
 	if err := s.raiseCaps(); err != nil {
-		level.Error(s.Logger).
-			Log("msg", "Failed to raise capabilities", "name", s.Name, "caps", cap.GetProc(), "err", err)
+		s.Logger.Error("Failed to raise capabilities", "name", s.Name, "caps", cap.GetProc().String(), "err", err)
 	}
 
-	level.Debug(s.Logger).Log("msg", "Executing in security context", "name", s.Name, "caps", cap.GetProc())
+	s.Logger.Debug("Executing in security context", "name", s.Name, "caps", cap.GetProc().String())
 
 	// Execute function
 	if err := s.Func(data); err != nil {
 		// Attempt to drop capabilities and ignore any errors
 		if err := s.dropCaps(); err != nil {
-			level.Warn(s.Logger).
-				Log("msg", "Failed to drop capabilities", "name", s.Name, "caps", cap.GetProc(), "err", err)
+			s.Logger.Warn("Failed to drop capabilities", "name", s.Name, "caps", cap.GetProc().String(), "err", err)
 		}
 
 		return err
@@ -131,8 +128,7 @@ func (s *SecurityContext) targetFunc(data interface{}) error {
 	// destroyed. But just in case...
 	// Ignore any errors
 	if err := s.dropCaps(); err != nil {
-		level.Warn(s.Logger).
-			Log("msg", "Failed to drop capabilities", "name", s.Name, "caps", cap.GetProc(), "err", err)
+		s.Logger.Warn("Failed to drop capabilities", "name", s.Name, "caps", cap.GetProc().String(), "err", err)
 	}
 
 	return nil
@@ -147,7 +143,7 @@ type ExecSecurityCtxData struct {
 	UID     int
 	GID     int
 	StdOut  []byte
-	Logger  log.Logger
+	Logger  *slog.Logger
 }
 
 // ExecAsUser executes a subprocess as a given user inside a security context.

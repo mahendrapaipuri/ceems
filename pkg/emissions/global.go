@@ -4,7 +4,7 @@
 package emissions
 
 import (
-	"github.com/go-kit/log"
+	"log/slog"
 )
 
 const (
@@ -13,7 +13,7 @@ const (
 )
 
 type globalProvider struct {
-	logger log.Logger
+	logger *slog.Logger
 }
 
 func init() {
@@ -22,7 +22,7 @@ func init() {
 }
 
 // NewGlobalProvider returns a new Provider that returns a constant global average emission factor.
-func NewGlobalProvider(logger log.Logger) (Provider, error) {
+func NewGlobalProvider(logger *slog.Logger) (Provider, error) {
 	return &globalProvider{
 		logger: logger,
 	}, nil

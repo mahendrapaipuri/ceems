@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
@@ -14,7 +16,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	ceems_api_http "github.com/mahendrapaipuri/ceems/pkg/api/http"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/backend"
@@ -85,17 +86,17 @@ func TestNewFrontendSingleGroup(t *testing.T) {
 	require.NoError(t, err)
 
 	rp1 := httputil.NewSingleHostReverseProxy(backend1URL)
-	backend1 := backend.New(backend1URL, rp1, log.NewNopLogger())
+	backend1 := backend.New(backend1URL, rp1, slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	// Start manager
-	manager, err := serverpool.New("resource-based", log.NewNopLogger())
+	manager, err := serverpool.New("resource-based", slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	manager.Add(clusterID, backend1)
 
 	// make minimal config
 	config := &Config{
-		Logger:    log.NewNopLogger(),
+		Logger:    slog.New(slog.NewTextHandler(io.Discard, nil)),
 		Manager:   manager,
 		Addresses: []string{"localhost:9030"}, // dummy address
 	}
@@ -181,7 +182,7 @@ func TestNewFrontendTwoGroups(t *testing.T) {
 	require.NoError(t, err)
 
 	rp1 := httputil.NewSingleHostReverseProxy(backend1URL)
-	backend1 := backend.New(backend1URL, rp1, log.NewNopLogger())
+	backend1 := backend.New(backend1URL, rp1, slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	// Backends for group 2
 	dummyServer2 := dummyTSDBServer("rm-1")
@@ -190,10 +191,10 @@ func TestNewFrontendTwoGroups(t *testing.T) {
 	require.NoError(t, err)
 
 	rp2 := httputil.NewSingleHostReverseProxy(backend2URL)
-	backend2 := backend.New(backend2URL, rp2, log.NewNopLogger())
+	backend2 := backend.New(backend2URL, rp2, slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	// Start manager
-	manager, err := serverpool.New("resource-based", log.NewNopLogger())
+	manager, err := serverpool.New("resource-based", slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	manager.Add("rm-0", backend1)
@@ -201,7 +202,7 @@ func TestNewFrontendTwoGroups(t *testing.T) {
 
 	// make minimal config
 	config := &Config{
-		Logger:    log.NewNopLogger(),
+		Logger:    slog.New(slog.NewTextHandler(io.Discard, nil)),
 		Manager:   manager,
 		Addresses: []string{"localhost:9030"}, // dummy address
 	}
@@ -305,10 +306,10 @@ func TestValidateClusterIDsWithDBPass(t *testing.T) {
 	require.NoError(t, err)
 
 	rp := httputil.NewSingleHostReverseProxy(backendURL)
-	backend := backend.New(backendURL, rp, log.NewNopLogger())
+	backend := backend.New(backendURL, rp, slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	// Start manager
-	manager, err := serverpool.New("resource-based", log.NewNopLogger())
+	manager, err := serverpool.New("resource-based", slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	manager.Add("slurm-0", backend)
@@ -316,7 +317,7 @@ func TestValidateClusterIDsWithDBPass(t *testing.T) {
 
 	// make minimal config
 	config := &Config{
-		Logger:    log.NewNopLogger(),
+		Logger:    slog.New(slog.NewTextHandler(io.Discard, nil)),
 		Manager:   manager,
 		Addresses: []string{"localhost:9030"}, // dummy address
 	}
@@ -342,10 +343,10 @@ func TestValidateClusterIDsWithDBFail(t *testing.T) {
 	require.NoError(t, err)
 
 	rp := httputil.NewSingleHostReverseProxy(backendURL)
-	backend := backend.New(backendURL, rp, log.NewNopLogger())
+	backend := backend.New(backendURL, rp, slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	// Start manager
-	manager, err := serverpool.New("resource-based", log.NewNopLogger())
+	manager, err := serverpool.New("resource-based", slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	manager.Add("unknown", backend)
@@ -353,7 +354,7 @@ func TestValidateClusterIDsWithDBFail(t *testing.T) {
 
 	// make minimal config
 	config := &Config{
-		Logger:    log.NewNopLogger(),
+		Logger:    slog.New(slog.NewTextHandler(io.Discard, nil)),
 		Manager:   manager,
 		Addresses: []string{"localhost:9030"}, // dummy address
 	}
@@ -395,10 +396,10 @@ func TestValidateClusterIDsWithAPIPass(t *testing.T) {
 	require.NoError(t, err)
 
 	rp := httputil.NewSingleHostReverseProxy(backendURL)
-	backend := backend.New(backendURL, rp, log.NewNopLogger())
+	backend := backend.New(backendURL, rp, slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	// Start manager
-	manager, err := serverpool.New("resource-based", log.NewNopLogger())
+	manager, err := serverpool.New("resource-based", slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	manager.Add("slurm-0", backend)
@@ -406,7 +407,7 @@ func TestValidateClusterIDsWithAPIPass(t *testing.T) {
 
 	// make minimal config
 	config := &Config{
-		Logger:    log.NewNopLogger(),
+		Logger:    slog.New(slog.NewTextHandler(io.Discard, nil)),
 		Manager:   manager,
 		Addresses: []string{"localhost:9030"}, // dummy address
 	}
@@ -440,10 +441,10 @@ func TestValidateClusterIDsWithAPIFail(t *testing.T) {
 	require.NoError(t, err)
 
 	rp := httputil.NewSingleHostReverseProxy(backendURL)
-	backend := backend.New(backendURL, rp, log.NewNopLogger())
+	backend := backend.New(backendURL, rp, slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	// Start manager
-	manager, err := serverpool.New("resource-based", log.NewNopLogger())
+	manager, err := serverpool.New("resource-based", slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	manager.Add("slurm-0", backend)
@@ -451,7 +452,7 @@ func TestValidateClusterIDsWithAPIFail(t *testing.T) {
 
 	// make minimal config
 	config := &Config{
-		Logger:    log.NewNopLogger(),
+		Logger:    slog.New(slog.NewTextHandler(io.Discard, nil)),
 		Manager:   manager,
 		Addresses: []string{"localhost:9030"}, // dummy address
 	}

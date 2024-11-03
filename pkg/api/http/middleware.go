@@ -3,14 +3,12 @@ package http
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"regexp"
 	"slices"
 	"strings"
-
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 )
 
 // Headers.
@@ -29,11 +27,11 @@ var (
 
 // Define our struct.
 type authenticationMiddleware struct {
-	logger          log.Logger
+	logger          *slog.Logger
 	routerPrefix    string
 	whitelistedURLs *regexp.Regexp
 	db              *sql.DB
-	adminUsers      func(context.Context, *sql.DB, log.Logger) []string
+	adminUsers      func(context.Context, *sql.DB, *slog.Logger) []string
 }
 
 // Middleware function, which will be called for each request.
@@ -75,8 +73,7 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 		// Check if username header is available
 		loggedUser = r.Header.Get(grafanaUserHeader)
 		if loggedUser == "" {
-			level.Error(amw.logger).
-				Log("msg", "Grafana user Header not found. Denying authentication")
+			amw.logger.Error("Grafana user Header not found. Denying authentication")
 
 			// Write an error and stop the handler chain
 			errorResponse[any](w, &apiError{errorUnauthorized, errNoUser}, amw.logger, nil)
@@ -84,7 +81,7 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 			return
 		}
 
-		level.Info(amw.logger).Log("loggedUser", loggedUser, "url", r.URL)
+		amw.logger.Info("middleware", "loggedUser", loggedUser, "url", r.URL)
 
 		// Set logged user header
 		r.Header.Set(loggedUserHeader, loggedUser)
@@ -107,8 +104,8 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 			r.Header.Set(adminUserHeader, loggedUser)
 
 			if dashboardUser := r.Header.Get(dashboardUserHeader); dashboardUser != "" {
-				level.Info(amw.logger).Log(
-					"msg", "Admin user accessing dashboards", "loggedUser", loggedUser,
+				amw.logger.Info(
+					"Admin user accessing dashboards", "loggedUser", loggedUser,
 					"dashboardUser", dashboardUser, "url", r.URL,
 				)
 			} else {
@@ -117,7 +114,7 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 		} else {
 			// Check if requested URI is not admin endpoints
 			if strings.HasSuffix(r.URL.Path, "admin") {
-				level.Error(amw.logger).Log("msg", "Unprivileged user accessing admin endpoint", "user", loggedUser, "url", r.URL)
+				amw.logger.Error("Unprivileged user accessing admin endpoint", "user", loggedUser, "url", r.URL)
 
 				// Write an error and stop the handler chain
 				errorResponse[any](w, &apiError{errorForbidden, errNoPrivs}, amw.logger, nil)

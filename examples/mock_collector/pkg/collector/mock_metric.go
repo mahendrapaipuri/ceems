@@ -2,9 +2,9 @@ package collector
 
 import (
 	"context"
+	"log/slog"
 	"math/rand"
 
-	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/ceems/pkg/collector"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -14,7 +14,7 @@ const mockCollectorSubsystem = "mock"
 
 // Define mock collector struct
 type mockCollector struct {
-	logger         log.Logger
+	logger         *slog.Logger
 	mockMetricDesc *prometheus.Desc
 }
 
@@ -32,7 +32,7 @@ func init() {
 }
 
 // NewMockCollector returns a new Collector exposing mock metrics.
-func NewMockCollector(logger log.Logger) (collector.Collector, error) {
+func NewMockCollector(logger *slog.Logger) (collector.Collector, error) {
 	// Define mock metric description
 	mockMetricDesc := prometheus.NewDesc(
 		prometheus.BuildFQName(collector.Namespace, mockCollectorSubsystem, "mockunit_total"),

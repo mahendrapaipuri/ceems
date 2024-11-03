@@ -2,25 +2,24 @@ package serverpool
 
 import (
 	"fmt"
+	"log/slog"
 	"math"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/backend"
 )
 
 // leastConn implements the least connection load balancer strategy.
 type leastConn struct {
 	backends map[string][]backend.TSDBServer
-	logger   log.Logger
+	logger   *slog.Logger
 }
 
 // Target returns the backend server to send the request if it is alive.
 func (s *leastConn) Target(id string, d time.Duration) backend.TSDBServer {
 	// If the ID is unknown return
 	if _, ok := s.backends[id]; !ok {
-		level.Error(s.logger).Log("msg", "Round Robin strategy", "err", fmt.Errorf("unknown backend ID: %s", id))
+		s.logger.Error("Round Robin strategy", "err", fmt.Errorf("unknown backend ID: %s", id))
 
 		return nil
 	}
@@ -42,7 +41,7 @@ func (s *leastConn) Target(id string, d time.Duration) backend.TSDBServer {
 	}
 
 	if targetBackend != nil {
-		level.Debug(s.logger).Log("msg", "Least connection strategy", "selected_backend", targetBackend.String())
+		s.logger.Debug("Least connection strategy", "selected_backend", targetBackend.String())
 
 		return targetBackend
 	}

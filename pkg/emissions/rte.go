@@ -8,12 +8,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"time"
-
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 )
 
 const (
@@ -22,11 +20,11 @@ const (
 )
 
 type rteProvider struct {
-	logger             log.Logger
+	logger             *slog.Logger
 	cacheDuration      int64
 	lastRequestTime    int64
 	lastEmissionFactor EmissionFactors
-	fetch              func(url string, logger log.Logger) (EmissionFactors, error)
+	fetch              func(url string, logger *slog.Logger) (EmissionFactors, error)
 }
 
 func init() {
@@ -35,8 +33,8 @@ func init() {
 }
 
 // NewRTEProvider returns a new Provider that returns emission factor from RTE eCO2 mix.
-func NewRTEProvider(logger log.Logger) (Provider, error) {
-	level.Info(logger).Log("msg", "Emission factor from RTE eCO2 mix will be reported.")
+func NewRTEProvider(logger *slog.Logger) (Provider, error) {
+	logger.Info("Emission factor from RTE eCO2 mix will be reported.")
 
 	return &rteProvider{
 		logger:          logger,
@@ -57,12 +55,11 @@ func (s *rteProvider) Update() (EmissionFactors, error) {
 	if time.Now().UnixMilli()-s.lastRequestTime > s.cacheDuration || s.lastEmissionFactor == nil {
 		currentEmissionFactor, err := s.fetch(url, s.logger)
 		if err != nil {
-			level.Warn(s.logger).Log("msg", "Failed to retrieve emission factor from RTE provider", "err", err)
+			s.logger.Warn("Failed to retrieve emission factor from RTE provider", "err", err)
 
 			// Check if last emission factor is valid and if it is use the same for current
 			if s.lastEmissionFactor != nil {
-				level.Debug(s.logger).
-					Log("msg", "Using cached emission factor for RTE provider", "factor", s.lastEmissionFactor["FR"].Factor)
+				s.logger.Debug("Using cached emission factor for RTE provider", "factor", s.lastEmissionFactor["FR"].Factor)
 
 				return s.lastEmissionFactor, nil
 			} else {
@@ -73,12 +70,11 @@ func (s *rteProvider) Update() (EmissionFactors, error) {
 		// Update last request time and factor
 		s.lastRequestTime = time.Now().UnixMilli()
 		s.lastEmissionFactor = currentEmissionFactor
-		level.Debug(s.logger).
-			Log("msg", "Using real time emission factor from RTE provider", "factor", currentEmissionFactor["FR"].Factor)
+		s.logger.Debug("Using real time emission factor from RTE provider", "factor", currentEmissionFactor["FR"].Factor)
 
 		return currentEmissionFactor, err
 	} else {
-		level.Debug(s.logger).Log("msg", "Using cached emission factor for RTE provider", "factor", s.lastEmissionFactor["FR"].Factor)
+		s.logger.Debug("Using cached emission factor for RTE provider", "factor", s.lastEmissionFactor["FR"].Factor)
 
 		return s.lastEmissionFactor, nil
 	}
@@ -109,7 +105,7 @@ func makeRTEURL(baseURL string) string {
 }
 
 // Make request to Opendatasoft API.
-func makeRTEAPIRequest(url string, logger log.Logger) (EmissionFactors, error) {
+func makeRTEAPIRequest(url string, logger *slog.Logger) (EmissionFactors, error) {
 	// Create a context with timeout to ensure we dont have deadlocks
 	// Dont use a long timeout. If one provider takes too long, whole scrape will be
 	// marked as fail when there is a timeout
@@ -118,14 +114,14 @@ func makeRTEAPIRequest(url string, logger log.Logger) (EmissionFactors, error) {
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create HTTP request for RTE provider", "err", err)
+		logger.Error("Failed to create HTTP request for RTE provider", "err", err)
 
 		return nil, err
 	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to make HTTP request for RTE provider", "err", err)
+		logger.Error("Failed to make HTTP request for RTE provider", "err", err)
 
 		return nil, err
 	}
@@ -133,7 +129,7 @@ func makeRTEAPIRequest(url string, logger log.Logger) (EmissionFactors, error) {
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to read HTTP response body for RTE provider", "err", err)
+		logger.Error("Failed to read HTTP response body for RTE provider", "err", err)
 
 		return nil, err
 	}
@@ -142,7 +138,7 @@ func makeRTEAPIRequest(url string, logger log.Logger) (EmissionFactors, error) {
 
 	err = json.Unmarshal(body, &data)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to unmarshal HTTP response body for RTE provider", "err", err)
+		logger.Error("Failed to unmarshal HTTP response body for RTE provider", "err", err)
 
 		return nil, err
 	}

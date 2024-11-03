@@ -7,13 +7,12 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/internal/common"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	db_migrator "github.com/mahendrapaipuri/ceems/pkg/api/db/migrator"
@@ -57,11 +56,11 @@ type DataConfig struct {
 
 // Config makes a DB config from config file.
 type Config struct {
-	Logger          log.Logger
+	Logger          *slog.Logger
 	Data            DataConfig
 	Admin           AdminConfig
-	ResourceManager func(log.Logger) (*resource.Manager, error)
-	Updater         func(log.Logger) (*updater.UnitUpdater, error)
+	ResourceManager func(*slog.Logger) (*resource.Manager, error)
+	Updater         func(*slog.Logger) (*updater.UnitUpdater, error)
 }
 
 // storageConfig is the container for storage related config.
@@ -89,7 +88,7 @@ type adminConfig struct {
 
 // stats struct implements fetching compute units, users and project data.
 type stats struct {
-	logger  log.Logger
+	logger  *slog.Logger
 	db      *sql.DB
 	dbConn  *ceems_sqlite3.Conn
 	manager *resource.Manager
@@ -146,7 +145,7 @@ func New(c *Config) (*stats, error) {
 	// Setup DB
 	db, dbConn, err := setupDB(dbPath, c.Logger)
 	if err != nil {
-		level.Error(c.Logger).Log("msg", "DB setup failed", "err", err)
+		c.Logger.Error("DB setup failed", "err", err)
 
 		return nil, err
 	}
@@ -169,8 +168,7 @@ func New(c *Config) (*stats, error) {
 		// Parse date time string
 		c.Data.LastUpdateTime, err = time.Parse(base.DatetimeLayout, lastUpdatedAt)
 		if err != nil {
-			level.Error(c.Logger).
-				Log("msg", "Failed to parse last_updated_at fetched from DB", "time", lastUpdatedAt, "err", err)
+			c.Logger.Error("Failed to parse last_updated_at fetched from DB", "time", lastUpdatedAt, "err", err)
 		}
 	}
 
@@ -185,7 +183,7 @@ func New(c *Config) (*stats, error) {
 		c.Data.LastUpdateTime.Nanosecond(),
 		time.Now().Location(),
 	)
-	level.Info(c.Logger).Log("msg", "DB will be updated from", "time", c.Data.LastUpdateTime)
+	c.Logger.Info("DB will be updated from", "time", c.Data.LastUpdateTime)
 
 	// Create a new instance of Grafana client
 	grafanaClient, err := common.NewGrafanaClient(&c.Admin.Grafana, c.Logger)
@@ -218,7 +216,7 @@ func New(c *Config) (*stats, error) {
 	// Setup manager struct that retrieves unit data
 	manager, err := c.ResourceManager(c.Logger)
 	if err != nil {
-		level.Error(c.Logger).Log("msg", "Resource manager setup failed", "err", err)
+		c.Logger.Error("Resource manager setup failed", "err", err)
 
 		return nil, err
 	}
@@ -226,13 +224,13 @@ func New(c *Config) (*stats, error) {
 	// Setup updater struct that updates units
 	updater, err := c.Updater(c.Logger)
 	if err != nil {
-		level.Error(c.Logger).Log("msg", "Updater setup failed", "err", err)
+		c.Logger.Error("Updater setup failed", "err", err)
 
 		return nil, err
 	}
 
 	// Emit debug logs
-	level.Debug(c.Logger).Log("msg", "Storage config", "cfg", storageConfig)
+	c.Logger.Debug("Storage config", "cfg", storageConfig)
 
 	return &stats{
 		logger:  c.Logger,
@@ -257,8 +255,7 @@ func (s *stats) Collect(ctx context.Context) error {
 		return s.collect(ctx, s.storage.lastUpdateTime, currentTime)
 	}
 
-	level.Info(s.logger).
-		Log("msg", "DB update duration is more than 1 day. Doing incremental update. This may take a while...")
+	s.logger.Info("DB update duration is more than 1 day. Doing incremental update. This may take a while...")
 
 	// If duration is more than 1 day, do incremental update
 	var nextUpdateTime time.Time
@@ -266,17 +263,15 @@ func (s *stats) Collect(ctx context.Context) error {
 	for {
 		nextUpdateTime = s.storage.lastUpdateTime.Add(24 * time.Hour)
 		if nextUpdateTime.Compare(currentTime) == -1 {
-			level.Debug(s.logger).
-				Log("msg", "Incremental DB update step", "from", s.storage.lastUpdateTime, "to", nextUpdateTime)
+			s.logger.Debug("Incremental DB update step", "from", s.storage.lastUpdateTime, "to", nextUpdateTime)
 
 			if err := s.collect(ctx, s.storage.lastUpdateTime, nextUpdateTime); err != nil {
-				level.Error(s.logger).
-					Log("msg", "Failed incremental update", "from", s.storage.lastUpdateTime, "to", nextUpdateTime, "err", err)
+				s.logger.Error("Failed incremental update", "from", s.storage.lastUpdateTime, "to", nextUpdateTime, "err", err)
 
 				return err
 			}
 		} else {
-			level.Debug(s.logger).Log("msg", "Final incremental DB update step", "from", s.storage.lastUpdateTime, "to", currentTime)
+			s.logger.Debug("Final incremental DB update step", "from", s.storage.lastUpdateTime, "to", currentTime)
 
 			return s.collect(ctx, s.storage.lastUpdateTime, currentTime)
 		}
@@ -327,7 +322,7 @@ func (s *stats) collect(ctx context.Context, startTime, endTime time.Time) error
 	}
 	// If atleast one manager passed, and there are failed ones, log the errors
 	if err != nil {
-		level.Error(s.logger).Log("msg", "Fetching units from atleast one resource manager failed", "err", err)
+		s.logger.Error("Fetching units from atleast one resource manager failed", "err", err)
 	}
 
 	// Fetch current users and projects
@@ -338,7 +333,7 @@ func (s *stats) collect(ctx context.Context, startTime, endTime time.Time) error
 	}
 	// If atleast one manager passed, and there are failed ones, log the errors
 	if err != nil {
-		level.Error(s.logger).Log("msg", "Fetching associations from atleast one resource manager failed", "err", err)
+		s.logger.Error("Fetching associations from atleast one resource manager failed", "err", err)
 	}
 
 	// Update units struct with unit level metrics from TSDB
@@ -346,7 +341,7 @@ func (s *stats) collect(ctx context.Context, startTime, endTime time.Time) error
 
 	// Update admin users list from Grafana
 	if err := s.updateAdminUsers(ctx); err != nil {
-		level.Error(s.logger).Log("msg", "Failed to update admin users from Grafana", "err", err)
+		s.logger.Error("Failed to update admin users from Grafana", "err", err)
 	}
 
 	// Begin transcation
@@ -358,24 +353,24 @@ func (s *stats) collect(ctx context.Context, startTime, endTime time.Time) error
 	// Delete older entries and free up DB pages
 	// In testing we want to skip this
 	if !s.storage.skipDeleteOldUnits {
-		level.Debug(s.logger).Log("msg", "Cleaning up old entries in DB")
+		s.logger.Debug("Cleaning up old entries in DB")
 
 		if err = s.purgeExpiredUnits(ctx, tx); err != nil {
-			level.Error(s.logger).Log("msg", "Failed to clean up old entries", "err", err)
+			s.logger.Error("Failed to clean up old entries", "err", err)
 		} else {
-			level.Debug(s.logger).Log("msg", "Cleaned up old entries in DB")
+			s.logger.Debug("Cleaned up old entries in DB")
 		}
 	}
 
 	// Insert data into DB
-	level.Debug(s.logger).Log("msg", "Executing SQL statements")
+	s.logger.Debug("Executing SQL statements")
 
 	if err := s.execStatements(ctx, tx, endTime, units, users, projects); err != nil {
-		level.Debug(s.logger).Log("msg", "Failed to execute SQL statements", "err", err)
+		s.logger.Debug("Failed to execute SQL statements", "err", err)
 
 		return fmt.Errorf("failed to execute SQL statements: %w", err)
 	} else {
-		level.Debug(s.logger).Log("msg", "Finished executing SQL statements")
+		s.logger.Debug("Finished executing SQL statements")
 	}
 
 	// Commit changes
@@ -407,7 +402,7 @@ func (s *stats) purgeExpiredUnits(ctx context.Context, tx *sql.Tx) error {
 	// Get changes
 	var unitsDeleted int
 	if err := tx.QueryRowContext(ctx, "SELECT changes()").Scan(&unitsDeleted); err == nil {
-		level.Debug(s.logger).Log("units_deleted", unitsDeleted)
+		s.logger.Debug("DB update", "units_deleted", unitsDeleted)
 	}
 
 	// Purge stale usage data
@@ -423,7 +418,7 @@ func (s *stats) purgeExpiredUnits(ctx context.Context, tx *sql.Tx) error {
 	// Get changes
 	var usageDeleted int
 	if err := tx.QueryRowContext(ctx, "SELECT changes()").Scan(&usageDeleted); err == nil {
-		level.Debug(s.logger).Log("usage_deleted", usageDeleted)
+		s.logger.Debug("DB update", "usage_deleted", usageDeleted)
 	}
 
 	return nil
@@ -465,7 +460,7 @@ func (s *stats) execStatements(
 				continue
 			}
 
-			// level.Debug(s.logger).Log("msg", "Inserting unit", "id", unit.Jobid)
+			// s.logger.Debug("Inserting unit", "id", unit.Jobid)
 			// Use named parameters to not to repeat the values
 			if _, err = stmts[base.UnitsDBTableName].ExecContext(
 				ctx,
@@ -503,8 +498,7 @@ func (s *stats) execStatements(
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["NumUpdates"], 1),
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["LastUpdatedAt"], currentTime.Format(base.DatetimeLayout)),
 			); err != nil {
-				level.Error(s.logger).
-					Log("msg", "Failed to insert unit in DB", "cluster_id", cluster.Cluster.ID, "uuid", unit.UUID, "err", err)
+				s.logger.Error("Failed to insert unit in DB", "cluster_id", cluster.Cluster.ID, "uuid", unit.UUID, "err", err)
 			}
 
 			// If unit.EndTS is zero, it means a running unit. We shouldnt update stats
@@ -540,8 +534,7 @@ func (s *stats) execStatements(
 				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalOutgressStats"], unit.TotalOutgressStats),
 				sql.Named(base.UsageDBTableStructFieldColNameMap["NumUpdates"], 1),
 			); err != nil {
-				level.Error(s.logger).
-					Log("msg", "Failed to update usage table in DB", "cluster_id", cluster.Cluster.ID, "uuid", unit.UUID, "err", err)
+				s.logger.Error("Failed to update usage table in DB", "cluster_id", cluster.Cluster.ID, "uuid", unit.UUID, "err", err)
 			}
 
 			// Update DailyUsage table
@@ -570,8 +563,7 @@ func (s *stats) execStatements(
 				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalOutgressStats"], unit.TotalOutgressStats),
 				sql.Named(base.UsageDBTableStructFieldColNameMap["NumUpdates"], 1),
 			); err != nil {
-				level.Error(s.logger).
-					Log("msg", "Failed to update daily_usage table in DB", "cluster_id", cluster.Cluster.ID, "uuid", unit.UUID, "err", err)
+				s.logger.Error("Failed to update daily_usage table in DB", "cluster_id", cluster.Cluster.ID, "uuid", unit.UUID, "err", err)
 			}
 		}
 	}
@@ -589,8 +581,7 @@ func (s *stats) execStatements(
 				sql.Named(base.UsersDBTableStructFieldColNameMap["Tags"], user.Tags),
 				sql.Named(base.UsersDBTableStructFieldColNameMap["LastUpdatedAt"], user.LastUpdatedAt),
 			); err != nil {
-				level.Error(s.logger).
-					Log("msg", "Failed to insert user in DB", "cluster_id", cluster.Cluster.ID, "user", user.Name, "err", err)
+				s.logger.Error("Failed to insert user in DB", "cluster_id", cluster.Cluster.ID, "user", user.Name, "err", err)
 			}
 		}
 	}
@@ -608,8 +599,7 @@ func (s *stats) execStatements(
 				sql.Named(base.ProjectsDBTableStructFieldColNameMap["Tags"], project.Tags),
 				sql.Named(base.ProjectsDBTableStructFieldColNameMap["LastUpdatedAt"], project.LastUpdatedAt),
 			); err != nil {
-				level.Error(s.logger).
-					Log("msg", "Failed to insert project in DB", "cluster_id", cluster.Cluster.ID, "project", project.Name, "err", err)
+				s.logger.Error("Failed to insert project in DB", "cluster_id", cluster.Cluster.ID, "project", project.Name, "err", err)
 			}
 		}
 	}
@@ -622,8 +612,7 @@ func (s *stats) execStatements(
 			sql.Named(base.AdminUsersDBTableStructFieldColNameMap["Users"], s.admin.users[source]),
 			sql.Named(base.AdminUsersDBTableStructFieldColNameMap["LastUpdatedAt"], currentTime.Format(base.DatetimeLayout)),
 		); err != nil {
-			level.Error(s.logger).
-				Log("msg", "Failed to update admin_users table in DB", "source", source, "err", err)
+			s.logger.Error("Failed to update admin_users table in DB", "source", source, "err", err)
 		}
 	}
 
@@ -670,8 +659,7 @@ func (s *stats) backup(ctx context.Context, backupDBPath string) error {
 	for !isDone {
 		select {
 		case <-ctx.Done():
-			level.Debug(s.logger).
-				Log("msg", "DB backup aborted due to cancelled context", "err", ctx.Err())
+			s.logger.Debug("DB backup aborted due to cancelled context", "err", ctx.Err())
 
 			return backup.Finish()
 		default:
@@ -685,8 +673,7 @@ func (s *stats) backup(ctx context.Context, backupDBPath string) error {
 				return err
 			}
 
-			level.Debug(s.logger).
-				Log("msg", "DB backup step", "remaining", backup.Remaining(), "page_count", backup.PageCount())
+			s.logger.Debug("DB backup step", "remaining", backup.Remaining(), "page_count", backup.PageCount())
 
 			// This sleep allows other transactions to write during backups.
 			time.Sleep(stepSleep)
@@ -698,7 +685,7 @@ func (s *stats) backup(ctx context.Context, backupDBPath string) error {
 
 // vacuum executes sqlite3 vacuum command.
 func (s *stats) vacuum(ctx context.Context) error {
-	level.Debug(s.logger).Log("msg", "Starting to vacuum DB")
+	s.logger.Debug("Starting to vacuum DB")
 
 	if _, err := s.db.ExecContext(ctx, "VACUUM"); err != nil {
 		return err
@@ -714,9 +701,9 @@ func (s *stats) createBackup(ctx context.Context) error {
 
 	// First vacuum DB to reduce size
 	if err := s.vacuum(ctx); err != nil {
-		level.Warn(s.logger).Log("msg", "Failed to vacuum DB", "err", err)
+		s.logger.Warn("Failed to vacuum DB", "err", err)
 	} else {
-		level.Debug(s.logger).Log("msg", "DB vacuumed")
+		s.logger.Debug("DB vacuumed")
 	}
 
 	// Attempt to create in-place DB backup
@@ -738,7 +725,7 @@ func (s *stats) createBackup(ctx context.Context) error {
 		return fmt.Errorf("failed to move backup DB file: %w", err)
 	}
 
-	level.Info(s.logger).Log("msg", "DB backed up", "file", backupDBFileName)
+	s.logger.Info("DB backed up", "file", backupDBFileName)
 
 	return nil
 }

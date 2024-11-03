@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"math"
 	"net"
 	"net/http"
@@ -14,8 +15,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/serverpool"
 )
 
@@ -43,10 +42,10 @@ func AllowRetry(r *http.Request) bool {
 }
 
 // Monitor checks the backend servers health.
-func Monitor(ctx context.Context, manager serverpool.Manager, logger log.Logger) {
+func Monitor(ctx context.Context, manager serverpool.Manager, logger *slog.Logger) {
 	t := time.NewTicker(time.Second * 20)
 
-	level.Info(logger).Log("msg", "Starting health checker")
+	logger.Info("Starting health checker")
 
 	for {
 		// This will ensure that we will run the method as soon as go routine
@@ -57,7 +56,7 @@ func Monitor(ctx context.Context, manager serverpool.Manager, logger log.Logger)
 		case <-t.C:
 			continue
 		case <-ctx.Done():
-			level.Info(logger).Log("msg", "Received Interrupt. Stopping health checker")
+			logger.Info("Received Interrupt. Stopping health checker")
 
 			return
 		}
@@ -70,7 +69,7 @@ func setQueryParams(r *http.Request, queryParams *QueryParams) *http.Request {
 }
 
 // Parse query in the request after cloning it and add query params to context.
-func parseQueryParams(r *http.Request, logger log.Logger) *http.Request {
+func parseQueryParams(r *http.Request, logger *slog.Logger) *http.Request {
 	var body []byte
 
 	var clusterID string
@@ -123,7 +122,7 @@ func parseQueryParams(r *http.Request, logger log.Logger) *http.Request {
 
 	// If failed to read body, skip verification and go to request proxy
 	if body, err = io.ReadAll(r.Body); err != nil {
-		level.Error(logger).Log("msg", "Failed to read request body", "err", err)
+		logger.Error("Failed to read request body", "err", err)
 
 		return setQueryParams(r, &QueryParams{clusterID, uuids, queryPeriod})
 	}
@@ -134,7 +133,7 @@ func parseQueryParams(r *http.Request, logger log.Logger) *http.Request {
 
 	// Get form values
 	if err = clonedReq.ParseForm(); err != nil {
-		level.Error(logger).Log("msg", "Could not parse request body", "err", err)
+		logger.Error("Could not parse request body", "err", err)
 
 		return setQueryParams(r, &QueryParams{clusterID, uuids, queryPeriod})
 	}
@@ -179,7 +178,7 @@ func parseQueryParams(r *http.Request, logger log.Logger) *http.Request {
 
 	// Parse TSDB's start query in request query params
 	if startTime, err := parseTimeParam(clonedReq, targetQueryParam, time.Now().UTC()); err != nil {
-		level.Error(logger).Log("msg", "Could not parse start query param", "err", err)
+		logger.Error("Could not parse start query param", "err", err)
 
 		queryPeriod = 0 * time.Second
 	} else {
@@ -233,7 +232,7 @@ func parseTime(s string) (time.Time, error) {
 }
 
 // healthCheck monitors the status of all backend servers.
-func healthCheck(ctx context.Context, manager serverpool.Manager, logger log.Logger) {
+func healthCheck(ctx context.Context, manager serverpool.Manager, logger *slog.Logger) {
 	aliveChannel := make(chan bool, 1)
 
 	for id, backends := range manager.Backends() {
@@ -247,7 +246,7 @@ func healthCheck(ctx context.Context, manager serverpool.Manager, logger log.Log
 
 			select {
 			case <-ctx.Done():
-				level.Info(logger).Log("msg", "Gracefully shutting down health check")
+				logger.Info("Gracefully shutting down health check")
 
 				return
 			case alive := <-aliveChannel:
@@ -257,18 +256,18 @@ func healthCheck(ctx context.Context, manager serverpool.Manager, logger log.Log
 					status = "down"
 				}
 			}
-			level.Debug(logger).Log("msg", "Health check", "id", id, "url", backend.URL().Redacted(), "status", status)
+			logger.Debug("Health check", "id", id, "url", backend.URL().Redacted(), "status", status)
 		}
 	}
 }
 
 // isAlive returns the status of backend server with a channel.
-func isAlive(ctx context.Context, aliveChannel chan bool, u *url.URL, logger log.Logger) {
+func isAlive(ctx context.Context, aliveChannel chan bool, u *url.URL, logger *slog.Logger) {
 	var d net.Dialer
 
 	conn, err := d.DialContext(ctx, "tcp", u.Host)
 	if err != nil {
-		level.Debug(logger).Log("msg", "Backend unreachable", "backend", u.Redacted(), "err", err)
+		logger.Debug("Backend unreachable", "backend", u.Redacted(), "err", err)
 		aliveChannel <- false
 
 		return

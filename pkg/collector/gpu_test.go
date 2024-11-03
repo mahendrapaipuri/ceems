@@ -2,11 +2,12 @@ package collector
 
 import (
 	"fmt"
+	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -145,7 +146,7 @@ func TestParseNvidiaSmiOutput(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	gpuDevices, err := GetNvidiaGPUDevices(log.NewNopLogger())
+	gpuDevices, err := GetNvidiaGPUDevices(slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 	assert.Equal(t, getExpectedNvidiaDevs(), gpuDevices)
 }
@@ -205,7 +206,7 @@ echo """%s"""
 	)
 	require.NoError(t, err)
 
-	gpuDevices, err := GetNvidiaGPUDevices(log.NewNopLogger())
+	gpuDevices, err := GetNvidiaGPUDevices(slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	// Check if globalIndex for GPU 0 is empty and GPU 1 is 3
@@ -268,7 +269,7 @@ echo """%s"""
 	)
 	require.NoError(t, err)
 
-	gpuDevices, err := GetNvidiaGPUDevices(log.NewNopLogger())
+	gpuDevices, err := GetNvidiaGPUDevices(slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	// Check if globalIndex for GPU 1 is empty and GPU 0 is 0
@@ -283,7 +284,7 @@ func TestParseAmdSmiOutput(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
-	gpuDevices, err := GetAMDGPUDevices(log.NewNopLogger())
+	gpuDevices, err := GetAMDGPUDevices(slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 	assert.Equal(t, getExpectedAmdDevs(), gpuDevices)
 }
@@ -539,7 +540,7 @@ func TestUpdateMdevs(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	gpuDevices, err := GetNvidiaGPUDevices(log.NewNopLogger())
+	gpuDevices, err := GetNvidiaGPUDevices(slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	expectedDevs := []Device{

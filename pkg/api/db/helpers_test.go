@@ -1,10 +1,11 @@
 package db
 
 import (
+	"io"
+	"log/slog"
 	"path/filepath"
 	"testing"
 
-	"github.com/go-kit/log"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -14,7 +15,7 @@ func TestJobStatsDBPreparation(t *testing.T) {
 	tmpDir := t.TempDir()
 	statDBPath := filepath.Join(tmpDir, "stats.db")
 	j := stats{
-		logger: log.NewNopLogger(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 
 	// Test setupDB function

@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
-	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/internal/common"
 	internal_runtime "github.com/mahendrapaipuri/ceems/internal/runtime"
 	"github.com/mahendrapaipuri/ceems/internal/security"
@@ -26,8 +25,8 @@ import (
 	"github.com/mahendrapaipuri/ceems/pkg/api/updater"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
-	"github.com/prometheus/common/promlog"
-	"github.com/prometheus/common/promlog/flag"
+	"github.com/prometheus/common/promslog"
+	"github.com/prometheus/common/promslog/flag"
 	"github.com/prometheus/common/version"
 	"kernel.org/pub/linux/libs/security/libcap/cap"
 )
@@ -156,8 +155,8 @@ func (b *CEEMSServer) Main() error {
 		).Bool()
 	}
 
-	promlogConfig := &promlog.Config{}
-	flag.AddFlags(&b.App, promlogConfig)
+	promslogConfig := &promslog.Config{}
+	flag.AddFlags(&b.App, promslogConfig)
 	b.App.Version(version.Print(b.appName))
 	b.App.UsageWriter(os.Stdout)
 	b.App.HelpFlag.Short('h')
@@ -195,19 +194,19 @@ func (b *CEEMSServer) Main() error {
 	}
 
 	// Set logger here after properly configuring promlog
-	logger := promlog.New(promlogConfig)
+	logger := promslog.New(promslogConfig)
 
-	level.Info(logger).Log("msg", "Starting "+b.appName, "version", version.Info())
-	level.Info(logger).Log("msg", "Build context", "build_context", version.BuildContext())
-	level.Info(logger).Log("fd_limits", internal_runtime.Uname())
-	level.Info(logger).Log("fd_limits", internal_runtime.FdLimits())
+	logger.Info("Starting "+b.appName, "version", version.Info())
+	logger.Info(
+		"Operational information", "build_context", version.BuildContext(), 
+		"host_details", internal_runtime.Uname(), "fd_limits", internal_runtime.FdLimits(),
+	)
 
 	runtime.GOMAXPROCS(*maxProcs)
-	level.Debug(logger).Log("msg", "Go MAXPROCS", "procs", runtime.GOMAXPROCS(0))
+	logger.Debug("Go MAXPROCS", "procs", runtime.GOMAXPROCS(0))
 
 	if user, err := user.Current(); err == nil && user.Uid == "0" {
-		level.Info(logger).
-			Log("msg", "CEEMS API server is running as root user. Privileges will be dropped and process will be run as unprivileged user")
+		logger.Info("CEEMS API server is running as root user. Privileges will be dropped and process will be run as unprivileged user")
 	}
 
 	// Make security related config
@@ -229,7 +228,7 @@ func (b *CEEMSServer) Main() error {
 	for _, name := range []string{"cap_setuid", "cap_setgid"} {
 		value, err := cap.FromName(name)
 		if err != nil {
-			level.Error(logger).Log("msg", "Error parsing capability %s: %w", name, err)
+			logger.Error("Error parsing capability %s: %w", name, err)
 
 			continue
 		}
@@ -286,7 +285,7 @@ func (b *CEEMSServer) Main() error {
 	defer cleanup()
 
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create ceems_server server", "err", err)
+		logger.Error("Failed to create ceems_server server", "err", err)
 
 		return err
 	}
@@ -294,7 +293,7 @@ func (b *CEEMSServer) Main() error {
 	// Create DB instance.
 	collector, err := ceems_db.New(dbConfig)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create ceems_server DB", "err", err)
+		logger.Error("Failed to create ceems_server DB", "err", err)
 
 		return err
 	}
@@ -315,17 +314,17 @@ func (b *CEEMSServer) Main() error {
 		for {
 			// This will ensure that we will run the method as soon as go routine
 			// starts instead of waiting for ticker to tick.
-			level.Info(logger).Log("msg", "Updating CEEMS DB")
+			logger.Info("Updating CEEMS DB")
 
 			if err := collector.Collect(ctx); err != nil {
-				level.Error(logger).Log("msg", "Failed to fetch data", "err", err)
+				logger.Error("Failed to fetch data", "err", err)
 			}
 
 			select {
 			case <-dbUpdateTicker.C:
 				continue
 			case <-ctx.Done():
-				level.Info(logger).Log("msg", "Received Interrupt. Stopping DB update")
+				logger.Info("Received Interrupt. Stopping DB update")
 
 				return
 			}
@@ -348,13 +347,13 @@ func (b *CEEMSServer) Main() error {
 					// Dont run backup as soon as go routine is spawned. In prod, it
 					// can take very long depending on the size of DB and so wait until
 					// first tick to run it.
-					level.Info(logger).Log("msg", "Backing up CEEMS DB")
+					logger.Info("Backing up CEEMS DB")
 
 					if err := collector.Backup(ctx); err != nil {
-						level.Error(logger).Log("msg", "Failed to backup DB", "err", err)
+						logger.Error("Failed to backup DB", "err", err)
 					}
 				case <-ctx.Done():
-					level.Info(logger).Log("msg", "Received Interrupt. Stopping DB backup")
+					logger.Info("Received Interrupt. Stopping DB backup")
 
 					return
 				}
@@ -366,7 +365,7 @@ func (b *CEEMSServer) Main() error {
 	// it won't block the graceful shutdown handling below.
 	go func() {
 		if err := apiServer.Start(); err != nil {
-			level.Error(logger).Log("msg", "Failed to start server", "err", err)
+			logger.Error("Failed to start server", "err", err)
 		}
 	}()
 
@@ -385,12 +384,12 @@ func (b *CEEMSServer) Main() error {
 
 	// Close DB only after all DB go routines are done.
 	if err := collector.Stop(); err != nil {
-		level.Error(logger).Log("msg", "Failed to close DB connection", "err", err)
+		logger.Error("Failed to close DB connection", "err", err)
 	}
 
 	// Restore default behavior on the interrupt signal and notify user of shutdown.
 	stop()
-	level.Info(logger).Log("msg", "Shutting down gracefully, press Ctrl+C again to force")
+	logger.Info("Shutting down gracefully, press Ctrl+C again to force")
 
 	// The context is used to inform the server it has 5 seconds to finish
 	// the request it is currently handling.
@@ -398,11 +397,11 @@ func (b *CEEMSServer) Main() error {
 	defer cancel()
 
 	if err := apiServer.Shutdown(ctx); err != nil {
-		level.Error(logger).Log("msg", "Failed to gracefully shutdown server", "err", err)
+		logger.Error("Failed to gracefully shutdown server", "err", err)
 	}
 
-	level.Info(logger).Log("msg", "Server exiting")
-	level.Info(logger).Log("msg", "See you next time!!")
+	logger.Info("Server exiting")
+	logger.Info("See you next time!!")
 
 	return nil
 }

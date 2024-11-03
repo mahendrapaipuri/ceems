@@ -2,12 +2,11 @@ package serverpool
 
 import (
 	"fmt"
+	"log/slog"
 	"math"
 	"slices"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/backend"
 )
 
@@ -20,14 +19,14 @@ import (
 // will be chosen as it is assumed as "hot" TSDB with maximum performance.
 type resourceBased struct {
 	backends map[string][]backend.TSDBServer
-	logger   log.Logger
+	logger   *slog.Logger
 }
 
 // Target returns the backend server to send the request if it is alive.
 func (s *resourceBased) Target(id string, d time.Duration) backend.TSDBServer {
 	// If the ID is unknown return
 	if _, ok := s.backends[id]; !ok {
-		level.Error(s.logger).Log("msg", "Resource based strategy", "err", fmt.Errorf("unknown backend ID: %s", id))
+		s.logger.Error("Resource based strategy", "err", fmt.Errorf("unknown backend ID: %s", id))
 
 		return nil
 	}
@@ -55,7 +54,7 @@ func (s *resourceBased) Target(id string, d time.Duration) backend.TSDBServer {
 
 	// If no eligible servers found return
 	if len(targetBackends) == 0 {
-		level.Debug(s.logger).Log("msg", "Resourced based strategy. No eligible backends found")
+		s.logger.Debug("Resourced based strategy. No eligible backends found")
 
 		return targetBackend
 	}
@@ -82,7 +81,7 @@ func (s *resourceBased) Target(id string, d time.Duration) backend.TSDBServer {
 	}
 
 	if targetBackend != nil {
-		level.Debug(s.logger).Log("msg", "Resourced based strategy", "selected_backend", targetBackend.String())
+		s.logger.Debug("Resourced based strategy", "selected_backend", targetBackend.String())
 
 		return targetBackend
 	}

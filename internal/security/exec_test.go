@@ -2,9 +2,10 @@ package security
 
 import (
 	"fmt"
+	"io"
+	"log/slog"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/ceems/internal/osexec"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -46,7 +47,7 @@ func TestNewSecurityLauncher(t *testing.T) {
 	}
 
 	// New security context
-	s, err := NewSecurityContext("test", values, testFunc, log.NewNopLogger())
+	s, err := NewSecurityContext("test", values, testFunc, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	d := &testData{targetUser: "nobody"}

@@ -1,13 +1,13 @@
 package collector
 
 import (
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
+	"log/slog"
+
 	"kernel.org/pub/linux/libs/security/libcap/cap"
 )
 
 // setupCollectorCaps sets up the required capabilities for collector.
-func setupCollectorCaps(logger log.Logger, subSystem string, capabilities []string) []cap.Value {
+func setupCollectorCaps(logger *slog.Logger, subSystem string, capabilities []string) []cap.Value {
 	// If there is nothing to setup, return
 	if len(capabilities) == 0 {
 		return nil
@@ -23,7 +23,7 @@ func setupCollectorCaps(logger log.Logger, subSystem string, capabilities []stri
 	for _, name := range capabilities {
 		value, err := cap.FromName(name)
 		if err != nil {
-			level.Error(logger).Log("msg", "Error parsing capability %s: %w", name, err)
+			logger.Error("Error parsing capability %s: %w", name, err)
 
 			continue
 		}
