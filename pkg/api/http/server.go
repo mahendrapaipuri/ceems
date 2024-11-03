@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"log/slog"
 	"net/http"
 	_ "net/http/pprof" // #nosec
 	"net/url"
@@ -21,8 +22,6 @@ import (
 	"time"
 
 	"github.com/go-chi/httprate"
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/gorilla/mux"
 	"github.com/jellydator/ttlcache/v3"
 	"github.com/mahendrapaipuri/ceems/internal/common"
@@ -68,24 +67,24 @@ type WebConfig struct {
 
 // Config makes a server config.
 type Config struct {
-	Logger log.Logger
+	Logger *slog.Logger
 	Web    WebConfig
 	DB     db.Config
 }
 
 type queriers struct {
-	unit    func(context.Context, *sql.DB, Query, log.Logger) ([]models.Unit, error)
-	usage   func(context.Context, *sql.DB, Query, log.Logger) ([]models.Usage, error)
-	user    func(context.Context, *sql.DB, Query, log.Logger) ([]models.User, error)
-	project func(context.Context, *sql.DB, Query, log.Logger) ([]models.Project, error)
-	cluster func(context.Context, *sql.DB, Query, log.Logger) ([]models.Cluster, error)
-	stat    func(context.Context, *sql.DB, Query, log.Logger) ([]models.Stat, error)
-	key     func(context.Context, *sql.DB, Query, log.Logger) ([]models.Key, error)
+	unit    func(context.Context, *sql.DB, Query, *slog.Logger) ([]models.Unit, error)
+	usage   func(context.Context, *sql.DB, Query, *slog.Logger) ([]models.Usage, error)
+	user    func(context.Context, *sql.DB, Query, *slog.Logger) ([]models.User, error)
+	project func(context.Context, *sql.DB, Query, *slog.Logger) ([]models.Project, error)
+	cluster func(context.Context, *sql.DB, Query, *slog.Logger) ([]models.Cluster, error)
+	stat    func(context.Context, *sql.DB, Query, *slog.Logger) ([]models.Stat, error)
+	key     func(context.Context, *sql.DB, Query, *slog.Logger) ([]models.Key, error)
 }
 
 // CEEMSServer struct implements HTTP server for stats.
 type CEEMSServer struct {
-	logger         log.Logger
+	logger         *slog.Logger
 	server         *http.Server
 	webConfig      *web.FlagConfig
 	db             *sql.DB
@@ -93,7 +92,7 @@ type CEEMSServer struct {
 	maxQueryPeriod time.Duration
 	queriers       queriers
 	usageCache     *ttlcache.Cache[uint64, []models.Usage] // Cache that stores usage query results
-	healthCheck    func(*sql.DB, log.Logger) bool
+	healthCheck    func(*sql.DB, *slog.Logger) bool
 }
 
 // Response defines the response model of CEEMSAPIServer.
@@ -140,9 +139,9 @@ func init() {
 }
 
 // Ping DB for connection test.
-func getDBStatus(dbConn *sql.DB, logger log.Logger) bool {
+func getDBStatus(dbConn *sql.DB, logger *slog.Logger) bool {
 	if err := dbConn.Ping(); err != nil {
-		level.Error(logger).Log("msg", "DB Ping failed", "err", err)
+		logger.Error("DB Ping failed", "err", err)
 
 		return false
 	}
@@ -191,7 +190,7 @@ func New(c *Config) (*CEEMSServer, func(), error) {
 		routePrefix = fmt.Sprintf("/api/%s/", base.APIVersion)
 	}
 
-	level.Debug(c.Logger).Log("msg", "CEEMS API server running on prefix", "prefix", routePrefix)
+	c.Logger.Debug("CEEMS API server running on prefix", "prefix", routePrefix)
 
 	// Create a sub router with apiVersion as PathPrefix
 	subRouter := router.PathPrefix(routePrefix).Subrouter()
@@ -258,7 +257,7 @@ func New(c *Config) (*CEEMSServer, func(), error) {
 
 	// Rate limit requests by RealIP
 	if c.Web.RequestsLimit > 0 {
-		level.Debug(c.Logger).Log("msg", "Rate limiting settings", "reqs_per_minute", c.Web.RequestsLimit)
+		c.Logger.Debug("Rate limiting settings", "reqs_per_minute", c.Web.RequestsLimit)
 		router.Use(httprate.LimitByRealIP(c.Web.RequestsLimit, time.Minute))
 	}
 
@@ -315,10 +314,10 @@ func (s *CEEMSServer) Start() error {
 	docs.SwaggerInfo.Schemes = []string{"http", "https"}
 	docs.SwaggerInfo.Host = s.server.Addr
 
-	level.Info(s.logger).Log("msg", "Starting "+base.CEEMSServerAppName)
+	s.logger.Info("Starting " + base.CEEMSServerAppName)
 
 	if err := web.ListenAndServe(s.server, s.webConfig, s.logger); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		level.Error(s.logger).Log("msg", "Failed to Listen and Serve HTTP server", "err", err)
+		s.logger.Error("Failed to Listen and Serve HTTP server", "err", err)
 
 		return err
 	}
@@ -330,14 +329,14 @@ func (s *CEEMSServer) Start() error {
 func (s *CEEMSServer) Shutdown(ctx context.Context) error {
 	// Close DB connection
 	if err := s.db.Close(); err != nil {
-		level.Error(s.logger).Log("msg", "Failed to close DB connection", "err", err)
+		s.logger.Error("Failed to close DB connection", "err", err)
 
 		return err
 	}
 
 	// Shutdown the server
 	if err := s.server.Shutdown(ctx); err != nil {
-		level.Error(s.logger).Log("msg", "Failed to shutdown HTTP server", "err", err)
+		s.logger.Error("Failed to shutdown HTTP server", "err", err)
 
 		return err
 	}
@@ -363,7 +362,7 @@ func (s *CEEMSServer) setWriteDeadline(deadline time.Duration, w http.ResponseWr
 
 	// Set write deadline to this request
 	if err := rc.SetWriteDeadline(time.Now().Add(deadline)); err != nil {
-		level.Error(s.logger).Log("msg", "Failed to set write deadline", "err", err)
+		s.logger.Error("Failed to set write deadline", "err", err)
 	}
 }
 
@@ -441,7 +440,7 @@ func (s *CEEMSServer) getQueryWindow(r *http.Request) (map[string]string, error)
 	} else {
 		// Return error response if from is not a timestamp
 		if ts, err := strconv.ParseInt(f, 10, 64); err != nil {
-			level.Error(s.logger).Log("msg", "Failed to parse from timestamp", "from", f, "err", err)
+			s.logger.Error("Failed to parse from timestamp", "from", f, "err", err)
 
 			return nil, fmt.Errorf("query parameter 'from': %w", ErrMalformedTimeStamp)
 		} else {
@@ -455,7 +454,7 @@ func (s *CEEMSServer) getQueryWindow(r *http.Request) (map[string]string, error)
 	} else {
 		// Return error response if to is not a timestamp
 		if ts, err := strconv.ParseInt(t, 10, 64); err != nil {
-			level.Error(s.logger).Log("msg", "Failed to parse to timestamp", "to", t, "err", err)
+			s.logger.Error("Failed to parse to timestamp", "to", t, "err", err)
 
 			return nil, fmt.Errorf("query parameter 'to': %w", ErrMalformedTimeStamp)
 		} else {
@@ -467,8 +466,8 @@ func (s *CEEMSServer) getQueryWindow(r *http.Request) (map[string]string, error)
 	// response. This is to prevent users from making "big" requests that can "potentially"
 	// choke server and end up in OOM errors
 	if s.maxQueryPeriod > 0*time.Second && toTime.Sub(fromTime) > s.maxQueryPeriod {
-		level.Error(s.logger).Log(
-			"msg", "Exceeded maximum query time window",
+		s.logger.Error(
+			"Exceeded maximum query time window",
 			"max_query_window", s.maxQueryPeriod,
 			"from", fromTime.Format(time.DateTime), "to", toTime.Format(time.DateTime),
 			"query_window", toTime.Sub(fromTime).String(),
@@ -498,7 +497,7 @@ func (s *CEEMSServer) roundQueryWindow(r *http.Request) error {
 	} else {
 		// Return error response if from is not a timestamp
 		if ts, err := strconv.ParseInt(f, 10, 64); err != nil {
-			level.Error(s.logger).Log("msg", "Failed to parse from timestamp", "from", f, "err", err)
+			s.logger.Error("Failed to parse from timestamp", "from", f, "err", err)
 
 			return fmt.Errorf("query parameter 'from': %w", ErrMalformedTimeStamp)
 		} else {
@@ -511,7 +510,7 @@ func (s *CEEMSServer) roundQueryWindow(r *http.Request) error {
 	} else {
 		// Return error response if from is not a timestamp
 		if ts, err := strconv.ParseInt(t, 10, 64); err != nil {
-			level.Error(s.logger).Log("msg", "Failed to parse from timestamp", "to", t, "err", err)
+			s.logger.Error("Failed to parse from timestamp", "to", t, "err", err)
 
 			return fmt.Errorf("query parameter 'to': %w", ErrMalformedTimeStamp)
 		} else {
@@ -549,7 +548,7 @@ func (s *CEEMSServer) unitsQuerier(
 	// Get fields query parameters if any
 	queriedFields := s.getQueriedFields(r.URL.Query(), base.UnitsDBTableColNames)
 	if len(queriedFields) == 0 {
-		level.Error(s.logger).Log("msg", "Invalid query fields", "loggedUser", loggedUser, "err", errInvalidQueryField)
+		s.logger.Error("Invalid query fields", "loggedUser", loggedUser, "err", errInvalidQueryField)
 		errorResponse[any](w, &apiError{errorBadData, errInvalidQueryField}, s.logger, nil)
 
 		return
@@ -616,7 +615,7 @@ queryUnits:
 	// Get all user units in the given time window
 	units, err := s.queriers.unit(r.Context(), s.db, q, s.logger)
 	if units == nil && err != nil {
-		level.Error(s.logger).Log("msg", "Failed to fetch units", "loggedUser", loggedUser, "err", err)
+		s.logger.Error("Failed to fetch units", "loggedUser", loggedUser, "err", err)
 		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
 
 		return
@@ -634,7 +633,7 @@ queryUnits:
 	}
 
 	if err = json.NewEncoder(w).Encode(&response); err != nil {
-		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
+		s.logger.Error("Failed to encode response", "err", err)
 		w.Write([]byte("KO"))
 	}
 }
@@ -804,7 +803,7 @@ func (s *CEEMSServer) verifyUnitsOwnership(w http.ResponseWriter, r *http.Reques
 			Status: "success",
 		}
 		if err := json.NewEncoder(w).Encode(&response); err != nil {
-			level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
+			s.logger.Error("Failed to encode response", "err", err)
 			w.Write([]byte("KO"))
 		}
 	} else {
@@ -856,7 +855,7 @@ func (s *CEEMSServer) clustersAdmin(w http.ResponseWriter, r *http.Request) {
 	// Make query and get list of cluster ids
 	clusterIDs, err := s.queriers.cluster(r.Context(), s.db, q, s.logger)
 	if clusterIDs == nil && err != nil {
-		level.Error(s.logger).Log("msg", "Failed to fetch cluster IDs", "user", dashboardUser, "err", err)
+		s.logger.Error("Failed to fetch cluster IDs", "user", dashboardUser, "err", err)
 		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
 
 		return
@@ -874,7 +873,7 @@ func (s *CEEMSServer) clustersAdmin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = json.NewEncoder(w).Encode(&clusterIDsResponse); err != nil {
-		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
+		s.logger.Error("Failed to encode response", "err", err)
 		w.Write([]byte("KO"))
 	}
 }
@@ -908,7 +907,7 @@ func (s *CEEMSServer) usersQuerier(users []string, w http.ResponseWriter, r *htt
 	// Make query and check for users returned in usage
 	userModels, err := s.queriers.user(r.Context(), s.db, q, s.logger)
 	if userModels == nil && err != nil {
-		level.Error(s.logger).Log("msg", "Failed to fetch user details", "users", strings.Join(users, ","), "err", err)
+		s.logger.Error("Failed to fetch user details", "users", strings.Join(users, ","), "err", err)
 		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
 
 		return
@@ -926,7 +925,7 @@ func (s *CEEMSServer) usersQuerier(users []string, w http.ResponseWriter, r *htt
 	}
 
 	if err = json.NewEncoder(w).Encode(&usersResponse); err != nil {
-		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
+		s.logger.Error("Failed to encode response", "err", err)
 		w.Write([]byte("KO"))
 	}
 }
@@ -1033,8 +1032,8 @@ func (s *CEEMSServer) projectsQuerier(users []string, w http.ResponseWriter, r *
 	// Make query
 	projectModels, err := s.queriers.project(r.Context(), s.db, q, s.logger)
 	if projectModels == nil && err != nil {
-		level.Error(s.logger).Log(
-			"msg", "Failed to fetch project details",
+		s.logger.Error(
+			"Failed to fetch project details",
 			"users", strings.Join(users, ","), "err", err,
 		)
 		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
@@ -1054,7 +1053,7 @@ func (s *CEEMSServer) projectsQuerier(users []string, w http.ResponseWriter, r *
 	}
 
 	if err = json.NewEncoder(w).Encode(&projectsResponse); err != nil {
-		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
+		s.logger.Error("Failed to encode response", "err", err)
 		w.Write([]byte("KO"))
 	}
 }
@@ -1154,8 +1153,7 @@ func (s *CEEMSServer) aggQueryBuilder(
 	// Make query and get keys
 	keys, err := s.queriers.key(r.Context(), s.db, q, s.logger)
 	if keys == nil && err != nil {
-		level.Error(s.logger).
-			Log("msg", "Failed to fetch metric keys", "metric", metric, "err", err)
+		s.logger.Error("Failed to fetch metric keys", "metric", metric, "err", err)
 
 		return ""
 	}
@@ -1173,8 +1171,7 @@ func (s *CEEMSServer) aggQueryBuilder(
 	query := &bytes.Buffer{}
 
 	if err := tmpl.Execute(query, data); err != nil {
-		level.Error(s.logger).
-			Log("msg", "Failed to execute query template", "metric", metric, "err", err)
+		s.logger.Error("Failed to execute query template", "metric", metric, "err", err)
 
 		return ""
 	}
@@ -1342,8 +1339,7 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 	// Make query and check for returned number of rows
 	usage, err = s.queriers.usage(r.Context(), s.db, q, s.logger)
 	if usage == nil && err != nil {
-		level.Error(s.logger).
-			Log("msg", "Failed to fetch current usage statistics", "users", strings.Join(users, ","), "err", err)
+		s.logger.Error("Failed to fetch current usage statistics", "users", strings.Join(users, ","), "err", err)
 		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
 
 		return
@@ -1371,7 +1367,7 @@ writer:
 	}
 
 	if err = json.NewEncoder(w).Encode(&usageResponse); err != nil {
-		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
+		s.logger.Error("Failed to encode response", "err", err)
 		w.Write([]byte("KO"))
 	}
 }
@@ -1399,8 +1395,7 @@ func (s *CEEMSServer) globalUsage(users []string, queriedFields []string, w http
 	// Make query and check for returned number of rows
 	usage, err := s.queriers.usage(r.Context(), s.db, q, s.logger)
 	if usage == nil && err != nil {
-		level.Error(s.logger).
-			Log("msg", "Failed to fetch global usage statistics", "users", strings.Join(users, ","), "err", err)
+		s.logger.Error("Failed to fetch global usage statistics", "users", strings.Join(users, ","), "err", err)
 		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
 
 		return
@@ -1418,7 +1413,7 @@ func (s *CEEMSServer) globalUsage(users []string, queriedFields []string, w http
 	}
 
 	if err = json.NewEncoder(w).Encode(&usageResponse); err != nil {
-		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
+		s.logger.Error("Failed to encode response", "err", err)
 		w.Write([]byte("KO"))
 	}
 }
@@ -1501,7 +1496,7 @@ func (s *CEEMSServer) usage(w http.ResponseWriter, r *http.Request) {
 	// Get fields query parameters if any
 	queriedFields := s.getQueriedFields(r.URL.Query(), base.UsageDBTableColNames)
 	if len(queriedFields) == 0 {
-		level.Error(s.logger).Log("msg", "Invalid query fields", "loggedUser", dashboardUser)
+		s.logger.Error("Invalid query fields", "loggedUser", dashboardUser)
 		errorResponse[any](w, &apiError{errorBadData, errInvalidQueryField}, s.logger, nil)
 
 		return
@@ -1601,7 +1596,7 @@ func (s *CEEMSServer) usageAdmin(w http.ResponseWriter, r *http.Request) {
 	// Get fields query parameters if any
 	queriedFields := s.getQueriedFields(r.URL.Query(), base.UsageDBTableColNames)
 	if len(queriedFields) == 0 {
-		level.Error(s.logger).Log("msg", "Invalid query fields", "loggedUser", dashboardUser)
+		s.logger.Error("Invalid query fields", "loggedUser", dashboardUser)
 		errorResponse[any](w, &apiError{errorBadData, errInvalidQueryField}, s.logger, nil)
 
 		return
@@ -1673,8 +1668,7 @@ func (s *CEEMSServer) currentStats(users []string, w http.ResponseWriter, r *htt
 	// Make query and check for returned number of rows
 	stats, err = s.queriers.stat(r.Context(), s.db, q, s.logger)
 	if stats == nil && err != nil {
-		level.Error(s.logger).
-			Log("msg", "Failed to fetch current quick stats", "users", strings.Join(users, ","), "err", err)
+		s.logger.Error("Failed to fetch current quick stats", "users", strings.Join(users, ","), "err", err)
 		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
 
 		return
@@ -1692,7 +1686,7 @@ func (s *CEEMSServer) currentStats(users []string, w http.ResponseWriter, r *htt
 	}
 
 	if err = json.NewEncoder(w).Encode(&projectsResponse); err != nil {
-		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
+		s.logger.Error("Failed to encode response", "err", err)
 		w.Write([]byte("KO"))
 	}
 }
@@ -1728,8 +1722,7 @@ func (s *CEEMSServer) globalStats(users []string, w http.ResponseWriter, r *http
 	// Make query and check for returned number of rows
 	stats, err = s.queriers.stat(r.Context(), s.db, q, s.logger)
 	if stats == nil && err != nil {
-		level.Error(s.logger).
-			Log("msg", "Failed to fetch global quick stats", "users", strings.Join(users, ","), "err", err)
+		s.logger.Error("Failed to fetch global quick stats", "users", strings.Join(users, ","), "err", err)
 		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
 
 		return
@@ -1747,7 +1740,7 @@ func (s *CEEMSServer) globalStats(users []string, w http.ResponseWriter, r *http
 	}
 
 	if err = json.NewEncoder(w).Encode(&projectsResponse); err != nil {
-		level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
+		s.logger.Error("Failed to encode response", "err", err)
 		w.Write([]byte("KO"))
 	}
 }
@@ -1872,7 +1865,7 @@ func (s *CEEMSServer) demo(w http.ResponseWriter, r *http.Request) {
 			Data:   units,
 		}
 		if err := json.NewEncoder(w).Encode(&unitsResponse); err != nil {
-			level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
+			s.logger.Error("Failed to encode response", "err", err)
 			w.Write([]byte("KO"))
 		}
 	}
@@ -1888,7 +1881,7 @@ func (s *CEEMSServer) demo(w http.ResponseWriter, r *http.Request) {
 			Data:   usage,
 		}
 		if err := json.NewEncoder(w).Encode(&usageResponse); err != nil {
-			level.Error(s.logger).Log("msg", "Failed to encode response", "err", err)
+			s.logger.Error("Failed to encode response", "err", err)
 			w.Write([]byte("KO"))
 		}
 	}

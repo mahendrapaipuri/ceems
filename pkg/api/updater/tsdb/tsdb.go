@@ -5,14 +5,13 @@ import (
 	"context"
 	"fmt"
 	"html/template"
+	"log/slog"
 	"maps"
 	"math"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/pkg/api/helper"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/mahendrapaipuri/ceems/pkg/api/updater"
@@ -57,13 +56,13 @@ func init() {
 }
 
 // New create a new TSDB updater.
-func New(instance updater.Instance, logger log.Logger) (updater.Updater, error) {
+func New(instance updater.Instance, logger *slog.Logger) (updater.Updater, error) {
 	// Make TSDB config from instances extra config
 	config := tsdbConfig{
 		QueryBatchSize: queryBatchSize,
 	}
 	if err := instance.Extra.Decode(&config); err != nil {
-		level.Error(logger).Log("msg", "Failed to setup TSDB updater", "id", instance.ID, "err", err)
+		logger.Error("Failed to setup TSDB updater", "id", instance.ID, "err", err)
 
 		return nil, err
 	}
@@ -72,15 +71,15 @@ func New(instance updater.Instance, logger log.Logger) (updater.Updater, error) 
 	tsdb, err := tsdb.New(
 		instance.Web.URL,
 		instance.Web.HTTPClientConfig,
-		log.With(logger, "id", instance.ID),
+		logger.With("id", instance.ID),
 	)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to setup TSDB updater", "instance_id", instance.ID, "err", err)
+		logger.Error("Failed to setup TSDB updater", "instance_id", instance.ID, "err", err)
 
 		return nil, err
 	}
 
-	level.Info(logger).Log("msg", "TSDB updater setup successful", "id", instance.ID)
+	logger.Info("TSDB updater setup successful", "id", instance.ID)
 
 	return &tsdbUpdater{
 		&config,
@@ -170,8 +169,8 @@ func (t *tsdbUpdater) fetchAggMetrics(
 
 				tsdbQuery, err := t.queryBuilder(fmt.Sprintf("%s_%s", n, sn), q, tmplData)
 				if err != nil {
-					level.Error(t.Logger).Log(
-						"msg", "Failed to build query from template", "metric", n,
+					t.Logger.Error(
+						"Failed to build query from template", "metric", n,
 						"query_template", q, "err", err,
 					)
 
@@ -179,8 +178,8 @@ func (t *tsdbUpdater) fetchAggMetrics(
 				}
 
 				if aggMetric, err = t.Query(ctx, tsdbQuery, queryTime); err != nil {
-					level.Error(t.Logger).Log(
-						"msg", "Failed to fetch metrics from TSDB", "metric", n, "duration",
+					t.Logger.Error(
+						"Failed to fetch metrics from TSDB", "metric", n, "duration",
 						duration, "scrape_int", scrapeInterval, "rate_int", rateInterval,
 						"err", err,
 					)
@@ -269,7 +268,7 @@ func (t *tsdbUpdater) update(
 	for iBatch, batchUUIDs := range uuidBatches {
 		select {
 		case <-ctx.Done():
-			level.Error(t.Logger).Log("msg", "Aborting units update", "err", ctx.Err())
+			t.Logger.Error("Aborting units update", "err", ctx.Err())
 
 			return units
 		default:
@@ -295,8 +294,8 @@ func (t *tsdbUpdater) update(
 				}
 			}
 
-			level.Debug(t.Logger).Log(
-				"msg", "progress", "batch_id", iBatch, "total_batches", numBatches,
+			t.Logger.Debug(
+				"progress", "batch_id", iBatch, "total_batches", numBatches,
 			)
 		}
 	}
@@ -435,8 +434,7 @@ func (t *tsdbUpdater) update(
 
 	// Finally delete time series
 	if err := t.deleteTimeSeries(ctx, startTime, endTime, ignoredUnits); err != nil {
-		level.Error(t.Logger).
-			Log("msg", "Failed to delete time series in TSDB", "err", err)
+		t.Logger.Error("Failed to delete time series in TSDB", "err", err)
 	}
 
 	return units
@@ -456,7 +454,7 @@ func (t *tsdbUpdater) deleteTimeSeries(
 		return nil
 	}
 
-	level.Debug(t.Logger).Log("units_ignored", len(unitUUIDs))
+	t.Logger.Debug("TSDB delete time series", "units_ignored", len(unitUUIDs))
 
 	/*
 		We should give start and end query params as well. If not, TSDB has to look over

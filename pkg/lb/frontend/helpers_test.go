@@ -2,13 +2,14 @@ package frontend
 
 import (
 	"fmt"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -204,7 +205,7 @@ func TestParseQueryParams(t *testing.T) {
 			req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 		}
 
-		newReq := parseQueryParams(req, log.NewNopLogger())
+		newReq := parseQueryParams(req, slog.New(slog.NewTextHandler(io.Discard, nil)))
 		queryParams := newReq.Context().Value(QueryParamsContextKey{}).(*QueryParams) //nolint:forcetypeassert
 		assert.Equal(t, queryParams.uuids, test.uuids)
 		assert.Equal(t, queryParams.clusterID, test.rmID)

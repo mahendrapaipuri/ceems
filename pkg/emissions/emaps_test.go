@@ -3,12 +3,13 @@ package emissions
 import (
 	"encoding/json"
 	"errors"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -30,7 +31,7 @@ func mockEMapsAPIRequest(
 	url string,
 	token string,
 	zones map[string]string,
-	logger log.Logger,
+	logger *slog.Logger,
 ) (EmissionFactors, error) {
 	emapsIdx++
 	if emapsIdx > 2 {
@@ -44,14 +45,14 @@ func mockEMapsAPIFailRequest(
 	url string,
 	token string,
 	zones map[string]string,
-	logger log.Logger,
+	logger *slog.Logger,
 ) (EmissionFactors, error) {
 	return nil, errors.New("Failed API request")
 }
 
 func TestEMapsDataProvider(t *testing.T) {
 	s := emapsProvider{
-		logger:          log.NewNopLogger(),
+		logger:          slog.New(slog.NewTextHandler(io.Discard, nil)),
 		cacheDuration:   10,
 		lastRequestTime: time.Now().Unix(),
 		fetch:           mockEMapsAPIRequest,
@@ -84,7 +85,7 @@ func TestEMapsDataProvider(t *testing.T) {
 
 func TestEMapsDataProviderError(t *testing.T) {
 	s := emapsProvider{
-		logger:          log.NewNopLogger(),
+		logger:          slog.New(slog.NewTextHandler(io.Discard, nil)),
 		cacheDuration:   2,
 		lastRequestTime: time.Now().Unix(),
 		fetch:           mockEMapsAPIFailRequest,
@@ -97,7 +98,7 @@ func TestEMapsDataProviderError(t *testing.T) {
 
 func TestNewEMapsProvider(t *testing.T) {
 	// // First attempt to create new instance without token env var. Should return error
-	// _, err := NewEMapsProvider(log.NewNopLogger())
+	// _, err := NewEMapsProvider(slog.New(slog.NewTextHandler(io.Discard, nil)))
 	// if err == nil {
 	// 	t.Errorf("expected error to create a new instance of EMaps provider due to missing token env var")
 	// }
@@ -115,7 +116,7 @@ func TestNewEMapsProvider(t *testing.T) {
 	t.Setenv("EMAPS_API_TOKEN", "secret")
 	t.Setenv("__EMAPS_BASE_URL", server.URL)
 
-	_, err := NewEMapsProvider(log.NewNopLogger())
+	_, err := NewEMapsProvider(slog.New(slog.NewTextHandler(io.Discard, nil)))
 	assert.NoError(t, err)
 }
 
@@ -134,7 +135,7 @@ func TestNewEMapsProviderFail(t *testing.T) {
 	t.Setenv("EMAPS_API_TOKEN", "secret")
 	t.Setenv("__EMAPS_BASE_URL", server.URL)
 
-	_, err := NewEMapsProvider(log.NewNopLogger())
+	_, err := NewEMapsProvider(slog.New(slog.NewTextHandler(io.Discard, nil)))
 	assert.Error(t, err)
 }
 
@@ -194,7 +195,7 @@ func TestEMapsAPIRequestZones(t *testing.T) {
 		"FR": "France",
 		"DE": "Germany",
 	}
-	factors, err := makeEMapsAPIRequest(server.URL, "", zones, log.NewNopLogger())
+	factors, err := makeEMapsAPIRequest(server.URL, "", zones, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 	assert.Equal(t, expectedFactors, factors)
 }

@@ -2,18 +2,19 @@ package slurm
 
 import (
 	"fmt"
+	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestPreflightsCLI(t *testing.T) {
 	manager := slurmScheduler{
-		logger: log.NewNopLogger(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 	err := preflightsCLI(&manager)
 	require.Error(t, err)

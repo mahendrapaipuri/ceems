@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -13,8 +14,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
 	"github.com/prometheus/common/model"
 )
@@ -47,11 +46,11 @@ type tsdbServer struct {
 	reverseProxy    *httputil.ReverseProxy
 	basicAuthHeader string
 	client          *http.Client
-	logger          log.Logger
+	logger          *slog.Logger
 }
 
 // New returns an instance of backend TSDB server.
-func New(webURL *url.URL, p *httputil.ReverseProxy, logger log.Logger) TSDBServer {
+func New(webURL *url.URL, p *httputil.ReverseProxy, logger *slog.Logger) TSDBServer {
 	// Create a client
 	tsdbClient := &http.Client{Timeout: 2 * time.Second}
 
@@ -66,7 +65,7 @@ func New(webURL *url.URL, p *httputil.ReverseProxy, logger log.Logger) TSDBServe
 		base64Auth := base64.StdEncoding.EncodeToString([]byte(auth))
 		basicAuthHeader = "Basic " + base64Auth
 
-		level.Debug(logger).Log("msg", "Basic auth configured for backend", "backend", webURL.Redacted())
+		logger.Debug("Basic auth configured for backend", "backend", webURL.Redacted())
 	}
 
 	return &tsdbServer{
@@ -102,7 +101,7 @@ func (b *tsdbServer) RetentionPeriod() time.Duration {
 		newRetentionPeriod, err := b.fetchRetentionPeriod()
 		// If errored, return last retention period
 		if err != nil {
-			level.Error(b.logger).Log("msg", "Failed to update retention period", "backend", b.String(), "err", err)
+			b.logger.Error("Failed to update retention period", "backend", b.String(), "err", err)
 
 			return retentionPeriod
 		}

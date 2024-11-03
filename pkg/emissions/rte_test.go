@@ -3,13 +3,14 @@ package emissions
 import (
 	"encoding/json"
 	"errors"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -23,7 +24,7 @@ var (
 	rteIdx = 0
 )
 
-func mockRTEAPIRequest(url string, logger log.Logger) (EmissionFactors, error) {
+func mockRTEAPIRequest(url string, logger *slog.Logger) (EmissionFactors, error) {
 	rteIdx++
 	if rteIdx > 2 {
 		return nil, errors.New("some random while fetching stuff")
@@ -32,13 +33,13 @@ func mockRTEAPIRequest(url string, logger log.Logger) (EmissionFactors, error) {
 	return expectedRTEFactors[rteIdx-1], nil
 }
 
-func mockRTEAPIFailRequest(url string, logger log.Logger) (EmissionFactors, error) {
+func mockRTEAPIFailRequest(url string, logger *slog.Logger) (EmissionFactors, error) {
 	return nil, errors.New("Failed API request")
 }
 
 func TestRTEDataSource(t *testing.T) {
 	s := rteProvider{
-		logger:          log.NewNopLogger(),
+		logger:          slog.New(slog.NewTextHandler(io.Discard, nil)),
 		cacheDuration:   10,
 		lastRequestTime: time.Now().Unix(),
 		fetch:           mockRTEAPIRequest,
@@ -71,7 +72,7 @@ func TestRTEDataSource(t *testing.T) {
 
 func TestRTEDataSourceError(t *testing.T) {
 	s := rteProvider{
-		logger:          log.NewNopLogger(),
+		logger:          slog.New(slog.NewTextHandler(io.Discard, nil)),
 		cacheDuration:   2,
 		lastRequestTime: time.Now().Unix(),
 		fetch:           mockRTEAPIFailRequest,
@@ -83,7 +84,7 @@ func TestRTEDataSourceError(t *testing.T) {
 }
 
 func TestNewRTEProvider(t *testing.T) {
-	_, err := NewRTEProvider(log.NewNopLogger())
+	_, err := NewRTEProvider(slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 }
 
@@ -109,7 +110,7 @@ func TestRTEAPIRequest(t *testing.T) {
 	defer server.Close()
 
 	// Make request to test server
-	factor, err := makeRTEAPIRequest(server.URL, log.NewNopLogger())
+	factor, err := makeRTEAPIRequest(server.URL, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 	assert.InEpsilon(t, float64(expectedFactor), factor["FR"].Factor, 0)
 }
@@ -126,6 +127,6 @@ func TestRTEAPIRequestFail(t *testing.T) {
 	defer server.Close()
 
 	// Make request to test server
-	_, err := makeRTEAPIRequest(server.URL, log.NewNopLogger())
+	_, err := makeRTEAPIRequest(server.URL, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	assert.Error(t, err)
 }

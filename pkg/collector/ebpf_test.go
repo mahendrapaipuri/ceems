@@ -2,12 +2,13 @@ package collector
 
 import (
 	"context"
+	"io"
+	"log/slog"
 	"os"
 	"os/user"
 	"slices"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -168,10 +169,10 @@ func TestNewEbpfCollector(t *testing.T) {
 	require.NoError(t, err)
 
 	// cgroup manager
-	cgManager, err := NewCgroupManager("slurm", log.NewNopLogger())
+	cgManager, err := NewCgroupManager("slurm", slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
-	collector, err := NewEbpfCollector(log.NewNopLogger(), cgManager)
+	collector, err := NewEbpfCollector(slog.New(slog.NewTextHandler(io.Discard, nil)), cgManager)
 	require.NoError(t, err)
 
 	// Setup background goroutine to capture metrics.
@@ -203,7 +204,7 @@ func TestActiveCgroupsV2(t *testing.T) {
 	require.NoError(t, err)
 
 	// cgroup manager
-	cgManager, err := NewCgroupManager("slurm", log.NewNopLogger())
+	cgManager, err := NewCgroupManager("slurm", slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	// ebpf opts
@@ -213,7 +214,7 @@ func TestActiveCgroupsV2(t *testing.T) {
 	}
 
 	c := ebpfCollector{
-		logger:        log.NewNopLogger(),
+		logger:        slog.New(slog.NewTextHandler(io.Discard, nil)),
 		cgroupManager: cgManager,
 
 		opts:              opts,
@@ -254,7 +255,7 @@ func TestActiveCgroupsV1(t *testing.T) {
 	require.NoError(t, err)
 
 	// cgroup manager
-	cgManager, err := NewCgroupManager("slurm", log.NewNopLogger())
+	cgManager, err := NewCgroupManager("slurm", slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	// ebpf opts
@@ -264,7 +265,7 @@ func TestActiveCgroupsV1(t *testing.T) {
 	}
 
 	c := ebpfCollector{
-		logger:        log.NewNopLogger(),
+		logger:        slog.New(slog.NewTextHandler(io.Discard, nil)),
 		cgroupManager: cgManager,
 
 		opts:              opts,

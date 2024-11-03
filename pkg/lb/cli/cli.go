@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
-	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/internal/common"
 	internal_runtime "github.com/mahendrapaipuri/ceems/internal/runtime"
 	"github.com/mahendrapaipuri/ceems/internal/security"
@@ -29,8 +28,8 @@ import (
 	"github.com/mahendrapaipuri/ceems/pkg/lb/frontend"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/serverpool"
 	"github.com/prometheus/common/config"
-	"github.com/prometheus/common/promlog"
-	"github.com/prometheus/common/promlog/flag"
+	"github.com/prometheus/common/promslog"
+	"github.com/prometheus/common/promslog/flag"
 	"github.com/prometheus/common/version"
 )
 
@@ -176,8 +175,8 @@ func (lb *CEEMSLoadBalancer) Main() error {
 		).Bool()
 	}
 
-	promlogConfig := &promlog.Config{}
-	flag.AddFlags(&lb.App, promlogConfig)
+	promslogConfig := &promslog.Config{}
+	flag.AddFlags(&lb.App, promslogConfig)
 	lb.App.Version(version.Print(lb.appName))
 	lb.App.UsageWriter(os.Stdout)
 	lb.App.HelpFlag.Short('h')
@@ -194,15 +193,16 @@ func (lb *CEEMSLoadBalancer) Main() error {
 	}
 
 	// Set logger here after properly configuring promlog
-	logger := promlog.New(promlogConfig)
+	logger := promslog.New(promslogConfig)
 
-	level.Info(logger).Log("msg", "Starting "+lb.appName, "version", version.Info())
-	level.Info(logger).Log("msg", "Build context", "build_context", version.BuildContext())
-	level.Info(logger).Log("fd_limits", internal_runtime.Uname())
-	level.Info(logger).Log("fd_limits", internal_runtime.FdLimits())
+	logger.Info("Starting "+lb.appName, "version", version.Info())
+	logger.Info(
+		"Operational information", "build_context", version.BuildContext(),
+		"host_details", internal_runtime.Uname(), "fd_limits", internal_runtime.FdLimits(),
+	)
 
 	runtime.GOMAXPROCS(*maxProcs)
-	level.Debug(logger).Log("msg", "Go MAXPROCS", "procs", runtime.GOMAXPROCS(0))
+	logger.Debug("Go MAXPROCS", "procs", runtime.GOMAXPROCS(0))
 
 	// We should STRONGLY advise in docs that CEEMS API server should not be started as root
 	// as that will end up dropping the privileges and running it as nobody user which can
@@ -227,7 +227,7 @@ func (lb *CEEMSLoadBalancer) Main() error {
 	// Create a pool of backend TSDB servers
 	manager, err := serverpool.New(config.LB.Strategy, logger)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create backend TSDB server pool", "err", err)
+		logger.Error("Failed to create backend TSDB server pool", "err", err)
 
 		return err
 	}
@@ -245,7 +245,7 @@ func (lb *CEEMSLoadBalancer) Main() error {
 	// Create frontend instance
 	loadBalancer, err := frontend.New(frontendConfig)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create load balancer frontend", "err", err)
+		logger.Error("Failed to create load balancer frontend", "err", err)
 
 		return err
 	}
@@ -257,7 +257,7 @@ func (lb *CEEMSLoadBalancer) Main() error {
 			if err != nil {
 				// If we dont unwrap original error, the URL string will be printed to log which
 				// might contain sensitive passwords
-				level.Error(logger).Log("msg", "Could not parse backend TSDB server URL", "err", errors.Unwrap(err))
+				logger.Error("Could not parse backend TSDB server URL", "err", errors.Unwrap(err))
 
 				continue
 			}
@@ -265,21 +265,19 @@ func (lb *CEEMSLoadBalancer) Main() error {
 			rp := httputil.NewSingleHostReverseProxy(webURL)
 			backendServer := tsdb.New(webURL, rp, logger)
 			rp.ErrorHandler = func(writer http.ResponseWriter, request *http.Request, err error) {
-				level.Error(logger).Log("msg", "Failed to handle the request", "host", webURL.Host, "err", err)
+				logger.Error("Failed to handle the request", "host", webURL.Host, "err", err)
 				backendServer.SetAlive(false)
 
 				// If already retried the request, return error
 				if !frontend.AllowRetry(request) {
-					level.Info(logger).
-						Log("msg", "Max retry attempts reached, terminating", "address", request.RemoteAddr, "path", request.URL.Path)
+					logger.Info("Max retry attempts reached, terminating", "address", request.RemoteAddr, "path", request.URL.Path)
 					http.Error(writer, "Service not available", http.StatusServiceUnavailable)
 
 					return
 				}
 
 				// Retry request and set context value so that we dont retry for second time
-				level.Info(logger).
-					Log("msg", "Attempting retry", "address", request.RemoteAddr, "path", request.URL.Path)
+				logger.Info("Attempting retry", "address", request.RemoteAddr, "path", request.URL.Path)
 				loadBalancer.Serve(
 					writer,
 					request.WithContext(
@@ -312,7 +310,7 @@ func (lb *CEEMSLoadBalancer) Main() error {
 	// it won't block the graceful shutdown handling below
 	go func() {
 		if err := loadBalancer.Start(); err != nil {
-			level.Error(logger).Log("msg", "Failed to start load balancer", "err", err)
+			logger.Error("Failed to start load balancer", "err", err)
 		}
 	}()
 
@@ -324,7 +322,7 @@ func (lb *CEEMSLoadBalancer) Main() error {
 
 	// Restore default behavior on the interrupt signal and notify user of shutdown.
 	stop()
-	level.Info(logger).Log("msg", "Shutting down gracefully, press Ctrl+C again to force")
+	logger.Info("Shutting down gracefully, press Ctrl+C again to force")
 
 	// The context is used to inform the server it has 5 seconds to finish
 	// the request it is currently handling
@@ -332,11 +330,11 @@ func (lb *CEEMSLoadBalancer) Main() error {
 	defer cancel()
 
 	if err := loadBalancer.Shutdown(shutDownCtx); err != nil {
-		level.Error(logger).Log("msg", "Failed to gracefully shutdown server", "err", err)
+		logger.Error("Failed to gracefully shutdown server", "err", err)
 	}
 
-	level.Info(logger).Log("msg", "Load balancer exiting")
-	level.Info(logger).Log("msg", "See you next time!!")
+	logger.Info("Load balancer exiting")
+	logger.Info("See you next time!!")
 
 	return nil
 }

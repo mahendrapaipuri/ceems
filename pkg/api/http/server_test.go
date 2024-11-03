@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -15,7 +16,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/db"
@@ -65,7 +65,7 @@ var (
 )
 
 func setupServer(d string) *CEEMSServer {
-	logger := log.NewNopLogger()
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	server, _, _ := New(
 		&Config{
 			Logger: logger,
@@ -90,41 +90,41 @@ func setupServer(d string) *CEEMSServer {
 	return server
 }
 
-func unitQuerier(ctx context.Context, db *sql.DB, q Query, logger log.Logger) ([]models.Unit, error) {
+func unitQuerier(ctx context.Context, db *sql.DB, q Query, logger *slog.Logger) ([]models.Unit, error) {
 	return mockServerUnits, nil
 }
 
-func usageQuerier(ctx context.Context, db *sql.DB, q Query, logger log.Logger) ([]models.Usage, error) {
+func usageQuerier(ctx context.Context, db *sql.DB, q Query, logger *slog.Logger) ([]models.Usage, error) {
 	return mockServerUsage, nil
 }
 
-func projectQuerier(ctx context.Context, db *sql.DB, q Query, logger log.Logger) ([]models.Project, error) {
+func projectQuerier(ctx context.Context, db *sql.DB, q Query, logger *slog.Logger) ([]models.Project, error) {
 	return mockServerProjects, errTest
 }
 
-func userQuerier(ctx context.Context, db *sql.DB, q Query, logger log.Logger) ([]models.User, error) {
+func userQuerier(ctx context.Context, db *sql.DB, q Query, logger *slog.Logger) ([]models.User, error) {
 	return mockServerUsers, nil
 }
 
-func clusterQuerier(ctx context.Context, db *sql.DB, q Query, logger log.Logger) ([]models.Cluster, error) {
+func clusterQuerier(ctx context.Context, db *sql.DB, q Query, logger *slog.Logger) ([]models.Cluster, error) {
 	return mockServerClusters, nil
 }
 
-func statQuerier(ctx context.Context, db *sql.DB, q Query, logger log.Logger) ([]models.Stat, error) {
+func statQuerier(ctx context.Context, db *sql.DB, q Query, logger *slog.Logger) ([]models.Stat, error) {
 	return mockStats, nil
 }
 
-func keyQuerier(ctx context.Context, db *sql.DB, q Query, logger log.Logger) ([]models.Key, error) {
+func keyQuerier(ctx context.Context, db *sql.DB, q Query, logger *slog.Logger) ([]models.Key, error) {
 	return mockKeys, nil
 }
 
-func keyQuerierErr(ctx context.Context, db *sql.DB, q Query, logger log.Logger) ([]models.Key, error) {
+func keyQuerierErr(ctx context.Context, db *sql.DB, q Query, logger *slog.Logger) ([]models.Key, error) {
 	return nil, errors.New("failed query")
 }
 
 func getMockUnits(
 	_ Query,
-	_ log.Logger,
+	_ *slog.Logger,
 ) ([]models.Unit, error) {
 	return mockServerUnits, nil
 }

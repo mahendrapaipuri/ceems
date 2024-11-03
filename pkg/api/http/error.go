@@ -4,10 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
-
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 )
 
 var (
@@ -61,7 +59,7 @@ var (
 )
 
 // Return error response for by setting errorString and errorType in response.
-func errorResponse[T any](w http.ResponseWriter, apiErr *apiError, logger log.Logger, data []T) {
+func errorResponse[T any](w http.ResponseWriter, apiErr *apiError, logger *slog.Logger, data []T) {
 	var code int
 
 	switch apiErr.typ { //nolint:exhaustive
@@ -96,7 +94,7 @@ func errorResponse[T any](w http.ResponseWriter, apiErr *apiError, logger log.Lo
 		Data:      data,
 	}
 	if err := json.NewEncoder(w).Encode(&response); err != nil {
-		level.Error(logger).Log("msg", "Failed to encode response", "err", err)
+		logger.Error("Failed to encode response", "err", err)
 		w.Write([]byte("KO"))
 	}
 }

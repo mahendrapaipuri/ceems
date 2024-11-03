@@ -1,11 +1,12 @@
 package collector
 
 import (
+	"io"
+	"log/slog"
 	"os"
 	"strconv"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -52,7 +53,7 @@ func TestAlloyDiscovererSlurmCgroupsV2(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	discoverer, err := NewAlloyTargetDiscoverer(log.NewNopLogger())
+	discoverer, err := NewAlloyTargetDiscoverer(slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	targets, err := discoverer.Discover()
@@ -69,7 +70,7 @@ func TestAlloyDiscovererSlurmCgroupsV1(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	discoverer, err := NewAlloyTargetDiscoverer(log.NewNopLogger())
+	discoverer, err := NewAlloyTargetDiscoverer(slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	targets, err := discoverer.Discover()
@@ -88,7 +89,7 @@ func TestAlloyDiscovererSlurmCgroupsV2WithEnviron(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	discoverer, err := NewAlloyTargetDiscoverer(log.NewNopLogger())
+	discoverer, err := NewAlloyTargetDiscoverer(slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	targets, err := discoverer.Discover()

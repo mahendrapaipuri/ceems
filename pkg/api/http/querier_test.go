@@ -4,11 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/stretchr/testify/assert"
@@ -32,7 +33,7 @@ func setupTestDB() (*sql.DB, error) {
 }
 
 func TestUnitsQuerier(t *testing.T) {
-	logger := log.NewNopLogger()
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
 	db, err := setupTestDB()
 	require.NoError(t, err, "failed to setup test DB")
@@ -171,7 +172,7 @@ func TestUnitsQuerier(t *testing.T) {
 }
 
 func TestUsageQuerier(t *testing.T) {
-	logger := log.NewNopLogger()
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
 	db, err := setupTestDB()
 	require.NoError(t, err, "failed to setup test DB")
@@ -224,7 +225,7 @@ func TestUsageQuerier(t *testing.T) {
 }
 
 func TestProjectQuerier(t *testing.T) {
-	logger := log.NewNopLogger()
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
 	db, err := setupTestDB()
 	require.NoError(t, err, "failed to setup test DB")
@@ -255,7 +256,7 @@ func TestProjectQuerier(t *testing.T) {
 }
 
 func TestUserQuerier(t *testing.T) {
-	logger := log.NewNopLogger()
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
 	db, err := setupTestDB()
 	require.NoError(t, err, "failed to setup test DB")
@@ -286,7 +287,7 @@ func TestUserQuerier(t *testing.T) {
 }
 
 func TestClusterQuerier(t *testing.T) {
-	logger := log.NewNopLogger()
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
 	db, err := setupTestDB()
 	require.NoError(t, err, "failed to setup test DB")
@@ -312,7 +313,7 @@ func TestClusterQuerier(t *testing.T) {
 }
 
 func TestStatsQuerier(t *testing.T) {
-	logger := log.NewNopLogger()
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
 	db, err := setupTestDB()
 	require.NoError(t, err, "failed to setup test DB")
@@ -339,7 +340,7 @@ func TestStatsQuerier(t *testing.T) {
 }
 
 func TestKeysQuerier(t *testing.T) {
-	logger := log.NewNopLogger()
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
 	db, err := setupTestDB()
 	require.NoError(t, err, "failed to setup test DB")

@@ -6,14 +6,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
 	"slices"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/mahendrapaipuri/ceems/pkg/api/resource"
@@ -36,7 +35,7 @@ type userProjectsCache struct {
 
 // openstackManager is the struct containing the configuration of a given openstack cluster.
 type openstackManager struct {
-	logger                     log.Logger
+	logger                     *slog.Logger
 	cluster                    models.Cluster
 	apiURLs                    map[string]*url.URL
 	client                     *http.Client
@@ -58,7 +57,7 @@ func init() {
 }
 
 // New returns a new openstackManager that returns compute instances.
-func New(cluster models.Cluster, logger log.Logger) (resource.Fetcher, error) {
+func New(cluster models.Cluster, logger *slog.Logger) (resource.Fetcher, error) {
 	// Make openstackManager configs from clusters
 	openstackManager := openstackManager{
 		logger:               logger,
@@ -94,7 +93,7 @@ func New(cluster models.Cluster, logger log.Logger) (resource.Fetcher, error) {
 
 	// Make a HTTP client for Openstack from client config
 	if openstackManager.client, err = config_util.NewClientFromConfig(cluster.Web.HTTPClientConfig, "openstack"); err != nil {
-		level.Error(logger).Log("msg", "Failed to create HTTP client for Openstack cluster", "id", cluster.ID, "err", err)
+		logger.Error("Failed to create HTTP client for Openstack cluster", "id", cluster.ID, "err", err)
 
 		return nil, err
 	}
@@ -102,7 +101,7 @@ func New(cluster models.Cluster, logger log.Logger) (resource.Fetcher, error) {
 	// Fetch compute and identity API URLs from extra_config
 	apiConfig := &apiConfig{}
 	if err := cluster.Extra.Decode(apiConfig); err != nil {
-		level.Error(logger).Log("msg", "Failed to decode extra_config for Openstack cluster", "id", cluster.ID, "err", err)
+		logger.Error("Failed to decode extra_config for Openstack cluster", "id", cluster.ID, "err", err)
 
 		return nil, err
 	}
@@ -111,14 +110,14 @@ func New(cluster models.Cluster, logger log.Logger) (resource.Fetcher, error) {
 	// Unwrap original error to avoid leaking sensitive passwords in output
 	openstackManager.apiURLs["compute"], err = url.Parse(apiConfig.ComputeAPIURL)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to parse compute service API URL for Openstack cluster", "id", cluster.ID, "err", err)
+		logger.Error("Failed to parse compute service API URL for Openstack cluster", "id", cluster.ID, "err", err)
 
 		return nil, errors.Unwrap(err)
 	}
 
 	openstackManager.apiURLs["identity"], err = url.Parse(apiConfig.IdentityAPIURL)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to parse identity service API URL for Openstack cluster", "id", cluster.ID, "err", err)
+		logger.Error("Failed to parse identity service API URL for Openstack cluster", "id", cluster.ID, "err", err)
 
 		return nil, errors.Unwrap(err)
 	}
@@ -130,12 +129,12 @@ func New(cluster models.Cluster, logger log.Logger) (resource.Fetcher, error) {
 
 	// Get initial users and projects
 	if err = openstackManager.updateUsersProjects(context.Background(), time.Now()); err != nil {
-		level.Error(logger).Log("msg", "Failed to update users and projects for Openstack cluster", "id", cluster.ID, "err", err)
+		logger.Error("Failed to update users and projects for Openstack cluster", "id", cluster.ID, "err", err)
 
 		return nil, err
 	}
 
-	level.Info(logger).Log("msg", "Fetching VM instances from Openstack cluster", "id", cluster.ID)
+	logger.Info("Fetching VM instances from Openstack cluster", "id", cluster.ID)
 
 	return &openstackManager, nil
 }
@@ -165,10 +164,10 @@ func (o *openstackManager) FetchUsersProjects(
 	// Doing this at each update interval is very resource consuming, so we cache
 	// the data for TTL period and update them whenever cache has expired.
 	if time.Since(o.userProjectsLastUpdateTime) > o.userProjectsCacheTTL {
-		level.Debug(o.logger).Log("msg", "Updating users and projects for Openstack cluster", "id", o.cluster.ID)
+		o.logger.Debug("Updating users and projects for Openstack cluster", "id", o.cluster.ID)
 
 		if err := o.updateUsersProjects(ctx, current); err != nil {
-			level.Error(o.logger).Log("msg", "Failed to update users and projects data for Openstack cluster", "id", o.cluster.ID, "err", err)
+			o.logger.Error("Failed to update users and projects data for Openstack cluster", "id", o.cluster.ID, "err", err)
 		}
 	}
 

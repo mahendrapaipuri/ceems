@@ -2,6 +2,8 @@ package serverpool
 
 import (
 	"fmt"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
@@ -10,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/backend"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,7 +23,7 @@ func TestUnAvailableBackends(t *testing.T) {
 	d := 0 * time.Second
 
 	// Start manager
-	manager, err := New("least-connection", log.NewNopLogger())
+	manager, err := New("least-connection", slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	// Make dummy backend servers
@@ -42,7 +43,7 @@ func TestUnAvailableBackends(t *testing.T) {
 			backendURLs[id][i] = backendURL
 
 			rp := httputil.NewSingleHostReverseProxy(backendURL)
-			backend := backend.New(backendURL, rp, log.NewNopLogger())
+			backend := backend.New(backendURL, rp, slog.New(slog.NewTextHandler(io.Discard, nil)))
 			backends[id][i] = backend
 			manager.Add(id, backend)
 		}
@@ -77,7 +78,7 @@ func TestLeastConnectionLB(t *testing.T) {
 	d := 0 * time.Second
 
 	// Start manager
-	manager, err := New("least-connection", log.NewNopLogger())
+	manager, err := New("least-connection", slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	backendURLs := make(map[string][]*url.URL, 2)
@@ -98,7 +99,7 @@ func TestLeastConnectionLB(t *testing.T) {
 			backendURLs[id][i] = backendURL
 
 			rp := httputil.NewSingleHostReverseProxy(backendURL)
-			backend := backend.New(backendURL, rp, log.NewNopLogger())
+			backend := backend.New(backendURL, rp, slog.New(slog.NewTextHandler(io.Discard, nil)))
 			backends[id][i] = backend
 			manager.Add(id, backend)
 		}

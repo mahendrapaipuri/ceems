@@ -5,15 +5,16 @@ package collector
 
 import (
 	"context"
+	"io"
+	"log/slog"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 )
 
 func TestEmissionsCollector(t *testing.T) {
-	collector, err := NewEmissionsCollector(log.NewNopLogger())
+	collector, err := NewEmissionsCollector(slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	// Setup background goroutine to capture metrics.

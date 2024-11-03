@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/pkg/api/helper"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 )
@@ -136,7 +135,7 @@ func (o *openstackManager) usersProjectsAssoc(ctx context.Context, current time.
 	}
 
 	if len(userProjects) < len(userIDs) {
-		level.Warn(o.logger).Log("msg", "Failed to get projects of few users", "id", o.cluster.ID, "total_users", len(userIDs), "failed_user_project_requests", len(userIDs)-len(userProjects))
+		o.logger.Warn("Failed to get projects of few users", "id", o.cluster.ID, "total_users", len(userIDs), "failed_user_project_requests", len(userIDs)-len(userProjects))
 	}
 
 	projectUsersList := make(map[string][]string)
@@ -206,9 +205,7 @@ func (o *openstackManager) usersProjectsAssoc(ctx context.Context, current time.
 		}
 	}
 
-	level.Info(o.logger).
-		Log("msg", "Openstack user data fetched",
-			"cluster_id", o.cluster.ID, "num_users", len(userModels), "num_projects", len(projectModels))
+	o.logger.Info("Openstack user data fetched", "cluster_id", o.cluster.ID, "num_users", len(userModels), "num_projects", len(projectModels))
 
 	return userProjectsCache{userModels, projectModels, userIDNameMap, projectIDNameMap}, nil
 }

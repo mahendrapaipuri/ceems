@@ -3,13 +3,13 @@ package resource
 import (
 	"context"
 	"fmt"
+	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/stretchr/testify/assert"
@@ -18,12 +18,12 @@ import (
 
 // mockResourceManager struct.
 type mockResourceManager struct {
-	logger log.Logger
+	logger *slog.Logger
 }
 
 // NewMockResourceManager returns a new defaultResourceManager that returns empty compute units.
-func NewMockResourceManager(cluster models.Cluster, logger log.Logger) (Fetcher, error) {
-	level.Info(logger).Log("msg", "Default resource manager activated")
+func NewMockResourceManager(cluster models.Cluster, logger *slog.Logger) (Fetcher, error) {
+	logger.Info("Default resource manager activated")
 
 	return &mockResourceManager{
 		logger: logger,
@@ -292,7 +292,7 @@ func TestNewManager(t *testing.T) {
 	Register("mock", NewMockResourceManager)
 
 	// Create new manager
-	manager, err := New(log.NewNopLogger())
+	manager, err := New(slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	// Fetch units
@@ -318,7 +318,7 @@ func TestNewManagerWithNoClusters(t *testing.T) {
 	Register("mock", NewMockResourceManager)
 
 	// Create new manager
-	manager, err := New(log.NewNopLogger())
+	manager, err := New(slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	// Fetch units

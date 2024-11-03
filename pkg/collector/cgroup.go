@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"math"
 	"os"
 	"path/filepath"
@@ -18,8 +19,6 @@ import (
 	"github.com/containerd/cgroups/v3"
 	"github.com/containerd/cgroups/v3/cgroup1"
 	"github.com/containerd/cgroups/v3/cgroup2"
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/procfs"
 	"github.com/prometheus/procfs/blockdevice"
@@ -116,7 +115,7 @@ func (c *cgroup) String() string {
 
 // cgroupManager is the container that have cgroup information of resource manager.
 type cgroupManager struct {
-	logger           log.Logger
+	logger           *slog.Logger
 	fs               procfs.FS
 	mode             cgroups.CGMode    // cgroups mode: unified, legacy, hybrid
 	root             string            // cgroups root
@@ -198,7 +197,7 @@ func (c *cgroupManager) discover() ([]cgroup, error) {
 		// Get relative path of cgroup
 		rel, err := filepath.Rel(c.root, p)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "Failed to resolve relative path for cgroup", "path", p, "err", err)
+			c.logger.Error("Failed to resolve relative path for cgroup", "path", p, "err", err)
 
 			return nil
 		}
@@ -206,7 +205,7 @@ func (c *cgroupManager) discover() ([]cgroup, error) {
 		// Unescape UTF-8 characters in cgroup path
 		sanitizedPath, err := unescapeString(p)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "Failed to sanitize cgroup path", "path", p, "err", err)
+			c.logger.Error("Failed to sanitize cgroup path", "path", p, "err", err)
 
 			return nil
 		}
@@ -219,7 +218,7 @@ func (c *cgroupManager) discover() ([]cgroup, error) {
 
 		id := strings.TrimSpace(cgroupIDMatches[1])
 		if id == "" {
-			level.Error(c.logger).Log("msg", "Empty cgroup ID", "path", p)
+			c.logger.Error("Empty cgroup ID", "path", p)
 
 			return nil
 		}
@@ -257,8 +256,7 @@ func (c *cgroupManager) discover() ([]cgroup, error) {
 
 		return nil
 	}); err != nil {
-		level.Error(c.logger).
-			Log("msg", "Error walking cgroup subsystem", "path", c.mountPoint, "err", err)
+		c.logger.Error("Error walking cgroup subsystem", "path", c.mountPoint, "err", err)
 
 		return nil, err
 	}
@@ -278,11 +276,11 @@ func (c *cgroupManager) discover() ([]cgroup, error) {
 }
 
 // NewCgroupManager returns an instance of cgroupManager based on resource manager.
-func NewCgroupManager(name string, logger log.Logger) (*cgroupManager, error) {
+func NewCgroupManager(name string, logger *slog.Logger) (*cgroupManager, error) {
 	// Instantiate a new Proc FS
 	fs, err := procfs.NewFS(*procfsPath)
 	if err != nil {
-		level.Error(logger).Log("msg", "Unable to open procfs", "path", *procfsPath, "err", err)
+		logger.Error("Unable to open procfs", "path", *procfsPath, "err", err)
 
 		return nil, err
 	}
@@ -420,7 +418,7 @@ type cgMetric struct {
 
 // cgroupCollector collects cgroup metrics for different resource managers.
 type cgroupCollector struct {
-	logger            log.Logger
+	logger            *slog.Logger
 	cgroupManager     *cgroupManager
 	opts              cgroupOpts
 	hostname          string
@@ -457,7 +455,7 @@ type cgroupOpts struct {
 }
 
 // NewCgroupCollector returns a new cgroupCollector exposing a summary of cgroups.
-func NewCgroupCollector(logger log.Logger, cgManager *cgroupManager, opts cgroupOpts) (*cgroupCollector, error) {
+func NewCgroupCollector(logger *slog.Logger, cgManager *cgroupManager, opts cgroupOpts) (*cgroupCollector, error) {
 	// Get total memory of host
 	var memTotal float64
 
@@ -467,7 +465,7 @@ func NewCgroupCollector(logger log.Logger, cgManager *cgroupManager, opts cgroup
 			memTotal = memInfo["MemTotal_bytes"]
 		}
 	} else {
-		level.Error(logger).Log("msg", "Failed to get total memory of the host", "err", err)
+		logger.Error("Failed to get total memory of the host", "err", err)
 	}
 
 	defer file.Close()
@@ -482,10 +480,10 @@ func NewCgroupCollector(logger log.Logger, cgManager *cgroupManager, opts cgroup
 				blockDevices[fmt.Sprintf("%d:%d", s.Info.MajorNumber, s.Info.MinorNumber)] = s.Info.DeviceName
 			}
 		} else {
-			level.Error(logger).Log("msg", "Failed to get stats of block devices on the host", "err", err)
+			logger.Error("Failed to get stats of block devices on the host", "err", err)
 		}
 	} else {
-		level.Error(logger).Log("msg", "Failed to get list of block devices on the host", "err", err)
+		logger.Error("Failed to get list of block devices on the host", "err", err)
 	}
 
 	return &cgroupCollector{
@@ -801,14 +799,14 @@ func (c *cgroupCollector) getCPUs(path string) ([]string, error) {
 
 	cpusData, err := os.ReadFile(cpusPath)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "Error reading cpuset", "cpuset", cpusPath, "err", err)
+		c.logger.Error("Error reading cpuset", "cpuset", cpusPath, "err", err)
 
 		return nil, err
 	}
 
 	cpus, err := c.parseCPUSet(strings.TrimSuffix(string(cpusData), "\n"))
 	if err != nil {
-		level.Error(c.logger).Log("msg", "Error parsing cpuset", "cpuset", cpusPath, "err", err)
+		c.logger.Error("Error parsing cpuset", "cpuset", cpusPath, "err", err)
 
 		return nil, err
 	}
@@ -820,13 +818,13 @@ func (c *cgroupCollector) getCPUs(path string) ([]string, error) {
 func (c *cgroupCollector) statsV1(metric *cgMetric) {
 	path := metric.path
 
-	level.Debug(c.logger).Log("msg", "Loading cgroup v1", "path", path)
+	c.logger.Debug("Loading cgroup v1", "path", path)
 
 	ctrl, err := cgroup1.Load(cgroup1.StaticPath(path), cgroup1.WithHierarchy(subsystem))
 	if err != nil {
 		metric.err = true
 
-		level.Error(c.logger).Log("msg", "Failed to load cgroups", "path", path, "err", err)
+		c.logger.Error("Failed to load cgroups", "path", path, "err", err)
 
 		return
 	}
@@ -836,7 +834,7 @@ func (c *cgroupCollector) statsV1(metric *cgMetric) {
 	if err != nil {
 		metric.err = true
 
-		level.Error(c.logger).Log("msg", "Failed to stat cgroups", "path", path, "err", err)
+		c.logger.Error("Failed to stat cgroups", "path", path, "err", err)
 
 		return
 	}
@@ -844,7 +842,7 @@ func (c *cgroupCollector) statsV1(metric *cgMetric) {
 	if stats == nil {
 		metric.err = true
 
-		level.Error(c.logger).Log("msg", "Cgroup stats are nil", "path", path)
+		c.logger.Error("Cgroup stats are nil", "path", path)
 
 		return
 	}
@@ -938,14 +936,14 @@ func (c *cgroupCollector) statsV1(metric *cgMetric) {
 func (c *cgroupCollector) statsV2(metric *cgMetric) {
 	path := metric.path
 
-	level.Debug(c.logger).Log("msg", "Loading cgroup v2", "path", path)
+	c.logger.Debug("Loading cgroup v2", "path", path)
 
 	// Load cgroups
 	ctrl, err := cgroup2.Load(path, cgroup2.WithMountpoint(*cgroupfsPath))
 	if err != nil {
 		metric.err = true
 
-		level.Error(c.logger).Log("msg", "Failed to load cgroups", "path", path, "err", err)
+		c.logger.Error("Failed to load cgroups", "path", path, "err", err)
 
 		return
 	}
@@ -955,7 +953,7 @@ func (c *cgroupCollector) statsV2(metric *cgMetric) {
 	if err != nil {
 		metric.err = true
 
-		level.Error(c.logger).Log("msg", "Failed to stat cgroups", "path", path, "err", err)
+		c.logger.Error("Failed to stat cgroups", "path", path, "err", err)
 
 		return
 	}
@@ -963,7 +961,7 @@ func (c *cgroupCollector) statsV2(metric *cgMetric) {
 	if stats == nil {
 		metric.err = true
 
-		level.Error(c.logger).Log("msg", "Cgroup stats are nil", "path", path)
+		c.logger.Error("Cgroup stats are nil", "path", path)
 
 		return
 	}

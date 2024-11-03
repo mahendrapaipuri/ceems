@@ -1,9 +1,8 @@
 package emissions
 
 import (
+	"log/slog"
 	"net/http"
-
-	"github.com/go-kit/log"
 )
 
 //nolint:misspell
@@ -185,7 +184,7 @@ type Provider interface {
 type FactorProviders struct {
 	Providers     map[string]Provider
 	ProviderNames map[string]string
-	logger        log.Logger
+	logger        *slog.Logger
 }
 
 // PayLoad contains emissions factor.

@@ -2,12 +2,13 @@ package collector
 
 import (
 	"fmt"
+	"io"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/ceems/internal/common"
 	"github.com/prometheus/exporter-toolkit/web"
 	"github.com/stretchr/testify/assert"
@@ -28,7 +29,7 @@ func TestCEEMSExporterServer(t *testing.T) {
 		{
 			name: "separate metrics and landing page",
 			config: &Config{
-				Logger:    log.NewNopLogger(),
+				Logger:    slog.New(slog.NewTextHandler(io.Discard, nil)),
 				Collector: &CEEMSCollector{},
 				Web: WebConfig{
 					MetricsPath: "/metrics",
@@ -56,7 +57,7 @@ func TestCEEMSExporterServer(t *testing.T) {
 		{
 			name: "only metrics without landing page",
 			config: &Config{
-				Logger:    log.NewNopLogger(),
+				Logger:    slog.New(slog.NewTextHandler(io.Discard, nil)),
 				Collector: &CEEMSCollector{},
 				Web: WebConfig{
 					MetricsPath: "/",
@@ -80,7 +81,7 @@ func TestCEEMSExporterServer(t *testing.T) {
 		{
 			name: "separate metrics and landing page and with debug server",
 			config: &Config{
-				Logger:    log.NewNopLogger(),
+				Logger:    slog.New(slog.NewTextHandler(io.Discard, nil)),
 				Collector: &CEEMSCollector{},
 				Web: WebConfig{
 					MetricsPath:       "/metrics",

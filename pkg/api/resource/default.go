@@ -2,10 +2,9 @@ package resource
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 )
 
@@ -13,7 +12,7 @@ const defaultManager = "default"
 
 // defaultResourceManager struct.
 type defaultResourceManager struct {
-	logger log.Logger
+	logger *slog.Logger
 }
 
 func init() {
@@ -22,8 +21,8 @@ func init() {
 }
 
 // NewDefaultResourceManager returns a new defaultResourceManager that returns empty compute units.
-func NewDefaultResourceManager(cluster models.Cluster, logger log.Logger) (Fetcher, error) {
-	level.Info(logger).Log("msg", "Default resource manager activated")
+func NewDefaultResourceManager(cluster models.Cluster, logger *slog.Logger) (Fetcher, error) {
+	logger.Info("Default resource manager activated")
 
 	return &defaultResourceManager{
 		logger: logger,
@@ -36,7 +35,7 @@ func (d *defaultResourceManager) FetchUnits(
 	start time.Time,
 	end time.Time,
 ) ([]models.ClusterUnits, error) {
-	level.Info(d.logger).Log("msg", "Empty units fetched from default NoOp cluster")
+	d.logger.Info("Empty units fetched from default NoOp cluster")
 
 	return []models.ClusterUnits{
 		{
@@ -50,7 +49,7 @@ func (d *defaultResourceManager) FetchUsersProjects(
 	_ context.Context,
 	currentTime time.Time,
 ) ([]models.ClusterUsers, []models.ClusterProjects, error) {
-	level.Info(d.logger).Log("msg", "Empty users and projects fetched from default NoOp cluster")
+	d.logger.Info("Empty users and projects fetched from default NoOp cluster")
 
 	return []models.ClusterUsers{
 			{

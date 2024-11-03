@@ -3,6 +3,8 @@ package common
 import (
 	"context"
 	"encoding/json"
+	"io"
+	"log/slog"
 	"math"
 	"net/http"
 	"net/http/httptest"
@@ -10,7 +12,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/ceems/pkg/grafana"
 	"github.com/prometheus/common/config"
 	"github.com/stretchr/testify/assert"
@@ -165,7 +166,7 @@ func TestGrafanaClient(t *testing.T) {
 	var client *grafana.Grafana
 
 	var err error
-	client, err = NewGrafanaClient(config, log.NewNopLogger())
+	client, err = NewGrafanaClient(config, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err, "failed to create Grafana client")
 
 	teamMembers, err := client.TeamMembers(context.Background(), []string{"1"})

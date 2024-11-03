@@ -5,11 +5,10 @@ package slurm
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/internal/security"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
@@ -34,7 +33,7 @@ const (
 
 // slurmScheduler is the struct containing the configuration of a given slurm cluster.
 type slurmScheduler struct {
-	logger           log.Logger
+	logger           *slog.Logger
 	cluster          models.Cluster
 	fetchMode        string // Whether to fetch from REST API or CLI commands
 	cmdExecMode      string // If sacct mode is chosen, the mode of executing command, ie, sudo or cap or native
@@ -70,7 +69,7 @@ func init() {
 }
 
 // New returns a new SlurmScheduler that returns batch job stats.
-func New(cluster models.Cluster, logger log.Logger) (resource.Fetcher, error) {
+func New(cluster models.Cluster, logger *slog.Logger) (resource.Fetcher, error) {
 	// Make slurmCluster configs from clusters
 	slurmScheduler := slurmScheduler{
 		logger:           logger,
@@ -82,7 +81,7 @@ func New(cluster models.Cluster, logger log.Logger) (resource.Fetcher, error) {
 		return nil, err
 	}
 
-	level.Info(logger).Log("msg", "Fetching batch jobs from SLURM clusters", "id", cluster.ID)
+	logger.Info("Fetching batch jobs from SLURM clusters", "id", cluster.ID)
 
 	return &slurmScheduler, nil
 }
@@ -99,8 +98,7 @@ func (s *slurmScheduler) FetchUnits(
 	var err error
 	if s.fetchMode == cliMode {
 		if jobs, err = s.fetchFromSacct(ctx, start, end); err != nil {
-			level.Error(s.logger).
-				Log("msg", "Failed to execute SLURM sacct command", "cluster_id", s.cluster.ID, "err", err)
+			s.logger.Error("Failed to execute SLURM sacct command", "cluster_id", s.cluster.ID, "err", err)
 
 			return nil, err
 		}
@@ -124,8 +122,7 @@ func (s *slurmScheduler) FetchUsersProjects(
 	var err error
 	if s.fetchMode == cliMode {
 		if users, projects, err = s.fetchFromSacctMgr(ctx, current); err != nil {
-			level.Error(s.logger).
-				Log("msg", "Failed to execute SLURM sacctmgr command", "cluster_id", s.cluster.ID, "err", err)
+			s.logger.Error("Failed to execute SLURM sacctmgr command", "cluster_id", s.cluster.ID, "err", err)
 
 			return nil, nil, err
 		}
@@ -148,15 +145,14 @@ func (s *slurmScheduler) fetchFromSacct(ctx context.Context, start time.Time, en
 	// Execute sacct command between start and end times
 	sacctOutput, err := s.runSacctCmd(ctx, startTime, endTime)
 	if err != nil {
-		level.Error(s.logger).Log("msg", "Failed to run sacct command", "cluster_id", s.cluster.ID, "err", err)
+		s.logger.Error("Failed to run sacct command", "cluster_id", s.cluster.ID, "err", err)
 
 		return []models.Unit{}, err
 	}
 
 	// Parse sacct output and create BatchJob structs slice
 	jobs, numJobs := parseSacctCmdOutput(string(sacctOutput), start, end)
-	level.Info(s.logger).
-		Log("msg", "SLURM jobs fetched", "cluster_id", s.cluster.ID, "start", start, "end", end, "num_jobs", numJobs)
+	s.logger.Info("SLURM jobs fetched", "cluster_id", s.cluster.ID, "start", start, "end", end, "num_jobs", numJobs)
 
 	return jobs, nil
 }
@@ -172,16 +168,14 @@ func (s *slurmScheduler) fetchFromSacctMgr(
 	// Execute sacctmgr command
 	sacctMgrOutput, err := s.runSacctMgrCmd(ctx)
 	if err != nil {
-		level.Error(s.logger).Log("msg", "Failed to run sacctmgr command", "cluster_id", s.cluster.ID, "err", err)
+		s.logger.Error("Failed to run sacctmgr command", "cluster_id", s.cluster.ID, "err", err)
 
 		return nil, nil, err
 	}
 
 	// Parse sacctmgr output to get user project associations
 	users, projects := parseSacctMgrCmdOutput(string(sacctMgrOutput), currentTime)
-	level.Info(s.logger).
-		Log("msg", "SLURM user account data fetched",
-			"cluster_id", s.cluster.ID, "num_users", len(users), "num_accounts", len(projects))
+	s.logger.Info("SLURM user account data fetched", "cluster_id", s.cluster.ID, "num_users", len(users), "num_accounts", len(projects))
 
 	return users, projects, nil
 }

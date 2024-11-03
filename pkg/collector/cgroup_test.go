@@ -5,10 +5,11 @@ package collector
 
 import (
 	"context"
+	"io"
+	"log/slog"
 	"testing"
 
 	"github.com/containerd/cgroups/v3"
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,7 +36,7 @@ func TestNewCgroupCollector(t *testing.T) {
 		collectPSIStats:     true,
 	}
 
-	collector, err := NewCgroupCollector(log.NewNopLogger(), cgManager, opts)
+	collector, err := NewCgroupCollector(slog.New(slog.NewTextHandler(io.Discard, nil)), cgManager, opts)
 	require.NoError(t, err)
 
 	// Setup background goroutine to capture metrics.
@@ -81,7 +82,7 @@ func TestCgroupsV2Metrics(t *testing.T) {
 		cgroupManager: cgManager,
 		opts:          opts,
 		hostMemTotal:  float64(123456),
-		logger:        log.NewNopLogger(),
+		logger:        slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 
 	expectedMetrics := cgMetric{
@@ -136,7 +137,7 @@ func TestCgroupsV1Metrics(t *testing.T) {
 	}
 
 	c := cgroupCollector{
-		logger:        log.NewNopLogger(),
+		logger:        slog.New(slog.NewTextHandler(io.Discard, nil)),
 		cgroupManager: cgManager,
 		opts:          opts,
 		hostMemTotal:  float64(123456),
@@ -177,7 +178,7 @@ func TestNewCgroupManagerV2(t *testing.T) {
 	require.NoError(t, err)
 
 	// Slurm case
-	manager, err := NewCgroupManager("slurm", log.NewNopLogger())
+	manager, err := NewCgroupManager("slurm", slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	assert.Equal(t, "testdata/sys/fs/cgroup/system.slice/slurmstepd.scope", manager.mountPoint)
@@ -189,7 +190,7 @@ func TestNewCgroupManagerV2(t *testing.T) {
 	assert.Len(t, cgroups, 3)
 
 	// libvirt case
-	manager, err = NewCgroupManager("libvirt", log.NewNopLogger())
+	manager, err = NewCgroupManager("libvirt", slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	assert.Equal(t, "testdata/sys/fs/cgroup/machine.slice", manager.mountPoint)
@@ -211,7 +212,7 @@ func TestNewCgroupManagerV1(t *testing.T) {
 	require.NoError(t, err)
 
 	// Slurm case
-	manager, err := NewCgroupManager("slurm", log.NewNopLogger())
+	manager, err := NewCgroupManager("slurm", slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	assert.Equal(t, "testdata/sys/fs/cgroup/cpuacct/slurm", manager.mountPoint)
@@ -223,7 +224,7 @@ func TestNewCgroupManagerV1(t *testing.T) {
 	assert.Len(t, cgroups, 3)
 
 	// libvirt case
-	manager, err = NewCgroupManager("libvirt", log.NewNopLogger())
+	manager, err = NewCgroupManager("libvirt", slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	assert.Equal(t, "testdata/sys/fs/cgroup/cpuacct/machine.slice", manager.mountPoint)
@@ -235,7 +236,7 @@ func TestNewCgroupManagerV1(t *testing.T) {
 	assert.Len(t, cgroups, 4)
 
 	// Check error for unknown resource manager
-	_, err = NewCgroupManager("unknown", log.NewNopLogger())
+	_, err = NewCgroupManager("unknown", slog.New(slog.NewTextHandler(io.Discard, nil)))
 	assert.Error(t, err)
 }
 

@@ -5,12 +5,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"reflect"
 	"regexp"
 	"strings"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/internal/structset"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
@@ -176,7 +175,7 @@ func countRows(ctx context.Context, dbConn *sql.DB, query Query) (int, error) {
 }
 
 // Querier queries the DB and return the response.
-func Querier[T any](ctx context.Context, dbConn *sql.DB, query Query, logger log.Logger) ([]T, error) {
+func Querier[T any](ctx context.Context, dbConn *sql.DB, query Query, logger *slog.Logger) ([]T, error) {
 	var numRows int
 
 	var err error
@@ -185,7 +184,7 @@ func Querier[T any](ctx context.Context, dbConn *sql.DB, query Query, logger log
 	switch any(*new(T)).(type) {
 	case models.Unit:
 		if numRows, err = countRows(ctx, dbConn, query); err != nil {
-			level.Error(logger).Log("msg", "Failed to get rows count", "err", err)
+			logger.Error("Failed to get rows count", "err", err)
 
 			return nil, err
 		}
@@ -198,7 +197,7 @@ func Querier[T any](ctx context.Context, dbConn *sql.DB, query Query, logger log
 
 	queryStmt, err := dbConn.Prepare(queryString)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed prepare query statement",
+		logger.Error("Failed prepare query statement",
 			"query", queryString, "queryParams", strings.Join(queryParams, ","), "err", err,
 		)
 
@@ -214,7 +213,7 @@ func Querier[T any](ctx context.Context, dbConn *sql.DB, query Query, logger log
 
 	rows, err := queryStmt.QueryContext(ctx, qParams...)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to get rows",
+		logger.Error("Failed to get rows",
 			"query", queryString, "queryParams", strings.Join(queryParams, ","), "err", err,
 		)
 
@@ -223,8 +222,8 @@ func Querier[T any](ctx context.Context, dbConn *sql.DB, query Query, logger log
 	defer rows.Close()
 
 	// Loop through rows, using Scan to assign column data to struct fields.
-	level.Debug(logger).Log(
-		"msg", "Rows", "query", queryString, "queryParams", strings.Join(queryParams, ","),
+	logger.Debug(
+		"Rows", "query", queryString, "queryParams", strings.Join(queryParams, ","),
 		"num_rows", numRows, "error", err,
 	)
 

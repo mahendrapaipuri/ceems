@@ -3,17 +3,16 @@ package updaterone
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/mahendrapaipuri/ceems/pkg/api/updater"
 )
 
 type mockUpdater struct {
-	logger log.Logger
+	logger *slog.Logger
 }
 
 const mockUpdaterHookName = "mock-one"
@@ -31,8 +30,8 @@ func init() {
 }
 
 // NewMockUpdaterHook returns a new NewMockUpdaterHook to update units
-func NewMockUpdaterHook(instance updater.Instance, logger log.Logger) (updater.Updater, error) {
-	level.Info(logger).Log("msg", "CLI args", "arg1", mockUpdaterHookCLI)
+func NewMockUpdaterHook(instance updater.Instance, logger *slog.Logger) (updater.Updater, error) {
+	logger.Info("CLI args", "arg1", mockUpdaterHookCLI)
 
 	return &mockUpdater{
 		logger: logger,

@@ -4,14 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"regexp"
 	"slices"
 	"strings"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	ceems_api "github.com/mahendrapaipuri/ceems/pkg/api/http"
 )
 
@@ -61,7 +60,7 @@ func (c *ceems) clustersEndpoint() *url.URL {
 
 // authenticationMiddleware implements the auth middleware for LB.
 type authenticationMiddleware struct {
-	logger     log.Logger
+	logger     *slog.Logger
 	ceems      ceems
 	clusterIDs []string
 }
@@ -87,9 +86,8 @@ func (amw *authenticationMiddleware) isUserUnit(
 		// Create a new POST request
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, amw.ceems.verifyEndpoint().String(), nil)
 		if err != nil {
-			level.Debug(amw.logger).
-				Log("msg", "Failed to create new request for unit ownership verification",
-					"user", user, "queried_uuids", strings.Join(uuids, ","), "err", err)
+			amw.logger.Debug("Failed to create new request for unit ownership verification",
+				"user", user, "queried_uuids", strings.Join(uuids, ","), "err", err)
 
 			return false
 		}
@@ -104,14 +102,13 @@ func (amw *authenticationMiddleware) isUserUnit(
 		// If request failed, forbid the query. It can happen when CEEMS API server
 		// goes offline and we should wait for it to come back online
 		if resp, err := amw.ceems.client.Do(req); err != nil {
-			level.Debug(amw.logger).
-				Log("msg", "Failed to make request for unit ownership verification",
-					"user", user, "queried_uuids", strings.Join(uuids, ","), "err", err)
+			amw.logger.Debug("Failed to make request for unit ownership verification",
+				"user", user, "queried_uuids", strings.Join(uuids, ","), "err", err)
 
 			return false
 		} else if resp.StatusCode != http.StatusOK {
 			defer resp.Body.Close()
-			level.Debug(amw.logger).Log("msg", "Unauthorised query", "user", user,
+			amw.logger.Debug("Unauthorised query", "user", user,
 				"queried_uuids", strings.Join(uuids, ","), "status_code", resp.StatusCode)
 
 			return false
@@ -163,8 +160,7 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 		// Check if username header is available
 		loggedUser = r.Header.Get(grafanaUserHeader)
 		if loggedUser == "" {
-			level.Error(amw.logger).
-				Log("msg", "Grafana user Header not found. Denying authentication")
+			amw.logger.Error("Grafana user Header not found. Denying authentication")
 
 			// Write an error and stop the handler chain
 			w.WriteHeader(http.StatusUnauthorized)
@@ -175,14 +171,14 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 				Error:     "no user header found",
 			}
 			if err := json.NewEncoder(w).Encode(&response); err != nil {
-				level.Error(amw.logger).Log("msg", "Failed to encode response", "err", err)
+				amw.logger.Error("Failed to encode response", "err", err)
 				w.Write([]byte("KO"))
 			}
 
 			return
 		}
 
-		level.Debug(amw.logger).Log("logged_user", loggedUser, "url", r.URL)
+		amw.logger.Debug("middleware", "logged_user", loggedUser, "url", r.URL)
 
 		// Set logged user header
 		r.Header.Set(loggedUserHeader, loggedUser)
@@ -200,7 +196,7 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 				Error:     "query could not be parsed",
 			}
 			if err := json.NewEncoder(w).Encode(&response); err != nil {
-				level.Error(amw.logger).Log("msg", "Failed to encode response", "err", err)
+				amw.logger.Error("Failed to encode response", "err", err)
 				w.Write([]byte("KO"))
 			}
 
@@ -223,7 +219,7 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 					Error:     "invalid cluster ID",
 				}
 				if err := json.NewEncoder(w).Encode(&response); err != nil {
-					level.Error(amw.logger).Log("msg", "Failed to encode response", "err", err)
+					amw.logger.Error("Failed to encode response", "err", err)
 					w.Write([]byte("KO"))
 				}
 
@@ -239,7 +235,7 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 				Error:     "invalid query",
 			}
 			if err := json.NewEncoder(w).Encode(&response); err != nil {
-				level.Error(amw.logger).Log("msg", "Failed to encode response", "err", err)
+				amw.logger.Error("Failed to encode response", "err", err)
 				w.Write([]byte("KO"))
 			}
 
@@ -257,7 +253,7 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 				Error:     "user do not have permissions to view unit metrics",
 			}
 			if err := json.NewEncoder(w).Encode(&response); err != nil {
-				level.Error(amw.logger).Log("msg", "Failed to encode response", "err", err)
+				amw.logger.Error("Failed to encode response", "err", err)
 				w.Write([]byte("KO"))
 			}
 

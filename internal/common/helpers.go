@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
+	"log/slog"
 	"math"
 	"net"
 	"net/url"
@@ -12,8 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
 	"github.com/mahendrapaipuri/ceems/pkg/grafana"
 	"github.com/zeebo/xxh3"
@@ -34,9 +33,9 @@ func Round(value int64, nearest int64) int64 {
 }
 
 // TimeTrack tracks execution time of each function.
-func TimeTrack(start time.Time, name string, logger log.Logger) {
+func TimeTrack(start time.Time, name string, logger *slog.Logger) {
 	elapsed := time.Since(start)
-	level.Debug(logger).Log("msg", name, "elapsed_time", elapsed)
+	logger.Debug(name, "elapsed_time", elapsed)
 }
 
 // SanitizeFloat replaces +/-Inf and NaN with zero.
@@ -108,7 +107,7 @@ func GetFreePort() (int, *net.TCPListener, error) {
 }
 
 // NewGrafanaClient instantiates a new instance of Grafana client.
-func NewGrafanaClient(config *GrafanaWebConfig, logger log.Logger) (*grafana.Grafana, error) {
+func NewGrafanaClient(config *GrafanaWebConfig, logger *slog.Logger) (*grafana.Grafana, error) {
 	grafanaClient, err := grafana.New(
 		config.URL,
 		config.HTTPClientConfig,

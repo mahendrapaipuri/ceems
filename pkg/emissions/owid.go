@@ -7,16 +7,14 @@ import (
 	"bytes"
 	"encoding/csv"
 	"fmt"
+	"log/slog"
 	"strconv"
-
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 )
 
 const owidEmissionsProvider = "owid"
 
 type owidProvider struct {
-	logger       log.Logger
+	logger       *slog.Logger
 	emissionData EmissionFactors
 }
 
@@ -79,7 +77,7 @@ func readOWIDData(contents []byte) (EmissionFactors, error) {
 }
 
 // NewOWIDProvider returns a new Provider that returns emission factor from OWID data.
-func NewOWIDProvider(logger log.Logger) (Provider, error) {
+func NewOWIDProvider(logger *slog.Logger) (Provider, error) {
 	// Read CSV file
 	carbonIntensityCSV, err := dataDir.ReadFile("data/carbon-intensity-owid.csv")
 	if err != nil {
@@ -92,7 +90,7 @@ func NewOWIDProvider(logger log.Logger) (Provider, error) {
 		return nil, err
 	}
 
-	level.Info(logger).Log("msg", "Emission factor from OWID data will be reported.")
+	logger.Info("Emission factor from OWID data will be reported.")
 
 	return &owidProvider{
 		logger:       logger,

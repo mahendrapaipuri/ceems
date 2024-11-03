@@ -14,7 +14,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/log/level"
 	internal_osexec "github.com/mahendrapaipuri/ceems/internal/osexec"
 	"github.com/mahendrapaipuri/ceems/internal/security"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
@@ -43,13 +42,13 @@ func preflightsCLI(slurm *slurmScheduler) error {
 	// Assume execMode is always native
 	slurm.fetchMode = cliMode
 	slurm.cmdExecMode = "native"
-	level.Debug(slurm.logger).Log("msg", "SLURM jobs will be fetched using CLI commands")
+	slurm.logger.Debug("SLURM jobs will be fetched using CLI commands")
 
 	// If no sacct path is provided, assume it is available on PATH
 	if slurm.cluster.CLI.Path == "" {
 		path, err := exec.LookPath("sacct")
 		if err != nil {
-			level.Error(slurm.logger).Log("msg", "Failed to find SLURM utility executables on PATH", "err", err)
+			slurm.logger.Error("Failed to find SLURM utility executables on PATH", "err", err)
 
 			return err
 		}
@@ -58,7 +57,7 @@ func preflightsCLI(slurm *slurmScheduler) error {
 	} else {
 		// Check if slurm binary directory exists at the given path
 		if _, err := os.Stat(slurm.cluster.CLI.Path); err != nil {
-			level.Error(slurm.logger).Log("msg", "Failed to open SLURM bin dir", "path", slurm.cluster.CLI.Path, "err", err)
+			slurm.logger.Error("Failed to open SLURM bin dir", "path", slurm.cluster.CLI.Path, "err", err)
 
 			return err
 		}
@@ -70,8 +69,7 @@ func preflightsCLI(slurm *slurmScheduler) error {
 	// If current user root pass checks
 	if currentUser, err := user.Current(); err == nil && currentUser.Uid == "0" {
 		slurm.cmdExecMode = capabilityMode
-		level.Info(slurm.logger).
-			Log("msg", "Current user have enough privileges to execute SLURM commands", "user", currentUser.Username)
+		slurm.logger.Info("Current user have enough privileges to execute SLURM commands", "user", currentUser.Username)
 
 		goto secu_context
 	}
@@ -79,7 +77,7 @@ func preflightsCLI(slurm *slurmScheduler) error {
 	// Check if current process has necessary caps
 	if currentCaps := cap.GetProc().String(); strings.Contains(currentCaps, "cap_setuid") && strings.Contains(currentCaps, "cap_setgid") {
 		slurm.cmdExecMode = capabilityMode
-		level.Info(slurm.logger).Log("msg", "Linux capabilities will be used to execute SLURM commands as slurm user")
+		slurm.logger.Info("Linux capabilities will be used to execute SLURM commands as slurm user")
 	}
 
 secu_context:
@@ -92,7 +90,7 @@ secu_context:
 		for _, name := range []string{"cap_setuid", "cap_setgid"} {
 			value, err := cap.FromName(name)
 			if err != nil {
-				level.Error(slurm.logger).Log("msg", "Error parsing capability %s: %w", name, err)
+				slurm.logger.Error("Error parsing capability %s: %w", name, err)
 
 				continue
 			}
@@ -109,7 +107,7 @@ secu_context:
 			slurm.logger,
 		)
 		if err != nil {
-			level.Error(slurm.logger).Log("msg", "Failed to create a security context for SLURM", "err", err)
+			slurm.logger.Error("Failed to create a security context for SLURM", "err", err)
 
 			return err
 		}
@@ -120,14 +118,13 @@ secu_context:
 	// Last attempt to run sacct with sudo
 	if _, err := internal_osexec.ExecuteWithTimeout("sudo", []string{sacctPath, "--help"}, 5, nil); err == nil {
 		slurm.cmdExecMode = sudoMode
-		level.Info(slurm.logger).Log("msg", "sudo will be used to execute SLURM commands")
+		slurm.logger.Info("sudo will be used to execute SLURM commands")
 
 		return nil
 	}
 
 	// If nothing works give up. In the worst case DB will be updated with only jobs from current user
-	level.Warn(slurm.logger).
-		Log("msg", "SLURM commands will be executed as current user. Might not fetch jobs of all users")
+	slurm.logger.Warn("SLURM commands will be executed as current user. Might not fetch jobs of all users")
 
 	return nil
 }

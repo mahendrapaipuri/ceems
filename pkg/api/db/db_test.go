@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/mahendrapaipuri/ceems/pkg/api/resource"
@@ -20,16 +21,16 @@ import (
 )
 
 type mockFetcherOne struct {
-	logger log.Logger
+	logger *slog.Logger
 }
 
 type mockFetcherTwo struct {
-	logger log.Logger
+	logger *slog.Logger
 }
 
 // slow fetcher.
 type mockFetcherThree struct {
-	logger log.Logger
+	logger *slog.Logger
 }
 
 var mockUnitsOne = []models.ClusterUnits{
@@ -224,7 +225,7 @@ var mockUsersOne = []models.ClusterUsers{
 	},
 }
 
-func newMockManager(logger log.Logger) (*resource.Manager, error) {
+func newMockManager(logger *slog.Logger) (*resource.Manager, error) {
 	return &resource.Manager{
 		Logger: logger,
 		Fetchers: []resource.Fetcher{
@@ -451,7 +452,7 @@ var mockUpdatedUnitsOS1 = []models.ClusterUnits{
 }
 
 type mockUpdaterSlurm00 struct {
-	logger log.Logger
+	logger *slog.Logger
 }
 
 // GetUnits implements collection units between start and end times.
@@ -465,7 +466,7 @@ func (m mockUpdaterSlurm00) Update(
 }
 
 type mockUpdaterSlurm01 struct {
-	logger log.Logger
+	logger *slog.Logger
 }
 
 // GetUnits implements collection units between start and end times.
@@ -479,7 +480,7 @@ func (m mockUpdaterSlurm01) Update(
 }
 
 type mockUpdaterSlurm1 struct {
-	logger log.Logger
+	logger *slog.Logger
 }
 
 // GetUnits implements collection units between start and end times.
@@ -493,7 +494,7 @@ func (m mockUpdaterSlurm1) Update(
 }
 
 type mockUpdaterOS0 struct {
-	logger log.Logger
+	logger *slog.Logger
 }
 
 // GetUnits implements collection units between start and end times.
@@ -507,7 +508,7 @@ func (m mockUpdaterOS0) Update(
 }
 
 type mockUpdaterOS1 struct {
-	logger log.Logger
+	logger *slog.Logger
 }
 
 // GetUnits implements collection units between start and end times.
@@ -520,7 +521,7 @@ func (m mockUpdaterOS1) Update(
 	return mockUpdatedUnitsOS1
 }
 
-func newMockUpdater(logger log.Logger) (*updater.UnitUpdater, error) {
+func newMockUpdater(logger *slog.Logger) (*updater.UnitUpdater, error) {
 	return &updater.UnitUpdater{
 		Updaters: map[string]updater.Updater{
 			"slurm-00": mockUpdaterSlurm00{logger: logger},
@@ -555,7 +556,7 @@ func prepareMockConfig(tmpDir string) (*Config, error) {
 	sacctFile.Close()
 
 	return &Config{
-		Logger: log.NewNopLogger(),
+		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 		Data: DataConfig{
 			Path:            dataDir,
 			BackupPath:      dataBackupDir,

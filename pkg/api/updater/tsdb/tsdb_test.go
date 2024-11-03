@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/mahendrapaipuri/ceems/pkg/api/updater"
 	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
@@ -262,7 +263,7 @@ func TestTSDBUpdateSuccessSingleInstance(t *testing.T) {
 		},
 	}
 
-	tsdb, err := New(instance, log.NewNopLogger())
+	tsdb, err := New(instance, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	updatedUnits := tsdb.Update(context.Background(), time.Now().Add(-5*time.Minute), time.Now(), units)
@@ -370,7 +371,7 @@ func TestTSDBUpdateFailMaxDuration(t *testing.T) {
 		},
 	}
 
-	tsdb, err := New(instance, log.NewNopLogger())
+	tsdb, err := New(instance, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	updatedUnits := tsdb.Update(context.Background(), time.Now().Add(-1*time.Minute), time.Now(), units)
@@ -395,7 +396,7 @@ func TestTSDBUpdateFailNoUnits(t *testing.T) {
 		},
 	}
 
-	tsdb, err := New(instance, log.NewNopLogger())
+	tsdb, err := New(instance, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	if err != nil {
@@ -448,7 +449,7 @@ func TestTSDBUpdateFailNoTSDB(t *testing.T) {
 
 	expectedUnits := units
 
-	tsdb, err := New(instance, log.NewNopLogger())
+	tsdb, err := New(instance, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	// Stop TSDB server

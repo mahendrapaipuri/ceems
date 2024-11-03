@@ -3,23 +3,24 @@ package http
 import (
 	"context"
 	"database/sql"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/assert"
 )
 
-func mockAdminUsers(_ context.Context, _ *sql.DB, _ log.Logger) []string {
+func mockAdminUsers(_ context.Context, _ *sql.DB, _ *slog.Logger) []string {
 	return []string{"adm1"}
 }
 
 func setupMiddleware() http.Handler {
 	// Create an instance of middleware
 	amw := authenticationMiddleware{
-		logger:          log.NewNopLogger(),
+		logger:          slog.New(slog.NewTextHandler(io.Discard, nil)),
 		whitelistedURLs: regexp.MustCompile("/api/v1/(swagger|debug|health|demo)(.*)"),
 		adminUsers:      mockAdminUsers,
 	}

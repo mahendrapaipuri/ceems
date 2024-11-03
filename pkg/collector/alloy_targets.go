@@ -3,13 +3,12 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/internal/security"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -60,7 +59,7 @@ type alloyTargetOpts struct {
 }
 
 type CEEMSAlloyTargetDiscoverer struct {
-	logger           log.Logger
+	logger           *slog.Logger
 	cgroupManager    *cgroupManager
 	opts             alloyTargetOpts
 	enabled          bool
@@ -68,10 +67,10 @@ type CEEMSAlloyTargetDiscoverer struct {
 }
 
 // NewAlloyTargetDiscoverer returns a new HTTP alloy discoverer.
-func NewAlloyTargetDiscoverer(logger log.Logger) (*CEEMSAlloyTargetDiscoverer, error) {
+func NewAlloyTargetDiscoverer(logger *slog.Logger) (*CEEMSAlloyTargetDiscoverer, error) {
 	// If no resource manager is provided, return an instance with enabled set to false
 	if *cgManager == "" {
-		level.Warn(logger).Log("msg", "No resource manager selected for discoverer")
+		logger.Warn("No resource manager selected for discoverer")
 
 		return &CEEMSAlloyTargetDiscoverer{logger: logger, enabled: false}, nil
 	}
@@ -84,12 +83,12 @@ func NewAlloyTargetDiscoverer(logger log.Logger) (*CEEMSAlloyTargetDiscoverer, e
 	// Get SLURM's cgroup details
 	cgroupManager, err := NewCgroupManager(*cgManager, logger)
 	if err != nil {
-		level.Info(logger).Log("msg", "Failed to create cgroup manager", "err", err)
+		logger.Info("Failed to create cgroup manager", "err", err)
 
 		return nil, err
 	}
 
-	level.Info(logger).Log("cgroup", cgroupManager)
+	logger.Info("cgroup: " + cgroupManager.String())
 
 	discoverer := &CEEMSAlloyTargetDiscoverer{
 		logger:        logger,
@@ -115,7 +114,7 @@ func NewAlloyTargetDiscoverer(logger log.Logger) (*CEEMSAlloyTargetDiscoverer, e
 			logger,
 		)
 		if err != nil {
-			level.Error(logger).Log("msg", "Failed to create a security context for alloy target discoverer", "err", err)
+			logger.Error("Failed to create a security context for alloy target discoverer", "err", err)
 
 			return nil, err
 		}
@@ -131,9 +130,9 @@ func (d *CEEMSAlloyTargetDiscoverer) Discover() ([]Target, error) {
 	duration := time.Since(begin)
 
 	if err != nil {
-		level.Debug(d.logger).Log("msg", "discoverer failed", "duration_seconds", duration.Seconds())
+		d.logger.Debug("discoverer failed", "duration_seconds", duration.Seconds())
 	} else {
-		level.Debug(d.logger).Log("msg", "discoverer succeeded", "duration_seconds", duration.Seconds())
+		d.logger.Debug("discoverer succeeded", "duration_seconds", duration.Seconds())
 	}
 
 	return targets, err
@@ -143,7 +142,7 @@ func (d *CEEMSAlloyTargetDiscoverer) Discover() ([]Target, error) {
 func (d *CEEMSAlloyTargetDiscoverer) discover() ([]Target, error) {
 	// If the discoverer is not enabled, return empty targets
 	if !d.enabled {
-		level.Debug(d.logger).Log("msg", "Grafana Alloy targets discoverer not enabled")
+		d.logger.Debug("Grafana Alloy targets discoverer not enabled")
 
 		return []Target{}, nil
 	}
@@ -174,7 +173,7 @@ func (d *CEEMSAlloyTargetDiscoverer) discover() ([]Target, error) {
 	}
 
 	if len(dataPtr.cgroups) == 0 {
-		level.Debug(d.logger).Log("msg", "No targets found for Grafana Alloy")
+		d.logger.Debug("No targets found for Grafana Alloy")
 
 		return []Target{}, nil
 	}

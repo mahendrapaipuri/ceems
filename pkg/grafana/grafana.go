@@ -7,12 +7,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	config_util "github.com/prometheus/common/config"
 )
 
@@ -38,17 +37,17 @@ type GrafanaTeamsReponse struct {
 
 // Grafana implements Grafana client.
 type Grafana struct {
-	logger    log.Logger
+	logger    *slog.Logger
 	URL       *url.URL
 	Client    *http.Client
 	available bool
 }
 
 // New return a new instance of Grafana struct.
-func New(webURL string, config config_util.HTTPClientConfig, logger log.Logger) (*Grafana, error) {
+func New(webURL string, config config_util.HTTPClientConfig, logger *slog.Logger) (*Grafana, error) {
 	// If webURL is empty return empty struct with available set to false
 	if webURL == "" {
-		level.Warn(logger).Log("msg", "Grafana web URL not found")
+		logger.Warn("Grafana web URL not found")
 
 		return &Grafana{
 			available: false,
@@ -120,8 +119,7 @@ func (g *Grafana) TeamMembers(ctx context.Context, teamsIDs []string) ([]string,
 	for _, teamsID := range teamsIDs {
 		teamMembers, err := g.teamMembers(ctx, teamsID)
 		if err != nil {
-			level.Warn(g.logger).
-				Log("msg", "Failed to fetch team members from Grafana Team", "teams_id", teamsID, "err", err)
+			g.logger.Warn("Failed to fetch team members from Grafana Team", "teams_id", teamsID, "err", err)
 		} else {
 			allMembers = append(allMembers, teamMembers...)
 		}

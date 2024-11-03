@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"regexp"
@@ -14,8 +15,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/internal/osexec"
 	"github.com/mahendrapaipuri/ceems/internal/security"
 	"github.com/prometheus/client_golang/prometheus"
@@ -61,7 +60,7 @@ type qp struct {
 type rdmaCollector struct {
 	sysfs            sysfs.FS
 	procfs           procfs.FS
-	logger           log.Logger
+	logger           *slog.Logger
 	cgroupManager    *cgroupManager
 	hostname         string
 	isAvailable      bool
@@ -78,7 +77,7 @@ const (
 )
 
 // NewRDMACollector returns a new Collector exposing RAPL metrics.
-func NewRDMACollector(logger log.Logger, cgManager *cgroupManager) (*rdmaCollector, error) {
+func NewRDMACollector(logger *slog.Logger, cgManager *cgroupManager) (*rdmaCollector, error) {
 	sysfs, err := sysfs.NewFS(*sysPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open sysfs: %w", err)
@@ -96,16 +95,14 @@ func NewRDMACollector(logger log.Logger, cgManager *cgroupManager) (*rdmaCollect
 		rdmaCmdPath = *rdmaCmd
 	} else {
 		if rdmaCmdPath, err = exec.LookPath("rdma"); err != nil {
-			level.Error(logger).
-				Log("msg", "rdma command not found. Not all RDMA metrics will be reported.", "err", err)
+			logger.Error("rdma command not found. Not all RDMA metrics will be reported.", "err", err)
 		}
 	}
 
 	// Check if RDMA devices exist
 	_, err = sysfs.InfiniBandClass()
 	if err != nil && errors.Is(err, os.ErrNotExist) {
-		level.Error(logger).
-			Log("msg", "RDMA devices do not exist. RDMA collector wont return any data", "err", err)
+		logger.Error("RDMA devices do not exist. RDMA collector wont return any data", "err", err)
 
 		return &rdmaCollector{isAvailable: false}, nil
 	}
@@ -118,8 +115,7 @@ func NewRDMACollector(logger log.Logger, cgManager *cgroupManager) (*rdmaCollect
 	// this map only for them. This map will be nil for other types of devices
 	qpModes, err := qpMode(rdmaCmdPath)
 	if err != nil {
-		level.Error(logger).
-			Log("msg", "Failed to get RDMA qp mode", "err", err)
+		logger.Error("Failed to get RDMA qp mode", "err", err)
 	}
 
 	// If per QP counters are enabled, we need to disable them when exporter exits.
@@ -130,14 +126,14 @@ func NewRDMACollector(logger log.Logger, cgManager *cgroupManager) (*rdmaCollect
 	securityContexts := make(map[string]*security.SecurityContext)
 
 	if len(qpModes) > 0 {
-		level.Info(logger).Log("msg", "Per-PID QP stats available")
+		logger.Info("Per-PID QP stats available")
 
 		caps := setupCollectorCaps(logger, rdmaCollectorSubsystem, []string{"cap_setuid", "cap_setgid"})
 
 		// Setup new security context(s)
 		securityContexts[rdmaExecCmdCtx], err = security.NewSecurityContext(rdmaExecCmdCtx, caps, security.ExecAsUser, logger)
 		if err != nil {
-			level.Error(logger).Log("msg", "Failed to create a security context for RDMA collector", "err", err)
+			logger.Error("Failed to create a security context for RDMA collector", "err", err)
 
 			return nil, err
 		}
@@ -235,7 +231,7 @@ func (c *rdmaCollector) Update(ch chan<- prometheus.Metric, cgroups []cgroup) er
 
 	// Check QP modes and attempt to enable PID if not already done
 	if err := c.perPIDCounters(true); err != nil {
-		level.Error(c.logger).Log("msg", "Failed to enable Per-PID QP stats", "err", err)
+		c.logger.Error("Failed to enable Per-PID QP stats", "err", err)
 	}
 
 	return c.update(ch, cgroups)
@@ -243,7 +239,7 @@ func (c *rdmaCollector) Update(ch chan<- prometheus.Metric, cgroups []cgroup) er
 
 // Stop releases system resources used by the collector.
 func (c *rdmaCollector) Stop(_ context.Context) error {
-	level.Debug(c.logger).Log("msg", "Stopping", "collector", rdmaCollectorSubsystem)
+	c.logger.Debug("Stopping", "collector", rdmaCollectorSubsystem)
 
 	return c.perPIDCounters(false)
 }
@@ -313,7 +309,7 @@ func (c *rdmaCollector) update(ch chan<- prometheus.Metric, cgroups []cgroup) er
 
 		mrs, err := c.devMR(p)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "Failed to fetch RDMA MR stats", "err", err)
+			c.logger.Error("Failed to fetch RDMA MR stats", "err", err)
 
 			return
 		}
@@ -332,7 +328,7 @@ func (c *rdmaCollector) update(ch chan<- prometheus.Metric, cgroups []cgroup) er
 
 		cqs, err := c.devCQ(p)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "Failed to fetch RDMA CQ stats", "err", err)
+			c.logger.Error("Failed to fetch RDMA CQ stats", "err", err)
 
 			return
 		}
@@ -351,7 +347,7 @@ func (c *rdmaCollector) update(ch chan<- prometheus.Metric, cgroups []cgroup) er
 
 		qps, err := c.linkQP(p)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "Failed to fetch RDMA QP stats", "err", err)
+			c.logger.Error("Failed to fetch RDMA QP stats", "err", err)
 
 			return
 		}
@@ -375,7 +371,7 @@ func (c *rdmaCollector) update(ch chan<- prometheus.Metric, cgroups []cgroup) er
 
 		counters, err := c.linkCountersSysWide()
 		if err != nil {
-			level.Error(c.logger).Log("msg", "Failed to fetch system wide RDMA counters", "err", err)
+			c.logger.Error("Failed to fetch system wide RDMA counters", "err", err)
 
 			return
 		}
@@ -548,7 +544,7 @@ func (c *rdmaCollector) linkQP(procCgroup map[string]string) (map[string]*qp, er
 		// Execute command
 		out, err := osexec.Execute(c.rdmaCmd, args, nil)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "Failed to fetch per PID QP stats", "err", err)
+			c.logger.Error("Failed to fetch per PID QP stats", "err", err)
 
 			return qps, nil
 		}

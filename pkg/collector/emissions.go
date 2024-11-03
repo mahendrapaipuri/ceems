@@ -5,10 +5,9 @@ package collector
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/pkg/emissions"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -16,7 +15,7 @@ import (
 const emissionsCollectorSubsystem = "emissions"
 
 type emissionsCollector struct {
-	logger                   log.Logger
+	logger                   *slog.Logger
 	emissionFactorProviders  emissions.FactorProviders
 	emissionFactorMetricDesc *prometheus.Desc
 	prevReadTime             int64
@@ -30,7 +29,7 @@ func init() {
 }
 
 // NewEmissionsCollector returns a new Collector exposing emission factor metrics.
-func NewEmissionsCollector(logger log.Logger) (Collector, error) {
+func NewEmissionsCollector(logger *slog.Logger) (Collector, error) {
 	// Create metric description
 	emissionsMetricDesc := prometheus.NewDesc(
 		prometheus.BuildFQName(Namespace, emissionsCollectorSubsystem, "gCo2_kWh"),
@@ -41,7 +40,7 @@ func NewEmissionsCollector(logger log.Logger) (Collector, error) {
 	// Create a new instance of EmissionCollector
 	emissionFactorProviders, err := newFactorProviders(logger)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create new EmissionCollector", "err", err)
+		logger.Error("Failed to create new EmissionCollector", "err", err)
 
 		return nil, err
 	}
@@ -74,7 +73,7 @@ func (c *emissionsCollector) Update(ch chan<- prometheus.Metric) error {
 
 // Stops collector and releases system resources.
 func (c *emissionsCollector) Stop(_ context.Context) error {
-	level.Debug(c.logger).Log("msg", "Stopping", "collector", emissionsCollectorSubsystem)
+	c.logger.Debug("Stopping", "collector", emissionsCollectorSubsystem)
 
 	return nil
 }

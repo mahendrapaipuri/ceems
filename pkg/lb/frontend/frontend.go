@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -16,8 +17,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	ceems_api_base "github.com/mahendrapaipuri/ceems/pkg/api/base"
 	ceems_api_cli "github.com/mahendrapaipuri/ceems/pkg/api/cli"
 	ceems_api_http "github.com/mahendrapaipuri/ceems/pkg/api/http"
@@ -57,7 +56,7 @@ type LoadBalancer interface {
 
 // Config makes a server config from CLI args.
 type Config struct {
-	Logger           log.Logger
+	Logger           *slog.Logger
 	Addresses        []string
 	WebSystemdSocket bool
 	WebConfigFile    string
@@ -67,7 +66,7 @@ type Config struct {
 
 // loadBalancer struct.
 type loadBalancer struct {
-	logger    log.Logger
+	logger    *slog.Logger
 	manager   serverpool.Manager
 	server    *http.Server
 	webConfig *web.FlagConfig
@@ -182,7 +181,7 @@ func (lb *loadBalancer) ValidateClusterIDs(ctx context.Context) error {
 		// Ref: http://go-database-sql.org/errors.html
 		// Get all the errors during iteration
 		if err := rows.Err(); err != nil {
-			level.Error(lb.logger).Log("msg", "Errors during scanning rows", "err", err)
+			lb.logger.Error("Errors during scanning rows", "err", err)
 		}
 
 		goto validate
@@ -262,12 +261,12 @@ validate:
 func (lb *loadBalancer) Start() error {
 	// Apply middleware
 	lb.server.Handler = lb.amw.Middleware(http.HandlerFunc(lb.Serve))
-	level.Info(lb.logger).Log("msg", "Starting "+base.CEEMSLoadBalancerAppName)
+	lb.logger.Info("Starting " + base.CEEMSLoadBalancerAppName)
 
 	// Listen for requests
 	if err := web.ListenAndServe(lb.server, lb.webConfig, lb.logger); err != nil &&
 		!errors.Is(err, http.ErrServerClosed) {
-		level.Error(lb.logger).Log("msg", "Failed to Listen and Serve HTTP server", "err", err)
+		lb.logger.Error("Failed to Listen and Serve HTTP server", "err", err)
 
 		return err
 	}
@@ -280,7 +279,7 @@ func (lb *loadBalancer) Shutdown(ctx context.Context) error {
 	// Close DB connection only if DB file is provided
 	if lb.amw.ceems.db != nil {
 		if err := lb.amw.ceems.db.Close(); err != nil {
-			level.Error(lb.logger).Log("msg", "Failed to close DB connection", "err", err)
+			lb.logger.Error("Failed to close DB connection", "err", err)
 
 			return err
 		}
@@ -288,7 +287,7 @@ func (lb *loadBalancer) Shutdown(ctx context.Context) error {
 
 	// Shutdown the server
 	if err := lb.server.Shutdown(ctx); err != nil {
-		level.Error(lb.logger).Log("msg", "Failed to shutdown HTTP server", "err", err)
+		lb.logger.Error("Failed to shutdown HTTP server", "err", err)
 
 		return err
 	}

@@ -5,12 +5,13 @@ package collector
 
 import (
 	"context"
+	"io"
+	"log/slog"
 	"os"
 	"slices"
 	"testing"
 
 	"github.com/containerd/cgroups/v3"
-	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/ceems/internal/security"
 	"github.com/mahendrapaipuri/perf-utils"
 	"github.com/prometheus/client_golang/prometheus"
@@ -38,7 +39,7 @@ func TestPerfCollector(t *testing.T) {
 		},
 	}
 
-	collector, err := NewPerfCollector(log.NewNopLogger(), cgManager)
+	collector, err := NewPerfCollector(slog.New(slog.NewTextHandler(io.Discard, nil)), cgManager)
 	require.NoError(t, err)
 
 	// Setup background goroutine to capture metrics.
@@ -68,7 +69,7 @@ func TestDiscoverProcess(t *testing.T) {
 	require.NoError(t, err)
 
 	// cgroup manager
-	cgManager, err := NewCgroupManager("slurm", log.NewNopLogger())
+	cgManager, err := NewCgroupManager("slurm", slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	// perf opts
@@ -80,7 +81,7 @@ func TestDiscoverProcess(t *testing.T) {
 	}
 
 	collector := perfCollector{
-		logger:           log.NewNopLogger(),
+		logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
 		cgroupManager:    cgManager,
 		opts:             opts,
 		securityContexts: make(map[string]*security.SecurityContext),
@@ -151,10 +152,10 @@ func TestNewProfilers(t *testing.T) {
 	require.NoError(t, err)
 
 	// cgroup manager
-	cgManager, err := NewCgroupManager("slurm", log.NewNopLogger())
+	cgManager, err := NewCgroupManager("slurm", slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
-	collector, err := NewPerfCollector(log.NewNopLogger(), cgManager)
+	collector, err := NewPerfCollector(slog.New(slog.NewTextHandler(io.Discard, nil)), cgManager)
 	require.NoError(t, err)
 
 	// Use fake cgroupID for current process
@@ -222,10 +223,10 @@ func TestAggProfiles(t *testing.T) {
 	require.NoError(t, err)
 
 	// cgroup manager
-	cgManager, err := NewCgroupManager("slurm", log.NewNopLogger())
+	cgManager, err := NewCgroupManager("slurm", slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
-	collector, err := NewPerfCollector(log.NewNopLogger(), cgManager)
+	collector, err := NewPerfCollector(slog.New(slog.NewTextHandler(io.Discard, nil)), cgManager)
 	require.NoError(t, err)
 
 	// Initialise state counters
@@ -613,10 +614,10 @@ func TestPIDEviction(t *testing.T) {
 	require.NoError(t, err)
 
 	// cgroup manager
-	cgManager, err := NewCgroupManager("slurm", log.NewNopLogger())
+	cgManager, err := NewCgroupManager("slurm", slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
-	collector, err := NewPerfCollector(log.NewNopLogger(), cgManager)
+	collector, err := NewPerfCollector(slog.New(slog.NewTextHandler(io.Discard, nil)), cgManager)
 	require.NoError(t, err)
 
 	// Use fake processes

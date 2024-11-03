@@ -3,12 +3,13 @@ package slurm
 import (
 	"context"
 	"fmt"
+	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/stretchr/testify/require"
 )
@@ -181,7 +182,7 @@ printf """%s"""`, sacctMgrCmdOutput)
 	ctx := context.Background()
 
 	for _, cluster := range clusters {
-		slurm, err := New(cluster, log.NewNopLogger())
+		slurm, err := New(cluster, slog.New(slog.NewTextHandler(io.Discard, nil)))
 		require.NoError(t, err)
 
 		_, err = slurm.FetchUnits(ctx, start, end)

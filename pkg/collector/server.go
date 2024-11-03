@@ -4,13 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	stdlog "log"
+	"log/slog"
 	"net/http"
 	_ "net/http/pprof" // #nosec
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	promcollectors "github.com/prometheus/client_golang/prometheus/collectors"
@@ -34,7 +32,7 @@ type WebConfig struct {
 
 // Config makes a server config.
 type Config struct {
-	Logger     log.Logger
+	Logger     *slog.Logger
 	Collector  *CEEMSCollector
 	Discoverer *CEEMSAlloyTargetDiscoverer
 	Web        WebConfig
@@ -42,7 +40,7 @@ type Config struct {
 
 // CEEMSExporterServer struct implements HTTP server for exporter.
 type CEEMSExporterServer struct {
-	logger         log.Logger
+	logger         *slog.Logger
 	server         *http.Server
 	webConfig      *web.FlagConfig
 	collector      *CEEMSCollector
@@ -150,10 +148,10 @@ func NewCEEMSExporterServer(c *Config) (*CEEMSExporterServer, error) {
 
 // Start launches CEEMS exporter HTTP server.
 func (s *CEEMSExporterServer) Start() error {
-	level.Info(s.logger).Log("msg", "Starting "+CEEMSExporterAppName)
+	s.logger.Info("Starting " + CEEMSExporterAppName)
 
 	if err := web.ListenAndServe(s.server, s.webConfig, s.logger); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		level.Error(s.logger).Log("msg", "Failed to Listen and Serve HTTP server", "err", err)
+		s.logger.Error("Failed to Listen and Serve HTTP server", "err", err)
 
 		return err
 	}
@@ -163,7 +161,7 @@ func (s *CEEMSExporterServer) Start() error {
 
 // Shutdown stops CEEMS exporter HTTP server.
 func (s *CEEMSExporterServer) Shutdown(ctx context.Context) error {
-	level.Info(s.logger).Log("msg", "Stopping "+CEEMSExporterAppName)
+	s.logger.Info("Stopping " + CEEMSExporterAppName)
 
 	var errs error
 
@@ -172,14 +170,14 @@ func (s *CEEMSExporterServer) Shutdown(ctx context.Context) error {
 	// Do not return error here as we SHOULD ENSURE to close collectors
 	// that might release any system resources
 	if err := s.server.Shutdown(ctx); err != nil {
-		level.Error(s.logger).Log("msg", "Failed to stop exporter's HTTP server")
+		s.logger.Error("Failed to stop exporter's HTTP server")
 
 		errs = errors.Join(errs, err)
 	}
 
 	// Now close all collectors that release any system resources
 	if err := s.collector.Close(ctx); err != nil {
-		level.Error(s.logger).Log("msg", "Failed to stop collector(s)")
+		s.logger.Error("Failed to stop collector(s)")
 
 		return errors.Join(errs, err)
 	}
@@ -194,7 +192,7 @@ func (s *CEEMSExporterServer) newMetricsHandler() http.Handler {
 		handler = promhttp.HandlerFor(
 			prometheus.Gatherers{s.metricsHandler.exporterMetricsRegistry, s.metricsHandler.metricsRegistry},
 			promhttp.HandlerOpts{
-				ErrorLog:            stdlog.New(log.NewStdlibAdapter(level.Error(s.logger)), "", 0),
+				ErrorLog:            slog.NewLogLogger(s.logger.Handler(), slog.LevelError),
 				ErrorHandling:       promhttp.ContinueOnError,
 				MaxRequestsInFlight: s.metricsHandler.maxRequests,
 				Registry:            s.metricsHandler.exporterMetricsRegistry,
@@ -209,7 +207,7 @@ func (s *CEEMSExporterServer) newMetricsHandler() http.Handler {
 		handler = promhttp.HandlerFor(
 			s.metricsHandler.metricsRegistry,
 			promhttp.HandlerOpts{
-				ErrorLog:            stdlog.New(log.NewStdlibAdapter(level.Error(s.logger)), "", 0),
+				ErrorLog:            slog.NewLogLogger(s.logger.Handler(), slog.LevelError),
 				ErrorHandling:       promhttp.ContinueOnError,
 				MaxRequestsInFlight: s.metricsHandler.maxRequests,
 			},
@@ -224,7 +222,7 @@ func (s *CEEMSExporterServer) newTargetsHandler() http.Handler {
 	return TargetsHandlerFor(
 		s.discoverer,
 		promhttp.HandlerOpts{
-			ErrorLog:            stdlog.New(log.NewStdlibAdapter(level.Error(s.logger)), "", 0),
+			ErrorLog:            slog.NewLogLogger(s.logger.Handler(), slog.LevelError),
 			ErrorHandling:       promhttp.ContinueOnError,
 			MaxRequestsInFlight: s.targetsHandler.maxRequests,
 		},

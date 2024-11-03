@@ -11,12 +11,10 @@ import (
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	internal_runtime "github.com/mahendrapaipuri/ceems/internal/runtime"
 	"github.com/mahendrapaipuri/ceems/internal/security"
-	"github.com/prometheus/common/promlog"
-	"github.com/prometheus/common/promlog/flag"
+	"github.com/prometheus/common/promslog"
+	"github.com/prometheus/common/promslog/flag"
 	"github.com/prometheus/common/version"
 	"github.com/prometheus/exporter-toolkit/web"
 )
@@ -110,8 +108,8 @@ func (b *CEEMSExporter) Main() error {
 		).Bool()
 	}
 
-	promlogConfig := &promlog.Config{}
-	flag.AddFlags(&b.App, promlogConfig)
+	promslogConfig := &promslog.Config{}
+	flag.AddFlags(&b.App, promslogConfig)
 	b.App.Version(version.Print(b.appName))
 	b.App.UsageWriter(os.Stdout)
 	b.App.HelpFlag.Short('h')
@@ -122,27 +120,28 @@ func (b *CEEMSExporter) Main() error {
 	}
 
 	// Set logger here after properly configuring promlog
-	logger := promlog.New(promlogConfig)
+	logger := promslog.New(promslogConfig)
 
 	if *disableDefaultCollectors {
 		DisableDefaultCollectors()
 	}
 
-	level.Info(logger).Log("msg", "Starting "+b.appName, "version", version.Info())
-	level.Info(logger).Log("msg", "Build context", "build_context", version.BuildContext())
-	level.Info(logger).Log("fd_limits", internal_runtime.Uname())
-	level.Info(logger).Log("fd_limits", internal_runtime.FdLimits())
+	logger.Info("Starting "+b.appName, "version", version.Info())
+	logger.Info(
+		"Operational information", "build_context", version.BuildContext(),
+		"host_details", internal_runtime.Uname(), "fd_limits", internal_runtime.FdLimits(),
+	)
 
 	// Get hostname
 	if !*emptyHostnameLabel {
 		hostname, err = os.Hostname()
 		if err != nil {
-			level.Error(logger).Log("msg", "Failed to get hostname", "err", err)
+			logger.Error("Failed to get hostname", "err", err)
 		}
 	}
 
 	runtime.GOMAXPROCS(*maxProcs)
-	level.Debug(logger).Log("msg", "Go MAXPROCS", "procs", runtime.GOMAXPROCS(0))
+	logger.Debug("Go MAXPROCS", "procs", runtime.GOMAXPROCS(0))
 
 	// Create context that listens for the interrupt signal from the OS.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
@@ -155,14 +154,13 @@ func (b *CEEMSExporter) Main() error {
 	}
 
 	// Create a new instance of Alloy targets discoverer
-	discoverer, err := NewAlloyTargetDiscoverer(log.With(logger, "discoverer", "alloy_targets"))
+	discoverer, err := NewAlloyTargetDiscoverer(logger.With("discoverer", "alloy_targets"))
 	if err != nil {
 		return err
 	}
 
 	if user, err := user.Current(); err == nil && user.Uid == "0" {
-		level.Info(logger).
-			Log("msg", "CEEMS Exporter is running as root user. Privileges will be dropped and process will be run as unprivileged user")
+		logger.Info("CEEMS Exporter is running as root user. Privileges will be dropped and process will be run as unprivileged user")
 	}
 
 	// Make security related config
@@ -227,7 +225,7 @@ func (b *CEEMSExporter) Main() error {
 	// it won't block the graceful shutdown handling below.
 	go func() {
 		if err := server.Start(); err != nil {
-			level.Error(logger).Log("msg", "Failed to start server", "err", err)
+			logger.Error("Failed to start server", "err", err)
 		}
 	}()
 
@@ -236,7 +234,7 @@ func (b *CEEMSExporter) Main() error {
 
 	// Restore default behavior on the interrupt signal and notify user of shutdown.
 	stop()
-	level.Info(logger).Log("msg", "Shutting down gracefully, press Ctrl+C again to force")
+	logger.Info("Shutting down gracefully, press Ctrl+C again to force")
 
 	// The context is used to inform the server it has 5 seconds to finish
 	// the request it is currently handling.
@@ -244,11 +242,11 @@ func (b *CEEMSExporter) Main() error {
 	defer cancel()
 
 	if err := server.Shutdown(ctx); err != nil {
-		level.Error(logger).Log("msg", "Failed to gracefully shutdown server", "err", err)
+		logger.Error("Failed to gracefully shutdown server", "err", err)
 	}
 
-	level.Info(logger).Log("msg", "Server exiting")
-	level.Info(logger).Log("msg", "See you next time!!")
+	logger.Info("Server exiting")
+	logger.Info("See you next time!!")
 
 	return nil
 }

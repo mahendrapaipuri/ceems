@@ -11,14 +11,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/internal/osexec"
 	"github.com/mahendrapaipuri/ceems/internal/security"
 	"github.com/prometheus/client_golang/prometheus"
@@ -40,7 +39,7 @@ const (
 )
 
 type impiCollector struct {
-	logger           log.Logger
+	logger           *slog.Logger
 	hostname         string
 	execMode         string
 	ipmiCmd          []string
@@ -182,10 +181,9 @@ func init() {
 }
 
 // NewIPMICollector returns a new Collector exposing IMPI DCMI power metrics.
-func NewIPMICollector(logger log.Logger) (Collector, error) {
+func NewIPMICollector(logger *slog.Logger) (Collector, error) {
 	if *ipmiDcmiCmdDepr != "" {
-		level.Warn(logger).
-			Log("msg", "flag --collector.ipmi.dcmi.cmd has been deprecated. Use --collector.ipmi_dcmi.cmd instead.")
+		logger.Warn("flag --collector.ipmi.dcmi.cmd has been deprecated. Use --collector.ipmi_dcmi.cmd instead.")
 	}
 
 	var execMode string
@@ -218,9 +216,7 @@ func NewIPMICollector(logger log.Logger) (Collector, error) {
 	var err error
 	if *ipmiDcmiCmd == "" && *ipmiDcmiCmdDepr == "" {
 		if cmdSlice, err = findIPMICmd(); err != nil {
-			level.Error(logger).Log(
-				"msg", "No IPMI installation found", "err", err,
-			)
+			logger.Error("No IPMI installation found", "err", err)
 
 			return nil, err
 		}
@@ -232,9 +228,7 @@ func NewIPMICollector(logger log.Logger) (Collector, error) {
 		}
 	}
 
-	level.Debug(logger).Log(
-		"msg", "Using IPMI command", "ipmi", strings.Join(cmdSlice, " "),
-	)
+	logger.Debug("Using IPMI command", "ipmi", strings.Join(cmdSlice, " "))
 
 	// Append to cmdSlice an empty string if it has len of 1
 	// We dont want nil pointer references when we execute command
@@ -293,13 +287,13 @@ outside:
 		// Setup new security context(s)
 		securityCtx, err = security.NewSecurityContext(ipmiExecCmdCtx, caps, security.ExecAsUser, logger)
 		if err != nil {
-			level.Error(logger).Log("msg", "Failed to create a security context for IPMI collector", "err", err)
+			logger.Error("Failed to create a security context for IPMI collector", "err", err)
 
 			return nil, err
 		}
 	}
 
-	level.Debug(logger).Log("msg", "IPMI DCMI command", "execution_mode", execMode)
+	logger.Debug("IPMI DCMI command", "execution_mode", execMode)
 
 	collector := impiCollector{
 		logger:           logger,
@@ -325,8 +319,8 @@ func (c *impiCollector) Update(ch chan<- prometheus.Metric) error {
 			return ErrNoData
 		}
 
-		level.Error(c.logger).Log(
-			"msg", "Failed to get power statistics from IPMI. Using last cached values",
+		c.logger.Error(
+			"Failed to get power statistics from IPMI. Using last cached values",
 			"err", err, "cached_metrics", fmt.Sprintf("%#v", c.cachedMetric),
 		)
 
@@ -347,7 +341,7 @@ func (c *impiCollector) Update(ch chan<- prometheus.Metric) error {
 
 // Stop releases system resources used by the collector.
 func (c *impiCollector) Stop(_ context.Context) error {
-	level.Debug(c.logger).Log("msg", "Stopping", "collector", ipmiCollectorSubsystem)
+	c.logger.Debug("Stopping", "collector", ipmiCollectorSubsystem)
 
 	return nil
 }

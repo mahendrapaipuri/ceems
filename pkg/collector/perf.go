@@ -7,12 +7,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"slices"
 	"strings"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/internal/security"
 	"github.com/mahendrapaipuri/perf-utils"
 	"github.com/prometheus/client_golang/prometheus"
@@ -106,7 +105,7 @@ type perfProcFilterSecurityCtxData struct {
 // perfProfilerSecurityCtxData contains the input/output data for
 // opening/closing profilers inside security context.
 type perfProfilerSecurityCtxData struct {
-	logger                    log.Logger
+	logger                    *slog.Logger
 	cgroups                   []cgroup
 	activePIDs                []int
 	perfHwProfilers           map[int]*perf.HardwareProfiler
@@ -136,7 +135,7 @@ type perfOpts struct {
 // settings not all profiler values may be exposed on the target system at any
 // given time.
 type perfCollector struct {
-	logger                  log.Logger
+	logger                  *slog.Logger
 	hostname                string
 	cgroupManager           *cgroupManager
 	fs                      procfs.FS
@@ -157,7 +156,7 @@ type perfCollector struct {
 
 // NewPerfCollector returns a new perf based collector, it creates a profiler
 // per compute unit.
-func NewPerfCollector(logger log.Logger, cgManager *cgroupManager) (*perfCollector, error) {
+func NewPerfCollector(logger *slog.Logger, cgManager *cgroupManager) (*perfCollector, error) {
 	// Make perfOpts
 	opts := perfOpts{
 		perfHwProfilersEnabled:    *perfHwProfilersFlag,
@@ -172,7 +171,7 @@ func NewPerfCollector(logger log.Logger, cgManager *cgroupManager) (*perfCollect
 	// Instantiate a new Proc FS
 	fs, err := procfs.NewFS(*procfsPath)
 	if err != nil {
-		level.Error(logger).Log("msg", "Unable to open procfs", "path", *procfsPath, "err", err)
+		logger.Error("Unable to open procfs", "path", *procfsPath, "err", err)
 
 		return nil, err
 	}
@@ -503,7 +502,7 @@ func NewPerfCollector(logger log.Logger, cgManager *cgroupManager) (*perfCollect
 		logger,
 	)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create a security context for opening perf profiler(s)", "err", err)
+		logger.Error("Failed to create a security context for opening perf profiler(s)", "err", err)
 
 		return nil, err
 	}
@@ -516,7 +515,7 @@ func NewPerfCollector(logger log.Logger, cgManager *cgroupManager) (*perfCollect
 		logger,
 	)
 	if err != nil {
-		level.Error(logger).Log("msg", "Failed to create a security context for closing perf profiler(s)", "err", err)
+		logger.Error("Failed to create a security context for closing perf profiler(s)", "err", err)
 
 		return nil, err
 	}
@@ -534,7 +533,7 @@ func NewPerfCollector(logger log.Logger, cgManager *cgroupManager) (*perfCollect
 			logger,
 		)
 		if err != nil {
-			level.Error(logger).Log("msg", "Failed to create a security context for perf process filter", "err", err)
+			logger.Error("Failed to create a security context for perf process filter", "err", err)
 
 			return nil, err
 		}
@@ -563,7 +562,7 @@ func (c *perfCollector) Update(ch chan<- prometheus.Metric, cgroups []cgroup) er
 	// Remove all profilers that have already finished
 	// Ignore all errors
 	if err := c.closeProfilers(activePIDs); err != nil {
-		level.Error(c.logger).Log("msg", "failed to close profilers counters", "err", err)
+		c.logger.Error("failed to close profilers counters", "err", err)
 	}
 
 	// Ensure cgroups is non empty
@@ -577,15 +576,15 @@ func (c *perfCollector) Update(ch chan<- prometheus.Metric, cgroups []cgroup) er
 		uuid := cgroup.uuid
 
 		if err := c.updateHardwareCounters(uuid, cgroup.procs, ch); err != nil {
-			level.Error(c.logger).Log("msg", "failed to update hardware counters", "uuid", uuid, "err", err)
+			c.logger.Error("failed to update hardware counters", "uuid", uuid, "err", err)
 		}
 
 		if err := c.updateSoftwareCounters(uuid, cgroup.procs, ch); err != nil {
-			level.Error(c.logger).Log("msg", "failed to update software counters", "uuid", uuid, "err", err)
+			c.logger.Error("failed to update software counters", "uuid", uuid, "err", err)
 		}
 
 		if err := c.updateCacheCounters(uuid, cgroup.procs, ch); err != nil {
-			level.Error(c.logger).Log("msg", "failed to update cache counters", "uuid", uuid, "err", err)
+			c.logger.Error("failed to update cache counters", "uuid", uuid, "err", err)
 		}
 	}
 
@@ -594,11 +593,11 @@ func (c *perfCollector) Update(ch chan<- prometheus.Metric, cgroups []cgroup) er
 
 // Stop releases system resources used by the collector.
 func (c *perfCollector) Stop(_ context.Context) error {
-	level.Debug(c.logger).Log("msg", "Stopping", "sub_collector", perfCollectorSubsystem)
+	c.logger.Debug("Stopping", "sub_collector", perfCollectorSubsystem)
 
 	// Close all profilers
 	if err := c.closeProfilers([]int{}); err != nil {
-		level.Error(c.logger).Log("msg", "failed to close profilers counters", "err", err)
+		c.logger.Error("failed to close profilers counters", "err", err)
 	}
 
 	return nil
@@ -983,9 +982,9 @@ func (c *perfCollector) filterProcs(cgroups []cgroup) ([]cgroup, error) {
 	}
 
 	if len(dataPtr.cgroups) > 0 {
-		level.Debug(c.logger).Log("msg", "Discovered cgroups for profiling")
+		c.logger.Debug("Discovered cgroups for profiling")
 	} else {
-		level.Debug(c.logger).Log("msg", "No cgroups found for profiling")
+		c.logger.Debug("No cgroups found for profiling")
 	}
 
 	return dataPtr.cgroups, nil
@@ -1070,8 +1069,7 @@ func openProfilers(data interface{}) error {
 			if d.perfHwProfilersEnabled {
 				if _, ok := d.perfHwProfilers[pid]; !ok {
 					if hwProfiler, err := newHwProfiler(pid, d.perfHwProfilerTypes); err != nil {
-						level.Error(d.logger).
-							Log("msg", "failed to start hardware profiler", "pid", pid, "cmd", strings.Join(cmdLine, " "), "err", err)
+						d.logger.Error("failed to start hardware profiler", "pid", pid, "cmd", strings.Join(cmdLine, " "), "err", err)
 					} else {
 						d.perfHwProfilers[pid] = hwProfiler
 					}
@@ -1081,8 +1079,7 @@ func openProfilers(data interface{}) error {
 			if d.perfSwProfilersEnabled {
 				if _, ok := d.perfSwProfilers[pid]; !ok {
 					if swProfiler, err := newSwProfiler(pid, d.perfSwProfilerTypes); err != nil {
-						level.Error(d.logger).
-							Log("msg", "failed to start software profiler", "pid", pid, "cmd", strings.Join(cmdLine, " "), "err", err)
+						d.logger.Error("failed to start software profiler", "pid", pid, "cmd", strings.Join(cmdLine, " "), "err", err)
 					} else {
 						d.perfSwProfilers[pid] = swProfiler
 					}
@@ -1092,8 +1089,7 @@ func openProfilers(data interface{}) error {
 			if d.perfCacheProfilersEnabled {
 				if _, ok := d.perfCacheProfilers[pid]; !ok {
 					if cacheProfiler, err := newCacheProfiler(pid, d.perfCacheProfilerTypes); err != nil {
-						level.Error(d.logger).
-							Log("msg", "failed to start cache profiler", "pid", pid, "cmd", strings.Join(cmdLine, " "), "err", err)
+						d.logger.Error("failed to start cache profiler", "pid", pid, "cmd", strings.Join(cmdLine, " "), "err", err)
 					} else {
 						d.perfCacheProfilers[pid] = cacheProfiler
 					}
@@ -1177,7 +1173,7 @@ func closeProfilers(data interface{}) error {
 		for pid, hwProfiler := range d.perfHwProfilers {
 			if !slices.Contains(d.activePIDs, pid) {
 				if err := closeHwProfiler(hwProfiler); err != nil {
-					level.Error(d.logger).Log("msg", "failed to shutdown hardware profiler", "err", err)
+					d.logger.Error("failed to shutdown hardware profiler", "err", err)
 				} else {
 					delete(d.perfHwProfilers, pid)
 				}
@@ -1189,7 +1185,7 @@ func closeProfilers(data interface{}) error {
 		for pid, swProfiler := range d.perfSwProfilers {
 			if !slices.Contains(d.activePIDs, pid) {
 				if err := closeSwProfiler(swProfiler); err != nil {
-					level.Error(d.logger).Log("msg", "failed to shutdown software profiler", "err", err)
+					d.logger.Error("failed to shutdown software profiler", "err", err)
 				} else {
 					delete(d.perfSwProfilers, pid)
 				}
@@ -1201,7 +1197,7 @@ func closeProfilers(data interface{}) error {
 		for pid, cacheProfiler := range d.perfCacheProfilers {
 			if !slices.Contains(d.activePIDs, pid) {
 				if err := closeCacheProfiler(cacheProfiler); err != nil {
-					level.Error(d.logger).Log("msg", "failed to shutdown cache profiler", "err", err)
+					d.logger.Error("failed to shutdown cache profiler", "err", err)
 				} else {
 					delete(d.perfCacheProfilers, pid)
 				}

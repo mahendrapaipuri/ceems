@@ -8,15 +8,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 )
 
 const (
@@ -27,13 +25,13 @@ const (
 var emissionLock = sync.RWMutex{}
 
 type emapsProvider struct {
-	logger             log.Logger
+	logger             *slog.Logger
 	apiToken           string
 	zones              map[string]string
 	cacheDuration      int64
 	lastRequestTime    int64
 	lastEmissionFactor EmissionFactors
-	fetch              func(baseURL string, apiToken string, zones map[string]string, logger log.Logger) (EmissionFactors, error)
+	fetch              func(baseURL string, apiToken string, zones map[string]string, logger *slog.Logger) (EmissionFactors, error)
 }
 
 func init() {
@@ -42,12 +40,12 @@ func init() {
 }
 
 // NewEMapsProvider returns a new Provider that returns emission factor from electricity maps data.
-func NewEMapsProvider(logger log.Logger) (Provider, error) {
+func NewEMapsProvider(logger *slog.Logger) (Provider, error) {
 	// Check if EMAPS_API_TOKEN is set
 	var eMapsAPIToken string
 
 	if token, present := os.LookupEnv("EMAPS_API_TOKEN"); present {
-		level.Info(logger).Log("msg", "Emission factor from Electricity Maps will be reported.")
+		logger.Info("Emission factor from Electricity Maps will be reported.")
 
 		eMapsAPIToken = token
 	} else {
@@ -114,12 +112,11 @@ func (s *emapsProvider) Update() (EmissionFactors, error) {
 	if time.Now().UnixMilli()-s.lastRequestTime > s.cacheDuration || s.lastEmissionFactor == nil {
 		currentEmissionFactor, err := s.fetch(eMapAPIBaseURL, s.apiToken, s.zones, s.logger)
 		if err != nil {
-			level.Error(s.logger).
-				Log("msg", "Failed to fetch emission factor from Electricity maps provider", "err", err)
+			s.logger.Error("Failed to fetch emission factor from Electricity maps provider", "err", err)
 
 			// Check if last emission factor is valid and if it is use the same for current
 			if s.lastEmissionFactor != nil {
-				level.Debug(s.logger).Log("msg", "Using cached emission factor for Electricity maps provider")
+				s.logger.Debug("Using cached emission factor for Electricity maps provider")
 
 				return s.lastEmissionFactor, nil
 			} else {
@@ -130,12 +127,11 @@ func (s *emapsProvider) Update() (EmissionFactors, error) {
 		// Update last request time and factor
 		s.lastRequestTime = time.Now().UnixMilli()
 		s.lastEmissionFactor = currentEmissionFactor
-		level.Debug(s.logger).
-			Log("msg", "Using real time emission factor from Electricity maps provider")
+		s.logger.Debug("Using real time emission factor from Electricity maps provider")
 
 		return currentEmissionFactor, err
 	} else {
-		level.Debug(s.logger).Log("msg", "Using cached emission factor for Electricity maps provider")
+		s.logger.Debug("Using cached emission factor for Electricity maps provider")
 
 		return s.lastEmissionFactor, nil
 	}
@@ -146,7 +142,7 @@ func makeEMapsAPIRequest(
 	baseURL string,
 	apiToken string,
 	zones map[string]string,
-	logger log.Logger,
+	logger *slog.Logger,
 ) (EmissionFactors, error) {
 	// Initialize a wait group
 	wg := &sync.WaitGroup{}
@@ -166,8 +162,7 @@ func makeEMapsAPIRequest(
 
 			response, err := eMapsAPIRequest[eMapsCarbonIntensityResponse](url, apiToken)
 			if err != nil {
-				level.Error(logger).
-					Log("msg", "Failed to fetch factor for Electricity maps provider", "zone", z, "err", err)
+				logger.Error("Failed to fetch factor for Electricity maps provider", "zone", z, "err", err)
 				wg.Done()
 
 				return

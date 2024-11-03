@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -11,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	http_api "github.com/mahendrapaipuri/ceems/pkg/api/http"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -108,7 +109,7 @@ func setupMiddlewareWithDB(tmpDir string) (http.Handler, error) {
 
 	// Create an instance of middleware
 	amw := authenticationMiddleware{
-		logger:     log.NewNopLogger(),
+		logger:     slog.New(slog.NewTextHandler(io.Discard, nil)),
 		clusterIDs: []string{"rm-0", "rm-1"},
 		ceems:      ceems{db: db},
 	}
@@ -133,7 +134,7 @@ func setupMiddlewareWithAPI(tmpDir string) (http.Handler, error) {
 
 	// Create an instance of middleware
 	amw := authenticationMiddleware{
-		logger:     log.NewNopLogger(),
+		logger:     slog.New(slog.NewTextHandler(io.Discard, nil)),
 		clusterIDs: []string{"rm-0", "rm-1"},
 		ceems:      ceems{webURL: ceemsURL, client: http.DefaultClient},
 	}
@@ -163,7 +164,7 @@ func setupCEEMSAPI(db *sql.DB) *httptest.Server {
 		defer cancel()
 
 		// Check if user is owner of the queries uuids
-		if http_api.VerifyOwnership(ctx, user, rmIDs, uuids, db, log.NewNopLogger()) { //nolint:contextcheck
+		if http_api.VerifyOwnership(ctx, user, rmIDs, uuids, db, slog.New(slog.NewTextHandler(io.Discard, nil))) { //nolint:contextcheck
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("success"))
 		} else {

@@ -9,13 +9,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strconv"
 	"sync"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/mahendrapaipuri/ceems/internal/security"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/procfs/sysfs"
@@ -25,7 +24,7 @@ const raplCollectorSubsystem = "rapl"
 
 type raplCollector struct {
 	fs               sysfs.FS
-	logger           log.Logger
+	logger           *slog.Logger
 	hostname         string
 	securityContexts map[string]*security.SecurityContext
 	joulesMetricDesc *prometheus.Desc
@@ -52,7 +51,7 @@ var raplZoneLabel = CEEMSExporterApp.Flag(
 ).Default("false").Bool()
 
 // NewRaplCollector returns a new Collector exposing RAPL metrics.
-func NewRaplCollector(logger log.Logger) (Collector, error) {
+func NewRaplCollector(logger *slog.Logger) (Collector, error) {
 	fs, err := sysfs.NewFS(*sysPath)
 	if err != nil {
 		return nil, err
@@ -76,8 +75,7 @@ func NewRaplCollector(logger log.Logger) (Collector, error) {
 				logger,
 			)
 			if err != nil {
-				level.Error(logger).
-					Log("msg", "Failed to create a security context for reading rapl counters", "err", err)
+				logger.Error("Failed to create a security context for reading rapl counters", "err", err)
 
 				return nil, err
 			}
@@ -114,14 +112,13 @@ func (c *raplCollector) Update(ch chan<- prometheus.Metric) error {
 	zones, err := sysfs.GetRaplZones(c.fs)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			level.Debug(c.logger).
-				Log("msg", "Platform doesn't have powercap files present", "err", err)
+			c.logger.Debug("Platform doesn't have powercap files present", "err", err)
 
 			return ErrNoData
 		}
 
 		if errors.Is(err, os.ErrPermission) {
-			level.Debug(c.logger).Log("msg", "Can't access powercap files", "err", err)
+			c.logger.Debug("Can't access powercap files", "err", err)
 
 			return ErrNoData
 		}
@@ -138,7 +135,7 @@ func (c *raplCollector) Update(ch chan<- prometheus.Metric) error {
 		defer wg.Done()
 
 		if err := c.updateLimits(zones, ch); err != nil {
-			level.Error(c.logger).Log("msg", "Failed to update RAPL power limits", "err", err)
+			c.logger.Error("Failed to update RAPL power limits", "err", err)
 		}
 	}()
 
@@ -148,7 +145,7 @@ func (c *raplCollector) Update(ch chan<- prometheus.Metric) error {
 		defer wg.Done()
 
 		if err := c.updateEnergy(zones, ch); err != nil {
-			level.Error(c.logger).Log("msg", "Failed to update RAPL energy counters", "err", err)
+			c.logger.Error("Failed to update RAPL energy counters", "err", err)
 		}
 	}()
 
@@ -160,7 +157,7 @@ func (c *raplCollector) Update(ch chan<- prometheus.Metric) error {
 
 // Stop releases system resources used by the collector.
 func (c *raplCollector) Stop(_ context.Context) error {
-	level.Debug(c.logger).Log("msg", "Stopping", "collector", raplCollectorSubsystem)
+	c.logger.Debug("Stopping", "collector", raplCollectorSubsystem)
 
 	return nil
 }
