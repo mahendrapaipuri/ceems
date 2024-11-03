@@ -198,7 +198,7 @@ func (b *CEEMSServer) Main() error {
 
 	logger.Info("Starting "+b.appName, "version", version.Info())
 	logger.Info(
-		"Operational information", "build_context", version.BuildContext(), 
+		"Operational information", "build_context", version.BuildContext(),
 		"host_details", internal_runtime.Uname(), "fd_limits", internal_runtime.FdLimits(),
 	)
 
