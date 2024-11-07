@@ -150,8 +150,8 @@ type perfCollector struct {
 	desc                    map[string]*prometheus.Desc
 	lastRawHwCounters       map[int]map[string]perf.ProfileValue
 	lastRawCacheCounters    map[int]map[string]perf.ProfileValue
-	lastScaledHwCounters    map[int]map[string]float64
-	lastScaledCacheCounters map[int]map[string]float64
+	lastCgroupHwCounters    map[string]map[string]float64
+	lastCgroupCacheCounters map[string]map[string]float64
 }
 
 // NewPerfCollector returns a new perf based collector, it creates a profiler
@@ -212,8 +212,8 @@ func NewPerfCollector(logger *slog.Logger, cgManager *cgroupManager) (*perfColle
 		perfCacheProfilers:      make(map[int]*perf.CacheProfiler),
 		lastRawHwCounters:       make(map[int]map[string]perf.ProfileValue),
 		lastRawCacheCounters:    make(map[int]map[string]perf.ProfileValue),
-		lastScaledHwCounters:    make(map[int]map[string]float64),
-		lastScaledCacheCounters: make(map[int]map[string]float64),
+		lastCgroupHwCounters:    make(map[string]map[string]float64),
+		lastCgroupCacheCounters: make(map[string]map[string]float64),
 	}
 
 	// Configure perf profilers
@@ -556,6 +556,17 @@ func (c *perfCollector) Update(ch chan<- prometheus.Metric, cgroups []cgroup) er
 		}
 	}
 
+	// Ensure cgroups is non empty
+	if len(cgroups) == 0 {
+		return nil
+	}
+
+	// Get a list of active cgroup IDs
+	activeCgroupIDs := make([]string, len(cgroups))
+	for icgrp := range cgroups {
+		activeCgroupIDs[icgrp] = cgroups[icgrp].uuid
+	}
+
 	// Start new profilers for new processes
 	activePIDs := c.newProfilers(cgroups)
 
@@ -565,10 +576,8 @@ func (c *perfCollector) Update(ch chan<- prometheus.Metric, cgroups []cgroup) er
 		c.logger.Error("failed to close profilers counters", "err", err)
 	}
 
-	// Ensure cgroups is non empty
-	if len(cgroups) == 0 {
-		return nil
-	}
+	// Evict older entries in state maps
+	c.updateStateMaps(activePIDs, activeCgroupIDs)
 
 	// Update metrics in go routines for each cgroup
 	// NOTE: Update concurrently and manage state variables better?
@@ -603,18 +612,78 @@ func (c *perfCollector) Stop(_ context.Context) error {
 	return nil
 }
 
-func (c *perfCollector) updateHwCounter(pid int, metricName string, profileValue perf.ProfileValue) float64 {
-	scaledCounter := c.lastScaledHwCounters[pid][metricName] + scaleCounter(c.lastRawHwCounters[pid][metricName], profileValue)
-	c.lastRawHwCounters[pid][metricName] = profileValue
-	c.lastScaledHwCounters[pid][metricName] = scaledCounter
+// updateStateMaps evicts inactive entries in state maps.
+func (c *perfCollector) updateStateMaps(activePIDs []int, activeCgroupIDs []string) {
+	if c.opts.perfHwProfilersEnabled {
+		// Evict entries that are not in activePIDs
+		for pid := range c.lastRawHwCounters {
+			if !slices.Contains(activePIDs, pid) {
+				delete(c.lastRawHwCounters, pid)
+			}
+		}
 
-	return scaledCounter
+		// Evict entries that are not in activeCgroupIDs
+		for cgroupID := range c.lastCgroupHwCounters {
+			if !slices.Contains(activeCgroupIDs, cgroupID) {
+				delete(c.lastCgroupHwCounters, cgroupID)
+			}
+		}
+
+		// Allocate new pids
+		for _, pid := range activePIDs {
+			if c.lastRawHwCounters[pid] == nil {
+				c.lastRawHwCounters[pid] = make(map[string]perf.ProfileValue)
+			}
+		}
+
+		// Allocate new cgroupIDs
+		for _, cgroupID := range activeCgroupIDs {
+			if c.lastCgroupHwCounters[cgroupID] == nil {
+				c.lastCgroupHwCounters[cgroupID] = make(map[string]float64)
+			}
+		}
+	}
+
+	if c.opts.perfCacheProfilersEnabled {
+		// Evict entries that are not in activePIDs
+		for pid := range c.lastRawCacheCounters {
+			if !slices.Contains(activePIDs, pid) {
+				delete(c.lastRawCacheCounters, pid)
+			}
+		}
+
+		// Evict entries that are not in activeCgroupIDs
+		for cgroupID := range c.lastCgroupCacheCounters {
+			if !slices.Contains(activeCgroupIDs, cgroupID) {
+				delete(c.lastCgroupCacheCounters, cgroupID)
+			}
+		}
+
+		// Allocate new pids
+		for _, pid := range activePIDs {
+			if c.lastRawCacheCounters[pid] == nil {
+				c.lastRawCacheCounters[pid] = make(map[string]perf.ProfileValue)
+			}
+		}
+
+		// Allocate new cgroupIDs
+		for _, cgroupID := range activeCgroupIDs {
+			if c.lastCgroupCacheCounters[cgroupID] == nil {
+				c.lastCgroupCacheCounters[cgroupID] = make(map[string]float64)
+			}
+		}
+	}
+}
+
+func (c *perfCollector) updateHwCounter(pid int, metricName string, profileValue perf.ProfileValue) float64 {
+	scaledValue := scaleCounter(c.lastRawHwCounters[pid][metricName], profileValue)
+	c.lastRawHwCounters[pid][metricName] = profileValue
+
+	return scaledValue
 }
 
 // aggHardwareCounters aggregates process hardware counters of a given cgroup.
-func (c *perfCollector) aggHardwareCounters(hwProfiles map[int]*perf.HardwareProfile) map[string]float64 {
-	cgroupHwPerfCounters := make(map[string]float64)
-
+func (c *perfCollector) aggHardwareCounters(hwProfiles map[int]*perf.HardwareProfile, cgroupHwPerfCounters map[string]float64) map[string]float64 {
 	for pid, hwProfile := range hwProfiles {
 		if hwProfile.CPUCycles != nil {
 			metricName := "cpucycles_total"
@@ -667,24 +736,12 @@ func (c *perfCollector) updateHardwareCounters(
 
 	hwProfiles := make(map[int]*perf.HardwareProfile, len(procs))
 
-	activePIDs := make([]int, len(procs))
-
 	var pid int
 
 	var errs error
 
-	for iproc, proc := range procs {
+	for _, proc := range procs {
 		pid = proc.PID
-
-		activePIDs[iproc] = pid
-
-		if c.lastRawHwCounters[pid] == nil {
-			c.lastRawHwCounters[pid] = make(map[string]perf.ProfileValue)
-		}
-
-		if c.lastScaledHwCounters[pid] == nil {
-			c.lastScaledHwCounters[pid] = make(map[string]float64)
-		}
 
 		if hwProfiler, ok := c.perfHwProfilers[pid]; ok {
 			hwProfile := &perf.HardwareProfile{}
@@ -699,22 +756,9 @@ func (c *perfCollector) updateHardwareCounters(
 	}
 
 	// Aggregate perf counters
-	cgroupHwPerfCounters := c.aggHardwareCounters(hwProfiles)
+	c.lastCgroupHwCounters[cgroupID] = c.aggHardwareCounters(hwProfiles, c.lastCgroupHwCounters[cgroupID])
 
-	// Evict entries that are not in activePIDs
-	for pid := range c.lastRawHwCounters {
-		if !slices.Contains(activePIDs, pid) {
-			delete(c.lastRawHwCounters, pid)
-		}
-	}
-
-	for pid := range c.lastScaledHwCounters {
-		if !slices.Contains(activePIDs, pid) {
-			delete(c.lastScaledHwCounters, pid)
-		}
-	}
-
-	for counter, value := range cgroupHwPerfCounters {
+	for counter, value := range c.lastCgroupHwCounters[cgroupID] {
 		if value > 0 {
 			ch <- prometheus.MustNewConstMetric(
 				c.desc[counter],
@@ -818,17 +862,14 @@ func (c *perfCollector) updateSoftwareCounters(
 }
 
 func (c *perfCollector) updateCacheCounter(pid int, metricName string, profileValue perf.ProfileValue) float64 {
-	scaledCounter := c.lastScaledCacheCounters[pid][metricName] + scaleCounter(c.lastRawCacheCounters[pid][metricName], profileValue)
+	scaledValue := scaleCounter(c.lastRawCacheCounters[pid][metricName], profileValue)
 	c.lastRawCacheCounters[pid][metricName] = profileValue
-	c.lastScaledCacheCounters[pid][metricName] = scaledCounter
 
-	return scaledCounter
+	return scaledValue
 }
 
 // aggCacheCounters aggregates process cache counters of a given cgroup.
-func (c *perfCollector) aggCacheCounters(cacheProfiles map[int]*perf.CacheProfile) map[string]float64 {
-	cgroupCachePerfCounters := make(map[string]float64)
-
+func (c *perfCollector) aggCacheCounters(cacheProfiles map[int]*perf.CacheProfile, cgroupCachePerfCounters map[string]float64) map[string]float64 {
 	for pid, cacheProfile := range cacheProfiles {
 		if cacheProfile.L1DataReadHit != nil {
 			metricName := "cache_l1d_read_hits_total"
@@ -902,24 +943,12 @@ func (c *perfCollector) updateCacheCounters(cgroupID string, procs []procfs.Proc
 
 	cacheProfiles := make(map[int]*perf.CacheProfile, len(procs))
 
-	activePIDs := make([]int, len(procs))
-
 	var pid int
 
 	var errs error
 
-	for iproc, proc := range procs {
+	for _, proc := range procs {
 		pid = proc.PID
-
-		activePIDs[iproc] = pid
-
-		if c.lastRawCacheCounters[pid] == nil {
-			c.lastRawCacheCounters[pid] = make(map[string]perf.ProfileValue)
-		}
-
-		if c.lastScaledCacheCounters[pid] == nil {
-			c.lastScaledCacheCounters[pid] = make(map[string]float64)
-		}
 
 		if cacheProfiler, ok := c.perfCacheProfilers[pid]; ok {
 			cacheProfile := &perf.CacheProfile{}
@@ -933,23 +962,10 @@ func (c *perfCollector) updateCacheCounters(cgroupID string, procs []procfs.Proc
 		}
 	}
 
-	// Evict entries that are not in activePIDs
-	for pid := range c.lastRawCacheCounters {
-		if !slices.Contains(activePIDs, pid) {
-			delete(c.lastRawCacheCounters, pid)
-		}
-	}
-
-	for pid := range c.lastScaledCacheCounters {
-		if !slices.Contains(activePIDs, pid) {
-			delete(c.lastScaledCacheCounters, pid)
-		}
-	}
-
 	// Aggregate perf counters
-	cgroupCachePerfCounters := c.aggCacheCounters(cacheProfiles)
+	c.lastCgroupCacheCounters[cgroupID] = c.aggCacheCounters(cacheProfiles, c.lastCgroupCacheCounters[cgroupID])
 
-	for counter, value := range cgroupCachePerfCounters {
+	for counter, value := range c.lastCgroupCacheCounters[cgroupID] {
 		if value > 0 {
 			ch <- prometheus.MustNewConstMetric(
 				c.desc[counter],
@@ -1174,9 +1190,10 @@ func closeProfilers(data interface{}) error {
 			if !slices.Contains(d.activePIDs, pid) {
 				if err := closeHwProfiler(hwProfiler); err != nil {
 					d.logger.Error("failed to shutdown hardware profiler", "err", err)
-				} else {
-					delete(d.perfHwProfilers, pid)
 				}
+
+				// Remove profiler from the map
+				delete(d.perfHwProfilers, pid)
 			}
 		}
 	}
@@ -1186,9 +1203,10 @@ func closeProfilers(data interface{}) error {
 			if !slices.Contains(d.activePIDs, pid) {
 				if err := closeSwProfiler(swProfiler); err != nil {
 					d.logger.Error("failed to shutdown software profiler", "err", err)
-				} else {
-					delete(d.perfSwProfilers, pid)
 				}
+
+				// Remove profiler from the map
+				delete(d.perfSwProfilers, pid)
 			}
 		}
 	}
@@ -1198,9 +1216,10 @@ func closeProfilers(data interface{}) error {
 			if !slices.Contains(d.activePIDs, pid) {
 				if err := closeCacheProfiler(cacheProfiler); err != nil {
 					d.logger.Error("failed to shutdown cache profiler", "err", err)
-				} else {
-					delete(d.perfCacheProfilers, pid)
 				}
+
+				// Remove profiler from the map
+				delete(d.perfCacheProfilers, pid)
 			}
 		}
 	}
@@ -1264,28 +1283,24 @@ func filterPerfProcs(data interface{}) error {
 	return nil
 }
 
-// // estimateScale estimates the scaling factor only for the current interval
-// // Since last scrape, we estimate running and enabled times and estimate a scale factor
-// // We also estimate the counters that have been increased since last scrape and scale
-// // those incremented metrics using the scaling factor.
-// func estimateScale(lastTimeEnabled, lastTimeRunning, currentTimeEnabled, currentTimeRunning float64) float64 {
-// 	deltaEnabled := currentTimeEnabled - lastTimeEnabled
-// 	deltaRunning := currentTimeRunning - lastTimeRunning
-
-// 	if deltaRunning > 0 {
-// 		return deltaEnabled / deltaRunning
-// 	}
-
-// 	return 1.0
-// }
-
 // scaleCounter uses the enabled and running times of counter to extrapolate counter value.
 func scaleCounter(lastProfileValue, currentProfileValue perf.ProfileValue) float64 {
 	deltaEnabled := currentProfileValue.TimeEnabled - lastProfileValue.TimeEnabled
 	deltaRunning := currentProfileValue.TimeRunning - lastProfileValue.TimeRunning
-	deltaCounter := currentProfileValue.Value - lastProfileValue.Value
 
-	if deltaRunning > 0 {
+	var deltaCounter uint64
+
+	// Still no sure how to handle the overflows. If deltaCounter is < 0, treat it as
+	// a overflow and assume the lastProfileValue.Value is the overflow limit and estimate
+	// new deltaCounter
+	if currentProfileValue.Value < lastProfileValue.Value {
+		deltaCounter = lastProfileValue.Value + currentProfileValue.Value
+	} else {
+		deltaCounter = currentProfileValue.Value - lastProfileValue.Value
+	}
+
+	// Overflow here as well? Not sure if it happens and not sure how to handle it yet!
+	if currentProfileValue.TimeRunning > lastProfileValue.TimeRunning {
 		return math.Round((float64(deltaEnabled) / float64(deltaRunning)) * float64(deltaCounter))
 	}
 

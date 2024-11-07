@@ -235,11 +235,6 @@ func TestAggProfiles(t *testing.T) {
 	collector.lastRawCacheCounters[46231] = make(map[string]perf.ProfileValue)
 	collector.lastRawCacheCounters[46281] = make(map[string]perf.ProfileValue)
 
-	collector.lastScaledHwCounters[46231] = make(map[string]float64)
-	collector.lastScaledHwCounters[46281] = make(map[string]float64)
-	collector.lastScaledCacheCounters[46231] = make(map[string]float64)
-	collector.lastScaledCacheCounters[46281] = make(map[string]float64)
-
 	// First update
 	// hardware counters
 	hwProfiles := map[int]*perf.HardwareProfile{
@@ -394,34 +389,19 @@ func TestAggProfiles(t *testing.T) {
 			},
 		},
 	}
-	expectedScaledLastValues := map[int]map[string]float64{
-		46231: {
-			"cpucycles_total":           100,
-			"branch_instructions_total": 100,
-			"instructions_total":        100,
-			"branch_misses_total":       100,
-			"cache_refs_total":          100,
-			"cache_misses_total":        100,
-			"ref_cpucycles_total":       100,
-		},
-		46281: {
-			"cpucycles_total":           100,
-			"branch_instructions_total": 100,
-			"instructions_total":        100,
-			"branch_misses_total":       100,
-			"cache_refs_total":          100,
-			"cache_misses_total":        100,
-			"ref_cpucycles_total":       100,
-		},
-	}
-	expectedAggValues := map[string]float64{
-		"cpucycles_total": 200, "branch_instructions_total": 200, "instructions_total": 200, "branch_misses_total": 200, "cache_refs_total": 200, "cache_misses_total": 200, "ref_cpucycles_total": 200,
+	expectedAggHwValues := map[string]float64{
+		"cpucycles_total":           200,
+		"branch_instructions_total": 200,
+		"instructions_total":        200,
+		"branch_misses_total":       200,
+		"cache_refs_total":          200,
+		"cache_misses_total":        200,
+		"ref_cpucycles_total":       200,
 	}
 
-	cgroupCounters := collector.aggHardwareCounters(hwProfiles)
+	cgroupCounters := collector.aggHardwareCounters(hwProfiles, make(map[string]float64))
 	assert.EqualValues(t, expectedRawLastValues, collector.lastRawHwCounters)
-	assert.EqualValues(t, expectedScaledLastValues, collector.lastScaledHwCounters)
-	assert.EqualValues(t, expectedAggValues, cgroupCounters)
+	assert.EqualValues(t, expectedAggHwValues, cgroupCounters)
 
 	cacheProfiles := map[int]*perf.CacheProfile{
 		46231: {
@@ -535,23 +515,7 @@ func TestAggProfiles(t *testing.T) {
 			},
 		},
 	}
-	expectedScaledLastValues = map[int]map[string]float64{
-		46231: {
-			"cache_l1d_read_hits_total":        100,
-			"cache_l1d_read_misses_total":      100,
-			"cache_l1d_write_hits_total":       100,
-			"cache_l1_instr_read_misses_total": 100,
-			"cache_tlb_instr_read_hits_total":  100,
-		},
-		46281: {
-			"cache_l1d_read_hits_total":        100,
-			"cache_l1d_read_misses_total":      100,
-			"cache_l1d_write_hits_total":       100,
-			"cache_l1_instr_read_misses_total": 100,
-			"cache_tlb_instr_read_hits_total":  100,
-		},
-	}
-	expectedAggValues = map[string]float64{
+	expectedAggCacheValues := map[string]float64{
 		"cache_l1d_read_hits_total":        200,
 		"cache_l1d_read_misses_total":      200,
 		"cache_l1d_write_hits_total":       200,
@@ -559,10 +523,9 @@ func TestAggProfiles(t *testing.T) {
 		"cache_tlb_instr_read_hits_total":  200,
 	}
 
-	cgroupCounters = collector.aggCacheCounters(cacheProfiles)
+	cgroupCounters = collector.aggCacheCounters(cacheProfiles, make(map[string]float64))
 	assert.EqualValues(t, expectedRawLastValues, collector.lastRawCacheCounters)
-	assert.EqualValues(t, expectedScaledLastValues, collector.lastScaledCacheCounters)
-	assert.EqualValues(t, expectedAggValues, cgroupCounters)
+	assert.EqualValues(t, expectedAggCacheValues, cgroupCounters)
 
 	// Second update
 	hwProfiles = map[int]*perf.HardwareProfile{
@@ -580,8 +543,8 @@ func TestAggProfiles(t *testing.T) {
 		}},
 	}
 
-	cgroupCounters = collector.aggHardwareCounters(hwProfiles)
-	assert.EqualValues(t, map[string]float64{"cpucycles_total": 300}, cgroupCounters)
+	cgroupCounters = collector.aggHardwareCounters(hwProfiles, expectedAggHwValues)
+	assert.InDelta(t, 300, cgroupCounters["cpucycles_total"], 0)
 
 	cacheProfiles = map[int]*perf.CacheProfile{
 		46231: {L1DataReadHit: &perf.ProfileValue{
@@ -596,8 +559,8 @@ func TestAggProfiles(t *testing.T) {
 		}},
 	}
 
-	cgroupCounters = collector.aggCacheCounters(cacheProfiles)
-	assert.EqualValues(t, map[string]float64{"cache_l1d_read_hits_total": 300}, cgroupCounters)
+	cgroupCounters = collector.aggCacheCounters(cacheProfiles, expectedAggCacheValues)
+	assert.InDelta(t, 300, cgroupCounters["cache_l1d_read_hits_total"], 0)
 }
 
 func TestPIDEviction(t *testing.T) {
@@ -621,10 +584,8 @@ func TestPIDEviction(t *testing.T) {
 	require.NoError(t, err)
 
 	// Use fake processes
-	procs := []procfs.Proc{
-		{PID: 12341},
-		{PID: 12342},
-		{PID: 12343},
+	activePIDs := []int{
+		12341, 12342, 12343,
 	}
 
 	// Setup background goroutine to capture metrics.
@@ -639,44 +600,37 @@ func TestPIDEviction(t *testing.T) {
 	}()
 
 	// update counters
-	collector.updateHardwareCounters("1234", procs, metrics)
-	collector.updateSoftwareCounters("1234", procs, metrics)
-	collector.updateCacheCounters("1234", procs, metrics)
+	collector.updateStateMaps(activePIDs, []string{"1234"})
 
 	// check if last raw and scaled counters are populated
-	for _, pid := range []int{12341, 12342, 12343} {
+	for _, pid := range activePIDs {
 		assert.NotNil(t, collector.lastRawHwCounters[pid])
 		assert.NotNil(t, collector.lastRawCacheCounters[pid])
-
-		assert.NotNil(t, collector.lastScaledHwCounters[pid])
-		assert.NotNil(t, collector.lastScaledCacheCounters[pid])
 	}
 
+	assert.NotNil(t, collector.lastCgroupHwCounters["1234"])
+	assert.NotNil(t, collector.lastCgroupCacheCounters["1234"])
+
 	// Updated procs
-	procs = []procfs.Proc{
-		{PID: 12342},
-		{PID: 12343},
-		{PID: 12344},
+	activePIDs = []int{
+		12342, 12343, 12344,
 	}
 
 	// update counters
-	collector.updateHardwareCounters("1234", procs, metrics)
-	collector.updateSoftwareCounters("1234", procs, metrics)
-	collector.updateCacheCounters("1234", procs, metrics)
+	collector.updateStateMaps(activePIDs, []string{"1235"})
 
 	// check if last raw and scaled counters are populated
-	for _, pid := range []int{12342, 12343, 12344} {
+	for _, pid := range activePIDs {
 		assert.NotNil(t, collector.lastRawHwCounters[pid])
 		assert.NotNil(t, collector.lastRawCacheCounters[pid])
-
-		assert.NotNil(t, collector.lastScaledHwCounters[pid])
-		assert.NotNil(t, collector.lastScaledCacheCounters[pid])
 	}
+
+	assert.NotNil(t, collector.lastCgroupHwCounters["1235"])
+	assert.NotNil(t, collector.lastCgroupCacheCounters["1235"])
 
 	// Check if we evicted finished process
 	assert.Nil(t, collector.lastRawHwCounters[12341])
 	assert.Nil(t, collector.lastRawCacheCounters[12341])
-
-	assert.Nil(t, collector.lastScaledHwCounters[12341])
-	assert.Nil(t, collector.lastScaledCacheCounters[12341])
+	assert.Nil(t, collector.lastCgroupHwCounters["1234"])
+	assert.Nil(t, collector.lastCgroupCacheCounters["1234"])
 }
