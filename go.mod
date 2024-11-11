@@ -23,7 +23,7 @@ require (
 	github.com/zeebo/xxh3 v1.0.2
 	golang.org/x/sys v0.27.0
 	gopkg.in/yaml.v3 v3.0.1
-	kernel.org/pub/linux/libs/security/libcap/cap v1.2.71
+	kernel.org/pub/linux/libs/security/libcap/cap v1.2.72
 )
 
 require (
@@ -67,5 +67,5 @@ require (
 	golang.org/x/tools v0.24.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	kernel.org/pub/linux/libs/security/libcap/psx v1.2.71 // indirect
+	kernel.org/pub/linux/libs/security/libcap/psx v1.2.72 // indirect
 )
