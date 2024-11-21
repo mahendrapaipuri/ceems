@@ -2295,7 +2295,7 @@ SymlinkTo: /usr/bin
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: proc/3346567/environ
 Lines: 1
-PATH=/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/binNULLBYTEHOSTNAME=cd24e11f73a5NULLBYTETERM=xtermNULLBYTEGOLANG_VERSION=1.12.5NULLBYTEGOPATH=/goNULLBYTEHOME=/rootNULLBYTESLURM_JOB_UID=1000NULLBYTESLURM_JOB_ID=1009248NULLBYTESLURM_JOB_ACCOUNT=testaccNULLBYTESLURM_JOB_NODELIST=compute-[0-2]NULLBYTESLURM_JOB_GPUS=2,3NULLBYTESLURM_JOB_USER=testusrNULLBYTE
+PATH=/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/binNULLBYTEHOSTNAME=cd24e11f73a5NULLBYTETERM=xtermNULLBYTEGOLANG_VERSION=1.12.5NULLBYTEGOPATH=/goNULLBYTEHOME=/rootNULLBYTESLURM_JOB_UID=1000NULLBYTESLURM_JOB_ID=1009248NULLBYTESLURM_JOB_ACCOUNT=testaccNULLBYTESLURM_JOB_NODELIST=compute-[0-2]NULLBYTESLURM_JOB_GPUS=2,3NULLBYTESLURM_JOB_USER=testusrNULLBYTESLURM_STEP_GPUS=1,4NULLBYTE
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: proc/3346567/exe
@@ -2980,7 +2980,7 @@ SymlinkTo: /usr/bin
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: proc/3346596/environ
 Lines: 1
-PATH=/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/binNULLBYTEHOSTNAME=cd24e11f73a5NULLBYTETERM=xtermNULLBYTEGOLANG_VERSION=1.12.5NULLBYTEGOPATH=/goNULLBYTEHOME=/rootNULLBYTESLURM_JOB_UID=1000NULLBYTESLURM_JOB_ID=1009249NULLBYTESLURM_JOB_ACCOUNT=testacc2NULLBYTESLURM_JOB_NODELIST=compute-[0-2]NULLBYTESLURM_JOB_GPUS=0NULLBYTESLURM_JOB_USER=testusr2NULLBYTE
+PATH=/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/binNULLBYTEHOSTNAME=cd24e11f73a5NULLBYTETERM=xtermNULLBYTEGOLANG_VERSION=1.12.5NULLBYTEGOPATH=/goNULLBYTEHOME=/rootNULLBYTESLURM_JOB_UID=1000NULLBYTESLURM_JOB_ID=1009249NULLBYTESLURM_JOB_ACCOUNT=testacc2NULLBYTESLURM_JOB_NODELIST=compute-[0-2]NULLBYTESLURM_JOB_GPUS=0NULLBYTESLURM_JOB_USER=testusr2NULLBYTESLURM_STEP_GPUS=1NULLBYTE
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: proc/3346596/exe

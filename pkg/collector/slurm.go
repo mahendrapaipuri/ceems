@@ -186,7 +186,7 @@ func NewSlurmCollector(logger *slog.Logger) (Collector, error) {
 	for _, gpuType := range gpuTypes {
 		gpuDevs, err = GetGPUDevices(gpuType, logger)
 		if err == nil {
-			logger.Info("gpu: " + gpuType)
+			logger.Info("GPU devices found", "type", gpuType, "num_devs", len(gpuDevs))
 
 			break
 		}
@@ -515,7 +515,7 @@ func readProcEnvirons(data interface{}) error {
 		return errors.New("data type cannot be asserted")
 	}
 
-	var gpuOrdinals []string
+	var stepGPUs, jobGPUs []string
 
 	// Env var that we will search
 	jobIDEnv := "SLURM_JOB_ID=" + d.uuid
@@ -528,6 +528,11 @@ func readProcEnvirons(data interface{}) error {
 	// have capabilities to read environment variables. So, we just do
 	// old school loop on procs and attempt to find target env variables.
 	for _, proc := range d.procs {
+		// If SLURM_JOB_GPUS env var is found, exit loop
+		if len(jobGPUs) > 0 {
+			break
+		}
+
 		// Read process environment variables
 		// NOTE: This needs CAP_SYS_PTRACE and CAP_DAC_READ_SEARCH caps
 		// on the current process
@@ -538,22 +543,31 @@ func readProcEnvirons(data interface{}) error {
 		}
 
 		// When env var entry found, get all necessary env vars
-		// NOTE: This is not really concurrent safe. Multiple go routines might
-		// overwrite the variables. But I think we can live with it as for a gievn
-		// job cgroup these env vars should be identical in all procs
 		for _, env := range environments {
-			if strings.Contains(env, "SLURM_STEP_GPUS") || strings.Contains(env, "SLURM_JOB_GPUS") {
-				gpuOrdinals = strings.Split(strings.Split(env, "=")[1], ",")
+			if strings.Contains(env, "SLURM_STEP_GPUS") {
+				stepGPUs = strings.Split(strings.Split(env, "=")[1], ",")
+			}
 
-				goto outside
+			if strings.Contains(env, "SLURM_JOB_GPUS") {
+				jobGPUs = strings.Split(strings.Split(env, "=")[1], ",")
 			}
 		}
 	}
 
-outside:
-
-	// Set found gpuOrdinals on ctxData
-	d.gpuOrdinals = gpuOrdinals
+	// If both SLURM_STEP_GPUS and SLURM_JOB_GPUS are found, proritize
+	// SLURM_JOB_GPUS. We noticed that when both env vars are found,
+	// SLURM_STEP_GPUS is not correctly set.
+	// Technically SLURM_JOB_GPUS should be set for jobs and SLURM_STEP_GPUS
+	// should be set for steps like `srun`. When they are both set
+	// SLURM_STEP_GPUS should be a subset of SLURM_JOB_GPUS but this is not
+	// the case eversince we migrated to SLURM 23.11 on JZ. Maybe it is a
+	// side effect of Atos' patches?
+	// Relevant SLURM src: https://github.com/SchedMD/slurm/blob/d3e78848f72745ceb80e2a6bebdbcf3cfd7462b1/src/plugins/gres/common/gres_common.c#L262-L265
+	if len(jobGPUs) > 0 {
+		d.gpuOrdinals = jobGPUs
+	} else if len(stepGPUs) > 0 {
+		d.gpuOrdinals = stepGPUs
+	}
 
 	return nil
 }

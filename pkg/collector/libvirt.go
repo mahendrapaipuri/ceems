@@ -209,7 +209,7 @@ func NewLibvirtCollector(logger *slog.Logger) (Collector, error) {
 	for _, gpuType := range gpuTypes {
 		gpuDevs, err = GetGPUDevices(gpuType, logger)
 		if err == nil {
-			logger.Info("gpu: " + gpuType)
+			logger.Info("GPU devices found", "type", gpuType, "num_devs", len(gpuDevs))
 
 			break
 		}
