@@ -17,7 +17,7 @@ require (
 	github.com/prometheus/common v0.60.1
 	github.com/prometheus/exporter-toolkit v0.13.1
 	github.com/prometheus/procfs v0.15.1
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/swaggo/http-swagger/v2 v2.0.2
 	github.com/swaggo/swag v1.16.4
 	github.com/zeebo/xxh3 v1.0.2
