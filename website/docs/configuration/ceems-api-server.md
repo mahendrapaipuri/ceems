@@ -124,15 +124,20 @@ clusters:
       - tsdb-0
     web: 
       http_headers:
-        X-Auth-Token:
-          secrets:
-            - supersecrettoken
         X-OpenStack-Nova-API-Version:
           values:
             - latest
     extra_config:
-      compute_api_url: https://openstack-nova.example.com/v2.1
-      identity_api_url: https://openstack-keystone.example.com
+      api_service_endpoints:
+        compute: https://openstack-nova.example.com/v2.1
+        identity: https://openstack-keystone.example.com
+      auth:
+        methods:
+          - password
+        password:
+          user:
+            name: admin
+            password: supersecret
 ```
 
 Essentially it is a list of objects where each object describes a cluster.
@@ -140,7 +145,7 @@ Essentially it is a list of objects where each object describes a cluster.
 - `id`: A unique identifier for each cluster. The identifier must stay consistent across
 CEEMS components, especially for CEEMS LB. More details can be found in
 [Configuring CEEMS LB](./ceems-lb.md) section.
-- `manager`: Resource manager kind. Currently only **SLURM** and **Openstack** are
+- `manager`: Resource manager kind. Currently only `slurm` and `openstack` are
 supported.
 - `updaters`: List of updaters to be used to update the aggregate metrics of the
 compute units. The order is important as compute units are updated in the same order
@@ -161,6 +166,85 @@ All available options for the `web` configuration can be found in
 provided here. Currently, Openstack resource manager uses this section to configure the API
 URLs for compute and identity servers to fetch compute units, users and projects data.
 
+### SLURM specific clusters configuration
+
+As stated before, currently fetching SLURM jobs using `sacct` command is the only supported
+way. If the `sacct` binary is available on `PATH`, there is no need to provide any specific
+configuration. However, if the binary is present on non-standard location, it is necessary to
+provide the path to the binary using `cli` section of the config. For example, if the absolute
+path of `sacct` is `/opt/slurm/bin/sacct`, then we need to configure `cli` section as follows:
+
+```yaml
+cli:
+  path: /opt/slurm/bin
+```
+
+A minimal full cluster configuration would be:
+
+```yaml
+clusters:
+  - id: slurm-0
+    manager: slurm
+    cli: 
+      path: /opt/slurm/bin
+```
+
+The section `cli` also has `environment_variables` key to provide any environment variables
+while executing `sacct` command in a sub-process. This section takes key value as values:
+
+```yaml
+clusters:
+  - id: slurm-0
+    manager: slurm
+    cli: 
+      path: /opt/slurm/bin
+      environment_variables:
+        ENVVAR_NAME: ENVVAR_VALUE
+```
+
+### Openstack specific clusters configuration
+
+In the case of Openstack, `extra_config` section must be used to setup Openstack's API
+and auth configs. The following keys in `extra_config` must be provided:
+
+- `api_service_endpoints`: This section must provide the API endpoints for compute and
+identity services.
+- `auth`: This is the same auth object that needs to be passed to Openstack's identity
+service to get an API token. More details can be found in [Keystone's API docs](https://docs.openstack.org/api-ref/identity/v3/#authentication-and-token-management).
+
+An example that provides password auth method is shown below:
+
+```yaml
+extra_config:
+  api_service_endpoints:
+    compute: https://openstack-nova.example.com/v2.1
+    identity: https://openstack-keystone.example.com
+  auth:
+    identity:
+      methods:
+        - password
+      password:
+        user:
+          name: admin
+          password: supersecret
+```
+
+Similarly, the following example shows on how to use application credentials:
+
+```yaml
+extra_config:
+  api_service_endpoints:
+    compute: https://openstack-nova.example.com/v2.1
+    identity: https://openstack-keystone.example.com
+  auth:
+    identity:
+      methods:
+        - application_credential
+      application_credential:
+        id: 21dced0fd20347869b93710d2b98aae0
+        secret: supersecret
+```
+
 :::important[IMPORTANT]
 
 It is important to configure the compute and identity API URLs as displayed by the
@@ -170,6 +254,57 @@ However, it expects the configured API URL for compute contains the API version 
 as shown in the above config.
 
 :::
+
+:::note[NOTE]
+
+Admin level privileges must be available for configured auth object as CEEMS API server
+needs to fetch the instances of **all** tenants and projects and it is only possible
+with admin scope.
+
+:::
+
+It is advised to use application credentials instead of Admin password as it is
+possible to scope the usage of application credentials to only compute and
+identity services whereas admin account will give unrestricted access to all
+cluster level resources. More details on how to create application credentials with
+scopes can be found in [Keystone's docs](https://docs.openstack.org/keystone/latest/user/application_credentials.html).
+
+Openstack Nova (compute) uses micro versions for API and by default, CEEMS API
+server uses the latest supported micro version. If a specific micro version is
+desired it can be configured using `web.http_headers` section as follows:
+
+```yaml
+web: 
+  http_headers:
+    X-OpenStack-Nova-API-Version:
+      values:
+        - 2.12
+```
+
+A sample full clusters config for Openstack is shown as below:
+
+```yaml
+clusters:
+  - id: os-0
+    manager: openstack
+    web: 
+      http_headers:
+        X-OpenStack-Nova-API-Version:
+          values:
+            - latest
+    extra_config:
+      api_service_endpoints:
+        compute: https://openstack-nova.example.com/v2.1
+        identity: https://openstack-keystone.example.com
+      auth:
+        identity:
+          methods:
+            - password
+          password:
+            user:
+              name: admin
+              password: supersecret
+```
 
 ## Updaters Configuration
 
@@ -277,15 +412,20 @@ clusters:
     manager: openstack
     web: 
       http_headers:
-        X-Auth-Token:
-          secrets:
-            - supersecrettoken
         X-OpenStack-Nova-API-Version:
           values:
             - latest
     extra_config:
-      compute_api_url: https://openstack-nova.example.com/v2.1
-      identity_api_url: https://openstack-keystone.example.com
+      api_service_endpoints:
+        compute: https://openstack-nova.example.com/v2.1
+        identity: https://openstack-keystone.example.com
+      auth:
+        methods:
+          - password
+        password:
+          user:
+            name: admin
+            password: supersecret
 ```
 
 Assuming CEEMS exporter is deployed on the compute nodes of both SLURM
@@ -320,15 +460,20 @@ clusters:
       - tsdb-0
     web: 
       http_headers:
-        X-Auth-Token:
-          secrets:
-            - supersecrettoken
         X-OpenStack-Nova-API-Version:
           values:
             - latest
     extra_config:
-      compute_api_url: https://openstack-nova.example.com/v2.1
-      identity_api_url: https://openstack-keystone.example.com
+      api_service_endpoints:
+        compute: https://openstack-nova.example.com/v2.1
+        identity: https://openstack-keystone.example.com
+      auth:
+        methods:
+          - password
+        password:
+          user:
+            name: admin
+            password: supersecret
 
 updaters:
   - id: tsdb-0

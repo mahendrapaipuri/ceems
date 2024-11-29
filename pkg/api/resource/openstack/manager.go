@@ -4,6 +4,7 @@ package openstack
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -13,18 +14,26 @@ import (
 	"slices"
 	"time"
 
+	"github.com/mahendrapaipuri/ceems/internal/common"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/mahendrapaipuri/ceems/pkg/api/resource"
 	config_util "github.com/prometheus/common/config"
 )
 
-var novaMicroVersionHeaders = []string{
-	"X-OpenStack-Nova-API-Version",
-	"OpenStack-API-Version",
-}
+const (
+	tokenHeaderName     = "X-Auth-Token" //nolint:gosec
+	subjTokenHeaderName = "X-Subject-Token"
+)
 
-var osTimeFormat = base.DatetimeLayout + "-0700"
+var (
+	novaMicroVersionHeaders = []string{
+		"X-OpenStack-Nova-API-Version",
+		"OpenStack-API-Version",
+	}
+	osTimeFormat        = base.DatetimeLayout + "-0700"
+	tokenExpiryDuration = 1 * time.Hour // Openstack tokens are valid for 1 hour
+)
 
 type userProjectsCache struct {
 	userModels       []models.User
@@ -38,15 +47,28 @@ type openstackManager struct {
 	logger                     *slog.Logger
 	cluster                    models.Cluster
 	apiURLs                    map[string]*url.URL
+	auth                       []byte
 	client                     *http.Client
+	apiToken                   string
+	apiTokenExpiry             time.Time
 	userProjectsCache          userProjectsCache
 	userProjectsCacheTTL       time.Duration
 	userProjectsLastUpdateTime time.Time
 }
 
-type apiConfig struct {
-	ComputeAPIURL  string `yaml:"compute_api_url"`
-	IdentityAPIURL string `yaml:"identity_api_url"`
+type openstackConfig struct {
+	APIEndpoints struct {
+		Compute  string `yaml:"compute"`
+		Identity string `yaml:"identity"`
+	} `yaml:"api_service_endpoints"`
+	AuthConfig interface{} `yaml:"auth"`
+}
+
+// addAuthKey embeds AuthConfig as value under `auth` key.
+func (c *openstackConfig) addAuthKey() {
+	obj := map[string]interface{}{}
+	obj["auth"] = c.AuthConfig
+	c.AuthConfig = obj
 }
 
 const openstackVMManager = "openstack"
@@ -59,7 +81,7 @@ func init() {
 // New returns a new openstackManager that returns compute instances.
 func New(cluster models.Cluster, logger *slog.Logger) (resource.Fetcher, error) {
 	// Make openstackManager configs from clusters
-	openstackManager := openstackManager{
+	openstackManager := &openstackManager{
 		logger:               logger,
 		cluster:              cluster,
 		apiURLs:              make(map[string]*url.URL, 2),
@@ -98,9 +120,9 @@ func New(cluster models.Cluster, logger *slog.Logger) (resource.Fetcher, error) 
 		return nil, err
 	}
 
-	// Fetch compute and identity API URLs from extra_config
-	apiConfig := &apiConfig{}
-	if err := cluster.Extra.Decode(apiConfig); err != nil {
+	// Fetch compute and identity API URLs and auth config from extra_config
+	osConfig := &openstackConfig{}
+	if err := cluster.Extra.Decode(osConfig); err != nil {
 		logger.Error("Failed to decode extra_config for Openstack cluster", "id", cluster.ID, "err", err)
 
 		return nil, err
@@ -108,24 +130,35 @@ func New(cluster models.Cluster, logger *slog.Logger) (resource.Fetcher, error) 
 
 	// Ensure we have valid compute and identity API URLs
 	// Unwrap original error to avoid leaking sensitive passwords in output
-	openstackManager.apiURLs["compute"], err = url.Parse(apiConfig.ComputeAPIURL)
+	openstackManager.apiURLs["compute"], err = url.Parse(osConfig.APIEndpoints.Compute)
 	if err != nil {
 		logger.Error("Failed to parse compute service API URL for Openstack cluster", "id", cluster.ID, "err", err)
 
 		return nil, errors.Unwrap(err)
 	}
 
-	openstackManager.apiURLs["identity"], err = url.Parse(apiConfig.IdentityAPIURL)
+	openstackManager.apiURLs["identity"], err = url.Parse(osConfig.APIEndpoints.Identity)
 	if err != nil {
 		logger.Error("Failed to parse identity service API URL for Openstack cluster", "id", cluster.ID, "err", err)
 
 		return nil, errors.Unwrap(err)
 	}
 
-	// // Get initial list of flavors
-	// if err = openstackManager.updateFlavors(context.Background()); err != nil {
-	// 	return nil, err
-	// }
+	// Convert auth to bytes to embed into requests later
+	osConfig.addAuthKey()
+
+	if openstackManager.auth, err = json.Marshal(common.ConvertMapI2MapS(osConfig.AuthConfig)); err != nil {
+		logger.Error("Failed to marshal auth object for Openstack cluster", "id", cluster.ID, "err", err)
+
+		return nil, errors.Unwrap(err)
+	}
+
+	// Request first API token from keystone
+	if err := openstackManager.rotateToken(context.Background()); err != nil {
+		logger.Error("Failed to request API token for Openstack cluster", "id", cluster.ID, "err", err)
+
+		return nil, errors.Unwrap(err)
+	}
 
 	// Get initial users and projects
 	if err = openstackManager.updateUsersProjects(context.Background(), time.Now()); err != nil {
@@ -136,7 +169,7 @@ func New(cluster models.Cluster, logger *slog.Logger) (resource.Fetcher, error) 
 
 	logger.Info("Fetching VM instances from Openstack cluster", "id", cluster.ID)
 
-	return &openstackManager, nil
+	return openstackManager, nil
 }
 
 // FetchUnits fetches instances from openstack.
@@ -168,6 +201,8 @@ func (o *openstackManager) FetchUsersProjects(
 
 		if err := o.updateUsersProjects(ctx, current); err != nil {
 			o.logger.Error("Failed to update users and projects data for Openstack cluster", "id", o.cluster.ID, "err", err)
+
+			return nil, nil, err
 		}
 	}
 
@@ -183,10 +218,10 @@ func (o *openstackManager) servers() *url.URL {
 	return o.apiURLs["compute"].JoinPath("/servers/detail")
 }
 
-// // flavors endpoint.
-// func (o *openstackManager) flavors() *url.URL {
-// 	return o.apiURLs["compute"].JoinPath("/flavors/detail")
-// }
+// tokens endpoint.
+func (o *openstackManager) tokens() *url.URL {
+	return o.apiURLs["identity"].JoinPath("/v3/auth/tokens")
+}
 
 // users endpoint.
 func (o *openstackManager) users() *url.URL {
@@ -196,6 +231,22 @@ func (o *openstackManager) users() *url.URL {
 // user details endpoint.
 func (o *openstackManager) userProjects(id string) *url.URL {
 	return o.apiURLs["identity"].JoinPath(fmt.Sprintf("/v3/users/%s/projects", id))
+}
+
+// addTokenHeader adds API token to request headers.
+func (o *openstackManager) addTokenHeader(ctx context.Context, req *http.Request) (*http.Request, error) {
+	// Check if token is still valid. If not rotate token
+	if time.Now().After(o.apiTokenExpiry) {
+		if err := o.rotateToken(ctx); err != nil {
+			return nil, err
+		}
+	}
+
+	// First remove any pre-configured tokens
+	req.Header.Del(tokenHeaderName)
+	req.Header.Add(tokenHeaderName, o.apiToken)
+
+	return req, nil
 }
 
 // ping attempts to ping Openstack compute and identity API servers.

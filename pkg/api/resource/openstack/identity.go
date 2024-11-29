@@ -1,6 +1,7 @@
 package openstack
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -16,6 +17,32 @@ import (
 const (
 	chunkSize = 256
 )
+
+// rotateToken requests new API token from keystone.
+func (o *openstackManager) rotateToken(ctx context.Context) error {
+	// Create a new GET request
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		o.tokens().String(),
+		bytes.NewBuffer(o.auth),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create request to rotate API token for openstack cluster: %w", err)
+	}
+
+	// Get Token
+	o.apiToken, err = apiTokenRequest(req, o.client)
+	if err != nil {
+		return fmt.Errorf("failed to complete request to rotate token for openstack cluster: %w", err)
+	}
+
+	// Set token expiry. By default Openstack tokens are 1 hour and we use a tolerance
+	// of 5 minutes just to account for clock skew to avoid failed requests
+	o.apiTokenExpiry = time.Now().Add(tokenExpiryDuration - 5*time.Minute)
+
+	return nil
+}
 
 // updateUsersProjects updates users and projects of a given Openstack cluster.
 func (o *openstackManager) updateUsersProjects(ctx context.Context, current time.Time) error {
@@ -43,6 +70,12 @@ func (o *openstackManager) fetchUsers(ctx context.Context) ([]User, error) {
 		return nil, fmt.Errorf("failed to create request to fetch users for openstack cluster: %w", err)
 	}
 
+	// Add token to request headers
+	req, err = o.addTokenHeader(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to rotate api token for openstack cluster: %w", err)
+	}
+
 	// Get response
 	resp, err := apiRequest[UsersResponse](req, o.client)
 	if err != nil {
@@ -63,6 +96,12 @@ func (o *openstackManager) fetchUserProjects(ctx context.Context, userID string)
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request to fetch user projects for openstack cluster: %w", err)
+	}
+
+	// Add token to request headers
+	req, err = o.addTokenHeader(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to rotate api token for openstack cluster: %w", err)
 	}
 
 	// Get response

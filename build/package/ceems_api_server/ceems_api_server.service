@@ -1,5 +1,5 @@
 [Unit]
-Description=Prometheus CEEMS API Server
+Description=CEEMS API Server
 After=network-online.target
 
 [Service]
