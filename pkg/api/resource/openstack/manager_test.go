@@ -2,6 +2,7 @@ package openstack
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -174,6 +175,12 @@ func mockOSComputeAPIServer() *httptest.Server {
 	// Start test server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, "servers") {
+			if tokens := r.Header[tokenHeaderName]; len(tokens) == 0 {
+				w.WriteHeader(http.StatusForbidden)
+
+				return
+			}
+
 			var fileName string
 			if _, ok := r.URL.Query()["deleted"]; ok {
 				fileName = "deleted"
@@ -204,12 +211,24 @@ func mockOSIdentityAPIServer() *httptest.Server {
 	// Start test server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasSuffix(r.URL.Path, "users") {
+			if tokens := r.Header[tokenHeaderName]; len(tokens) == 0 {
+				w.WriteHeader(http.StatusForbidden)
+
+				return
+			}
+
 			if data, err := os.ReadFile("../../testdata/openstack/identity/users.json"); err == nil {
 				w.Write(data)
 
 				return
 			}
 		} else if strings.Contains(r.URL.Path, "users") {
+			if tokens := r.Header[tokenHeaderName]; len(tokens) == 0 {
+				w.WriteHeader(http.StatusForbidden)
+
+				return
+			}
+
 			pathParts := strings.Split(r.URL.Path, "/")
 
 			userID := pathParts[len(pathParts)-2]
@@ -218,6 +237,21 @@ func mockOSIdentityAPIServer() *httptest.Server {
 
 				return
 			}
+		} else if strings.HasSuffix(r.URL.Path, "tokens") {
+			decoder := json.NewDecoder(r.Body)
+
+			var t map[string]interface{}
+
+			if err := decoder.Decode(&t); err != nil {
+				w.Write([]byte("KO"))
+
+				return
+			}
+
+			w.Header().Add(subjTokenHeaderName, "apitokensecret")
+			w.WriteHeader(http.StatusCreated)
+
+			return
 		} else {
 			w.Write([]byte("KO"))
 		}
@@ -229,8 +263,17 @@ func mockOSIdentityAPIServer() *httptest.Server {
 func mockConfig(computeAPIURL, identityAPIURL string) (yaml.Node, error) {
 	config := `
 ---
-compute_api_url: %s
-identity_api_url: %s`
+api_service_endpoints:
+  compute: %s
+  identity: %s
+auth:
+  identity:
+    methods:
+      - password
+    password:
+      user:
+        name: admin
+        password: supersecret`
 
 	cfg := fmt.Sprintf(config, computeAPIURL, identityAPIURL)
 

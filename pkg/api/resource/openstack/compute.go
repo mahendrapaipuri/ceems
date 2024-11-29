@@ -108,7 +108,7 @@ func (o *openstackManager) activeInstances(ctx context.Context, start time.Time,
 	wg.Wait()
 
 	// If no servers found, return error(s)
-	if len(allServers) == 0 {
+	if allErrs != nil {
 		return nil, allErrs
 	}
 
@@ -257,6 +257,12 @@ func (o *openstackManager) fetchInstances(ctx context.Context, start time.Time, 
 		return nil, fmt.Errorf("failed to create request to fetch Openstack instances: %w", err)
 	}
 
+	// Add token to request headers
+	req, err = o.addTokenHeader(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to rotate api token for openstack cluster: %w", err)
+	}
+
 	// Add query parameters
 	q := req.URL.Query()
 	q.Add("all_tenants", "true")
@@ -264,7 +270,7 @@ func (o *openstackManager) fetchInstances(ctx context.Context, start time.Time, 
 	if deleted {
 		q.Add("deleted", "true")
 		q.Add("changes-since", start.Format(osTimeFormat))
-		q.Add("changes-until", end.Format(osTimeFormat))
+		q.Add("changes-before", end.Format(osTimeFormat))
 	}
 
 	req.URL.RawQuery = q.Encode()

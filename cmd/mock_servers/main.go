@@ -239,6 +239,22 @@ func ServersHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("KO"))
 }
 
+// TokensHandler handles OS tokens.
+func TokensHandler(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+
+	var t map[string]interface{}
+
+	if err := decoder.Decode(&t); err != nil {
+		w.Write([]byte("KO"))
+
+		return
+	}
+
+	w.Header().Add("X-Subject-Token", "apitokensecret")
+	w.WriteHeader(http.StatusCreated)
+}
+
 // UsersHandler handles OS users.
 func UsersHandler(w http.ResponseWriter, r *http.Request) {
 	if data, err := os.ReadFile("pkg/api/testdata/openstack/identity/users.json"); err == nil {
@@ -328,10 +344,11 @@ func osKSServer(ctx context.Context) {
 
 	// Registering our handler functions, and creating paths.
 	osKSMux := http.NewServeMux()
+	osKSMux.HandleFunc("/v3/auth/tokens", TokensHandler)
 	osKSMux.HandleFunc("/v3/users", UsersHandler)
 	osKSMux.HandleFunc("/v3/users/{id}/projects", ProjectsHandler)
 
-	log.Println("Started Prometheus on port", osKSPortNum)
+	log.Println("Started Openstack identity API server on port", osKSPortNum)
 	log.Println("To close connection CTRL+C :-)")
 
 	// Start server

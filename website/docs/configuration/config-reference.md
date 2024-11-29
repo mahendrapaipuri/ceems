@@ -34,6 +34,7 @@ character in the source label should be converted to an underscore
 * `<updatername>`: a string that identifies updater type. Currently accepted values are `tsdb`.
 * `<promql_query>`: a valid PromQL query string.
 * `<lbstrategy>`: a valid load balancing strategy. Currently accepted values are `round-robin`, `least-connection` and `resource-based`.
+* `<object>`: a generic object
 
 The other placeholders are specified separately.
 
@@ -365,26 +366,32 @@ web:
 # Any other configuration needed to reach API server of the resource manager
 # can be configured in this section.
 #
-# Currently this section is used for both SLURM and Openstack resource managers
+# Currently this section is used for Openstack resource manager
 # to configure API versions
 #
-# For example, for SLURM if your API endpoints are of form `/slurm/v0.0.40/diag`, 
-# the version is `v0.0.40`.
-# Docs: https://slurm.schedmd.com/rest_api.html
-# SLURM's REST API version can be set as `slurm: v0.0.40`
-#
-# In the case of Openstack, we need to fetch from different sources like identity,
-# compute and they use different versioning of API. They can be configured using
-# this section as well
+# In the case of Openstack, this section must have two keys `api_service_endpoints`
+# and `auth`. Both of these are compulsory.
+# `api_service_endpoints` must provide API endpoints for compute and identity
+# services as provided in service catalog of Openstack cluster. `auth` must be the
+# same `auth` object that must be sent in POST request to keystone to get a API token.
 #
 # Example:
 #
-# slurm: v0.0.40  # SLURM
-# identity: v3  # Openstack
-# compute: v2.1  # Openstack
+# extra_config:
+#   api_service_endpoints:
+#     compute: https://openstack-nova.example.com/v2.1
+#     identity: https://openstack-keystone.example.com
+#   auth:
+#     identity:
+#       methods:
+#         - password
+#       password:
+#         user:
+#           name: admin
+#           password: supersecret
 #
 extra_config:
-  [ <string>: <string> ... ]
+  [ <string>: <object> ... ]
 ```
 
 ## `<updater_config>`
