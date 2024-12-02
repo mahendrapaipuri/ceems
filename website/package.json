@@ -32,7 +32,7 @@
     "@docusaurus/module-type-aliases": "3.6.3",
     "@docusaurus/tsconfig": "3.6.3",
     "@docusaurus/types": "3.6.3",
-    "cspell": "^8.15.7",
+    "cspell": "^8.16.1",
     "markdown-link-check": "3.12.2",
     "typescript": "~5.7.2"
   },
