@@ -579,8 +579,8 @@ func populateDBWithMockData(s *stats) error {
 		return err
 	}
 
-	s.execStatements(ctx, tx, time.Now(), mockUnitsOne, mockUsersOne, mockProjectsOne)
-	s.execStatements(ctx, tx, time.Now(), mockUnitsTwo, nil, nil)
+	s.execStatements(ctx, tx, time.Now().Add(-time.Minute), time.Now(), mockUnitsOne, mockUsersOne, mockProjectsOne)
+	s.execStatements(ctx, tx, time.Now().Add(-time.Minute), time.Now(), mockUnitsTwo, nil, nil)
 	tx.Commit()
 
 	return nil
@@ -974,7 +974,7 @@ func TestUnitStatsDeleteOldUnits(t *testing.T) {
 	require.NoError(t, err)
 	// stmtMap, err := s.prepareStatements(ctx, tx)
 	// require.NoError(t, err)
-	err = s.execStatements(ctx, tx, time.Now(), units, nil, nil)
+	err = s.execStatements(ctx, tx, time.Now().Add(-time.Minute), time.Now(), units, nil, nil)
 	require.NoError(t, err)
 
 	// Now clean up DB for old units
