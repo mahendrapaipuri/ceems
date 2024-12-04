@@ -91,6 +91,7 @@ type stats struct {
 	logger  *slog.Logger
 	db      *sql.DB
 	dbConn  *ceems_sqlite3.Conn
+	emptyDB bool
 	manager *resource.Manager
 	updater *updater.UnitUpdater
 	storage *storageConfig
@@ -164,12 +165,18 @@ func New(c *Config) (*stats, error) {
 	// Get last_updated_at time from DB and overwrite the one provided from config.
 	// DB should be the single source of truth.
 	var lastUpdatedAt string
+
+	var emptyDB bool
+
 	if err = db.QueryRow("SELECT MAX(last_updated_at) FROM " + base.UsageDBTableName).Scan(&lastUpdatedAt); err == nil {
 		// Parse date time string
 		c.Data.LastUpdateTime, err = time.Parse(base.DatetimeLayout, lastUpdatedAt)
 		if err != nil {
 			c.Logger.Error("Failed to parse last_updated_at fetched from DB", "time", lastUpdatedAt, "err", err)
 		}
+	} else {
+		// If DB is brand new, we get error here as converting NULL to string is unsupported
+		emptyDB = true
 	}
 
 	// Now make an instance of time.Date with proper format and zone
@@ -236,6 +243,7 @@ func New(c *Config) (*stats, error) {
 		logger:  c.Logger,
 		db:      db,
 		dbConn:  dbConn,
+		emptyDB: emptyDB,
 		manager: manager,
 		updater: updater,
 		storage: storageConfig,
@@ -365,7 +373,7 @@ func (s *stats) collect(ctx context.Context, startTime, endTime time.Time) error
 	// Insert data into DB
 	s.logger.Debug("Executing SQL statements")
 
-	if err := s.execStatements(ctx, tx, endTime, units, users, projects); err != nil {
+	if err := s.execStatements(ctx, tx, startTime, endTime, units, users, projects); err != nil {
 		s.logger.Debug("Failed to execute SQL statements", "err", err)
 
 		return fmt.Errorf("failed to execute SQL statements: %w", err)
@@ -428,6 +436,7 @@ func (s *stats) purgeExpiredUnits(ctx context.Context, tx *sql.Tx) error {
 func (s *stats) execStatements(
 	ctx context.Context,
 	tx *sql.Tx,
+	startTime time.Time,
 	currentTime time.Time,
 	clusterUnits []models.ClusterUnits,
 	clusterUsers []models.ClusterUsers,
@@ -452,6 +461,8 @@ func (s *stats) execStatements(
 
 	// Get current day midnight
 	todayMidnight := currentTime.Truncate(24 * time.Hour).Format(base.DatetimeLayout)
+
+	var unitIncr int
 
 	for _, cluster := range clusterUnits {
 		for _, unit := range cluster.Units {
@@ -501,11 +512,11 @@ func (s *stats) execStatements(
 				s.logger.Error("Failed to insert unit in DB", "cluster_id", cluster.Cluster.ID, "uuid", unit.UUID, "err", err)
 			}
 
-			// If unit.EndTS is zero, it means a running unit. We shouldnt update stats
-			// of running units. They should be updated **ONLY** for finished units
-			unitIncr := 1
-			if unit.EndedAtTS == 0 {
-				unitIncr = 0
+			// If the unit has started in this update period, increment num units
+			// Or if we start with empty DB, we need to increment for num units for all discovered units
+			unitIncr = 0
+			if unit.StartedAtTS > startTime.UnixMilli() || s.emptyDB {
+				unitIncr = 1
 			}
 
 			// Update Usage table
@@ -614,6 +625,11 @@ func (s *stats) execStatements(
 		); err != nil {
 			s.logger.Error("Failed to update admin_users table in DB", "source", source, "err", err)
 		}
+	}
+
+	// If emptyDB is true, we have already primed the DB with first update and set it to false
+	if s.emptyDB {
+		s.emptyDB = false
 	}
 
 	return nil

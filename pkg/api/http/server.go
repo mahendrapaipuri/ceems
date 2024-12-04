@@ -1145,7 +1145,7 @@ func (s *CEEMSServer) aggQueryBuilder(
 	q = s.getCommonQueryParams(&q, r.URL.Query())
 
 	// Get keys only within the requested period
-	q.query(" AND ended_at BETWEEN ")
+	q.query(" AND last_updated_at BETWEEN ")
 	q.param([]string{queryWindow["from"]})
 	q.query(" AND ")
 	q.param([]string{queryWindow["to"]})
@@ -1186,7 +1186,7 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 
 	var groupby []string
 
-	var targetTable, targetCol string
+	var targetTable string
 
 	var queryWindowTS map[string]string
 
@@ -1284,7 +1284,6 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 
 	if _, ok := r.URL.Query()["experimental"]; ok {
 		targetTable = base.DailyUsageDBTableName
-		targetCol = "last_updated_at"
 
 		for iQuery, query := range queries {
 			if strings.Contains(query, "COUNT") {
@@ -1293,7 +1292,6 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 		}
 	} else {
 		targetTable = base.UnitsDBTableName
-		targetCol = "ended_at"
 	}
 
 	// Make query
@@ -1315,10 +1313,16 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 	q = s.getCommonQueryParams(&q, r.URL.Query())
 
 	// Add from and to to query only when checkQueryWindow is true
-	q.query(fmt.Sprintf(" AND %s BETWEEN ", targetCol))
+	q.query(" AND last_updated_at BETWEEN ")
 	q.param([]string{queryWindowTS["from"]})
 	q.query(" AND ")
 	q.param([]string{queryWindowTS["to"]})
+
+	// Get only units that have finished. We do not present this
+	// query parameter for end users. **Only used in testing**
+	if _, ok := r.URL.Query()["__terminated"]; ok {
+		q.query(" AND ended_at_ts > 0 ")
+	}
 
 	// Finally add GROUP BY clause. Always group by username,project
 	groupby = []string{"username", "project"}
