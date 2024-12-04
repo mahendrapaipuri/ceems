@@ -8,18 +8,20 @@
 # We can leverage the recording rules to estimate the power consumption of each compute
 # unit. We get node level power consumption from IPMI DCMI readings and we should split
 # this global power comsumption into consumption of each compute unit. The idea here is
-# to use RAPL power readings that report power consumption by CPU and DRAM to split
-# the power reading of IPMI DCMI to power consumption of CPU and DRAM. There is no easy
-# way to split the power for rest of the components like network, storage, fans (if they exist).
+# to use RAPL power readings that report power consumption by CPU and DRAM to "extrapolate"
+# the power consumption of each compute unit to all other peripherals on the motherboard.
+# There is no easy way to split the power for rest of the components like network, 
+# storage, fans, etc and hence we use the extrapolation method here.
 # 
 # We can also introduce the Power Usage Effectiveness (PUE) ratio in the power usage
 # estimation of compute units in these recording rules.
 #
 # Energy consumption per compute unit is estimated with following assumptions:
 #
-# Firstly, we make an assumption that 90% of power is consumed by CPU, DRAM and 10% by network
-# We ignore storage as they come from external storage clusters and seldom using local
-# disks
+# Firstly, we make an assumption that 90% of power is consumed by CPU, DRAM and other peripherals
+# that must be scaled with the usage of CPU and DRAM of compute units and 10% as 
+# "activity-independent" power consumption that is split equally among all running compute
+# units on the node.
 #
 # We leverage RAPL package and DRAM to split the rest of 90% power between CPU and DRAM
 # components.
@@ -29,21 +31,22 @@
 # node_cpu_power = 0.9 * ipmi_power * (rapl_package/(rapl_package + rapl_dram))
 # node_dram_power = 0.9 * ipmi_power * (rapl_dram/(rapl_package + rapl_dram))
 #
-# Now we have power usage at node level for CPU and DRAM. We split it further at the
-# compute unit level using CPU time and DRAM usage by the compute unit. For network power usage, we split
-# total network power usage equally among all compute units that running on the node 
+# Now we have power usage at node level for CPU and DRAM. Effectively we are embedding consumption
+# of other components in CPU and DRAM by the above assumption. We split it further at the
+# compute unit level using CPU time and DRAM usage by the compute unit. For activity-independent 
+# power consumption, we split it equally among all compute units that running on the node 
 # at a given time.
 #
 # compute_unit_cpu_power = node_cpu_power * (total_compute_unit_cpu_sec / total_node_cpu_sec)
 # compute_unit_dram_power = node_dram_power * (total_compute_unit_mem_usage / total_node_mem_usage)
-# compute_unit_net_power = 0.1 * ipmi_power / num_compute_units
+# compute_unit_other_power = 0.1 * ipmi_power / num_compute_units
 #
-# Total power usage of compute unit = compute_unit_cpu_power + compute_unit_dram_power + compute_unit_net_power
+# Total power usage of compute unit = compute_unit_cpu_power + compute_unit_dram_power + compute_unit_other_power
 #
 # Finally, we can introduce PUE into the energy consumption by multiplying it with
 # Total compute unit power usage.
 #
-# Total power usage of compute unit = PUE * (compute_unit_cpu_power + compute_unit_dram_power + compute_unit_net_power)
+# Total power usage of compute unit = PUE * (compute_unit_cpu_power + compute_unit_dram_power + compute_unit_other_power)
 #
 # IMPORTANT: In rate estimation a rate interval of 2m is used. This is based on scrape
 # duration of 30s. It is always desirable to have rate interval atleast 4 times the
@@ -59,62 +62,94 @@ groups:
       #
       # We take average power over 5m reported by DCGM to smoothen any "unnatural" peaks.
       #
-      # IMPORTANT: DCGM reports power usage by modelling. So there can be times where
+      # IMPORTANT: There can be slight time shift between powers reported by IPMI and
+      # GPU (NVIDIA DCGM or AMD SMI). So there can be times where
       # power reported by ensemble of GPUs by DCGM exceeds power reported by IPMI. In this
       # case the query tends to give negative values which is not possible.
       # To avoid such situations, we use a condition >=0 to the query where the negative
       # values will be filtered from query result. They will appear as gaps in TSDB
       # We can fix it on Grafana side by choosing to join the time series gaps in panel
       # options. 
-      # Not ideal, but we dont have much options here!!
+      # 
+      # When the workflows use CPU and GPU without a lot of temporal variation, this 
+      # approximation will have a very **minimal** effect. However, if the power usage
+      # varies very rapidly in time due the way workflow uses the resources, this can 
+      # induce errors in power usage estimation by CPU.
       #
       # PUE of 1 is used by default. Use appropriate PUE by replacing 1 by PUE ratio in expr
-      - record: instance:ceems_ipmi_dcmi_avg_watts:pue_avg
-        expr: 1 * (ceems_ipmi_dcmi_avg_watts{job="sample-gpu"} - on(instance) group_left() sum by (instance) (avg_over_time(DCGM_FI_DEV_POWER_USAGE{job="sample-dcgm"}[5m:])) >= 0)
-
-      # Unit's CPU total energy usage estimated from IPMI DCMI
-      # A100 partition does not report RAPL CPU and DRAM power usage. So for this
-      # partition we make a assumption of 70% CPU, 20% DRAM and 10% network
-      - record: unit:ceems_compute_unit_cpu_energy_usage:sum
+      - record: instance:ceems_ipmi_dcmi_current_watts:pue_avg
         expr: |2
-            0.7 * instance:ceems_ipmi_dcmi_avg_watts:pue_avg{job="sample-gpu"} # Assumption 90% Power usage by CPU and DRAM and 10% by network.
+          1 * (
+              (
+                    ceems_ipmi_dcmi_current_watts{job="sample-cpu"}
+                  - on (instance) group_left ()
+                    sum by (instance) (DCGM_FI_DEV_POWER_USAGE{job="sample-dcgm"})
+                >=
+                  0
+              )
+          )
+
+      # Unit's CPU total power usage estimated from IPMI DCMI
+      - record: unit:ceems_compute_unit_cpu_power_usage:sum
+        expr: |2
+            0.9 * instance:ceems_ipmi_dcmi_current_watts:pue_avg{job="sample-cpu"} # Assumption 90% Power usage by CPU and DRAM and 10% by others.
+                * on (instance) group_left () # 0.9 * IPMI power * (RAPL Package / (RAPL Package + RAPL DRAM)) -> Total power usage by "CPU"
+                  (
+                      sum by (instance) (rate(ceems_rapl_package_joules_total{job="sample-cpu"}[2m]))
+                    /
+                      (
+                          sum by (instance) (rate(ceems_rapl_package_joules_total{job="sample-cpu"}[2m]))
+                        +
+                          sum by (instance) (rate(ceems_rapl_dram_joules_total{job="sample-cpu"}[2m]))
+                      )
+                  )
               * on (instance) group_right () # CPU Power usage * (Job CPU Time / Total CPU Time) -> CPU power usage by "Job"
                 (
                     (
-                        rate(ceems_compute_unit_cpu_user_seconds_total{job="sample-gpu"}[2m])
+                        rate(ceems_compute_unit_cpu_user_seconds_total{job="sample-cpu"}[2m])
                       +
-                        rate(ceems_compute_unit_cpu_system_seconds_total{job="sample-gpu"}[2m])
+                        rate(ceems_compute_unit_cpu_system_seconds_total{job="sample-cpu"}[2m])
                     )
                   / on (instance) group_left ()
-                    sum by (instance) (rate(ceems_cpu_seconds_total{job="sample-gpu",mode!~"idle|iowait|steal"}[2m]))
+                    sum by (instance) (rate(ceems_cpu_seconds_total{job="sample-cpu",mode!~"idle|iowait|steal"}[2m]))
                 )
             +
-                  0.2 * instance:ceems_ipmi_dcmi_avg_watts:pue_avg{job="sample-gpu"}
+                  0.9 * instance:ceems_ipmi_dcmi_current_watts:pue_avg{job="sample-cpu"}
+                * on (instance) group_left () # 0.9 * IPMI power * (RAPL DRAM / (RAPL Package + RAPL DRAM)) -> Total power usage by "DRAM"
+                  (
+                      sum by (instance) (rate(ceems_rapl_dram_joules_total{job="sample-cpu"}[2m]))
+                    /
+                      (
+                          sum by (instance) (rate(ceems_rapl_package_joules_total{job="sample-cpu"}[2m]))
+                        +
+                          sum by (instance) (rate(ceems_rapl_dram_joules_total{job="sample-cpu"}[2m]))
+                      )
+                  )
               * on (instance) group_right () # DRAM Power usage * (Job Memory used / Total Memory used) -> DRAM power usage by "Job"
                 (
-                    ceems_compute_unit_memory_used_bytes{job="sample-gpu"}
+                    ceems_compute_unit_memory_used_bytes{job="sample-cpu"}
                   / on (instance) group_left ()
                     (
-                        ceems_meminfo_MemTotal_bytes{job="sample-gpu"}
+                        ceems_meminfo_MemTotal_bytes{job="sample-cpu"}
                       - on (instance)
-                        ceems_meminfo_MemAvailable_bytes{job="sample-gpu"}
+                        ceems_meminfo_MemAvailable_bytes{job="sample-cpu"}
                     )
                 )
             +
-                0.1 * instance:ceems_ipmi_dcmi_avg_watts:pue_avg{job="sample-gpu"}
-              * on (instance) group_right () # Network Power usage / Number of Jobs -> Network power usage by "Job"
+                0.1 * instance:ceems_ipmi_dcmi_current_watts:pue_avg{job="sample-cpu"}
+              * on (instance) group_right () # Others Power usage / Number of Jobs -> Other power usage by "Job"
                 (
-                    ceems_compute_unit_memory_used_bytes{job="sample-gpu"}
+                    ceems_compute_unit_memory_used_bytes{job="sample-cpu"}
                   /
                     (
-                        ceems_compute_unit_memory_used_bytes{job="sample-gpu"}
+                        ceems_compute_unit_memory_used_bytes{job="sample-cpu"}
                       * on (instance) group_left ()
-                        ceems_compute_units{job="sample-gpu"}
+                        ceems_compute_units{job="sample-cpu"}
                     )
                 )
 
   # Rule group for aggregate metrics. Here we estimate the CPU, CPU Mem, CPU Energy, 
-  # CPU emissions last 24hr in the intervals of 15m. 
+  # CPU emissions last 1hr in the intervals of 15m. 
   # So we get a nice rolling aggregate of usage and consumption time series
   #
   # NOTE that there are two different intervals in these queries:
@@ -127,12 +162,12 @@ groups:
   #   However, we do not need to use such a fine interval to estimate daily metrics. Using
   #   such interval will also increase the query time as TSDB needs to get a lot of data into
   #   memory to estimate this query. So we use 15m as query interval which is a reasonable
-  #   for estimating aggregate metrics for 24h.
+  #   for estimating aggregate metrics for 1h.
   - name: sample-gpu-agg
     interval: 15m
     rules:
-      # Average CPU usage during last 24h
-      - record: instance:ceems_cpu_usage:avg24h
+      # Average CPU usage during last 1h
+      - record: instance:ceems_cpu_usage:avg1h
         expr: |2
           avg by (job)(
             avg_over_time(
@@ -146,8 +181,8 @@ groups:
             )
           )
 
-      # Average CPU memory usage during last 24h
-      - record: instance:ceems_cpu_mem_usage:avg24h
+      # Average CPU memory usage during last 1h
+      - record: instance:ceems_cpu_mem_usage:avg1h
         expr: |2
           avg by (job)(
             avg_over_time(
@@ -165,12 +200,12 @@ groups:
           *
             100
 
-      # Total energy usage during last 24h in kWh
+      # Total energy usage during last 1h in kWh
       # PUE of 1 is used by default. Use appropriate PUE by replacing 1 by PUE ratio in expr
-      # We are summing all the IPMI power reading during last 24h with a interval of 15m. 
+      # We are summing all the IPMI power reading during last 1h with a interval of 15m. 
       # So, to estimate the total energy, we need to do sum(P*deltat) / 3.6e9 where P is power
       # usage and deltat is the interval in milliseconds
-      - record: instance:ceems_cpu_energy_usage:pue_sum24h
+      - record: instance:ceems_cpu_energy_usage:pue_sum1h
         expr: |2
           sum by (job)(
             sum_over_time(
@@ -178,9 +213,9 @@ groups:
                 1 
               * 
                 (
-                    ceems_ipmi_dcmi_avg_watts{job="sample-gpu"}
+                    ceems_ipmi_dcmi_current_watts{job="sample-gpu"}
                   - on (instance) group_left ()
-                    sum by (instance) (avg_over_time(DCGM_FI_DEV_POWER_USAGE{job="sample-dcgm"}[5m:]))
+                    sum by (instance) (DCGM_FI_DEV_POWER_USAGE{job="sample-dcgm"})
                 ) >= 0
               )[1d:15m]
             )
@@ -190,9 +225,9 @@ groups:
           /
             3.6e+09
 
-      # Total emissions from CPU during last 24h in gms using emission factor from RTE
+      # Total emissions from CPU during last 1h in gms using emission factor from RTE
       # PUE of 1 is used by default. Use appropriate PUE by replacing 1 by PUE ratio in expr
-      - record: instance:ceems_cpu_emissions_rte:pue_sum24h
+      - record: instance:ceems_cpu_emissions_rte:pue_sum1h
         expr: |2
           sum by (job) (
             sum_over_time(
@@ -202,9 +237,9 @@ groups:
                           *
                             (
                                 (
-                                    ceems_ipmi_dcmi_avg_watts{job="sample-gpu"}
+                                    ceems_ipmi_dcmi_current_watts{job="sample-gpu"}
                                   - on (instance) group_left ()
-                                    sum by (instance) (avg_over_time(DCGM_FI_DEV_POWER_USAGE{job="sample-dcgm"}[5m:]))
+                                    sum by (instance) (DCGM_FI_DEV_POWER_USAGE{job="sample-dcgm"})
                                 )
                               >=
                                 0
@@ -224,9 +259,9 @@ groups:
             )
           )
 
-      # Total emissions from CPU during last 24h in gms using emission factor from Electricty Maps
+      # Total emissions from CPU during last 1h in gms using emission factor from Electricty Maps
       # PUE of 1 is used by default. Use appropriate PUE by replacing 1 by PUE ratio in expr
-      - record: instance:ceems_cpu_emissions_emaps:pue_sum24h
+      - record: instance:ceems_cpu_emissions_emaps:pue_sum1h
         expr: |2
           sum by (job) (
             sum_over_time(
@@ -236,9 +271,9 @@ groups:
                           *
                             (
                                 (
-                                    ceems_ipmi_dcmi_avg_watts{job="sample-gpu"}
+                                    ceems_ipmi_dcmi_current_watts{job="sample-gpu"}
                                   - on (instance) group_left ()
-                                    sum by (instance) (avg_over_time(DCGM_FI_DEV_POWER_USAGE{job="sample-dcgm"}[5m:]))
+                                    sum by (instance) (DCGM_FI_DEV_POWER_USAGE{job="sample-dcgm"})
                                 )
                               >=
                                 0

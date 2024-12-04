@@ -16,7 +16,7 @@ groups:
         expr: 1 * DCGM_FI_DEV_POWER_USAGE{job="sample-dcgm"}
 
   # Rule group for aggregate metrics. Here we estimate the GPU usage, GPU Mem usage, GPU Energy, 
-  # GPU emissions last 24hr in the intervals of 15m. 
+  # GPU emissions last 1hr in the intervals of 15m. 
   # So we get a nice rolling aggregate of usage and consumption time series
   #
   # NOTE that there are two different intervals in these queries:
@@ -29,29 +29,29 @@ groups:
   #   However, we do not need to use such a fine interval to estimate daily metrics. Using
   #   such interval will also increase the query time as TSDB needs to get a lot of data into
   #   memory to estimate this query. So we use 15m as query interval which is a reasonable
-  #   for estimating aggregate metrics for 24h.
+  #   for estimating aggregate metrics for 1h.
   - name: sample-dcgm-agg
     interval: 15m
     rules:
-      # Average GPU usage during last 24h
-      - record: instance:DCGM_FI_DEV_GPU_UTIL:avg24h
+      # Average GPU usage during last 1h
+      - record: instance:DCGM_FI_DEV_GPU_UTIL:avg1h
         expr: avg by (job)(avg_over_time(DCGM_FI_DEV_GPU_UTIL{job="sample-dcgm"}[1d:15m]))
 
-      # Average GPU memory usage during last 24h
-      - record: instance:DCGM_FI_DEV_MEM_COPY_UTIL:avg24h
+      # Average GPU memory usage during last 1h
+      - record: instance:DCGM_FI_DEV_MEM_COPY_UTIL:avg1h
         expr: avg by (job)(avg_over_time(DCGM_FI_DEV_MEM_COPY_UTIL{job="sample-dcgm"}[1d:15m]))
 
-      # Total energy usage during last 24h in kWh
+      # Total energy usage during last 1h in kWh
       # PUE of 1 is used by default. Use appropriate PUE by replacing 1 by PUE ratio in expr
-      # We are summing all the IPMI power reading during last 24h with a interval of 15m. 
+      # We are summing all the IPMI power reading during last 1h with a interval of 15m. 
       # So, to estimate the total energy, we need to do sum(P*deltat) / 3.6e9 where P is power
       # usage and deltat is the interval in milliseconds
-      - record: instance:DCGM_FI_DEV_POWER_USAGE:pue_sum24h
+      - record: instance:DCGM_FI_DEV_POWER_USAGE:pue_sum1h
         expr: 1 * sum by (job)(sum_over_time((DCGM_FI_DEV_POWER_USAGE{job="sample-dcgm"})[1d:15m])) * 15 * 60000 / 3.6e9
 
-      # Total emissions from CPU during last 24h in gms using emission factor from RTE
+      # Total emissions from CPU during last 1h in gms using emission factor from RTE
       # PUE of 1 is used by default. Use appropriate PUE by replacing 1 by PUE ratio in expr
-      - record: instance:ceems_gpu_emissions_rte:pue_sum24h
+      - record: instance:ceems_gpu_emissions_rte:pue_sum1h
         expr: |2
           sum by (job)(
             sum_over_time(
@@ -69,9 +69,9 @@ groups:
             )
           )
 
-      # Total emissions from CPU during last 24h in gms using emission factor from Electricty Maps
+      # Total emissions from CPU during last 1h in gms using emission factor from Electricty Maps
       # PUE of 1 is used by default. Use appropriate PUE by replacing 1 by PUE ratio in expr
-      - record: instance:ceems_gpu_emissions_emaps:pue_sum24h
+      - record: instance:ceems_gpu_emissions_emaps:pue_sum1h
         expr: |2
           sum by (job)(
             sum_over_time(
