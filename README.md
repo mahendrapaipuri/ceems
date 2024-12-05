@@ -52,6 +52,27 @@ pre-release and stable versions.
 Installation instructions of CEEMS components can be found in
 [docs](https://mahendrapaipuri.github.io/ceems/docs/category/installation).
 
+## Demo
+
+<p><a href="http://195.220.87.159:30000/dashboards" target="_blank">
+<img src="https://raw.githubusercontent.com/mahendrapaipuri/ceems/main/website/static/img/dashboards/demo_screenshot.png" alt="Access Demo">
+</a></p>
+
+Openstack and SLURM have been deployed on a small cloud instance and monitored using
+CEEMS. As neither RAPL nor IPMI readings are available on cloud instances, energy
+consumption is estimated by assuming a Thermal Design Power (TDP) value and current
+usage of the instance. Several dashboards have been created in Grafana for visualizing
+metrics which are listed below.
+
+- [Overall usage of cluster](http://195.220.87.159:30000/d/adrenju36n2tcb/cluster-status?orgId=1&from=now-24h&to=now&var-job=openstack&var-host=$__all&var-provider=rte&var-country_code=FR&refresh=15m)
+- [Usage of different Projects/Accounts by SLURM and Openstack](http://195.220.87.159:30000/d/cdreu45pp9erkd/user-and-project-stats?orgId=1&from=now-90d&to=now&refresh=15m)
+- [Usage of Openstack resources by a given user and project](http://195.220.87.159:30000/d/be5x3it7gpx4wf/openstack-instance-summary?orgId=1&from=now-90d&to=now&var-user=gazoo&var-account=cornerstone&refresh=15m)
+- [Usage of SLURM resources by a given user and project](http://195.220.87.159:30000/d/fdsm8aom8hqf4fewfwe3123dascdsc/slurm-job-summary?orgId=1&from=now-90d&to=now&var-user=wilma&var-account=bedrock&refresh=15m)
+
+> [!WARNING]
+> All the dashboards provided in the demo instance are only meant to be for demonstrative
+purposes. They should not be used in production without properly protecting datasources.
+
 ## Visualizing metrics with Grafana
 
 CEEMS is meant to be used with Grafana for visualization and below are some of the
