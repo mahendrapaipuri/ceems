@@ -54,7 +54,7 @@ Installation instructions of CEEMS components can be found in
 
 ## Demo
 
-<p><a href="http://195.220.87.159:30000/dashboards" target="_blank">
+<p><a href="https://ceems-demo.myaddr.tools" target="_blank">
 <img src="https://raw.githubusercontent.com/mahendrapaipuri/ceems/main/website/static/img/dashboards/demo_screenshot.png" alt="Access Demo">
 </a></p>
 
@@ -64,10 +64,10 @@ consumption is estimated by assuming a Thermal Design Power (TDP) value and curr
 usage of the instance. Several dashboards have been created in Grafana for visualizing
 metrics which are listed below.
 
-- [Overall usage of cluster](http://195.220.87.159:30000/d/adrenju36n2tcb/cluster-status?orgId=1&from=now-24h&to=now&var-job=openstack&var-host=$__all&var-provider=rte&var-country_code=FR&refresh=15m)
-- [Usage of different Projects/Accounts by SLURM and Openstack](http://195.220.87.159:30000/d/cdreu45pp9erkd/user-and-project-stats?orgId=1&from=now-90d&to=now&refresh=15m)
-- [Usage of Openstack resources by a given user and project](http://195.220.87.159:30000/d/be5x3it7gpx4wf/openstack-instance-summary?orgId=1&from=now-90d&to=now&var-user=gazoo&var-account=cornerstone&refresh=15m)
-- [Usage of SLURM resources by a given user and project](http://195.220.87.159:30000/d/fdsm8aom8hqf4fewfwe3123dascdsc/slurm-job-summary?orgId=1&from=now-90d&to=now&var-user=wilma&var-account=bedrock&refresh=15m)
+- [Overall usage of cluster](https://ceems-demo.myaddr.tools/d/adrenju36n2tcb/cluster-status?orgId=1&from=now-24h&to=now&var-job=openstack&var-host=$__all&var-provider=rte&var-country_code=FR&refresh=15m)
+- [Usage of different Projects/Accounts by SLURM and Openstack](https://ceems-demo.myaddr.tools/d/cdreu45pp9erkd/user-and-project-stats?orgId=1&from=now-90d&to=now&refresh=15m)
+- [Usage of Openstack resources by a given user and project](https://ceems-demo.myaddr.tools/d/be5x3it7gpx4wf/openstack-instance-summary?orgId=1&from=now-90d&to=now&var-user=gazoo&var-account=cornerstone&refresh=15m)
+- [Usage of SLURM resources by a given user and project](https://ceems-demo.myaddr.tools/d/fdsm8aom8hqf4fewfwe3123dascdsc/slurm-job-summary?orgId=1&from=now-90d&to=now&var-user=wilma&var-account=bedrock&refresh=15m)
 
 > [!WARNING]
 > All the dashboards provided in the demo instance are only meant to be for demonstrative
@@ -104,6 +104,8 @@ screenshots of dashboards.
 
 ## Talks and Demos
 
+- [Paper submitted to SC24 in Sustainable Computing Workshop](https://conferences.computer.org/sc-wpub/pdfs/SC-W2024-6oZmigAQfgJ1GhPL0yE3pS/555400b862/555400b862.pdf)
+- [CEEMS at SC 2024](https://docs.google.com/presentation/d/1XBhfiHdTbNrS6e_I9mPy_BLPFEiAkmIwgp6FvSdMbLM/edit#slide=id.g317b4bf7fbe_2_54)
 - [An Introduction to CEEMS at ISC 2024](https://drive.google.com/file/d/1kUbD3GgDKwzgIuxjrTY95YJN5aSuIejQ/view?usp=drive_link)
 - [CEEMS Architecture and Usage](https://docs.google.com/presentation/d/1xNQTCsmPUz37KDb2BLrpWExuQWxk49NpVN9VDbxSe6Y/edit#slide=id.p)
 
@@ -115,3 +117,9 @@ workloads.
 
 Please feel free to open issues and/or discussions for any potential ideas of
 improvement.
+
+## Acknowledgements
+
+The demo instance has been deployed on the [CROCC](https://drocc.fr/crocc/)
+which was kindly sponsored by [ISDM MESO](https://isdm.umontpellier.fr/mesolr/)
+in Montpellier, France.
