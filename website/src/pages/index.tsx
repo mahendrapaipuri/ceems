@@ -22,7 +22,13 @@ function HomepageHeader() {
           </Link>
         </div>
         <br></br>
-        <img src="img/dashboards/preview.gif" alt="Preview"></img>
+        <div className={styles.buttons}>
+          <Link className="button button--secondary button--lg" to="https://ceems-demo.myaddr.tools">
+            Demo
+          </Link>
+        </div>
+        <br></br>
+        <iframe src="https://ceems-demo.myaddr.tools/playlists/play/fe63euztbeeiof?kiosk" height="1200" width="100%" title="Demo Playlist"></iframe>
       </div>
     </header>
   );

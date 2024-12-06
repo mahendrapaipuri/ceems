@@ -104,6 +104,11 @@ const config: Config = {
         },
         { to: "/api", label: "API", position: "left" },
         {
+          href: `https://ceems-demo.myaddr.tools`,
+          label: "Demo",
+          position: "right",
+        },
+        {
           href: `https://github.com/${organizationName}/${projectName}`,
           label: "GitHub",
           position: "right",
@@ -151,6 +156,10 @@ const config: Config = {
         {
           title: "More",
           items: [
+            {
+              label: "Demo",
+              href: `https://ceems-demo.myaddr.tools`,
+            },
             {
               label: "GitHub",
               href: `https://github.com/${organizationName}/${projectName}`,
