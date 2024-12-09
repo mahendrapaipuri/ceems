@@ -9,7 +9,7 @@ type Msg struct {
 	Data      uintptr
 }
 
-type ipmiRs struct {
+type ipmiResp struct {
 	Ccode   uint8
 	Data    [1024]uint8
 	DataLen int32

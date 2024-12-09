@@ -1,7 +1,6 @@
 ARG ARCH="amd64"
 ARG OS="linux"
 FROM --platform=${OS}/${ARCH} alpine:3
-RUN apk --no-cache add freeipmi
 LABEL maintainer="Mahendra Paipuri <mahendra.paipuri@gmail.com>"
 
 ARG ARCH="amd64"
