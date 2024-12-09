@@ -274,13 +274,37 @@ then
     fixture='pkg/lb/testdata/output/e2e-test-lb-allow-admin-query.txt'
   elif [ "${scenario}" = "lb-auth" ]
   then
-    desc="basic e2e load balancer test with auth configued for backend"
+    desc="basic e2e load balancer test with auth configured for backend"
     fixture='pkg/lb/testdata/output/e2e-test-lb-auth-server.txt'
   fi
 
   logfile="${tmpdir}/ceems_lb.log"
   fixture_output="${tmpdir}/e2e-test-lb-output.txt"
   pidfile="${tmpdir}/ceems_lb.pid"
+elif [[ "${scenario}" =~ ^"redfish" ]] 
+then
+
+  if [ "${scenario}" = "redfish-proxy-frontend-plain-backend-plain" ]
+  then
+    desc="Redfish proxy with both frontend and backend running without TLS"
+    fixture='cmd/redfish_proxy/testdata/output/e2e-test-redfish-proxy-plain-plain-output.txt'
+  elif [ "${scenario}" = "redfish-proxy-frontend-tls-backend-plain" ]
+  then
+    desc="Redfish proxy with TLS frontend and backend running without TLS"
+    fixture='cmd/redfish_proxy/testdata/output/e2e-test-redfish-proxy-tls-plain-output.txt'
+  elif [ "${scenario}" = "redfish-proxy-frontend-plain-backend-tls" ]
+  then
+    desc="Redfish proxy with frontend non-TLS and backend running with TLS"
+    fixture='cmd/redfish_proxy/testdata/output/e2e-test-redfish-proxy-plain-tls-output.txt'
+  elif [ "${scenario}" = "redfish-proxy-frontend-tls-backend-tls" ]
+  then
+    desc="Redfish proxy with both frontend and backend running with TLS"
+    fixture='cmd/redfish_proxy/testdata/output/e2e-test-redfish-proxy-tls-tls-output.txt'
+  fi
+
+  logfile="${tmpdir}/redfish_proxy.log"
+  fixture_output="${tmpdir}/e2e-test-redfish-proxy-output.txt"
+  pidfile="${tmpdir}/redfish_proxy.pid"
 fi
 
 # Current time stamp
@@ -321,7 +345,7 @@ trap finish EXIT
 get() {
   if command -v curl > /dev/null 2>&1
   then
-    curl -s "$@"
+    curl -k -s "$@"
   elif command -v wget > /dev/null 2>&1
   then
     wget -O - "$@"
@@ -344,6 +368,12 @@ then
       exit 1
   fi
 
+  export PATH="${GOBIN:-}:${PATH}"
+  ./bin/mock_servers redfish >> "${logfile}" 2>&1 &
+  MOCK_SERVERS_PID=$!
+
+  waitport "5000"
+
   if [ "${scenario}" = "exporter-cgroups-v1" ] 
   then
       ./bin/ceems_exporter \
@@ -357,6 +387,8 @@ then
         --collector.ipmi_dcmi \
         --collector.ipmi_dcmi.test-mode \
         --collector.ipmi_dcmi.cmd="pkg/collector/testdata/ipmi/freeipmi/ipmi-dcmi" \
+        --collector.redfish \
+        --collector.redfish.web-config="pkg/collector/testdata/redfish/config.yml" \
         --collector.empty-hostname-label \
         --web.listen-address "127.0.0.1:${port}" \
         --web.disable-exporter-metrics \
@@ -396,6 +428,8 @@ then
         --collector.empty-hostname-label \
         --collector.ipmi_dcmi \
         --collector.ipmi_dcmi.test-mode \
+        --collector.redfish \
+        --collector.redfish.web-config="pkg/collector/testdata/redfish/config.yml" \
         --web.listen-address "127.0.0.1:${port}" \
         --web.disable-exporter-metrics \
         --log.level="debug" > "${logfile}" 2>&1 &
@@ -433,6 +467,8 @@ then
         --collector.empty-hostname-label \
         --collector.ipmi_dcmi \
         --collector.ipmi_dcmi.test-mode \
+        --collector.redfish \
+        --collector.redfish.web-config="pkg/collector/testdata/redfish/config.yml" \
         --web.listen-address "127.0.0.1:${port}" \
         --web.disable-exporter-metrics \
         --log.level="debug" > "${logfile}" 2>&1 &
@@ -485,6 +521,8 @@ then
         --collector.ipmi_dcmi \
         --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/capmc/capmc" \
         --collector.ipmi_dcmi.test-mode \
+        --collector.redfish \
+        --collector.redfish.web-config="pkg/collector/testdata/redfish/config.yml" \
         --collector.empty-hostname-label \
         --web.listen-address "127.0.0.1:${port}" \
         --web.disable-exporter-metrics \
@@ -527,6 +565,8 @@ then
         --collector.ipmi_dcmi \
         --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/capmc/capmc" \
         --collector.ipmi_dcmi.test-mode \
+        --collector.redfish \
+        --collector.redfish.web-config="pkg/collector/testdata/redfish/config.yml" \
         --collector.empty-hostname-label \
         --web.listen-address "127.0.0.1:${port}" \
         --web.disable-exporter-metrics \
@@ -559,13 +599,16 @@ then
         --collector.ipmi_dcmi \
         --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/capmc/capmc" \
         --collector.ipmi_dcmi.test-mode \
+        --collector.redfish \
+        --collector.redfish.web-config="pkg/collector/testdata/redfish/config.yml" \
         --collector.empty-hostname-label \
         --web.listen-address "127.0.0.1:${port}" \
         --web.disable-exporter-metrics \
         --log.level="debug" > "${logfile}" 2>&1 &
   fi
+  CEEMS_EXPORTER_PID=$!
 
-  echo $! > "${pidfile}"
+  echo "${MOCK_SERVERS_PID} ${CEEMS_EXPORTER_PID}" > "${pidfile}"
 
   # sleep 1
   waitport "${port}"
@@ -604,9 +647,9 @@ then
     --web.listen-address="127.0.0.1:${port}" \
     --config.file="${tmpdir}/config.yml" \
     --log.level="debug" >> "${logfile}" 2>&1 &
-  CEEMS_API=$!
+  CEEMS_API_PID=$!
 
-  echo "${MOCK_SERVERS_PID} ${CEEMS_API}" > "${pidfile}"
+  echo "${MOCK_SERVERS_PID} ${CEEMS_API_PID}" > "${pidfile}"
 
   sleep 2
   waitport "${port}"
@@ -945,6 +988,97 @@ then
     waitport "${port}"
 
     get -H "X-Grafana-User: usr1" -H "X-Ceems-Cluster-Id: slurm-1" "127.0.0.1:${port}/api/v1/status/config" > "${fixture_output}"
+  fi
+elif [[ "${scenario}" =~ ^"redfish" ]]
+then
+  if [ ! -x ./bin/redfish_proxy ]
+  then
+        echo './bin/redfish_proxy not found. Consider running `go build` first.' >&2
+        exit 1
+  fi
+
+  if [ "${scenario}" = "redfish-proxy-frontend-plain-backend-plain" ]
+  then
+    export PATH="${GOBIN:-}:${PATH}"
+    ./bin/mock_servers redfish-targets-plain >> "${logfile}" 2>&1 &
+    MOCK_SERVERS_PID=$!
+
+    ./bin/redfish_proxy \
+      --web.listen-address="127.0.0.1:${port}" \
+      --config.file="cmd/redfish_proxy/testdata/config-plain.yml" \
+      --log.level="debug" >> "${logfile}" 2>&1 &
+    REDFISH_PROXY_PID=$!
+
+    echo "${MOCK_SERVERS_PID} ${REDFISH_PROXY_PID}" > "${pidfile}"
+
+    sleep 5
+    waitport "${port}"
+    for i in {0..9}
+    do
+      get -H "X-Real-IP: 192.168.1.${i}" "127.0.0.1:${port}" >> "${fixture_output}"
+    done
+  elif [ "${scenario}" = "redfish-proxy-frontend-tls-backend-plain" ]
+  then
+    export PATH="${GOBIN:-}:${PATH}"
+    ./bin/mock_servers redfish-targets-plain >> "${logfile}" 2>&1 &
+    MOCK_SERVERS_PID=$!
+
+    ./bin/redfish_proxy \
+      --web.listen-address="127.0.0.1:${port}" \
+      --config.file="cmd/redfish_proxy/testdata/config-plain.yml" \
+      --web.config.file="cmd/redfish_proxy/testdata/web-config.yml" \
+      --log.level="debug" >> "${logfile}" 2>&1 &
+    REDFISH_PROXY_PID=$!
+
+    echo "${MOCK_SERVERS_PID} ${REDFISH_PROXY_PID}" > "${pidfile}"
+
+    sleep 5
+    waitport "${port}"
+    for i in {0..9}
+    do
+      get -H "X-Real-IP: 192.168.1.${i}" "https://127.0.0.1:${port}" >> "${fixture_output}"
+    done
+  elif [ "${scenario}" = "redfish-proxy-frontend-plain-backend-tls" ]
+  then
+    export PATH="${GOBIN:-}:${PATH}"
+    ./bin/mock_servers redfish-targets-tls >> "${logfile}" 2>&1 &
+    MOCK_SERVERS_PID=$!
+
+    ./bin/redfish_proxy \
+      --web.listen-address="127.0.0.1:${port}" \
+      --config.file="cmd/redfish_proxy/testdata/config-plain.yml" \
+      --log.level="debug" >> "${logfile}" 2>&1 &
+    REDFISH_PROXY_PID=$!
+
+    echo "${MOCK_SERVERS_PID} ${REDFISH_PROXY_PID}" > "${pidfile}"
+
+    sleep 5
+    waitport "${port}"
+    for i in {0..9}
+    do
+      get -H "X-Real-IP: 192.168.1.${i}" "127.0.0.1:${port}" >> "${fixture_output}"
+    done
+  elif [ "${scenario}" = "redfish-proxy-frontend-tls-backend-tls" ]
+  then
+    export PATH="${GOBIN:-}:${PATH}"
+    ./bin/mock_servers redfish-targets-tls >> "${logfile}" 2>&1 &
+    MOCK_SERVERS_PID=$!
+
+    ./bin/redfish_proxy \
+      --web.listen-address="127.0.0.1:${port}" \
+      --config.file="cmd/redfish_proxy/testdata/config-plain.yml" \
+      --web.config.file="cmd/redfish_proxy/testdata/web-config.yml" \
+      --log.level="debug" >> "${logfile}" 2>&1 &
+    REDFISH_PROXY_PID=$!
+
+    echo "${MOCK_SERVERS_PID} ${REDFISH_PROXY_PID}" > "${pidfile}"
+
+    sleep 5
+    waitport "${port}"
+    for i in {0..9}
+    do
+      get -H "X-Real-IP: 192.168.1.${i}" "https://127.0.0.1:${port}" >> "${fixture_output}"
+    done
   fi
 fi
 

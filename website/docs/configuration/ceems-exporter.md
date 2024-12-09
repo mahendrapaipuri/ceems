@@ -307,6 +307,153 @@ might not include the power consumption of GPUs.
 
 :::
 
+### Redfish collector
+
+Redfish exposes the BMC related telemetry data using a REST API server. Thus, this
+collector needs the configuration of API server to be able to talk to it and fetch
+power consumption data of different the server. By default this collector is disabled
+and hence, it needs to be explicitly enabled using following CLI:
+
+```bash
+ceems_exporter --collector.redfish
+```
+
+A YAML configuration file containing the Redfish's API server details must be provided
+to the CLI flag `--collector.redfish.web-config`. A sample file is shown as follows:
+
+```yaml
+---
+redfish_web_config:
+  # URL at which redfish server is accessible
+  url: https://compute-0-bmc
+
+  # Username that has enough privileges to query for chassis power data
+  username: admin
+
+  # Password corresponding to the username provided above
+  password: supersecret
+
+  # If TLS is enabled on Redfish server with self signed certificates,
+  # set it to true to skip TLS certificate verification
+  skip_tls_verify: true
+
+  # If this is set to `true`, a session token will be request with provided username
+  # and password once and all the subsequent requests will use that token for auth.
+  # If set to `false`, each request will send the provided username and password to
+  # perform basic auth
+  #
+  # Always prefer to use session tokens by setting this option to `true` as it avoids
+  # sending critical username/password credentials in each request
+  use_session_token: true
+```
+
+:::important[IMPORTANT]
+
+This config file contains sensitive information like BMC credentials and hence,
+it is very important to impose strict permissions so that the secrets will not be
+leaked
+
+:::
+
+Once a file with above config has been placed and secured, say at `/etc/ceems_exporter/redfish-config.yml`,
+the collector can be enabled and configured as follows:
+
+```bash
+ceems_exporter --collector.redfish --collector.redfish.web-config=/etc/ceems_exporter/redfish-config.yml
+```
+
+This configuration assumes that Redfish API server is reachable from the compute node
+which might not be the case normally. This is possible only when
+[in-band Host Interface](https://www.dmtf.org/sites/default/files/standards/documents/DSP0270_1.3.1.pdf)
+to Redfish has been configured. If this is not the case, BMC network will be only reachable
+from management and/or administration nodes. In this case, we need to deploy a proxy that relays the
+requests to Redfish API server through the management/admin node.
+
+CEEMS provides a utility proxy application `redfish_proxy` which is distributed
+along with other apps that can be used to proxy _in-band_ requests to Redfish. This
+proxy can be deployed on a node that has access to BMC network and use the proxy
+application as the redfish target in the redfish collector of the exporter.
+
+Redfish proxy must be provided with a configuration file that contains the Redfish target
+URLs for each compute node. A sample configuration file is shown as below:
+
+```yaml
+---
+# Conifguration file for redfish_proxy app
+redfish_config:
+  # If Redfish API servers are running with TLS enabled
+  # and using self signed certificates, set `skip_tls_verify`
+  # to `true` to skip TLS certifcate verification
+  #
+  web:
+    skip_tls_verify: false
+
+  # This is list of Redfish targets for each compute node in
+  # cluster.
+  # 
+  #  - `host_ip_addrs` must be a list of host IP address (IPv4 and IPv6) of compute node.
+  #  - `url` is the Redfish server URL for that compute node.
+  #
+  # In the below example Redfish server for compute node with
+  # IP address 192.168.1.0 is running at 192.168.16.0:5000.
+  #
+  targets:
+    - host_ip_addrs: 
+        - 192.168.1.0
+      url: http://192.168.16.0:5000
+```
+
+If there are multiple network interfaces with IP addresses on the compute nodes, it is
+**strongly advised to add entry for each IP address**. For instance, if a compute node
+has IP addresses `10.100.4.1`, `10.100.4.2` and `10.100.4.3` and Redfish server for this
+node is running at `https://172.21.4.1` then config must be as follows:
+
+```yaml
+redfish_config:
+  web:
+    skip_tls_verify: true
+
+  targets:
+    - host_ip_addrs: 
+        - 10.100.4.1
+        - 10.100.4.2
+        - 10.100.4.3
+        - 10.100.4.4
+      url: https://172.21.4.1
+```
+
+Assuming management node is `mgmt-0` and starting `redfish_proxy` on that node with the above
+config in a file stored at `/etc/redfish_proxy/config.yml` can be done as follows:
+
+```bash
+redfish_proxy --config.file=/etc/redfish_proxy/config.yml --web.listen-address=":5000"
+```
+
+This will start the redfish proxy on management node running at `mgmt-0:5000`. Finally,
+redfish configuration file for exporter should be set as follows:
+
+```yaml
+redfish_web_config:
+  # Redfish proxy is running on mgmt-0 at port 5000
+  url: http://mgmt-0:5000
+  # Redfish proxy will pass these credentials transparently
+  # to the target Redfish API server
+  username: admin
+  password: supersecret
+  skip_tls_verify: true
+  use_session_token: true
+```
+
+When Redfish API server is reached _via_ `redfish_proxy` it is **advised** to
+send all the compute host IP addresses with each request using `X-Real-IP` header.
+This must be enabled using `--collector.redfish.send-real-ip-header` flag so that
+`redfish_proxy` will find the appropriate Redfish API target based on these IP
+addresses. Thus, exporter must be enabled using following flags:
+
+```bash
+ceems_exporter --collector.redfish --collector.redfish.web-config=/etc/ceems_exporter/redfish-config.yml --collector.redfish.send-real-ip-header
+```
+
 ### RAPL collector
 
 For the kernels that are `<5.3`, there is no special configuration to be done. If the

@@ -22,9 +22,10 @@ import (
 
 // Default ports.
 const (
-	promPortNum   = ":9090"
-	osNovaPortNum = ":8080"
-	osKSPortNum   = ":7070"
+	redfishPortNum = ":5000"
+	promPortNum    = ":9090"
+	osNovaPortNum  = ":8080"
+	osKSPortNum    = ":7070"
 )
 
 // Regex to capture query.
@@ -55,6 +56,54 @@ func lenLoop(i uint32) int {
 	}
 
 	return count
+}
+
+// ServiceRootHandler handles root of redfish API.
+func ServiceRootHandler(w http.ResponseWriter, r *http.Request) {
+	if data, err := os.ReadFile("pkg/collector/testdata/redfish/service_root.json"); err == nil {
+		w.Write(data)
+
+		return
+	}
+
+	w.WriteHeader(http.StatusInternalServerError)
+	w.Write([]byte("KO"))
+}
+
+// ChassisRootHandler handles chassis collections of redfish API.
+func ChassisRootHandler(w http.ResponseWriter, r *http.Request) {
+	if data, err := os.ReadFile("pkg/collector/testdata/redfish/chassis_collection.json"); err == nil {
+		w.Write(data)
+
+		return
+	}
+
+	w.WriteHeader(http.StatusInternalServerError)
+	w.Write([]byte("KO"))
+}
+
+// ChassisHandler handles a given chassis of redfish API.
+func ChassisHandler(w http.ResponseWriter, r *http.Request) {
+	if data, err := os.ReadFile("pkg/collector/testdata/redfish/chassis.json"); err == nil {
+		w.Write(data)
+
+		return
+	}
+
+	w.WriteHeader(http.StatusInternalServerError)
+	w.Write([]byte("KO"))
+}
+
+// ChassisPowerHandler handles chassis power of redfish API.
+func ChassisPowerHandler(w http.ResponseWriter, r *http.Request) {
+	if data, err := os.ReadFile("pkg/collector/testdata/redfish/chassis_power.json"); err == nil {
+		w.Write(data)
+
+		return
+	}
+
+	w.WriteHeader(http.StatusInternalServerError)
+	w.Write([]byte("KO"))
 }
 
 // QueryHandler handles queries.
@@ -280,6 +329,75 @@ func ProjectsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("KO"))
 }
 
+func redfishProxyTarget(ctx context.Context, i, portNum int, tls bool) {
+	log.Println("Starting fake redfish target ", i, " on port", portNum)
+
+	// Registering our handler functions, and creating paths.
+	redfishMux := http.NewServeMux()
+	redfishMux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(fmt.Sprintf("BMC for host 192.168.1.%d is running on port %d\n", i, portNum)))
+	})
+
+	log.Println("Started Redfish target on port", portNum)
+	log.Println("To close connection CTRL+C :-)")
+
+	// Start server
+	server := &http.Server{
+		Addr:              fmt.Sprintf(":%d", portNum),
+		ReadHeaderTimeout: 3 * time.Second,
+		Handler:           redfishMux,
+	}
+	defer func() {
+		if err := server.Shutdown(ctx); err != nil {
+			log.Println("Failed to shutdown fake Redfish target", err)
+		}
+	}()
+
+	// Spinning up the server.
+	var err error
+	if tls {
+		err = server.ListenAndServeTLS("cmd/redfish_proxy/testdata/certs/localhost.crt", "cmd/redfish_proxy/testdata/certs/localhost.key")
+	} else {
+		err = server.ListenAndServe()
+	}
+
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func redfishServer(ctx context.Context) {
+	log.Println("Starting fake redfish server")
+
+	// Registering our handler functions, and creating paths.
+	redfishMux := http.NewServeMux()
+	redfishMux.HandleFunc("/redfish/v1/", ServiceRootHandler)
+	redfishMux.HandleFunc("/redfish/v1/Chassis", ChassisRootHandler)
+	redfishMux.HandleFunc("/redfish/v1/Chassis/Chassis-1", ChassisHandler)
+	redfishMux.HandleFunc("/redfish/v1/Chassis/Chassis-1/Power", ChassisPowerHandler)
+
+	log.Println("Started Redfish on port", redfishPortNum)
+	log.Println("To close connection CTRL+C :-)")
+
+	// Start server
+	server := &http.Server{
+		Addr:              redfishPortNum,
+		ReadHeaderTimeout: 3 * time.Second,
+		Handler:           redfishMux,
+	}
+	defer func() {
+		if err := server.Shutdown(ctx); err != nil {
+			log.Println("Failed to shutdown fake Redfish server", err)
+		}
+	}()
+
+	// Spinning up the server.
+	err := server.ListenAndServe()
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
 func promServer(ctx context.Context) {
 	log.Println("Starting fake prometheus server")
 
@@ -379,6 +497,28 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT)
+
+	if slices.Contains(args, "redfish-targets-plain") {
+		for i := range 10 {
+			go func() {
+				redfishProxyTarget(ctx, i, 5000+i, false)
+			}()
+		}
+	}
+
+	if slices.Contains(args, "redfish-targets-tls") {
+		for i := range 10 {
+			go func() {
+				redfishProxyTarget(ctx, i, 5000+i, true)
+			}()
+		}
+	}
+
+	if slices.Contains(args, "redfish") {
+		go func() {
+			redfishServer(ctx)
+		}()
+	}
 
 	if slices.Contains(args, "prom") {
 		go func() {

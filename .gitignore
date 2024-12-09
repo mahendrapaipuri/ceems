@@ -28,6 +28,7 @@ pkg/collector/testdata/proc
 
 # Ignore scripts
 run.sh
+mem_usage.sh
 
 # Ignore artifacts
 /.build

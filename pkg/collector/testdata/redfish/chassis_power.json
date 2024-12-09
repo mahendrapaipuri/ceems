@@ -1,0 +1,77 @@
+{
+    "@odata.type": "#Power.v1_7_0.Power",
+    "Id": "Power",
+    "Name": "Power",
+    "PowerControl": [
+        {
+            "@odata.id": "/redfish/v1/Chassis/Chassis-1/Power#/PowerControl/0",
+            "MemberId": "0",
+            "Name": "System Input Power",
+            "PowerConsumedWatts": 344,
+            "PowerRequestedWatts": 800,
+            "PowerAvailableWatts": 0,
+            "PowerCapacityWatts": 800,
+            "PowerAllocatedWatts": 800,
+            "PowerMetrics": {
+                "IntervalInMin": 30,
+                "MinConsumedWatts": 271,
+                "MaxConsumedWatts": 489,
+                "AverageConsumedWatts": 319
+            },
+            "PowerLimit": {
+                "LimitInWatts": 500,
+                "LimitException": "LogEventOnly",
+                "CorrectionInMs": 50
+            },
+            "RelatedItem": [
+                {
+                    "@odata.id": "/redfish/v1/Systems/437XR1138R2"
+                },
+                {
+                    "@odata.id": "/redfish/v1/Chassis/Chassis-1"
+                }
+            ],
+            "Status": {
+                "State": "Enabled",
+                "Health": "OK"
+            },
+            "Oem": {}
+        },
+		{
+            "@odata.id": "/redfish/v1/Chassis/Chassis-1/Power#/PowerControl/1",
+            "MemberId": "1",
+            "Name": "System Input Power",
+            "PowerConsumedWatts": 53,
+            "PowerRequestedWatts": 800,
+            "PowerAvailableWatts": 0,
+            "PowerCapacityWatts": 800,
+            "PowerAllocatedWatts": 800,
+            "PowerMetrics": {
+                "IntervalInMin": 30,
+                "MinConsumedWatts": 55,
+                "MaxConsumedWatts": 120,
+                "AverageConsumedWatts": 46
+            },
+            "PowerLimit": {
+                "LimitInWatts": 150,
+                "LimitException": "LogEventOnly",
+                "CorrectionInMs": 50
+            },
+            "RelatedItem": [
+                {
+                    "@odata.id": "/redfish/v1/Systems/437XR1138R2"
+                },
+                {
+                    "@odata.id": "/redfish/v1/Chassis/Chassis-1"
+                }
+            ],
+            "Status": {
+                "State": "Enabled",
+                "Health": "OK"
+            },
+            "Oem": {}
+        }
+    ],
+    "Oem": {},
+    "@odata.id": "/redfish/v1/Chassis/Chassis-1/Power"
+} 

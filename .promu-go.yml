@@ -8,6 +8,8 @@ build:
     binaries:
         - name: ceems_exporter
           path: ./cmd/ceems_exporter
+        - name: redfish_proxy
+          path: ./cmd/redfish_proxy
     tags:
       all: [osusergo, netgo, static_build]
     flags: -a

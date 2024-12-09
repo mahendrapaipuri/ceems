@@ -156,6 +156,18 @@ ceems_rdma_state_id{device="hfi1_0",hostname="",manager="slurm",port="1"} 4
 ceems_rdma_state_id{device="mlx4_0",hostname="",manager="slurm",port="1"} 4
 ceems_rdma_state_id{device="mlx4_0",hostname="",manager="slurm",port="2"} 4
 ceems_rdma_state_id{device="mlx5_0",hostname="",manager="slurm",port="1"} 4
+# HELP ceems_redfish_avg_watts Average Power consumption in watts
+# TYPE ceems_redfish_avg_watts gauge
+ceems_redfish_avg_watts{chassis="Chassis_1",hostname=""} 365
+# HELP ceems_redfish_current_watts Current Power consumption in watts
+# TYPE ceems_redfish_current_watts gauge
+ceems_redfish_current_watts{chassis="Chassis_1",hostname=""} 397
+# HELP ceems_redfish_max_watts Maximum Power consumption in watts
+# TYPE ceems_redfish_max_watts gauge
+ceems_redfish_max_watts{chassis="Chassis_1",hostname=""} 609
+# HELP ceems_redfish_min_watts Minimum Power consumption in watts
+# TYPE ceems_redfish_min_watts gauge
+ceems_redfish_min_watts{chassis="Chassis_1",hostname=""} 326
 # HELP ceems_scrape_collector_duration_seconds ceems_exporter: Duration of a collector scrape.
 # TYPE ceems_scrape_collector_duration_seconds gauge
 # HELP ceems_scrape_collector_success ceems_exporter: Whether a collector succeeded.
@@ -164,4 +176,5 @@ ceems_scrape_collector_success{collector="cpu"} 1
 ceems_scrape_collector_success{collector="ipmi_dcmi"} 1
 ceems_scrape_collector_success{collector="meminfo"} 1
 ceems_scrape_collector_success{collector="rapl"} 1
+ceems_scrape_collector_success{collector="redfish"} 1
 ceems_scrape_collector_success{collector="slurm"} 1

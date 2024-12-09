@@ -1,0 +1,56 @@
+{
+	"@odata.context": "/redfish/v1/$metadata#Chassis.Chassis",
+	"@odata.id": "/redfish/v1/Chassis/Chassis-1",
+	"@odata.type": "#Chassis.v1_0_0.Chassis",
+	"Id": "Chassis-1",
+	"Name": "Computer System Chassis",
+	"ChassisType": "RackMount",
+	"Manufacturer": "Redfish Computers",
+	"Model": "3500RX",
+	"SKU": "8675309",
+	"SerialNumber": "437XR1138R2",
+	"Version": "1.02",
+	"PartNumber": "224071-J23",
+	"AssetTag": "Chicago-45Z-2381",
+	"Status": {
+		"State": "Enabled",
+		"Health": "OK"
+	},
+	"Assembly": {
+		"@odata.id": "/redfish/v1/Chassis/Chassis-1/Assembly"
+	},
+	"Controls": {
+		"@odata.id": "/redfish/v1/Chassis/Chassis-1/Controls"
+	},
+	"Drives": {
+		"@odata.id": "/redfish/v1/Chassis/Chassis-1/Drives"
+	},
+	"Thermal": {
+		"@odata.id": "/redfish/v1/Chassis/Chassis-1/Thermal"
+	},
+	"Power": {
+		"@odata.id": "/redfish/v1/Chassis/Chassis-1/Power"
+	},
+	"Links": {
+		"ComputerSystems": [
+			{
+				"@odata.id": "/redfish/v1/Systems/System-1"
+			}
+		],
+		"ResourceBlocks": [],
+		"ManagedBy": [
+			{
+				"@odata.id": "/redfish/v1/Managers/BMC-1"
+			}
+		]
+	},
+	"Actions": {
+		"#Chassis.Reset": {
+			"target": "/redfish/v1/Chassis/System.Embedded.1/Actions/Chassis.Reset",
+			"ResetType@Redfish.AllowableValues": [
+				"On",
+				"ForceOff"
+			]
+		}
+	}
+} 

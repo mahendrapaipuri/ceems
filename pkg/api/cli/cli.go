@@ -166,6 +166,15 @@ func (b *CEEMSServer) Main() error {
 		return fmt.Errorf("failed to parse CLI flags: %w", err)
 	}
 
+	// Get absolute path for web config file if provided
+	var webConfigFilePath string
+	if *webConfigFile != "" {
+		webConfigFilePath, err = filepath.Abs(*webConfigFile)
+		if err != nil {
+			return fmt.Errorf("failed to get absolute path of the web config file: %w", err)
+		}
+	}
+
 	// Get absolute config file path global variable that will be used in resource manager
 	// and updater packages
 	base.ConfigFilePath, err = filepath.Abs(*configFile)
@@ -174,12 +183,12 @@ func (b *CEEMSServer) Main() error {
 	}
 
 	// Make config from file
-	config, err := common.MakeConfig[CEEMSAPIAppConfig](*configFile)
+	config, err := common.MakeConfig[CEEMSAPIAppConfig](base.ConfigFilePath)
 	if err != nil {
 		return fmt.Errorf("failed to parse config file: %w", err)
 	}
 	// Set directory for reading files
-	config.SetDirectory(filepath.Dir(*configFile))
+	config.SetDirectory(filepath.Dir(base.ConfigFilePath))
 	// This is used only in tests
 	config.Server.Data.SkipDeleteOldUnits = *skipDeleteOldUnits
 
@@ -243,7 +252,7 @@ func (b *CEEMSServer) Main() error {
 		securityCfg := &security.Config{
 			RunAsUser:      "nobody",
 			Caps:           allCaps,
-			ReadPaths:      []string{*webConfigFile, *configFile},
+			ReadPaths:      []string{webConfigFilePath, base.ConfigFilePath},
 			ReadWritePaths: []string{config.Server.Data.Path, config.Server.Data.BackupPath},
 		}
 
@@ -272,7 +281,7 @@ func (b *CEEMSServer) Main() error {
 		Web: ceems_http.WebConfig{
 			Addresses:        *webListenAddresses,
 			WebSystemdSocket: *systemdSocket,
-			WebConfigFile:    *webConfigFile,
+			WebConfigFile:    webConfigFilePath,
 			RoutePrefix:      config.Server.Web.RoutePrefix,
 			RequestsLimit:    config.Server.Web.RequestsLimit,
 			MaxQueryPeriod:   config.Server.Web.MaxQueryPeriod,
