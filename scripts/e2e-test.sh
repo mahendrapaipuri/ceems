@@ -354,6 +354,7 @@ then
         --collector.slurm \
         --collector.gpu.type="nvidia" \
         --collector.gpu.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
+        --collector.ipmi_dcmi \
         --collector.ipmi_dcmi.test-mode \
         --collector.ipmi_dcmi.cmd="pkg/collector/testdata/ipmi/freeipmi/ipmi-dcmi" \
         --collector.empty-hostname-label \
@@ -372,6 +373,7 @@ then
         --collector.slurm \
         --collector.gpu.type="nvidia" \
         --collector.gpu.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
+        --collector.ipmi_dcmi \
         --collector.ipmi_dcmi.cmd="pkg/collector/testdata/ipmi/freeipmi/ipmi-dcmi" \
         --collector.ipmi_dcmi.test-mode \
         --collector.empty-hostname-label \
@@ -392,6 +394,7 @@ then
         --collector.rdma.stats \
         --collector.rdma.cmd="pkg/collector/testdata/rdma" \
         --collector.empty-hostname-label \
+        --collector.ipmi_dcmi \
         --collector.ipmi_dcmi.test-mode \
         --web.listen-address "127.0.0.1:${port}" \
         --web.disable-exporter-metrics \
@@ -411,6 +414,7 @@ then
         --collector.rdma.stats \
         --collector.rdma.cmd="pkg/collector/testdata/rdma" \
         --collector.empty-hostname-label \
+        --collector.ipmi_dcmi \
         --collector.ipmi_dcmi.test-mode \
         --web.listen-address "127.0.0.1:${port}" \
         --web.disable-exporter-metrics \
@@ -427,6 +431,7 @@ then
         --collector.gpu.type="amd" \
         --collector.gpu.rocm-smi-path="pkg/collector/testdata/rocm-smi" \
         --collector.empty-hostname-label \
+        --collector.ipmi_dcmi \
         --collector.ipmi_dcmi.test-mode \
         --web.listen-address "127.0.0.1:${port}" \
         --web.disable-exporter-metrics \
@@ -441,6 +446,7 @@ then
         --collector.cgroups.force-version="v2" \
         --collector.slurm \
         --collector.empty-hostname-label \
+        --collector.ipmi_dcmi \
         --collector.ipmi_dcmi.test-mode \
         --web.listen-address "127.0.0.1:${port}" \
         --web.disable-exporter-metrics \
@@ -456,6 +462,7 @@ then
         --collector.slurm \
         --collector.gpu.type="nvidia" \
         --collector.gpu.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
+        --collector.ipmi_dcmi \
         --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/ipmiutils/ipmiutil" \
         --collector.ipmi_dcmi.test-mode \
         --collector.empty-hostname-label \
@@ -475,6 +482,7 @@ then
         --collector.gpu.rocm-smi-path="pkg/collector/testdata/rocm-smi" \
         --collector.slurm.swap.memory.metrics \
         --collector.slurm.psi.metrics \
+        --collector.ipmi_dcmi \
         --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/capmc/capmc" \
         --collector.ipmi_dcmi.test-mode \
         --collector.empty-hostname-label \
@@ -495,6 +503,7 @@ then
         --collector.libvirt.swap-memory-metrics \
         --collector.libvirt.psi-metrics \
         --collector.libvirt.blkio-metrics \
+        --collector.ipmi_dcmi \
         --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/capmc/capmc" \
         --collector.ipmi_dcmi.test-mode \
         --collector.empty-hostname-label \
@@ -515,6 +524,7 @@ then
         --collector.libvirt.swap-memory-metrics \
         --collector.libvirt.psi-metrics \
         --collector.libvirt.blkio-metrics \
+        --collector.ipmi_dcmi \
         --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/capmc/capmc" \
         --collector.ipmi_dcmi.test-mode \
         --collector.empty-hostname-label \
@@ -530,6 +540,7 @@ then
         --discoverer.alloy-targets.resource-manager="slurm" \
         --collector.cgroups.force-version="v2" \
         --collector.slurm \
+        --collector.ipmi_dcmi \
         --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/capmc/capmc" \
         --collector.ipmi_dcmi.test-mode \
         --collector.empty-hostname-label \
@@ -545,6 +556,7 @@ then
         --discoverer.alloy-targets.resource-manager="slurm" \
         --collector.slurm \
         --collector.cgroups.force-version="v1" \
+        --collector.ipmi_dcmi \
         --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/capmc/capmc" \
         --collector.ipmi_dcmi.test-mode \
         --collector.empty-hostname-label \
