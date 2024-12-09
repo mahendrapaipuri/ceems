@@ -5,6 +5,10 @@ package collector
 
 // Taken from prometheus-community/ipmi_exporter/blob/master/collector_ipmi.go
 // DCMI spec (old) https://www.intel.com/content/dam/www/public/us/en/documents/technical-specifications/dcmi-v1-5-rev-spec.pdf
+//
+// NOTE: Move Cray specific stuff into a separate collector that reads values from
+// /sys/cray/pm_counters.
+// Relevant documentation: https://cray-hpe.github.io/docs-csm/en-10/operations/power_management/user_access_to_compute_node_power_data/
 
 import (
 	"context"
@@ -17,9 +21,11 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/mahendrapaipuri/ceems/internal/osexec"
 	"github.com/mahendrapaipuri/ceems/internal/security"
+	"github.com/mahendrapaipuri/ceems/pkg/ipmi"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -34,6 +40,7 @@ var (
 const (
 	sudoMode       = "sudo"
 	capabilityMode = "cap"
+	nativeMode     = "native" // Native Go implementation of IPMI protocol
 	testMode       = "test"
 	crayPowerCap   = "capmc"
 )
@@ -43,6 +50,7 @@ type impiCollector struct {
 	hostname         string
 	execMode         string
 	ipmiCmd          []string
+	client           *ipmi.IPMIClient
 	securityContexts map[string]*security.SecurityContext
 	cachedMetric     map[string]float64
 	metricDesc       map[string]*prometheus.Desc
@@ -122,6 +130,11 @@ type impiCollector struct {
 	"err_msg":""
 	}
 	----------------------------------------------------------------------
+
+	NOTE: If the native Go implementation is stable enough, we should remove
+	all other modes as it does not add any value to the collector. Currently native
+	implementation is only a fallback mode when no other IPMI utils are found on the
+	node.
 */
 
 var (
@@ -133,6 +146,14 @@ var (
 		"collector.ipmi_dcmi.cmd",
 		"IPMI DCMI command to get system power statistics. Use full path to executables.",
 	).Default("").String()
+	ipmiDevNum = CEEMSExporterApp.Flag(
+		"collector.ipmi_dcmi.dev-num",
+		"Device number used by OpenIPMI driver. For e.g. if device is found at /dev/ipmi0, device number is 0",
+	).Default("0").Int()
+	forceNativeMode = CEEMSExporterApp.Flag(
+		"collector.ipmi_dcmi.force-native-mode",
+		"Force native mode using OpenIPMI driver.",
+	).Default("false").Bool()
 
 	// test flags. Hidden.
 	ipmiDcmiTestMode = CEEMSExporterApp.Flag(
@@ -174,24 +195,30 @@ var (
 // Security context names.
 const (
 	ipmiExecCmdCtx = "ipmi_exec_cmd"
+	openIPMICtx    = "open_ipmi"
 )
 
+type ipmiClientSecurityCtxData struct {
+	client        *ipmi.IPMIClient
+	powerReadings map[string]float64
+}
+
 func init() {
-	RegisterCollector(ipmiCollectorSubsystem, defaultEnabled, NewIPMICollector)
+	RegisterCollector(ipmiCollectorSubsystem, defaultDisabled, NewIPMICollector)
 }
 
 // NewIPMICollector returns a new Collector exposing IMPI DCMI power metrics.
 func NewIPMICollector(logger *slog.Logger) (Collector, error) {
 	if *ipmiDcmiCmdDepr != "" {
-		logger.Warn("flag --collector.ipmi.dcmi.cmd has been deprecated. Use --collector.ipmi_dcmi.cmd instead.")
+		logger.Warn("flag --collector.ipmi.dcmi.cmd has been deprecated. Use native mode by OpenIPMI driver using --collector.ipmi_dcmi.force-native-mode")
 	}
 
 	var execMode string
 
 	// Initialize metricDesc map
-	metricDesc := make(map[string]*prometheus.Desc, 3)
+	metricDesc := make(map[string]*prometheus.Desc, 4)
 
-	cachedMetric := make(map[string]float64, 3)
+	cachedMetric := make(map[string]float64, 4)
 
 	metricDesc["current"] = prometheus.NewDesc(
 		prometheus.BuildFQName(Namespace, ipmiCollectorSubsystem, "current_watts"),
@@ -214,11 +241,21 @@ func NewIPMICollector(logger *slog.Logger) (Collector, error) {
 	var cmdSlice []string
 
 	var err error
+
+	// If native mode is forced set execMode and goto outside
+	if *forceNativeMode {
+		execMode = nativeMode
+
+		goto outside
+	}
+
 	if *ipmiDcmiCmd == "" && *ipmiDcmiCmdDepr == "" {
 		if cmdSlice, err = findIPMICmd(); err != nil {
-			logger.Error("No IPMI installation found", "err", err)
+			logger.Info("None of ipmitool,ipmiutil,ipmi-dcmi commands found. Using native implementation using OpenIPMI interface")
 
-			return nil, err
+			execMode = nativeMode
+
+			goto outside
 		}
 	} else {
 		if *ipmiDcmiCmdDepr != "" {
@@ -276,33 +313,55 @@ func NewIPMICollector(logger *slog.Logger) (Collector, error) {
 
 outside:
 
-	// Setup necessary capabilities.
-	// For nativeMode and capabilityMode we need cap_setuid and cap_setgid. For sudoMode we
-	// wont need any more extra capabilities
-	var securityCtx *security.SecurityContext
-
-	if execMode == capabilityMode {
-		caps := setupCollectorCaps(logger, ipmiCollectorSubsystem, []string{"cap_setuid", "cap_setgid"})
-
-		// Setup new security context(s)
-		securityCtx, err = security.NewSecurityContext(ipmiExecCmdCtx, caps, security.ExecAsUser, logger)
-		if err != nil {
-			logger.Error("Failed to create a security context for IPMI collector", "err", err)
-
-			return nil, err
-		}
-	}
-
 	logger.Debug("IPMI DCMI command", "execution_mode", execMode)
 
 	collector := impiCollector{
 		logger:           logger,
 		hostname:         hostname,
 		execMode:         execMode,
-		ipmiCmd:          cmdSlice,
 		metricDesc:       metricDesc,
 		cachedMetric:     cachedMetric,
-		securityContexts: map[string]*security.SecurityContext{ipmiExecCmdCtx: securityCtx},
+		securityContexts: make(map[string]*security.SecurityContext),
+	}
+
+	// Setup necessary capabilities.
+	// For capabilityMode we need cap_setuid and cap_setgid.
+	// For sudoMode we wont need any more extra capabilities.
+	// For nativeMode we need cap_dac_override capability to talk to device.
+	if execMode == capabilityMode {
+		// Setup command
+		collector.ipmiCmd = cmdSlice
+
+		caps := setupCollectorCaps(logger, ipmiCollectorSubsystem, []string{"cap_setuid", "cap_setgid"})
+
+		// Setup new security context(s)
+		collector.securityContexts[ipmiExecCmdCtx], err = security.NewSecurityContext(ipmiExecCmdCtx, caps, security.ExecAsUser, logger)
+		if err != nil {
+			logger.Error("Failed to create a security context for IPMI collector", "err", err)
+
+			return nil, err
+		}
+	} else if execMode == nativeMode {
+		// Capability to be able to talk to /dev/ipmi0
+		caps := setupCollectorCaps(logger, ipmiCollectorSubsystem, []string{"cap_dac_override"})
+
+		// Setup IPMI client
+		collector.client, err = ipmi.NewIPMIClient(*ipmiDevNum, logger.With("subsystem", "ipmi_client"))
+		if err != nil {
+			logger.Error("Failed to create a IPMI client", "err", err)
+
+			return nil, err
+		}
+
+		// Setup new security context(s)
+		collector.securityContexts[openIPMICtx], err = security.NewSecurityContext(openIPMICtx, caps, dcmiPowerReading, logger)
+		if err != nil {
+			logger.Error("Failed to create a security context for IPMI collector", "err", err)
+
+			return nil, err
+		}
+	} else if execMode == testMode {
+		collector.ipmiCmd = cmdSlice
 	}
 
 	return &collector, nil
@@ -343,11 +402,24 @@ func (c *impiCollector) Update(ch chan<- prometheus.Metric) error {
 func (c *impiCollector) Stop(_ context.Context) error {
 	c.logger.Debug("Stopping", "collector", ipmiCollectorSubsystem)
 
+	// Close fd when native mode is being used
+	if c.execMode == nativeMode {
+		if err := c.client.Close(); err != nil {
+			c.logger.Debug("Failed to close OpenIPMI device fd", "err", err)
+
+			return err
+		}
+	}
+
 	return nil
 }
 
 // Get current, min and max power readings.
 func (c *impiCollector) getPowerReadings() (map[string]float64, error) {
+	// If mode is native, make request in security context
+	if c.execMode == nativeMode {
+		return c.doRequestInSecurityContext()
+	}
 	// Execute IPMI command
 	ipmiOutput, err := c.executeIPMICmd()
 	if err != nil {
@@ -440,7 +512,7 @@ func (c *impiCollector) executeIPMICmd() ([]byte, error) {
 	// Execute found ipmi command
 	switch c.execMode {
 	case capabilityMode:
-		stdOut, err = c.executeInSecurityContext()
+		stdOut, err = c.executeCmdInSecurityContext()
 	case sudoMode:
 		stdOut, err = osexec.ExecuteWithTimeout(sudoMode, c.ipmiCmd, 1, nil)
 	// Only used in e2e and unit tests
@@ -457,8 +529,8 @@ func (c *impiCollector) executeIPMICmd() ([]byte, error) {
 	return stdOut, nil
 }
 
-// executeInSecurityContext executes IPMI command within a security context.
-func (c *impiCollector) executeInSecurityContext() ([]byte, error) {
+// executeCmdInSecurityContext executes IPMI command within a security context.
+func (c *impiCollector) executeCmdInSecurityContext() ([]byte, error) {
 	// Execute command as root
 	dataPtr := &security.ExecSecurityCtxData{
 		Cmd:    c.ipmiCmd,
@@ -477,6 +549,51 @@ func (c *impiCollector) executeInSecurityContext() ([]byte, error) {
 	}
 
 	return dataPtr.StdOut, nil
+}
+
+// doRequestInSecurityContext makes requests to IPMI device interface within a security context.
+func (c *impiCollector) doRequestInSecurityContext() (map[string]float64, error) {
+	// Execute command as root
+	dataPtr := &ipmiClientSecurityCtxData{
+		client: c.client,
+	}
+
+	// Read stdOut of command into data
+	if securityCtx, ok := c.securityContexts[openIPMICtx]; ok {
+		if err := securityCtx.Exec(dataPtr); err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, security.ErrNoSecurityCtx
+	}
+
+	return dataPtr.powerReadings, nil
+}
+
+func dcmiPowerReading(data interface{}) error {
+	// Assert data
+	var d *ipmiClientSecurityCtxData
+
+	var ok bool
+	if d, ok = data.(*ipmiClientSecurityCtxData); !ok {
+		return security.ErrSecurityCtxDataAssertion
+	}
+
+	// Get current power reading from DCMI
+	reading, err := d.client.PowerReading(time.Second)
+	if err != nil {
+		return err
+	}
+
+	// Read power reading into dataPointer
+	d.powerReadings = map[string]float64{
+		"min":     float64(reading.Minimum),
+		"max":     float64(reading.Maximum),
+		"avg":     float64(reading.Average),
+		"current": float64(reading.Current),
+	}
+
+	return nil
 }
 
 // Find IPMI command from list of different IPMI implementations.
