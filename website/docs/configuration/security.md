@@ -44,7 +44,11 @@ as unprivileged process.
 For different collectors of CEEMS exporter, different capabilities are needed. The
 following list summaries the capabilities needed for each collector:
 
-- `ipmi_dcmi`: `cap_setuid` and `cap_setgid` to execute IPMI command as `root`.
+- `ipmi_dcmi`: `cap_setuid` and `cap_setgid` to execute IPMI command as `root` when third-party
+libaries are used. `cap_dac_override` when pure Golang implementation is used to communicate
+with device `/dev/ipmi0`.
+- `redfish`: `cap_dac_override` to discover BMC IP address when it is not provided _via_ configuration
+file.
 - `slurm`: `cap_sys_ptrace` and `cap_dac_read_search` to be able to access processes'
 environment variables to get GPU indices of a given compute job. If `--collector.slurm.gpu-job-map-path`
 is used, these capabilities wont be needed.
@@ -91,7 +95,7 @@ sudo setcap cap_setuid,cap_setgid+p /full/path/to/ceems_api_server
 This will assign all the capabilities that are necessary to run `ceems_exporter`
 for all the collectors. Using file based capabilities will
 expose those capabilities to anyone on the system that have execute permissions on the
-binary. Although, it does not pose a big security concern, it is better to assign
+binary. Although, it does not pose a big security concern, it is advisable to assign
 capabilities to a process.
 
 As operators tend to run the exporter within a `systemd` unit file, we can assign
@@ -100,8 +104,8 @@ directive of the `systemd`. An example is as follows:
 
 ```ini
 [Service]
-ExecStart=/usr/local/bin/ceems_exporter --collector.slurm --collector.perf.hardware-events --collector.ebpf.io-metrics
-AmbientCapabilities=CAP_SYS_PTRACE CAP_DAC_READ_SEARCH CAP_SETUID CAP_SETGID CAP_PERFMON CAP_BPF CAP_SYS_RESOURCE
+ExecStart=/usr/local/bin/ceems_exporter --collector.slurm --collector.perf.hardware-events --collector.ebpf.io-metrics --collector.ipmi_dcmi --collector.ipmi_dcmi.force-native-mode
+AmbientCapabilities=CAP_SYS_PTRACE CAP_DAC_READ_SEARCH CAP_DAC_OVERRIDE CAP_PERFMON CAP_BPF CAP_SYS_RESOURCE
 ```
 
 Note that it is bare minimum service file and it is only to demonstrate on how to use
