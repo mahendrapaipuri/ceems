@@ -9,7 +9,7 @@ Group=ceems
 ExecStart=/usr/local/bin/redfish_proxy \
     --config.file=/etc/redfish_proxy/config.yml \
     --web.config.file=/etc/redfish_proxy/web-config.yml \
-    --web.telemetry-path=/metrics $REDFISH_PROXY_OPTIONS
+    $REDFISH_PROXY_OPTIONS
 
 SyslogIdentifier=redfish_proxy
 Restart=always
