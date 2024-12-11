@@ -56,7 +56,7 @@ jobs:
           for arch in amd64 arm64; do
             for packager in rpm deb; do
               for app in ceems_exporter ceems_api_server ceems_lb redfish_proxy; do
-                  GOARCH=${arch} nfpm pkg --config build/package/${app}/nfpm.yml --packager ${packager} --target .tarballs/${app}-${{ steps.vars.outputs.version }}-${{ steps.vars.outputs.goos }}-${arch}.${packager}
+                  GOARCH=${arch} CEEMS_VERSION=${{ steps.vars.outputs.version }} nfpm pkg --config build/package/${app}/nfpm.yml --packager ${packager} --target .tarballs/${app}-${{ steps.vars.outputs.version }}-${{ steps.vars.outputs.goos }}-${arch}.${packager}
               done 
             done 
           done
