@@ -1,0 +1,1 @@
+BMC for host 192.168.1.0 is running on port 5000

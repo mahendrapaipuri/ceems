@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/url"
 	"os"
@@ -54,24 +55,31 @@ type Target struct {
 	URL       *url.URL `yaml:"url"`
 }
 
+// UnmarshalYAML implements the yaml.Unmarshaler interface.
 func (t *Target) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var tmp struct {
 		HostAddrs []string `yaml:"host_ip_addrs"`
 		URL       string   `yaml:"url"`
 	}
 
-	err := unmarshal(&tmp)
-	if err != nil {
+	if err := unmarshal(&tmp); err != nil {
 		return err
 	}
 
-	url, err := url.Parse(tmp.URL)
+	// Parse url string
+	u, err := url.Parse(tmp.URL)
 	if err != nil {
 		return err
 	}
+	// url.Parse passes a lot of URL types. Need
+	// to check Host and Scheme
+	if u.Scheme == "" || u.Host == "" {
+		return fmt.Errorf("invalid url string: %s", tmp.URL)
+	}
 
-	t.URL = url
+	// Set target
 	t.HostAddrs = tmp.HostAddrs
+	t.URL = u
 
 	return nil
 }
@@ -79,7 +87,7 @@ func (t *Target) UnmarshalYAML(unmarshal func(interface{}) error) error {
 type Redfish struct {
 	Config struct {
 		Web struct {
-			SkipTLSVerify bool `yaml:"insecure_skip_verify"`
+			Insecure bool `yaml:"insecure_skip_verify"`
 		} `yaml:"web"`
 		Targets []Target `yaml:"targets"`
 	} `yaml:"redfish_config"`
@@ -134,20 +142,27 @@ func main() {
 	runtime.GOMAXPROCS(*maxProcs)
 	logger.Debug("Go MAXPROCS", "procs", runtime.GOMAXPROCS(0))
 
-	// Get absolute config file path
-	configFilePath, err := filepath.Abs(*configFile)
-	if err != nil {
-		logger.Error("Failed to get absolute path of config file", "err", err)
+	// Read config from file only when file path is provided
+	var redfish *Redfish
 
-		os.Exit(1)
-	}
+	if *configFile != "" {
+		configFilePath, err := filepath.Abs(*configFile)
+		if err != nil {
+			logger.Error("Failed to get absolute path of config file", "err", err)
 
-	// Make config from file
-	redfish, err := common.MakeConfig[Redfish](configFilePath)
-	if err != nil {
-		logger.Error("Failed to parse Redfish proxy config file", "err", err)
+			os.Exit(1)
+		}
 
-		os.Exit(1)
+		// Make config from file
+		redfish, err = common.MakeConfig[Redfish](configFilePath)
+		if err != nil {
+			logger.Error("Failed to parse Redfish proxy config file", "err", err)
+
+			os.Exit(1)
+		}
+	} else {
+		// If no config file provided, start with a default config
+		redfish = &Redfish{}
 	}
 
 	// If webConfigFile is set, get absolute path
@@ -178,12 +193,7 @@ func main() {
 	defer stop()
 
 	// Create a new proxy instance
-	server, err := NewRedfishProxyServer(config)
-	if err != nil {
-		logger.Error("Failed to create a new instance of Redfish proxy", "err", err)
-
-		os.Exit(1)
-	}
+	server := NewRedfishProxyServer(config)
 
 	// Initializing the server in a goroutine so that
 	// it won't block the graceful shutdown handling below.

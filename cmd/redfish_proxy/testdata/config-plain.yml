@@ -1,7 +1,7 @@
 ---
 redfish_config:
   web:
-    skip_tls_verify: false
+    insecure_skip_verify: false
 
   targets:
     - host_ip_addrs: 

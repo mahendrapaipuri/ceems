@@ -2,13 +2,11 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"log/slog"
 	"net/http"
 	"net/http/httputil"
 	_ "net/http/pprof" // #nosec
-	"net/url"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -17,18 +15,18 @@ import (
 
 // RedfishProxyServer struct implements HTTP server for proxy.
 type RedfishProxyServer struct {
-	logger          *slog.Logger
-	server          *http.Server
-	webConfig       *web.FlagConfig
-	targets         map[string]*url.URL
-	targetTransport *http.Transport
+	logger    *slog.Logger
+	server    *http.Server
+	webConfig *web.FlagConfig
+	redfish   *Redfish
 }
 
 // NewRedfishProxyServer creates new RedfishProxyServer struct instance.
-func NewRedfishProxyServer(c *Config) (*RedfishProxyServer, error) {
+func NewRedfishProxyServer(c *Config) *RedfishProxyServer {
 	router := mux.NewRouter()
 	server := &RedfishProxyServer{
-		logger: c.Logger,
+		logger:  c.Logger,
+		redfish: c.Redfish,
 		server: &http.Server{
 			Addr:              c.Web.Addresses[0],
 			Handler:           router,
@@ -43,25 +41,6 @@ func NewRedfishProxyServer(c *Config) (*RedfishProxyServer, error) {
 		},
 	}
 
-	// If no targets found return error
-	if len(c.Redfish.Config.Targets) == 0 {
-		return nil, errors.New("no targets found to proxy")
-	}
-
-	// Make a map of host addr to bmc url using config
-	server.targets = make(map[string]*url.URL)
-
-	for _, target := range c.Redfish.Config.Targets {
-		for _, ip := range target.HostAddrs {
-			server.targets[ip] = target.URL
-		}
-	}
-
-	// Setup TLS check
-	server.targetTransport = &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: c.Redfish.Config.Web.SkipTLSVerify}, //nolint:gosec
-	}
-
 	// If EnableDebugServer is true add debug endpoints
 	if c.Web.EnableDebugServer {
 		// pprof debug end points. Expose them only on localhost
@@ -71,7 +50,7 @@ func NewRedfishProxyServer(c *Config) (*RedfishProxyServer, error) {
 	// Handle metrics path
 	router.PathPrefix("/").Handler(server.newProxyHandler())
 
-	return server, nil
+	return server
 }
 
 // Start launches CEEMS exporter HTTP server.
@@ -106,5 +85,10 @@ func (s *RedfishProxyServer) Shutdown(ctx context.Context) error {
 
 // newProxyHandler creates a new handler for proxying requests to redfish targets.
 func (s *RedfishProxyServer) newProxyHandler() *httputil.ReverseProxy {
-	return NewMultiHostReverseProxy(s.logger, s.targets, s.targetTransport)
+	config := &rpConfig{
+		logger:  s.logger.With("subsystem", "rp"),
+		redfish: s.redfish,
+	}
+
+	return NewMultiHostReverseProxy(config)
 }

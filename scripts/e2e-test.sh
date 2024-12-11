@@ -300,6 +300,10 @@ then
   then
     desc="Redfish proxy with both frontend and backend running with TLS"
     fixture='cmd/redfish_proxy/testdata/output/e2e-test-redfish-proxy-tls-tls-output.txt'
+  elif [ "${scenario}" = "redfish-proxy-targetless-frontend-plain-backend-plain" ]
+  then
+    desc="Redfish proxy with both frontend and backend running without TLS and without targets in config"
+    fixture='cmd/redfish_proxy/testdata/output/e2e-test-redfish-proxy-targetless-plain-plain-output.txt'
   fi
 
   logfile="${tmpdir}/redfish_proxy.log"
@@ -1017,6 +1021,7 @@ then
     do
       get -H "X-Real-IP: 192.168.1.${i}" "127.0.0.1:${port}" >> "${fixture_output}"
     done
+    get -H "X-Redfish-Url: http://localhost:5000" "127.0.0.1:${port}" >> "${fixture_output}"
   elif [ "${scenario}" = "redfish-proxy-frontend-tls-backend-plain" ]
   then
     export PATH="${GOBIN:-}:${PATH}"
@@ -1038,6 +1043,7 @@ then
     do
       get -H "X-Real-IP: 192.168.1.${i}" "https://127.0.0.1:${port}" >> "${fixture_output}"
     done
+    get -H "X-Redfish-Url: http://localhost:5000" "https://127.0.0.1:${port}" >> "${fixture_output}"
   elif [ "${scenario}" = "redfish-proxy-frontend-plain-backend-tls" ]
   then
     export PATH="${GOBIN:-}:${PATH}"
@@ -1046,7 +1052,7 @@ then
 
     ./bin/redfish_proxy \
       --web.listen-address="127.0.0.1:${port}" \
-      --config.file="cmd/redfish_proxy/testdata/config-plain.yml" \
+      --config.file="cmd/redfish_proxy/testdata/config-tls.yml" \
       --log.level="debug" >> "${logfile}" 2>&1 &
     REDFISH_PROXY_PID=$!
 
@@ -1058,6 +1064,7 @@ then
     do
       get -H "X-Real-IP: 192.168.1.${i}" "127.0.0.1:${port}" >> "${fixture_output}"
     done
+    get -H "X-Redfish-Url: https://localhost:5005" "127.0.0.1:${port}" >> "${fixture_output}"
   elif [ "${scenario}" = "redfish-proxy-frontend-tls-backend-tls" ]
   then
     export PATH="${GOBIN:-}:${PATH}"
@@ -1066,7 +1073,7 @@ then
 
     ./bin/redfish_proxy \
       --web.listen-address="127.0.0.1:${port}" \
-      --config.file="cmd/redfish_proxy/testdata/config-plain.yml" \
+      --config.file="cmd/redfish_proxy/testdata/config-tls.yml" \
       --web.config.file="cmd/redfish_proxy/testdata/web-config.yml" \
       --log.level="debug" >> "${logfile}" 2>&1 &
     REDFISH_PROXY_PID=$!
@@ -1079,6 +1086,23 @@ then
     do
       get -H "X-Real-IP: 192.168.1.${i}" "https://127.0.0.1:${port}" >> "${fixture_output}"
     done
+    get -H "X-Redfish-Url: https://localhost:5005" "https://127.0.0.1:${port}" >> "${fixture_output}"
+  elif [ "${scenario}" = "redfish-proxy-targetless-frontend-plain-backend-plain" ]
+  then
+    export PATH="${GOBIN:-}:${PATH}"
+    ./bin/mock_servers redfish-targets-plain >> "${logfile}" 2>&1 &
+    MOCK_SERVERS_PID=$!
+
+    ./bin/redfish_proxy \
+      --web.listen-address="127.0.0.1:${port}" \
+      --log.level="debug" >> "${logfile}" 2>&1 &
+    REDFISH_PROXY_PID=$!
+
+    echo "${MOCK_SERVERS_PID} ${REDFISH_PROXY_PID}" > "${pidfile}"
+
+    sleep 5
+    waitport "${port}"
+    get -H "X-Redfish-Url: http://localhost:5000" "http://127.0.0.1:${port}" >> "${fixture_output}"
   fi
 fi
 
