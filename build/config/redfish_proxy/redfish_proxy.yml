@@ -1,0 +1,12 @@
+---
+# Conifguration file for redfish_proxy app
+redfish_config:
+  # This section must provide web configuration of
+  # Redfish API server.
+  #
+  web:
+    # If Redfish API servers are running with TLS enabled
+    # and using self signed certificates, set `insecure_skip_verify`
+    # to `true` to skip TLS certifcate verification
+    #
+    insecure_skip_verify: false 

@@ -1,0 +1,27 @@
+[Unit]
+Description=A Reverse Proxy to Redfish API Servers
+After=network-online.target
+
+[Service]
+Type=simple
+User=ceems
+Group=ceems
+ExecStart=/usr/local/bin/redfish_proxy \
+    --config.file=/etc/redfish_proxy/config.yml \
+    --web.config.file=/etc/redfish_proxy/web-config.yml \
+    --web.telemetry-path=/metrics $REDFISH_PROXY_OPTIONS
+
+SyslogIdentifier=redfish_proxy
+Restart=always
+RestartSec=1
+StartLimitInterval=0
+
+ProtectHome=read-only
+
+ProtectSystem=strict
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=yes
+
+[Install]
+WantedBy=multi-user.target

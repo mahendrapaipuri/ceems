@@ -55,7 +55,7 @@ jobs:
           # if using a matrix strategy
           for arch in amd64 arm64; do
             for packager in rpm deb; do
-              for app in ceems_exporter ceems_api_server ceems_lb; do
+              for app in ceems_exporter ceems_api_server ceems_lb redfish_proxy; do
                   GOARCH=${arch} nfpm pkg --config build/package/${app}/nfpm.yml --packager ${packager} --target .tarballs/${app}-${{ steps.vars.outputs.version }}-${{ steps.vars.outputs.goos }}-${arch}.${packager}
               done 
             done 
@@ -64,12 +64,12 @@ jobs:
       - name: Test deb packages
         run: |
           # Install all CEEMS components
-          for app in ceems_exporter ceems_api_server ceems_lb; do
+          for app in ceems_exporter ceems_api_server ceems_lb redfish_proxy; do
               GOARCH=amd64 sudo apt-get install ./.tarballs/${app}-${{ steps.vars.outputs.version }}-${{ steps.vars.outputs.goos }}-amd64.deb
           done 
 
           # Test systemd service of each CEEMS component
-          for app in ceems_exporter ceems_api_server ceems_lb; do
+          for app in ceems_exporter ceems_api_server ceems_lb redfish_proxy; do
               systemctl is-active --quiet "${app}.service" && echo "${app}" is running
           done 
 
