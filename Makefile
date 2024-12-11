@@ -65,7 +65,7 @@ else
 	PROMU_CONF ?= .promu-go.yml
 	pkgs := ./pkg/collector ./pkg/emissions ./pkg/tsdb ./pkg/grafana \
 			./internal/common ./internal/osexec ./internal/structset \
-			./internal/security ./cmd/ceems_exporter
+			./internal/security ./cmd/ceems_exporter ./cmd/redfish_proxy
 	checkmetrics := checkmetrics
 	checkrules := checkrules
 	checkbpf := checkbpf
@@ -160,6 +160,11 @@ test-e2e: build pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc
 	./scripts/e2e-test.sh -s exporter-cgroups-v2-libvirt
 	./scripts/e2e-test.sh -s discoverer-cgroups-v2-slurm
 	./scripts/e2e-test.sh -s discoverer-cgroups-v1-slurm
+	./scripts/e2e-test.sh -s redfish-proxy-frontend-plain-backend-plain
+	./scripts/e2e-test.sh -s redfish-proxy-frontend-tls-backend-plain
+	./scripts/e2e-test.sh -s redfish-proxy-frontend-plain-backend-tls
+	./scripts/e2e-test.sh -s redfish-proxy-frontend-tls-backend-tls
+	./scripts/e2e-test.sh -s redfish-proxy-targetless-frontend-plain-backend-plain
 else
 .PHONY: test-e2e
 test-e2e: $(PROMTOOL) build pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked
@@ -214,6 +219,11 @@ test-e2e-update: build pkg/collector/testdata/sys/.unpacked pkg/collector/testda
 	./scripts/e2e-test.sh -s exporter-cgroups-v2-libvirt -u || true
 	./scripts/e2e-test.sh -s discoverer-cgroups-v2-slurm -u || true
 	./scripts/e2e-test.sh -s discoverer-cgroups-v1-slurm -u || true
+	./scripts/e2e-test.sh -s redfish-proxy-frontend-plain-backend-plain -u || true
+	./scripts/e2e-test.sh -s redfish-proxy-frontend-tls-backend-plain -u || true
+	./scripts/e2e-test.sh -s redfish-proxy-frontend-plain-backend-tls -u || true
+	./scripts/e2e-test.sh -s redfish-proxy-frontend-tls-backend-tls -u || true
+	./scripts/e2e-test.sh -s redfish-proxy-targetless-frontend-plain-backend-plain -u || true
 else
 .PHONY: test-e2e-update
 test-e2e-update: $(PROMTOOL) build pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked

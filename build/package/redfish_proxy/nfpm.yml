@@ -1,5 +1,5 @@
 # Name. (required)
-name: ceems_exporter
+name: redfish_proxy
 
 # Architecture. (required)
 # This will expand any env var you set in the field, e.g. version: ${GOARCH}
@@ -32,7 +32,7 @@ maintainer: Mahendra PAIPURI <mahendra.paipuri@gmail.com>
 # Defaults to `no description given`.
 # Most packagers call for a one-line synopsis of the package. Some (like deb)
 # also call for a multi-line description starting on the second line.
-description: A Prometheus exporter to scrape metrics of compute units
+description: A reverse proxy to Redfish API servers
 
 # Vendor.
 # This will expand any env var you set in the field, e.g. vendor: ${VENDOR}
@@ -49,18 +49,18 @@ license: GPL-3.0
 # Contents to add to the package
 # This can be binaries or any other files.
 contents:
-  # CEEMS exporter binary
-  - src: .build/linux-${GOARCH}/ceems_exporter
-    dst: /usr/local/bin/ceems_exporter
+  # Redfish proxy binary
+  - src: .build/linux-${GOARCH}/redfish_proxy
+    dst: /usr/local/bin/redfish_proxy
     expand: true
     file_info:
       mode: 0750
       owner: root
       group: ceems
 
-  # CEEMS exporter web config file
+  # Redfish proxy web config file
   - src: build/config/common/web-config.yml
-    dst: /etc/ceems_exporter/web-config.yml
+    dst: /etc/redfish_proxy/web-config.yml
     type: config
     file_info:
       # Make sure that the mode is specified in octal, e.g. 0644 instead of 644.
@@ -68,9 +68,9 @@ contents:
       owner: root
       group: ceems
 
-  # CEEMS exporter redfish web config file
-  - src: build/config/ceems_exporter/redfish_exporter_config.yml
-    dst: /etc/ceems_exporter/redfish-config.yml
+  # Redfish proxy config file
+  - src: build/config/redfish_proxy/redfish_proxy.yml
+    dst: /etc/redfish_proxy/config.yml
     type: config
     file_info:
       # Make sure that the mode is specified in octal, e.g. 0644 instead of 644.
@@ -79,8 +79,8 @@ contents:
       group: ceems
 
   # systemd unit file
-  - src: build/package/ceems_exporter/ceems_exporter.service
-    dst: /usr/lib/systemd/system/ceems_exporter.service
+  - src: build/package/redfish_proxy/redfish_proxy.service
+    dst: /usr/lib/systemd/system/redfish_proxy.service
     type: config
     file_info:
       # Make sure that the mode is specified in octal, e.g. 0644 instead of 644.
@@ -100,6 +100,6 @@ umask: 0o007
 
 # Scripts to run at specific stages. (overridable)
 scripts:
-  preinstall: build/package/ceems_exporter/preinstall.sh
-  postinstall: build/package/ceems_exporter/postinstall.sh
-  postremove: build/package/ceems_exporter/postremove.sh
+  preinstall: build/package/redfish_proxy/preinstall.sh
+  postinstall: build/package/redfish_proxy/postinstall.sh
+  postremove: build/package/redfish_proxy/postremove.sh

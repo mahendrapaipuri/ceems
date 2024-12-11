@@ -258,45 +258,38 @@ are discussed in [Security](./security.md) section.
 
 ### IPMI collector
 
+:::important[IMPORTANT]
+
+From version `0.5.0`, this collector is disabled by default and it
+must be explicitly enabled using CLI flag `--collector.ipmi_dcmi`
+
+:::
+
 Currently, collector supports FreeIPMI, OpenIMPI, IPMIUtils and Cray's [`capmc`](https://cray-hpe.github.io/docs-csm/en-10/operations/power_management/cray_advanced_platform_monitoring_and_control_capmc/)
 framework. If one of these binaries exist on `PATH`, the exporter will automatically
 detect it and parse the implementation's output to get power reading values.
 
-:::note[NOTE]
+:::warning[WARNING]
 
-Current auto detection mode is only limited to `ipmi-dcmi` (FreeIPMI), `ipmitool`
-(OpenIPMI), `ipmiutil` (IPMIUtils) and `capmc` (Cray) implementations. These binaries
-must be on `PATH` for the exporter to detect them. If a custom IPMI command is used,
-the command must output the power info in
-[one of these formats](https://github.com/mahendrapaipuri/ceems/blob/c031e0e5b484c30ad8b6e2b68e35874441e9d167/pkg/collector/ipmi.go#L35-L92).
-If that is not the case, operators must write a wrapper around the custom IPMI command
-to output the energy info in one of the supported formats. When a custom script is being
-used, it is possible to configure it using CLI flag `--collector.ipmi_dcmi.cmd`.
+Starting from `0.5.0`, fetching power reading from BMC using third-party libraries
+like FreeIPMI, IPMIUtils has been deprecated. The collector supports a pure Golang
+implementation of IPMI protocol using
+[OpenIPMI driver interface](https://www.kernel.org/doc/html/v5.9/driver-api/ipmi.html).
+Currently, this mode is only used as a fallback when no third-party libraries are found
+on the host. However, the pure Go implementation is more performant than calling
+third-party libraries in a sub-process and it should be preferred over other methods.
+Users can force this mode by passing CLI flag `--collector.ipmi_dcmi.force-native-mode`
 
 :::
 
-Generally `ipmi` related commands are available for only `root`. Like in the case of
-slurm collector, there are different ways to configure the privileges to execute
-IPMI command.
+Thus in order to enable and force IPMI collector in native mode, following CLI flags
+must be passed to exporter
 
-- Admins can add a sudoers entry to let the user that runs the `ceems_exporter` to
-execute only necessary command that reports the power usage. For instance, in the case of FreeIPMI
-implementation, that sudoers entry will be
-
-```plain
-ceems ALL = NOPASSWD: /usr/sbin/ipmi-dcmi
+```bash
+ceems_exporter --collector.ipmi_dcmi --collector.ipmi_dcmi.force-native-mode
 ```
 
-The exporter will automatically attempt to run the discovered IPMI command with `sudo`
-prefix.
-
-- Use linux capabilities to spawn a subprocess as `root` to execute just the `ipmi-dcmi`
-command. This needs `CAP_SETUID` and `CAP_SETGID` capabilities in order to able use `setuid` and
-`setgid` syscalls.
-
-- Last approach is to run `ceems_exporter` as root.
-
-We recommend to use either `sudo` or capabilities approach. More on the privileges
+Generally `ipmi` related commands are available for only `root`. More on the privileges
 can be consulted from [Security](./security.md) section.
 
 :::important[IMPORTANT]
@@ -306,6 +299,195 @@ power reading report exactly. Depending on the vendor's implementation, it might
 might not include the power consumption of GPUs.
 
 :::
+
+### Redfish collector
+
+Redfish exposes the BMC related telemetry data using a REST API server. Thus, this
+collector needs the configuration of API server to be able to talk to it and fetch
+power consumption data of different the server. By default this collector is disabled
+and hence, it needs to be explicitly enabled using following CLI:
+
+```bash
+ceems_exporter --collector.redfish
+```
+
+A YAML configuration file containing the Redfish's API server details must be provided
+to the CLI flag `--collector.redfish.web-config`. A sample file is shown as follows:
+
+```yaml
+---
+redfish_web_config:
+  # Protocol of Redfish API server. Possible values are http, https
+  #
+  protocol: https
+
+  # Hostname of the Redfish API server. The hostname can accept
+  # a `{hostname}` placeholder which will be replaced by the current hostname
+  # at runtime.
+  #
+  # For instance, if a compute node `compute-0` has BMC hostname setup at
+  # `compute-0-bmc`, it is possible to provide hostname in the config as
+  # `{hostname}-bmc`. At runtime, the placeholder `{hostname}` will be replaced
+  # by actual hostname which is `compute-0` and we gives us BMC hostname 
+  # `compute-0-bmc`. This lets the operators to deploy exporter on cluster 
+  # of nodes using same config file assuming that BMC credentials are also same 
+  # across the cluster.
+  #
+  # If the hostname is not provided, the collector is capable of discovering
+  # BMC IP address by making a raw IPMI request to OpenIPMI linux driver.
+  # This is equivalent to running `ipmitool lan print` command which will
+  # give us BMC LAN IP. This is possible when Linux IPMI driver has been
+  # loaded and exporter process has enough privileges (CAP_DAC_OVERRIDE).
+  #
+  hostname: compute-0-bmc
+
+  # Port to which Redfish API server binds to.
+  #
+  port: 443
+
+  # External URL at which all Redfish API servers of the cluster are reachable.
+  # Generally BMC network is not reachable from the cluster network and hence,
+  # we cannot make requests to Redfish API server directly from the compute nodes.
+  # In this case, a reverse proxy can be deployed on a management node where
+  # BMC network is reachable and proxy the incoming requests to correct Redfish
+  # API server target. The `external_url` must point to the URL of this reverse
+  # proxy.
+  #
+  # CEEMS provide a utility `redfish_proxy` app that can do the job of reverse
+  # proxy to Redfish API servers.
+  #
+  # When `external_url` is provided, collector always makes requests to
+  # `external_url`. Even when `external_url` is provided, Redfish's web
+  # config like `protocol`, `hostname` and `port` must be provided. 
+  # Collector will send these details via headers to `redfish_proxy` so
+  # that the proxy in-turn makes requests to correct Redfish target
+  #
+  external_url: http://redfish-proxy:5000
+
+  # Username that has enough privileges to query for chassis power data.
+  #
+  username: admin
+
+  # Password corresponding to the username provided above.
+  #
+  password: supersecret
+
+  # If TLS is enabled on Redfish server or Redfish Proxy server 
+  # with self signed certificates, set it to true to skip TLS 
+  # certificate verification.
+  #
+  insecure_skip_verify: true
+
+  # If this is set to `true`, a session token will be request with provided username
+  # and password once and all the subsequent requests will use that token for auth.
+  # If set to `false`, each request will send the provided username and password to
+  # perform basic auth.
+  #
+  # Always prefer to use session tokens by setting this option to `true` as it avoids
+  # sending critical username/password credentials in each request.
+  #
+  use_session_token: true
+```
+
+:::important[IMPORTANT]
+
+This config file contains sensitive information like BMC credentials and hence,
+it is very important to impose strict permissions so that the secrets will not be
+leaked
+
+:::
+
+Once a file with above config has been placed and secured, say at `/etc/ceems_exporter/redfish-config.yml`,
+the collector can be enabled and configured as follows:
+
+```bash
+ceems_exporter --collector.redfish --collector.redfish.web-config=/etc/ceems_exporter/redfish-config.yml
+```
+
+This configuration assumes that Redfish API server is reachable from the compute node
+which might not be the case normally. This is possible when either an
+[in-band Host Interface](https://www.dmtf.org/sites/default/files/standards/documents/DSP0270_1.3.1.pdf)
+to Redfish has been configured or VLAN has been setup to reach BMC network from compute node.
+If this is not the case, BMC network will be only reachable
+from management and/or administration nodes. In this case, we need to deploy a proxy that relays the
+requests to Redfish API server through the management/admin node.
+
+CEEMS provides a utility proxy application `redfish_proxy` which is distributed
+along with other apps that can be used to proxy _in-band_ requests to Redfish. This
+proxy can be deployed on a management node that has access to BMC network and use it
+as the `external_url` in the Redfish web config of the collector.
+
+Redfish proxy uses a very simple config file that is optional. A sample configuration
+file is shown as below:
+
+```yaml
+---
+# Conifguration file for redfish_proxy app
+redfish_config:
+  # This section must provide web configuration of
+  # Redfish API server.
+  #
+  web:
+    # If Redfish API servers are running with TLS enabled
+    # and using self signed certificates, set `insecure_skip_verify`
+    # to `true` to skip TLS certifcate verification
+    #
+    insecure_skip_verify: false
+```
+
+If the Redfish servers are running with TLS using self signed certificates, provide
+a config file with `insecure_skip_verify` set to `true`. If that is not the case, config
+file can be avoided.
+
+<!-- If there are multiple network interfaces with IP addresses on the compute nodes, it is
+**strongly advised to add entry for each IP address**. For instance, if a compute node
+has IP addresses `10.100.4.1`, `10.100.4.2` and `10.100.4.3` and Redfish server for this
+node is running at `https://172.21.4.1` then config must be as follows:
+
+```yaml
+redfish_config:
+  web:
+    insecure_skip_verify: true
+
+  targets:
+    - host_ip_addrs: 
+        - 10.100.4.1
+        - 10.100.4.2
+        - 10.100.4.3
+        - 10.100.4.4
+      url: https://172.21.4.1
+``` -->
+
+Assuming management node is `mgmt-0` and starting `redfish_proxy` on that node with the above
+config in a file stored at `/etc/redfish_proxy/config.yml` can be done as follows:
+
+```bash
+redfish_proxy --config.file=/etc/redfish_proxy/config.yml --web.listen-address=":5000"
+```
+
+This will start the redfish proxy on management node running at `mgmt-0:5000`. Finally,
+redfish configuration file for exporter should be set as follows:
+
+```yaml
+redfish_web_config:
+  # Redfish API server config
+  protocol: http
+  hostname: '{hostname}-bmc'
+  port: 5000
+  # Redfish proxy is running on mgmt-0 at port 5000
+  external_url: http://mgmt-0:5000
+  # Redfish proxy will pass these credentials transparently
+  # to the target Redfish API server
+  username: admin
+  password: supersecret
+  insecure_skip_verify: true
+  use_session_token: true
+```
+
+With the above config, the collector will build the Redfish API URL based on `protocol`,
+`hostname` and `port` parameters and send that to `redfish_proxy` using a header. The
+proxy will read this header and proxy the request to correct Redfish target and eventually
+sends the response back to the collector.
 
 ### RAPL collector
 

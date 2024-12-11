@@ -17,3 +17,6 @@ done
 
 # Clean up all the assets
 make clean
+
+# Always end up with default targets
+make

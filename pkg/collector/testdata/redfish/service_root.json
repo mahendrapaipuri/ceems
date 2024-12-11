@@ -1,0 +1,87 @@
+{
+	"@odata.context": "/redfish/v1/$metadata#ServiceRoot.ServiceRoot",
+	"@odata.type": "#ServiceRoot.v1_5_1.ServiceRoot",
+	"@odata.id": "/redfish/v1/ServiceRoot",
+	"Id": "ServiceRoot-1",
+	"Name": "ServiceRootOne",
+	"Description": "ServiceRoot One",
+	"AccountService": {
+		"@odata.id": "/redfish/v1/Accounts"
+	},
+	"CertificateService": {
+		"@odata.id": "/redfish/v1/Certificates"
+	},
+	"Chassis": {
+		"@odata.id": "/redfish/v1/Chassis"
+	},
+	"ComponentIntegrity": {
+		"@odata.id": "/redfish/v1/ComponentIntegrity"
+	},
+	"CompositionService": {
+		"@odata.id": "/redfish/v1/Compositions"
+	},
+	"EventService": {
+		"@odata.id": "/redfish/v1/Events"
+	},
+	"Fabrics": {
+		"@odata.id": "/redfish/v1/Fabrics"
+	},
+	"JobService": {
+		"@odata.id": "/redfish/v1/Jobs"
+	},
+	"JsonSchemas": {
+		"@odata.id": "/redfish/v1/JsonSchemas"
+	},
+	"Links": {
+		"Sessions": {
+			"@odata.id": "/redfish/v1/Sessions"
+		}
+	},
+	"Managers": {
+		"@odata.id": "/redfish/v1/Managers"
+	},
+	"Product": "Product One",
+	"ProtocolFeaturesSupported": {
+		"ExcerptQuery": true,
+		"ExpandQuery": {
+			"ExpandAll": true,
+			"Levels": true,
+			"Links": true,
+			"MaxLevels": 21,
+			"NoLinks": true
+		},
+		"FilterQuery": true,
+		"OnlyMemberQuery": true,
+		"SelectQuery": true
+	},
+	"RedfishVersion": "1.2.3",
+	"Registries": {
+		"@odata.id": "/redfish/v1/Registries"
+	},
+	"ResourceBlocks": {
+		"@odata.id": "/redfish/v1/ResourceBlocks"
+	},
+	"SessionService": {
+		"@odata.id": "/redfish/v1/SessionService"
+	},
+	"StorageServices": {
+		"@odata.id": "/redfish/v1/StorageServices"
+	},
+	"StorageSystems": {
+		"@odata.id": "/redfish/v1/StorageSystems"
+	},
+	"Systems": {
+		"@odata.id": "/redfish/v1/Systems"
+	},
+	"Tasks": {
+		"@odata.id": "/redfish/v1/Tasks"
+	},
+	"TelemetryService": {
+		"@odata.id": "/redfish/v1/TelemetryService"
+	},
+	"UUID": "ae058175-af1d-40fe-ad5b-c1ab79de2c65",
+	"UpdateService": {
+		"@odata.id": "/redfish/v1/UpdateService"
+	},
+	"Vendor": "Acme Services"
+} 

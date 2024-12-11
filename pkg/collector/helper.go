@@ -154,3 +154,54 @@ func readUintFromFile(path string) (uint64, error) {
 
 	return strconv.ParseUint(strings.TrimSpace(string(data)), 10, 64)
 }
+
+// // lookupIPs returns all the IP addresses of the current host.
+// // Returns botth IPv4 and IPv6.
+// func lookupIPs() ([]string, error) {
+// 	ifaces, err := net.Interfaces()
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	var ipAddrs []string
+
+// 	for _, iface := range ifaces {
+// 		if iface.Flags&net.FlagUp == 0 {
+// 			continue // interface down
+// 		}
+
+// 		if iface.Flags&net.FlagLoopback != 0 {
+// 			continue // loopback interface
+// 		}
+
+// 		addrs, err := iface.Addrs()
+// 		if err != nil {
+// 			return nil, err
+// 		}
+
+// 		for _, addr := range addrs {
+// 			var ip net.IP
+// 			switch v := addr.(type) {
+// 			case *net.IPNet:
+// 				ip = v.IP
+// 			case *net.IPAddr:
+// 				ip = v.IP
+// 			}
+
+// 			if ip == nil || ip.IsLoopback() {
+// 				continue
+// 			}
+// 			// ip = ip.To4()
+// 			// if ip == nil {
+// 			// 	continue // not an ipv4 address
+// 			// }
+// 			ipAddrs = append(ipAddrs, ip.String())
+// 		}
+// 	}
+
+// 	if len(ipAddrs) == 0 {
+// 		return nil, errors.New("no IP addresses found on the host")
+// 	}
+
+// 	return ipAddrs, nil
+// }

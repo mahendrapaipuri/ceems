@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"slices"
 	"sync"
@@ -186,8 +187,24 @@ func (lb *CEEMSLoadBalancer) Main() error {
 		return fmt.Errorf("failed to parse CLI flags: %w", err)
 	}
 
+	// Get absolute path for web config file if provided
+	var webConfigFilePath string
+	if *webConfigFile != "" {
+		webConfigFilePath, err = filepath.Abs(*webConfigFile)
+		if err != nil {
+			return fmt.Errorf("failed to get absolute path of the web config file: %w", err)
+		}
+	}
+
+	// Get absolute config file path global variable that will be used in resource manager
+	// and updater packages
+	configFilePath, err := filepath.Abs(*configFile)
+	if err != nil {
+		return fmt.Errorf("failed to get absolute path of the config file: %w", err)
+	}
+
 	// Make LB config
-	config, err := common.MakeConfig[CEEMSLBAppConfig](*configFile)
+	config, err := common.MakeConfig[CEEMSLBAppConfig](configFilePath)
 	if err != nil {
 		return fmt.Errorf("failed to parse config file: %w", err)
 	}
@@ -211,7 +228,7 @@ func (lb *CEEMSLoadBalancer) Main() error {
 		securityCfg := &security.Config{
 			RunAsUser: "nobody",
 			Caps:      nil,
-			ReadPaths: []string{*webConfigFile, *configFile},
+			ReadPaths: []string{webConfigFilePath, configFilePath},
 		}
 
 		// Drop all unnecessary privileges
@@ -237,7 +254,7 @@ func (lb *CEEMSLoadBalancer) Main() error {
 		Logger:           logger,
 		Addresses:        *webListenAddresses,
 		WebSystemdSocket: *systemdSocket,
-		WebConfigFile:    *webConfigFile,
+		WebConfigFile:    webConfigFilePath,
 		APIServer:        config.Server,
 		Manager:          manager,
 	}

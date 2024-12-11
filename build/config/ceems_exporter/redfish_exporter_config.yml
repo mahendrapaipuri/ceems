@@ -1,0 +1,75 @@
+---
+# This is a sample configuration file for redfish collector
+# to fetch the power consumption readings from redfish API server
+#
+redfish_web_config: {}
+  # # Protocol of Redfish API server. Possible values are http, https
+  # #
+  # protocol: https
+
+  # # Hostname of the Redfish API server. The hostname can accept
+  # # a `{hostname}` placeholder which will be replaced by the current hostname
+  # # at runtime.
+  # #
+  # # For instance, if a compute node `compute-0` has BMC hostname setup at
+  # # `compute-0-bmc`, it is possible to provide hostname in the config as
+  # # `{hostname}-bmc`. At runtime, the placeholder `{hostname}` will be replaced
+  # # by actual hostname which is `compute-0` and we gives us BMC hostname 
+  # # `compute-0-bmc`. This lets the operators to deploy exporter on cluster 
+  # # of nodes using same config file assuming that BMC credentials are also same 
+  # # across the cluster.
+  # #
+  # # If the hostname is not provided, the collector is capable of discovering
+  # # BMC IP address by making a raw IPMI request to OpenIPMI linux driver.
+  # # This is equivalent to running `ipmitool lan print` command which will
+  # # give us BMC LAN IP. This is possible when Linux IPMI driver has been
+  # # loaded and exporter process has enough privileges (CAP_DAC_OVERRIDE).
+  # #
+  # hostname: compute-0-bmc
+
+  # # Port to which Redfish API server binds to.
+  # #
+  # port: 443
+
+  # # External URL at which all Redfish API servers of the cluster are reachable.
+  # # Generally BMC network is not reachable from the cluster network and hence,
+  # # we cannot make requests to Redfish API server directly from the compute nodes.
+  # # In this case, a reverse proxy can be deployed on a management node where
+  # # BMC network is reachable and proxy the incoming requests to correct Redfish
+  # # API server target. The `external_url` must point to the URL of this reverse
+  # # proxy.
+  # #
+  # # CEEMS provide a utility `redfish_proxy` app that can do the job of reverse
+  # # proxy to Redfish API servers.
+  # #
+  # # When `external_url` is provided, collector always makes requests to
+  # # `external_url`. Even when `external_url` is provided, Redfish's web
+  # # config like `protocol`, `hostname` and `port` must be provided. 
+  # # Collector will send these details via headers to `redfish_proxy` so
+  # # that the proxy in-turn makes requests to correct Redfish target
+  # #
+  # external_url: http://redfish-proxy:5000
+
+  # # Username that has enough privileges to query for chassis power data.
+  # #
+  # username: admin
+
+  # # Password corresponding to the username provided above.
+  # #
+  # password: supersecret
+
+  # # If TLS is enabled on Redfish server or Redfish Proxy server 
+  # # with self signed certificates, set it to true to skip TLS 
+  # # certificate verification.
+  # #
+  # insecure_skip_verify: false
+
+  # # If this is set to `true`, a session token will be request with provided username
+  # # and password once and all the subsequent requests will use that token for auth.
+  # # If set to `false`, each request will send the provided username and password to
+  # # perform basic auth.
+  # #
+  # # Always prefer to use session tokens by setting this option to `true` as it avoids
+  # # sending critical username/password credentials in each request.
+  # #
+  # use_session_token: true

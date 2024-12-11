@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"os/user"
+	"path/filepath"
 	"runtime"
 	"syscall"
 	"time"
@@ -119,6 +120,15 @@ func (b *CEEMSExporter) Main() error {
 		return fmt.Errorf("failed to parse CLI flags: %w", err)
 	}
 
+	// Get absolute path for web config file if provided
+	var webConfigFilePath string
+	if *webConfigFile != "" {
+		webConfigFilePath, err = filepath.Abs(*webConfigFile)
+		if err != nil {
+			return fmt.Errorf("failed to get absolute path of the web config file: %w", err)
+		}
+	}
+
 	// Set logger here after properly configuring promlog
 	logger := promslog.New(promslogConfig)
 
@@ -174,7 +184,7 @@ func (b *CEEMSExporter) Main() error {
 		securityCfg := &security.Config{
 			RunAsUser: "nobody",
 			Caps:      allCollectorCaps,
-			ReadPaths: []string{*webConfigFile},
+			ReadPaths: []string{webConfigFilePath},
 		}
 
 		// Drop all unnecessary privileges
@@ -191,7 +201,7 @@ func (b *CEEMSExporter) Main() error {
 		Web: WebConfig{
 			Addresses:              *webListenAddresses,
 			WebSystemdSocket:       *systemdSocket,
-			WebConfigFile:          *webConfigFile,
+			WebConfigFile:          webConfigFilePath,
 			MetricsPath:            *metricsPath,
 			TargetsPath:            *targetsPath,
 			MaxRequests:            *maxRequests,

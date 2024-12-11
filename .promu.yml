@@ -12,6 +12,8 @@ build:
           path: ./cmd/ceems_api_server
         - name: ceems_lb
           path: ./cmd/ceems_lb
+        - name: redfish_proxy
+          path: ./cmd/redfish_proxy
     flags: -a -tags 'netgo osusergo static_build'
     ldflags: |
         -X github.com/prometheus/common/version.Version={{.Version}}
@@ -21,8 +23,10 @@ build:
         -X github.com/prometheus/common/version.BuildDate={{date "20060102-15:04:05"}}
 tarball:
     files:
+        - build/config/ceems_exporter/redfish_exporter_config.yml
         - build/config/ceems_lb/ceems_lb.yml
         - build/config/ceems_api_server/ceems_api_server.yml
+        - build/config/redfish_proxy/redfish_proxy.yml
         - build/config/common/web-config.yml
         - LICENSE
         - README.md

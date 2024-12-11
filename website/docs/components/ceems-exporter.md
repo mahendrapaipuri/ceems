@@ -27,6 +27,7 @@ These collectors exports energy related metrics from different
 sources on compute node.
 
 - IPMI collector: Exports power usage reported by `ipmi` tools
+- Redfish collector: Exports power usage reported by [Redfish API](https://www.dmtf.org/standards/redfish)
 - RAPL collector: Exports RAPL energy metrics
 
 ### Emissions related collectors
@@ -380,6 +381,26 @@ Currently, the metrics exposed by IPMI collector are:
 
 Current exporter is capable of auto detecting the IPMI implementation and using
 the one that is found.
+
+### Redfish collector
+
+<!-- markdown-link-check-disable -->
+The Redfish collector reports the current power usage by the node reported by
+[Redfish Chassis Power](https://www.dell.com/support/manuals/fr-fr/idrac7-8-lifecycle-controller-v2.30.30.30/redfish_v2.30.30.30/power?guid=guid-aba3700c-8b2b-4d9b-9c89-73c3177055cc&lang=en-us) specification.
+Redfish is a newer server management protocol which succeeds IPMI. If IPMI DCMI
+is not available (or vendor chose to disable it in the favour of Redfish),
+this collector can be used
+to fetch the total power consumption of the server.
+<!-- markdown-link-check-enable -->
+
+Redfish reports the power consumption stats for each chassis and collector exports
+power readings for all the different types of chassis using `chassis` label. For each
+chassis the metrics exposed by Redfish collector are:
+
+- Current power consumption
+- Minimum power consumption in the sampling period
+- Maximum power consumption in the sampling period
+- Average power consumption in the sampling period
 
 ### RAPL collector
 

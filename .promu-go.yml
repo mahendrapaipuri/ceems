@@ -8,6 +8,8 @@ build:
     binaries:
         - name: ceems_exporter
           path: ./cmd/ceems_exporter
+        - name: redfish_proxy
+          path: ./cmd/redfish_proxy
     tags:
       all: [osusergo, netgo, static_build]
     flags: -a
@@ -19,6 +21,8 @@ build:
         -X github.com/prometheus/common/version.BuildDate={{date "20060102-15:04:05"}}
 tarball:
     files:
+        - build/config/ceems_exporter/redfish_exporter_config.yml
+        - build/config/redfish_proxy/redfish_proxy.yml
         - build/config/web-config.yml
         - LICENSE
         - README.md
