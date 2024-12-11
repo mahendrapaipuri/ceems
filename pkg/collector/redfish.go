@@ -7,9 +7,14 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net"
+	"net/url"
 	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/mahendrapaipuri/ceems/internal/common"
+	"github.com/mahendrapaipuri/ceems/pkg/ipmi"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/config"
 	"github.com/stmcginnis/gofish"
@@ -18,15 +23,24 @@ import (
 
 const redfishCollectorSubsystem = "redfish"
 
-const realIPHeaderName = "X-Real-IP"
+// Header names.
+const (
+	redfishURLHeaderName = "X-Redfish-Url"
+)
+
+const hostnamePlaceholder = "{hostname}"
 
 type redfishConfig struct {
 	Web struct {
-		URL           string `yaml:"url"`
-		Username      string `yaml:"username"`
-		Password      string `yaml:"password"`
-		SkipTLSVerify bool   `yaml:"insecure_skip_verify"`
-		SessionToken  bool   `yaml:"use_session_token"`
+		Proto        string `yaml:"protocol"`
+		Hostname     string `yaml:"hostname"`
+		Port         int    `yaml:"port"`
+		URL          *url.URL
+		ExternalURL  string `yaml:"external_url"`
+		Username     string `yaml:"username"`
+		Password     string `yaml:"password"`
+		InSecure     bool   `yaml:"insecure_skip_verify"`
+		SessionToken bool   `yaml:"use_session_token"`
 	} `yaml:"redfish_web_config"`
 }
 
@@ -39,20 +53,10 @@ type redfishCollector struct {
 	metricDesc  map[string]*prometheus.Desc
 }
 
-var (
-	redfishConfigFile = CEEMSExporterApp.Flag(
-		"collector.redfish.web-config",
-		"Path to Redfish web configuration file.",
-	).Default("").String()
-	ipAddrHeader = CEEMSExporterApp.Flag(
-		"collector.redfish.send-real-ip-header",
-		"Include X-Real-IP header in requests. (default: false)",
-	).Default("false").Bool()
-	testIPAddr = CEEMSExporterApp.Flag(
-		"collector.redfish.local-ip-address",
-		"IP address to include for X-Real-IP header in tests.",
-	).Default("").Hidden().String()
-)
+var redfishConfigFile = CEEMSExporterApp.Flag(
+	"collector.redfish.web-config",
+	"Path to Redfish web configuration file.",
+).Default("").String()
 
 func init() {
 	RegisterCollector(redfishCollectorSubsystem, defaultDisabled, NewRedfishCollector)
@@ -66,25 +70,6 @@ func NewRedfishCollector(logger *slog.Logger) (Collector, error) {
 		return nil, fmt.Errorf("failed to get absolute path of the config file: %w", err)
 	}
 
-	// Get all local IPs when X-Real-IP header must be included
-	var realIPHeaderValue config.Header
-
-	if *ipAddrHeader {
-		if ipAddrs, err := lookupIPs(); err != nil {
-			logger.Warn("Failed to find IP addresses for the current host", "err", err)
-		} else {
-			if *testIPAddr != "" {
-				realIPHeaderValue = config.Header{
-					Values: []string{*testIPAddr},
-				}
-			} else {
-				realIPHeaderValue = config.Header{
-					Values: ipAddrs,
-				}
-			}
-		}
-	}
-
 	// Make config from file
 	cfg, err := common.MakeConfig[redfishConfig](configFilePath)
 	if err != nil {
@@ -93,16 +78,57 @@ func NewRedfishCollector(logger *slog.Logger) (Collector, error) {
 		return nil, fmt.Errorf("failed to parse Redfish config file: %w", err)
 	}
 
+	// If BMC Hostname is not provided, attempt to discover it using OpenIPMI interface
+	if cfg.Web.Hostname == "" {
+		// Make a new IPMI client
+		if client, err := ipmi.NewIPMIClient(0, logger.With("subsystem", "ipmi_client")); err == nil {
+			// Attempt to get new IP address
+			if bmcIP, err := client.LanIP(time.Second); err == nil {
+				// Attempt to get BMC hostname from IP
+				if hostname, err := net.LookupAddr(*bmcIP); err == nil {
+					cfg.Web.Hostname = hostname[0]
+				} else {
+					cfg.Web.Hostname = *bmcIP
+				}
+			}
+			defer client.Close()
+		}
+	}
+
+	// If cfg.Web.Hostname has {hostname} placeholder, replace it with current host name
+	cfg.Web.Hostname = strings.Replace(cfg.Web.Hostname, hostnamePlaceholder, hostname, -1)
+
+	// Build Redfish URL
+	cfg.Web.URL, err = url.Parse(fmt.Sprintf("%s://%s:%d", cfg.Web.Proto, cfg.Web.Hostname, cfg.Web.Port))
+	if err != nil {
+		logger.Error("Failed to build Redfish URL", "err", err)
+
+		return nil, fmt.Errorf("invalid redfish web config: %w", err)
+	}
+
+	logger.Debug("Redfish URL", "url", cfg.Web.URL.String())
+
 	// Make a new HTTP client config
 	clientConfig := config.HTTPClientConfig{
 		TLSConfig: config.TLSConfig{
-			InsecureSkipVerify: cfg.Web.SkipTLSVerify,
+			InsecureSkipVerify: cfg.Web.InSecure,
 		},
 		HTTPHeaders: &config.Headers{
 			Headers: map[string]config.Header{
-				realIPHeaderName: realIPHeaderValue,
+				redfishURLHeaderName: {
+					Values: []string{cfg.Web.URL.String()},
+				},
 			},
 		},
+	}
+
+	// Get the URL that client will talk to
+	// If external URL is provided, always prefer it over the raw BMC hostname and port
+	var endpoint string
+	if cfg.Web.ExternalURL != "" {
+		endpoint = cfg.Web.ExternalURL
+	} else {
+		endpoint = cfg.Web.URL.String()
 	}
 
 	// Make a HTTP client from client config
@@ -115,10 +141,10 @@ func NewRedfishCollector(logger *slog.Logger) (Collector, error) {
 
 	// Create a redfish client
 	config := gofish.ClientConfig{
-		Endpoint:         cfg.Web.URL,
+		Endpoint:         endpoint,
 		Username:         cfg.Web.Username,
 		Password:         cfg.Web.Password,
-		Insecure:         cfg.Web.SkipTLSVerify,
+		Insecure:         cfg.Web.InSecure,
 		BasicAuth:        !cfg.Web.SessionToken,
 		HTTPClient:       httpClient,
 		ReuseConnections: true,

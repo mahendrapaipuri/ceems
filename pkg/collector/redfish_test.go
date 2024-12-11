@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
@@ -21,17 +22,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func testRedfishServer(checkHeader bool) *httptest.Server {
+func testRedfishServer() *httptest.Server {
 	// Test redfish server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if checkHeader {
-			if len(r.Header[http.CanonicalHeaderKey(realIPHeaderName)]) == 0 {
-				w.WriteHeader(http.StatusBadRequest)
-
-				return
-			}
-		}
-
 		if r.URL.Path == "/redfish/v1/" {
 			if data, err := os.ReadFile("testdata/redfish/service_root.json"); err == nil {
 				w.Write(data)
@@ -68,14 +61,69 @@ func TestNewRedfishCollector(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Start a dummy Redfish server
-	server := testRedfishServer(true)
+	server := testRedfishServer()
+	defer server.Close()
+
+	// Get address and port from server.URL
+	serverURL, err := url.Parse(server.URL)
+	require.NoError(t, err)
+
+	// Make config file
+	configFileTmpl := `
+---
+redfish_web_config:
+  protocol: http
+  hostname: %s
+  port: %s
+  use_session_token: true`
+
+	configPath := filepath.Join(tmpDir, "config.yml")
+	configFile := fmt.Sprintf(configFileTmpl, serverURL.Hostname(), serverURL.Port())
+	os.WriteFile(configPath, []byte(configFile), 0o600)
+
+	_, err = CEEMSExporterApp.Parse(
+		[]string{
+			"--collector.redfish.web-config", configPath,
+		},
+	)
+	require.NoError(t, err)
+
+	collector, err := NewRedfishCollector(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	require.NoError(t, err)
+
+	// Setup background goroutine to capture metrics.
+	metrics := make(chan prometheus.Metric)
+	defer close(metrics)
+
+	go func() {
+		i := 0
+		for range metrics {
+			i++
+		}
+	}()
+
+	err = collector.Update(metrics)
+	require.NoError(t, err)
+
+	err = collector.Stop(context.Background())
+	require.NoError(t, err)
+}
+
+func TestNewRedfishCollectorWithExternalURL(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Start a dummy Redfish server
+	server := testRedfishServer()
 	defer server.Close()
 
 	// Make config file
 	configFileTmpl := `
 ---
 redfish_web_config:
-  url: %s
+  protocol: http
+  hostname: bmc-0
+  port: 5000
+  external_url: %s
   use_session_token: true`
 
 	configPath := filepath.Join(tmpDir, "config.yml")
@@ -85,8 +133,6 @@ redfish_web_config:
 	_, err := CEEMSExporterApp.Parse(
 		[]string{
 			"--collector.redfish.web-config", configPath,
-			"--collector.redfish.send-real-ip-header",
-			"--collector.redfish.local-ip-address", "127.0.0.1",
 		},
 	)
 	require.NoError(t, err)
@@ -114,7 +160,7 @@ redfish_web_config:
 
 func TestPowerReadings(t *testing.T) {
 	// Start a dummy Redfish server
-	server := testRedfishServer(false)
+	server := testRedfishServer()
 
 	config := gofish.ClientConfig{
 		Endpoint: server.URL,
