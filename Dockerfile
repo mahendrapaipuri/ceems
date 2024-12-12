@@ -12,7 +12,7 @@ COPY .build/${OS}-${ARCH}/redfish_proxy /bin/redfish_proxy
 COPY build/config/ceems_exporter/redfish_exporter_config.yml /etc/ceems_exporter/redfish_config.yml
 COPY build/config/ceems_api_server/ceems_api_server.yml /etc/ceems_api_server/config.yml
 COPY build/config/ceems_lb/ceems_lb.yml /etc/ceems_lb/config.yml
-COPY build/config/redfish_config/redfish_proxy.yml /etc/redfish_proxy/config.yml
+COPY build/config/redfish_proxy/redfish_proxy.yml /etc/redfish_proxy/config.yml
 COPY LICENSE /LICENSE
 
 ENV CEEMS_API_SERVER_CONFIG_FILE /etc/ceems_api_server/config.yml
