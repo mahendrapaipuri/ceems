@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.5.0 / 2024-12-12
+
+- [MAINT] Upgrade Go to 1.23.x [#244](https://github.com/mahendrapaipuri/ceems/pull/244) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [MAINT] Update dockerfile to include redfish_proxy [#243](https://github.com/mahendrapaipuri/ceems/pull/243) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Add Redfish Collector [#240](https://github.com/mahendrapaipuri/ceems/pull/240) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Pure go IPMI implementation using OpenIPMI interface [#238](https://github.com/mahendrapaipuri/ceems/pull/238) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [DOCS] Embed demo Grafana in iframe in documentation welcome page [#233](https://github.com/mahendrapaipuri/ceems/pull/233) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Report usage statistics by taking running units into account [#232](https://github.com/mahendrapaipuri/ceems/pull/232) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Support automatic token rotation for Openstack [#227](https://github.com/mahendrapaipuri/ceems/pull/227) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [BUGFIX] Prioritize SLURM_JOB_GPUS env for GPU mapping [#221](https://github.com/mahendrapaipuri/ceems/pull/221) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Migrate to slog logging [#211](https://github.com/mahendrapaipuri/ceems/pull/211) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Implement correct scaling of perf hardware counters [#210](https://github.com/mahendrapaipuri/ceems/pull/210) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [MAINT] Bump dependencies [#212](https://github.com/mahendrapaipuri/ceems/pull/212), [#213](https://github.com/mahendrapaipuri/ceems/pull/213), [#215](https://github.com/mahendrapaipuri/ceems/pull/215), [#222](https://github.com/mahendrapaipuri/ceems/pull/222), [#225](https://github.com/mahendrapaipuri/ceems/pull/225), [#226](https://github.com/mahendrapaipuri/ceems/pull/226), [#228](https://github.com/mahendrapaipuri/ceems/pull/228), [#229](https://github.com/mahendrapaipuri/ceems/pull/229), [#236](https://github.com/mahendrapaipuri/ceems/pull/236) ([@dependabot](https://github.com/dependabot)), [#237](https://github.com/mahendrapaipuri/ceems/pull/237), [#241](https://github.com/mahendrapaipuri/ceems/pull/241) ([@dependabot](https://github.com/dependabot)), [#242](https://github.com/mahendrapaipuri/ceems/pull/242) ([@dependabot](https://github.com/dependabot))
+
 ## 0.5.0-rc.2 / 2024-10-31
 
 - [BUFGIX] Scale perf counters based on times enabled and ran [#209](https://github.com/mahendrapaipuri/ceems/pull/209) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
