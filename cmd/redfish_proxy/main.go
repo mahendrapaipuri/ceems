@@ -40,7 +40,7 @@ var (
 	configFile = app.Flag(
 		"config.file",
 		"Configuration file containing a list of nodes and their BMC addresses.",
-	).Default("").String()
+	).Envar("REDFISH_PROXY_CONFIG_FILE").Default("").String()
 	maxProcs = app.Flag(
 		"runtime.gomaxprocs", "The target number of CPUs Go will run on (GOMAXPROCS)",
 	).Envar("GOMAXPROCS").Default("1").Int()
