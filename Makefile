@@ -296,9 +296,10 @@ skip-checkbpf: $(PROMTOOL)
 .PHONY: test-docker
 test-docker:
 	@echo ">> testing docker image"
-	./scripts/test_image.sh "$(DOCKER_REPO)/$(DOCKER_IMAGE_NAME)-linux-amd64:$(DOCKER_IMAGE_TAG)" 9010 ceems_exporter --no-collector.ipmi_dcmi
+	./scripts/test_image.sh "$(DOCKER_REPO)/$(DOCKER_IMAGE_NAME)-linux-amd64:$(DOCKER_IMAGE_TAG)" 9010 ceems_exporter
 	./scripts/test_image.sh "$(DOCKER_REPO)/$(DOCKER_IMAGE_NAME)-linux-amd64:$(DOCKER_IMAGE_TAG)" 9020 ceems_api_server
 	./scripts/test_image.sh "$(DOCKER_REPO)/$(DOCKER_IMAGE_NAME)-linux-amd64:$(DOCKER_IMAGE_TAG)" 9030 ceems_lb
+	./scripts/test_image.sh "$(DOCKER_REPO)/$(DOCKER_IMAGE_NAME)-linux-amd64:$(DOCKER_IMAGE_TAG)" 5000 redfish_proxy
 
 .PHONY: skip-test-docker
 skip-test-docker:
