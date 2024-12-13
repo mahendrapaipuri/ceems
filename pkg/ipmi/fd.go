@@ -2,22 +2,17 @@ package ipmi
 
 import "golang.org/x/sys/unix"
 
-// FDZero set to zero the fdSet.
-func FDZero(p *unix.FdSet) {
-	p.Bits = [16]int64{}
-}
-
 // FDSet set a fd of fdSet.
-func FDSet(fd int, p *unix.FdSet) {
-	p.Bits[fd/32] |= (1 << (uint(fd) % 32))
+func FDSet(fd uintptr, p *unix.FdSet) {
+	p.Bits[fd/NFDBits] |= (1 << (fd % NFDBits))
 }
 
 // FDClr clear a fd of fdSet.
-func FDClr(fd int, p *unix.FdSet) {
-	p.Bits[fd/32] &^= (1 << (uint(fd) % 32))
+func FDClr(fd uintptr, p *unix.FdSet) {
+	p.Bits[fd/NFDBits] &^= (1 << fd % NFDBits)
 }
 
 // FDIsSet return true if fd is set.
-func FDIsSet(fd int, p *unix.FdSet) bool {
-	return p.Bits[fd/32]&(1<<(uint(fd)%32)) != 0
+func FDIsSet(fd uintptr, p *unix.FdSet) bool {
+	return p.Bits[fd/NFDBits]&(1<<(fd%NFDBits)) != 0
 }
