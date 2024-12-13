@@ -134,10 +134,11 @@ func TestNodelistParser(t *testing.T) {
 }
 
 func TestTimeToTimestamp(t *testing.T) {
-	expectedTimeStamp := 1136239445000
+	var expectedTimeStamp int64 = 1136239445000
+
 	timeFormat := base.DatetimeLayout + "-0700"
 	timeStamp := TimeToTimestamp(timeFormat, "2006-01-02T15:04:05-0700")
-	assert.Equal(t, int64(expectedTimeStamp), timeStamp)
+	assert.Equal(t, expectedTimeStamp, timeStamp)
 
 	// Check failure case
 	timeStamp = TimeToTimestamp(timeFormat, "2006-01-0215:04:05-0700")

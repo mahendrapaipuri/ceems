@@ -1,3 +1,6 @@
+//go:build cgo
+// +build cgo
+
 // Package frontend implements the frontend server of the load balancer
 package frontend
 

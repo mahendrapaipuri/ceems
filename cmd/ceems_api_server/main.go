@@ -1,3 +1,6 @@
+//go:build cgo
+// +build cgo
+
 package main
 
 // We need to import each resource manager and updater package here.

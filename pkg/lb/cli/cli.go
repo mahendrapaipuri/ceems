@@ -1,3 +1,6 @@
+//go:build cgo
+// +build cgo
+
 // Package cli implements the CLI app of load balancer
 package cli
 

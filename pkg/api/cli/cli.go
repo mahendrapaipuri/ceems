@@ -1,3 +1,6 @@
+//go:build cgo
+// +build cgo
+
 // Package cli implements the CLI of the CEEMS API server app
 package cli
 
