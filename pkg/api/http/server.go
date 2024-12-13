@@ -1,3 +1,6 @@
+//go:build cgo
+// +build cgo
+
 // Package http implements the HTTP server handlers for different resource endpoints
 package http
 
