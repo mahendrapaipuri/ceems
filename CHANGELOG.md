@@ -2,6 +2,7 @@
 
 ## 0.5.0 / 2024-12-12
 
+- [BUGFIX] Support IPMI package on 32/64 bit platforms [#245](https://github.com/mahendrapaipuri/ceems/pull/245) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
 - [MAINT] Upgrade Go to 1.23.x [#244](https://github.com/mahendrapaipuri/ceems/pull/244) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
 - [MAINT] Update dockerfile to include redfish_proxy [#243](https://github.com/mahendrapaipuri/ceems/pull/243) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
 - [FEATURE] Add Redfish Collector [#240](https://github.com/mahendrapaipuri/ceems/pull/240) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
