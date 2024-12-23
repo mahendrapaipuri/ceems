@@ -6,7 +6,7 @@ toolchain go1.23.2
 
 require (
 	github.com/alecthomas/kingpin/v2 v2.4.0
-	github.com/cilium/ebpf v0.16.0
+	github.com/cilium/ebpf v0.17.1
 	github.com/containerd/cgroups/v3 v3.0.4
 	github.com/go-chi/httprate v0.14.1
 	github.com/golang-migrate/migrate/v4 v4.18.1
@@ -64,7 +64,6 @@ require (
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	golang.org/x/crypto v0.31.0 // indirect
-	golang.org/x/exp v0.0.0-20241108190413-2d47ceb2692f // indirect
 	golang.org/x/net v0.32.0 // indirect
 	golang.org/x/oauth2 v0.24.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
