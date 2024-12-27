@@ -30,16 +30,18 @@ CREATE TABLE units (
 	"cluster_id" text,
 	"uuid" text,
 	"project" text,
-	"usr" text
+	"usr" text,
+	"started_at_ts" int
 );
-INSERT INTO units VALUES(1, 'rm-0', '1479763', 'prj1', 'usr1');
-INSERT INTO units VALUES(2, 'rm-0', '1481508', 'prj1', 'usr2');
-INSERT INTO units VALUES(3, 'rm-0', '1479765', 'prj2', 'usr2');
-INSERT INTO units VALUES(4, 'rm-0', '1481510', 'prj3', 'usr3');
-INSERT INTO units VALUES(5, 'rm-1', '1479763', 'prj1', 'usr1');
-INSERT INTO units VALUES(6, 'rm-1', '1481508', 'prj1', 'usr2');
-INSERT INTO units VALUES(7, 'rm-1', '1479765', 'prj4', 'usr4');
-INSERT INTO units VALUES(8, 'rm-1', '1481510', 'prj5', 'usr5');
+INSERT INTO units VALUES(1, 'rm-0', '1479763', 'prj1', 'usr1', 1735045414000);
+INSERT INTO units VALUES(2, 'rm-0', '1481508', 'prj1', 'usr2', 1735045414000);
+INSERT INTO units VALUES(3, 'rm-0', '1479765', 'prj2', 'usr2', 1735045414000);
+INSERT INTO units VALUES(4, 'rm-0', '1481510', 'prj3', 'usr3', 1735045414000);
+INSERT INTO units VALUES(5, 'rm-0', '1481508', 'prj3', 'usr3', 1703419414000);
+INSERT INTO units VALUES(6, 'rm-1', '1479763', 'prj1', 'usr1', 1735045414000);
+INSERT INTO units VALUES(7, 'rm-1', '1481508', 'prj1', 'usr2', 1735045414000);
+INSERT INTO units VALUES(8, 'rm-1', '1479765', 'prj4', 'usr4', 1735045414000);
+INSERT INTO units VALUES(9, 'rm-1', '1481510', 'prj5', 'usr5', 1735045414000);
 CREATE TABLE usage (
 	"id" integer not null primary key,
 	"cluster_id" text,
@@ -104,6 +106,7 @@ func TestVerifyOwnership(t *testing.T) {
 		name   string
 		rmID   string
 		uuids  []string
+		starts []int64
 		user   string
 		verify bool
 	}{
@@ -118,6 +121,13 @@ func TestVerifyOwnership(t *testing.T) {
 			name:   "forbid due to missing cluster_id",
 			uuids:  []string{"1481508", "1479765"},
 			user:   "usr2",
+			verify: false,
+		},
+		{
+			name:   "forbid due to incorrect start",
+			uuids:  []string{"1481508"},
+			user:   "usr2",
+			starts: []int64{1703419414000},
 			verify: false,
 		},
 		{
@@ -148,6 +158,14 @@ func TestVerifyOwnership(t *testing.T) {
 			verify: true,
 		},
 		{
+			name:   "pass with correct uuid and start",
+			uuids:  []string{"1481508"},
+			rmID:   "rm-0",
+			user:   "usr2",
+			starts: []int64{1735045414000},
+			verify: true,
+		},
+		{
 			name:   "pass due to admin query",
 			uuids:  []string{"1481508"},
 			rmID:   "rm-0",
@@ -159,7 +177,7 @@ func TestVerifyOwnership(t *testing.T) {
 			uuids:  []string{},
 			rmID:   "rm-0",
 			user:   "usr3",
-			verify: true,
+			verify: false,
 		},
 	}
 
@@ -169,10 +187,11 @@ func TestVerifyOwnership(t *testing.T) {
 			test.user,
 			[]string{test.rmID},
 			test.uuids,
+			test.starts,
 			db,
 			slog.New(slog.NewTextHandler(io.Discard, nil)),
 		)
-		assert.Equal(t, test.verify, result)
+		assert.Equal(t, test.verify, result, test.name)
 	}
 }
 

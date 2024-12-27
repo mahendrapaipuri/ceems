@@ -613,6 +613,26 @@ const docTemplate = `{
                         "description": "Unit UUID",
                         "name": "uuid",
                         "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Cluster ID",
+                        "name": "cluster_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Timestamps",
+                        "name": "time",
+                        "in": "query"
                     }
                 ],
                 "responses": {

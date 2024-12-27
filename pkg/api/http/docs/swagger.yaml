@@ -956,6 +956,20 @@ paths:
           type: string
         name: uuid
         type: array
+      - collectionFormat: multi
+        description: Cluster ID
+        in: query
+        items:
+          type: string
+        name: cluster_id
+        type: array
+      - collectionFormat: multi
+        description: Timestamps
+        in: query
+        items:
+          type: string
+        name: time
+        type: array
       produces:
       - application/json
       responses:
