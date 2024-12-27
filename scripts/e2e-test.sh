@@ -252,6 +252,18 @@ then
   then
     desc="basic e2e load balancer test"
     fixture='pkg/lb/testdata/output/e2e-test-lb-server.txt'
+  elif [ "${scenario}" = "lb-basic-tsdb-only" ]
+  then
+    desc="basic e2e load balancer test with only TSDB backends"
+    fixture='pkg/lb/testdata/output/e2e-test-lb-server-tsdb-only.txt'
+  elif [ "${scenario}" = "lb-basic-pyro-only" ]
+  then
+    desc="basic e2e load balancer test with only Pyroscope backends"
+    fixture='pkg/lb/testdata/output/e2e-test-lb-server-pyro-only.txt'
+  elif [ "${scenario}" = "lb-basic-tsdb-pyro" ]
+  then
+    desc="basic e2e load balancer test with mix of TSDB and Pyroscope backends"
+    fixture='pkg/lb/testdata/output/e2e-test-lb-server-tsdb-pyro-mix.txt'
   elif [ "${scenario}" = "lb-forbid-user-query-db" ]
   then
     desc="e2e load balancer test that forbids user query for backend using DB conn"
@@ -747,25 +759,60 @@ then
 
 elif [[ "${scenario}" =~ ^"lb" ]] 
 then
+  if [ ! -x ./bin/ceems_lb ]
+  then
+      echo './bin/ceems_lb not found. Consider running `go build` first.' >&2
+      exit 1
+  fi
+
+  port2=$((port + 10))
+
   if [[ "${scenario}" = "lb-basic" ]] 
   then
-    if [ ! -x ./bin/ceems_lb ]
-    then
-        echo './bin/ceems_lb not found. Consider running `go build` first.' >&2
-        exit 1
-    fi
-
     export PATH="${GOBIN:-}:${PATH}"
     prometheus \
       --config.file pkg/lb/testdata/prometheus.yml \
       --storage.tsdb.path "${tmpdir}" \
+      --storage.tsdb.retention.time 10y \
+      --log.level="debug" >> "${logfile}" 2>&1 &
+    PROMETHEUS_PID=$!
+
+    waitport "9090"
+
+    ./bin/mock_servers pyro >> "${logfile}" 2>&1 &
+    MOCK_SERVERS_PID=$!
+
+    waitport "4040"
+
+    ./bin/ceems_lb \
+      --config.file pkg/lb/testdata/config-db.yml \
+      --web.listen-address="127.0.0.1:${port}" \
+      --web.listen-address="127.0.0.1:${port2}" \
+      --log.level="debug" >> "${logfile}" 2>&1 &
+    LB_PID=$!
+
+    echo "${PROMETHEUS_PID} ${MOCK_SERVERS_PID} ${LB_PID}" > "${pidfile}"
+
+    waitport "${port}"
+    waitport "${port2}"
+
+    get -H "X-Grafana-User: usr1" -H "X-Ceems-Cluster-Id: slurm-0" "127.0.0.1:${port}/api/v1/status/config" > "${fixture_output}"
+    get -H "X-Grafana-User: usr1" -H "X-Ceems-Cluster-Id: slurm-0" "127.0.0.1:${port2}/api/v1/status/config" >> "${fixture_output}"
+
+  elif [[ "${scenario}" = "lb-basic-tsdb-only" ]] 
+  then
+    export PATH="${GOBIN:-}:${PATH}"
+    prometheus \
+      --config.file pkg/lb/testdata/prometheus.yml \
+      --storage.tsdb.path "${tmpdir}" \
+      --storage.tsdb.retention.time 10y \
       --log.level="debug" >> "${logfile}" 2>&1 &
     PROMETHEUS_PID=$!
 
     waitport "9090"
 
     ./bin/ceems_lb \
-      --config.file pkg/lb/testdata/config-db.yml \
+      --config.file pkg/lb/testdata/config-tsdb-only.yml \
       --web.listen-address="127.0.0.1:${port}" \
       --log.level="debug" >> "${logfile}" 2>&1 &
     LB_PID=$!
@@ -776,84 +823,139 @@ then
 
     get -H "X-Grafana-User: usr1" -H "X-Ceems-Cluster-Id: slurm-0" "127.0.0.1:${port}/api/v1/status/config" > "${fixture_output}"
 
-  elif [[ "${scenario}" = "lb-forbid-user-query-db" ]] 
+  elif [[ "${scenario}" = "lb-basic-pyro-only" ]] 
   then
-    if [ ! -x ./bin/ceems_lb ]
-    then
-        echo './bin/ceems_lb not found. Consider running `go build` first.' >&2
-        exit 1
-    fi
+    export PATH="${GOBIN:-}:${PATH}"
+    ./bin/mock_servers pyro >> "${logfile}" 2>&1 &
+    MOCK_SERVERS_PID=$!
 
+    waitport "4040"
+
+    ./bin/ceems_lb \
+      --config.file pkg/lb/testdata/config-pyro-only.yml \
+      --web.listen-address="127.0.0.1:${port}" \
+      --log.level="debug" >> "${logfile}" 2>&1 &
+    LB_PID=$!
+
+    echo "${MOCK_SERVERS_PID} ${LB_PID}" > "${pidfile}"
+
+    waitport "${port}"
+
+    get -H "X-Grafana-User: usr1" -H "X-Ceems-Cluster-Id: slurm-0" "127.0.0.1:${port}/api/v1/status/config" > "${fixture_output}"
+
+  elif [[ "${scenario}" = "lb-basic-tsdb-pyro" ]] 
+  then
     export PATH="${GOBIN:-}:${PATH}"
     prometheus \
       --config.file pkg/lb/testdata/prometheus.yml \
       --storage.tsdb.path "${tmpdir}" \
+      --storage.tsdb.retention.time 10y \
       --log.level="debug" >> "${logfile}" 2>&1 &
     PROMETHEUS_PID=$!
 
     waitport "9090"
 
+    ./bin/mock_servers pyro >> "${logfile}" 2>&1 &
+    MOCK_SERVERS_PID=$!
+
+    waitport "4040"
+
     ./bin/ceems_lb \
-      --config.file pkg/lb/testdata/config-db.yml \
+      --config.file pkg/lb/testdata/config-tsdb-pyro.yml \
       --web.listen-address="127.0.0.1:${port}" \
+      --web.listen-address="127.0.0.1:${port2}" \
       --log.level="debug" >> "${logfile}" 2>&1 &
     LB_PID=$!
 
-    echo "${PROMETHEUS_PID} ${LB_PID}" > "${pidfile}"
+    echo "${PROMETHEUS_PID} ${MOCK_SERVERS_PID} ${LB_PID}" > "${pidfile}"
 
     waitport "${port}"
+    waitport "${port2}"
+
+    get -H "X-Grafana-User: usr1" -H "X-Ceems-Cluster-Id: slurm-0" "127.0.0.1:${port}/api/v1/status/config" > "${fixture_output}"
+    get -H "X-Grafana-User: usr1" -H "X-Ceems-Cluster-Id: slurm-0" "127.0.0.1:${port2}/api/v1/status/config" >> "${fixture_output}"
+    get -H "X-Grafana-User: usr1" -H "X-Ceems-Cluster-Id: slurm-1" "127.0.0.1:${port2}/api/v1/status/config" >> "${fixture_output}"
+
+  elif [[ "${scenario}" = "lb-forbid-user-query-db" ]] 
+  then
+    export PATH="${GOBIN:-}:${PATH}"
+    prometheus \
+      --config.file pkg/lb/testdata/prometheus.yml \
+      --storage.tsdb.path "${tmpdir}" \
+      --storage.tsdb.retention.time 10y \
+      --log.level="debug" >> "${logfile}" 2>&1 &
+    PROMETHEUS_PID=$!
+
+    waitport "9090"
+
+    ./bin/mock_servers pyro >> "${logfile}" 2>&1 &
+    MOCK_SERVERS_PID=$!
+
+    waitport "4040"
+
+    ./bin/ceems_lb \
+      --config.file pkg/lb/testdata/config-db.yml \
+      --web.listen-address="127.0.0.1:${port}" \
+      --web.listen-address="127.0.0.1:${port2}" \
+      --log.level="debug" >> "${logfile}" 2>&1 &
+    LB_PID=$!
+
+    echo "${PROMETHEUS_PID} ${MOCK_SERVERS_PID} ${LB_PID}" > "${pidfile}"
+
+    waitport "${port}"
+    waitport "${port2}"
 
     get -H "X-Grafana-User: usr1" -H "X-Ceems-Cluster-Id: slurm-1" "127.0.0.1:${port}/api/v1/query?query=foo\{uuid=\"1481510\"\}&time=1713032179.506" > "${fixture_output}"
+    ./bin/pyro_requestor -url "http://localhost:${port2}/querier.v1.QuerierService/SelectMergeStacktraces" -username usr1 -cluster-id slurm-1 -uuid 1481510 -start 1713032179 >> "${fixture_output}"
 
   elif [[ "${scenario}" = "lb-allow-user-query-db" ]] 
   then
-    if [ ! -x ./bin/ceems_lb ]
-    then
-        echo './bin/ceems_lb not found. Consider running `go build` first.' >&2
-        exit 1
-    fi
-
     export PATH="${GOBIN:-}:${PATH}"
     prometheus \
       --config.file pkg/lb/testdata/prometheus.yml \
       --storage.tsdb.path "${tmpdir}" \
+      --storage.tsdb.retention.time 10y \
       --log.level="debug" >> "${logfile}" 2>&1 &
     PROMETHEUS_PID=$!
 
     waitport "9090"
 
+    ./bin/mock_servers pyro >> "${logfile}" 2>&1 &
+    MOCK_SERVERS_PID=$!
+
+    waitport "4040"
+
     ./bin/ceems_lb \
       --config.file pkg/lb/testdata/config-db.yml \
       --web.listen-address="127.0.0.1:${port}" \
+      --web.listen-address="127.0.0.1:${port2}" \
       --log.level="debug" >> "${logfile}" 2>&1 &
     LB_PID=$!
 
-    echo "${PROMETHEUS_PID} ${LB_PID}" > "${pidfile}"
+    echo "${PROMETHEUS_PID} ${MOCK_SERVERS_PID} ${LB_PID}" > "${pidfile}"
 
     waitport "${port}"
+    waitport "${port2}"
 
-    get -H "X-Grafana-User: usr1" -H "X-Ceems-Cluster-Id: slurm-0" "127.0.0.1:${port}/api/v1/query?query=foo\{uuid=\"1479763\"\}&time=${timestamp}" > "${fixture_output}"
+    get -H "X-Grafana-User: usr1" -H "X-Ceems-Cluster-Id: slurm-0" "127.0.0.1:${port}/api/v1/query?query=foo\{uuid=\"1479763\"\}&time=1645450627" > "${fixture_output}"
+    ./bin/pyro_requestor -url "http://localhost:${port2}/querier.v1.QuerierService/SelectMergeStacktraces" -username usr1 -cluster-id slurm-0 -uuid 1479763 -start 1645450627 >> "${fixture_output}"
 
   elif [[ "${scenario}" = "lb-forbid-user-query-api" ]] 
   then
-    if [ ! -x ./bin/ceems_lb ]
-    then
-        echo './bin/ceems_lb not found. Consider running `go build` first.' >&2
-        exit 1
-    fi
-
     export PATH="${GOBIN:-}:${PATH}"
     prometheus \
       --config.file pkg/lb/testdata/prometheus.yml \
       --storage.tsdb.path "${tmpdir}" \
+      --storage.tsdb.retention.time 10y \
       --log.level="debug" >> "${logfile}" 2>&1 &
     PROMETHEUS_PID=$!
 
     waitport "9090"
 
-    ./bin/mock_servers os-compute os-identity >> "${logfile}" 2>&1 &
+    ./bin/mock_servers pyro os-compute os-identity >> "${logfile}" 2>&1 &
     MOCK_SERVERS_PID=$!
 
+    waitport "4040"
     waitport "8080"
     waitport "7070"
 
@@ -875,35 +977,34 @@ then
     ./bin/ceems_lb \
       --config.file pkg/lb/testdata/config-api.yml \
       --web.listen-address="127.0.0.1:${port}" \
+      --web.listen-address="127.0.0.1:${port2}" \
       --log.level="debug" >> "${logfile}" 2>&1 &
     LB_PID=$!
 
     echo "${PROMETHEUS_PID} ${MOCK_SERVERS_PID} ${CEEMS_API_PID} ${LB_PID}" > "${pidfile}"
 
     waitport "${port}"
+    waitport "${port2}"
 
-    get -H "X-Grafana-User: usr1" -H "X-Ceems-Cluster-Id: slurm-1" "127.0.0.1:${port}/api/v1/query?query=foo\{uuid=\"1481510\"\}&time=${timestamp}" > "${fixture_output}"
+    get -H "X-Grafana-User: usr1" -H "X-Ceems-Cluster-Id: slurm-1" "127.0.0.1:${port}/api/v1/query?query=foo\{uuid=\"1481510\"\}&time=1676990946" > "${fixture_output}"
+    ./bin/pyro_requestor -url "http://localhost:${port2}/querier.v1.QuerierService/SelectMergeStacktraces" -username usr1 -cluster-id slurm-1 -uuid 1481510 -start 1676990946 >> "${fixture_output}"
 
   elif [[ "${scenario}" = "lb-allow-user-query-api" ]] 
   then
-    if [ ! -x ./bin/ceems_lb ]
-    then
-        echo './bin/ceems_lb not found. Consider running `go build` first.' >&2
-        exit 1
-    fi
-
     export PATH="${GOBIN:-}:${PATH}"
     prometheus \
       --config.file pkg/lb/testdata/prometheus.yml \
       --storage.tsdb.path "${tmpdir}" \
+      --storage.tsdb.retention.time 10y \
       --log.level="debug" >> "${logfile}" 2>&1 &
     PROMETHEUS_PID=$!
 
     waitport "9090"
 
-    ./bin/mock_servers os-compute os-identity >> "${logfile}" 2>&1 &
+    ./bin/mock_servers pyro os-compute os-identity >> "${logfile}" 2>&1 &
     MOCK_SERVERS_PID=$!
 
+    waitport "4040"
     waitport "8080"
     waitport "7070"
 
@@ -925,56 +1026,57 @@ then
     ./bin/ceems_lb \
       --config.file pkg/lb/testdata/config-api.yml \
       --web.listen-address="127.0.0.1:${port}" \
+      --web.listen-address="127.0.0.1:${port2}" \
       --log.level="debug" >> "${logfile}" 2>&1 &
     LB_PID=$!
 
     echo "${PROMETHEUS_PID} ${MOCK_SERVERS_PID} ${CEEMS_API_PID} ${LB_PID}" > "${pidfile}"
 
     waitport "${port}"
+    waitport "${port2}"
 
-    get -H "X-Grafana-User: usr1" -H "X-Ceems-Cluster-Id: slurm-0" "127.0.0.1:${port}/api/v1/query?query=foo\{uuid=\"1479763\"\}&time=${timestamp}" > "${fixture_output}"
+    get -H "X-Grafana-User: usr1" -H "X-Ceems-Cluster-Id: slurm-0" "127.0.0.1:${port}/api/v1/query?query=foo\{uuid=\"1479763\"\}&time=1645450627" > "${fixture_output}"
+    ./bin/pyro_requestor -url "http://localhost:${port2}/querier.v1.QuerierService/SelectMergeStacktraces" -username usr1 -cluster-id slurm-0 -uuid 1479763 -start 1645450627 >> "${fixture_output}"
 
   elif [[ "${scenario}" = "lb-allow-admin-query" ]] 
   then
-    if [ ! -x ./bin/ceems_lb ]
-    then
-        echo './bin/ceems_lb not found. Consider running `go build` first.' >&2
-        exit 1
-    fi
-
     export PATH="${GOBIN:-}:${PATH}"
     prometheus \
       --config.file pkg/lb/testdata/prometheus.yml \
       --storage.tsdb.path "${tmpdir}" \
+      --storage.tsdb.retention.time 10y \
       --log.level="debug" >> "${logfile}" 2>&1 &
     PROMETHEUS_PID=$!
 
     waitport "9090"
+
+    ./bin/mock_servers pyro >> "${logfile}" 2>&1 &
+    MOCK_SERVERS_PID=$!
+
+    waitport "4040"
 
     ./bin/ceems_lb \
       --config.file pkg/lb/testdata/config-db.yml \
       --web.listen-address="127.0.0.1:${port}" \
+      --web.listen-address="127.0.0.1:${port2}" \
       --log.level="debug" >> "${logfile}" 2>&1 &
     LB_PID=$!
 
-    echo "${PROMETHEUS_PID} ${LB_PID}" > "${pidfile}"
+    echo "${PROMETHEUS_PID} ${MOCK_SERVERS_PID} ${LB_PID}" > "${pidfile}"
 
     waitport "${port}"
+    waitport "${port2}"
 
-    get -H "X-Grafana-User: grafana" -H "X-Ceems-Cluster-Id: slurm-1" -H "Content-Type: application/x-www-form-urlencoded" -X POST -d "query=foo{uuid=\"1479765\"}&time=${timestamp}" "127.0.0.1:${port}/api/v1/query" > "${fixture_output}"
+    get -H "X-Grafana-User: grafana" -H "X-Ceems-Cluster-Id: slurm-1" -H "Content-Type: application/x-www-form-urlencoded" -X POST -d "query=foo{uuid=\"1479765\"}" "127.0.0.1:${port}/api/v1/query" > "${fixture_output}"
+    ./bin/pyro_requestor -url "http://localhost:${port2}/querier.v1.QuerierService/SelectMergeStacktraces" -username grafana -cluster-id slurm-1 -uuid 1479765 -start 1645450627 >> "${fixture_output}"
 
   elif [[ "${scenario}" = "lb-auth" ]] 
   then
-    if [ ! -x ./bin/ceems_lb ]
-    then
-        echo './bin/ceems_lb not found. Consider running `go build` first.' >&2
-        exit 1
-    fi
-
     export PATH="${GOBIN:-}:${PATH}"
     prometheus \
       --config.file pkg/lb/testdata/prometheus.yml \
       --web.config.file pkg/lb/testdata/web-config.yml \
+      --storage.tsdb.retention.time 10y \
       --storage.tsdb.path "${tmpdir}" \
       --log.level="debug" >> "${logfile}" 2>&1 &
     PROMETHEUS_PID=$!
