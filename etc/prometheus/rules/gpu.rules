@@ -38,8 +38,21 @@ groups:
         expr: avg by (job)(avg_over_time(DCGM_FI_DEV_GPU_UTIL{job="sample-dcgm"}[1d:15m]))
 
       # Average GPU memory usage during last 1h
-      - record: instance:DCGM_FI_DEV_MEM_COPY_UTIL:avg1h
-        expr: avg by (job)(avg_over_time(DCGM_FI_DEV_MEM_COPY_UTIL{job="sample-dcgm"}[1d:15m]))
+      - record: instance:DCGM_FI_DEV_MEM_UTIL:avg1h
+        expr: |2
+          avg by (job) (
+            avg_over_time(
+              (
+                  (sum by (Hostname) (DCGM_FI_DEV_FB_USED{job="sample-dcgm"}))
+                /
+                  (
+                      sum by (Hostname) (DCGM_FI_DEV_FB_USED{job="sample-dcgm"})
+                    +
+                      sum by (Hostname) (DCGM_FI_DEV_FB_FREE{job="sample-dcgm"})
+                  )
+              )[1h:15m]
+            )
+          )
 
       # Total energy usage during last 1h in kWh
       # PUE of 1 is used by default. Use appropriate PUE by replacing 1 by PUE ratio in expr
