@@ -26,7 +26,7 @@ func TestNew(t *testing.T) {
 	for _, strategy := range []string{"round-robin", "least-connection", "resource-based"} {
 		m, _ := New(strategy, slog.New(slog.NewTextHandler(io.Discard, nil)))
 		url, _ := url.Parse("http://localhost:3333")
-		b := backend.New(url, httputil.NewSingleHostReverseProxy(url), slog.New(slog.NewTextHandler(io.Discard, nil)))
+		b := backend.NewTSDB(url, httputil.NewSingleHostReverseProxy(url), slog.New(slog.NewTextHandler(io.Discard, nil)))
 		m.Add("default", b)
 
 		assert.Equal(t, 1, m.Size("default"))

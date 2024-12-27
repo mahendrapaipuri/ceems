@@ -17,9 +17,9 @@ var (
 
 // Manager is the interface every strategy must implement.
 type Manager interface {
-	Backends() map[string][]backend.TSDBServer
-	Target(id string, d time.Duration) backend.TSDBServer
-	Add(id string, b backend.TSDBServer)
+	Backends() map[string][]backend.Server
+	Target(id string, d time.Duration) backend.Server
+	Add(id string, b backend.Server)
 	Size(id string) int
 }
 
@@ -28,18 +28,18 @@ func New(strategy string, logger *slog.Logger) (Manager, error) {
 	switch strategy {
 	case "round-robin":
 		return &roundRobin{
-			backends: make(map[string][]backend.TSDBServer, 0),
+			backends: make(map[string][]backend.Server, 0),
 			current:  0,
 			logger:   logger,
 		}, nil
 	case "least-connection":
 		return &leastConn{
-			backends: make(map[string][]backend.TSDBServer, 0),
+			backends: make(map[string][]backend.Server, 0),
 			logger:   logger,
 		}, nil
 	case "resource-based":
 		return &resourceBased{
-			backends: make(map[string][]backend.TSDBServer, 0),
+			backends: make(map[string][]backend.Server, 0),
 			logger:   logger,
 		}, nil
 	default:

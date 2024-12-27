@@ -24,7 +24,7 @@ func TestRoundRobinIteration(t *testing.T) {
 
 	// Make dummy backend servers
 	backendURLs := make(map[string][]*url.URL, 3)
-	backends := make(map[string][]backend.TSDBServer, 3)
+	backends := make(map[string][]backend.Server, 3)
 
 	for i := range 3 {
 		for j, id := range rrIDs {
@@ -33,13 +33,13 @@ func TestRoundRobinIteration(t *testing.T) {
 
 			if _, ok := backendURLs[id]; !ok {
 				backendURLs[id] = make([]*url.URL, 3)
-				backends[id] = make([]backend.TSDBServer, 3)
+				backends[id] = make([]backend.Server, 3)
 			}
 
 			backendURLs[id][i] = backendURL
 
 			rp := httputil.NewSingleHostReverseProxy(backendURL)
-			backend := backend.New(backendURL, rp, slog.New(slog.NewTextHandler(io.Discard, nil)))
+			backend := backend.NewTSDB(backendURL, rp, slog.New(slog.NewTextHandler(io.Discard, nil)))
 			backends[id][i] = backend
 			manager.Add(id, backend)
 		}

@@ -11,12 +11,12 @@ import (
 
 // leastConn implements the least connection load balancer strategy.
 type leastConn struct {
-	backends map[string][]backend.TSDBServer
+	backends map[string][]backend.Server
 	logger   *slog.Logger
 }
 
 // Target returns the backend server to send the request if it is alive.
-func (s *leastConn) Target(id string, d time.Duration) backend.TSDBServer {
+func (s *leastConn) Target(id string, _ time.Duration) backend.Server {
 	// If the ID is unknown return
 	if _, ok := s.backends[id]; !ok {
 		s.logger.Error("Round Robin strategy", "err", fmt.Errorf("unknown backend ID: %s", id))
@@ -24,7 +24,7 @@ func (s *leastConn) Target(id string, d time.Duration) backend.TSDBServer {
 		return nil
 	}
 
-	var targetBackend backend.TSDBServer
+	var targetBackend backend.Server
 
 	activeConnections := math.MaxInt32
 
@@ -49,7 +49,7 @@ func (s *leastConn) Target(id string, d time.Duration) backend.TSDBServer {
 	return nil
 }
 
-func (s *leastConn) Add(id string, b backend.TSDBServer) {
+func (s *leastConn) Add(id string, b backend.Server) {
 	s.backends[id] = append(s.backends[id], b)
 }
 
@@ -57,6 +57,6 @@ func (s *leastConn) Size(id string) int {
 	return len(s.backends[id])
 }
 
-func (s *leastConn) Backends() map[string][]backend.TSDBServer {
+func (s *leastConn) Backends() map[string][]backend.Server {
 	return s.backends
 }

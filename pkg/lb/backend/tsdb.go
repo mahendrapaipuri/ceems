@@ -4,7 +4,6 @@ package backend
 import (
 	"context"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -17,22 +16,6 @@ import (
 	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
 	"github.com/prometheus/common/model"
 )
-
-// Custom errors.
-var (
-	ErrTypeAssertion = errors.New("failed type assertion")
-)
-
-// TSDBServer is the interface each backend TSDB server needs to implement.
-type TSDBServer interface {
-	SetAlive(alive bool)
-	IsAlive() bool
-	URL() *url.URL
-	String() string
-	ActiveConnections() int
-	RetentionPeriod() time.Duration
-	Serve(w http.ResponseWriter, r *http.Request)
-}
 
 // tsdbServer implements a given backend TSDB server.
 type tsdbServer struct {
@@ -49,8 +32,8 @@ type tsdbServer struct {
 	logger          *slog.Logger
 }
 
-// New returns an instance of backend TSDB server.
-func New(webURL *url.URL, p *httputil.ReverseProxy, logger *slog.Logger) TSDBServer {
+// NewTSDB returns an instance of backend TSDB server.
+func NewTSDB(webURL *url.URL, p *httputil.ReverseProxy, logger *slog.Logger) Server {
 	// Create a client
 	tsdbClient := &http.Client{Timeout: 2 * time.Second}
 
@@ -65,7 +48,7 @@ func New(webURL *url.URL, p *httputil.ReverseProxy, logger *slog.Logger) TSDBSer
 		base64Auth := base64.StdEncoding.EncodeToString([]byte(auth))
 		basicAuthHeader = "Basic " + base64Auth
 
-		logger.Debug("Basic auth configured for backend", "backend", webURL.Redacted())
+		logger.Debug("Basic auth configured for backend TSDB server", "backend", webURL.Redacted())
 	}
 
 	return &tsdbServer{

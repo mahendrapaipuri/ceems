@@ -13,6 +13,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -37,16 +38,18 @@ CREATE TABLE units (
 	"cluster_id" text,
 	"uuid" text,
 	"project" text,
-	"usr" text
+	"usr" text,
+	"started_at_ts" int
 );
-INSERT INTO units VALUES(1, 'rm-0', '1479763', 'prj1', 'usr1');
-INSERT INTO units VALUES(2, 'rm-0', '1481508', 'prj1', 'usr2');
-INSERT INTO units VALUES(3, 'rm-0', '1479765', 'prj2', 'usr2');
-INSERT INTO units VALUES(4, 'rm-0', '1481510', 'prj3', 'usr3');
-INSERT INTO units VALUES(5, 'rm-1', '1479763', 'prj1', 'usr1');
-INSERT INTO units VALUES(6, 'rm-1', '1481508', 'prj1', 'usr2');
-INSERT INTO units VALUES(7, 'rm-1', '1479765', 'prj4', 'usr4');
-INSERT INTO units VALUES(8, 'rm-1', '1481510', 'prj5', 'usr5');
+INSERT INTO units VALUES(1, 'rm-0', '1479763', 'prj1', 'usr1', 1735045414000);
+INSERT INTO units VALUES(2, 'rm-0', '1481508', 'prj1', 'usr2', 1735045414000);
+INSERT INTO units VALUES(3, 'rm-0', '1479765', 'prj2', 'usr2', 1735045414000);
+INSERT INTO units VALUES(4, 'rm-0', '1481510', 'prj3', 'usr3', 1735045414000);
+INSERT INTO units VALUES(5, 'rm-0', '1481508', 'prj3', 'usr3', 1703419414000);
+INSERT INTO units VALUES(6, 'rm-1', '1479763', 'prj1', 'usr1', 1735045414000);
+INSERT INTO units VALUES(7, 'rm-1', '1481508', 'prj1', 'usr2', 1735045414000);
+INSERT INTO units VALUES(8, 'rm-1', '1479765', 'prj4', 'usr4', 1735045414000);
+INSERT INTO units VALUES(9, 'rm-1', '1481510', 'prj5', 'usr5', 1735045414000);
 CREATE TABLE usage (
 	"id" integer not null primary key,
 	"cluster_id" text,
@@ -112,9 +115,11 @@ func setupMiddlewareWithDB(tmpDir string) (http.Handler, error) {
 
 	// Create an instance of middleware
 	amw := authenticationMiddleware{
-		logger:     slog.New(slog.NewTextHandler(io.Discard, nil)),
-		clusterIDs: []string{"rm-0", "rm-1"},
-		ceems:      ceems{db: db},
+		logger:        slog.New(slog.NewTextHandler(io.Discard, nil)),
+		clusterIDs:    []string{"rm-0", "rm-1"},
+		ceems:         ceems{db: db},
+		parseRequest:  parseTSDBRequest,
+		pathsACLRegex: regexpTSDBRestrictedPath,
 	}
 
 	// create a handler to use as "next" which will verify the request
@@ -137,9 +142,11 @@ func setupMiddlewareWithAPI(tmpDir string) (http.Handler, error) {
 
 	// Create an instance of middleware
 	amw := authenticationMiddleware{
-		logger:     slog.New(slog.NewTextHandler(io.Discard, nil)),
-		clusterIDs: []string{"rm-0", "rm-1"},
-		ceems:      ceems{webURL: ceemsURL, client: http.DefaultClient},
+		logger:        slog.New(slog.NewTextHandler(io.Discard, nil)),
+		clusterIDs:    []string{"rm-0", "rm-1"},
+		ceems:         ceems{webURL: ceemsURL, client: http.DefaultClient},
+		parseRequest:  parseTSDBRequest,
+		pathsACLRegex: regexpTSDBRestrictedPath,
 	}
 
 	// create a handler to use as "next" which will verify the request
@@ -163,11 +170,19 @@ func setupCEEMSAPI(db *sql.DB) *httptest.Server {
 		uuids := r.URL.Query()["uuid"]
 		rmIDs := r.URL.Query()["cluster_id"]
 
+		var starts []int64
+
+		for _, s := range r.URL.Query()["start"] {
+			if is, err := strconv.ParseInt(s, 10, 64); err == nil {
+				starts = append(starts, is)
+			}
+		}
+
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
 		// Check if user is owner of the queries uuids
-		if http_api.VerifyOwnership(ctx, user, rmIDs, uuids, db, slog.New(slog.NewTextHandler(io.Discard, nil))) { //nolint:contextcheck
+		if http_api.VerifyOwnership(ctx, user, rmIDs, uuids, starts, db, slog.New(slog.NewTextHandler(io.Discard, nil))) { //nolint:contextcheck
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("success"))
 		} else {
@@ -196,7 +211,7 @@ func TestMiddlewareWithDB(t *testing.T) {
 	}{
 		{
 			name:   "forbid due to mismatch uuid",
-			req:    "/query?query=foo{uuid=~\"1479765|1481510\"}",
+			req:    "/query?query=foo{uuid=~\"1479765|1481510\"}&time=1735045414",
 			id:     "rm-0",
 			user:   "usr1",
 			header: true,
@@ -204,14 +219,21 @@ func TestMiddlewareWithDB(t *testing.T) {
 		},
 		{
 			name:   "forbid due to missing cluster_id",
-			req:    "/query?query=foo{uuid=~\"1481508|1479765\"}",
+			req:    "/query?query=foo{uuid=~\"1481508|1479765\"}&time=1735045414",
+			user:   "usr2",
+			header: true,
+			code:   400,
+		},
+		{
+			name:   "forbid due to incorrect start",
+			req:    "/query?query=foo{uuid=~\"1481508\"}&time=1703419414",
 			user:   "usr2",
 			header: true,
 			code:   400,
 		},
 		{
 			name:   "allow query for admins",
-			req:    "/query_range?query=foo{uuid=~\"1479765|1481510\"}",
+			req:    "/query_range?query=foo{uuid=~\"1479765|1481510\"}&start=1735045414",
 			id:     "rm-0",
 			user:   "adm1",
 			header: true,
@@ -219,7 +241,7 @@ func TestMiddlewareWithDB(t *testing.T) {
 		},
 		{
 			name:   "forbid due to missing project",
-			req:    "/query_range?query=foo{uuid=~\"123|345\"}",
+			req:    "/query_range?query=foo{uuid=~\"123|345\"}&start=1735045414",
 			id:     "rm-1",
 			user:   "usr1",
 			header: true,
@@ -227,14 +249,14 @@ func TestMiddlewareWithDB(t *testing.T) {
 		},
 		{
 			name:   "forbid due to missing header",
-			req:    "/query?query=foo{uuid=~\"123|345\"}",
+			req:    "/query?query=foo{uuid=~\"123|345\"}&time=1735045414",
 			id:     "rm-0",
 			header: false,
 			code:   401,
 		},
 		{
 			name:   "pass due to correct uuid",
-			req:    "/query_range?query=foo{uuid=\"1479763\"}",
+			req:    "/query_range?query=foo{uuid=\"1479763\"}&start=1735045414",
 			id:     "rm-0",
 			user:   "usr1",
 			header: true,
@@ -242,7 +264,7 @@ func TestMiddlewareWithDB(t *testing.T) {
 		},
 		{
 			name:   "pass due to correct uuid with gpuuuid in query",
-			req:    "/query?query=foo{uuid=\"1479763\",gpuuuid=\"GPU-01234\"}",
+			req:    "/query?query=foo{uuid=\"1479763\",gpuuuid=\"GPU-01234\"}&time=1735045414",
 			id:     "rm-1",
 			user:   "usr1",
 			header: true,
@@ -250,27 +272,27 @@ func TestMiddlewareWithDB(t *testing.T) {
 		},
 		{
 			name:   "pass due to uuid from same project",
-			req:    "/query?query=foo{uuid=\"1481508\"}",
+			req:    "/query?query=foo{uuid=\"1481508\"}&time=1735045414",
 			id:     "rm-0",
 			user:   "usr1",
 			header: true,
 			code:   200,
 		},
 		{
-			name:   "pass due to no uuid",
+			name:   "forbid due to no uuid",
 			req:    "/query_range?query=foo{uuid=\"\"}",
 			id:     "rm-0",
 			header: true,
 			user:   "usr3",
-			code:   200,
+			code:   403,
 		},
 		{
-			name:   "pass due to no uuid and non-empty gpuuuid",
+			name:   "forbid due to no uuid and non-empty gpuuuid",
 			req:    "/query?query=foo{uuid=\"\",gpuuuid=\"GPU-01234\"}",
 			id:     "rm-0",
 			header: true,
 			user:   "usr2",
-			code:   200,
+			code:   403,
 		},
 	}
 

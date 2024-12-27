@@ -11,14 +11,14 @@ import (
 
 // roundRobin implements round robin load balancer strategy.
 type roundRobin struct {
-	backends map[string][]backend.TSDBServer
+	backends map[string][]backend.Server
 	mux      sync.RWMutex
 	current  int
 	logger   *slog.Logger
 }
 
 // Rotate returns the backend server to be used for next request.
-func (s *roundRobin) Rotate(id string) backend.TSDBServer {
+func (s *roundRobin) Rotate(id string) backend.Server {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 	s.current = (s.current + 1) % s.Size(id)
@@ -27,7 +27,7 @@ func (s *roundRobin) Rotate(id string) backend.TSDBServer {
 }
 
 // Target returns the backend server to send the request if it is alive.
-func (s *roundRobin) Target(id string, d time.Duration) backend.TSDBServer {
+func (s *roundRobin) Target(id string, _ time.Duration) backend.Server {
 	// If the ID is unknown return
 	if _, ok := s.backends[id]; !ok {
 		s.logger.Error("Round Robin strategy", "err", fmt.Errorf("unknown backend ID: %s", id))
@@ -48,12 +48,12 @@ func (s *roundRobin) Target(id string, d time.Duration) backend.TSDBServer {
 }
 
 // List all backend servers in pool.
-func (s *roundRobin) Backends() map[string][]backend.TSDBServer {
+func (s *roundRobin) Backends() map[string][]backend.Server {
 	return s.backends
 }
 
 // Add a backend server to pool.
-func (s *roundRobin) Add(id string, b backend.TSDBServer) {
+func (s *roundRobin) Add(id string, b backend.Server) {
 	s.backends[id] = append(s.backends[id], b)
 }
 

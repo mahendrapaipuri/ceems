@@ -7,11 +7,13 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 
 	ceems_api "github.com/mahendrapaipuri/ceems/pkg/api/http"
@@ -27,12 +29,43 @@ const (
 	ceemsClusterIDHeader = "X-Ceems-Cluster-Id"
 )
 
+// Restricted paths.
+// No need to check caps as Prometheus do not allow
+// capitalised query names.
+//
+// For Prometheus following end points are controlled
+// - query
+// - query_range
+// - labels
+// - values
+// - series
+//
+// For Pyroscope following end points are controlled
+// - SelectMergeStacktraces.
 var (
+	restrictedTSDBPathSuffices = []string{
+		"query",
+		"query_range",
+		"labels",
+		"series",
+		"values",
+	}
+	restrictedPyroPathSuffices = []string{
+		"SelectMergeStacktraces",
+	}
+)
+
+var (
+	// Regex to match path suffix to apply middleware.
+	regexpURLPaths           = "/([/]*(%s)?/?)(?:$)"
+	regexpTSDBRestrictedPath = regexp.MustCompile(fmt.Sprintf(regexpURLPaths, strings.Join(restrictedTSDBPathSuffices, "|")))
+	regexpPyroRestrictedPath = regexp.MustCompile(fmt.Sprintf(regexpURLPaths, strings.Join(restrictedPyroPathSuffices, "|")))
+
 	// Regex that will match unit's UUIDs
 	// Dont use greedy matching to avoid capturing gpuuuid label
 	// Use strict UUID allowable character set. They can be only letters, digits and hypen (-)
 	// Playground: https://goplay.tools/snippet/kq_r_1SOgnG
-	regexpUUID = regexp.MustCompile("(?:.+?)[^gpu]uuid=[~]{0,1}\"(?P<uuid>[a-zA-Z0-9-|]+)\"(?:.*)")
+	regexpUUID = regexp.MustCompile("(?:.*?)[^gpu](?:uuid|service_name)=[~]{0,1}\"(?P<uuid>[a-zA-Z0-9-|]+)\"(?:.*)")
 
 	// Regex that will match cluster's ID.
 	regexID = regexp.MustCompile("(?:.+?)ceems_id=[~]{0,1}\"(?P<id>[a-zA-Z0-9-|_]+)\"(?:.*)")
@@ -63,9 +96,11 @@ func (c *ceems) clustersEndpoint() *url.URL {
 
 // authenticationMiddleware implements the auth middleware for LB.
 type authenticationMiddleware struct {
-	logger     *slog.Logger
-	ceems      ceems
-	clusterIDs []string
+	logger        *slog.Logger
+	ceems         ceems
+	clusterIDs    []string
+	pathsACLRegex *regexp.Regexp
+	parseRequest  func(*ReqParams, *http.Request) error
 }
 
 // Check UUIDs in query belong to user or not.
@@ -74,48 +109,51 @@ func (amw *authenticationMiddleware) isUserUnit(
 	user string,
 	clusterIDs []string,
 	uuids []string,
+	starts []int64,
 ) bool {
 	// Always prefer checking with DB connection directly if it is available
 	// As DB query is way more faster than HTTP API request
 	if amw.ceems.db != nil {
-		return ceems_api.VerifyOwnership(ctx, user, clusterIDs, uuids, amw.ceems.db, amw.logger)
+		return ceems_api.VerifyOwnership(ctx, user, clusterIDs, uuids, starts, amw.ceems.db, amw.logger)
 	}
 
 	// If CEEMS URL is available make a API request
 	// Any errors in making HTTP request will fail the query. This can happen due
 	// to deployment issues and by failing queries we make operators to look into
 	// what is happening
-	if amw.ceems.verifyEndpoint() != nil {
-		// Create a new POST request
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, amw.ceems.verifyEndpoint().String(), nil)
-		if err != nil {
-			amw.logger.Debug("Failed to create new request for unit ownership verification",
-				"user", user, "queried_uuids", strings.Join(uuids, ","), "err", err)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, amw.ceems.verifyEndpoint().String(), nil)
+	if err != nil {
+		amw.logger.Debug("Failed to create new request for unit ownership verification",
+			"user", user, "queried_uuids", strings.Join(uuids, ","), "err", err)
 
-			return false
-		}
+		return false
+	}
 
-		// Add uuids to request
-		req.URL.RawQuery = url.Values{"uuid": uuids, "cluster_id": clusterIDs}.Encode()
+	// Add uuids to request
+	urlVals := url.Values{"uuid": uuids, "cluster_id": clusterIDs}
+	for _, s := range starts {
+		urlVals.Add("time", strconv.FormatInt(s, 10))
+	}
 
-		// Add necessary headers
-		req.Header.Add(grafanaUserHeader, user)
+	req.URL.RawQuery = urlVals.Encode()
 
-		// Make request
-		// If request failed, forbid the query. It can happen when CEEMS API server
-		// goes offline and we should wait for it to come back online
-		if resp, err := amw.ceems.client.Do(req); err != nil {
-			amw.logger.Debug("Failed to make request for unit ownership verification",
-				"user", user, "queried_uuids", strings.Join(uuids, ","), "err", err)
+	// Add necessary headers
+	req.Header.Add(grafanaUserHeader, user)
 
-			return false
-		} else if resp.StatusCode != http.StatusOK {
-			defer resp.Body.Close()
-			amw.logger.Debug("Unauthorised query", "user", user,
-				"queried_uuids", strings.Join(uuids, ","), "status_code", resp.StatusCode)
+	// Make request
+	// If request failed, forbid the query. It can happen when CEEMS API server
+	// goes offline and we should wait for it to come back online
+	if resp, err := amw.ceems.client.Do(req); err != nil {
+		amw.logger.Debug("Failed to make request for unit ownership verification",
+			"user", user, "queried_uuids", strings.Join(uuids, ","), "err", err)
 
-			return false
-		}
+		return false
+	} else if resp.StatusCode != http.StatusOK {
+		defer resp.Body.Close()
+		amw.logger.Debug("Unauthorised query", "user", user,
+			"queried_uuids", strings.Join(uuids, ","), "status_code", resp.StatusCode)
+
+		return false
 	}
 
 	return true
@@ -126,27 +164,35 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var loggedUser string
 
-		var clusterID string
+		reqParams := &ReqParams{}
 
-		var uuids []string
+		var err error
 
-		var queryParams interface{}
+		// Get cluster id from X-Ceems-Cluster-Id header
+		// This is most important and request parameter that we need
+		// to proxy request. Rest of them are optional
+		reqParams.clusterID = r.Header.Get(ceemsClusterIDHeader)
 
-		// Clone request, parse query params and set them in request context
-		// This will ensure we set query params in request's context always
-		r = parseQueryParams(r, amw.logger)
+		// Verify clusterID is in list of valid cluster IDs
+		if !slices.Contains(amw.clusterIDs, reqParams.clusterID) {
+			// Write an error and stop the handler chain
+			w.WriteHeader(http.StatusBadRequest)
 
-		// Apply middleware only for following endpoints:
-		// - query
-		// - query_range
-		// - labels
-		// - labels values
-		// - series
-		if !strings.HasSuffix(r.URL.Path, "query") &&
-			!strings.HasSuffix(r.URL.Path, "query_range") &&
-			!strings.HasSuffix(r.URL.Path, "values") &&
-			!strings.HasSuffix(r.URL.Path, "labels") &&
-			!strings.HasSuffix(r.URL.Path, "series") {
+			response := ceems_api.Response[any]{
+				Status:    "error",
+				ErrorType: "bad_request",
+				Error:     "invalid cluster ID",
+			}
+			if err := json.NewEncoder(w).Encode(&response); err != nil {
+				amw.logger.Error("Failed to encode response", "err", err)
+				w.Write([]byte("KO"))
+			}
+
+			return
+		}
+
+		// Apply middleware only for restricted endpoints
+		if !amw.pathsACLRegex.MatchString(r.URL.Path) {
 			goto end
 		}
 
@@ -154,6 +200,13 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 		// to check here
 		if amw.ceems.webURL == nil && amw.ceems.db == nil {
 			goto end
+		}
+
+		// Clone request, parse query params and set them in request context
+		// This will ensure we set query params in request's context always
+		err = amw.parseRequest(reqParams, r)
+		if err != nil {
+			amw.logger.Error("Failed to parse query in the request", "err", err)
 		}
 
 		// Remove any X-Admin-User header or X-Logged-User if passed
@@ -186,67 +239,14 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 		// Set logged user header
 		r.Header.Set(loggedUserHeader, loggedUser)
 
-		// Retrieve query params from context
-		queryParams = r.Context().Value(QueryParamsContextKey{})
-
-		// If no query params found, return bad request
-		if queryParams == nil {
-			w.WriteHeader(http.StatusBadRequest)
-
-			response := ceems_api.Response[any]{
-				Status:    "error",
-				ErrorType: "bad_request",
-				Error:     "query could not be parsed",
-			}
-			if err := json.NewEncoder(w).Encode(&response); err != nil {
-				amw.logger.Error("Failed to encode response", "err", err)
-				w.Write([]byte("KO"))
-			}
-
-			return
-		}
-
-		// Check type assertions
-		if v, ok := queryParams.(*QueryParams); ok {
-			clusterID = v.clusterID
-			uuids = v.uuids
-
-			// Verify clusterID is in list of valid cluster IDs
-			if !slices.Contains(amw.clusterIDs, clusterID) {
-				// Write an error and stop the handler chain
-				w.WriteHeader(http.StatusBadRequest)
-
-				response := ceems_api.Response[any]{
-					Status:    "error",
-					ErrorType: "bad_request",
-					Error:     "invalid cluster ID",
-				}
-				if err := json.NewEncoder(w).Encode(&response); err != nil {
-					amw.logger.Error("Failed to encode response", "err", err)
-					w.Write([]byte("KO"))
-				}
-
-				return
-			}
-		} else {
-			// Write an error and stop the handler chain
-			w.WriteHeader(http.StatusBadRequest)
-
-			response := ceems_api.Response[any]{
-				Status:    "error",
-				ErrorType: "bad_request",
-				Error:     "invalid query",
-			}
-			if err := json.NewEncoder(w).Encode(&response); err != nil {
-				amw.logger.Error("Failed to encode response", "err", err)
-				w.Write([]byte("KO"))
-			}
-
-			return
-		}
-
 		// Check if user is querying for his/her own compute units by looking to DB
-		if !amw.isUserUnit(r.Context(), loggedUser, []string{clusterID}, uuids) { //nolint:contextcheck // False positive
+		if !amw.isUserUnit(
+			r.Context(),
+			loggedUser,
+			[]string{reqParams.clusterID},
+			reqParams.uuids,
+			[]int64{reqParams.time},
+		) {
 			// Write an error and stop the handler chain
 			w.WriteHeader(http.StatusForbidden)
 
@@ -264,6 +264,9 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 		}
 
 	end:
+		// Set query params to request's context before passing down request
+		r = setQueryParams(r, reqParams)
+
 		// Pass down the request to the next middleware (or final handler)
 		next.ServeHTTP(w, r)
 	})

@@ -39,13 +39,14 @@ var (
 // RetryContextKey is the key used to set context value for retry.
 type RetryContextKey struct{}
 
-// QueryParamsContextKey is the key used to set context value for query params.
-type QueryParamsContextKey struct{}
+// ReqParamsContextKey is the key used to set context value for request parameters.
+type ReqParamsContextKey struct{}
 
-// QueryParams is the context value.
-type QueryParams struct {
+// ReqParams is the context value.
+type ReqParams struct {
 	clusterID   string
 	uuids       []string
+	time        int64
 	queryPeriod time.Duration
 }
 
@@ -60,7 +61,8 @@ type LoadBalancer interface {
 // Config makes a server config from CLI args.
 type Config struct {
 	Logger           *slog.Logger
-	Addresses        []string
+	LBType           base.LBType
+	Address          string
 	WebSystemdSocket bool
 	WebConfigFile    string
 	APIServer        ceems_api_cli.CEEMSAPIServerConfig
@@ -70,10 +72,11 @@ type Config struct {
 // loadBalancer struct.
 type loadBalancer struct {
 	logger    *slog.Logger
+	lbType    base.LBType
 	manager   serverpool.Manager
 	server    *http.Server
 	webConfig *web.FlagConfig
-	amw       authenticationMiddleware
+	amw       *authenticationMiddleware
 }
 
 // New returns a new instance of load balancer.
@@ -123,26 +126,40 @@ func New(c *Config) (LoadBalancer, error) {
 	}
 
 outside:
+	// Setup middleware
+	amw := &authenticationMiddleware{
+		logger: c.Logger,
+		ceems: ceems{
+			db:     db,
+			webURL: ceemsWebURL,
+			client: ceemsClient,
+		},
+	}
+
+	// Setup parsing functions based on LB type
+	switch c.LBType {
+	case base.PromLB:
+		amw.parseRequest = parseTSDBRequest
+		amw.pathsACLRegex = regexpTSDBRestrictedPath
+	case base.PyroLB:
+		amw.parseRequest = parsePyroRequest
+		amw.pathsACLRegex = regexpPyroRestrictedPath
+	}
+
 	return &loadBalancer{
 		logger: c.Logger,
+		lbType: c.LBType,
 		server: &http.Server{
-			Addr:              c.Addresses[0],
+			Addr:              c.Address,
 			ReadHeaderTimeout: 2 * time.Second, // slowloris attack: https://app.deepsource.com/directory/analyzers/go/issues/GO-S2112
 		},
 		webConfig: &web.FlagConfig{
-			WebListenAddresses: &c.Addresses,
+			WebListenAddresses: &[]string{c.Address},
 			WebSystemdSocket:   &c.WebSystemdSocket,
 			WebConfigFile:      &c.WebConfigFile,
 		},
 		manager: c.Manager,
-		amw: authenticationMiddleware{
-			logger: c.Logger,
-			ceems: ceems{
-				db:     db,
-				webURL: ceemsWebURL,
-				client: ceemsClient,
-			},
-		},
+		amw:     amw,
 	}, nil
 }
 
@@ -264,7 +281,7 @@ validate:
 func (lb *loadBalancer) Start() error {
 	// Apply middleware
 	lb.server.Handler = lb.amw.Middleware(http.HandlerFunc(lb.Serve))
-	lb.logger.Info("Starting " + base.CEEMSLoadBalancerAppName)
+	lb.logger.Info("Starting "+base.CEEMSLoadBalancerAppName, "listening", lb.server.Addr)
 
 	// Listen for requests
 	if err := web.ListenAndServe(lb.server, lb.webConfig, lb.logger); err != nil &&
@@ -301,7 +318,7 @@ func (lb *loadBalancer) Shutdown(ctx context.Context) error {
 // Serve serves the request using a backend TSDB server from the pool.
 func (lb *loadBalancer) Serve(w http.ResponseWriter, r *http.Request) {
 	// Retrieve query params from context
-	queryParams := r.Context().Value(QueryParamsContextKey{})
+	queryParams := r.Context().Value(ReqParamsContextKey{})
 
 	// Check if queryParams is nil which could happen in edge cases
 	if queryParams == nil {
@@ -315,7 +332,7 @@ func (lb *loadBalancer) Serve(w http.ResponseWriter, r *http.Request) {
 
 	var id string
 
-	if v, ok := queryParams.(*QueryParams); ok {
+	if v, ok := queryParams.(*ReqParams); ok {
 		queryPeriod = v.queryPeriod
 		id = v.clusterID
 	} else {
