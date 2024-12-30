@@ -11,7 +11,7 @@ const CEEMSLoadBalancerAppName = "ceems_lb"
 // CEEMSLoadBalancerApp is kingpin CLI app.
 var CEEMSLoadBalancerApp = *kingpin.New(
 	CEEMSLoadBalancerAppName,
-	"Prometheus load balancer to query from different instances.",
+	"CEEMS load balancer for TSDB and Pyroscope servers with access control support.",
 )
 
 // Backend defines backend server.

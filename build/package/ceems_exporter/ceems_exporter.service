@@ -18,6 +18,9 @@ StartLimitInterval=0
 
 ProtectHome=read-only
 
+# CEEMS Exporter is capability aware which means it drops all unnecessary capabilities based on
+# runtime configuration. Thus, all these capabilities will not set on actual process if
+# the collectors that do need them are not enabled.
 AmbientCapabilities=CAP_SYS_PTRACE CAP_DAC_READ_SEARCH CAP_SETUID CAP_SETGID CAP_DAC_OVERRIDE CAP_BPF CAP_PERFMON CAP_SYS_RESOURCE
 CapabilityBoundingSet=CAP_SYS_PTRACE CAP_DAC_READ_SEARCH CAP_SETUID CAP_SETGID CAP_DAC_OVERRIDE CAP_BPF CAP_PERFMON CAP_SYS_RESOURCE
 

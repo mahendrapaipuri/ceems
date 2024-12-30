@@ -12,7 +12,7 @@
 #
 ---
 ceems_lb:
-  # Load balancing strategy. Three possibilites
+  # Load balancing strategy. Two possibilites
   #
   # - round-robin
   # - least-connection
@@ -20,7 +20,7 @@ ceems_lb:
   # Round robin and least connection are classic strategies and are
   # self explanatory.
   #
-  strategy: resource-based
+  strategy: round-robin
 
   # List of backends for each cluster
   #

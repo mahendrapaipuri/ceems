@@ -40,7 +40,7 @@ managers (SLURM, Openstack, k8s)
 - Provides targets using [HTTP Discovery Component](https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.http/)
 to [Grafana Alloy](https://grafana.com/docs/alloy/latest) to continuously profile compute units
 - Realtime access to metrics *via* Grafana dashboards
-- Access control to Prometheus datasource in Grafana
+- Access control to Prometheus and Pyroscope datasources in Grafana
 - Stores aggregated metrics in a separate DB that can be retained for long time
 - CEEMS apps are [capability aware](https://tbhaxor.com/understanding-linux-capabilities/)
 
