@@ -149,7 +149,9 @@ func (lb *CEEMSLoadBalancer) Main() error {
 	var (
 		webListenAddresses = lb.App.Flag(
 			"web.listen-address",
-			"Addresses on which to expose metrics and web interface.",
+			"Addresses on which to expose load balancer(s). When both TSDB and Pyroscope LBs are configured, it must be "+
+				"repeated to provide two addresses: one for TSDB LB and one for Pyroscope LB. In that case TSDB LB will listen on "+
+				"first address and Pyroscope LB on second address",
 		).Default(":9030", ":9040").Strings()
 		webConfigFile = lb.App.Flag(
 			"web.config.file",
@@ -253,7 +255,7 @@ func (lb *CEEMSLoadBalancer) Main() error {
 
 	// Ensure that enough web listen addresses are provided
 	webListenAddrs := *webListenAddresses
-	if len(lbTypes) != len(webListenAddrs) {
+	if len(lbTypes) > len(webListenAddrs) {
 		logger.Error("Missing web listen addresses", "num_lbs", len(lbTypes), "num_addrs", len(webListenAddrs))
 
 		return fmt.Errorf("insufficient --web.listen-address. Expected %d got %d", len(lbTypes), len(webListenAddrs))
@@ -309,14 +311,14 @@ func (lb *CEEMSLoadBalancer) Main() error {
 
 				rp := httputil.NewSingleHostReverseProxy(webURL)
 
-				backendServer, err := lb_backend.New(lbType, webURL, rp, logger)
+				backendServer, err := lb_backend.New(lbType, webURL, rp, logger.With("backend_type", lbType))
 				if err != nil {
 					logger.Error("Could not set up backend server", "backend_type", lbType, "err", errors.Unwrap(err))
 
 					continue
 				}
 
-				rp.ErrorHandler = frontend.ErrorHandler(webURL, backendServer, lbs[lbType], logger)
+				rp.ErrorHandler = frontend.ErrorHandler(webURL, backendServer, lbs[lbType], logger.With("backend_type", lbType))
 
 				managers[lbType].Add(backend.ID, backendServer)
 			}
