@@ -66,19 +66,27 @@ func VerifyOwnership(
 	db *sql.DB,
 	logger *slog.Logger,
 ) bool {
+	// If no DB connection is provided, log warning and return true
+	// This should not happen, just in case!
+	if db == nil {
+		logger.Warn("DB connection is empty. Skipping UUID verification")
+
+		return true
+	}
+
+	// If current user is in list of admin users, pass the check
+	if slices.Contains(adminUsers(ctx, db, logger), user) {
+		return true
+	}
+
 	// If the data is incomplete, forbid the request
-	if db == nil || len(clusterIDs) == 0 || user == "" || len(uuids) == 0 {
+	if len(clusterIDs) == 0 || user == "" || len(uuids) == 0 {
 		logger.Debug(
 			"Incomplete data for unit ownership verification", "user", user,
 			"cluster_id", strings.Join(clusterIDs, ","), "queried_uuids", strings.Join(uuids, ","),
 		)
 
 		return false
-	}
-
-	// If current user is in list of admin users, pass the check
-	if slices.Contains(adminUsers(ctx, db, logger), user) {
-		return true
 	}
 
 	logger.Debug("UUIDs in query", "user", user, "cluster_id", strings.Join(clusterIDs, ","), "queried_uuids", strings.Join(uuids, ","))

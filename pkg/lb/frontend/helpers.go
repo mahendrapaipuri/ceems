@@ -128,23 +128,28 @@ func parseTSDBRequest(p *ReqParams, r *http.Request) error {
 		return fmt.Errorf("failed to parse request form data: %w", err)
 	}
 
-	// Parse TSDB's query in request query params
-	if val := clonedReq.FormValue("query"); val != "" {
-		parseReqParams(p, val)
-	}
-
 	// Except for query API, rest of the load balanced API endpoint have start query param
-	var targetQueryParam string
+	var targetTimeParam, targetQueryParam string
 
 	switch {
 	case strings.HasSuffix(clonedReq.URL.Path, "query"):
-		targetQueryParam = "time"
+		targetQueryParam = "query"
+		targetTimeParam = "time"
+	case strings.HasSuffix(clonedReq.URL.Path, "query_range"):
+		targetQueryParam = "query"
+		targetTimeParam = "start"
 	default:
-		targetQueryParam = "start"
+		targetQueryParam = "match[]"
+		targetTimeParam = "start"
+	}
+
+	// Parse TSDB's query in request query params
+	if val := clonedReq.FormValue(targetQueryParam); val != "" {
+		parseReqParams(p, val)
 	}
 
 	// Parse TSDB's start query in request query params
-	if startTime, err := parseTimeParam(clonedReq, targetQueryParam, time.Now().Local()); err != nil {
+	if startTime, err := parseTimeParam(clonedReq, targetTimeParam, time.Now().Local()); err != nil {
 		p.queryPeriod = 0 * time.Second
 		p.time = time.Now().Local().UnixMilli()
 	} else {
