@@ -31,28 +31,31 @@ managers (SLURM, Openstack, k8s)
 - Provides targets using [HTTP Discovery Component](https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.http/)
 to [Grafana Alloy](https://grafana.com/docs/alloy/latest) to continuously profile compute units
 - Realtime access to metrics *via* Grafana dashboards
-- Access control to Prometheus datasource in Grafana
+- Access control to Prometheus and Pyroscope datasources in Grafana
 - Stores aggregated metrics in a separate DB that can be retained for long time
 - CEEMS apps are [capability aware](https://tbhaxor.com/understanding-linux-capabilities/)
 
 ## Components
 
-CEEMS provide a set of components that enable operators to monitor the consumption of
+CEEMS provide a set of components that enable operators and end users to monitor the consumption of
 resources of the compute units of different resource managers like SLURM, Openstack and
 Kubernetes.
 
 - CEEMS Prometheus exporter is capable of exporting compute unit metrics including energy
 consumption, performance, IO and network metrics from different resource managers in a
-unified manner.
+unified manner. In addition, CEEMS exporter is capable of providing targets to
+[Grafana Alloy](https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.http/)
+for continuously profiling compute units using
+[eBPF](https://grafana.com/docs/alloy/latest/reference/components/pyroscope/pyroscope.ebpf/)
 
 - CEEMS API server can store the aggregate metrics and metadata of each compute unit
 originating from different resource managers.
 
-- CEEMS load balancer provides basic access control on TSDB so that compute unit metrics
+- CEEMS load balancer provides basic access control on TSDB and Pyroscope so that compute unit metrics
 from different projects/tenants/namespaces are isolated.
 
 "Compute Unit" in the current context has a wider scope. It can be a batch job in HPC,
-a VM in cloud, a pod in k8s, _etc_. The main objective of the stack is to quantify
+a VM in cloud, a pod in k8s, *etc*. The main objective of the stack is to quantify
 the energy consumed and estimate emissions by each "compute unit". The repository itself
 does not provide any frontend apps to show dashboards and it is meant to use along
 with Grafana and Prometheus to show statistics to users.

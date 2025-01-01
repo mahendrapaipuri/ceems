@@ -6,10 +6,14 @@ ceems_lb:
     - id: slurm-0
       tsdb_urls: 
         - http://localhost:9090
+      pyroscope_urls: 
+        - http://localhost:4040
 
     - id: slurm-1
       tsdb_urls: 
         - http://localhost:9090
+      pyroscope_urls: 
+        - http://localhost:4040
 
 ceems_api_server:
   web:

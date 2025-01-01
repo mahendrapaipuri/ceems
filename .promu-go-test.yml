@@ -8,7 +8,9 @@ repository:
 build:
     binaries:
         - name: mock_servers
-          path: ./cmd/mock_servers
+          path: ./scripts/mock_servers
+        - name: pyro_requestor
+          path: ./scripts/pyro_requestor
     tags:
       all: [osusergo, netgo, static_build]
     flags: -a

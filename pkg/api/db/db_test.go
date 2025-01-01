@@ -5,10 +5,13 @@ package db
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -18,6 +21,8 @@ import (
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/mahendrapaipuri/ceems/pkg/api/resource"
 	"github.com/mahendrapaipuri/ceems/pkg/api/updater"
+	"github.com/mahendrapaipuri/ceems/pkg/grafana"
+	config_util "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -923,6 +928,52 @@ func TestUnitStatsDBBackup(t *testing.T) {
 	}
 
 	assert.Equal(t, 7, numRows, "Backup DB check failed. Expected rows 7")
+}
+
+func TestAdminUsersDBUpdate(t *testing.T) {
+	// Start test server
+	expected := []grafana.GrafanaTeamsReponse{
+		{Login: "foo"}, {Login: "bar"},
+	}
+
+	t.Setenv("GRAFANA_API_TOKEN", "foo")
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewEncoder(w).Encode(&expected); err != nil {
+			w.Write([]byte("KO"))
+		}
+	}))
+	defer server.Close()
+
+	tmpDir := t.TempDir()
+	c, err := prepareMockConfig(tmpDir)
+	require.NoError(t, err, "failed to create mock config")
+
+	// Make new stats DB
+	s, err := New(c)
+	defer s.Stop()
+	require.NoError(t, err, "failed to create new stats")
+
+	// Make backup dir non existent
+	s.admin.grafana, err = grafana.New(server.URL, config_util.HTTPClientConfig{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	require.NoError(t, err)
+
+	// Setup a mock teamIDs
+	s.admin.grafanaAdminTeamsIDs = []string{"1"}
+
+	// update admin users
+	err = s.updateAdminUsers(context.Background())
+	require.NoError(t, err, "failed to update admin users")
+
+	// Check admin users from grafana
+	assert.ElementsMatch(t, s.admin.users["grafana"], models.List{"foo", "bar"})
+
+	// do second update of admin users and users should not be duplicated
+	err = s.updateAdminUsers(context.Background())
+	require.NoError(t, err, "failed to update admin users")
+
+	// Check admin users from grafana
+	assert.ElementsMatch(t, s.admin.users["grafana"], models.List{"foo", "bar"})
 }
 
 func TestStatsDBBackup(t *testing.T) {

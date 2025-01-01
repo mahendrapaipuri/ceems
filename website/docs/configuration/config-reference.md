@@ -828,19 +828,17 @@ A `backend_config` allows configuring backend TSDB servers for load balancer.
 # for compute unit ownership, CEEMS LB will use the ID to query for the compute 
 # units of that cluster.
 #
-# This identifier needs to be in the path parameter for requests to CEEMS LB
-# to target correct cluster. For instance there are two different clusters,
-# say `cluster-0` and `cluster-1`, that have different TSDBs configured. Using CEEMS 
+# This identifier needs to be set as header value for `X-Ceems-Cluster-Id` for 
+# requests to CEEMS LB to target correct cluster. For instance there are two different 
+# clusters, say cluster-0 and cluster-1, that have different TSDBs configured. Using CEEMS 
 # LB we can load balance the traffic for these two clusters using a single CEEMS LB 
 # deployement. However, we need to tell CEEMS LB which cluster to target for the 
-# incoming traffic. This is done via path parameter. 
+# incoming traffic. This is done via header. 
 #
-# If CEEMS LB is running at http://localhost:9030, then the `cluster-0` is reachable at 
-# `http://localhost:9030/cluster-0` and `cluster-1` at `http://localhost:9030/cluster-1`.
-# Internally, CEEMS will strip the first part in the URL path, use it to identify
-# cluster and proxy the rest of URL path to underlying TSDB backend. 
-# Thus, all the requests to `http://localhost:9030/cluster-0` will be load 
-# balanced across TSDB backends of `cluster-0`. 
+# The TSDBs running in `cluster-0` must be configured on Grafana to send a header
+# value `X-Ceems-Cluster-Id` to `cluster-0` in each request. CEEMS LB will inspect
+# this header value and proxies the request to correct TSDB in `cluster-0` based
+# on chosen LB strategy.
 #
 id: <idname>
 
@@ -858,6 +856,22 @@ id: <idname>
 # - http://alice:password@localhost:9090
 #
 tsdb_urls: 
+  [ - <host> ]
+
+# List of Pyroscope servers for this cluster. Load balancing between these servers 
+# will be made based on the strategy chosen.
+#
+# TLS is not supported for backends. CEEMS LB supports TLS and TLS terminates
+# at the LB and requests are proxied to backends on HTTP. 
+#
+# LB and backend servers are meant to be in the same DMZ so that we do not need
+# to encrypt communications. Backends however support basic auth and they can 
+# be configured in URL with usual syntax.
+#
+# An example of configuring the basic auth username and password with backend
+# - http://alice:password@localhost:4040
+#
+pyroscope_urls:
   [ - <host> ]
 ```
 

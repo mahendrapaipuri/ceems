@@ -6,7 +6,7 @@ all::
 # Needs to be defined before including Makefile.common to auto-generate targets
 DOCKER_ARCHS ?= amd64 arm64
 
-PROMTOOL_VERSION ?= 2.50.0
+PROMTOOL_VERSION ?= 3.0.1
 PROMTOOL_URL     ?= https://github.com/prometheus/prometheus/releases/download/v$(PROMTOOL_VERSION)/prometheus-$(PROMTOOL_VERSION).$(GO_BUILD_PLATFORM).tar.gz
 PROMTOOL         ?= $(FIRST_GOPATH)/bin/promtool
 
@@ -195,6 +195,9 @@ test-e2e: $(PROMTOOL) build pkg/collector/testdata/sys/.unpacked pkg/collector/t
 	./scripts/e2e-test.sh -s api-demo-units-query
 	./scripts/e2e-test.sh -s api-demo-usage-query
 	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-basic
+	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-basic-tsdb-only
+	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-basic-pyro-only
+	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-basic-tsdb-pyro
 	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-forbid-user-query-db
 	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-allow-user-query-db
 	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-forbid-user-query-api
@@ -254,6 +257,9 @@ test-e2e-update: $(PROMTOOL) build pkg/collector/testdata/sys/.unpacked pkg/coll
 	./scripts/e2e-test.sh -s api-demo-units-query -u || true
 	./scripts/e2e-test.sh -s api-demo-usage-query -u || true
 	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-basic -u || true
+	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-basic-tsdb-only -u || true
+	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-basic-pyro-only -u || true
+	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-basic-tsdb-pyro -u || true
 	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-forbid-user-query-db -u || true
 	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-allow-user-query-db -u || true
 	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-forbid-user-query-api -u || true

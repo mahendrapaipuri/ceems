@@ -57,7 +57,7 @@ var (
 	errNoPrivs           = errors.New("current user does not have admin privileges")
 	errInvalidRequest    = errors.New("invalid request")
 	errInvalidQueryField = errors.New("invalid query fields")
-	errMissingUIDs       = errors.New("uuids missing in the request")
+	errMissingUUIDs      = errors.New("uuids missing in the request")
 	errNoAuth            = errors.New("user do not have permissions on uuids")
 )
 

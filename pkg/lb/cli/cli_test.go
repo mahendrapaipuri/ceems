@@ -81,13 +81,20 @@ ceems_lb:
   backends:
     - id: "default"
       tsdb_urls:
-        - %s`
+        - %[1]s
+      pyroscope_urls:
+        - %[1]s`
 
 	configFile := fmt.Sprintf(configFileTmpl, server.URL)
 	configFilePath := makeConfigFile(configFile, tmpDir)
 
 	// Remove test related args and add a dummy arg
-	os.Args = append([]string{os.Args[0]}, "--log.level", "debug", "--config.file="+configFilePath, "--no-security.drop-privileges")
+	os.Args = append(
+		[]string{os.Args[0]},
+		"--log.level", "debug",
+		"--config.file="+configFilePath,
+		"--no-security.drop-privileges",
+	)
 	a := CEEMSLoadBalancer{
 		appName: mockCEEMSLBAppName,
 		App:     mockCEEMSLBApp,
@@ -100,8 +107,10 @@ ceems_lb:
 
 	// Query LB
 	for i := range 10 {
-		if err := queryLB("localhost:9030", "default"); err == nil {
-			break
+		if err := queryLB("localhost:9040", "default"); err == nil {
+			if err := queryLB("localhost:9040", "default"); err == nil {
+				break
+			}
 		}
 
 		time.Sleep(500 * time.Millisecond)
@@ -110,6 +119,39 @@ ceems_lb:
 			t.Errorf("Could not start load balancer after %d attempts", i)
 		}
 	}
+}
+
+func TestCEEMSLBMainFailMissingAddr(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Make config file
+	configFile := `
+---
+ceems_lb:
+  strategy: "round-robin"
+  backends:
+    - id: "default"
+      tsdb_urls:
+        - localhost:8000
+      pyroscope_urls:
+	    - localhost:9000`
+
+	configFilePath := makeConfigFile(configFile, tmpDir)
+
+	// Remove test related args and add a dummy arg
+	os.Args = []string{
+		os.Args[0],
+		"--log.level", "debug",
+		"--config.file=" + configFilePath,
+		"--no-security.drop-privileges",
+		"--web.listen-address", ":9030",
+	}
+
+	a, err := NewCEEMSLoadBalancer()
+	require.NoError(t, err)
+
+	// Run Main
+	require.Error(t, a.Main())
 }
 
 func TestCEEMSLBMainFail(t *testing.T) {

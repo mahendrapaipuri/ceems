@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"hash/fnv"
+	"io"
 	"log"
 	"math"
 	"net/http"
@@ -17,11 +18,14 @@ import (
 	"syscall"
 	"time"
 
+	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
+	"google.golang.org/protobuf/proto"
 )
 
 // Default ports.
 const (
+	pyroPortNum    = ":4040"
 	redfishPortNum = ":5000"
 	promPortNum    = ":9090"
 	osNovaPortNum  = ":8080"
@@ -100,6 +104,41 @@ func ChassisPowerHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write(data)
 
 		return
+	}
+
+	w.WriteHeader(http.StatusInternalServerError)
+	w.Write([]byte("KO"))
+}
+
+// PyroConfigHandler handles pyroscope config.
+func PyroConfigHandler(w http.ResponseWriter, r *http.Request) {
+	if data, err := os.ReadFile("pkg/lb/testdata/pyroscope/config.yml"); err == nil {
+		w.Write(data)
+
+		return
+	}
+
+	w.WriteHeader(http.StatusInternalServerError)
+	w.Write([]byte("KO"))
+}
+
+// ProfilesHandler handles pyroscope profiles.
+func ProfilesHandler(w http.ResponseWriter, r *http.Request) {
+	// Parse request
+	if body, err := io.ReadAll(r.Body); err == nil {
+		reqData := querierv1.SelectMergeStacktracesRequest{}
+		if err := proto.Unmarshal(body, &reqData); err == nil {
+			RespData := &querierv1.SelectMergeStacktracesResponse{
+				Flamegraph: &querierv1.FlameGraph{
+					Names: []string{reqData.GetLabelSelector()},
+				},
+			}
+			if body, err := proto.Marshal(RespData); err == nil {
+				w.Write(body)
+
+				return
+			}
+		}
 	}
 
 	w.WriteHeader(http.StatusInternalServerError)
@@ -398,6 +437,36 @@ func redfishServer(ctx context.Context) {
 	}
 }
 
+func pyroServer(ctx context.Context) {
+	log.Println("Starting fake pyroscope server")
+
+	// Registering our handler functions, and creating paths.
+	pyroMux := http.NewServeMux()
+	pyroMux.HandleFunc("/querier.v1.QuerierService/SelectMergeStacktraces", ProfilesHandler)
+	pyroMux.HandleFunc("/api/v1/status/config", PyroConfigHandler)
+
+	log.Println("Started Pyroscope on port", pyroPortNum)
+	log.Println("To close connection CTRL+C :-)")
+
+	// Start server
+	server := &http.Server{
+		Addr:              pyroPortNum,
+		ReadHeaderTimeout: 3 * time.Second,
+		Handler:           pyroMux,
+	}
+	defer func() {
+		if err := server.Shutdown(ctx); err != nil {
+			log.Println("Failed to shutdown fake Pyroscope server", err)
+		}
+	}()
+
+	// Spinning up the server.
+	err := server.ListenAndServe()
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
 func promServer(ctx context.Context) {
 	log.Println("Starting fake prometheus server")
 
@@ -517,6 +586,12 @@ func main() {
 	if slices.Contains(args, "redfish") {
 		go func() {
 			redfishServer(ctx)
+		}()
+	}
+
+	if slices.Contains(args, "pyro") {
+		go func() {
+			pyroServer(ctx)
 		}()
 	}
 

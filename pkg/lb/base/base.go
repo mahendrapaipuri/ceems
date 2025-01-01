@@ -11,11 +11,32 @@ const CEEMSLoadBalancerAppName = "ceems_lb"
 // CEEMSLoadBalancerApp is kingpin CLI app.
 var CEEMSLoadBalancerApp = *kingpin.New(
 	CEEMSLoadBalancerAppName,
-	"Prometheus load balancer to query from different instances.",
+	"CEEMS load balancer for TSDB and Pyroscope servers with access control support.",
 )
 
 // Backend defines backend server.
 type Backend struct {
-	ID   string   `yaml:"id"`
-	URLs []string `yaml:"tsdb_urls"`
+	ID       string   `yaml:"id"`
+	TSDBURLs []string `yaml:"tsdb_urls"`
+	PyroURLs []string `yaml:"pyroscope_urls"`
+}
+
+// LBType is type of load balancer server.
+type LBType int
+
+// LB types enum.
+const (
+	PromLB LBType = iota
+	PyroLB
+)
+
+func (l LBType) String() string {
+	switch l {
+	case PromLB:
+		return "tsdb"
+	case PyroLB:
+		return "pyroscope"
+	}
+
+	return "undefined"
 }

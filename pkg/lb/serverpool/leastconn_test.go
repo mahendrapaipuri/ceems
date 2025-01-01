@@ -28,7 +28,7 @@ func TestUnAvailableBackends(t *testing.T) {
 
 	// Make dummy backend servers
 	backendURLs := make(map[string][]*url.URL, 2)
-	backends := make(map[string][]backend.TSDBServer, 2)
+	backends := make(map[string][]backend.Server, 2)
 
 	for i := range 2 {
 		for j, id := range lcIDs {
@@ -37,13 +37,13 @@ func TestUnAvailableBackends(t *testing.T) {
 
 			if _, ok := backendURLs[id]; !ok {
 				backendURLs[id] = make([]*url.URL, 2)
-				backends[id] = make([]backend.TSDBServer, 2)
+				backends[id] = make([]backend.Server, 2)
 			}
 
 			backendURLs[id][i] = backendURL
 
 			rp := httputil.NewSingleHostReverseProxy(backendURL)
-			backend := backend.New(backendURL, rp, slog.New(slog.NewTextHandler(io.Discard, nil)))
+			backend := backend.NewTSDB(backendURL, rp, slog.New(slog.NewTextHandler(io.Discard, nil)))
 			backends[id][i] = backend
 			manager.Add(id, backend)
 		}
@@ -82,7 +82,7 @@ func TestLeastConnectionLB(t *testing.T) {
 	require.NoError(t, err)
 
 	backendURLs := make(map[string][]*url.URL, 2)
-	backends := make(map[string][]backend.TSDBServer, 2)
+	backends := make(map[string][]backend.Server, 2)
 
 	for i := range 2 {
 		for _, id := range lcIDs {
@@ -93,13 +93,13 @@ func TestLeastConnectionLB(t *testing.T) {
 
 			if _, ok := backendURLs[id]; !ok {
 				backendURLs[id] = make([]*url.URL, 2)
-				backends[id] = make([]backend.TSDBServer, 2)
+				backends[id] = make([]backend.Server, 2)
 			}
 
 			backendURLs[id][i] = backendURL
 
 			rp := httputil.NewSingleHostReverseProxy(backendURL)
-			backend := backend.New(backendURL, rp, slog.New(slog.NewTextHandler(io.Discard, nil)))
+			backend := backend.NewTSDB(backendURL, rp, slog.New(slog.NewTextHandler(io.Discard, nil)))
 			backends[id][i] = backend
 			manager.Add(id, backend)
 		}
@@ -116,7 +116,7 @@ func TestLeastConnectionLB(t *testing.T) {
 	wg.Add(len(lcIDs))
 
 	// Check if we get non nil target
-	target := make(map[string]backend.TSDBServer)
+	target := make(map[string]backend.Server)
 
 	for _, id := range lcIDs {
 		assert.NotEmpty(t, manager.Target(id, d))

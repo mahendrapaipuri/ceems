@@ -62,7 +62,7 @@ func TestTSDBConfigSuccess(t *testing.T) {
 	// defer server.Close()
 
 	url, _ := url.Parse(server.URL)
-	b := New(url, httputil.NewSingleHostReverseProxy(url), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	b := NewTSDB(url, httputil.NewSingleHostReverseProxy(url), slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.Equal(t, server.URL, b.URL().String())
 	require.Equal(t, 354*time.Hour, b.RetentionPeriod())
 	require.True(t, b.IsAlive())
@@ -115,7 +115,7 @@ func TestTSDBConfigSuccessWithTwoRetentions(t *testing.T) {
 	defer server.Close()
 
 	url, _ := url.Parse(server.URL)
-	b := New(url, httputil.NewSingleHostReverseProxy(url), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	b := NewTSDB(url, httputil.NewSingleHostReverseProxy(url), slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.Equal(t, server.URL, b.URL().String())
 	require.Equal(t, 714*time.Hour, b.RetentionPeriod())
 	require.True(t, b.IsAlive())
@@ -133,7 +133,7 @@ func TestTSDBConfigFail(t *testing.T) {
 	defer server.Close()
 
 	url, _ := url.Parse(server.URL)
-	b := New(url, httputil.NewSingleHostReverseProxy(url), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	b := NewTSDB(url, httputil.NewSingleHostReverseProxy(url), slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.Equal(t, server.URL, b.URL().String())
 	require.Equal(t, 0*time.Hour, b.RetentionPeriod())
 	require.True(t, b.IsAlive())
@@ -141,7 +141,7 @@ func TestTSDBConfigFail(t *testing.T) {
 
 func TestTSDBBackendAlive(t *testing.T) {
 	url, _ := url.Parse(testURL)
-	b := New(url, httputil.NewSingleHostReverseProxy(url), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	b := NewTSDB(url, httputil.NewSingleHostReverseProxy(url), slog.New(slog.NewTextHandler(io.Discard, nil)))
 	b.SetAlive(b.IsAlive())
 
 	require.True(t, b.IsAlive())
@@ -149,7 +149,7 @@ func TestTSDBBackendAlive(t *testing.T) {
 
 func TestTSDBBackendAliveWithBasicAuth(t *testing.T) {
 	url, _ := url.Parse(testURLBasicAuth)
-	b := New(url, httputil.NewSingleHostReverseProxy(url), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	b := NewTSDB(url, httputil.NewSingleHostReverseProxy(url), slog.New(slog.NewTextHandler(io.Discard, nil)))
 	b.SetAlive(b.IsAlive())
 
 	require.True(t, b.IsAlive())

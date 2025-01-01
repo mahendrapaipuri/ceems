@@ -38,6 +38,7 @@ DCGM_FI_DEV_XID_ERRORS,            gauge,   Value of the last XID error encounte
 # Memory usage
 DCGM_FI_DEV_FB_FREE, gauge, Frame buffer memory free (in MB).
 DCGM_FI_DEV_FB_USED, gauge, Frame buffer memory used (in MB).
+DCGM_FI_DEV_FB_RESERVED, gauge, Frame buffer memory reserved (in MB).
 
 # ECC
 # DCGM_FI_DEV_ECC_SBE_VOL_TOTAL, counter, Total number of single-bit volatile ECC errors.

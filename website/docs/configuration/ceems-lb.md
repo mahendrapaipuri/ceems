@@ -4,6 +4,13 @@ sidebar_position: 4
 
 # CEEMS Load Balancer
 
+CEEMS load balancer supports providing load balancer for TSDB and Pyroscope
+servers. When both TSDB and Pyroscope backend servers are configured, CEEMS LB
+will launch two different web servers listening at two different ports one
+for TSDB and one for Pyroscope.
+
+## CEEMS Load Balancer Configuration
+
 CEEMS Load Balancer configuration has one main section and two optional
 section. A basic skeleton of the configuration is as follows:
 
@@ -28,22 +35,25 @@ A valid sample
 configuration file can be found in the
 [repo](https://github.com/mahendrapaipuri/ceems/blob/main/build/config/ceems_lb/ceems_lb.yml).
 
-## CEEMS Load Balancer Configuration
-
 A sample CEEMS LB config file is shown below:
 
 ```yaml
-
 ceems_lb:
   strategy: resource-based
   backends:
     - id: slurm-0
       tsdb_urls: 
         - http://localhost:9090
+      pyroscope_urls:
+        - http://localhost:4040
 
     - id: slurm-1
       tsdb_urls: 
         - http://localhost:9090
+
+    - id: slurm-2
+      pyroscope_urls: 
+        - http://localhost:4040
 ```
 
 - `strategy`: Load balancing strategy. Besides classical `round-robin` and
@@ -55,13 +65,41 @@ that has the data based on the time period in the query.
      that the `id` in the backend must be the same `id` used in the
      [Clusters Configuration](./ceems-api-server.md#clusters-configuration). This
      is how CEEMS LB will know which cluster to target.
-  - `backends.tsdb_urls`: A list of TSDB servers that scrape metrics from this
+  - `backends.tsdb_urls`: A list of TSDB servers that scrape metrics from the
+     cluster identified by `id`.
+  - `backends.pyroscope_urls`: A list of Pyroscope servers that store profiling data from the
      cluster identified by `id`.
 
 :::warning[WARNING]
 
+`resource-based` strategy is only supported for TSDB and when used along with
+Pyroscope, the load balancing strategy for Pyroscope servers will be defaulted
+to `least-connection`.
+
 CEEMS LB is meant to deploy in the same DMZ as the TSDB servers and hence, it
 does not support TLS for the backends.
+
+:::
+
+### CEEMS Load Balancer CLI configuration
+
+By default CEEMS LB servers listen at ports `9030` and `9040` when both
+TSDB and Pyroscope backend servers are configured. If intended to use
+custom ports, the CLI flag `--web.listen-address` must be repeated to set up
+port for TSDB and Pyroscope backends. For instance, for the sample config shown
+above, the CLI arguments to launch LB servers at custom ports will be:
+
+```bash
+ceems_lb --config.file config.yml --web.listen-address ":8000" --web.listen-address ":9000"
+```
+
+This will launch TSDB load balancer listening at port `8000` and Pyroscope load
+balancer listening at port `9000`.
+
+:::important[IMPORTANT]
+
+When both TSDB and Pyroscope backend servers are configured, the first listen
+address is attributed to TSDB and second one to Pyroscope.
 
 :::
 
@@ -148,7 +186,7 @@ For instance, for `slurm-0` cluster the provisioned datasource
 config for Grafana will look as follows:
 
 ```yaml
-- name: CEEMS-LB
+- name: CEEMS-TSDB-LB
   type: prometheus
   access: proxy
   url: http://localhost:9030
@@ -164,10 +202,25 @@ config for Grafana will look as follows:
   secureJsonData:
     basicAuthPassword: <ceems_lb_basic_auth_password>
     httpHeaderValue1: slurm-0
-  isDefault: true
 ```
 
-assuming CEEMS LB is running at port 9030 on the same host as Grafana.
+assuming CEEMS LB is running at port 9030 on the same host as Grafana. Similarly,
+for Pyroscope the provisioned config must look like:
+
+```yaml
+- name: CEEMS-Pyro-LB
+  type: pyroscope
+  access: proxy
+  url: http://localhost:9040
+  basicAuth: true
+  basicAuthUser: ceems
+  jsonData:
+    httpHeaderName1: X-Ceems-Cluster-Id
+  secureJsonData:
+    basicAuthPassword: <ceems_lb_basic_auth_password>
+    httpHeaderValue1: slurm-0
+```
+
 Notice that we set the header and value in `jsonData` and `secureJsonData`,
 respectively. This ensures that datasource will send the header with
 every request to CEEMS LB and then LB will redirect the query request
@@ -200,6 +253,23 @@ If both custom header and label `ceems_id` are present in the request to
 CEEMS LB, the query label will take the precedence.
 
 :::
+
+Similarly for setting up this label on profiling data in Pyroscope,
+it is necessary to use `external_labels` config parameter for Grafana
+Alloy when exporting profiles to Pyroscope server. A sample config
+for Grafana Alloy that pushes profiling data can be as follows:
+
+```river
+pyroscope.write "monitoring" {
+  endpoint {
+    url = "http://pyroscope:4040"
+  }
+
+  external_labels = {
+    "ceems_id" = "slurm-0",
+  }
+}
+```
 
 ## CEEMS API Server Configuration
 

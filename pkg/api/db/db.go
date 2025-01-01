@@ -316,6 +316,9 @@ func (s *stats) updateAdminUsers(ctx context.Context) error {
 		return err
 	}
 
+	// Reset existing grafana admin users
+	s.admin.users["grafana"] = models.List{}
+
 	for _, u := range users {
 		s.admin.users["grafana"] = append(s.admin.users["grafana"], u)
 	}

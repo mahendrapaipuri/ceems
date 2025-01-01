@@ -5,10 +5,15 @@ import (
 	"database/sql"
 	"log/slog"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
+)
+
+const (
+	startTimeTol = 3600000 // 1 hour in milliseconds
 )
 
 // adminUsers returns a slice of admin users fetched from DB.
@@ -57,22 +62,31 @@ func VerifyOwnership(
 	user string,
 	clusterIDs []string,
 	uuids []string,
+	starts []int64,
 	db *sql.DB,
 	logger *slog.Logger,
 ) bool {
+	// If no DB connection is provided, log warning and return true
+	// This should not happen, just in case!
+	if db == nil {
+		logger.Warn("DB connection is empty. Skipping UUID verification")
+
+		return true
+	}
+
+	// If current user is in list of admin users, pass the check
+	if slices.Contains(adminUsers(ctx, db, logger), user) {
+		return true
+	}
+
 	// If the data is incomplete, forbid the request
-	if db == nil || len(clusterIDs) == 0 || user == "" {
+	if len(clusterIDs) == 0 || user == "" || len(uuids) == 0 {
 		logger.Debug(
 			"Incomplete data for unit ownership verification", "user", user,
 			"cluster_id", strings.Join(clusterIDs, ","), "queried_uuids", strings.Join(uuids, ","),
 		)
 
 		return false
-	}
-
-	// If current user is in list of admin users, pass the check
-	if slices.Contains(adminUsers(ctx, db, logger), user) {
-		return true
 	}
 
 	logger.Debug("UUIDs in query", "user", user, "cluster_id", strings.Join(clusterIDs, ","), "queried_uuids", strings.Join(uuids, ","))
@@ -96,12 +110,20 @@ func VerifyOwnership(
 	q.query(" AND uuid IN ")
 	q.param(uuids)
 
+	// Get min and max of starts and use 1 hour as tolerance for boundaries
+	if len(starts) > 0 {
+		q.query(" AND started_at_ts BETWEEN ")
+		q.param([]string{strconv.FormatInt(slices.Min(starts)-startTimeTol, 10)})
+		q.query(" AND ")
+		q.param([]string{strconv.FormatInt(slices.Max(starts)+startTimeTol, 10)})
+	}
+
 	// Run query and get response
 	units, err := Querier[models.Unit](ctx, db, q, logger)
 	if err != nil {
 		logger.Error("Failed to check uuid ownership. Query unauthorized", "user", user,
-			"queried_uuids", strings.Join(uuids, ","),
-			"cluster_id", strings.Join(clusterIDs, ","), "err", err,
+			"queried_uuids", strings.Join(uuids, ","), "cluster_id", strings.Join(clusterIDs, ","),
+			"err", err,
 		)
 
 		return false

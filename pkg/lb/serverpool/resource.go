@@ -18,12 +18,12 @@ import (
 // can be served by multiple backend TSDB servers, the one with least retention period
 // will be chosen as it is assumed as "hot" TSDB with maximum performance.
 type resourceBased struct {
-	backends map[string][]backend.TSDBServer
+	backends map[string][]backend.Server
 	logger   *slog.Logger
 }
 
 // Target returns the backend server to send the request if it is alive.
-func (s *resourceBased) Target(id string, d time.Duration) backend.TSDBServer {
+func (s *resourceBased) Target(id string, d time.Duration) backend.Server {
 	// If the ID is unknown return
 	if _, ok := s.backends[id]; !ok {
 		s.logger.Error("Resource based strategy", "err", fmt.Errorf("unknown backend ID: %s", id))
@@ -33,9 +33,9 @@ func (s *resourceBased) Target(id string, d time.Duration) backend.TSDBServer {
 
 	// Get a list of eligible TSDB servers based on retention period and
 	// start time of TSDB query
-	var targetBackend backend.TSDBServer
+	var targetBackend backend.Server
 
-	var targetBackends []backend.TSDBServer
+	var targetBackends []backend.Server
 
 	var retentionPeriods []time.Duration
 
@@ -55,6 +55,11 @@ func (s *resourceBased) Target(id string, d time.Duration) backend.TSDBServer {
 	// If no eligible servers found return
 	if len(targetBackends) == 0 {
 		s.logger.Debug("Resourced based strategy. No eligible backends found")
+
+		return targetBackend
+	} else if len(targetBackends) == 1 {
+		targetBackend = targetBackends[0]
+		s.logger.Debug("Resourced based strategy", "selected_backend", targetBackend.String())
 
 		return targetBackend
 	}
@@ -90,12 +95,12 @@ func (s *resourceBased) Target(id string, d time.Duration) backend.TSDBServer {
 }
 
 // List all backend servers in pool.
-func (s *resourceBased) Backends() map[string][]backend.TSDBServer {
+func (s *resourceBased) Backends() map[string][]backend.Server {
 	return s.backends
 }
 
 // Add a backend server to pool.
-func (s *resourceBased) Add(id string, b backend.TSDBServer) {
+func (s *resourceBased) Add(id string, b backend.Server) {
 	s.backends[id] = append(s.backends[id], b)
 }
 

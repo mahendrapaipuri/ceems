@@ -6,6 +6,7 @@ package frontend
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -18,7 +19,10 @@ import (
 	"strings"
 	"time"
 
+	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
+	"github.com/mahendrapaipuri/ceems/pkg/lb/backend"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/serverpool"
+	"google.golang.org/protobuf/proto"
 )
 
 // These functions are nicked from https://github.com/prometheus/prometheus/blob/main/web/api/v1/api.go
@@ -66,68 +70,53 @@ func Monitor(ctx context.Context, manager serverpool.Manager, logger *slog.Logge
 	}
 }
 
-// Set query params into request's context and return new request.
-func setQueryParams(r *http.Request, queryParams *QueryParams) *http.Request {
-	return r.WithContext(context.WithValue(r.Context(), QueryParamsContextKey{}, queryParams))
+// ErrorHandler returns a custom error handler for reverse proxy.
+func ErrorHandler(u *url.URL, backendServer backend.Server, lb LoadBalancer, logger *slog.Logger) func(http.ResponseWriter, *http.Request, error) {
+	return func(writer http.ResponseWriter, request *http.Request, err error) {
+		logger.Error("Failed to handle the request", "host", u.Host, "err", err)
+		backendServer.SetAlive(false)
+
+		// If already retried the request, return error
+		if !AllowRetry(request) {
+			logger.Info("Max retry attempts reached, terminating", "address", request.RemoteAddr, "path", request.URL.Path)
+			http.Error(writer, "Service not available", http.StatusServiceUnavailable)
+
+			return
+		}
+
+		// Retry request and set context value so that we dont retry for second time
+		logger.Info("Attempting retry", "address", request.RemoteAddr, "path", request.URL.Path)
+		lb.Serve(
+			writer,
+			request.WithContext(
+				context.WithValue(request.Context(), RetryContextKey{}, true),
+			),
+		)
+	}
 }
 
-// Parse query in the request after cloning it and add query params to context.
-func parseQueryParams(r *http.Request, logger *slog.Logger) *http.Request {
+// Set query params into request's context and return new request.
+func setQueryParams(r *http.Request, queryParams *ReqParams) *http.Request {
+	return r.WithContext(context.WithValue(r.Context(), ReqParamsContextKey{}, queryParams))
+}
+
+// parseTSDBRequest parses TSDB query in the request after cloning it and reads them into request params.
+func parseTSDBRequest(p *ReqParams, r *http.Request) error {
 	var body []byte
 
-	var clusterID string
-
-	var uuids []string
-
-	var queryPeriod time.Duration
-
 	var err error
-
-	// Get cluster id from X-Ceems-Cluster-Id header
-	clusterID = r.Header.Get(ceemsClusterIDHeader)
-
-	// // Get id from path parameter.
-	// // Requested paths will be of form /{id}/<rest of path>. Here will strip `id`
-	// // part and proxy the rest to backend
-	// var pathParts []string
-
-	// for _, p := range strings.Split(r.URL.Path, "/") {
-	// 	if strings.TrimSpace(p) == "" {
-	// 		continue
-	// 	}
-
-	// 	pathParts = append(pathParts, p)
-	// }
-
-	// // First path part must be resource manager ID and check if it is in the valid IDs
-	// if len(pathParts) > 0 {
-	// 	if slices.Contains(rmIDs, pathParts[0]) {
-	// 		id = pathParts[0]
-
-	// 		// If there is more than 1 pathParts, make URL or set / as URL
-	// 		if len(pathParts) > 1 {
-	// 			r.URL.Path = "/" + strings.Join(pathParts[1:], "/")
-	// 			r.RequestURI = r.URL.Path
-	// 		} else {
-	// 			r.URL.Path = "/"
-	// 			r.RequestURI = "/"
-	// 		}
-	// 	}
-	// }
 
 	// Make a new request and add newReader to that request body
 	clonedReq := r.Clone(r.Context())
 
 	// If request has no body go to proxy directly
 	if r.Body == nil {
-		return setQueryParams(r, &QueryParams{clusterID, uuids, queryPeriod})
+		return errors.New("no body found in the request")
 	}
 
 	// If failed to read body, skip verification and go to request proxy
 	if body, err = io.ReadAll(r.Body); err != nil {
-		logger.Error("Failed to read request body", "err", err)
-
-		return setQueryParams(r, &QueryParams{clusterID, uuids, queryPeriod})
+		return fmt.Errorf("failed to read request body: %w", err)
 	}
 
 	// clone body to existing request and new request
@@ -136,60 +125,111 @@ func parseQueryParams(r *http.Request, logger *slog.Logger) *http.Request {
 
 	// Get form values
 	if err = clonedReq.ParseForm(); err != nil {
-		logger.Error("Could not parse request body", "err", err)
-
-		return setQueryParams(r, &QueryParams{clusterID, uuids, queryPeriod})
-	}
-
-	// Parse TSDB's query in request query params
-	if val := clonedReq.FormValue("query"); val != "" {
-		// Extract UUIDs from query
-		uuidMatches := regexpUUID.FindAllStringSubmatch(val, -1)
-		for _, match := range uuidMatches {
-			if len(match) > 1 {
-				for _, uuid := range strings.Split(match[1], "|") {
-					// Ignore empty strings
-					if strings.TrimSpace(uuid) != "" && !slices.Contains(uuids, uuid) {
-						uuids = append(uuids, uuid)
-					}
-				}
-			}
-		}
-
-		// Extract ceems_lb_id from query. If multiple values are provided, always
-		// get the last and most recent one
-		idMatches := regexID.FindAllStringSubmatch(val, -1)
-		for _, match := range idMatches {
-			if len(match) > 1 {
-				for _, idMatch := range strings.Split(match[1], "|") {
-					// Ignore empty strings
-					if strings.TrimSpace(idMatch) != "" {
-						clusterID = strings.TrimSpace(idMatch)
-					}
-				}
-			}
-		}
+		return fmt.Errorf("failed to parse request form data: %w", err)
 	}
 
 	// Except for query API, rest of the load balanced API endpoint have start query param
-	var targetQueryParam string
-	if strings.HasSuffix(clonedReq.URL.Path, "query") {
-		targetQueryParam = "time"
-	} else {
-		targetQueryParam = "start"
+	var targetTimeParam, targetQueryParam string
+
+	switch {
+	case strings.HasSuffix(clonedReq.URL.Path, "query"):
+		targetQueryParam = "query"
+		targetTimeParam = "time"
+	case strings.HasSuffix(clonedReq.URL.Path, "query_range"):
+		targetQueryParam = "query"
+		targetTimeParam = "start"
+	default:
+		targetQueryParam = "match[]"
+		targetTimeParam = "start"
+	}
+
+	// Parse TSDB's query in request query params
+	if val := clonedReq.FormValue(targetQueryParam); val != "" {
+		parseReqParams(p, val)
 	}
 
 	// Parse TSDB's start query in request query params
-	if startTime, err := parseTimeParam(clonedReq, targetQueryParam, time.Now().UTC()); err != nil {
-		logger.Error("Could not parse start query param", "err", err)
-
-		queryPeriod = 0 * time.Second
+	if startTime, err := parseTimeParam(clonedReq, targetTimeParam, time.Now().Local()); err != nil {
+		p.queryPeriod = 0 * time.Second
+		p.time = time.Now().Local().UnixMilli()
 	} else {
-		queryPeriod = time.Now().UTC().Sub(startTime)
+		p.queryPeriod = time.Now().Local().Sub(startTime)
+		p.time = startTime.Local().UnixMilli()
 	}
 
-	// Set query params to request's context
-	return setQueryParams(r, &QueryParams{clusterID, uuids, queryPeriod})
+	return nil
+}
+
+// parsePyroRequest parses Pyroscope query in the request after cloning it and reads them into request params.
+func parsePyroRequest(p *ReqParams, r *http.Request) error {
+	var body []byte
+
+	var err error
+
+	// If request has no body go to proxy directly
+	if r.Body == nil {
+		return errors.New("no body found in the request")
+	}
+
+	// If failed to read body, skip verification and go to request proxy
+	if body, err = io.ReadAll(r.Body); err != nil {
+		return fmt.Errorf("failed to read request body: %w", err)
+	}
+
+	// clone body to existing request
+	r.Body = io.NopCloser(bytes.NewReader(body))
+
+	// Read body into request data
+	data := querierv1.SelectMergeStacktracesRequest{}
+	if err := proto.Unmarshal(body, &data); err != nil {
+		return fmt.Errorf("failed to umarshall request body: %w", err)
+	}
+
+	// Parse Pyroscope's LabelSelector in request data
+	if val := data.GetLabelSelector(); val != "" {
+		parseReqParams(p, val)
+	}
+
+	// Parse Pyroscope's start query in request query params
+	if start := data.GetStart(); start == 0 {
+		p.queryPeriod = 0 * time.Second
+		p.time = time.Now().Local().UnixMilli()
+	} else {
+		startTime := time.Unix(start, 0)
+		p.queryPeriod = time.Now().Local().Sub(startTime)
+		p.time = startTime.Local().UnixMilli()
+	}
+
+	return nil
+}
+
+// parseRequestParams parses request parameters from `req` and reads them into `p`.
+func parseReqParams(p *ReqParams, req string) {
+	// Extract UUIDs from query
+	for _, match := range regexpUUID.FindAllStringSubmatch(req, -1) {
+		if len(match) > 1 {
+			for _, uuid := range strings.Split(match[1], "|") {
+				// Ignore empty strings
+				if strings.TrimSpace(uuid) != "" && !slices.Contains(p.uuids, uuid) {
+					p.uuids = append(p.uuids, uuid)
+				}
+			}
+		}
+	}
+
+	// Extract ceems_id from query. If multiple values are provided, always
+	// get the last and most recent one
+	idMatches := regexID.FindAllStringSubmatch(req, -1)
+	for _, match := range idMatches {
+		if len(match) > 1 {
+			for _, idMatch := range strings.Split(match[1], "|") {
+				// Ignore empty strings
+				if strings.TrimSpace(idMatch) != "" {
+					p.clusterID = strings.TrimSpace(idMatch)
+				}
+			}
+		}
+	}
 }
 
 // Parse time parameter in request.

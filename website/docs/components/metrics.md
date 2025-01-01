@@ -4,6 +4,38 @@ sidebar_position: 4
 
 # CEEMS Exporter Metrics
 
+CEEMS exporter ships multiple collectors of which some are enabled by
+default.
+
+## Enabled by default
+
+The following collectors are enabled by default
+
+- cpu
+- meminfo
+- rapl
+
+## Disabled by default
+
+The rest of the collectors and sub-collectors are disabled by default. Collectors
+disabled by default are:
+
+- ipmi_dcmi
+- emissions
+- slurm
+- libvirt
+
+Sub-collectors disabled by default are:
+
+- ebpf.io-metrics
+- ebpf.network-metrics
+- perf.hardware-events
+- perf.software-events
+- perf.hardware-cache-events
+- rdma.stats
+
+## Metrics list
+
 The following are the list of metrics exposed by CEEMS exporter along
 with the labels for each metric and its description. The first column
 shows the collector that metric belongs to.
@@ -16,10 +48,10 @@ shows the collector that metric belongs to.
 |  meminfo  |         ceems_meminfo_MemTotal_bytes         |           hostname           |                                                                    Total memory in the current host. As reported in `/proc/meminfo`                                                                   |
 |  meminfo  |          ceems_meminfo_MemFree_bytes         |           hostname           |                                                                 Total free memory in the current host. As reported in `/proc/meminfo`                                                                 |
 |  meminfo  |       ceems_meminfo_MemAvailable_bytes       |           hostname           |                                                               Total available memory in the current host. As reported in `/proc/meminfo`                                                              |
-|    ipmi   |         ceems_ipmi_dcmi_current_watts        |           hostname           |                                                                            Current power consumption reported by IPMI DCMI                                                                            |
-|    ipmi   |           ceems_ipmi_dcmi_avg_watts          |           hostname           |                                                                 Average power consumption reported by IPMI DCMI within sampling period                                                                |
-|    ipmi   |           ceems_ipmi_dcmi_min_watts          |           hostname           |                                                                 Minimum power consumption reported by IPMI DCMI within sampling period                                                                |
-|    ipmi   |           ceems_ipmi_dcmi_max_watts          |           hostname           |                                                                 Maximum power consumption reported by IPMI DCMI within sampling period                                                                |
+|    ipmi_dcmi   |         ceems_ipmi_dcmi_current_watts        |           hostname           |                                                                            Current power consumption reported by IPMI DCMI                                                                            |
+|    ipmi_dcmi   |           ceems_ipmi_dcmi_avg_watts          |           hostname           |                                                                 Average power consumption reported by IPMI DCMI within sampling period                                                                |
+|    ipmi_dcmi   |           ceems_ipmi_dcmi_min_watts          |           hostname           |                                                                 Minimum power consumption reported by IPMI DCMI within sampling period                                                                |
+|    ipmi_dcmi   |           ceems_ipmi_dcmi_max_watts          |           hostname           |                                                                 Maximum power consumption reported by IPMI DCMI within sampling period                                                                |
 |    rapl   |        ceems_rapl_package_joules_total       |         path,  index         |                                                     Current RAPL package energy value. Labels `index` and `path` gives info about package details.                                                    |
 |    rapl   |         ceems_rapl_dram_joules_total         |          path, index         |                                                      Current RAPL DRAM energy value. Labels `index` and `path` gives info about package details.                                                      |
 |    rapl   |         ceems_rapl_core_joules_total         |          path, index         |                                                      Current RAPL core energy value. Labels `index` and `path` gives info about package details.     

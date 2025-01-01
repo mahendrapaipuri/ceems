@@ -1,6 +1,6 @@
 # Objectives
 
-The objectives of the current stack are two-fold:
+The objectives of the current stack are several folds:
 
 - For end users to be able to monitor their compute units in real time. Besides the
 conventional metrics like CPU usage, memory usage, _etc_, the stack also exposes

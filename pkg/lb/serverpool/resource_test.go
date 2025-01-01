@@ -21,7 +21,7 @@ import (
 
 var rbIDs = []string{"rb0", "rb1"}
 
-func dummyTSDBServer(retention string) *httptest.Server {
+func dummyServer(retention string) *httptest.Server {
 	// Start test server
 	expected := tsdb.Response{
 		Status: "success",
@@ -50,25 +50,25 @@ func TestResourceBasedLB(t *testing.T) {
 	// Retention periods
 	periods := []string{"30d", "180d or 100GiB", "180d or 100GiB"}
 	backendURLs := make(map[string][]*url.URL, len(rbIDs))
-	backends := make(map[string][]backend.TSDBServer, len(rbIDs))
+	backends := make(map[string][]backend.Server, len(rbIDs))
 
 	// Make backends
 	for i, p := range periods {
 		for _, id := range rbIDs {
-			dummyServer := dummyTSDBServer(p)
+			dummyServer := dummyServer(p)
 			defer dummyServer.Close()
 			backendURL, err := url.Parse(dummyServer.URL)
 			require.NoError(t, err)
 
 			if _, ok := backendURLs[id]; !ok {
 				backendURLs[id] = make([]*url.URL, len(periods))
-				backends[id] = make([]backend.TSDBServer, len(periods))
+				backends[id] = make([]backend.Server, len(periods))
 			}
 
 			backendURLs[id][i] = backendURL
 
 			rp := httputil.NewSingleHostReverseProxy(backendURL)
-			backend := backend.New(backendURL, rp, slog.New(slog.NewTextHandler(io.Discard, nil)))
+			backend := backend.NewTSDB(backendURL, rp, slog.New(slog.NewTextHandler(io.Discard, nil)))
 			manager.Add(id, backend)
 			backends[id][i] = backend
 		}

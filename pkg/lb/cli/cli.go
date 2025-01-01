@@ -8,7 +8,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
@@ -16,6 +15,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -27,7 +27,7 @@ import (
 	ceems_api "github.com/mahendrapaipuri/ceems/pkg/api/cli"
 	ceems_http "github.com/mahendrapaipuri/ceems/pkg/api/http"
 	ceems_api_models "github.com/mahendrapaipuri/ceems/pkg/api/models"
-	tsdb "github.com/mahendrapaipuri/ceems/pkg/lb/backend"
+	lb_backend "github.com/mahendrapaipuri/ceems/pkg/lb/backend"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/base"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/frontend"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/serverpool"
@@ -40,7 +40,7 @@ import (
 // Custom errors.
 var (
 	ErrMissingIDs  = errors.New("missing ID for backend(s)")
-	ErrMissingURLs = errors.New("missing TSDB URL(s) for backend(s)")
+	ErrMissingURLs = errors.New("missing TSDB and Pyroscope URL(s) for backend(s)")
 )
 
 // CEEMSLBAppConfig contains the configuration of CEEMS load balancer app.
@@ -72,7 +72,7 @@ func (c *CEEMSLBAppConfig) Validate() error {
 			return ErrMissingIDs
 		}
 
-		if len(backend.URLs) == 0 {
+		if len(backend.TSDBURLs) == 0 && len(backend.PyroURLs) == 0 {
 			return ErrMissingURLs
 		}
 
@@ -149,8 +149,10 @@ func (lb *CEEMSLoadBalancer) Main() error {
 	var (
 		webListenAddresses = lb.App.Flag(
 			"web.listen-address",
-			"Addresses on which to expose metrics and web interface.",
-		).Default(":9030").Strings()
+			"Addresses on which to expose load balancer(s). When both TSDB and Pyroscope LBs are configured, it must be "+
+				"repeated to provide two addresses: one for TSDB LB and one for Pyroscope LB. In that case TSDB LB will listen on "+
+				"first address and Pyroscope LB on second address",
+		).Default(":9030", ":9040").Strings()
 		webConfigFile = lb.App.Flag(
 			"web.config.file",
 			"Path to configuration file that can enable TLS or authentication. See: https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md",
@@ -166,7 +168,7 @@ func (lb *CEEMSLoadBalancer) Main() error {
 		// Hidden test flags
 		dropPrivs = lb.App.Flag(
 			"security.drop-privileges",
-			"Drop privileges and run as nobody when exporter is started as root.",
+			"Drop privileges and run as nobody when LB is started as root.",
 		).Default("true").Hidden().Bool()
 	)
 
@@ -176,7 +178,7 @@ func (lb *CEEMSLoadBalancer) Main() error {
 		systemdSocket = lb.App.Flag(
 			"web.systemd-socket",
 			"Use systemd socket activation listeners instead of port listeners (Linux only).",
-		).Bool()
+		).Hidden().Bool()
 	}
 
 	promslogConfig := &promslog.Config{}
@@ -240,99 +242,116 @@ func (lb *CEEMSLoadBalancer) Main() error {
 		}
 	}
 
+	// Get list of LB types based on provided config
+	lbTypes := backendTypes(config)
+
+	var lbNames []string
+
+	for _, t := range lbTypes {
+		lbNames = append(lbNames, t.String())
+	}
+
+	logger.Info("Load balancers: " + strings.Join(lbNames, ", "))
+
+	// Ensure that enough web listen addresses are provided
+	webListenAddrs := *webListenAddresses
+	if len(lbTypes) > len(webListenAddrs) {
+		logger.Error("Missing web listen addresses", "num_lbs", len(lbTypes), "num_addrs", len(webListenAddrs))
+
+		return fmt.Errorf("insufficient --web.listen-address. Expected %d got %d", len(lbTypes), len(webListenAddrs))
+	}
+
 	// Create context that listens for the interrupt signal from the OS.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	// Create a pool of backend TSDB servers
-	manager, err := serverpool.New(config.LB.Strategy, logger)
-	if err != nil {
-		logger.Error("Failed to create backend TSDB server pool", "err", err)
+	// Make manager and LB maps
+	managers := make(map[base.LBType]serverpool.Manager, 2)
+	lbs := make(map[base.LBType]frontend.LoadBalancer, 2)
 
-		return err
-	}
+	for i, lbType := range lbTypes {
+		// Create a pool of backend servers
+		managers[lbType], err = serverpool.New(config.LB.Strategy, logger.With("backend_type", lbType))
+		if err != nil {
+			logger.Error("Failed to create backend server poo", "backend_type", lbType, "err", err)
 
-	// Create frontend config
-	frontendConfig := &frontend.Config{
-		Logger:           logger,
-		Addresses:        *webListenAddresses,
-		WebSystemdSocket: *systemdSocket,
-		WebConfigFile:    webConfigFilePath,
-		APIServer:        config.Server,
-		Manager:          manager,
-	}
+			return err
+		}
 
-	// Create frontend instance
-	loadBalancer, err := frontend.New(frontendConfig)
-	if err != nil {
-		logger.Error("Failed to create load balancer frontend", "err", err)
+		// Create frontend config for load balancer
+		frontendConfig := &frontend.Config{
+			Logger:           logger.With("backend_type", lbType),
+			LBType:           lbType,
+			Address:          webListenAddrs[i],
+			WebSystemdSocket: *systemdSocket,
+			WebConfigFile:    webConfigFilePath,
+			APIServer:        config.Server,
+			Manager:          managers[lbType],
+		}
 
-		return err
-	}
+		// Create frontend instance for load balancer
+		lbs[lbType], err = frontend.New(frontendConfig)
+		if err != nil {
+			logger.Error("Failed to create load balancer frontend", "backend_type", lbType, "err", err)
 
-	// Add backend TSDB servers to serverPool
-	for _, backend := range config.LB.Backends {
-		for _, backendURL := range backend.URLs {
-			webURL, err := url.Parse(backendURL)
-			if err != nil {
-				// If we dont unwrap original error, the URL string will be printed to log which
-				// might contain sensitive passwords
-				logger.Error("Could not parse backend TSDB server URL", "err", errors.Unwrap(err))
+			return err
+		}
 
-				continue
-			}
+		// Add backend servers to serverPool
+		for _, backend := range config.LB.Backends {
+			for _, backendURL := range backendURLs(lbType, backend) {
+				webURL, err := url.Parse(backendURL)
+				if err != nil {
+					// If we dont unwrap original error, the URL string will be printed to log which
+					// might contain sensitive passwords
+					logger.Error("Could not parse backend server URL", "backend_type", lbType, "err", errors.Unwrap(err))
 
-			rp := httputil.NewSingleHostReverseProxy(webURL)
-			backendServer := tsdb.New(webURL, rp, logger)
-			rp.ErrorHandler = func(writer http.ResponseWriter, request *http.Request, err error) {
-				logger.Error("Failed to handle the request", "host", webURL.Host, "err", err)
-				backendServer.SetAlive(false)
-
-				// If already retried the request, return error
-				if !frontend.AllowRetry(request) {
-					logger.Info("Max retry attempts reached, terminating", "address", request.RemoteAddr, "path", request.URL.Path)
-					http.Error(writer, "Service not available", http.StatusServiceUnavailable)
-
-					return
+					continue
 				}
 
-				// Retry request and set context value so that we dont retry for second time
-				logger.Info("Attempting retry", "address", request.RemoteAddr, "path", request.URL.Path)
-				loadBalancer.Serve(
-					writer,
-					request.WithContext(
-						context.WithValue(request.Context(), frontend.RetryContextKey{}, true),
-					),
-				)
+				rp := httputil.NewSingleHostReverseProxy(webURL)
+
+				backendServer, err := lb_backend.New(lbType, webURL, rp, logger.With("backend_type", lbType))
+				if err != nil {
+					logger.Error("Could not set up backend server", "backend_type", lbType, "err", errors.Unwrap(err))
+
+					continue
+				}
+
+				rp.ErrorHandler = frontend.ErrorHandler(webURL, backendServer, lbs[lbType], logger.With("backend_type", lbType))
+
+				managers[lbType].Add(backend.ID, backendServer)
 			}
-
-			manager.Add(backend.ID, backendServer)
 		}
-	}
 
-	// Validate configured cluster IDs against the ones in CEEMS DB
-	if err := loadBalancer.ValidateClusterIDs(ctx); err != nil {
-		return err
+		// Validate configured cluster IDs against the ones in CEEMS DB
+		if err := lbs[lbType].ValidateClusterIDs(ctx); err != nil {
+			logger.Error("Failed to validate cluster IDs", "backend_type", lbType, "err", errors.Unwrap(err))
+
+			return err
+		}
 	}
 
 	// Declare wait group and tickers
 	var wg sync.WaitGroup
 
-	// Spawn a go routine to do health checks of backend TSDB servers
-	wg.Add(1)
+	for _, lbType := range lbTypes {
+		// Spawn a go routine to do health checks of backend TSDB servers
+		wg.Add(1)
 
-	go func() {
-		defer wg.Done()
-		frontend.Monitor(ctx, manager, logger)
-	}()
+		go func() {
+			defer wg.Done()
+			frontend.Monitor(ctx, managers[lbType], logger)
+		}()
 
-	// Initializing the server in a goroutine so that
-	// it won't block the graceful shutdown handling below
-	go func() {
-		if err := loadBalancer.Start(); err != nil {
-			logger.Error("Failed to start load balancer", "err", err)
-		}
-	}()
+		// Initializing the server in a goroutine so that
+		// it won't block the graceful shutdown handling below
+		go func() {
+			if err := lbs[lbType].Start(); err != nil {
+				logger.Error("Failed to start load balancer", "backend_type", lbType, "err", err)
+			}
+		}()
+	}
 
 	// Listen for the interrupt signal.
 	<-ctx.Done()
@@ -349,12 +368,42 @@ func (lb *CEEMSLoadBalancer) Main() error {
 	shutDownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := loadBalancer.Shutdown(shutDownCtx); err != nil {
-		logger.Error("Failed to gracefully shutdown server", "err", err)
+	for _, lbType := range lbTypes {
+		if err := lbs[lbType].Shutdown(shutDownCtx); err != nil {
+			logger.Error("Failed to gracefully shutdown LB server", "backend_type", lbType, "err", err)
+		}
 	}
 
-	logger.Info("Load balancer exiting")
+	logger.Info("Load balancer(s) exiting")
 	logger.Info("See you next time!!")
+
+	return nil
+}
+
+// backendTypes returns LB backend types in the current config.
+func backendTypes(config *CEEMSLBAppConfig) []base.LBType {
+	var types []base.LBType
+	for _, backend := range config.LB.Backends {
+		if len(backend.TSDBURLs) > 0 && !slices.Contains(types, base.PromLB) {
+			types = append(types, base.PromLB)
+		}
+
+		if len(backend.PyroURLs) > 0 && !slices.Contains(types, base.PyroLB) {
+			types = append(types, base.PyroLB)
+		}
+	}
+
+	return types
+}
+
+// backendURLs returns slice of backend URLs based on backend type `t`.
+func backendURLs(t base.LBType, backend base.Backend) []string {
+	switch t {
+	case base.PromLB:
+		return backend.TSDBURLs
+	case base.PyroLB:
+		return backend.PyroURLs
+	}
 
 	return nil
 }

@@ -12,6 +12,7 @@ require (
 	github.com/golang-migrate/migrate/v4 v4.18.1
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
+	github.com/grafana/pyroscope/api v1.0.0
 	github.com/jellydator/ttlcache/v3 v3.3.0
 	github.com/mahendrapaipuri/perf-utils v0.0.0-20241102115757-6c72709e1c07
 	github.com/mattn/go-sqlite3 v1.14.24
@@ -25,6 +26,7 @@ require (
 	github.com/swaggo/swag v1.16.4
 	github.com/zeebo/xxh3 v1.0.2
 	golang.org/x/sys v0.28.0
+	google.golang.org/protobuf v1.35.2
 	gopkg.in/yaml.v3 v3.0.1
 	kernel.org/pub/linux/libs/security/libcap/cap v1.2.73
 )
@@ -56,6 +58,7 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f // indirect
 	github.com/opencontainers/runtime-spec v1.2.0 // indirect
+	github.com/planetscale/vtprotobuf v0.6.0 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
@@ -70,7 +73,8 @@ require (
 	golang.org/x/sync v0.10.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	golang.org/x/tools v0.27.0 // indirect
-	google.golang.org/protobuf v1.35.2 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240513163218-0867130af1f8 // indirect
+	google.golang.org/grpc v1.64.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	kernel.org/pub/linux/libs/security/libcap/psx v1.2.73 // indirect
 )
