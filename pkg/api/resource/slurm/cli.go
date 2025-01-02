@@ -135,8 +135,11 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 	sacctOutputLines := strings.Split(sacctOutput, "\n")
 
 	// Update period
-	intStartTS := start.Local().UnixMilli()
-	intEndTS := end.Local().UnixMilli()
+	intStartTS := start.UnixMilli()
+	intEndTS := end.UnixMilli()
+
+	// Get current location
+	loc := end.Location()
 
 	numJobs := 0
 
@@ -179,10 +182,17 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 			uidInt, _ = strconv.ParseInt(components[sacctFieldMap["uid"]], 10, 64)
 			// elapsedSeconds, _ = strconv.ParseInt(components[sacctFieldMap["elapsedraw"]], 10, 64)
 
+			// Convert time strings to configured time location
+			for _, c := range []string{"submit", "start", "end"} {
+				if t, err := time.Parse(slurmTimeFormat, components[sacctFieldMap[c]]); err == nil {
+					components[sacctFieldMap[c]] = t.In(loc).Format(slurmTimeFormat)
+				}
+			}
+
 			// Get job submit, start and end times
-			jobSubmitTS := helper.TimeToTimestamp(slurmTimeFormat, components[8])
-			jobStartTS := helper.TimeToTimestamp(slurmTimeFormat, components[9])
-			jobEndTS := helper.TimeToTimestamp(slurmTimeFormat, components[10])
+			jobSubmitTS := helper.TimeToTimestamp(slurmTimeFormat, components[sacctFieldMap["submit"]], loc)
+			jobStartTS := helper.TimeToTimestamp(slurmTimeFormat, components[sacctFieldMap["start"]], loc)
+			jobEndTS := helper.TimeToTimestamp(slurmTimeFormat, components[sacctFieldMap["end"]], loc)
 
 			// Parse alloctres to get billing, nnodes, ncpus, ngpus and mem
 			var billing, nnodes, ncpus, ngpus int64
@@ -474,17 +484,16 @@ func parseSacctMgrCmdOutput(sacctMgrOutput string, currentTime string) ([]models
 }
 
 // runSacctCmd executes sacct command and return output.
-func (s *slurmScheduler) runSacctCmd(ctx context.Context, startTime string, endTime string) ([]byte, error) {
+func (s *slurmScheduler) runSacctCmd(ctx context.Context, start, end time.Time) ([]byte, error) {
 	// If we are fetching historical data, do not use RUNNING state as it can report
 	// same job twice once when it was still in running state and once it is in completed
 	// state.
-	endTimeParsed, _ := time.Parse(base.DatetimeLayout, endTime)
-
+	// endTimeParsed, _ := time.Parse(base.DatetimeLayout, endTime)
 	var states []string
 	// When fetching current jobs, endTime should be very close to current time. Here we
 	// assume that if current time is more than 5 sec than end time, we are fetching
 	// historical data
-	if time.Since(endTimeParsed) > 5*time.Second {
+	if time.Now().In(end.Location()).Sub(end) > 5*time.Second {
 		// Strip RUNNING state from slice
 		states = slurmStates[:len(slurmStates)-1]
 	} else {
@@ -505,8 +514,8 @@ func (s *slurmScheduler) runSacctCmd(ctx context.Context, startTime string, endT
 		"-D", "-X", "--noheader", "--allusers", "--parsable2",
 		"--format", strings.Join(sacctFields, ","),
 		"--state", strings.Join(states, ","),
-		"--starttime", startTime,
-		"--endtime", endTime,
+		"--starttime", start.Format(base.DatetimeLayout),
+		"--endtime", end.Format(base.DatetimeLayout),
 	}
 
 	// Run command as slurm user

@@ -2,24 +2,11 @@ package openstack
 
 import (
 	"encoding/json"
-	"os"
 	"strconv"
 	"time"
 )
 
-func init() {
-	// If we are in CI env, use fixed time location
-	// for e2e tests
-	if os.Getenv("CI") != "" {
-		currentLocation, _ = time.LoadLocation("CET")
-	} else {
-		currentLocation = time.Now().Location()
-	}
-}
-
 const RFC3339MilliNoZ = "2006-01-02T15:04:05.999999"
-
-var currentLocation *time.Location
 
 type JSONRFC3339MilliNoZ time.Time
 
@@ -38,7 +25,9 @@ func (jt *JSONRFC3339MilliNoZ) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	// Convert the UTC time to local
+	// Make times in UTC
+	// IMPORTANT: We checked quickly with source code of Openstack
+	// API and it ALWAYS returns times in UTC
 	*jt = JSONRFC3339MilliNoZ(
 		time.Date(
 			t.Year(),
@@ -48,7 +37,7 @@ func (jt *JSONRFC3339MilliNoZ) UnmarshalJSON(data []byte) error {
 			t.Minute(),
 			t.Second(),
 			t.Nanosecond(),
-			currentLocation,
+			time.UTC,
 		),
 	)
 
@@ -154,8 +143,9 @@ func (r *Server) UnmarshalJSON(b []byte) error {
 	r.LaunchedAt = time.Time(s.LaunchedAt)
 	r.TerminatedAt = time.Time(s.TerminatedAt)
 
-	// Convert CreatedAt and UpdatedAt to local times
-	// Seems like returned values are always in UTC
+	// Ensure that CreatedAt and UpdatedAt are in UTC
+	// IMPORTANT: We checked quickly with source code of Openstack
+	// API and it ALWAYS returns times in UTC
 	r.CreatedAt = time.Date(
 		r.CreatedAt.Year(),
 		r.CreatedAt.Month(),
@@ -164,7 +154,7 @@ func (r *Server) UnmarshalJSON(b []byte) error {
 		r.CreatedAt.Minute(),
 		r.CreatedAt.Second(),
 		r.CreatedAt.Nanosecond(),
-		currentLocation,
+		time.UTC,
 	)
 	r.UpdatedAt = time.Date(
 		r.UpdatedAt.Year(),
@@ -174,10 +164,10 @@ func (r *Server) UnmarshalJSON(b []byte) error {
 		r.UpdatedAt.Minute(),
 		r.UpdatedAt.Second(),
 		r.UpdatedAt.Nanosecond(),
-		currentLocation,
+		time.UTC,
 	)
 
-	return err
+	return nil
 }
 
 type AttachedVolume struct {

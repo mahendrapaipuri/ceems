@@ -153,6 +153,15 @@ A `data_config` allows configuring the DB settings of CEEMS API server.
 #
 [ retention_period: <duration> | default = 30d ]
 
+# Time zone to be used when storing times of different events in the DB.
+# It takes a value defined in IANA (https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
+# like `Europe/Paris`
+#
+# If left empty or not configured, UTC will be used. 
+# A special value `Local` can be used to use server local time zone.
+#
+[ time_zone: <string> ]
+
 # CEEMS API server is capable of creating DB backups using SQLite backup API. Created
 # DB backups will be saved to this path. NOTE that for huge DBs, this backup can take 
 # a considerable amount of time. 
