@@ -4,7 +4,7 @@ ceems_api_server:
   data:
     path: TO_REPLACE
     backup_path: TO_REPLACE
-    time_zone: Local
+    time_zone: 'Europe/Paris'
     # backup_interval: 10s
     # update_from: '2024-09-08T00:00:00Z'
   admin:
