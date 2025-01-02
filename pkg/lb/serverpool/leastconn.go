@@ -41,7 +41,7 @@ func (s *leastConn) Target(id string, _ time.Duration) backend.Server {
 	}
 
 	if targetBackend != nil {
-		s.logger.Debug("Least connection strategy", "selected_backend", targetBackend.String())
+		s.logger.Debug("Least connection strategy", "cluster_id", id, "selected_backend", targetBackend.String())
 
 		return targetBackend
 	}
@@ -50,6 +50,8 @@ func (s *leastConn) Target(id string, _ time.Duration) backend.Server {
 }
 
 func (s *leastConn) Add(id string, b backend.Server) {
+	s.logger.Debug("Backend added", "strategy", "least-connection", "cluster_id", id, "backend", b.String())
+
 	s.backends[id] = append(s.backends[id], b)
 }
 

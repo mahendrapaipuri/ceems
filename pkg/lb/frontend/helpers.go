@@ -299,7 +299,7 @@ func healthCheck(ctx context.Context, manager serverpool.Manager, logger *slog.L
 					status = "down"
 				}
 			}
-			logger.Debug("Health check", "id", id, "url", backend.URL().Redacted(), "status", status)
+			logger.Debug("Health check", "id", id, "backend", backend.String(), "status", status)
 		}
 	}
 }

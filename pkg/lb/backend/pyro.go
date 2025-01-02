@@ -62,7 +62,7 @@ func (b *pyroServer) RetentionPeriod() time.Duration {
 // String returns name/web URL backend Pyroscope server.
 func (b *pyroServer) String() string {
 	if b.url != nil {
-		return b.url.Redacted()
+		return "url: " + b.url.Redacted()
 	}
 
 	return "No backend found"
