@@ -671,8 +671,8 @@ then
   waitport "${port}"
 
   # Usage from and to timestamps
-  usage_from=$(date +%s --date='86400 seconds ago')
-  usage_to=$(date +%s --date='1800 seconds')
+  TZ="Europe/Paris" usage_from=$(date +%s --date='86400 seconds ago')
+  TZ="Europe/Paris" usage_to=$(date +%s --date='1800 seconds')
 
   if [ "${scenario}" = "api-project-query" ]
   then
