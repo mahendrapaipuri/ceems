@@ -139,11 +139,10 @@ func (s *slurmScheduler) FetchUsersProjects(
 
 // Get jobs from slurm sacct command.
 func (s *slurmScheduler) fetchFromSacct(ctx context.Context, start time.Time, end time.Time) ([]models.Unit, error) {
-	startTime := start.Format(base.DatetimeLayout)
-	endTime := end.Format(base.DatetimeLayout)
-
+	// startTime := start.Format(base.DatetimeLayout)
+	// endTime := end.Format(base.DatetimeLayout)
 	// Execute sacct command between start and end times
-	sacctOutput, err := s.runSacctCmd(ctx, startTime, endTime)
+	sacctOutput, err := s.runSacctCmd(ctx, start, end)
 	if err != nil {
 		s.logger.Error("Failed to run sacct command", "cluster_id", s.cluster.ID, "err", err)
 

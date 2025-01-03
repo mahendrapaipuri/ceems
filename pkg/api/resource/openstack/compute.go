@@ -56,6 +56,9 @@ func (o *openstackManager) activeInstances(ctx context.Context, start time.Time,
 		return nil, err
 	}
 
+	// Get current time location
+	loc := end.Location()
+
 	// Start a wait group
 	wg := sync.WaitGroup{}
 
@@ -132,6 +135,12 @@ func (o *openstackManager) activeInstances(ctx context.Context, start time.Time,
 	var iServer int
 
 	for _, server := range allServers {
+		// Convert CreatedAt, UpdatedAt, LaunchedAt, TerminatedAt to current time location
+		server.CreatedAt = server.CreatedAt.In(loc)
+		server.LaunchedAt = server.LaunchedAt.In(loc)
+		server.UpdatedAt = server.UpdatedAt.In(loc)
+		server.TerminatedAt = server.TerminatedAt.In(loc)
+
 		// Get elapsed time of instance including shutdowns, suspended states
 		elapsedTime := Timespan(end.Sub(server.LaunchedAt)).Format("15:04:05")
 

@@ -435,11 +435,16 @@ func (s *CEEMSServer) getQueriedFields(urlValues url.Values, validFieldNames []s
 // getQueryWindow returns `from` and `to` time stamps from query vars and
 // cast them into proper format.
 func (s *CEEMSServer) getQueryWindow(r *http.Request) (map[string]string, error) {
+	q := r.URL.Query()
+
+	// Get time zone
+	loc := timeLocation(q.Get("timezone"))
+
 	var fromTime, toTime time.Time
 	// Get to and from query parameters and do checks on them
-	if f := r.URL.Query().Get("from"); f == "" {
+	if f := q.Get("from"); f == "" {
 		// If from is not present in query params, use a default query window of 1 week
-		fromTime = time.Now().Add(-defaultQueryWindow)
+		fromTime = time.Now().Add(-defaultQueryWindow).In(loc)
 	} else {
 		// Return error response if from is not a timestamp
 		if ts, err := strconv.ParseInt(f, 10, 64); err != nil {
@@ -447,13 +452,13 @@ func (s *CEEMSServer) getQueryWindow(r *http.Request) (map[string]string, error)
 
 			return nil, fmt.Errorf("query parameter 'from': %w", ErrMalformedTimeStamp)
 		} else {
-			fromTime = time.Unix(ts, 0)
+			fromTime = time.Unix(ts, 0).In(loc)
 		}
 	}
 
-	if t := r.URL.Query().Get("to"); t == "" {
+	if t := q.Get("to"); t == "" {
 		// Use current time as default to
-		toTime = time.Now()
+		toTime = time.Now().In(loc)
 	} else {
 		// Return error response if to is not a timestamp
 		if ts, err := strconv.ParseInt(t, 10, 64); err != nil {
@@ -461,7 +466,7 @@ func (s *CEEMSServer) getQueryWindow(r *http.Request) (map[string]string, error)
 
 			return nil, fmt.Errorf("query parameter 'to': %w", ErrMalformedTimeStamp)
 		} else {
-			toTime = time.Unix(ts, 0)
+			toTime = time.Unix(ts, 0).In(loc)
 		}
 	}
 
@@ -491,11 +496,14 @@ func (s *CEEMSServer) roundQueryWindow(r *http.Request) error {
 	cacheTTLSeconds := int64(cacheTTL.Seconds())
 	q := r.URL.Query()
 
+	// Get time zone
+	loc := timeLocation(q.Get("timezone"))
+
 	// Get to and from query parameters and do checks on them
 	if f := q.Get("from"); f == "" {
 		q.Set(
 			"from",
-			strconv.FormatInt(common.Round(time.Now().Add(-defaultQueryWindow).Local().Unix(), cacheTTLSeconds), 10),
+			strconv.FormatInt(common.Round(time.Now().Add(-defaultQueryWindow).In(loc).Unix(), cacheTTLSeconds), 10),
 		)
 	} else {
 		// Return error response if from is not a timestamp
@@ -509,7 +517,7 @@ func (s *CEEMSServer) roundQueryWindow(r *http.Request) error {
 	}
 
 	if t := q.Get("to"); t == "" {
-		q.Set("to", strconv.FormatInt(common.Round(time.Now().Local().Unix(), cacheTTLSeconds), 10))
+		q.Set("to", strconv.FormatInt(common.Round(time.Now().In(loc).Unix(), cacheTTLSeconds), 10))
 	} else {
 		// Return error response if from is not a timestamp
 		if ts, err := strconv.ParseInt(t, 10, 64); err != nil {
@@ -675,6 +683,7 @@ queryUnits:
 //	@Param			running			query		bool		false	"Whether to fetch running units"
 //	@Param			from			query		string		false	"From timestamp"
 //	@Param			to				query		string		false	"To timestamp"
+//	@Param			timezone		query		string		false	"Time zone in IANA format"
 //	@Param			field			query		[]string	false	"Fields to return in response"	collectionFormat(multi)
 //	@Success		200				{object}	Response[models.Unit]
 //	@Failure		401				{object}	Response[any]
@@ -722,6 +731,7 @@ func (s *CEEMSServer) unitsAdmin(w http.ResponseWriter, r *http.Request) {
 //	@Param			running			query		bool		false	"Whether to fetch running units"
 //	@Param			from			query		string		false	"From timestamp"
 //	@Param			to				query		string		false	"To timestamp"
+//	@Param			timezone		query		string		false	"Time zone in IANA format"
 //	@Param			field			query		[]string	false	"Fields to return in response"	collectionFormat(multi)
 //	@Success		200				{object}	Response[models.Unit]
 //	@Failure		401				{object}	Response[any]
@@ -1483,6 +1493,7 @@ func (s *CEEMSServer) globalUsage(users []string, queriedFields []string, w http
 //	@Param			project			query		[]string	false	"Project"												collectionFormat(multi)
 //	@Param			from			query		string		false	"From timestamp"
 //	@Param			to				query		string		false	"To timestamp"
+//	@Param			timezone		query		string		false	"Time zone in IANA format"
 //	@Param			field			query		[]string	false	"Fields to return in response"	collectionFormat(multi)
 //	@Success		200				{object}	Response[models.Usage]
 //	@Failure		401				{object}	Response[any]
@@ -1582,6 +1593,7 @@ func (s *CEEMSServer) usage(w http.ResponseWriter, r *http.Request) {
 //	@Param			user			query		[]string	false	"Username"	collectionFormat(multi)
 //	@Param			from			query		string		false	"From timestamp"
 //	@Param			to				query		string		false	"To timestamp"
+//	@Param			timezone		query		string		false	"Time zone in IANA format"
 //	@Param			field			query		[]string	false	"Fields to return in response"	collectionFormat(multi)
 //	@Success		200				{object}	Response[models.Usage]
 //	@Failure		401				{object}	Response[any]
@@ -1795,6 +1807,7 @@ func (s *CEEMSServer) globalStats(users []string, w http.ResponseWriter, r *http
 //	@Param		cluster_id		query		[]string	false	"cluster ID"											collectionFormat(multi)
 //	@Param		from			query		string		false	"From timestamp"
 //	@Param		to				query		string		false	"To timestamp"
+//	@Param		timezone		query		string		false	"Time zone in IANA format"
 //	@Success	200				{object}	Response[models.Stat]
 //	@Failure	401				{object}	Response[any]
 //	@Failure	403				{object}	Response[any]
@@ -1901,6 +1914,20 @@ func (s *CEEMSServer) demo(w http.ResponseWriter, r *http.Request) {
 		if err := json.NewEncoder(w).Encode(&usageResponse); err != nil {
 			s.logger.Error("Failed to encode response", "err", err)
 			w.Write([]byte("KO"))
+		}
+	}
+}
+
+// timeLocation returns `time.Location` based on location name.
+// For empty string, `UTC` will be returned.
+func timeLocation(l string) *time.Location {
+	if l == "" {
+		return time.UTC
+	} else {
+		if loc, err := time.LoadLocation(l); err != nil {
+			return time.UTC
+		} else {
+			return loc
 		}
 	}
 }

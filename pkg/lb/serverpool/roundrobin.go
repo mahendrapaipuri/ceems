@@ -38,7 +38,7 @@ func (s *roundRobin) Target(id string, _ time.Duration) backend.Server {
 	for range s.Size(id) {
 		nextPeer := s.Rotate(id)
 		if nextPeer.IsAlive() {
-			s.logger.Debug("Round Robin strategy", "selected_backend", nextPeer.String())
+			s.logger.Debug("Round Robin strategy", "cluster_id", id, "selected_backend", nextPeer.String())
 
 			return nextPeer
 		}
@@ -54,6 +54,8 @@ func (s *roundRobin) Backends() map[string][]backend.Server {
 
 // Add a backend server to pool.
 func (s *roundRobin) Add(id string, b backend.Server) {
+	s.logger.Debug("Backend added", "strategy", "roundrobin", "cluster_id", id, "backend", b.String())
+
 	s.backends[id] = append(s.backends[id], b)
 }
 

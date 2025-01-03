@@ -107,9 +107,9 @@ func NodelistParser(nodelistExp string) []string {
 }
 
 // TimeToTimestamp converts a date in a given layout to unix timestamp of the date.
-func TimeToTimestamp(layout string, date string) int64 {
+func TimeToTimestamp(layout string, date string, loc *time.Location) int64 {
 	if t, err := time.Parse(layout, date); err == nil {
-		return t.Local().UnixMilli()
+		return t.In(loc).UnixMilli()
 	}
 
 	return 0

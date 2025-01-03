@@ -54,12 +54,12 @@ func (s *resourceBased) Target(id string, d time.Duration) backend.Server {
 
 	// If no eligible servers found return
 	if len(targetBackends) == 0 {
-		s.logger.Debug("Resourced based strategy. No eligible backends found")
+		s.logger.Debug("Resourced based strategy. No eligible backends found", "cluster_id", id, "duration", d)
 
 		return targetBackend
 	} else if len(targetBackends) == 1 {
 		targetBackend = targetBackends[0]
-		s.logger.Debug("Resourced based strategy", "selected_backend", targetBackend.String())
+		s.logger.Debug("Resourced based strategy", "cluster_id", id, "selected_backend", targetBackend.String())
 
 		return targetBackend
 	}
@@ -86,7 +86,7 @@ func (s *resourceBased) Target(id string, d time.Duration) backend.Server {
 	}
 
 	if targetBackend != nil {
-		s.logger.Debug("Resourced based strategy", "selected_backend", targetBackend.String())
+		s.logger.Debug("Resourced based strategy", "cluster_id", id, "selected_backend", targetBackend.String())
 
 		return targetBackend
 	}
@@ -101,6 +101,8 @@ func (s *resourceBased) Backends() map[string][]backend.Server {
 
 // Add a backend server to pool.
 func (s *resourceBased) Add(id string, b backend.Server) {
+	s.logger.Debug("Backend added", "strategy", "resource", "cluster_id", id, "backend", b.String())
+
 	s.backends[id] = append(s.backends[id], b)
 }
 

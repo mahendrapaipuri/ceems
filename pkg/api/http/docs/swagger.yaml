@@ -707,6 +707,10 @@ paths:
         in: query
         name: to
         type: string
+      - description: Time zone in IANA format
+        in: query
+        name: timezone
+        type: string
       produces:
       - application/json
       responses:
@@ -789,6 +793,10 @@ paths:
       - description: To timestamp
         in: query
         name: to
+        type: string
+      - description: Time zone in IANA format
+        in: query
+        name: timezone
         type: string
       - collectionFormat: multi
         description: Fields to return in response
@@ -889,6 +897,10 @@ paths:
       - description: To timestamp
         in: query
         name: to
+        type: string
+      - description: Time zone in IANA format
+        in: query
+        name: timezone
         type: string
       - collectionFormat: multi
         description: Fields to return in response
@@ -1068,6 +1080,10 @@ paths:
         in: query
         name: to
         type: string
+      - description: Time zone in IANA format
+        in: query
+        name: timezone
+        type: string
       - collectionFormat: multi
         description: Fields to return in response
         in: query
@@ -1178,6 +1194,10 @@ paths:
       - description: To timestamp
         in: query
         name: to
+        type: string
+      - description: Time zone in IANA format
+        in: query
+        name: timezone
         type: string
       - collectionFormat: multi
         description: Fields to return in response

@@ -51,7 +51,8 @@ func NewTSDB(webURL *url.URL, p *httputil.ReverseProxy, logger *slog.Logger) Ser
 		logger.Debug("Basic auth configured for backend TSDB server", "backend", webURL.Redacted())
 	}
 
-	return &tsdbServer{
+	// Make server struct
+	server := &tsdbServer{
 		url:             webURL,
 		alive:           true,
 		reverseProxy:    p,
@@ -60,12 +61,17 @@ func NewTSDB(webURL *url.URL, p *httputil.ReverseProxy, logger *slog.Logger) Ser
 		client:          tsdbClient,
 		logger:          logger,
 	}
+
+	// Update retention period
+	server.RetentionPeriod()
+
+	return server
 }
 
 // String returns name/web URL backend TSDB server.
 func (b *tsdbServer) String() string {
 	if b.url != nil {
-		return b.url.Redacted()
+		return fmt.Sprintf("url: %s; retention: %s", b.url.Redacted(), b.retentionPeriod)
 	}
 
 	return "No backend found"

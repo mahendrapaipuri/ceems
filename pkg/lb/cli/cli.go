@@ -341,7 +341,7 @@ func (lb *CEEMSLoadBalancer) Main() error {
 
 		go func() {
 			defer wg.Done()
-			frontend.Monitor(ctx, managers[lbType], logger)
+			frontend.Monitor(ctx, managers[lbType], logger.With("backend_type", lbType))
 		}()
 
 		// Initializing the server in a goroutine so that
