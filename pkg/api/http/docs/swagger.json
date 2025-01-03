@@ -313,6 +313,12 @@
                         "description": "To timestamp",
                         "name": "to",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Time zone in IANA format",
+                        "name": "timezone",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -412,6 +418,12 @@
                         "type": "string",
                         "description": "To timestamp",
                         "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Time zone in IANA format",
+                        "name": "timezone",
                         "in": "query"
                     },
                     {
@@ -532,6 +544,12 @@
                         "type": "string",
                         "description": "To timestamp",
                         "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Time zone in IANA format",
+                        "name": "timezone",
                         "in": "query"
                     },
                     {
@@ -722,6 +740,12 @@
                         "in": "query"
                     },
                     {
+                        "type": "string",
+                        "description": "Time zone in IANA format",
+                        "name": "timezone",
+                        "in": "query"
+                    },
+                    {
                         "type": "array",
                         "items": {
                             "type": "string"
@@ -828,6 +852,12 @@
                         "type": "string",
                         "description": "To timestamp",
                         "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Time zone in IANA format",
+                        "name": "timezone",
                         "in": "query"
                     },
                     {

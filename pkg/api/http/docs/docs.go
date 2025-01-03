@@ -321,6 +321,12 @@ const docTemplate = `{
                         "description": "To timestamp",
                         "name": "to",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Time zone in IANA format",
+                        "name": "timezone",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -420,6 +426,12 @@ const docTemplate = `{
                         "type": "string",
                         "description": "To timestamp",
                         "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Time zone in IANA format",
+                        "name": "timezone",
                         "in": "query"
                     },
                     {
@@ -540,6 +552,12 @@ const docTemplate = `{
                         "type": "string",
                         "description": "To timestamp",
                         "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Time zone in IANA format",
+                        "name": "timezone",
                         "in": "query"
                     },
                     {
@@ -730,6 +748,12 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "string",
+                        "description": "Time zone in IANA format",
+                        "name": "timezone",
+                        "in": "query"
+                    },
+                    {
                         "type": "array",
                         "items": {
                             "type": "string"
@@ -836,6 +860,12 @@ const docTemplate = `{
                         "type": "string",
                         "description": "To timestamp",
                         "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Time zone in IANA format",
+                        "name": "timezone",
                         "in": "query"
                     },
                     {

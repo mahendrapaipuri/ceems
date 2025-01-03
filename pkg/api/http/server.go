@@ -491,11 +491,24 @@ func (s *CEEMSServer) roundQueryWindow(r *http.Request) error {
 	cacheTTLSeconds := int64(cacheTTL.Seconds())
 	q := r.URL.Query()
 
+	// Get time location from query parameter
+	var loc *time.Location
+
+	var err error
+
+	if l := q.Get("timezone"); l == "" {
+		loc = time.UTC
+	} else {
+		if loc, err = time.LoadLocation(l); err != nil {
+			loc = time.UTC
+		}
+	}
+
 	// Get to and from query parameters and do checks on them
 	if f := q.Get("from"); f == "" {
 		q.Set(
 			"from",
-			strconv.FormatInt(common.Round(time.Now().Add(-defaultQueryWindow).Local().Unix(), cacheTTLSeconds), 10),
+			strconv.FormatInt(common.Round(time.Now().Add(-defaultQueryWindow).In(loc).Unix(), cacheTTLSeconds), 10),
 		)
 	} else {
 		// Return error response if from is not a timestamp
@@ -509,7 +522,7 @@ func (s *CEEMSServer) roundQueryWindow(r *http.Request) error {
 	}
 
 	if t := q.Get("to"); t == "" {
-		q.Set("to", strconv.FormatInt(common.Round(time.Now().Local().Unix(), cacheTTLSeconds), 10))
+		q.Set("to", strconv.FormatInt(common.Round(time.Now().In(loc).Unix(), cacheTTLSeconds), 10))
 	} else {
 		// Return error response if from is not a timestamp
 		if ts, err := strconv.ParseInt(t, 10, 64); err != nil {
@@ -675,6 +688,7 @@ queryUnits:
 //	@Param			running			query		bool		false	"Whether to fetch running units"
 //	@Param			from			query		string		false	"From timestamp"
 //	@Param			to				query		string		false	"To timestamp"
+//	@Param			timezone		query		string		false	"Time zone in IANA format"
 //	@Param			field			query		[]string	false	"Fields to return in response"	collectionFormat(multi)
 //	@Success		200				{object}	Response[models.Unit]
 //	@Failure		401				{object}	Response[any]
@@ -722,6 +736,7 @@ func (s *CEEMSServer) unitsAdmin(w http.ResponseWriter, r *http.Request) {
 //	@Param			running			query		bool		false	"Whether to fetch running units"
 //	@Param			from			query		string		false	"From timestamp"
 //	@Param			to				query		string		false	"To timestamp"
+//	@Param			timezone		query		string		false	"Time zone in IANA format"
 //	@Param			field			query		[]string	false	"Fields to return in response"	collectionFormat(multi)
 //	@Success		200				{object}	Response[models.Unit]
 //	@Failure		401				{object}	Response[any]
@@ -1483,6 +1498,7 @@ func (s *CEEMSServer) globalUsage(users []string, queriedFields []string, w http
 //	@Param			project			query		[]string	false	"Project"												collectionFormat(multi)
 //	@Param			from			query		string		false	"From timestamp"
 //	@Param			to				query		string		false	"To timestamp"
+//	@Param			timezone		query		string		false	"Time zone in IANA format"
 //	@Param			field			query		[]string	false	"Fields to return in response"	collectionFormat(multi)
 //	@Success		200				{object}	Response[models.Usage]
 //	@Failure		401				{object}	Response[any]
@@ -1582,6 +1598,7 @@ func (s *CEEMSServer) usage(w http.ResponseWriter, r *http.Request) {
 //	@Param			user			query		[]string	false	"Username"	collectionFormat(multi)
 //	@Param			from			query		string		false	"From timestamp"
 //	@Param			to				query		string		false	"To timestamp"
+//	@Param			timezone		query		string		false	"Time zone in IANA format"
 //	@Param			field			query		[]string	false	"Fields to return in response"	collectionFormat(multi)
 //	@Success		200				{object}	Response[models.Usage]
 //	@Failure		401				{object}	Response[any]
@@ -1795,6 +1812,7 @@ func (s *CEEMSServer) globalStats(users []string, w http.ResponseWriter, r *http
 //	@Param		cluster_id		query		[]string	false	"cluster ID"											collectionFormat(multi)
 //	@Param		from			query		string		false	"From timestamp"
 //	@Param		to				query		string		false	"To timestamp"
+//	@Param		timezone		query		string		false	"Time zone in IANA format"
 //	@Success	200				{object}	Response[models.Stat]
 //	@Failure	401				{object}	Response[any]
 //	@Failure	403				{object}	Response[any]
