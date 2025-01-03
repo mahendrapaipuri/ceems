@@ -737,7 +737,7 @@ then
     get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/usage/global/admin?cluster_id=slurm-0&field=username&field=project&field=num_units" > "${fixture_output}"
   elif [ "${scenario}" = "api-current-stats-admin-query" ]
   then
-    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/stats/current/admin?cluster_id=os-1&from=1728994800&to=1729005000" > "${fixture_output}"
+    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/stats/current/admin?cluster_id=os-1&from=1728994800&to=1729005000&timezone=${timezone}" > "${fixture_output}"
   elif [ "${scenario}" = "api-global-stats-admin-query" ]
   then
     get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/stats/global/admin" > "${fixture_output}"
