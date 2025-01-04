@@ -34,6 +34,9 @@ var (
 		"T": 1024 * 1024 * 1024 * 1024,
 		"Z": 1024 * 1024 * 1024 * 1024 * 1024,
 	}
+
+	// Required capabilities to execute SLURM commands.
+	requiredCaps = []string{"cap_setuid", "cap_setgid"}
 )
 
 // Run preflights for CLI execution mode.
@@ -42,7 +45,7 @@ func preflightsCLI(slurm *slurmScheduler) error {
 	// Assume execMode is always native
 	slurm.fetchMode = cliMode
 	slurm.cmdExecMode = "native"
-	slurm.logger.Debug("SLURM jobs will be fetched using CLI commands")
+	slurm.logger.Debug("Using SLURM CLI commands")
 
 	// If no sacct path is provided, assume it is available on PATH
 	if slurm.cluster.CLI.Path == "" {
@@ -63,31 +66,28 @@ func preflightsCLI(slurm *slurmScheduler) error {
 		}
 	}
 
-	// sacct path
-	sacctPath := filepath.Join(slurm.cluster.CLI.Path, "sacct")
+	// Check if current capabilities have required caps
+	haveCaps := true
 
-	// If current user root pass checks
-	if currentUser, err := user.Current(); err == nil && currentUser.Uid == "0" {
-		slurm.cmdExecMode = capabilityMode
-		slurm.logger.Info("Current user have enough privileges to execute SLURM commands", "user", currentUser.Username)
+	currentCaps := cap.GetProc().String()
+	for _, cap := range requiredCaps {
+		if !strings.Contains(currentCaps, cap) {
+			haveCaps = false
 
-		goto secu_context
+			break
+		}
 	}
 
-	// Check if current process has necessary caps
-	if currentCaps := cap.GetProc().String(); strings.Contains(currentCaps, "cap_setuid") && strings.Contains(currentCaps, "cap_setgid") {
+	// If current user is root or if current process has necessary caps setup security context
+	if currentUser, err := user.Current(); err == nil && currentUser.Uid == "0" || haveCaps {
 		slurm.cmdExecMode = capabilityMode
-		slurm.logger.Info("Linux capabilities will be used to execute SLURM commands as slurm user")
-	}
+		slurm.logger.Info("Current user/process have enough privileges to execute SLURM commands", "user", currentUser.Username)
 
-secu_context:
-	// If using capability mode, setup security context
-	if slurm.cmdExecMode == capabilityMode {
 		var caps []cap.Value
 
 		var err error
 
-		for _, name := range []string{"cap_setuid", "cap_setgid"} {
+		for _, name := range requiredCaps {
 			value, err := cap.FromName(name)
 			if err != nil {
 				slurm.logger.Error("Error parsing capability %s: %w", name, err)
@@ -114,6 +114,9 @@ secu_context:
 
 		return nil
 	}
+
+	// sacct path
+	sacctPath := filepath.Join(slurm.cluster.CLI.Path, "sacct")
 
 	// Last attempt to run sacct with sudo
 	if _, err := internal_osexec.ExecuteWithTimeout("sudo", []string{sacctPath, "--help"}, 5, nil); err == nil {
