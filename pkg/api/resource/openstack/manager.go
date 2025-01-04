@@ -167,7 +167,7 @@ func New(cluster models.Cluster, logger *slog.Logger) (resource.Fetcher, error) 
 		return nil, err
 	}
 
-	logger.Info("Fetching VM instances from Openstack cluster", "id", cluster.ID)
+	logger.Info("VM instances from Openstack cluster will be fetched", "id", cluster.ID)
 
 	return openstackManager, nil
 }

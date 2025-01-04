@@ -81,7 +81,7 @@ func New(cluster models.Cluster, logger *slog.Logger) (resource.Fetcher, error) 
 		return nil, err
 	}
 
-	logger.Info("Fetching batch jobs from SLURM clusters", "id", cluster.ID)
+	logger.Info("Batch jobs from SLURM cluster will be fetched", "id", cluster.ID)
 
 	return &slurmScheduler, nil
 }

@@ -35,7 +35,7 @@ func Round(value int64, nearest int64) int64 {
 // TimeTrack tracks execution time of each function.
 func TimeTrack(start time.Time, name string, logger *slog.Logger) {
 	elapsed := time.Since(start)
-	logger.Debug(name, "elapsed_time", elapsed)
+	logger.Debug(name, "duration", elapsed)
 }
 
 // SanitizeFloat replaces +/-Inf and NaN with zero.
