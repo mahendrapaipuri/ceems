@@ -673,6 +673,7 @@ then
   # Usage from and to timestamps
   usage_from=$(date +%s --date='86400 seconds ago')
   usage_to=$(date +%s --date='1800 seconds')
+  timezone="Europe%2FAthens"
 
   if [ "${scenario}" = "api-project-query" ]
   then
@@ -703,7 +704,7 @@ then
     get -H "X-Grafana-User: usr2" "127.0.0.1:${port}/api/${api_version}/units?cluster_id=slurm-0&from=1676934000&to=1677538800&field=uuiid" > "${fixture_output}"
   elif [ "${scenario}" = "api-running-query" ]
   then
-    get -H "X-Grafana-User: test-user-1" "127.0.0.1:${port}/api/${api_version}/units?running&cluster_id=os-1&field=uuid&field=state&field=started_at&field=allocation&field=tags" > "${fixture_output}"
+    get -H "X-Grafana-User: test-user-1" "127.0.0.1:${port}/api/${api_version}/units?running&cluster_id=os-1&field=uuid&field=state&field=started_at&field=allocation&field=tags&timezone=${timezone}" > "${fixture_output}"
   elif [ "${scenario}" = "api-admin-query" ]
   then
     get -H "X-Grafana-User: grafana" -H "X-Dashboard-User: usr3" "127.0.0.1:${port}/api/${api_version}/units?cluster_id=slurm-0&project=acc3&from=1676934000&to=1677538800" > "${fixture_output}"

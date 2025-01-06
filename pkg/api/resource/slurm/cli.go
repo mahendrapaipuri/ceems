@@ -34,6 +34,9 @@ var (
 		"T": 1024 * 1024 * 1024 * 1024,
 		"Z": 1024 * 1024 * 1024 * 1024 * 1024,
 	}
+
+	// Required capabilities to execute SLURM commands.
+	requiredCaps = []string{"cap_setuid", "cap_setgid"}
 )
 
 // Run preflights for CLI execution mode.
@@ -42,7 +45,7 @@ func preflightsCLI(slurm *slurmScheduler) error {
 	// Assume execMode is always native
 	slurm.fetchMode = cliMode
 	slurm.cmdExecMode = "native"
-	slurm.logger.Debug("SLURM jobs will be fetched using CLI commands")
+	slurm.logger.Debug("Using SLURM CLI commands")
 
 	// If no sacct path is provided, assume it is available on PATH
 	if slurm.cluster.CLI.Path == "" {
@@ -63,31 +66,28 @@ func preflightsCLI(slurm *slurmScheduler) error {
 		}
 	}
 
-	// sacct path
-	sacctPath := filepath.Join(slurm.cluster.CLI.Path, "sacct")
+	// Check if current capabilities have required caps
+	haveCaps := true
 
-	// If current user root pass checks
-	if currentUser, err := user.Current(); err == nil && currentUser.Uid == "0" {
-		slurm.cmdExecMode = capabilityMode
-		slurm.logger.Info("Current user have enough privileges to execute SLURM commands", "user", currentUser.Username)
+	currentCaps := cap.GetProc().String()
+	for _, cap := range requiredCaps {
+		if !strings.Contains(currentCaps, cap) {
+			haveCaps = false
 
-		goto secu_context
+			break
+		}
 	}
 
-	// Check if current process has necessary caps
-	if currentCaps := cap.GetProc().String(); strings.Contains(currentCaps, "cap_setuid") && strings.Contains(currentCaps, "cap_setgid") {
+	// If current user is root or if current process has necessary caps setup security context
+	if currentUser, err := user.Current(); err == nil && currentUser.Uid == "0" || haveCaps {
 		slurm.cmdExecMode = capabilityMode
-		slurm.logger.Info("Linux capabilities will be used to execute SLURM commands as slurm user")
-	}
+		slurm.logger.Info("Current user/process have enough privileges to execute SLURM commands", "user", currentUser.Username)
 
-secu_context:
-	// If using capability mode, setup security context
-	if slurm.cmdExecMode == capabilityMode {
 		var caps []cap.Value
 
 		var err error
 
-		for _, name := range []string{"cap_setuid", "cap_setgid"} {
+		for _, name := range requiredCaps {
 			value, err := cap.FromName(name)
 			if err != nil {
 				slurm.logger.Error("Error parsing capability %s: %w", name, err)
@@ -115,6 +115,9 @@ secu_context:
 		return nil
 	}
 
+	// sacct path
+	sacctPath := filepath.Join(slurm.cluster.CLI.Path, "sacct")
+
 	// Last attempt to run sacct with sudo
 	if _, err := internal_osexec.ExecuteWithTimeout("sudo", []string{sacctPath, "--help"}, 5, nil); err == nil {
 		slurm.cmdExecMode = sudoMode
@@ -135,8 +138,11 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 	sacctOutputLines := strings.Split(sacctOutput, "\n")
 
 	// Update period
-	intStartTS := start.Local().UnixMilli()
-	intEndTS := end.Local().UnixMilli()
+	intStartTS := start.UnixMilli()
+	intEndTS := end.UnixMilli()
+
+	// Get current location
+	loc := end.Location()
 
 	numJobs := 0
 
@@ -179,10 +185,16 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 			uidInt, _ = strconv.ParseInt(components[sacctFieldMap["uid"]], 10, 64)
 			// elapsedSeconds, _ = strconv.ParseInt(components[sacctFieldMap["elapsedraw"]], 10, 64)
 
-			// Get job submit, start and end times
-			jobSubmitTS := helper.TimeToTimestamp(slurmTimeFormat, components[8])
-			jobStartTS := helper.TimeToTimestamp(slurmTimeFormat, components[9])
-			jobEndTS := helper.TimeToTimestamp(slurmTimeFormat, components[10])
+			// Convert time strings to configured time location
+			eventTS := make(map[string]int64, 3)
+
+			for _, c := range []string{"submit", "start", "end"} {
+				if t, err := time.Parse(base.DatetimezoneLayout, components[sacctFieldMap[c]]); err == nil {
+					components[sacctFieldMap[c]] = t.In(loc).Format(base.DatetimezoneLayout)
+				}
+
+				eventTS[c] = helper.TimeToTimestamp(base.DatetimezoneLayout, components[sacctFieldMap[c]])
+			}
 
 			// Parse alloctres to get billing, nnodes, ncpus, ngpus and mem
 			var billing, nnodes, ncpus, ngpus int64
@@ -241,7 +253,7 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 			// If job has not started between interval's start and end time,
 			// elapsedTime should be zero. This can happen when job is in pending state
 			// after submission
-			if jobStartTS == 0 {
+			if eventTS["start"] == 0 {
 				endMark = startMark
 
 				goto elapsed
@@ -251,23 +263,23 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 			// job's start and end time. This case should not arrive in production as
 			// there is no reason SLURM gives us the jobs that have finished in the past
 			// that do not overlap with interval boundaries
-			if jobEndTS > 0 && jobEndTS < intStartTS {
-				startMark = jobStartTS
-				endMark = jobEndTS
+			if eventTS["end"] > 0 && eventTS["end"] < intStartTS {
+				startMark = eventTS["start"]
+				endMark = eventTS["end"]
 
 				goto elapsed
 			}
 
 			// If job has started **after** start of interval, we should mark job's start
 			// time as start of elapsed time
-			if jobStartTS > intStartTS {
-				startMark = jobStartTS
+			if eventTS["start"] > intStartTS {
+				startMark = eventTS["start"]
 			}
 
 			// If job has ended before end of interval, we should mark job's end time
 			// as elapsed end time.
-			if jobEndTS > 0 && jobEndTS < intEndTS {
-				endMark = jobEndTS
+			if eventTS["end"] > 0 && eventTS["end"] < intEndTS {
+				endMark = eventTS["end"]
 			}
 
 		elapsed:
@@ -332,9 +344,9 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 				CreatedAt:       components[sacctFieldMap["submit"]],
 				StartedAt:       components[sacctFieldMap["start"]],
 				EndedAt:         components[sacctFieldMap["end"]],
-				CreatedAtTS:     jobSubmitTS,
-				StartedAtTS:     jobStartTS,
-				EndedAtTS:       jobEndTS,
+				CreatedAtTS:     eventTS["submit"],
+				StartedAtTS:     eventTS["start"],
+				EndedAtTS:       eventTS["end"],
 				Elapsed:         components[sacctFieldMap["elapsed"]],
 				State:           components[sacctFieldMap["state"]],
 				Allocation:      allocation,
@@ -474,17 +486,16 @@ func parseSacctMgrCmdOutput(sacctMgrOutput string, currentTime string) ([]models
 }
 
 // runSacctCmd executes sacct command and return output.
-func (s *slurmScheduler) runSacctCmd(ctx context.Context, startTime string, endTime string) ([]byte, error) {
+func (s *slurmScheduler) runSacctCmd(ctx context.Context, start, end time.Time) ([]byte, error) {
 	// If we are fetching historical data, do not use RUNNING state as it can report
 	// same job twice once when it was still in running state and once it is in completed
 	// state.
-	endTimeParsed, _ := time.Parse(base.DatetimeLayout, endTime)
-
+	// endTimeParsed, _ := time.Parse(base.DatetimeLayout, endTime)
 	var states []string
 	// When fetching current jobs, endTime should be very close to current time. Here we
 	// assume that if current time is more than 5 sec than end time, we are fetching
 	// historical data
-	if time.Since(endTimeParsed) > 5*time.Second {
+	if time.Now().In(end.Location()).Sub(end) > 5*time.Second {
 		// Strip RUNNING state from slice
 		states = slurmStates[:len(slurmStates)-1]
 	} else {
@@ -505,8 +516,8 @@ func (s *slurmScheduler) runSacctCmd(ctx context.Context, startTime string, endT
 		"-D", "-X", "--noheader", "--allusers", "--parsable2",
 		"--format", strings.Join(sacctFields, ","),
 		"--state", strings.Join(states, ","),
-		"--starttime", startTime,
-		"--endtime", endTime,
+		"--starttime", start.Format(base.DatetimeLayout),
+		"--endtime", end.Format(base.DatetimeLayout),
 	}
 
 	// Run command as slurm user

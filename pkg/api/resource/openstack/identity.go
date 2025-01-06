@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/helper"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 )
@@ -121,7 +122,7 @@ func (o *openstackManager) usersProjectsAssoc(ctx context.Context, current time.
 	}
 
 	// Current time string
-	currentTime := current.Format(osTimeFormat)
+	currentTime := current.Format(base.DatetimezoneLayout)
 
 	// First get all users
 	users, err := o.fetchUsers(ctx)

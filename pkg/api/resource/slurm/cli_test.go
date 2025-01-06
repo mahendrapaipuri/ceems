@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -65,7 +66,7 @@ func TestParseSacctCmdOutput(t *testing.T) {
 }
 
 func TestParseSacctMgrCmdOutput(t *testing.T) {
-	users, projects := parseSacctMgrCmdOutput(sacctMgrCmdOutput, current.Format(slurmTimeFormat))
+	users, projects := parseSacctMgrCmdOutput(sacctMgrCmdOutput, current.Format(base.DatetimezoneLayout))
 	require.ElementsMatch(t, expectedUsers, users)
 	require.ElementsMatch(t, expectedProjects, projects)
 }

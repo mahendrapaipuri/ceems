@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 )
 
@@ -55,6 +56,9 @@ func (o *openstackManager) activeInstances(ctx context.Context, start time.Time,
 	if err := o.ping("compute"); err != nil {
 		return nil, err
 	}
+
+	// Get current time location
+	loc := end.Location()
 
 	// Start a wait group
 	wg := sync.WaitGroup{}
@@ -132,6 +136,12 @@ func (o *openstackManager) activeInstances(ctx context.Context, start time.Time,
 	var iServer int
 
 	for _, server := range allServers {
+		// Convert CreatedAt, UpdatedAt, LaunchedAt, TerminatedAt to current time location
+		server.CreatedAt = server.CreatedAt.In(loc)
+		server.LaunchedAt = server.LaunchedAt.In(loc)
+		server.UpdatedAt = server.UpdatedAt.In(loc)
+		server.TerminatedAt = server.TerminatedAt.In(loc)
+
 		// Get elapsed time of instance including shutdowns, suspended states
 		elapsedTime := Timespan(end.Sub(server.LaunchedAt)).Format("15:04:05")
 
@@ -149,7 +159,7 @@ func (o *openstackManager) activeInstances(ctx context.Context, start time.Time,
 			elapsedTime = Timespan(server.TerminatedAt.Sub(server.LaunchedAt)).Format("15:04:05")
 
 			// Get instance termination time
-			endedAt = server.TerminatedAt.Format(osTimeFormat)
+			endedAt = server.TerminatedAt.Format(base.DatetimezoneLayout)
 			endedAtTS = server.TerminatedAt.UnixMilli()
 
 			// If the instance has been terminated in this update interval
@@ -223,8 +233,8 @@ func (o *openstackManager) activeInstances(ctx context.Context, start time.Time,
 			Name:            server.Name,
 			Project:         o.userProjectsCache.projectIDNameMap[server.TenantID],
 			User:            o.userProjectsCache.userIDNameMap[server.UserID],
-			CreatedAt:       server.CreatedAt.Format(osTimeFormat),
-			StartedAt:       server.LaunchedAt.Format(osTimeFormat),
+			CreatedAt:       server.CreatedAt.Format(base.DatetimezoneLayout),
+			StartedAt:       server.LaunchedAt.Format(base.DatetimezoneLayout),
 			EndedAt:         endedAt,
 			CreatedAtTS:     server.CreatedAt.UnixMilli(),
 			StartedAtTS:     server.LaunchedAt.UnixMilli(),
@@ -269,8 +279,8 @@ func (o *openstackManager) fetchInstances(ctx context.Context, start time.Time, 
 
 	if deleted {
 		q.Add("deleted", "true")
-		q.Add("changes-since", start.Format(osTimeFormat))
-		q.Add("changes-before", end.Format(osTimeFormat))
+		q.Add("changes-since", start.Format(base.DatetimezoneLayout))
+		q.Add("changes-before", end.Format(base.DatetimezoneLayout))
 	}
 
 	req.URL.RawQuery = q.Encode()

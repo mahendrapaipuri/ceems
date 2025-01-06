@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/mahendrapaipuri/ceems/internal/common"
-	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/mahendrapaipuri/ceems/pkg/api/resource"
 	config_util "github.com/prometheus/common/config"
@@ -31,7 +30,6 @@ var (
 		"X-OpenStack-Nova-API-Version",
 		"OpenStack-API-Version",
 	}
-	osTimeFormat        = base.DatetimeLayout + "-0700"
 	tokenExpiryDuration = 1 * time.Hour // Openstack tokens are valid for 1 hour
 )
 
@@ -167,7 +165,7 @@ func New(cluster models.Cluster, logger *slog.Logger) (resource.Fetcher, error) 
 		return nil, err
 	}
 
-	logger.Info("Fetching VM instances from Openstack cluster", "id", cluster.ID)
+	logger.Info("VM instances from Openstack cluster will be fetched", "id", cluster.ID)
 
 	return openstackManager, nil
 }

@@ -223,8 +223,8 @@ func Querier[T any](ctx context.Context, dbConn *sql.DB, query Query, logger *sl
 
 	// Loop through rows, using Scan to assign column data to struct fields.
 	logger.Debug(
-		"Rows", "query", queryString, "queryParams", strings.Join(queryParams, ","),
-		"num_rows", numRows, "error", err,
+		"DB query", "query", queryString, "queryParams", strings.Join(queryParams, ","),
+		"num_rows", numRows,
 	)
 
 	return scanRows[T](rows, numRows)

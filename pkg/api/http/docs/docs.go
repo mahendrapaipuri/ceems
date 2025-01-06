@@ -358,7 +358,7 @@ const docTemplate = `{
                         "BasicAuth": []
                     }
                 ],
-                "description": "This user endpoint will fetch compute units of the current user. The\ncurrent user is always identified by the header ` + "`" + `X-Grafana-User` + "`" + ` in\nthe request.\n\nIf multiple query parameters are passed, for instance, ` + "`" + `?uuid=\u003cuuid\u003e\u0026project=\u003cproject\u003e` + "`" + `,\nthe intersection of query parameters are used to fetch compute units rather than\nthe union. That means if the compute unit's ` + "`" + `uuid` + "`" + ` does not belong to the queried\nproject, null response will be returned.\n\nIn order to return the running compute units as well, use the query parameter ` + "`" + `running` + "`" + `.\n\nIf ` + "`" + `to` + "`" + ` query parameter is not provided, current time will be used. If ` + "`" + `from` + "`" + `\nquery parameter is not used, a default query window of 24 hours will be used.\nIt means if ` + "`" + `to` + "`" + ` is provided, ` + "`" + `from` + "`" + ` will be calculated as ` + "`" + `to` + "`" + ` - 24hrs.\n\nTo limit the number of fields in the response, use ` + "`" + `field` + "`" + ` query parameter. By default, all\nfields will be included in the response if they are _non-empty_.",
+                "description": "This user endpoint will fetch compute units of the current user. The\ncurrent user is always identified by the header ` + "`" + `X-Grafana-User` + "`" + ` in\nthe request.\n\nIf multiple query parameters are passed, for instance, ` + "`" + `?uuid=\u003cuuid\u003e\u0026project=\u003cproject\u003e` + "`" + `,\nthe intersection of query parameters are used to fetch compute units rather than\nthe union. That means if the compute unit's ` + "`" + `uuid` + "`" + ` does not belong to the queried\nproject, null response will be returned.\n\nIn order to return the running compute units as well, use the query parameter ` + "`" + `running` + "`" + `.\n\nIf ` + "`" + `to` + "`" + ` query parameter is not provided, current time will be used. If ` + "`" + `from` + "`" + `\nquery parameter is not used, a default query window of 24 hours will be used.\nIt means if ` + "`" + `to` + "`" + ` is provided, ` + "`" + `from` + "`" + ` will be calculated as ` + "`" + `to` + "`" + ` - 24hrs. If query\nparameter ` + "`" + `timezone` + "`" + ` is provided, the unit's created, start and end time strings\nwill be presented in that time zone.\n\nTo limit the number of fields in the response, use ` + "`" + `field` + "`" + ` query parameter. By default, all\nfields will be included in the response if they are _non-empty_.",
                 "produces": [
                     "application/json"
                 ],
@@ -423,6 +423,12 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "string",
+                        "description": "Time zone in IANA format",
+                        "name": "timezone",
+                        "in": "query"
+                    },
+                    {
                         "type": "array",
                         "items": {
                             "type": "string"
@@ -468,7 +474,7 @@ const docTemplate = `{
                         "BasicAuth": []
                     }
                 ],
-                "description": "This admin endpoint will fetch compute units of _any_ user, compute unit and/or project. The\ncurrent user is always identified by the header ` + "`" + `X-Grafana-User` + "`" + ` in\nthe request.\n\nThe user who is making the request must be in the list of admin users\nconfigured for the server.\n\nIf multiple query parameters are passed, for instance, ` + "`" + `?uuid=\u003cuuid\u003e\u0026user=\u003cuser\u003e` + "`" + `,\nthe intersection of query parameters are used to fetch compute units rather than\nthe union. That means if the compute unit's ` + "`" + `uuid` + "`" + ` does not belong to the queried\nuser, null response will be returned.\n\nIn order to return the running compute units as well, use the query parameter ` + "`" + `running` + "`" + `.\n\nIf ` + "`" + `to` + "`" + ` query parameter is not provided, current time will be used. If ` + "`" + `from` + "`" + `\nquery parameter is not used, a default query window of 24 hours will be used.\nIt means if ` + "`" + `to` + "`" + ` is provided, ` + "`" + `from` + "`" + ` will be calculated as ` + "`" + `to` + "`" + ` - 24hrs.\n\nTo limit the number of fields in the response, use ` + "`" + `field` + "`" + ` query parameter. By default, all\nfields will be included in the response if they are _non-empty_.",
+                "description": "This admin endpoint will fetch compute units of _any_ user, compute unit and/or project. The\ncurrent user is always identified by the header ` + "`" + `X-Grafana-User` + "`" + ` in\nthe request.\n\nThe user who is making the request must be in the list of admin users\nconfigured for the server.\n\nIf multiple query parameters are passed, for instance, ` + "`" + `?uuid=\u003cuuid\u003e\u0026user=\u003cuser\u003e` + "`" + `,\nthe intersection of query parameters are used to fetch compute units rather than\nthe union. That means if the compute unit's ` + "`" + `uuid` + "`" + ` does not belong to the queried\nuser, null response will be returned.\n\nIn order to return the running compute units as well, use the query parameter ` + "`" + `running` + "`" + `.\n\nIf ` + "`" + `to` + "`" + ` query parameter is not provided, current time will be used. If ` + "`" + `from` + "`" + `\nquery parameter is not used, a default query window of 24 hours will be used.\nIt means if ` + "`" + `to` + "`" + ` is provided, ` + "`" + `from` + "`" + ` will be calculated as ` + "`" + `to` + "`" + ` - 24hrs. If query\nparameter ` + "`" + `timezone` + "`" + ` is provided, the unit's created, start and end time strings\nwill be presented in that time zone.\n\nTo limit the number of fields in the response, use ` + "`" + `field` + "`" + ` query parameter. By default, all\nfields will be included in the response if they are _non-empty_.",
                 "produces": [
                     "application/json"
                 ],
@@ -540,6 +546,12 @@ const docTemplate = `{
                         "type": "string",
                         "description": "To timestamp",
                         "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Time zone in IANA format",
+                        "name": "timezone",
                         "in": "query"
                     },
                     {

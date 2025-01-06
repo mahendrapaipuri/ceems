@@ -142,7 +142,7 @@ func New(logger *slog.Logger) (*Manager, error) {
 	}
 
 	// Loop over factories and create new instances
-	var keepPrivs bool
+	var dropPrivs bool
 
 	for key, factory := range factories {
 		for _, config := range configMap[key] {
@@ -155,9 +155,9 @@ func New(logger *slog.Logger) (*Manager, error) {
 
 			fetchers = append(fetchers, fetcher)
 
-			// If manager is SLURM and CLI is configured, we MUST keep privileges
-			if config.Manager == "slurm" && config.CLI.Path != "" {
-				keepPrivs = true
+			// If manager is SLURM and web is configured, we MUST DROP privileges
+			if config.Manager == "slurm" && config.Web.URL != "" {
+				dropPrivs = true
 			}
 		}
 	}
@@ -180,7 +180,7 @@ func New(logger *slog.Logger) (*Manager, error) {
 	}
 
 	// If we dont need to keep any privileges, drop any existing capabilities
-	if !keepPrivs {
+	if dropPrivs {
 		if err := security.DropCapabilities(); err != nil {
 			logger.Warn("Failed to drop capabilities", "err", err)
 		}

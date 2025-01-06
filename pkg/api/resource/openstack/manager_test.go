@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	config_util "github.com/prometheus/common/config"
 	"github.com/stretchr/testify/assert"
@@ -21,9 +22,9 @@ import (
 )
 
 var (
-	start, _   = time.Parse(osTimeFormat, "2024-10-15T15:00:00+0200")
-	end, _     = time.Parse(osTimeFormat, "2024-10-15T15:15:00+0200")
-	current, _ = time.Parse(osTimeFormat, "2024-10-15T15:15:00+0200")
+	start, _   = time.Parse(base.DatetimezoneLayout, "2024-10-15T16:15:00+0200")
+	end, _     = time.Parse(base.DatetimezoneLayout, "2024-10-15T16:45:00+0200")
+	current, _ = time.Parse(base.DatetimezoneLayout, "2024-10-15T16:45:00+0200")
 
 	expectedUnits = map[string]models.Unit{
 		"d0d60434-4bf1-4eb1-9469-d7b38083a88f": {
@@ -32,12 +33,12 @@ var (
 			Name:            "new-vgpu-3",
 			Project:         "admin",
 			User:            "admin",
-			CreatedAt:       "2024-10-15T13:32:25+0200",
-			StartedAt:       "2024-10-15T13:32:43+0200",
-			EndedAt:         "2024-10-15T14:32:09+0200",
-			CreatedAtTS:     1728991945000,
-			StartedAtTS:     1728991963000,
-			EndedAtTS:       1728995529000,
+			CreatedAt:       "2024-10-15T15:32:25+0200",
+			StartedAt:       "2024-10-15T15:32:43+0200",
+			EndedAt:         "2024-10-15T16:32:09+0200",
+			CreatedAtTS:     1728999145000,
+			StartedAtTS:     1728999163000,
+			EndedAtTS:       1729002729000,
 			Elapsed:         "00:59:26",
 			State:           "DELETED",
 			Allocation: models.Generic{
@@ -49,11 +50,11 @@ var (
 				"vcpus":       8,
 			},
 			TotalTime: models.MetricMap{
-				"alloc_cpumemtime": 0,
-				"alloc_cputime":    0,
-				"alloc_gpumemtime": 0,
-				"alloc_gputime":    0,
-				"walltime":         0,
+				"alloc_cpumemtime": 8.429568e+06,
+				"alloc_cputime":    8232,
+				"alloc_gpumemtime": 1029,
+				"alloc_gputime":    1029,
+				"walltime":         1029,
 			},
 			Tags: models.Generic{
 				"az":             "nova",
@@ -71,13 +72,13 @@ var (
 			Name:            "newer-2",
 			Project:         "admin",
 			User:            "admin",
-			CreatedAt:       "2024-10-15T14:29:18+0200",
-			StartedAt:       "2024-10-15T14:29:34+0200",
+			CreatedAt:       "2024-10-15T16:29:18+0200",
+			StartedAt:       "2024-10-15T16:29:34+0200",
 			EndedAt:         "N/A",
-			CreatedAtTS:     1728995358000,
-			StartedAtTS:     1728995374000,
+			CreatedAtTS:     1729002558000,
+			StartedAtTS:     1729002574000,
 			EndedAtTS:       0,
-			Elapsed:         "00:45:26",
+			Elapsed:         "00:15:26",
 			State:           "ACTIVE",
 			Allocation: models.Generic{
 				"disk":        1,
@@ -88,11 +89,11 @@ var (
 				"vcpus":       1,
 			},
 			TotalTime: models.MetricMap{
-				"alloc_cpumemtime": 230400,
-				"alloc_cputime":    900,
+				"alloc_cpumemtime": 237056,
+				"alloc_cputime":    926,
 				"alloc_gpumemtime": 0,
 				"alloc_gputime":    0,
-				"walltime":         900,
+				"walltime":         926,
 			},
 			Tags: models.Generic{
 				"az":             "nova",
@@ -110,13 +111,13 @@ var (
 			Name:            "tp-21",
 			Project:         "test-project-2",
 			User:            "test-user-2",
-			CreatedAt:       "2024-10-15T13:16:44+0200",
-			StartedAt:       "2024-10-15T13:16:55+0200",
+			CreatedAt:       "2024-10-15T15:16:44+0200",
+			StartedAt:       "2024-10-15T15:16:55+0200",
 			EndedAt:         "N/A",
-			CreatedAtTS:     1728991004000,
-			StartedAtTS:     1728991015000,
+			CreatedAtTS:     1728998204000,
+			StartedAtTS:     1728998215000,
 			EndedAtTS:       0,
-			Elapsed:         "01:58:05",
+			Elapsed:         "01:28:05",
 			State:           "ACTIVE",
 			Allocation: models.Generic{
 				"disk":        1,
@@ -127,11 +128,11 @@ var (
 				"vcpus":       128,
 			},
 			TotalTime: models.MetricMap{
-				"alloc_cpumemtime": 4.6848e+07,
-				"alloc_cputime":    31232,
+				"alloc_cpumemtime": 3.456e+08,
+				"alloc_cputime":    230400,
 				"alloc_gpumemtime": 0,
 				"alloc_gputime":    0,
-				"walltime":         244,
+				"walltime":         1800,
 			},
 			Tags: models.Generic{
 				"az":             "nova",

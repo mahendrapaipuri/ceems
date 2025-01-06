@@ -432,14 +432,29 @@ func (s *CEEMSServer) getQueriedFields(urlValues url.Values, validFieldNames []s
 	return queriedFields
 }
 
+// timeLocation returns `time.Location` based on location name.
+func (s *CEEMSServer) timeLocation(l string) *time.Location {
+	if l == "" {
+		return s.dbConfig.Data.TimeLocation.Location
+	} else {
+		if loc, err := time.LoadLocation(l); err != nil {
+			return s.dbConfig.Data.TimeLocation.Location
+		} else {
+			return loc
+		}
+	}
+}
+
 // getQueryWindow returns `from` and `to` time stamps from query vars and
 // cast them into proper format.
 func (s *CEEMSServer) getQueryWindow(r *http.Request) (map[string]string, error) {
+	q := r.URL.Query()
+
 	var fromTime, toTime time.Time
 	// Get to and from query parameters and do checks on them
-	if f := r.URL.Query().Get("from"); f == "" {
+	if f := q.Get("from"); f == "" {
 		// If from is not present in query params, use a default query window of 1 week
-		fromTime = time.Now().Add(-defaultQueryWindow)
+		fromTime = time.Now().Add(-defaultQueryWindow).In(s.dbConfig.Data.TimeLocation.Location)
 	} else {
 		// Return error response if from is not a timestamp
 		if ts, err := strconv.ParseInt(f, 10, 64); err != nil {
@@ -447,13 +462,13 @@ func (s *CEEMSServer) getQueryWindow(r *http.Request) (map[string]string, error)
 
 			return nil, fmt.Errorf("query parameter 'from': %w", ErrMalformedTimeStamp)
 		} else {
-			fromTime = time.Unix(ts, 0)
+			fromTime = time.Unix(ts, 0).In(s.dbConfig.Data.TimeLocation.Location)
 		}
 	}
 
-	if t := r.URL.Query().Get("to"); t == "" {
+	if t := q.Get("to"); t == "" {
 		// Use current time as default to
-		toTime = time.Now()
+		toTime = time.Now().In(s.dbConfig.Data.TimeLocation.Location)
 	} else {
 		// Return error response if to is not a timestamp
 		if ts, err := strconv.ParseInt(t, 10, 64); err != nil {
@@ -461,7 +476,7 @@ func (s *CEEMSServer) getQueryWindow(r *http.Request) (map[string]string, error)
 
 			return nil, fmt.Errorf("query parameter 'to': %w", ErrMalformedTimeStamp)
 		} else {
-			toTime = time.Unix(ts, 0)
+			toTime = time.Unix(ts, 0).In(s.dbConfig.Data.TimeLocation.Location)
 		}
 	}
 
@@ -495,7 +510,12 @@ func (s *CEEMSServer) roundQueryWindow(r *http.Request) error {
 	if f := q.Get("from"); f == "" {
 		q.Set(
 			"from",
-			strconv.FormatInt(common.Round(time.Now().Add(-defaultQueryWindow).Local().Unix(), cacheTTLSeconds), 10),
+			strconv.FormatInt(
+				common.Round(
+					time.Now().Add(-defaultQueryWindow).In(s.dbConfig.Data.TimeLocation.Location).Unix(),
+					cacheTTLSeconds,
+				), 10,
+			),
 		)
 	} else {
 		// Return error response if from is not a timestamp
@@ -509,7 +529,15 @@ func (s *CEEMSServer) roundQueryWindow(r *http.Request) error {
 	}
 
 	if t := q.Get("to"); t == "" {
-		q.Set("to", strconv.FormatInt(common.Round(time.Now().Local().Unix(), cacheTTLSeconds), 10))
+		q.Set(
+			"to",
+			strconv.FormatInt(
+				common.Round(
+					time.Now().In(s.dbConfig.Data.TimeLocation.Location).Unix(),
+					cacheTTLSeconds,
+				), 10,
+			),
+		)
 	} else {
 		// Return error response if from is not a timestamp
 		if ts, err := strconv.ParseInt(t, 10, 64); err != nil {
@@ -524,6 +552,31 @@ func (s *CEEMSServer) roundQueryWindow(r *http.Request) error {
 	r.URL.RawQuery = q.Encode()
 
 	return nil
+}
+
+// inTargetTimeLocation converts the string representations of times in units to target
+// time location.
+func (s *CEEMSServer) inTargetTimeLocation(tz string, units []models.Unit) []models.Unit {
+	// If no time zone is provided, we present times stored in DB without any changes
+	if tz == "" {
+		return units
+	}
+
+	// Location in which we need times to be presented
+	targetLoc := s.timeLocation(tz)
+
+	// If target location is same as source, return
+	if s.dbConfig.Data.TimeLocation.Location.String() == targetLoc.String() {
+		return units
+	}
+
+	for i := range units {
+		units[i].CreatedAt = convertTimeLocation(s.dbConfig.Data.TimeLocation.Location, targetLoc, units[i].CreatedAt)
+		units[i].StartedAt = convertTimeLocation(s.dbConfig.Data.TimeLocation.Location, targetLoc, units[i].StartedAt)
+		units[i].EndedAt = convertTimeLocation(s.dbConfig.Data.TimeLocation.Location, targetLoc, units[i].EndedAt)
+	}
+
+	return units
 }
 
 // unitsQuerier queries for compute units and write response.
@@ -624,6 +677,9 @@ queryUnits:
 		return
 	}
 
+	// Convert times to time zone provided in the query
+	units = s.inTargetTimeLocation(r.URL.Query().Get("timezone"), units)
+
 	// Write response
 	w.WriteHeader(http.StatusOK)
 
@@ -660,7 +716,9 @@ queryUnits:
 //	@Description
 //	@Description	If `to` query parameter is not provided, current time will be used. If `from`
 //	@Description	query parameter is not used, a default query window of 24 hours will be used.
-//	@Description	It means if `to` is provided, `from` will be calculated as `to` - 24hrs.
+//	@Description	It means if `to` is provided, `from` will be calculated as `to` - 24hrs. If query
+//	@Description	parameter `timezone` is provided, the unit's created, start and end time strings
+//	@Description	will be presented in that time zone.
 //	@Description
 //	@Description	To limit the number of fields in the response, use `field` query parameter. By default, all
 //	@Description	fields will be included in the response if they are _non-empty_.
@@ -675,6 +733,7 @@ queryUnits:
 //	@Param			running			query		bool		false	"Whether to fetch running units"
 //	@Param			from			query		string		false	"From timestamp"
 //	@Param			to				query		string		false	"To timestamp"
+//	@Param			timezone		query		string		false	"Time zone in IANA format"
 //	@Param			field			query		[]string	false	"Fields to return in response"	collectionFormat(multi)
 //	@Success		200				{object}	Response[models.Unit]
 //	@Failure		401				{object}	Response[any]
@@ -708,7 +767,9 @@ func (s *CEEMSServer) unitsAdmin(w http.ResponseWriter, r *http.Request) {
 //	@Description
 //	@Description	If `to` query parameter is not provided, current time will be used. If `from`
 //	@Description	query parameter is not used, a default query window of 24 hours will be used.
-//	@Description	It means if `to` is provided, `from` will be calculated as `to` - 24hrs.
+//	@Description	It means if `to` is provided, `from` will be calculated as `to` - 24hrs. If query
+//	@Description	parameter `timezone` is provided, the unit's created, start and end time strings
+//	@Description	will be presented in that time zone.
 //	@Description
 //	@Description	To limit the number of fields in the response, use `field` query parameter. By default, all
 //	@Description	fields will be included in the response if they are _non-empty_.
@@ -722,6 +783,7 @@ func (s *CEEMSServer) unitsAdmin(w http.ResponseWriter, r *http.Request) {
 //	@Param			running			query		bool		false	"Whether to fetch running units"
 //	@Param			from			query		string		false	"From timestamp"
 //	@Param			to				query		string		false	"To timestamp"
+//	@Param			timezone		query		string		false	"Time zone in IANA format"
 //	@Param			field			query		[]string	false	"Fields to return in response"	collectionFormat(multi)
 //	@Success		200				{object}	Response[models.Unit]
 //	@Failure		401				{object}	Response[any]
@@ -1903,4 +1965,13 @@ func (s *CEEMSServer) demo(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("KO"))
 		}
 	}
+}
+
+// convertTimeLocation converts time from source location to target location.
+func convertTimeLocation(sourceLoc *time.Location, targetLoc *time.Location, val string) string {
+	if t, err := time.ParseInLocation(base.DatetimezoneLayout, val, sourceLoc); err == nil {
+		return t.In(targetLoc).Format(base.DatetimezoneLayout)
+	}
+
+	return val
 }

@@ -153,6 +153,14 @@ A `data_config` allows configuring the DB settings of CEEMS API server.
 #
 [ retention_period: <duration> | default = 30d ]
 
+# Time zone to be used when storing times of different events in the DB.
+# It takes a value defined in IANA (https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
+# like `Europe/Paris`
+# 
+# A special value `Local` can be used to use server local time zone.
+#
+[ time_zone: <string> | default = Local ]
+
 # CEEMS API server is capable of creating DB backups using SQLite backup API. Created
 # DB backups will be saved to this path. NOTE that for huge DBs, this backup can take 
 # a considerable amount of time. 
@@ -308,19 +316,17 @@ updaters:
 # When SLURM resource manager is configured to fetch job data using `sacct` command,
 # execution mode of the command will be decided as follows:
 #
-#  - If the current user running `ceems_api_server` is `root` or `slurm` user, `sacct`
-#    command will be executed natively as that user.
-#
-#  - If above check fails, `sacct` command will be attempted to execute as `slurm` user.
-#    If the `ceems_api_server` process have enough privileges setup using Linux capabilities
-#    in the systemd unit file, this will succeed and `sacct` will be always executed 
-#    as `slurm` user.
-#
-#  - If above check fails as well, we attempt to execute `sacct` with `sudo` prefix. If
+#  - If the current user running `ceems_api_server` is `root`, `sacct`
+#    command will be executed as that user in a security context.
+# 
+#  - If the `ceems_api_server` process has `CAP_SETUID` and `CAP_SETGID` capabilities, `sacct` 
+#    command will be executed as `root` user in a security context.
+# 
+#  - As a last attempt, we attempt to execute `sacct` with `sudo` prefix. If
 #    the current user running `ceems_api_server` is in the list of sudoers, this check
 #    will pass and `sacct` will be always executed as `sudo sacct <args>` to fetch jobs.
 #
-# If none of the above checks, pass, `sacct` will be executed as the current user 
+# If none of the above conditions are true, `sacct` will be executed as the current user 
 # which might not give job data of _all_ users in the cluster.
 #
 # If the operators are unsure which method to use, there is a default systemd

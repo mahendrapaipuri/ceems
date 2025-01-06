@@ -46,6 +46,30 @@ type AdminConfig struct {
 	Grafana common.GrafanaWebConfig `yaml:"grafana"`
 }
 
+type TimeLocation struct {
+	*time.Location
+}
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface.
+func (t *TimeLocation) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var tmp string
+
+	err := unmarshal(&tmp)
+	if err != nil {
+		return err
+	}
+
+	// Attempt to create location from string
+	loc, err := time.LoadLocation(tmp)
+	if err != nil {
+		return err
+	}
+
+	*t = TimeLocation{loc}
+
+	return nil
+}
+
 // DataConfig is the container for the data related config.
 type DataConfig struct {
 	Path               string         `yaml:"path"`
@@ -54,6 +78,7 @@ type DataConfig struct {
 	UpdateInterval     model.Duration `yaml:"update_interval"`
 	BackupInterval     model.Duration `yaml:"backup_interval"`
 	LastUpdateTime     time.Time      `yaml:"update_from"`
+	TimeLocation       TimeLocation   `yaml:"time_zone"`
 	SkipDeleteOldUnits bool
 }
 
@@ -72,14 +97,15 @@ type storageConfig struct {
 	dbBackupPath       string
 	retentionPeriod    time.Duration
 	lastUpdateTime     time.Time
+	timeLocation       *time.Location
 	skipDeleteOldUnits bool
 }
 
 // String implements Stringer interface for storageConfig.
 func (s *storageConfig) String() string {
 	return fmt.Sprintf(
-		"DB File Path: %s; Retention Period: %s; Last Updated At: %s",
-		s.dbPath, s.retentionPeriod, s.lastUpdateTime,
+		"DB File Path: %s; Retention Period: %s; Location: %s; Last Updated At: %s",
+		s.dbPath, s.retentionPeriod, s.timeLocation, s.lastUpdateTime,
 	)
 }
 
@@ -191,7 +217,7 @@ func New(c *Config) (*stats, error) {
 		c.Data.LastUpdateTime.Minute(),
 		c.Data.LastUpdateTime.Second(),
 		c.Data.LastUpdateTime.Nanosecond(),
-		time.Now().Location(),
+		c.Data.TimeLocation.Location,
 	)
 	c.Logger.Info("DB will be updated from", "time", c.Data.LastUpdateTime)
 
@@ -220,6 +246,7 @@ func New(c *Config) (*stats, error) {
 		dbBackupPath:       c.Data.BackupPath,
 		retentionPeriod:    time.Duration(c.Data.RetentionPeriod),
 		lastUpdateTime:     c.Data.LastUpdateTime,
+		timeLocation:       c.Data.TimeLocation.Location,
 		skipDeleteOldUnits: c.Data.SkipDeleteOldUnits,
 	}
 
@@ -259,7 +286,7 @@ func (s *stats) Collect(ctx context.Context) error {
 	// Measure elapsed time
 	defer common.TimeTrack(time.Now(), "Data collection", s.logger)
 
-	currentTime := time.Now()
+	currentTime := time.Now().In(s.storage.timeLocation)
 
 	// If duration is less than 1 day do single update
 	if currentTime.Sub(s.storage.lastUpdateTime) < 24*time.Hour {
@@ -733,7 +760,7 @@ func (s *stats) createBackup(ctx context.Context) error {
 	backupDBFileName := fmt.Sprintf(
 		"%s-%s.db",
 		strings.Split(base.CEEMSDBName, ".")[0],
-		time.Now().Format("200601021504"),
+		time.Now().In(s.storage.timeLocation).Format("200601021504"),
 	)
 
 	backupDBFilePath := filepath.Join(filepath.Dir(s.storage.dbPath), backupDBFileName)

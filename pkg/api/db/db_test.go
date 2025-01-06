@@ -570,6 +570,7 @@ func prepareMockConfig(tmpDir string) (*Config, error) {
 			BackupPath:      dataBackupDir,
 			LastUpdateTime:  time.Now(),
 			RetentionPeriod: model.Duration(24 * time.Hour),
+			TimeLocation:    TimeLocation{Location: time.UTC},
 		},
 		Admin: AdminConfig{
 			Users: []string{"adm1", "adm2"},

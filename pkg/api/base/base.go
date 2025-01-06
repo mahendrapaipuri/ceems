@@ -55,6 +55,9 @@ var (
 // DatetimeLayout to be used in the package.
 var DatetimeLayout = fmt.Sprintf("%sT%s", time.DateOnly, time.TimeOnly)
 
+// DatetimezoneLayout to be used in the package.
+var DatetimezoneLayout = DatetimeLayout + "-0700"
+
 // CLI args with global scope.
 var (
 	ConfigFilePath string
