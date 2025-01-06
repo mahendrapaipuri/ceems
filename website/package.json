@@ -30,7 +30,7 @@
   },
   "devDependencies": {
     "@docusaurus/module-type-aliases": "3.6.3",
-    "@docusaurus/tsconfig": "3.6.3",
+    "@docusaurus/tsconfig": "3.7.0",
     "@docusaurus/types": "3.6.3",
     "cspell": "^8.17.1",
     "markdown-link-check": "3.12.2",
