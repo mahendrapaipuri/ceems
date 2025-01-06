@@ -422,7 +422,7 @@ type cgroupCollector struct {
 	cgroupManager     *cgroupManager
 	opts              cgroupOpts
 	hostname          string
-	hostMemTotal      float64
+	hostMemInfo       map[string]float64
 	blockDevices      map[string]string
 	numCgs            *prometheus.Desc
 	cgCPUUser         *prometheus.Desc
@@ -457,12 +457,12 @@ type cgroupOpts struct {
 // NewCgroupCollector returns a new cgroupCollector exposing a summary of cgroups.
 func NewCgroupCollector(logger *slog.Logger, cgManager *cgroupManager, opts cgroupOpts) (*cgroupCollector, error) {
 	// Get total memory of host
-	var memTotal float64
+	hostMemInfo := make(map[string]float64)
 
 	file, err := os.Open(procFilePath("meminfo"))
 	if err == nil {
 		if memInfo, err := parseMemInfo(file); err == nil {
-			memTotal = memInfo["MemTotal_bytes"]
+			hostMemInfo = memInfo
 		}
 	} else {
 		logger.Error("Failed to get total memory of the host", "err", err)
@@ -490,7 +490,7 @@ func NewCgroupCollector(logger *slog.Logger, cgManager *cgroupManager, opts cgro
 		logger:        logger,
 		cgroupManager: cgManager,
 		opts:          opts,
-		hostMemTotal:  memTotal,
+		hostMemInfo:   hostMemInfo,
 		hostname:      hostname,
 		blockDevices:  blockDevices,
 		numCgs: prometheus.NewDesc(
@@ -869,8 +869,8 @@ func (c *cgroupCollector) statsV1(metric *cgMetric) {
 			metric.memoryUsed = float64(stats.GetMemory().GetUsage().GetUsage())
 			// If memory usage limit is set as "max", cgroups lib will set it to
 			// math.MaxUint64. Here we replace it with total system memory
-			if stats.GetMemory().GetUsage().GetLimit() == math.MaxUint64 && c.hostMemTotal != 0 {
-				metric.memoryTotal = c.hostMemTotal
+			if stats.GetMemory().GetUsage().GetLimit() == math.MaxUint64 && c.hostMemInfo["MemTotal_bytes"] > 0 {
+				metric.memoryTotal = c.hostMemInfo["MemTotal_bytes"]
 			} else {
 				metric.memoryTotal = float64(stats.GetMemory().GetUsage().GetLimit())
 			}
@@ -882,8 +882,15 @@ func (c *cgroupCollector) statsV1(metric *cgMetric) {
 			metric.memswUsed = float64(stats.GetMemory().GetSwap().GetUsage())
 			// If memory usage limit is set as "max", cgroups lib will set it to
 			// math.MaxUint64. Here we replace it with total system memory
-			if stats.GetMemory().GetSwap().GetLimit() == math.MaxUint64 && c.hostMemTotal != 0 {
-				metric.memswTotal = c.hostMemTotal
+			if stats.GetMemory().GetSwap().GetLimit() == math.MaxUint64 {
+				switch {
+				case c.hostMemInfo["SwapTotal_bytes"] > 0:
+					metric.memswTotal = c.hostMemInfo["SwapTotal_bytes"]
+				case c.hostMemInfo["MemTotal_bytes"] > 0:
+					metric.memswTotal = c.hostMemInfo["MemTotal_bytes"]
+				default:
+					metric.memswTotal = float64(stats.GetMemory().GetSwap().GetLimit())
+				}
 			} else {
 				metric.memswTotal = float64(stats.GetMemory().GetSwap().GetLimit())
 			}
@@ -987,8 +994,8 @@ func (c *cgroupCollector) statsV2(metric *cgMetric) {
 		metric.memoryUsed = float64(stats.GetMemory().GetUsage())
 		// If memory usage limit is set as "max", cgroups lib will set it to
 		// math.MaxUint64. Here we replace it with total system memory
-		if stats.GetMemory().GetUsageLimit() == math.MaxUint64 && c.hostMemTotal > 0 {
-			metric.memoryTotal = c.hostMemTotal
+		if stats.GetMemory().GetUsageLimit() == math.MaxUint64 && c.hostMemInfo["MemTotal_bytes"] > 0 {
+			metric.memoryTotal = c.hostMemInfo["MemTotal_bytes"]
 		} else {
 			metric.memoryTotal = float64(stats.GetMemory().GetUsageLimit())
 		}
@@ -997,9 +1004,16 @@ func (c *cgroupCollector) statsV2(metric *cgMetric) {
 		metric.memoryRSS = float64(stats.GetMemory().GetAnon())
 		metric.memswUsed = float64(stats.GetMemory().GetSwapUsage())
 		// If memory usage limit is set as "max", cgroups lib will set it to
-		// math.MaxUint64. Here we replace it with total system memory
-		if stats.GetMemory().GetSwapLimit() == math.MaxUint64 && c.hostMemTotal > 0 {
-			metric.memswTotal = c.hostMemTotal
+		// math.MaxUint64. Here we replace it with either total swap/system memory
+		if stats.GetMemory().GetSwapLimit() == math.MaxUint64 {
+			switch {
+			case c.hostMemInfo["SwapTotal_bytes"] > 0:
+				metric.memswTotal = c.hostMemInfo["SwapTotal_bytes"]
+			case c.hostMemInfo["MemTotal_bytes"] > 0:
+				metric.memswTotal = c.hostMemInfo["MemTotal_bytes"]
+			default:
+				metric.memswTotal = float64(stats.GetMemory().GetSwapLimit())
+			}
 		} else {
 			metric.memswTotal = float64(stats.GetMemory().GetSwapLimit())
 		}

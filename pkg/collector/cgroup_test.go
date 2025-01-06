@@ -81,7 +81,7 @@ func TestCgroupsV2Metrics(t *testing.T) {
 	c := cgroupCollector{
 		cgroupManager: cgManager,
 		opts:          opts,
-		hostMemTotal:  float64(123456),
+		hostMemInfo:   map[string]float64{"MemTotal_bytes": float64(123456), "SwapTotal_bytes": float64(1234)},
 		logger:        slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 
@@ -98,7 +98,7 @@ func TestCgroupsV2Metrics(t *testing.T) {
 		memoryTotal:     4.294967296e+09,
 		memoryFailCount: 0,
 		memswUsed:       0,
-		memswTotal:      123456,
+		memswTotal:      1234,
 		memswFailCount:  0,
 		memoryPressure:  0,
 		rdmaHCAHandles:  map[string]float64{"hfi1_0": 479, "hfi1_1": 1479, "hfi1_2": 2479},
@@ -140,7 +140,7 @@ func TestCgroupsV1Metrics(t *testing.T) {
 		logger:        slog.New(slog.NewTextHandler(io.Discard, nil)),
 		cgroupManager: cgManager,
 		opts:          opts,
-		hostMemTotal:  float64(123456),
+		hostMemInfo:   map[string]float64{"MemTotal_bytes": float64(123456), "SwapTotal_bytes": float64(1234)},
 	}
 
 	expectedMetrics := cgMetric{
