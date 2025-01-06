@@ -43,10 +43,9 @@ type slurmScheduler struct {
 const slurmBatchScheduler = "slurm"
 
 var (
-	slurmTimeFormat = base.DatetimeLayout + "-0700"
-	jobLock         = sync.RWMutex{}
-	assocLock       = sync.RWMutex{}
-	sacctFields     = []string{
+	jobLock     = sync.RWMutex{}
+	assocLock   = sync.RWMutex{}
+	sacctFields = []string{
 		"jobidraw", "partition", "qos", "account", "group", "gid", "user", "uid",
 		"submit", "start", "end", "elapsed", "elapsedraw", "exitcode", "state",
 		"alloctres", "nodelist", "jobname", "workdir",

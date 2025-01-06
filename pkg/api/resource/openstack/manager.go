@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/mahendrapaipuri/ceems/internal/common"
-	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/mahendrapaipuri/ceems/pkg/api/resource"
 	config_util "github.com/prometheus/common/config"
@@ -31,7 +30,6 @@ var (
 		"X-OpenStack-Nova-API-Version",
 		"OpenStack-API-Version",
 	}
-	osTimeFormat        = base.DatetimeLayout + "-0700"
 	tokenExpiryDuration = 1 * time.Hour // Openstack tokens are valid for 1 hour
 )
 

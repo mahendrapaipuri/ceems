@@ -186,16 +186,15 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 			// elapsedSeconds, _ = strconv.ParseInt(components[sacctFieldMap["elapsedraw"]], 10, 64)
 
 			// Convert time strings to configured time location
-			for _, c := range []string{"submit", "start", "end"} {
-				if t, err := time.Parse(slurmTimeFormat, components[sacctFieldMap[c]]); err == nil {
-					components[sacctFieldMap[c]] = t.In(loc).Format(slurmTimeFormat)
-				}
-			}
+			eventTS := make(map[string]int64, 3)
 
-			// Get job submit, start and end times
-			jobSubmitTS := helper.TimeToTimestamp(slurmTimeFormat, components[sacctFieldMap["submit"]], loc)
-			jobStartTS := helper.TimeToTimestamp(slurmTimeFormat, components[sacctFieldMap["start"]], loc)
-			jobEndTS := helper.TimeToTimestamp(slurmTimeFormat, components[sacctFieldMap["end"]], loc)
+			for _, c := range []string{"submit", "start", "end"} {
+				if t, err := time.Parse(base.DatetimezoneLayout, components[sacctFieldMap[c]]); err == nil {
+					components[sacctFieldMap[c]] = t.In(loc).Format(base.DatetimezoneLayout)
+				}
+
+				eventTS[c] = helper.TimeToTimestamp(base.DatetimezoneLayout, components[sacctFieldMap[c]])
+			}
 
 			// Parse alloctres to get billing, nnodes, ncpus, ngpus and mem
 			var billing, nnodes, ncpus, ngpus int64
@@ -254,7 +253,7 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 			// If job has not started between interval's start and end time,
 			// elapsedTime should be zero. This can happen when job is in pending state
 			// after submission
-			if jobStartTS == 0 {
+			if eventTS["start"] == 0 {
 				endMark = startMark
 
 				goto elapsed
@@ -264,23 +263,23 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 			// job's start and end time. This case should not arrive in production as
 			// there is no reason SLURM gives us the jobs that have finished in the past
 			// that do not overlap with interval boundaries
-			if jobEndTS > 0 && jobEndTS < intStartTS {
-				startMark = jobStartTS
-				endMark = jobEndTS
+			if eventTS["end"] > 0 && eventTS["end"] < intStartTS {
+				startMark = eventTS["start"]
+				endMark = eventTS["end"]
 
 				goto elapsed
 			}
 
 			// If job has started **after** start of interval, we should mark job's start
 			// time as start of elapsed time
-			if jobStartTS > intStartTS {
-				startMark = jobStartTS
+			if eventTS["start"] > intStartTS {
+				startMark = eventTS["start"]
 			}
 
 			// If job has ended before end of interval, we should mark job's end time
 			// as elapsed end time.
-			if jobEndTS > 0 && jobEndTS < intEndTS {
-				endMark = jobEndTS
+			if eventTS["end"] > 0 && eventTS["end"] < intEndTS {
+				endMark = eventTS["end"]
 			}
 
 		elapsed:
@@ -345,9 +344,9 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 				CreatedAt:       components[sacctFieldMap["submit"]],
 				StartedAt:       components[sacctFieldMap["start"]],
 				EndedAt:         components[sacctFieldMap["end"]],
-				CreatedAtTS:     jobSubmitTS,
-				StartedAtTS:     jobStartTS,
-				EndedAtTS:       jobEndTS,
+				CreatedAtTS:     eventTS["submit"],
+				StartedAtTS:     eventTS["start"],
+				EndedAtTS:       eventTS["end"],
 				Elapsed:         components[sacctFieldMap["elapsed"]],
 				State:           components[sacctFieldMap["state"]],
 				Allocation:      allocation,

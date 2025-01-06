@@ -2,11 +2,9 @@ package helper
 
 import (
 	"testing"
-	"time"
 
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestNodelistParser(t *testing.T) {
@@ -137,47 +135,32 @@ func TestTimeToTimestamp(t *testing.T) {
 	tests := []struct {
 		name     string
 		time     string
-		loc      string
 		expected int64
 	}{
 		{
-			name:     "time string in local location",
+			name:     "time string in CET location",
 			time:     "2024-11-12T15:23:02+0100",
-			loc:      "Local",
 			expected: 1731421382000,
 		},
 		{
-			name:     "time string in UTC",
+			name:     "time string in DST",
 			time:     "2024-10-03T12:51:40+0200",
 			expected: 1727952700000,
 		},
 		{
-			name:     "time string in same location",
-			time:     "2024-11-12T15:23:02+0100",
-			loc:      "Europe/Paris",
-			expected: 1731421382000,
-		},
-		{
-			name:     "time string in different location",
-			time:     "2024-10-24T15:27:19+0200",
-			loc:      "Asia/Colombo",
-			expected: 1729776439000,
+			name:     "time string in UTC",
+			time:     "2024-11-12T15:23:02+0000",
+			expected: 1731424982000,
 		},
 	}
 
 	for _, test := range tests {
-		loc, err := time.LoadLocation(test.loc)
-		require.NoError(t, err)
-
-		timeStamp := TimeToTimestamp(base.DatetimeLayout+"-0700", test.time, loc)
+		timeStamp := TimeToTimestamp(base.DatetimezoneLayout, test.time)
 		assert.Equal(t, test.expected, timeStamp, test.name)
 	}
 
 	// Check failure case
-	loc, err := time.LoadLocation("Local")
-	require.NoError(t, err)
-
-	timeStamp := TimeToTimestamp(base.DatetimeLayout+"-0700", "2006-01-0215:04:05-0700", loc)
+	timeStamp := TimeToTimestamp(base.DatetimezoneLayout, "Unknown")
 	assert.Equal(t, int64(0), timeStamp)
 }
 

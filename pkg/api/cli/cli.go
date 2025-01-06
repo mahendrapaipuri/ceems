@@ -60,6 +60,7 @@ func (c *CEEMSAPIAppConfig) UnmarshalYAML(unmarshal func(interface{}) error) err
 				RetentionPeriod: model.Duration(30 * 24 * time.Hour),
 				UpdateInterval:  model.Duration(15 * time.Minute),
 				BackupInterval:  model.Duration(24 * time.Hour),
+				TimeLocation:    ceems_db.TimeLocation{Location: time.Local},
 				LastUpdateTime:  todayMidnight,
 			},
 			Admin: ceems_db.AdminConfig{

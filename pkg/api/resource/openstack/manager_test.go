@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	config_util "github.com/prometheus/common/config"
 	"github.com/stretchr/testify/assert"
@@ -21,9 +22,9 @@ import (
 )
 
 var (
-	start, _   = time.Parse(osTimeFormat, "2024-10-15T16:15:00+0200")
-	end, _     = time.Parse(osTimeFormat, "2024-10-15T16:45:00+0200")
-	current, _ = time.Parse(osTimeFormat, "2024-10-15T16:45:00+0200")
+	start, _   = time.Parse(base.DatetimezoneLayout, "2024-10-15T16:15:00+0200")
+	end, _     = time.Parse(base.DatetimezoneLayout, "2024-10-15T16:45:00+0200")
+	current, _ = time.Parse(base.DatetimezoneLayout, "2024-10-15T16:45:00+0200")
 
 	expectedUnits = map[string]models.Unit{
 		"d0d60434-4bf1-4eb1-9469-d7b38083a88f": {

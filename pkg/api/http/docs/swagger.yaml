@@ -707,10 +707,6 @@ paths:
         in: query
         name: to
         type: string
-      - description: Time zone in IANA format
-        in: query
-        name: timezone
-        type: string
       produces:
       - application/json
       responses:
@@ -751,7 +747,9 @@ paths:
 
         If `to` query parameter is not provided, current time will be used. If `from`
         query parameter is not used, a default query window of 24 hours will be used.
-        It means if `to` is provided, `from` will be calculated as `to` - 24hrs.
+        It means if `to` is provided, `from` will be calculated as `to` - 24hrs. If query
+        parameter `timezone` is provided, the unit's created, start and end time strings
+        will be presented in that time zone.
 
         To limit the number of fields in the response, use `field` query parameter. By default, all
         fields will be included in the response if they are _non-empty_.
@@ -848,7 +846,9 @@ paths:
 
         If `to` query parameter is not provided, current time will be used. If `from`
         query parameter is not used, a default query window of 24 hours will be used.
-        It means if `to` is provided, `from` will be calculated as `to` - 24hrs.
+        It means if `to` is provided, `from` will be calculated as `to` - 24hrs. If query
+        parameter `timezone` is provided, the unit's created, start and end time strings
+        will be presented in that time zone.
 
         To limit the number of fields in the response, use `field` query parameter. By default, all
         fields will be included in the response if they are _non-empty_.
@@ -1080,10 +1080,6 @@ paths:
         in: query
         name: to
         type: string
-      - description: Time zone in IANA format
-        in: query
-        name: timezone
-        type: string
       - collectionFormat: multi
         description: Fields to return in response
         in: query
@@ -1194,10 +1190,6 @@ paths:
       - description: To timestamp
         in: query
         name: to
-        type: string
-      - description: Time zone in IANA format
-        in: query
-        name: timezone
         type: string
       - collectionFormat: multi
         description: Fields to return in response

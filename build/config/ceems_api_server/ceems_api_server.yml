@@ -37,8 +37,7 @@ ceems_api_server:
     # Time zone to be used when storing times of different events in the DB.
     # It takes a value defined in IANA (https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
     # like `Europe/Paris`
-    #
-    # If left empty or not configured, UTC will be used. 
+    # 
     # A special value `Local` can be used to use server local time zone.
     #
     time_zone: Local

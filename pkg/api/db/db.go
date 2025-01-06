@@ -46,7 +46,9 @@ type AdminConfig struct {
 	Grafana common.GrafanaWebConfig `yaml:"grafana"`
 }
 
-type TimeLocation time.Location
+type TimeLocation struct {
+	*time.Location
+}
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
 func (t *TimeLocation) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -63,7 +65,7 @@ func (t *TimeLocation) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return err
 	}
 
-	*t = TimeLocation(*loc)
+	*t = TimeLocation{loc}
 
 	return nil
 }
@@ -207,7 +209,6 @@ func New(c *Config) (*stats, error) {
 	}
 
 	// Now make an instance of time.Date with proper format and zone
-	timeLoc := (*time.Location)(&c.Data.TimeLocation)
 	c.Data.LastUpdateTime = time.Date(
 		c.Data.LastUpdateTime.Year(),
 		c.Data.LastUpdateTime.Month(),
@@ -216,7 +217,7 @@ func New(c *Config) (*stats, error) {
 		c.Data.LastUpdateTime.Minute(),
 		c.Data.LastUpdateTime.Second(),
 		c.Data.LastUpdateTime.Nanosecond(),
-		timeLoc,
+		c.Data.TimeLocation.Location,
 	)
 	c.Logger.Info("DB will be updated from", "time", c.Data.LastUpdateTime)
 
@@ -245,7 +246,7 @@ func New(c *Config) (*stats, error) {
 		dbBackupPath:       c.Data.BackupPath,
 		retentionPeriod:    time.Duration(c.Data.RetentionPeriod),
 		lastUpdateTime:     c.Data.LastUpdateTime,
-		timeLocation:       timeLoc,
+		timeLocation:       c.Data.TimeLocation.Location,
 		skipDeleteOldUnits: c.Data.SkipDeleteOldUnits,
 	}
 

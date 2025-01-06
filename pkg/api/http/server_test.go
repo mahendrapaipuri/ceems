@@ -72,7 +72,12 @@ func setupServer(d string) *CEEMSServer {
 	server, _, _ := New(
 		&Config{
 			Logger: logger,
-			DB:     db.Config{Data: db.DataConfig{Path: d}},
+			DB: db.Config{
+				Data: db.DataConfig{
+					Path:         d,
+					TimeLocation: db.TimeLocation{Location: time.UTC},
+				},
+			},
 			Web: WebConfig{
 				Addresses:     []string{"localhost:9020"}, // dummy address
 				RequestsLimit: 10,
