@@ -489,6 +489,12 @@ With the above config, the collector will build the Redfish API URL based on `pr
 proxy will read this header and proxy the request to correct Redfish target and eventually
 sends the response back to the collector.
 
+### Cray's PM counters collector
+
+There is no special configuration required for Cray's PM counters collector. It is
+disabled by default and it can be enabled using `--collector.cray_pm_counters` CLI
+flag to the `ceems_exporter`.
+
 ### RAPL collector
 
 For the kernels that are `<5.3`, there is no special configuration to be done. If the

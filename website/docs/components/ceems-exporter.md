@@ -28,6 +28,7 @@ sources on compute node.
 
 - IPMI collector: Exports power usage reported by `ipmi` tools
 - Redfish collector: Exports power usage reported by [Redfish API](https://www.dmtf.org/standards/redfish)
+- Cray PM counter collector: Exports power usage reported by [Cray's PM counters](https://cray-hpe.github.io/docs-csm/en-10/operations/power_management/user_access_to_compute_node_power_data/)
 - RAPL collector: Exports RAPL energy metrics
 
 ### Emissions related collectors
@@ -401,6 +402,17 @@ chassis the metrics exposed by Redfish collector are:
 - Minimum power consumption in the sampling period
 - Maximum power consumption in the sampling period
 - Average power consumption in the sampling period
+
+### Cray's PM counters collector
+
+Cray's PM counters collector reports the power consumption of CPU, DRAM and accelerators like GPUs
+(when available) using Cray's internal in-band measurements.
+
+List of metrics exported by RAPL collector are:
+
+- Node level energy, power and power limit measurements
+- CPU and memory energy, power and power limit measurements
+- Accelerator's energy, power and power limit measurements (when available)
 
 ### RAPL collector
 
