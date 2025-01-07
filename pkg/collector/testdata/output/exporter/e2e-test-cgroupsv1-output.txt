@@ -75,6 +75,27 @@ ceems_cpu_seconds_total{hostname="",mode="softirq"} 39.44
 ceems_cpu_seconds_total{hostname="",mode="steal"} 0
 ceems_cpu_seconds_total{hostname="",mode="system"} 1119.22
 ceems_cpu_seconds_total{hostname="",mode="user"} 3018.54
+# HELP ceems_cray_pm_counters_energy_joules Current energy value in joules
+# TYPE ceems_cray_pm_counters_energy_joules gauge
+ceems_cray_pm_counters_energy_joules{domain="accel0",hostname=""} 2.08970342e+08
+ceems_cray_pm_counters_energy_joules{domain="accel1",hostname=""} 2.68461017e+08
+ceems_cray_pm_counters_energy_joules{domain="accel2",hostname=""} 2.7169689e+08
+ceems_cray_pm_counters_energy_joules{domain="accel3",hostname=""} 2.51713932e+08
+ceems_cray_pm_counters_energy_joules{domain="cpu",hostname=""} 1.39431088e+08
+ceems_cray_pm_counters_energy_joules{domain="memory",hostname=""} 1.04283458e+08
+ceems_cray_pm_counters_energy_joules{domain="node",hostname=""} 1.360621494e+09
+# HELP ceems_cray_pm_counters_power_watts Current power value in watts
+# TYPE ceems_cray_pm_counters_power_watts gauge
+ceems_cray_pm_counters_power_watts{domain="accel0",hostname=""} 99
+ceems_cray_pm_counters_power_watts{domain="accel1",hostname=""} 197
+ceems_cray_pm_counters_power_watts{domain="accel2",hostname=""} 263
+ceems_cray_pm_counters_power_watts{domain="accel3",hostname=""} 123
+ceems_cray_pm_counters_power_watts{domain="cpu",hostname=""} 83
+ceems_cray_pm_counters_power_watts{domain="memory",hostname=""} 75
+ceems_cray_pm_counters_power_watts{domain="node",hostname=""} 873
+# HELP ceems_cray_pm_counters_temp_celsius Current temperature value in celsius
+# TYPE ceems_cray_pm_counters_temp_celsius gauge
+ceems_cray_pm_counters_temp_celsius{domain="cpu0",hostname=""} 48
 # HELP ceems_exporter_build_info A metric with a constant '1' value labeled by version, revision, branch, goversion from which ceems_exporter was built, and the goos and goarch for the build.
 # TYPE ceems_exporter_build_info gauge
 # HELP ceems_ipmi_dcmi_avg_watts Average Power consumption in watts
@@ -123,6 +144,7 @@ ceems_redfish_min_watts{chassis="Chassis_1",hostname=""} 326
 # HELP ceems_scrape_collector_success ceems_exporter: Whether a collector succeeded.
 # TYPE ceems_scrape_collector_success gauge
 ceems_scrape_collector_success{collector="cpu"} 1
+ceems_scrape_collector_success{collector="cray_pm_counters"} 1
 ceems_scrape_collector_success{collector="ipmi_dcmi"} 1
 ceems_scrape_collector_success{collector="meminfo"} 1
 ceems_scrape_collector_success{collector="rapl"} 1
