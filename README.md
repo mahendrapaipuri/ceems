@@ -35,7 +35,7 @@ in a resource manager agnostic way.
 
 - Monitors energy, performance, IO and network metrics for different types of resource
 managers (SLURM, Openstack, k8s)
-- Supports different energy sources like RAPL, HWMON and BMC _via_ IPMI or Redfish
+- Supports different energy sources like RAPL, HWMON, Cray's PM Counters and BMC _via_ IPMI or Redfish
 - Supports NVIDIA (MIG and vGPU) and AMD GPUs
 - Provides targets using [HTTP Discovery Component](https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.http/)
 to [Grafana Alloy](https://grafana.com/docs/alloy/latest) to continuously profile compute units

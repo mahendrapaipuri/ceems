@@ -46,8 +46,9 @@ Most of energy measurement tools are based on
 energy consumption from CPU and memory. It does not report consumption from other
 peripherals like PCIe, network, disk, _etc_.
 
-To address this, the current exporter will expose IPMI power statistics in addition to
-RAPL metrics. IPMI measurements are generally made at the node level which includes
+To address this, the current exporter will expose node power statistics from BMC
+_via_ IPMI/Redfish/Cray's PM counters in addition to
+RAPL metrics. BMC measurements are generally made at the node level which includes
 consumption by _most_ of the components. However, the reported energy usage is vendor
 dependent and it is desirable to validate with them before reading too much into the
 numbers. In any case, this is the only complete metric we can get our hands on without
