@@ -405,6 +405,7 @@ then
         --collector.ipmi_dcmi.cmd="pkg/collector/testdata/ipmi/freeipmi/ipmi-dcmi" \
         --collector.redfish \
         --collector.redfish.web-config="pkg/collector/testdata/redfish/config.yml" \
+        --collector.cray_pm_counters \
         --collector.empty-hostname-label \
         --web.listen-address "127.0.0.1:${port}" \
         --web.disable-exporter-metrics \
@@ -466,6 +467,7 @@ then
         --collector.empty-hostname-label \
         --collector.ipmi_dcmi \
         --collector.ipmi_dcmi.test-mode \
+        --collector.cray_pm_counters \
         --web.listen-address "127.0.0.1:${port}" \
         --web.disable-exporter-metrics \
         --log.level="debug" > "${logfile}" 2>&1 &
@@ -517,6 +519,7 @@ then
         --collector.ipmi_dcmi \
         --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/ipmiutils/ipmiutil" \
         --collector.ipmi_dcmi.test-mode \
+        --collector.cray_pm_counters \
         --collector.empty-hostname-label \
         --web.listen-address "127.0.0.1:${port}" \
         --web.disable-exporter-metrics \
@@ -539,6 +542,7 @@ then
         --collector.ipmi_dcmi.test-mode \
         --collector.redfish \
         --collector.redfish.web-config="pkg/collector/testdata/redfish/config.yml" \
+        --collector.cray_pm_counters \
         --collector.empty-hostname-label \
         --web.listen-address "127.0.0.1:${port}" \
         --web.disable-exporter-metrics \

@@ -1040,6 +1040,137 @@ Path: sys/class/powercap/uevent
 Lines: 0
 Mode: 640
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/cray
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/cray/pm_counters
+Mode: 755
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/cray/pm_counters/accel0_energy
+Lines: 1
+208970342 J 1734094386462336 us
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/cray/pm_counters/accel0_power
+Lines: 1
+99 W 1734094386462336 us
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/cray/pm_counters/accel0_power_cap
+Lines: 1
+0 W
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/cray/pm_counters/accel1_energy
+Lines: 1
+268461017 J 1734094386466669 us
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/cray/pm_counters/accel1_power
+Lines: 1
+197 W 1734094386466669 us
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/cray/pm_counters/accel1_power_cap
+Lines: 1
+0 W
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/cray/pm_counters/accel2_energy
+Lines: 1
+271696890 J 1734094386469990 us
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/cray/pm_counters/accel2_power
+Lines: 1
+263 W 1734094386469990 us
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/cray/pm_counters/accel2_power_cap
+Lines: 1
+0 W
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/cray/pm_counters/accel3_energy
+Lines: 1
+251713932 J 1734094386472890 us
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/cray/pm_counters/accel3_power
+Lines: 1
+123 W 1734094386472890 us
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/cray/pm_counters/accel3_power_cap
+Lines: 1
+0 W
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/cray/pm_counters/cpu0_temp
+Lines: 1
+48 C 1734094386460680 us
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/cray/pm_counters/cpu_energy
+Lines: 1
+139431088 J 1734094386484962 us
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/cray/pm_counters/cpu_power
+Lines: 1
+83 W 1734094386484962 us
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/cray/pm_counters/energy
+Lines: 1
+1360621494 J 1734094386309238 us
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/cray/pm_counters/freshness
+Lines: 1
+12895022
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/cray/pm_counters/generation
+Lines: 1
+1
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/cray/pm_counters/memory_energy
+Lines: 1
+104283458 J 1734094386473018 us
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/cray/pm_counters/memory_power
+Lines: 1
+75 W 1734094386473018 us
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/cray/pm_counters/power
+Lines: 1
+873 W 1734094386309238 us
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/cray/pm_counters/power_cap
+Lines: 1
+0 W
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/cray/pm_counters/raw_scan_hz
+Lines: 1
+10
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/cray/pm_counters/startup
+Lines: 1
+1732789744304569
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/cray/pm_counters/version
+Lines: 1
+3
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Directory: sys/fs
 Mode: 775
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
