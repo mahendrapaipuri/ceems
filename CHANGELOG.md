@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.1 / 2025-01-08
+
+- [FEATURE] Add Cray's pm_counters collector [#261](https://github.com/mahendrapaipuri/ceems/pull/261) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [BUGFIX] Use total swap as limit when cgroup sets it as max [#260](https://github.com/mahendrapaipuri/ceems/pull/260) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Configurable Timezone for CEEMS DB [#253](https://github.com/mahendrapaipuri/ceems/pull/253) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] Support for Pyroscope servers for CEEMS LB [#252](https://github.com/mahendrapaipuri/ceems/pull/252) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [MAINT] Bump dependencies [#246](https://github.com/mahendrapaipuri/ceems/pull/246), [#247](https://github.com/mahendrapaipuri/ceems/pull/247), [#248](https://github.com/mahendrapaipuri/ceems/pull/248), [#249](https://github.com/mahendrapaipuri/ceems/pull/249), [#250](https://github.com/mahendrapaipuri/ceems/pull/250), [#251](https://github.com/mahendrapaipuri/ceems/pull/251), [#254](https://github.com/mahendrapaipuri/ceems/pull/254), [#255](https://github.com/mahendrapaipuri/ceems/pull/255), [#256](https://github.com/mahendrapaipuri/ceems/pull/256) ([@dependabot](https://github.com/dependabot))
+
 ## 0.5.0 / 2024-12-12
 
 - [BUGFIX] Support IPMI package on 32/64 bit platforms [#245](https://github.com/mahendrapaipuri/ceems/pull/245) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
