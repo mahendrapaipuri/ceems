@@ -14,15 +14,25 @@ import (
 
 const emissionsCollectorSubsystem = "emissions"
 
+// CLI opts.
+var (
+	emissionProviders = CEEMSExporterApp.Flag(
+		"collector.emissions.provider",
+		`Exports emission factors from these providers (default: all).
+Supported providers:
+	- "owid": Our World In Data (https://ourworldindata.org/grapher/carbon-intensity-electricity?tab=table)
+	- "emaps": Electricity Maps (https://app.electricitymaps.com/)
+	- "rte": RTE eCO2 Mix (Only for France) (https://www.rte-france.com/en/eco2mix/co2-emissions)`,
+	).Enums("owid", "emaps", "rte")
+)
+
 type emissionsCollector struct {
 	logger                   *slog.Logger
-	emissionFactorProviders  emissions.FactorProviders
+	emissionFactorProviders  *emissions.FactorProviders
 	emissionFactorMetricDesc *prometheus.Desc
 	prevReadTime             int64
 	prevEmissionFactors      map[string]float64
 }
-
-var newFactorProviders = emissions.NewFactorProviders
 
 func init() {
 	RegisterCollector(emissionsCollectorSubsystem, defaultDisabled, NewEmissionsCollector)
@@ -38,7 +48,7 @@ func NewEmissionsCollector(logger *slog.Logger) (Collector, error) {
 	)
 
 	// Create a new instance of EmissionCollector
-	emissionFactorProviders, err := newFactorProviders(logger)
+	emissionFactorProviders, err := emissions.NewFactorProviders(logger, *emissionProviders)
 	if err != nil {
 		logger.Error("Failed to create new EmissionCollector", "err", err)
 
@@ -47,7 +57,7 @@ func NewEmissionsCollector(logger *slog.Logger) (Collector, error) {
 
 	return &emissionsCollector{
 		logger:                   logger,
-		emissionFactorProviders:  *emissionFactorProviders,
+		emissionFactorProviders:  emissionFactorProviders,
 		emissionFactorMetricDesc: emissionsMetricDesc,
 		prevReadTime:             time.Now().Unix(),
 		prevEmissionFactors:      make(map[string]float64),
