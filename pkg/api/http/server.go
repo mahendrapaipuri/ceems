@@ -68,6 +68,31 @@ type WebConfig struct {
 	HTTPClientConfig config.HTTPClientConfig `yaml:",inline"`
 }
 
+// UnmarshalYAML implements the yaml.Unmarshaler interface.
+func (c *WebConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	// Set a default config
+	*c = WebConfig{
+		RoutePrefix: "/",
+	}
+
+	type plain WebConfig
+
+	if err := unmarshal((*plain)(c)); err != nil {
+		return err
+	}
+
+	// Set HTTPClientConfig in Web to empty struct as we do not and should not need
+	// CEEMS API server's client config on the server. The client config is only used
+	// in LB
+	//
+	// If we are using the same config file for both API server and LB,
+	// secrets will be available in the client config and to reduce attack surface we
+	// remove them all here by setting it to empty struct
+	c.HTTPClientConfig = config.HTTPClientConfig{}
+
+	return nil
+}
+
 // Config makes a server config.
 type Config struct {
 	Logger *slog.Logger
@@ -435,10 +460,10 @@ func (s *CEEMSServer) getQueriedFields(urlValues url.Values, validFieldNames []s
 // timeLocation returns `time.Location` based on location name.
 func (s *CEEMSServer) timeLocation(l string) *time.Location {
 	if l == "" {
-		return s.dbConfig.Data.TimeLocation.Location
+		return s.dbConfig.Data.Timezone.Location
 	} else {
 		if loc, err := time.LoadLocation(l); err != nil {
-			return s.dbConfig.Data.TimeLocation.Location
+			return s.dbConfig.Data.Timezone.Location
 		} else {
 			return loc
 		}
@@ -454,7 +479,7 @@ func (s *CEEMSServer) getQueryWindow(r *http.Request) (map[string]string, error)
 	// Get to and from query parameters and do checks on them
 	if f := q.Get("from"); f == "" {
 		// If from is not present in query params, use a default query window of 1 week
-		fromTime = time.Now().Add(-defaultQueryWindow).In(s.dbConfig.Data.TimeLocation.Location)
+		fromTime = time.Now().Add(-defaultQueryWindow).In(s.dbConfig.Data.Timezone.Location)
 	} else {
 		// Return error response if from is not a timestamp
 		if ts, err := strconv.ParseInt(f, 10, 64); err != nil {
@@ -462,13 +487,13 @@ func (s *CEEMSServer) getQueryWindow(r *http.Request) (map[string]string, error)
 
 			return nil, fmt.Errorf("query parameter 'from': %w", ErrMalformedTimeStamp)
 		} else {
-			fromTime = time.Unix(ts, 0).In(s.dbConfig.Data.TimeLocation.Location)
+			fromTime = time.Unix(ts, 0).In(s.dbConfig.Data.Timezone.Location)
 		}
 	}
 
 	if t := q.Get("to"); t == "" {
 		// Use current time as default to
-		toTime = time.Now().In(s.dbConfig.Data.TimeLocation.Location)
+		toTime = time.Now().In(s.dbConfig.Data.Timezone.Location)
 	} else {
 		// Return error response if to is not a timestamp
 		if ts, err := strconv.ParseInt(t, 10, 64); err != nil {
@@ -476,7 +501,7 @@ func (s *CEEMSServer) getQueryWindow(r *http.Request) (map[string]string, error)
 
 			return nil, fmt.Errorf("query parameter 'to': %w", ErrMalformedTimeStamp)
 		} else {
-			toTime = time.Unix(ts, 0).In(s.dbConfig.Data.TimeLocation.Location)
+			toTime = time.Unix(ts, 0).In(s.dbConfig.Data.Timezone.Location)
 		}
 	}
 
@@ -512,7 +537,7 @@ func (s *CEEMSServer) roundQueryWindow(r *http.Request) error {
 			"from",
 			strconv.FormatInt(
 				common.Round(
-					time.Now().Add(-defaultQueryWindow).In(s.dbConfig.Data.TimeLocation.Location).Unix(),
+					time.Now().Add(-defaultQueryWindow).In(s.dbConfig.Data.Timezone.Location).Unix(),
 					cacheTTLSeconds,
 				), 10,
 			),
@@ -533,7 +558,7 @@ func (s *CEEMSServer) roundQueryWindow(r *http.Request) error {
 			"to",
 			strconv.FormatInt(
 				common.Round(
-					time.Now().In(s.dbConfig.Data.TimeLocation.Location).Unix(),
+					time.Now().In(s.dbConfig.Data.Timezone.Location).Unix(),
 					cacheTTLSeconds,
 				), 10,
 			),
@@ -566,14 +591,14 @@ func (s *CEEMSServer) inTargetTimeLocation(tz string, units []models.Unit) []mod
 	targetLoc := s.timeLocation(tz)
 
 	// If target location is same as source, return
-	if s.dbConfig.Data.TimeLocation.Location.String() == targetLoc.String() {
+	if s.dbConfig.Data.Timezone.Location.String() == targetLoc.String() {
 		return units
 	}
 
 	for i := range units {
-		units[i].CreatedAt = convertTimeLocation(s.dbConfig.Data.TimeLocation.Location, targetLoc, units[i].CreatedAt)
-		units[i].StartedAt = convertTimeLocation(s.dbConfig.Data.TimeLocation.Location, targetLoc, units[i].StartedAt)
-		units[i].EndedAt = convertTimeLocation(s.dbConfig.Data.TimeLocation.Location, targetLoc, units[i].EndedAt)
+		units[i].CreatedAt = convertTimeLocation(s.dbConfig.Data.Timezone.Location, targetLoc, units[i].CreatedAt)
+		units[i].StartedAt = convertTimeLocation(s.dbConfig.Data.Timezone.Location, targetLoc, units[i].StartedAt)
+		units[i].EndedAt = convertTimeLocation(s.dbConfig.Data.Timezone.Location, targetLoc, units[i].EndedAt)
 	}
 
 	return units

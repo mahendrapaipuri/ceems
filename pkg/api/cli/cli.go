@@ -6,7 +6,6 @@ package cli
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -26,17 +25,10 @@ import (
 	ceems_http "github.com/mahendrapaipuri/ceems/pkg/api/http"
 	"github.com/mahendrapaipuri/ceems/pkg/api/resource"
 	"github.com/mahendrapaipuri/ceems/pkg/api/updater"
-	"github.com/prometheus/common/config"
-	"github.com/prometheus/common/model"
 	"github.com/prometheus/common/promslog"
 	"github.com/prometheus/common/promslog/flag"
 	"github.com/prometheus/common/version"
 	"kernel.org/pub/linux/libs/security/libcap/cap"
-)
-
-// Custom errors.
-var (
-	ErrBackupInt = errors.New("back up interval of less than 1 day is not supported")
 )
 
 // CEEMSAPIAppConfig contains the configuration of CEEMS API server.
@@ -46,53 +38,22 @@ type CEEMSAPIAppConfig struct {
 
 // SetDirectory joins any relative file paths with dir.
 func (c *CEEMSAPIAppConfig) SetDirectory(dir string) {
-	c.Server.Admin.Grafana.HTTPClientConfig.SetDirectory(dir)
+	c.Server.Admin.SetDirectory(dir)
 }
 
-// UnmarshalYAML implements the yaml.Unmarshaler interface.
-func (c *CEEMSAPIAppConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	// Set a default config
-	todayMidnight, _ := time.Parse("2006-01-02", time.Now().Format("2006-01-02"))
-	*c = CEEMSAPIAppConfig{
-		CEEMSAPIServerConfig{
-			Data: ceems_db.DataConfig{
-				Path:            "data",
-				RetentionPeriod: model.Duration(30 * 24 * time.Hour),
-				UpdateInterval:  model.Duration(15 * time.Minute),
-				BackupInterval:  model.Duration(24 * time.Hour),
-				TimeLocation:    ceems_db.TimeLocation{Location: time.Local},
-				LastUpdateTime:  todayMidnight,
-			},
-			Admin: ceems_db.AdminConfig{
-				Grafana: common.GrafanaWebConfig{
-					HTTPClientConfig: config.DefaultHTTPClientConfig,
-				},
-			},
-			Web: ceems_http.WebConfig{
-				RoutePrefix: "/",
-			},
-		},
-	}
-
-	type plain CEEMSAPIAppConfig
-
-	if err := unmarshal((*plain)(c)); err != nil {
+// Validate validates the config.
+func (c *CEEMSAPIAppConfig) Validate() error {
+	// Validate Data config
+	if err := c.Server.Data.Validate(); err != nil {
 		return err
 	}
 
-	// Set HTTPClientConfig in Web to empty struct as we do not and should not need
-	// CEEMS API server's client config on the server. The client config is only used
-	// in LB
-	//
-	// If we are using the same config file for both API server and LB,
-	// secrets will be available in the client config and to reduce attack surface we
-	// remove them all here by setting it to empty struct
-	c.Server.Web.HTTPClientConfig = config.HTTPClientConfig{}
+	// Validate Admin config
+	if err := c.Server.Admin.Validate(); err != nil {
+		return err
+	}
 
-	// The UnmarshalYAML method of HTTPClientConfig is not being called because it's not a pointer.
-	// We cannot make it a pointer as the parser panics for inlined pointer structs.
-	// Thus we just do its validation here.
-	return c.Server.Admin.Grafana.HTTPClientConfig.Validate()
+	return nil
 }
 
 // CEEMSAPIServerConfig contains the configuration of CEEMS API server.
@@ -197,8 +158,8 @@ func (b *CEEMSServer) Main() error {
 	config.Server.Data.SkipDeleteOldUnits = *skipDeleteOldUnits
 
 	// Return error if backup interval of less than 1 day is used
-	if time.Duration(config.Server.Data.BackupInterval) < 24*time.Hour && !*disableChecks {
-		return ErrBackupInt
+	if err := config.Validate(); err != nil && !*disableChecks {
+		return err
 	}
 
 	// Setup data directories
@@ -327,7 +288,7 @@ func (b *CEEMSServer) Main() error {
 		for {
 			// This will ensure that we will run the method as soon as go routine
 			// starts instead of waiting for ticker to tick.
-			logger.Info("Updating CEEMS DB")
+			logger.Info("Updating CEEMS DB", "interval", config.Server.Data.UpdateInterval)
 
 			if err := collector.Collect(ctx); err != nil {
 				logger.Error("Failed to fetch data", "err", err)
@@ -360,7 +321,7 @@ func (b *CEEMSServer) Main() error {
 					// Dont run backup as soon as go routine is spawned. In prod, it
 					// can take very long depending on the size of DB and so wait until
 					// first tick to run it.
-					logger.Info("Backing up CEEMS DB")
+					logger.Info("Backing up CEEMS DB", "interval", config.Server.Data.BackupInterval)
 
 					if err := collector.Backup(ctx); err != nil {
 						logger.Error("Failed to backup DB", "err", err)

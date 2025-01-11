@@ -19,6 +19,7 @@ Generic placeholders are defined as follows:
 
 * `<boolean>`: a boolean that can take the values `true` or `false`
 * `<duration>`: a duration matching the regular expression `((([0-9]+)y)?(([0-9]+)w)?(([0-9]+)d)?(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?(([0-9]+)ms)?|0)`, e.g. `1d`, `1h30m`, `5m`, `10s`
+* `<date>`: a date of format `YYYY-MM-DD`
 * `<filename>`: a valid path in the current working directory
 * `<float>`: a floating-point number
 * `<host>`: a valid string consisting of a hostname or IP followed by an optional port number
@@ -136,13 +137,6 @@ A `data_config` allows configuring the DB settings of CEEMS API server.
 #
 [ path: <filename> | default = data ]
 
-# Units data will be fetched at this interval. CEEMS will pull the units from the 
-# underlying resource manager at this frequency into its own DB.
-#
-# Units Supported: y, w, d, h, m, s, ms.
-#
-[ update_interval: <duration> | default = 15m ]
-
 # The duration to retain the data in the DB. Units older than this duration will be
 # purged from the DB. 
 #
@@ -152,6 +146,29 @@ A `data_config` allows configuring the DB settings of CEEMS API server.
 # Units Supported: y, w, d, h, m, s, ms.
 #
 [ retention_period: <duration> | default = 30d ]
+
+# Units data will be fetched at this interval. CEEMS will pull the units from the 
+# underlying resource manager at this frequency into its own DB.
+#
+# Units Supported: y, w, d, h, m, s, ms.
+#
+[ update_interval: <duration> | default = 15m ]
+
+# Units data will be fetched from this date. If left empty, units will be fetched
+# from current day midnight.
+#
+# Format Supported: 2025-01-01.
+#
+[ update_from: <date> | default = today ]
+
+# Units data will be fetched at this interval when fetching historical data. For
+# example, if `update_from` is set to a date in the past, units will be fetched
+# for every `max_update_interval` period until we reach to current time and then
+# they will be fetched every `update_interval` time.
+#
+# Units Supported: y, w, d, h, m, s, ms.
+#
+[ max_update_interval: <duration> | default = 1h ]
 
 # Time zone to be used when storing times of different events in the DB.
 # It takes a value defined in IANA (https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
