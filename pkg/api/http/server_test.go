@@ -74,8 +74,8 @@ func setupServer(d string) *CEEMSServer {
 			Logger: logger,
 			DB: db.Config{
 				Data: db.DataConfig{
-					Path:         d,
-					TimeLocation: db.TimeLocation{Location: time.UTC},
+					Path:     d,
+					Timezone: db.Timezone{Location: time.UTC},
 				},
 			},
 			Web: WebConfig{

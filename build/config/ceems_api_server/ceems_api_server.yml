@@ -17,13 +17,6 @@ ceems_api_server:
     #
     path: /var/lib/ceems
 
-    # Units data will be fetched at this interval. CEEMS will pull the units from the 
-    # underlying resource manager at this frequency into its own DB.
-    #
-    # Units Supported: y, w, d, h, m, s, ms.
-    #
-    update_interval: 15m
-
     # The duration to retain the data in the DB. Units older than this duration will be
     # purged from the DB. 
     #
@@ -33,6 +26,29 @@ ceems_api_server:
     # Units Supported: y, w, d, h, m, s, ms.
     #
     retention_period: 30d
+
+    # Units data will be fetched at this interval. CEEMS will pull the units from the 
+    # underlying resource manager at this frequency into its own DB.
+    #
+    # Units Supported: y, w, d, h, m, s, ms.
+    #
+    update_interval: 15m
+
+    # Units data will be fetched from this date. If left empty, units will be fetched
+    # from current day midnight.
+    #
+    # Format Supported: 2025-01-01.
+    #
+    update_from: ''
+
+    # Units data will be fetched at this interval when fetching historical data. For
+    # example, if `update_from` is set to a date in the past, units will be fetched
+    # for every `max_update_interval` period until we reach to current time and then
+    # they will be fetched every `update_interval` time.
+    #
+    # Units Supported: y, w, d, h, m, s, ms.
+    #
+    max_update_interval: 1h
 
     # Time zone to be used when storing times of different events in the DB.
     # It takes a value defined in IANA (https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)

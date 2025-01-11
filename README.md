@@ -31,7 +31,7 @@ workloads, it supports monitoring performance metrics as well. In addition, it l
 [eBPF](https://ebpf.io/what-is-ebpf/) framework to monitor IO and network metrics
 in a resource manager agnostic way.
 
-## Features
+## 🎯 Features
 
 - Monitors energy, performance, IO and network metrics for different types of resource
 managers (SLURM, Openstack, k8s)
@@ -44,7 +44,7 @@ to [Grafana Alloy](https://grafana.com/docs/alloy/latest) to continuously profil
 - Stores aggregated metrics in a separate DB that can be retained for long time
 - CEEMS apps are [capability aware](https://tbhaxor.com/understanding-linux-capabilities/)
 
-## Install CEEMS
+## ⚙️ Install CEEMS
 
 > [!WARNING]
 > DO NOT USE pre-release versions as the API has changed quite a lot between the
@@ -53,7 +53,7 @@ pre-release and stable versions.
 Installation instructions of CEEMS components can be found in
 [docs](https://mahendrapaipuri.github.io/ceems/docs/category/installation).
 
-## Demo
+## 📽️ Demo
 
 <p><a href="https://ceems-demo.myaddr.tools" target="_blank">
 <img src="https://raw.githubusercontent.com/mahendrapaipuri/ceems/main/website/static/img/dashboards/demo_screenshot.png" alt="Access Demo">
@@ -103,14 +103,14 @@ screenshots of dashboards.
   <img src="https://raw.githubusercontent.com/mahendrapaipuri/ceems/main/website/static/img/dashboards/agg.png" width="1200">
 </p>
 
-## Talks and Demos
+## ⚡️ Talks and Demos
 
 - [Paper submitted to SC24 in Sustainable Computing Workshop](https://conferences.computer.org/sc-wpub/pdfs/SC-W2024-6oZmigAQfgJ1GhPL0yE3pS/555400b862/555400b862.pdf)
 - [CEEMS at SC 2024](https://docs.google.com/presentation/d/1XBhfiHdTbNrS6e_I9mPy_BLPFEiAkmIwgp6FvSdMbLM/edit#slide=id.g317b4bf7fbe_2_54)
 - [An Introduction to CEEMS at ISC 2024](https://drive.google.com/file/d/1kUbD3GgDKwzgIuxjrTY95YJN5aSuIejQ/view?usp=drive_link)
 - [CEEMS Architecture and Usage](https://docs.google.com/presentation/d/1xNQTCsmPUz37KDb2BLrpWExuQWxk49NpVN9VDbxSe6Y/edit#slide=id.p)
 
-## Contributing
+## 👍 Contributing
 
 We welcome contributions to this project, we hope to see this project grow and become
 a useful tool for people who are interested in the energy and carbon footprint of their
@@ -119,8 +119,15 @@ workloads.
 Please feel free to open issues and/or discussions for any potential ideas of
 improvement.
 
-## Acknowledgements
+## 🙏 Acknowledgements
 
 The demo instance has been deployed on the [CROCC](https://drocc.fr/crocc/)
 which was kindly sponsored by [ISDM MESO](https://isdm.umontpellier.fr/mesolr/)
 in Montpellier, France.
+
+## ⭐️ Project assistance
+
+If you want to say **thank you** or/and support active development of CEEMS:
+
+- Add a [GitHub Star](https://github.com/mahendrapaipuri/ceems) to the project.
+- Write articles about project on [Dev.to](https://dev.to/), [Medium](https://medium.com/) or personal blog.

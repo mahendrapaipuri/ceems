@@ -9,6 +9,7 @@ import (
 	"context"
 	"database/sql"
 	"embed"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -25,6 +26,7 @@ import (
 	"github.com/mahendrapaipuri/ceems/pkg/grafana"
 	ceems_sqlite3 "github.com/mahendrapaipuri/ceems/pkg/sqlite3"
 	"github.com/mattn/go-sqlite3"
+	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 )
 
@@ -40,18 +42,18 @@ var MigrationsFS embed.FS
 //go:embed statements/*.sql
 var StatementsFS embed.FS
 
-// AdminConfig is the container for the admin users related config.
-type AdminConfig struct {
-	Users   []string                `yaml:"users"`
-	Grafana common.GrafanaWebConfig `yaml:"grafana"`
-}
+// Custom errors.
+var (
+	ErrBackupInt = errors.New("backup_interval of less than 1 day is not supported")
+	ErrUpdateInt = errors.New("update_interval and/or max_update_interval must be more than 0s")
+)
 
-type TimeLocation struct {
+type Timezone struct {
 	*time.Location
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
-func (t *TimeLocation) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (t *Timezone) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var tmp string
 
 	err := unmarshal(&tmp)
@@ -65,9 +67,78 @@ func (t *TimeLocation) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return err
 	}
 
-	*t = TimeLocation{loc}
+	*t = Timezone{loc}
 
 	return nil
+}
+
+type DateTime struct {
+	time.Time
+}
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface.
+func (t *DateTime) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var tmp string
+
+	err := unmarshal(&tmp)
+	if err != nil {
+		return err
+	}
+
+	// Strip as spaces
+	tmp = strings.TrimSpace(tmp)
+
+	// Attempt to create location from string
+	var tt time.Time
+	if tmp == "" || tmp == "today" {
+		tt, _ = time.Parse("2006-01-02", time.Now().Format("2006-01-02"))
+	} else {
+		tt, err = time.Parse("2006-01-02", tmp)
+		if err != nil {
+			return err
+		}
+	}
+
+	*t = DateTime{tt}
+
+	return nil
+}
+
+// AdminConfig is the container for the admin users related config.
+type AdminConfig struct {
+	Users   []string                `yaml:"users"`
+	Grafana common.GrafanaWebConfig `yaml:"grafana"`
+}
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface.
+func (c *AdminConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	// Set a default config
+	*c = AdminConfig{
+		Grafana: common.GrafanaWebConfig{
+			HTTPClientConfig: config.DefaultHTTPClientConfig,
+		},
+	}
+
+	type plain AdminConfig
+
+	if err := unmarshal((*plain)(c)); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Validate validates the config.
+func (c *AdminConfig) Validate() error {
+	// The UnmarshalYAML method of HTTPClientConfig is not being called because it's not a pointer.
+	// We cannot make it a pointer as the parser panics for inlined pointer structs.
+	// Thus we just do its validation here.
+	return c.Grafana.HTTPClientConfig.Validate()
+}
+
+// SetDirectory joins any relative file paths with dir.
+func (c *AdminConfig) SetDirectory(dir string) {
+	c.Grafana.HTTPClientConfig.SetDirectory(dir)
 }
 
 // DataConfig is the container for the data related config.
@@ -76,10 +147,52 @@ type DataConfig struct {
 	BackupPath         string         `yaml:"backup_path"`
 	RetentionPeriod    model.Duration `yaml:"retention_period"`
 	UpdateInterval     model.Duration `yaml:"update_interval"`
+	MaxUpdateInterval  model.Duration `yaml:"max_update_interval"`
 	BackupInterval     model.Duration `yaml:"backup_interval"`
-	LastUpdateTime     time.Time      `yaml:"update_from"`
-	TimeLocation       TimeLocation   `yaml:"time_zone"`
+	LastUpdate         DateTime       `yaml:"update_from"`
+	Timezone           Timezone       `yaml:"time_zone"`
 	SkipDeleteOldUnits bool
+}
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface.
+func (c *DataConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	// Set a default config
+	todayMidnight, _ := time.Parse("2006-01-02", time.Now().Format("2006-01-02"))
+	*c = DataConfig{
+		Path:              "data",
+		RetentionPeriod:   model.Duration(30 * 24 * time.Hour),
+		UpdateInterval:    model.Duration(15 * time.Minute),
+		MaxUpdateInterval: model.Duration(time.Hour),
+		BackupInterval:    model.Duration(24 * time.Hour),
+		Timezone:          Timezone{Location: time.Local},
+		LastUpdate:        DateTime{todayMidnight},
+	}
+
+	type plain DataConfig
+
+	if err := unmarshal((*plain)(c)); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Validate validates the config.
+func (c *DataConfig) Validate() error {
+	// Ensure update interval is more than 0
+	if time.Duration(c.UpdateInterval).Seconds() == 0 || time.Duration(c.MaxUpdateInterval).Seconds() == 0 {
+		return ErrUpdateInt
+	}
+
+	// Check if backup interval is non-zero and if it is non-zero
+	// ensure that it is >= 1d
+	backupInt := time.Duration(c.BackupInterval)
+
+	if backupInt.Seconds() > 0 && backupInt < 24*time.Hour {
+		return ErrBackupInt
+	}
+
+	return nil
 }
 
 // Config makes a DB config from config file.
@@ -96,6 +209,7 @@ type storageConfig struct {
 	dbPath             string
 	dbBackupPath       string
 	retentionPeriod    time.Duration
+	maxUpdateInterval  time.Duration
 	lastUpdateTime     time.Time
 	timeLocation       *time.Location
 	skipDeleteOldUnits bool
@@ -104,8 +218,8 @@ type storageConfig struct {
 // String implements Stringer interface for storageConfig.
 func (s *storageConfig) String() string {
 	return fmt.Sprintf(
-		"DB File Path: %s; Retention Period: %s; Location: %s; Last Updated At: %s",
-		s.dbPath, s.retentionPeriod, s.timeLocation, s.lastUpdateTime,
+		"DB File Path: %s; Retention Period: %s; Location: %s; Last Updated At: %s; Max Update Interval: %s",
+		s.dbPath, s.retentionPeriod, s.timeLocation, s.lastUpdateTime, s.maxUpdateInterval,
 	)
 }
 
@@ -199,7 +313,7 @@ func New(c *Config) (*stats, error) {
 
 	if err = db.QueryRow("SELECT MAX(last_updated_at) FROM " + base.UsageDBTableName).Scan(&lastUpdatedAt); err == nil {
 		// Parse date time string
-		c.Data.LastUpdateTime, err = time.Parse(base.DatetimeLayout, lastUpdatedAt)
+		c.Data.LastUpdate.Time, err = time.Parse(base.DatetimeLayout, lastUpdatedAt)
 		if err != nil {
 			c.Logger.Error("Failed to parse last_updated_at fetched from DB", "time", lastUpdatedAt, "err", err)
 		}
@@ -209,17 +323,17 @@ func New(c *Config) (*stats, error) {
 	}
 
 	// Now make an instance of time.Date with proper format and zone
-	c.Data.LastUpdateTime = time.Date(
-		c.Data.LastUpdateTime.Year(),
-		c.Data.LastUpdateTime.Month(),
-		c.Data.LastUpdateTime.Day(),
-		c.Data.LastUpdateTime.Hour(),
-		c.Data.LastUpdateTime.Minute(),
-		c.Data.LastUpdateTime.Second(),
-		c.Data.LastUpdateTime.Nanosecond(),
-		c.Data.TimeLocation.Location,
+	c.Data.LastUpdate.Time = time.Date(
+		c.Data.LastUpdate.Time.Year(),
+		c.Data.LastUpdate.Time.Month(),
+		c.Data.LastUpdate.Time.Day(),
+		c.Data.LastUpdate.Time.Hour(),
+		c.Data.LastUpdate.Time.Minute(),
+		c.Data.LastUpdate.Time.Second(),
+		c.Data.LastUpdate.Time.Nanosecond(),
+		c.Data.Timezone.Location,
 	)
-	c.Logger.Info("DB will be updated from", "time", c.Data.LastUpdateTime)
+	c.Logger.Info("DB will be updated from", "last_update", c.Data.LastUpdate.Time)
 
 	// Create a new instance of Grafana client
 	grafanaClient, err := common.NewGrafanaClient(&c.Admin.Grafana, c.Logger)
@@ -245,8 +359,9 @@ func New(c *Config) (*stats, error) {
 		dbPath:             dbPath,
 		dbBackupPath:       c.Data.BackupPath,
 		retentionPeriod:    time.Duration(c.Data.RetentionPeriod),
-		lastUpdateTime:     c.Data.LastUpdateTime,
-		timeLocation:       c.Data.TimeLocation.Location,
+		maxUpdateInterval:  time.Duration(c.Data.MaxUpdateInterval),
+		lastUpdateTime:     c.Data.LastUpdate.Time,
+		timeLocation:       c.Data.Timezone.Location,
 		skipDeleteOldUnits: c.Data.SkipDeleteOldUnits,
 	}
 
@@ -288,18 +403,18 @@ func (s *stats) Collect(ctx context.Context) error {
 
 	currentTime := time.Now().In(s.storage.timeLocation)
 
-	// If duration is less than 1 day do single update
-	if currentTime.Sub(s.storage.lastUpdateTime) < 24*time.Hour {
+	// If duration is less than max update interval do single update
+	if currentTime.Sub(s.storage.lastUpdateTime) < s.storage.maxUpdateInterval {
 		return s.collect(ctx, s.storage.lastUpdateTime, currentTime)
 	}
 
-	s.logger.Info("DB update duration is more than 1 day. Doing incremental update. This may take a while...")
+	s.logger.Info("DB update duration is more than max update interval. Doing incremental update. This may take a while...")
 
-	// If duration is more than 1 day, do incremental update
+	// If duration is more than max update interval, do incremental update
 	var nextUpdateTime time.Time
 
 	for {
-		nextUpdateTime = s.storage.lastUpdateTime.Add(24 * time.Hour)
+		nextUpdateTime = s.storage.lastUpdateTime.Add(s.storage.maxUpdateInterval)
 		if nextUpdateTime.Compare(currentTime) == -1 {
 			s.logger.Debug("Incremental DB update step", "from", s.storage.lastUpdateTime, "to", nextUpdateTime)
 

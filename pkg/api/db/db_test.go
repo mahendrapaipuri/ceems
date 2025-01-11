@@ -566,11 +566,12 @@ func prepareMockConfig(tmpDir string) (*Config, error) {
 	return &Config{
 		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 		Data: DataConfig{
-			Path:            dataDir,
-			BackupPath:      dataBackupDir,
-			LastUpdateTime:  time.Now(),
-			RetentionPeriod: model.Duration(24 * time.Hour),
-			TimeLocation:    TimeLocation{Location: time.UTC},
+			Path:              dataDir,
+			BackupPath:        dataBackupDir,
+			LastUpdate:        DateTime{time.Now()},
+			MaxUpdateInterval: model.Duration(time.Hour),
+			RetentionPeriod:   model.Duration(24 * time.Hour),
+			Timezone:          Timezone{Location: time.UTC},
 		},
 		Admin: AdminConfig{
 			Users: []string{"adm1", "adm2"},
@@ -606,7 +607,7 @@ func TestNewUnitStatsDB(t *testing.T) {
 	require.NoError(t, err, "failed to create mock config")
 
 	// Make new stats DB
-	c.Data.LastUpdateTime, _ = time.Parse("2006-01-02", "2023-12-20")
+	c.Data.LastUpdate.Time, _ = time.Parse("2006-01-02", "2023-12-20")
 	s, err = New(c)
 	require.NoError(t, err, "failed to create new stats")
 
@@ -620,7 +621,7 @@ func TestNewUnitStatsDB(t *testing.T) {
 	s.Stop()
 
 	// Make again a new stats DB with lastUpdateTime in the past of the one in DB
-	c.Data.LastUpdateTime, _ = time.Parse("2006-01-02", "2023-12-19")
+	c.Data.LastUpdate.Time, _ = time.Parse("2006-01-02", "2023-12-19")
 	s, err = New(c)
 	require.NoError(t, err, "failed to create new stats")
 
@@ -771,7 +772,7 @@ func TestUnitStatsDBEntriesHistorical(t *testing.T) {
 	c, err := prepareMockConfig(tmpDir)
 	require.NoError(t, err, "failed to create mock config")
 
-	c.Data.LastUpdateTime = time.Now().Add(-48 * time.Hour)
+	c.Data.LastUpdate.Time = time.Now().Add(-2 * time.Hour)
 	ctx := context.Background()
 
 	// Make new stats DB
