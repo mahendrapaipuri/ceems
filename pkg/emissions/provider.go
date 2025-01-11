@@ -5,6 +5,7 @@ import (
 	"embed"
 	"errors"
 	"log/slog"
+	"slices"
 	"sync"
 )
 
@@ -33,17 +34,21 @@ func Register(
 }
 
 // NewFactorProviders creates a new EmissionProviders.
-func NewFactorProviders(logger *slog.Logger) (*FactorProviders, error) {
+func NewFactorProviders(logger *slog.Logger, enabled []string) (*FactorProviders, error) {
 	providers := make(map[string]Provider)
 	providerNames := make(map[string]string)
 
 	// Loop over factories and create new instances
 	for key, factory := range factories {
+		if len(enabled) > 0 && !slices.Contains(enabled, key) {
+			continue
+		}
+
 		provider, err := factory(logger.With("provider", key))
 		if err != nil {
-			logger.Error("Failed to create data provider", "provider", key, "err", err)
+			logger.Error("Failed to create emission data provider", "provider", key, "err", err)
 
-			continue
+			return nil, err
 		}
 
 		providers[key] = provider

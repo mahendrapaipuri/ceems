@@ -26,7 +26,7 @@ func init() {
 // readOWIDData reads the carbon intensity CSV file and returns the most "recent"
 // factor for each country.
 // The file can be fetched from https://ourworldindata.org/grapher/carbon-intensity-electricity?tab=table
-// The data is updated every year and the next update will be in December 2024
+// The data is updated every year and the next update will be in June 2025
 // Data sources: Ember - Yearly Electricity Data (2023); Ember - European Electricity Review (2022); Energy Institute - Statistical Review of World Energy (2023).
 func readOWIDData(contents []byte) (EmissionFactors, error) {
 	// Read all records

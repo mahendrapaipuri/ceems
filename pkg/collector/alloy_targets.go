@@ -70,8 +70,6 @@ type CEEMSAlloyTargetDiscoverer struct {
 func NewAlloyTargetDiscoverer(logger *slog.Logger) (*CEEMSAlloyTargetDiscoverer, error) {
 	// If no resource manager is provided, return an instance with enabled set to false
 	if *cgManager == "" {
-		logger.Warn("No resource manager selected for discoverer")
-
 		return &CEEMSAlloyTargetDiscoverer{logger: logger, enabled: false}, nil
 	}
 

@@ -14,6 +14,13 @@ import (
 )
 
 func TestEmissionsCollector(t *testing.T) {
+	_, err := CEEMSExporterApp.Parse(
+		[]string{
+			"--collector.emissions.provider", "owid",
+		},
+	)
+	require.NoError(t, err)
+
 	collector, err := NewEmissionsCollector(slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
