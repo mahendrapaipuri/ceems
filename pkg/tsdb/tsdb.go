@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	config_util "github.com/prometheus/common/config"
@@ -26,6 +27,8 @@ var (
 	ErrMissingConfig       = errors.New("global config not found in TSDB config")
 	ErrFailedTypeAssertion = errors.New("failed type assertion")
 )
+
+var settingsLock = sync.RWMutex{}
 
 // Metric defines TSDB metrics.
 type Metric map[string]float64
@@ -42,22 +45,44 @@ type Response struct {
 	Warnings  []string    `json:"warnings,omitempty"`
 }
 
+type Settings struct {
+	ScrapeInterval     time.Duration
+	EvaluationInterval time.Duration
+	RateInterval       time.Duration
+	QueryLookbackDelta time.Duration
+	QueryTimeout       time.Duration
+	QueryMaxSamples    uint64
+	RetentionPeriod    time.Duration
+}
+
 // TSDB struct.
 type TSDB struct {
-	URL                *url.URL
-	Client             *http.Client
-	Logger             *slog.Logger
-	scrapeInterval     time.Duration
-	evaluationInterval time.Duration
-	lastUpdate         time.Time
-	available          bool
+	URL              *url.URL
+	Client           *http.Client
+	Logger           *slog.Logger
+	settingsCache    *Settings
+	settingsCacheTTL time.Duration
+	lastUpdate       time.Time
+	available        bool
 }
 
 const (
 	// Default intervals. Return them if we cannot fetch config.
 	defaultScrapeInterval     = time.Minute
 	defaultEvaluationInterval = time.Minute
+	defaultLookbackDelta      = 5 * time.Minute
+	defaultQueryTimeout       = 2 * time.Minute
+	defaultQueryMaxSamples    = 50000000
 )
+
+var defaultSettings = Settings{
+	ScrapeInterval:     defaultScrapeInterval,
+	EvaluationInterval: defaultEvaluationInterval,
+	RateInterval:       4 * defaultScrapeInterval,
+	QueryLookbackDelta: defaultLookbackDelta,
+	QueryTimeout:       defaultQueryTimeout,
+	QueryMaxSamples:    uint64(defaultQueryMaxSamples),
+}
 
 // New returns a new instance of TSDB.
 func New(webURL string, config config_util.HTTPClientConfig, logger *slog.Logger) (*TSDB, error) {
@@ -87,10 +112,12 @@ func New(webURL string, config config_util.HTTPClientConfig, logger *slog.Logger
 	}
 
 	return &TSDB{
-		URL:       tsdbURL,
-		Client:    tsdbClient,
-		Logger:    logger,
-		available: true,
+		URL:              tsdbURL,
+		Client:           tsdbClient,
+		Logger:           logger,
+		settingsCache:    &defaultSettings,
+		settingsCacheTTL: 6 * time.Hour, // Update TSDB settings for every 6 hours
+		available:        true,
 	}, nil
 }
 
@@ -143,7 +170,82 @@ func (t *TSDB) Ping() error {
 	return nil
 }
 
-// Config returns TSDB config.
+// Settings returns selected TSDB config settings.
+func (t *TSDB) Settings(ctx context.Context) *Settings {
+	// This must be protected from concurrent access
+	settingsLock.Lock()
+	defer settingsLock.Unlock()
+
+	// Check if lastUpdate time is more than 3 hrs
+	if time.Since(t.lastUpdate) < t.settingsCacheTTL {
+		return t.settingsCache
+	}
+
+	// Update settings and lastUpdate time
+	if settings, err := t.fetchSettings(ctx); err == nil {
+		t.lastUpdate = time.Now()
+		t.settingsCache = settings
+	}
+
+	return t.settingsCache
+}
+
+// fetchSettings returns selected TSDB config parameters.
+func (t *TSDB) fetchSettings(ctx context.Context) (*Settings, error) {
+	// Get global config
+	globalConfig, err := t.GlobalConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get flags
+	flags, err := t.Flags(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Make a default settings struct
+	settings := defaultSettings
+
+	// Get scrape and evaluation intervals
+	if v, exists := globalConfig["scrape_interval"]; exists {
+		if scrapeInterval, err := model.ParseDuration(v.(string)); err == nil {
+			settings.ScrapeInterval = time.Duration(scrapeInterval)
+		}
+	}
+
+	if v, exists := globalConfig["evaluation_interval"]; exists {
+		if evaluationInterval, err := model.ParseDuration(v.(string)); err == nil {
+			settings.EvaluationInterval = time.Duration(evaluationInterval)
+		}
+	}
+
+	// Get query timeout and max samples from flags
+	if v, exists := flags["query.max-samples"]; exists {
+		if s, ok := v.(float64); ok {
+			settings.QueryMaxSamples = uint64(s)
+		}
+	}
+
+	if v, exists := flags["query.timeout"]; exists {
+		if queryTimeout, err := model.ParseDuration(v.(string)); err == nil {
+			settings.QueryTimeout = time.Duration(queryTimeout)
+		}
+	}
+
+	if v, exists := flags["query.lookback-delta"]; exists {
+		if queryTimeout, err := model.ParseDuration(v.(string)); err == nil {
+			settings.QueryTimeout = time.Duration(queryTimeout)
+		}
+	}
+
+	// Set rate interval as 4 times scrape interval (Grafana recommendation)
+	settings.RateInterval = 4 * settings.ScrapeInterval
+
+	return &settings, nil
+}
+
+// Config returns full TSDB config.
 func (t *TSDB) Config(ctx context.Context) (map[interface{}]interface{}, error) {
 	// Make a API request to TSDB
 	data, err := Request(ctx, t.configEndpoint().String(), t.Client)
@@ -209,62 +311,6 @@ func (t *TSDB) Flags(ctx context.Context) (map[string]interface{}, error) {
 	}
 
 	return flagsData, nil
-}
-
-// Intervals returns scrape and evaluation intervals of TSDB.
-func (t *TSDB) Intervals(ctx context.Context) map[string]time.Duration {
-	// Check if lastUpdate time is more than 3 hrs
-	if time.Since(t.lastUpdate) < 3*time.Hour {
-		return map[string]time.Duration{
-			"scrape_interval":     t.scrapeInterval,
-			"evaluation_interval": t.evaluationInterval,
-		}
-	}
-
-	// Set scrapeInterval and evaluationInterval cache values to
-	// default and we will override it if found from config
-	t.lastUpdate = time.Now()
-	t.scrapeInterval = defaultScrapeInterval
-	t.evaluationInterval = defaultEvaluationInterval
-
-	// Get config
-	var globalConfig map[string]interface{}
-
-	var err error
-	if globalConfig, err = t.GlobalConfig(ctx); err != nil {
-		return map[string]time.Duration{
-			"scrape_interval":     defaultScrapeInterval,
-			"evaluation_interval": defaultEvaluationInterval,
-		}
-	}
-
-	// Parse duration string
-	intervals := map[string]time.Duration{
-		"scrape_interval":     defaultScrapeInterval,
-		"evaluation_interval": defaultEvaluationInterval,
-	}
-
-	if v, exists := globalConfig["scrape_interval"]; exists {
-		if scrapeInterval, err := model.ParseDuration(v.(string)); err == nil {
-			t.scrapeInterval = time.Duration(scrapeInterval)
-			intervals["scrape_interval"] = time.Duration(scrapeInterval)
-		}
-	}
-
-	if v, exists := globalConfig["evaluation_interval"]; exists {
-		if evaluationInterval, err := model.ParseDuration(v.(string)); err == nil {
-			t.evaluationInterval = time.Duration(evaluationInterval)
-			intervals["evaluation_interval"] = time.Duration(evaluationInterval)
-		}
-	}
-
-	return intervals
-}
-
-// RateInterval returns rate interval of TSDB.
-func (t *TSDB) RateInterval(ctx context.Context) time.Duration {
-	// Grafana recommends atleast 4 times of scrape interval to estimate rate
-	return 4 * t.Intervals(ctx)["scrape_interval"]
 }
 
 // Query makes a TSDB query.
