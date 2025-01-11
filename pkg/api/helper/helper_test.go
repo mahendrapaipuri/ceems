@@ -165,8 +165,34 @@ func TestTimeToTimestamp(t *testing.T) {
 }
 
 func TestChunkBy(t *testing.T) {
-	expectedChunks := [][]int{{1, 2, 3}, {4, 5, 6}}
-	inputSlice := []int{1, 2, 3, 4, 5, 6}
-	chunks := ChunkBy(inputSlice, 3)
-	assert.Equal(t, expectedChunks, chunks)
+	tests := []struct {
+		name     string
+		input    []int
+		expected [][]int
+		size     int
+	}{
+		{
+			name:     "chunk size less than length",
+			input:    []int{1, 2, 3, 4, 5, 6},
+			size:     3,
+			expected: [][]int{{1, 2, 3}, {4, 5, 6}},
+		},
+		{
+			name:     "chunk size more than length",
+			input:    []int{1, 2, 3, 4, 5, 6},
+			size:     10,
+			expected: [][]int{{1, 2, 3, 4, 5, 6}},
+		},
+		{
+			name:     "chunk size 0",
+			input:    []int{1, 2, 3, 4, 5, 6},
+			size:     0,
+			expected: [][]int{{1, 2, 3, 4, 5, 6}},
+		},
+	}
+
+	for _, test := range tests {
+		got := ChunkBy(test.input, test.size)
+		assert.Equal(t, test.expected, got, test.name)
+	}
 }

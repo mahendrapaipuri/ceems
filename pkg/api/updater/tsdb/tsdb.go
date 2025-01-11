@@ -19,19 +19,19 @@ import (
 	"github.com/prometheus/common/model"
 )
 
-// Size of each batch of UUIDs to make request to TSDB.
-const (
-	queryBatchSize = 1000
-)
-
 // Name of the TSDB updater.
 const (
 	tsdbUpdaterID = "tsdb"
 )
 
+// Use a conservative maximum number of series to be loaded in memory for queries.
+const (
+	defaultQueryMaxSeries = 50
+)
+
 // config is the container for the configuration of a given TSDB instance.
 type tsdbConfig struct {
-	QueryBatchSize int                          `yaml:"query_batch_size"`
+	QueryMaxSeries int                          `yaml:"query_max_series"`
 	CutoffDuration model.Duration               `yaml:"cutoff_duration"`
 	Queries        map[string]map[string]string `yaml:"queries"`
 	LabelsToDrop   []string                     `yaml:"labels_to_drop"`
@@ -59,7 +59,7 @@ func init() {
 func New(instance updater.Instance, logger *slog.Logger) (updater.Updater, error) {
 	// Make TSDB config from instances extra config
 	config := tsdbConfig{
-		QueryBatchSize: queryBatchSize,
+		QueryMaxSeries: defaultQueryMaxSeries,
 	}
 	if err := instance.Extra.Decode(&config); err != nil {
 		logger.Error("Failed to setup TSDB updater", "id", instance.ID, "err", err)
@@ -119,26 +119,23 @@ func (t *tsdbUpdater) fetchAggMetrics(
 	queryTime time.Time,
 	duration time.Duration,
 	uuids []string,
+	settings *tsdb.Settings,
 ) map[string]map[string]tsdb.Metric {
 	aggMetrics := make(map[string]map[string]tsdb.Metric, len(t.config.Queries))
 
-	// Get rate and scrape intervals
-	rateInterval := t.RateInterval(ctx)
-	scrapeInterval := t.Intervals(ctx)["scrape_interval"]
-	evaluationInterval := t.Intervals(ctx)["evaluation_interval"]
-
 	// If duration is less than rateInterval bail
-	if duration < rateInterval {
+	if duration < settings.RateInterval {
 		return aggMetrics
 	}
 
-	// If duration is more than or equal to 1 day, double scrape and rate intervals
-	// to reduce number of data points Prometheus has to process
-	if duration >= 24*time.Hour {
-		scrapeInterval = 2 * scrapeInterval
-		evaluationInterval = 2 * evaluationInterval
-		rateInterval = 2 * rateInterval
-	}
+	// UPDATE 20250110: Not necessary anymore as we estimate the batch size dynamically
+	// // If duration is more than or equal to 1 day, double scrape and rate intervals
+	// // to reduce number of data points Prometheus has to process
+	// if duration >= 24*time.Hour {
+	// 	scrapeInterval = 2 * scrapeInterval
+	// 	evaluationInterval = 2 * evaluationInterval
+	// 	rateInterval = 2 * rateInterval
+	// }
 
 	// Start a wait group
 	var wg sync.WaitGroup
@@ -149,11 +146,11 @@ func (t *tsdbUpdater) fetchAggMetrics(
 	// Template data
 	tmplData := map[string]interface{}{
 		"UUIDs":                   strings.Join(uuids, "|"),
-		"ScrapeInterval":          scrapeInterval,
-		"ScrapeIntervalMilli":     scrapeInterval.Milliseconds(),
-		"EvaluationInterval":      evaluationInterval,
-		"EvaluationIntervalMilli": evaluationInterval.Milliseconds(),
-		"RateInterval":            rateInterval,
+		"ScrapeInterval":          settings.ScrapeInterval,
+		"ScrapeIntervalMilli":     settings.ScrapeInterval.Milliseconds(),
+		"EvaluationInterval":      settings.EvaluationInterval,
+		"EvaluationIntervalMilli": settings.EvaluationInterval.Milliseconds(),
+		"RateInterval":            settings.RateInterval,
 		"Range":                   duration,
 	}
 
@@ -180,8 +177,8 @@ func (t *tsdbUpdater) fetchAggMetrics(
 				if aggMetric, err = t.Query(ctx, tsdbQuery, queryTime); err != nil {
 					t.Logger.Error(
 						"Failed to fetch metrics from TSDB", "metric", n, "duration",
-						duration, "scrape_int", scrapeInterval, "rate_int", rateInterval,
-						"err", err,
+						duration, "scrape_int", settings.ScrapeInterval,
+						"rate_int", settings.RateInterval, "err", err,
 					)
 				} else {
 					metricLock.Lock()
@@ -256,10 +253,19 @@ func (t *tsdbUpdater) update(
 		j++
 	}
 
+	// Get current TSDB settings
+	// Get rate and scrape intervals
+	settings := t.Settings(ctx)
+
+	// Estimate a batch size based on scrape interval, duration, query max samples and total time series
+	samplesPerSeries := uint64(duration.Seconds() / settings.ScrapeInterval.Seconds())
+	maxLabels := settings.QueryMaxSamples / (uint64(t.config.QueryMaxSeries) * samplesPerSeries)
+	batchSize := min(max(int(0.8*float64(maxLabels)), 10), len(allUnitUUIDs[:j])) // Just to ensure we ALWAYS stay in limit
+
 	// Batch UUIDs into slices of 1000 so that we make TSDB requests for each 1000 units
 	// This is to safeguard against OOM errors due to a very large number of units
 	// that can spread across big time interval
-	uuidBatches := helper.ChunkBy(allUnitUUIDs[:j], t.config.QueryBatchSize)
+	uuidBatches := helper.ChunkBy(allUnitUUIDs[:j], batchSize)
 	numBatches := len(uuidBatches)
 
 	aggMetrics := make(map[string]map[string]tsdb.Metric)
@@ -273,7 +279,7 @@ func (t *tsdbUpdater) update(
 			return units
 		default:
 			// Get aggregate metrics of present chunk
-			batchedAggMetrics := t.fetchAggMetrics(ctx, endTime, duration, batchUUIDs)
+			batchedAggMetrics := t.fetchAggMetrics(ctx, endTime, duration, batchUUIDs, settings)
 
 			// Merge metrics map of each metric type. Metric map has uuid as key and hence
 			// merging is safe as UUID is "unique" during the given update interval
@@ -295,7 +301,7 @@ func (t *tsdbUpdater) update(
 			}
 
 			t.Logger.Debug(
-				"progress", "batch_id", iBatch, "total_batches", numBatches,
+				"progress", "batch_id", iBatch, "total_batches", numBatches, "batch_size", batchSize,
 			)
 		}
 	}

@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -69,17 +70,35 @@ func TestTSDBConfigSuccess(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "15s", globalConfig["scrape_interval"].(string)) //nolint:forcetypeassert
 
-	// Check scrape interval
-	scrapeInterval := tsdb.Intervals(ctx)["scrape_interval"]
-	assert.Equal(t, 15*time.Second, scrapeInterval)
+	// Reduce cache TTL to test concurrent update
+	tsdb.settingsCacheTTL = time.Millisecond
 
-	// Check evaluation interval
-	evaluationInterval := tsdb.Intervals(ctx)["evaluation_interval"]
-	assert.Equal(t, 10*time.Second, evaluationInterval)
+	time.Sleep(2 * time.Millisecond)
 
-	// Check rate interval
-	rateInterval := tsdb.RateInterval(ctx)
-	assert.Equal(t, 60*time.Second, rateInterval)
+	expectedSettings := Settings{
+		ScrapeInterval:     15 * time.Second,
+		EvaluationInterval: 10 * time.Second,
+		RateInterval:       60 * time.Second,
+		QueryLookbackDelta: defaultLookbackDelta,
+		QueryTimeout:       defaultQueryTimeout,
+		QueryMaxSamples:    defaultQueryMaxSamples,
+	}
+
+	wg := sync.WaitGroup{}
+
+	// Get settings from concurrent go routines
+	for range 10 {
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+
+			settings := tsdb.Settings(ctx)
+			assert.Equal(t, expectedSettings, *settings)
+		}()
+	}
+
+	wg.Wait()
 }
 
 func TestTSDBFlagsSuccess(t *testing.T) {
@@ -198,15 +217,18 @@ func TestTSDBConfigFail(t *testing.T) {
 	_, err = tsdb.Config(ctx)
 	require.Error(t, err)
 
-	scrapeInterval := tsdb.Intervals(ctx)["scrape_interval"]
-	assert.Equal(t, defaultScrapeInterval, scrapeInterval)
+	// Expected settings with default values
+	expectedSettings := Settings{
+		ScrapeInterval:     defaultScrapeInterval,
+		EvaluationInterval: defaultEvaluationInterval,
+		RateInterval:       defaultScrapeInterval * 4,
+		QueryLookbackDelta: defaultLookbackDelta,
+		QueryTimeout:       defaultQueryTimeout,
+		QueryMaxSamples:    defaultQueryMaxSamples,
+	}
 
-	// Check evaluation interval
-	evaluationInterval := tsdb.Intervals(ctx)["evaluation_interval"]
-	assert.Equal(t, defaultEvaluationInterval, evaluationInterval)
-
-	rateInterval := tsdb.RateInterval(ctx)
-	assert.Equal(t, defaultScrapeInterval*4, rateInterval)
+	settings := tsdb.Settings(ctx)
+	assert.Equal(t, expectedSettings, *settings)
 }
 
 func TestTSDBQuerySuccess(t *testing.T) {
