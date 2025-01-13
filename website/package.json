@@ -34,7 +34,7 @@
     "@docusaurus/types": "3.7.0",
     "cspell": "^8.17.1",
     "markdown-link-check": "3.12.2",
-    "typescript": "~5.7.2"
+    "typescript": "~5.7.3"
   },
   "browserslist": {
     "production": [
