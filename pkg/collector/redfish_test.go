@@ -13,6 +13,8 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -23,6 +25,30 @@ import (
 )
 
 func testRedfishServer() *httptest.Server {
+	validTokens := []string{"token1", "token2", "token3"}
+
+	var tokenCounter int
+
+	hasToken := func(r *http.Request) bool {
+		return slices.Contains(validTokens, r.Header.Get("X-Auth-Token"))
+	}
+
+	remove := func(s []string, e string) []string {
+		var idx int
+
+		for i, ele := range s {
+			if ele == e {
+				idx = i
+
+				break
+			}
+		}
+
+		s[idx] = s[len(s)-1]
+
+		return s[:len(s)-1]
+	}
+
 	// Test redfish server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/redfish/v1/" {
@@ -31,24 +57,73 @@ func testRedfishServer() *httptest.Server {
 
 				return
 			}
+		} else if r.URL.Path == "/redfish/v1/Sessions" {
+			// Write response headers with X-Auth-Token set
+			w.Header().Add("X-Auth-Token", validTokens[tokenCounter])
+			w.Header().Add("Location", fmt.Sprintf("/redfish/v1/SessionService/Sessions/%s/", validTokens[tokenCounter]))
+			w.WriteHeader(http.StatusCreated)
+
+			tokenCounter++
+
+			// Reset counter when exceeded validTokens len
+			if tokenCounter > len(validTokens) {
+				tokenCounter = 0
+			}
 		} else if r.URL.Path == "/redfish/v1/Chassis" {
+			if !hasToken(r) {
+				w.WriteHeader(http.StatusUnauthorized)
+
+				return
+			}
+
 			if data, err := os.ReadFile("testdata/redfish/chassis_collection.json"); err == nil {
 				w.Write(data)
 
 				return
 			}
 		} else if r.URL.Path == "/redfish/v1/Chassis/Chassis-1" {
+			if !hasToken(r) {
+				w.WriteHeader(http.StatusUnauthorized)
+
+				return
+			}
+
 			if data, err := os.ReadFile("testdata/redfish/chassis.json"); err == nil {
 				w.Write(data)
 
 				return
 			}
 		} else if r.URL.Path == "/redfish/v1/Chassis/Chassis-1/Power" {
+			if !hasToken(r) {
+				w.WriteHeader(http.StatusUnauthorized)
+
+				return
+			}
+
 			if data, err := os.ReadFile("testdata/redfish/chassis_power.json"); err == nil {
 				w.Write(data)
 
 				return
 			}
+		} else if strings.HasPrefix(r.URL.Path, "/redfish/v1/SessionService/Sessions") {
+			if !hasToken(r) {
+				w.WriteHeader(http.StatusUnauthorized)
+
+				return
+			}
+
+			// Get token from session ID
+			token := strings.Split(r.URL.Path, "/")[5]
+
+			// Remove this token from valid tokens
+			validTokens = remove(validTokens, token)
+
+			// Reset counter when exceeded validTokens len
+			if tokenCounter > len(validTokens) {
+				tokenCounter = 0
+			}
+
+			w.WriteHeader(http.StatusOK)
 		} else {
 			w.WriteHeader(http.StatusOK)
 		}
@@ -75,6 +150,8 @@ redfish_web_config:
   protocol: http
   hostname: %s
   port: %s
+  username: admin
+  password: secret
   use_session_token: true`
 
 	configPath := filepath.Join(tmpDir, "config.yml")
@@ -123,6 +200,8 @@ redfish_web_config:
   protocol: http
   hostname: bmc-0
   port: 5000
+  username: admin
+  password: secret
   external_url: %s
   use_session_token: true`
 
@@ -164,6 +243,8 @@ func TestPowerReadings(t *testing.T) {
 
 	config := gofish.ClientConfig{
 		Endpoint: server.URL,
+		Username: "admin",
+		Password: "secret",
 	}
 	redfishClient, err := gofish.Connect(config)
 	require.NoError(t, err)
@@ -174,6 +255,7 @@ func TestPowerReadings(t *testing.T) {
 
 	collector := &redfishCollector{
 		logger:      slog.New(slog.NewTextHandler(io.Discard, nil)),
+		config:      &config,
 		chassis:     chassis,
 		client:      redfishClient,
 		cachedPower: make(map[string]*redfish.Power, len(chassis)),
@@ -189,6 +271,33 @@ func TestPowerReadings(t *testing.T) {
 
 	// Get power readings
 	got := collector.powerReadings()
+	assert.EqualValues(t, expected, got)
+
+	// Simulate token invalidation
+	collector.client.Logout()
+
+	// Now make a new request which should give us error
+	for _, chass := range collector.chassis {
+		_, err = chass.Power()
+		require.Error(t, err)
+	}
+
+	// Set cachedPower to nil so we get nil response in next request
+	collector.cachedPower = make(map[string]*redfish.Power)
+
+	// Get power readings which should be zero
+	zeroExpected := map[string]map[string]float64{
+		"current": make(map[string]float64),
+		"min":     make(map[string]float64),
+		"max":     make(map[string]float64),
+		"avg":     make(map[string]float64),
+	}
+	got = collector.powerReadings()
+	assert.EqualValues(t, zeroExpected, got)
+
+	// The next request should give us correct values as client
+	// will be reinitialised in the last request
+	got = collector.powerReadings()
 	assert.EqualValues(t, expected, got)
 
 	// Stop test redfish server
