@@ -47,6 +47,7 @@ type redfishConfig struct {
 type redfishCollector struct {
 	logger      *slog.Logger
 	hostname    string
+	config      *gofish.ClientConfig
 	client      *gofish.APIClient
 	chassis     []*redfish.Chassis
 	cachedPower map[string]*redfish.Power
@@ -64,6 +65,26 @@ func init() {
 
 // NewRedfishCollector returns a new Collector to fetch power usage from redfish API.
 func NewRedfishCollector(logger *slog.Logger) (Collector, error) {
+	// Initialize metricDesc map
+	metricDesc := map[string]*prometheus.Desc{
+		"current": prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, redfishCollectorSubsystem, "current_watts"),
+			"Current Power consumption in watts", []string{"hostname", "chassis"}, nil,
+		),
+		"min": prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, redfishCollectorSubsystem, "min_watts"),
+			"Minimum Power consumption in watts", []string{"hostname", "chassis"}, nil,
+		),
+		"max": prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, redfishCollectorSubsystem, "max_watts"),
+			"Maximum Power consumption in watts", []string{"hostname", "chassis"}, nil,
+		),
+		"avg": prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, redfishCollectorSubsystem, "avg_watts"),
+			"Average Power consumption in watts", []string{"hostname", "chassis"}, nil,
+		),
+	}
+
 	// Get absolute config file path
 	configFilePath, err := filepath.Abs(*redfishConfigFile)
 	if err != nil {
@@ -150,48 +171,19 @@ func NewRedfishCollector(logger *slog.Logger) (Collector, error) {
 		ReuseConnections: true,
 	}
 
-	redfishClient, err := gofish.Connect(config)
-	if err != nil {
-		logger.Error("Failed to create Redfish client", "err", err)
-
-		return nil, fmt.Errorf("failed to create a Redfish client: %w", err)
-	}
-
-	// Get all available chassis
-	chassis, err := redfishClient.Service.Chassis()
-	if err != nil {
-		logger.Error("Failed to fetch chassis information from Redfish", "err", err)
-
-		return nil, fmt.Errorf("failed to fetch available chassis from Redfish: %w", err)
-	}
-
-	// Initialize metricDesc map
-	metricDesc := make(map[string]*prometheus.Desc, 4)
-
-	metricDesc["current"] = prometheus.NewDesc(
-		prometheus.BuildFQName(Namespace, redfishCollectorSubsystem, "current_watts"),
-		"Current Power consumption in watts", []string{"hostname", "chassis"}, nil,
-	)
-	metricDesc["min"] = prometheus.NewDesc(
-		prometheus.BuildFQName(Namespace, redfishCollectorSubsystem, "min_watts"),
-		"Minimum Power consumption in watts", []string{"hostname", "chassis"}, nil,
-	)
-	metricDesc["max"] = prometheus.NewDesc(
-		prometheus.BuildFQName(Namespace, redfishCollectorSubsystem, "max_watts"),
-		"Maximum Power consumption in watts", []string{"hostname", "chassis"}, nil,
-	)
-	metricDesc["avg"] = prometheus.NewDesc(
-		prometheus.BuildFQName(Namespace, redfishCollectorSubsystem, "avg_watts"),
-		"Average Power consumption in watts", []string{"hostname", "chassis"}, nil,
-	)
-
 	collector := redfishCollector{
 		logger:      logger,
 		hostname:    hostname,
-		chassis:     chassis,
-		client:      redfishClient,
-		cachedPower: make(map[string]*redfish.Power, len(chassis)),
+		config:      &config,
+		cachedPower: make(map[string]*redfish.Power),
 		metricDesc:  metricDesc,
+	}
+
+	// Connect to Redfish server
+	if err := collector.connect(); err != nil {
+		logger.Error("Failed to connect to Redfish server", "err", err)
+
+		return nil, err
 	}
 
 	return &collector, nil
@@ -215,8 +207,27 @@ func (c *redfishCollector) Update(ch chan<- prometheus.Metric) error {
 func (c *redfishCollector) Stop(_ context.Context) error {
 	c.logger.Debug("Stopping", "collector", redfishCollectorSubsystem)
 
-	// Close all idle connections before exiting
-	c.client.HTTPClient.CloseIdleConnections()
+	// Delete sesssion and close all idle connections before exiting
+	c.client.Logout()
+
+	return nil
+}
+
+// connect establishes a connection with Redfish server and sets the client.
+func (c *redfishCollector) connect() error {
+	var err error
+
+	// Connect to redfish API server
+	c.client, err = gofish.Connect(*c.config)
+	if err != nil {
+		return fmt.Errorf("failed to create a Redfish client: %w", err)
+	}
+
+	// Get all available chassis
+	c.chassis, err = c.client.Service.Chassis()
+	if err != nil {
+		return fmt.Errorf("failed to fetch available chassis from Redfish: %w", err)
+	}
 
 	return nil
 }
@@ -243,6 +254,13 @@ func (c *redfishCollector) powerReadings() map[string]map[string]float64 {
 			)
 
 			power = c.cachedPower[chassisID]
+
+			// Attempt to log out and create new client
+			c.client.Logout()
+
+			if err := c.connect(); err != nil {
+				c.logger.Error("Failed to create new redfish client", "err", err)
+			}
 		} else {
 			c.cachedPower[chassisID] = power
 		}

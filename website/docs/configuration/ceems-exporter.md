@@ -384,7 +384,8 @@ redfish_web_config:
   # perform basic auth.
   #
   # Always prefer to use session tokens by setting this option to `true` as it avoids
-  # sending critical username/password credentials in each request.
+  # sending critical username/password credentials in each request and using sessions
+  # is more performant than making requests with username/password
   #
   use_session_token: true
 ```
@@ -394,6 +395,12 @@ redfish_web_config:
 This config file contains sensitive information like BMC credentials and hence,
 it is very important to impose strict permissions so that the secrets will not be
 leaked
+
+When `use_session_token` is set to `true`, ensure the session timeout is more than the scrape interval
+of the Prometheus. Otherwise the session will be invalidated before the next scrape
+and thus every scrape creates a new session which is not optimal. As a recommendation,
+use a session timeout twice as big as scrape interval to avoid situations described above.
+More details in [Redfish Spec](https://redfish.dmtf.org/schemas/DSP0266_1.15.1.html#session-lifetime).
 
 :::
 

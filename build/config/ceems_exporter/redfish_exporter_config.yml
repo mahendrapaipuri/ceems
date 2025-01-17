@@ -70,6 +70,13 @@ redfish_web_config: {}
   # # perform basic auth.
   # #
   # # Always prefer to use session tokens by setting this option to `true` as it avoids
-  # # sending critical username/password credentials in each request.
+  # # sending critical username/password credentials in each request and using sessions
+  # # is more performant than making requests with username/password
+  # #
+  # # When sessions are used, ensure the session timeout is more than the scrape interval
+  # # of the Prometheus. Otherwise the session will be invalidated before the next scrape
+  # # and thus every scrape creates a new session which is not optimal.
+  # # As a recommendation, use a session timeout twice as big as scrape interval to avoid
+  # # situations described above.
   # #
   # use_session_token: true
