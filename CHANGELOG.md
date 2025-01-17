@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.2 / 2025-01-17
+
+- [BUGFIX] Re-establish session when token invalidates for Redfish collector [#268](https://github.com/mahendrapaipuri/ceems/pull/268) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEATURE] TSDB estimate batch size dynamically and update OWID data [#262](https://github.com/mahendrapaipuri/ceems/pull/262) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [MAINT] Bump dependencies [#264](https://github.com/mahendrapaipuri/ceems/pull/264), [#265](https://github.com/mahendrapaipuri/ceems/pull/265), [#269](https://github.com/mahendrapaipuri/ceems/pull/269) ([@dependabot](https://github.com/dependabot))
+
 ## 0.5.1 / 2025-01-08
 
 - [FEATURE] Add Cray's pm_counters collector [#261](https://github.com/mahendrapaipuri/ceems/pull/261) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
