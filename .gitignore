@@ -75,3 +75,4 @@ pkg/lb/testdata/lastupdatetime
 
 # Ignore TO_REPLACE folder
 TO_REPLACE
+litestream.yml

@@ -16,9 +16,13 @@ import (
 // Ref: https://stackoverflow.com/questions/1711631/improve-insert-per-second-performance-of-sqlite
 // Ref: https://gitlab.com/gnufred/logslate/-/blob/8eda5cedc9a28da3793dcf73480d618c95cc322c/playground/sqlite3.go
 // Ref: https://github.com/mattn/go-sqlite3/issues/1145#issuecomment-1519012055
+// Use WAL as journal mode by default as using litestream alongside ceems API server can result
+// in DB locked problem when restarting CEEMS API server. This is due to the starting DB connection
+// attempts to open DB in DELETE journal mode which cannot be possible when WAL is activated by
+// litestream.
 var defaultOpts = map[string]string{
 	"_busy_timeout": "5000",
-	"_journal_mode": "MEMORY",
+	"_journal_mode": "WAL",
 	"_synchronous":  "0",
 }
 

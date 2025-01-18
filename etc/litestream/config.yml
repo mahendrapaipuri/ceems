@@ -1,0 +1,33 @@
+---
+
+# Logging config
+logging:
+  level: info
+  type: text
+  stderr: false
+
+# DB config
+dbs:
+  - path: /var/lib/ceems/ceems.db # Path to CEEMS API DB file
+    replicas:
+      # Replicate to S3
+      - name: aws_s3_replica
+        type: s3
+        access-key-id: AKIAxxxxxxxxxxxxxxxx
+        secret-access-key: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/xxxxxxxxx
+        bucket: ceems.example.com
+        path:   db
+        region: us-east-1 # optional, set to your region
+        retention: 4380h # 6 months of retention for snapshots
+        snapshot-interval: 168h # Do a snapshot every week 
+
+      # Replicate to filesystem. This filesystem must be accessible from
+      # the host where litestream and CEEMS API server are deployed.
+      # Ensure that this filesystem is constructed on different devices than
+      # the filesystem where the primary DB file is placed to achieve
+      # fault tolerance.
+      - name: fs_replica
+        type: file
+        path: /mnt/backup/ceems
+        retention: 720h # 1 month of retention for snapshots
+        snapshot-interval: 24h # Do a snapshot every day 

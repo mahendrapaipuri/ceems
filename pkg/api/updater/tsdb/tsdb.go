@@ -258,7 +258,7 @@ func (t *tsdbUpdater) update(
 	settings := t.Settings(ctx)
 
 	// Estimate a batch size based on scrape interval, duration, query max samples and total time series
-	samplesPerSeries := uint64(duration.Seconds() / settings.ScrapeInterval.Seconds())
+	samplesPerSeries := max(uint64(duration.Seconds()/settings.ScrapeInterval.Seconds()), 1)
 	maxLabels := settings.QueryMaxSamples / (uint64(t.config.QueryMaxSeries) * samplesPerSeries)
 	batchSize := min(max(int(0.8*float64(maxLabels)), 10), len(allUnitUUIDs[:j])) // Just to ensure we ALWAYS stay in limit
 

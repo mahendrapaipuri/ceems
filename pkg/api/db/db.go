@@ -534,6 +534,8 @@ func (s *stats) collect(ctx context.Context, startTime, endTime time.Time) error
 		return fmt.Errorf("failed to commit SQL transcation: %w", err)
 	}
 
+	s.logger.Info("DB updated for period", "from", startTime, "to", endTime)
+
 	// Keep track of last updated time upon successful DB ops
 	s.storage.lastUpdateTime = endTime
 
