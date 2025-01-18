@@ -64,13 +64,13 @@ func TestTSDBConfigSuccess(t *testing.T) {
 	url, _ := url.Parse(server.URL)
 	b := NewTSDB(url, httputil.NewSingleHostReverseProxy(url), slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.Equal(t, server.URL, b.URL().String())
-	require.Equal(t, 354*time.Hour, b.RetentionPeriod())
+	require.Equal(t, 720*time.Hour, b.RetentionPeriod())
 	require.True(t, b.IsAlive())
 	require.Equal(t, 0, b.ActiveConnections())
 
 	// Stop dummy server and query for retention period, we should get last updated value
 	server.Close()
-	require.Equal(t, 354*time.Hour, b.RetentionPeriod())
+	require.Equal(t, 720*time.Hour, b.RetentionPeriod())
 }
 
 func TestTSDBConfigSuccessWithTwoRetentions(t *testing.T) {
@@ -79,6 +79,54 @@ func TestTSDBConfigSuccessWithTwoRetentions(t *testing.T) {
 		Status: "success",
 		Data: map[string]string{
 			"storageRetention": "30d or 10GiB",
+		},
+	}
+
+	expectedRange := tsdb.Response{
+		Status: "success",
+		Data: map[string]interface{}{
+			"resultType": "matrix",
+			"result": []interface{}{
+				map[string]interface{}{
+					"metric": map[string]string{
+						"__name__": "up",
+						"instance": "localhost:9090",
+					},
+					"values": []interface{}{
+						[]interface{}{time.Now().Add(-30 * 24 * time.Hour).Unix(), "1"},
+						[]interface{}{time.Now().Add(-30 * 23 * time.Hour).Unix(), "1"},
+					},
+				},
+			},
+		},
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "runtimeinfo") {
+			if err := json.NewEncoder(w).Encode(&expectedRuntime); err != nil {
+				w.Write([]byte("KO"))
+			}
+		} else {
+			if err := json.NewEncoder(w).Encode(&expectedRange); err != nil {
+				w.Write([]byte("KO"))
+			}
+		}
+	}))
+	defer server.Close()
+
+	url, _ := url.Parse(server.URL)
+	b := NewTSDB(url, httputil.NewSingleHostReverseProxy(url), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	require.Equal(t, server.URL, b.URL().String())
+	require.Equal(t, 714*time.Hour, b.RetentionPeriod())
+	require.True(t, b.IsAlive())
+}
+
+func TestTSDBConfigSuccessWithRetentionSize(t *testing.T) {
+	// Start test server
+	expectedRuntime := tsdb.Response{
+		Status: "success",
+		Data: map[string]string{
+			"storageRetention": "10GiB",
 		},
 	}
 

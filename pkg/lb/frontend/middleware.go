@@ -7,16 +7,22 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strconv"
 	"strings"
 
+	ceems_api_base "github.com/mahendrapaipuri/ceems/pkg/api/base"
 	ceems_api "github.com/mahendrapaipuri/ceems/pkg/api/http"
+	"github.com/mahendrapaipuri/ceems/pkg/lb/base"
+	"github.com/prometheus/common/config"
 )
 
 // Headers.
@@ -101,6 +107,73 @@ type authenticationMiddleware struct {
 	clusterIDs    []string
 	pathsACLRegex *regexp.Regexp
 	parseRequest  func(*ReqParams, *http.Request) error
+}
+
+// newAuthMiddleware setups new auth middleware.
+func newAuthMiddleware(c *Config) (*authenticationMiddleware, error) {
+	var db *sql.DB
+
+	var ceemsClient *http.Client
+
+	var ceemsWebURL *url.URL
+
+	var err error
+
+	// Check if DB path exists and get pointer to DB connection
+	if c.APIServer.Data.Path != "" {
+		dbAbsPath, err := filepath.Abs(
+			filepath.Join(c.APIServer.Data.Path, ceems_api_base.CEEMSDBName),
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		// Set DB pointer only if file exists. Else sql.Open will create an empty
+		// file as if exists already
+		if _, err := os.Stat(dbAbsPath); err == nil {
+			dsn := fmt.Sprintf("file:%s?%s", dbAbsPath, "_mutex=no&mode=ro&_busy_timeout=5000")
+
+			if db, err = sql.Open("sqlite3", dsn); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	// Check if URL for CEEMS API exists
+	if c.APIServer.Web.URL != "" {
+		// Unwrap original error to avoid leaking sensitive passwords in output
+		ceemsWebURL, err = url.Parse(c.APIServer.Web.URL)
+		if err != nil {
+			return nil, errors.Unwrap(err)
+		}
+
+		// Make a CEEMS API server client from client config
+		if ceemsClient, err = config.NewClientFromConfig(c.APIServer.Web.HTTPClientConfig, "ceems_api_server"); err != nil {
+			return nil, err
+		}
+	}
+
+	// Setup middleware
+	amw := &authenticationMiddleware{
+		logger: c.Logger,
+		ceems: ceems{
+			db:     db,
+			webURL: ceemsWebURL,
+			client: ceemsClient,
+		},
+	}
+
+	// Setup parsing functions based on LB type
+	switch c.LBType {
+	case base.PromLB:
+		amw.parseRequest = parseTSDBRequest
+		amw.pathsACLRegex = regexpTSDBRestrictedPath
+	case base.PyroLB:
+		amw.parseRequest = parsePyroRequest
+		amw.pathsACLRegex = regexpPyroRestrictedPath
+	}
+
+	return amw, nil
 }
 
 // Check UUIDs in query belong to user or not.

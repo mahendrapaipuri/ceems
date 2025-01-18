@@ -190,30 +190,29 @@ func (b *tsdbServer) fetchRetentionPeriod() (time.Duration, error) {
 				return time.Duration(period), ErrTypeAssertion
 			}
 
+			// If storageRetention is set to duration ONLY, we can consider it as
+			// retention period
+			if period, err = model.ParseDuration(strings.TrimSpace(vString)); err == nil {
+				return time.Duration(period), nil
+			}
+
+			// If storageRetention is set to size or time and size, we need to get
+			// "actual" retention period
 			for _, retentionString := range strings.Split(vString, "or") {
 				period, err = model.ParseDuration(strings.TrimSpace(retentionString))
 				if err != nil {
 					continue
 				}
 
-				goto outside
+				break
 			}
-
-			return time.Duration(
-					period,
-				), fmt.Errorf(
-					"failed to find retention period in runtime config: %s",
-					runtimeData,
-				)
 		}
 	}
-
-outside:
 
 	// If both retention storage and retention period are set,
 	// depending on whichever hit first, TSDB uses the data based
 	// on that retention.
-	// So just becase retention period is, say 30d, we might not
+	// So just because retention period is, say 30d, we might not
 	// have data spanning 30d if retention size cannot accommodate
 	// 30 days of data.
 	//
@@ -227,6 +226,12 @@ outside:
 	// the first one.
 	//
 	// Make query parameters
+	// When period is zero (during very first update) use a sufficiently
+	// long range of 10 years to get retention period
+	if period == 0 {
+		period = model.Duration(10 * 365 * 24 * time.Hour)
+	}
+
 	step := time.Duration(period) / 5000
 
 	urlValues := url.Values{
@@ -271,11 +276,19 @@ outside:
 			if values, ok = val.([]interface{}); ok && len(values) > 0 {
 				if v, ok := values[0].([]interface{}); ok && len(v) > 0 {
 					if t, ok := v[0].(float64); ok {
-						// We are updating retention period only at updateInterval
-						// so we need to reduce the actual retention period.
+						// We are updating retention period only at a frequency set by
+						// updateInterval. This means there is no guarantee that the
+						// data until next update is present in the current TSDB.
+						// So we need to reduce the actual retention period by the update
+						// interval.
 						// Here we reduce twice the update interval just to be
 						// in a safe land
-						return (time.Since(time.Unix(int64(t), 0)) - 2*b.updateInterval).Truncate(time.Hour), nil
+						actualRetentionPeriod := (time.Since(time.Unix(int64(t), 0)) - 2*b.updateInterval).Truncate(time.Hour)
+						if actualRetentionPeriod < 0 {
+							actualRetentionPeriod = time.Since(time.Unix(int64(t), 0))
+						}
+
+						return actualRetentionPeriod, nil
 					}
 				}
 			}
