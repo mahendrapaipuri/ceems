@@ -472,7 +472,7 @@ func (s *CEEMSServer) timeLocation(l string) *time.Location {
 
 // getQueryWindow returns `from` and `to` time stamps from query vars and
 // cast them into proper format.
-func (s *CEEMSServer) getQueryWindow(r *http.Request) (map[string]string, error) {
+func (s *CEEMSServer) getQueryWindow(r *http.Request, column string, running bool, terminated bool) (Query, error) {
 	q := r.URL.Query()
 
 	var fromTime, toTime time.Time
@@ -485,7 +485,7 @@ func (s *CEEMSServer) getQueryWindow(r *http.Request) (map[string]string, error)
 		if ts, err := strconv.ParseInt(f, 10, 64); err != nil {
 			s.logger.Error("Failed to parse from timestamp", "from", f, "err", err)
 
-			return nil, fmt.Errorf("query parameter 'from': %w", ErrMalformedTimeStamp)
+			return Query{}, fmt.Errorf("query parameter 'from': %w", ErrMalformedTimeStamp)
 		} else {
 			fromTime = time.Unix(ts, 0).In(s.dbConfig.Data.Timezone.Location)
 		}
@@ -499,7 +499,7 @@ func (s *CEEMSServer) getQueryWindow(r *http.Request) (map[string]string, error)
 		if ts, err := strconv.ParseInt(t, 10, 64); err != nil {
 			s.logger.Error("Failed to parse to timestamp", "to", t, "err", err)
 
-			return nil, fmt.Errorf("query parameter 'to': %w", ErrMalformedTimeStamp)
+			return Query{}, fmt.Errorf("query parameter 'to': %w", ErrMalformedTimeStamp)
 		} else {
 			toTime = time.Unix(ts, 0).In(s.dbConfig.Data.Timezone.Location)
 		}
@@ -516,13 +516,32 @@ func (s *CEEMSServer) getQueryWindow(r *http.Request) (map[string]string, error)
 			"query_window", toTime.Sub(fromTime).String(),
 		)
 
-		return nil, ErrMaxQueryWindow
+		return Query{}, ErrMaxQueryWindow
 	}
 
-	return map[string]string{
-		"from": fromTime.Format(base.DatetimeLayout),
-		"to":   toTime.Format(base.DatetimeLayout),
-	}, nil
+	// Initialise a sub query for adding time window to main query
+	subQuery := Query{}
+
+	// Add from and to to query only when checkQueryWindow is true
+	subQuery.query(column + " BETWEEN ")
+	subQuery.param([]string{fromTime.Format(base.DatetimeLayout)})
+	subQuery.query(" AND ")
+	subQuery.param([]string{toTime.Format(base.DatetimeLayout)})
+
+	// Check if running query param is included
+	// Running units will have ended_at_ts as 0 and we use this in query to
+	// fetch these units
+	if running {
+		subQuery.query(" OR ended_at_ts IN ")
+		subQuery.param([]string{"0"})
+	}
+
+	// Get only units that have finished. **Only used in testing**
+	if terminated {
+		subQuery.query(" AND ended_at_ts > 0 ")
+	}
+
+	return subQuery, nil
 }
 
 // roundQueryWindow rounds `to` and `from` query parameters to nearest multiple of
@@ -610,7 +629,9 @@ func (s *CEEMSServer) unitsQuerier(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
-	var queryWindowTS map[string]string
+	var timeQuery Query
+
+	var running bool
 
 	var err error
 
@@ -651,14 +672,6 @@ func (s *CEEMSServer) unitsQuerier(
 	// Add common query parameters
 	q = s.getCommonQueryParams(&q, r.URL.Query())
 
-	// Check if running query param is included
-	// Running units will have ended_at_ts as 0 and we use this in query to
-	// fetch these units
-	if _, ok := r.URL.Query()["running"]; ok {
-		q.query(" OR ended_at_ts IN ")
-		q.param([]string{"0"})
-	}
-
 	// Check if uuid present in query params and add them
 	// If any of uuid query params are present
 	// do not check query window as we are fetching a specific unit(s)
@@ -675,19 +688,20 @@ func (s *CEEMSServer) unitsQuerier(
 		goto queryUnits
 	}
 
+	// Check if running query param is included
+	_, running = r.URL.Query()["running"]
+
 	// Get query window time stamps
-	queryWindowTS, err = s.getQueryWindow(r)
+	timeQuery, err = s.getQueryWindow(r, "ended_at", running, false)
 	if err != nil {
 		errorResponse[any](w, &apiError{errorBadData, err}, s.logger, nil)
 
 		return
 	}
 
-	// Add from and to to query only when checkQueryWindow is true
-	q.query(" AND ended_at BETWEEN ")
-	q.param([]string{queryWindowTS["from"]})
+	// Add time query as sub query to main query
 	q.query(" AND ")
-	q.param([]string{queryWindowTS["to"]})
+	q.subQuery(timeQuery)
 
 queryUnits:
 	// Sort by uuid
@@ -1233,7 +1247,7 @@ func (s *CEEMSServer) projectsAdmin(w http.ResponseWriter, r *http.Request) {
 func (s *CEEMSServer) aggQueryBuilder(
 	r *http.Request,
 	metric string,
-	queryWindow map[string]string,
+	timeQuery Query,
 ) string {
 	// Query to return all unqiue json keys
 	q := Query{}
@@ -1245,11 +1259,9 @@ func (s *CEEMSServer) aggQueryBuilder(
 	// Add common query parameters
 	q = s.getCommonQueryParams(&q, r.URL.Query())
 
-	// Get keys only within the requested period
-	q.query(" AND last_updated_at BETWEEN ")
-	q.param([]string{queryWindow["from"]})
+	// Add time query as sub query to main query
 	q.query(" AND ")
-	q.param([]string{queryWindow["to"]})
+	q.subQuery(timeQuery)
 
 	// Make query and get keys
 	keys, err := s.queriers.key(r.Context(), s.db, q, s.logger)
@@ -1289,7 +1301,7 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 
 	var targetTable string
 
-	var queryWindowTS map[string]string
+	var q, timeQuery Query
 
 	queryParts := make([]string, len(fields))
 
@@ -1298,8 +1310,6 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 	var wg sync.WaitGroup
 
 	var mu sync.RWMutex
-
-	var q Query
 
 	var err, qErrs error
 
@@ -1310,8 +1320,12 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 		return
 	}
 
+	// Get only units that have finished. We do not present this
+	// query parameter for end users. **Only used in testing**
+	_, terminated := r.URL.Query()["__terminated"]
+
 	// Get query window time stamps
-	queryWindowTS, err = s.getQueryWindow(r)
+	timeQuery, err = s.getQueryWindow(r, "last_updated_at", false, terminated)
 	if err != nil {
 		errorResponse[any](w, &apiError{errorBadData, err}, s.logger, nil)
 
@@ -1344,7 +1358,7 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 			go func(i int, f string) {
 				defer wg.Done()
 
-				if query := s.aggQueryBuilder(r, f, queryWindowTS); query != "" {
+				if query := s.aggQueryBuilder(r, f, timeQuery); query != "" {
 					queryParts[i] = query
 				} else {
 					mu.Lock()
@@ -1413,17 +1427,9 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 	// Add common query parameters
 	q = s.getCommonQueryParams(&q, r.URL.Query())
 
-	// Add from and to to query only when checkQueryWindow is true
-	q.query(" AND last_updated_at BETWEEN ")
-	q.param([]string{queryWindowTS["from"]})
+	// Add time query as sub query to main query
 	q.query(" AND ")
-	q.param([]string{queryWindowTS["to"]})
-
-	// Get only units that have finished. We do not present this
-	// query parameter for end users. **Only used in testing**
-	if _, ok := r.URL.Query()["__terminated"]; ok {
-		q.query(" AND ended_at_ts > 0 ")
-	}
+	q.subQuery(timeQuery)
 
 	// Finally add GROUP BY clause. Always group by username,project
 	groupby = []string{"username", "project"}
@@ -1723,9 +1729,9 @@ func (s *CEEMSServer) usageAdmin(w http.ResponseWriter, r *http.Request) {
 func (s *CEEMSServer) currentStats(users []string, w http.ResponseWriter, r *http.Request) {
 	var stats []models.Stat
 
-	var queryWindowTS map[string]string
+	var timeQuery Query
 
-	var q, qSub Query
+	var q Query
 
 	var err error
 
@@ -1737,26 +1743,16 @@ func (s *CEEMSServer) currentStats(users []string, w http.ResponseWriter, r *htt
 	q.query(fmt.Sprintf("SELECT %s FROM %s WHERE 1=1", statsQuery, base.UnitsDBTableName))
 
 	// Get query window time stamps
-	queryWindowTS, err = s.getQueryWindow(r)
+	timeQuery, err = s.getQueryWindow(r, "ended_at", true, false)
 	if err != nil {
 		errorResponse[any](w, &apiError{errorBadData, err}, s.logger, nil)
 
 		return
 	}
 
-	// Add from and to to query in a sub query so that we can check for both running
-	// and terminates units
-	qSub = Query{}
-	qSub.query("ended_at BETWEEN ")
-	qSub.param([]string{queryWindowTS["from"]})
-	qSub.query(" AND ")
-	qSub.param([]string{queryWindowTS["to"]})
-	qSub.query(" OR ended_at_ts IN ")
-	qSub.param([]string{"0"})
-
-	// Add sub query to main query
+	// Add time sub query to main query
 	q.query(" AND ")
-	q.subQuery(qSub)
+	q.subQuery(timeQuery)
 
 	// Get cluster_id query parameters if any
 	if clusterIDs := r.URL.Query()["cluster_id"]; len(clusterIDs) > 0 {
