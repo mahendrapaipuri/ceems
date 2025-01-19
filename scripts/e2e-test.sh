@@ -717,7 +717,7 @@ then
     get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/units/admin?cluster_id=slurm-1&from=1676934000&to=1677538800" > "${fixture_output}"
   elif [ "${scenario}" = "api-admin-query-all-selected-fields" ]
   then
-    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/units/admin?cluster_id=os-0&running&from=1728990800&to=1728995400&field=uuid&field=started_at&field=ended_at&field=foo" > "${fixture_output}"
+    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/units/admin?cluster_id=os-0&running&from=1729000800&to=1729002300&field=uuid&field=started_at&field=ended_at&field=foo" > "${fixture_output}"
   elif [ "${scenario}" = "api-admin-denied-query" ]
   then
     get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/units/admin" > "${fixture_output}"
