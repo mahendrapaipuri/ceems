@@ -653,39 +653,63 @@ updaters: []
   #   # will be used to aggregate the compute unit metrics.
   #   #
   #   extra_config:
-  #     # Compute units that have total life time less than this value will be deleted from 
-  #     # TSDB to reduce number of labels and cardinality
+  #     # 
+  #     # CEEMS `tsdb` updater makes queries in batches in order to avoid OOM errors on TSDB.
+  #     # The parameters `query_max_series` and `query_min_samples` can be used to
+  #     # control the batch size. 
   #     #
-  #     # Default value `0s` means no compute units will be purged.
+  #     # Number of queries that can be loaded into memory depends on `--query.max-samples` 
+  #     # parameter. For a given batch size, all the queries in `queries` section will be
+  #     # executed concurrently. For instance, at a given time, if the batch size is 100 and
+  #     # if there are 40 different series used in `queries` section, the total number of
+  #     # series that will be loaded into the memory will be 100 * 40 = 4000. If the scrape
+  #     # interval is 10s and we are updating for a duration of 60 min, the total number of
+  #     # samples that need to be loaded will be 4000 * (60 * 60) / 10 = 1440000. The default value 
+  #     # used by Prometheus for `--query.max-samples` is 50000000 which is more than
+  #     # what we got in the calculation in the example. However, we need to account for other
+  #     # queries made to the TSDB as well and hence, must leave a good tolerance for all queries
+  #     # to be able to get executed correctly. The updater will fetch the current value of
+  #     # `--query.max-samples` and depending on the provided `query_max_series` and
+  #     # `query_min_samples` config parameters, it estimates a batch size and executes
+  #     # queries in the estimated batch size.
+  #     #
+  #     # Maximum number of series used in `queries` section. If there are 15 different series
+  #     # used in queries, we need to set it to 15. This will be used to
+  #     # estimate batch size when executing queries concurrently.
+  #     #
+  #     # Default value is 50.
+  #     #
+  #     query_max_series: 50
+
+  #     # Minimum number of samples that are guaranteed to available for executing the queries
+  #     # of the updater. It is expressed as proportion of `--query.max-samples` and takes a value
+  #     # between 0 to 1. A smaller value means smaller batch sizes.
+  #     #
+  #     # Default value is 0.5
+  #     #
+  #     query_min_samples: 0.5
+
+  #     # Compute units that have total life time less than this value will be marked as ignored
+  #     # in the CEEMS API DB. Compute units will only be marked as `ignored` and they are still
+  #     # kept in the TSDB.
+  #     #
+  #     # Default value `0s` means no compute units will be marked.
   #     #
   #     # Units Supported: y, w, d, h, m, s, ms.
   #     #
   #     cutoff_duration: 0s
 
-  #     # Query batch size when making TSDB queries.
-  #     # CEEMS making queries in batches in order to avoid OOM errors on TSDB.
-  #     # This parameter can be used to configure the number of compute units queried
-  #     # in a single query. 
+  #     # The ignored units' (based on `cutoff_duration`) metrics will be dropped from the TSDB
+  #     # when set it to `true`. This can be used to reduce number of labels and cardinality of TSDB
   #     #
-  #     # Set this value based on your `--query.max-samples` parameter set to TSDB and 
-  #     # scrape interval. For instance, at a given time, if there are 80k compute units
-  #     # running, TSDB is scrapping at a rate of 5sec and CEEMS is updating for every 
-  #     # 60 min. In this case, a given metric for 20k compute units will have 
-  #     # 80,000 * (60 * 60) / 5 = 57600000 samples in the query. The default value 
-  #     # used by Prometheus for `--query.max-samples` is 50000000 which is less than
-  #     # what we got in the calculation in the example. Thus, we need to make multiple
-  #     # queries by batching the compute units. In the current example, using a batch
-  #     # size of 40k should work, however, we recommend using much lesser batch sizes
-  #     # to protect TSDB from over consuming the memory.
+  #     # TSDB must be started with `--web.enable-admin-api` flag for this to work
   #     #
-  #     # Default value is 1000 and it should work in most of the cases
-  #     #
-  #     query_batch_size: 1000
+  #     delete_ignored: false
 
   #     # List of labels to delete from TSDB. These labels should be valid matchers for TSDB
   #     # More information of delete API of Prometheus https://prometheus.io/docs/prometheus/latest/querying/api/#delete-series
   #     #
-  #     # TSDB must be started with --web.enable-admin-api flag for this to work
+  #     # TSDB must be started with `--web.enable-admin-api` flag for this to work
   #     #
   #     labels_to_drop: []
   #     #  - ceems_ipmi_dcmi_avg_watts

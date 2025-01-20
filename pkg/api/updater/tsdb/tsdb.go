@@ -3,6 +3,7 @@ package tsdb
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"html/template"
 	"log/slog"
@@ -26,15 +27,31 @@ const (
 
 // Use a conservative maximum number of series to be loaded in memory for queries.
 const (
-	defaultQueryMaxSeries = 50
+	defaultQueryMaxSeries  = 50
+	defaultQueryMinSamples = 0.5
 )
 
 // config is the container for the configuration of a given TSDB instance.
 type tsdbConfig struct {
-	QueryMaxSeries int                          `yaml:"query_max_series"`
-	CutoffDuration model.Duration               `yaml:"cutoff_duration"`
-	Queries        map[string]map[string]string `yaml:"queries"`
-	LabelsToDrop   []string                     `yaml:"labels_to_drop"`
+	QueryMaxSeries  int                          `yaml:"query_max_series"`
+	QueryMinSamples float64                      `yaml:"query_min_samples"`
+	CutoffDuration  model.Duration               `yaml:"cutoff_duration"`
+	DeleteIgnore    bool                         `yaml:"delete_ignored"`
+	Queries         map[string]map[string]string `yaml:"queries"`
+	LabelsToDrop    []string                     `yaml:"labels_to_drop"`
+}
+
+// validate validates the config.
+func (c *tsdbConfig) validate() error {
+	if c.QueryMaxSeries <= 0 {
+		return errors.New("query_max_series must be more than 0")
+	}
+
+	if c.QueryMinSamples <= 0 || c.QueryMinSamples > 1 {
+		return errors.New("query_min_samples must be between (0, 1]")
+	}
+
+	return nil
 }
 
 // Embed TSDB struct into our TSDBUpdater struct.
@@ -59,10 +76,18 @@ func init() {
 func New(instance updater.Instance, logger *slog.Logger) (updater.Updater, error) {
 	// Make TSDB config from instances extra config
 	config := tsdbConfig{
-		QueryMaxSeries: defaultQueryMaxSeries,
+		QueryMaxSeries:  defaultQueryMaxSeries,
+		QueryMinSamples: defaultQueryMinSamples,
 	}
 	if err := instance.Extra.Decode(&config); err != nil {
 		logger.Error("Failed to setup TSDB updater", "id", instance.ID, "err", err)
+
+		return nil, err
+	}
+
+	// Validate config
+	if err := config.validate(); err != nil {
+		logger.Error("Failed to validate TSDB updater config", "instance_id", instance.ID, "err", err)
 
 		return nil, err
 	}
@@ -260,7 +285,7 @@ func (t *tsdbUpdater) update(
 	// Estimate a batch size based on scrape interval, duration, query max samples and total time series
 	samplesPerSeries := max(uint64(duration.Seconds()/settings.ScrapeInterval.Seconds()), 1)
 	maxLabels := settings.QueryMaxSamples / (uint64(t.config.QueryMaxSeries) * samplesPerSeries)
-	batchSize := min(max(int(0.8*float64(maxLabels)), 10), len(allUnitUUIDs[:j])) // Just to ensure we ALWAYS stay in limit
+	batchSize := min(max(int(t.config.QueryMinSamples*float64(maxLabels)), 10), len(allUnitUUIDs[:j]))
 
 	// Batch UUIDs into slices of 1000 so that we make TSDB requests for each 1000 units
 	// This is to safeguard against OOM errors due to a very large number of units
@@ -438,8 +463,16 @@ func (t *tsdbUpdater) update(
 		}
 	}
 
+	// If delete_ignored is set to `true`, drop all the labels with uuid
+	// corresponding to ones in ignoredUnits
+	var uuidsToDelete []string
+
+	if t.config.DeleteIgnore {
+		uuidsToDelete = ignoredUnits
+	}
+
 	// Finally delete time series
-	if err := t.deleteTimeSeries(ctx, startTime, endTime, ignoredUnits); err != nil {
+	if err := t.deleteTimeSeries(ctx, startTime, endTime, uuidsToDelete); err != nil {
 		t.Logger.Error("Failed to delete time series in TSDB", "err", err)
 	}
 

@@ -109,6 +109,38 @@ queries:
 	}, nil
 }
 
+func TestConfigValidation(t *testing.T) {
+	tests := []struct {
+		name   string
+		config tsdbConfig
+		err    bool
+	}{
+		{
+			name:   "valid config",
+			config: tsdbConfig{QueryMaxSeries: 50, QueryMinSamples: 0.1},
+		},
+		{
+			name:   "invalid max series",
+			config: tsdbConfig{QueryMaxSeries: 0},
+			err:    true,
+		},
+		{
+			name:   "invalid min samples",
+			config: tsdbConfig{QueryMinSamples: 0},
+			err:    true,
+		},
+	}
+
+	for _, test := range tests {
+		err := test.config.validate()
+		if test.err {
+			require.Error(t, err, test.name)
+		} else {
+			require.NoError(t, err, test.name)
+		}
+	}
+}
+
 func TestTSDBUpdateSuccessSingleInstance(t *testing.T) {
 	// Start test server
 	server := mockTSDBServer()
