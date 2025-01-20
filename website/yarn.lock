@@ -4629,10 +4629,24 @@ docusaurus-plugin-redoc@2.1.1:
     "@redocly/openapi-core" "1.16.0"
     redoc "2.1.5"
 
-docusaurus-theme-redoc@2.2.0, docusaurus-theme-redoc@^2.2.0:
+docusaurus-theme-redoc@2.2.0:
   version "2.2.0"
   resolved "https://registry.yarnpkg.com/docusaurus-theme-redoc/-/docusaurus-theme-redoc-2.2.0.tgz#085f1ba7e02df0c6c5b50fd67a1a4d17bd458e92"
   integrity sha512-oeREQZ7xf3qbkHSAvPVciGlssSb80zx+1GkiymM0sZwuZbD6FbTc6g1Dz81j8oCv0asSiRbsGo62KnpAatjnOg==
+  dependencies:
+    "@redocly/openapi-core" "1.16.0"
+    clsx "^1.2.1"
+    lodash "^4.17.21"
+    mobx "^6.12.4"
+    postcss "^8.4.45"
+    postcss-prefix-selector "^1.16.1"
+    redoc "2.1.5"
+    styled-components "^6.1.11"
+
+docusaurus-theme-redoc@^2.2.1:
+  version "2.2.1"
+  resolved "https://registry.yarnpkg.com/docusaurus-theme-redoc/-/docusaurus-theme-redoc-2.2.1.tgz#c8f9b05023735a5f07faa2471be5e04fdaf209f2"
+  integrity sha512-QO9ZU4/vWJTuCYiE4S14u4xEZEOHRNCqdT4wvPma0J8YII+z1kNSk2IIDSJDFMVHVZbOVc0KsUh7YpWrCh54nw==
   dependencies:
     "@redocly/openapi-core" "1.16.0"
     clsx "^1.2.1"
