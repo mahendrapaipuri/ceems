@@ -318,7 +318,7 @@ updaters:
       url: http://localhost:9090
     extra_config:
       cutoff_duration: 5m
-      query_batch_size: 1000
+      delete_ignored: true
       queries:
         # Average CPU utilisation
         avg_cpu_usage: 
@@ -348,14 +348,14 @@ section.
 - `web`: Web client configuration of updater server.
 - `extra_config`: The `extra_config` allows to further configure TSDB.
   - `extra_config.cutoff_duration`: The time series data of compute units that have
-    total elapsed time less than this period will be purged from TSDB to decrease
+    total elapsed time less than this period will be marked as ignored in CEEMS API
+    server DB.
+  - `extra_config.delete_ignored`: The compute units' labels that are marked as ignored
+    based on `extra_config.cutoff_duration` will be purged from TSDB to decrease
     cardinality. This is useful to remove time series data of failed compute units
     or compute units that lasted very short duration and in-turn keep cardinality of
     TSDB under check. For this feature to work, Prometheus needs to be started with
     `--web.enable-admin-api` CLI flag that enabled admin API endpoints
-  - `extra_config.query_batch_size`: In order to not to hit TSDB server's API response
-    limits, queries are batched with this config parameter size to estimate aggregate
-    metrics of compute units.
   - `extra_config.queries`: This defines the queries to be made to TSDB to estimate
     the aggregate metrics of each compute unit. The example config shows the query
     to estimate average CPU usage of the compute unit. All the supported queries can
@@ -482,7 +482,6 @@ updaters:
       url: http://tsdb-0
     extra_config:
       cutoff_duration: 5m
-      query_batch_size: 1000
       queries:
         # Average CPU utilisation
         avg_cpu_usage: 
