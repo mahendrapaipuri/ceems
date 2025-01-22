@@ -240,6 +240,7 @@ func NewSlurmCollector(logger *slog.Logger) (Collector, error) {
 				"index",
 				"hindex",
 				"gpuuuid",
+				"gpuiid",
 			},
 			nil,
 		),
@@ -390,10 +391,9 @@ func (c *slurmCollector) updateGPUOrdinals(ch chan<- prometheus.Metric, jobProps
 			}
 
 		update_chan:
-			// We set label of gpuuuid of format <gpu_uuid>/<mig_instance_id>
-			// On the DCGM side, we need to use relabel magic to merge UUID
-			// and GPU_I_ID labels and set them exactly as <uuid>/<gpu_i_id>
-			// as well
+			// On the DCGM side, we need to use relabel magic to rename UUID
+			// and GPU_I_ID labels to gpuuuid and gpuiid and make operations
+			// on(gpuuuid,gpuiid)
 			ch <- prometheus.MustNewConstMetric(
 				c.jobGpuFlag,
 				prometheus.GaugeValue,
@@ -403,7 +403,8 @@ func (c *slurmCollector) updateGPUOrdinals(ch chan<- prometheus.Metric, jobProps
 				p.uuid,
 				gpuOrdinal,
 				fmt.Sprintf("%s/gpu-%s", c.hostname, gpuOrdinal),
-				fmt.Sprintf("%s/%s", gpuuuid, miggid),
+				gpuuuid,
+				miggid,
 			)
 		}
 	}
