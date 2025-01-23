@@ -487,21 +487,6 @@ func parseSacctMgrCmdOutput(sacctMgrOutput string, currentTime string) ([]models
 
 // runSacctCmd executes sacct command and return output.
 func (s *slurmScheduler) runSacctCmd(ctx context.Context, start, end time.Time) ([]byte, error) {
-	// If we are fetching historical data, do not use RUNNING state as it can report
-	// same job twice once when it was still in running state and once it is in completed
-	// state.
-	// endTimeParsed, _ := time.Parse(base.DatetimeLayout, endTime)
-	var states []string
-	// When fetching current jobs, endTime should be very close to current time. Here we
-	// assume that if current time is more than 5 sec than end time, we are fetching
-	// historical data
-	if time.Now().In(end.Location()).Sub(end) > 5*time.Second {
-		// Strip RUNNING state from slice
-		states = slurmStates[:len(slurmStates)-1]
-	} else {
-		states = slurmStates
-	}
-
 	// sacct path
 	sacctPath := filepath.Join(s.cluster.CLI.Path, "sacct")
 
@@ -515,7 +500,7 @@ func (s *slurmScheduler) runSacctCmd(ctx context.Context, start, end time.Time) 
 	args := []string{
 		"-D", "-X", "--noheader", "--allusers", "--parsable2",
 		"--format", strings.Join(sacctFields, ","),
-		"--state", strings.Join(states, ","),
+		"--state", strings.Join(slurmStates, ","),
 		"--starttime", start.Format(base.DatetimeLayout),
 		"--endtime", end.Format(base.DatetimeLayout),
 	}
