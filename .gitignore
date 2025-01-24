@@ -62,9 +62,6 @@ data-backup
 /ceems_exporter
 /ceems_server
 
-# Ignore extracted folder
-ceems-*
-
 # Dont ignore docs
 !ceems-*.md
 
