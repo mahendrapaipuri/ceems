@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.3 / 2025-01-24
+
+- [BUGFIX] Minor corrections in SLURM fetcher and TSDB updater [#280](https://github.com/mahendrapaipuri/ceems/pull/280) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [MAINT] Set MIG instance in a separate label, when present [#279](https://github.com/mahendrapaipuri/ceems/pull/279) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [MAINT] More configurability on tsdb updater's query batching [#277](https://github.com/mahendrapaipuri/ceems/pull/277) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [BUGFIX] Handle running query parameter correctly [#271](https://github.com/mahendrapaipuri/ceems/pull/271) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [BUGFIX] TSDB retention period estimation [#270](https://github.com/mahendrapaipuri/ceems/pull/270) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [MAINT] Bump dependencies [#273](https://github.com/mahendrapaipuri/ceems/pull/273), [#274](https://github.com/mahendrapaipuri/ceems/pull/274), [#276](https://github.com/mahendrapaipuri/ceems/pull/276), [#278](https://github.com/mahendrapaipuri/ceems/pull/278) ([@dependabot](https://github.com/dependabot))
+
 ## 0.5.2 / 2025-01-17
 
 - [BUGFIX] Re-establish session when token invalidates for Redfish collector [#268](https://github.com/mahendrapaipuri/ceems/pull/268) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
