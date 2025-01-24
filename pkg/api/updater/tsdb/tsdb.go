@@ -5,12 +5,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"html/template"
 	"log/slog"
 	"maps"
 	"math"
 	"strings"
 	"sync"
+	"text/template"
 	"time"
 
 	"github.com/mahendrapaipuri/ceems/pkg/api/helper"

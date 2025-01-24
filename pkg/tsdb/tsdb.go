@@ -322,6 +322,14 @@ func (t *TSDB) Query(ctx context.Context, query string, queryTime time.Time) (Me
 		"time":  []string{queryTime.UTC().Format(time.RFC3339Nano)},
 	}
 
+	// Get current scrape interval to use as lookback_delta
+	// This query parameter is undocumented on Prometheus. If we use
+	// default value of 5m, we tend to have metrics 5m **after** compute
+	// unit has finished which gives over estimation of energy
+	if scrapeInterval := t.Settings(ctx).ScrapeInterval; scrapeInterval > 0 {
+		values.Add("lookback_delta", scrapeInterval.String())
+	}
+
 	// Create a new POST request
 	req, err := http.NewRequestWithContext(
 		ctx,
@@ -447,6 +455,14 @@ func (t *TSDB) RangeQuery(
 		"start": []string{startTime.UTC().Format(time.RFC3339Nano)},
 		"end":   []string{endTime.UTC().Format(time.RFC3339Nano)},
 		"step":  []string{step},
+	}
+
+	// Get current scrape interval to use as lookback_delta
+	// This query parameter is undocumented on Prometheus. If we use
+	// default value of 5m, we tend to have metrics 5m **after** compute
+	// unit has finished which gives over estimation of energy
+	if scrapeInterval := t.Settings(ctx).ScrapeInterval; scrapeInterval > 0 {
+		values.Add("lookback_delta", scrapeInterval.String())
 	}
 
 	// Create a new POST request
