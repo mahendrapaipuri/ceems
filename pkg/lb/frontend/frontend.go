@@ -253,6 +253,14 @@ func (lb *loadBalancer) Shutdown(ctx context.Context) error {
 
 // Serve serves the request using a backend TSDB server from the pool.
 func (lb *loadBalancer) Serve(w http.ResponseWriter, r *http.Request) {
+	// Health check
+	if r.URL.Path == "/health" {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("CEEMS LB Server is healthy"))
+
+		return
+	}
+
 	// Retrieve query params from context
 	queryParams := r.Context().Value(ReqParamsContextKey{})
 

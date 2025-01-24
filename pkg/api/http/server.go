@@ -223,9 +223,12 @@ func New(c *Config) (*CEEMSServer, func(), error) {
 	// Create a sub router with apiVersion as PathPrefix
 	subRouter := router.PathPrefix(routePrefix).Subrouter()
 
-	// If the prefix is missing for the root path, prepend it.
+	// If the prefix is missing for the root path or health endpoint, prepend it.
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, routePrefix, http.StatusFound)
+	})
+	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, routePrefix+"health", http.StatusFound)
 	})
 
 	subRouter.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -416,7 +419,7 @@ func (s *CEEMSServer) health(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
+		w.Write([]byte("CEEMS API Server is healthy"))
 	}
 }
 

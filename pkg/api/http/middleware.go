@@ -47,7 +47,7 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 		var q url.Values
 
 		// If requested URI is one of the following, skip checking for user header
-		//  - Root document
+		//  - /
 		//  - /health endpoint
 		//  - /demo/* endpoint
 		//  - /swagger/* endpoints
@@ -56,7 +56,7 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 		// NOTE that we only skip checking X-Grafana-User header. In prod when
 		// basic auth is enabled, all these end points are under auth and hence an
 		// unautorised user cannot access these end points
-		if r.URL.Path == "/" ||
+		if r.URL.Path == "/" || r.URL.Path == "/health" ||
 			r.URL.Path == amw.routerPrefix ||
 			amw.whitelistedURLs.MatchString(r.URL.Path) ||
 			debugEndpoints.MatchString(r.URL.Path) {
