@@ -9,7 +9,7 @@ require (
 	github.com/cilium/ebpf v0.17.1
 	github.com/containerd/cgroups/v3 v3.0.5
 	github.com/go-chi/httprate v0.14.1
-	github.com/golang-migrate/migrate/v4 v4.18.1
+	github.com/golang-migrate/migrate/v4 v4.18.2
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/grafana/pyroscope/api v1.2.0
