@@ -58,15 +58,6 @@ contents:
       owner: root
       group: ceems
 
-  # CEEMS tool binary
-  - src: .build/linux-${GOARCH}/ceems_tool
-    dst: /usr/local/bin/ceems_tool
-    expand: true
-    file_info:
-      mode: 0750
-      owner: root
-      group: ceems
-
   # CEEMS exporter web config file
   - src: build/config/common/web-config.yml
     dst: /etc/ceems_exporter/web-config.yml

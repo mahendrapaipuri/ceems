@@ -1392,7 +1392,7 @@ then
       ./bin/ceems_tool tsdb create-recording-rules --country-code=FR --output-dir "${tmpdir}/rules" >> "${logfile}" 2>&1
 
       # Add content of each recording file to fixture_output
-      find "${tmpdir}/rules" -type f -print0 | while IFS= read -r -d $'\0' file; do 
+      find "${tmpdir}/rules" -type f -print0 | sort -z | while IFS= read -r -d $'\0' file; do 
           echo $(basename "${file}") >> "${fixture_output}"
           cat "$file" >> "${fixture_output}"
       done
@@ -1429,10 +1429,10 @@ then
       waitport "9500"
 
       prometheus \
-      --config.file cmd/ceems_tool/testdata/prometheus.yml \
-      --storage.tsdb.retention.time 10y \
-      --storage.tsdb.path "${tmpdir}/tsdb" \
-      --log.level="debug" >> "${logfile}" 2>&1 &
+        --config.file cmd/ceems_tool/testdata/prometheus.yml \
+        --storage.tsdb.retention.time 10y \
+        --storage.tsdb.path "${tmpdir}/tsdb" \
+        --log.level="debug" >> "${logfile}" 2>&1 &
       PROMETHEUS_PID=$!
 
       waitport "9090"

@@ -56,13 +56,6 @@ contents:
     file_info:
       mode: 0511
 
-  # CEEMS tool binary
-  - src: .build/linux-${GOARCH}/ceems_tool
-    dst: /usr/local/bin/ceems_tool
-    expand: true
-    file_info:
-      mode: 0511
-
   # CEEMS load balancer config file
   - src: build/config/ceems_lb/ceems_lb.yml
     dst: /etc/ceems_lb/config.yml
