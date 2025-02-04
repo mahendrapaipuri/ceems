@@ -1,0 +1,169 @@
+---
+# Recording rules for scrape job {{.Job}}
+#
+# The following recording rules provide several CPU related metrics of the individual
+# compute units. Each of these metrics involving multiple raw metrics to compute them.
+# Performing such queries involving multiple metrics is a computational intensive
+# operation for Prometheus and hence, we leverage recording rules to estimate them
+# in the real time and store them in the TSDB. The downside of this approach is that
+# it creates new metrics which consume more space. However, we add atmost 10 new metrics
+# which should not increase the disk use of TSDB enormously.
+#
+groups:
+  - name: compute-unit-rules-{{.Job}}
+    interval: {{.EvaluationInterval}}
+    rules:
+      # CPU usage (%) of compute unit. It is percentage of CPU cycles spent by the compute unit.
+      - record: uuid:ceems_compute_unit_cpu_usage:ratio_irate
+        expr: |2
+          (
+              irate(ceems_compute_unit_cpu_user_seconds_total{job="{{.Job}}"}[{{.RateInterval}}])
+            +
+              irate(ceems_compute_unit_cpu_system_seconds_total{job="{{.Job}}"}[{{.RateInterval}}])
+          ) * 100
+          /
+            (ceems_compute_unit_cpus{job="{{.Job}}"} > 0)
+
+      # CPU memory usage (%) of compute unit. It is percentage of CPU memory used by compute unit relative to
+      # the available memory to the compute unit.
+      - record: uuid:ceems_compute_unit_cpu_memory_usage:ratio
+        expr: |2
+          ceems_compute_unit_memory_used_bytes{job="{{.Job}}"} * 100
+          /
+          (ceems_compute_unit_memory_total_bytes{job="{{.Job}}"} > 0)
+
+      # Total power (Watts) consumed by the instance by including Power Usage Effectiveness (PUE) value.
+      # By default, a PUE of 1 is used.
+      #
+{{- $chassis := "" -}}
+{{- $chassislength := len .Chassis -}} 
+{{- if gt $chassislength 1 }}
+      # Current redfish exports power readings for following chassis:
+{{- range $i, $v := .Chassis }}
+      # - {{$v}}
+{{- end }}
+      #
+      # Please choose an appropriate chassis that reports the power usage of host alone (excluding GPUs)
+      # and replace it in "<CHASSIS_NAME>" field.
+      #
+{{- $chassis = ",chassis=\"<CHASSIS_NAME>\"" -}}
+{{- else if eq $chassislength 1 }}
+{{- $chassisName := index .Chassis 0 -}}
+{{- $chassis = printf ",chassis=\"%s\"" $chassisName }}
+{{- end }}
+{{- $query := "" -}}
+{{- if and (.GPUPowerInHostPower) (le $chassislength 1) }}
+{{- $query = printf "(label_replace(%s{job=\"%s\"%s}, \"instancehost\", \"$1\", \"instance\", \"([^:]+):\\\\d+\") - on (instancehost) group_left () sum by (instancehost) (label_replace(%s{job=\"%s\"} / %d,  \"instancehost\", \"$1\", \"instance\", \"([^:]+):\\\\d+\"))) > 0"  $.HostPowerSeries $.Job $chassis $.GPUPowerSeries $.GPUJob $.GPUPowerScaler }}
+{{- else }}
+{{- if and (ne $.GPUJob "") (gt $chassislength 1) }}
+      # If selected Chassis INCLUDES GPU power consumption, replace
+      # expr for instance:{{.HostPowerSeries}}:pue with following:
+      # {{ printf "%f * (label_replace(%s{job=\"%s\",chassis\"<CHASSIS_NAME>\"},  \"instancehost\", \"$1\", \"instance\", \"([^:]+):\\\\d+\") - on (instancehost) group_left () sum by (instancehost) (label_replace(%s{job=\"%s\"} / %d,  \"instancehost\", \"$1\", \"instance\", \"([^:]+):\\\\d+\"))) > 0"  $.PUE $.HostPowerSeries $.Job $.GPUPowerSeries $.GPUJob $.GPUPowerScaler }}
+{{- end }}
+{{- $query = printf "%s{job=\"%s\"%s}" $.HostPowerSeries $.Job $chassis }}
+{{- end }}
+      - record: instance:{{.HostPowerSeries}}:pue
+        expr: {{.PUE}} * {{$query}}
+
+      # Total power (Watts) consumed by the compute unit including PUE value.
+      #
+      # Firstly, we make an assumption that 90% of power is consumed by CPU, DRAM and 10% by other
+      # peripherals like network, storage, etc.
+      #
+      # We leverage RAPL package and DRAM to split the rest of 90% power between CPU and DRAM
+      # components, when available. When RAPL counters are not available, we assume all 90% power 
+      # is consumed by CPU.
+      #
+      # At node level, power consumed by CPU and DRAM can be estimated as
+      #
+      # Total CPU Power = 0.9 * Total Power * (RAPL Package / (RAPL Package + RAPL DRAM)) 
+      # Total CPU DRAM Power = 0.9 * Total Power * (RAPL DRAM / (RAPL Package + RAPL DRAM))
+      #
+      # Now we have power usage at node level for CPU and DRAM. We split it further at the
+      # compute unit level using CPU time and DRAM usage by the compute unit. For rest of
+      # of the power usage like network, storage, we split it equally among all compute units 
+      # that running on the node at a given time.
+      #
+      # Compute Unit CPU Power = Total CPU Power * (Compute CPU Time / Total CPU Time)
+      # Compute Unit CPU Memory Power = Total CPU DRAM Power * (Compute Unit Memory / Total Memory)
+      # Misc Power Usage by Compute Unit = 0.1 * Total Power / Number of Compute Units
+      #
+      # Total Compute Unit Power = Compute Unit CPU Power + Compute Unit CPU Memory Power + Misc Power Usage by Compute Unit
+      #
+      - record: uuid:ceems_compute_unit_cpu_power_watts:pue
+        expr: |2
+            0.9 * instance:{{.HostPowerSeries}}:pue{job="{{.Job}}"} # Assumption 90% Power usage by CPU, CPU memory and other peripherals.
+{{- if .RAPLAvailable }}
+                * on (instance) group_left () # 0.9 * Total Power * (RAPL Package / (RAPL Package + RAPL DRAM)) -> Total CPU Power
+                  (
+                      sum by (instance) (irate(ceems_rapl_package_joules_total{job="{{.Job}}"}[{{.RateInterval}}]))
+                    /
+                      (
+                          sum by (instance) (irate(ceems_rapl_package_joules_total{job="{{.Job}}"}[{{.RateInterval}}]))
+                        +
+                          sum by (instance) (irate(ceems_rapl_dram_joules_total{job="{{.Job}}"}[{{.RateInterval}}]))
+                      )
+                  )
+{{- end }}
+              * on (instance) group_right () # Total CPU Power * (Compute CPU Time / Total CPU Time) -> Compute Unit CPU Power
+                (
+                    (
+                        irate(ceems_compute_unit_cpu_user_seconds_total{job="{{.Job}}"}[{{.RateInterval}}])
+                      +
+                        irate(ceems_compute_unit_cpu_system_seconds_total{job="{{.Job}}"}[{{.RateInterval}}])
+                    )
+                  / on (instance) group_left ()
+                    sum by (instance) (irate(ceems_cpu_seconds_total{job="{{.Job}}",mode!~"idle|iowait|steal"}[{{.RateInterval}}]))
+                )
+{{- if .RAPLAvailable }}
+            +
+                  0.9 * instance:{{.HostPowerSeries}}:pue{job="{{.Job}}"}
+                * on (instance) group_left () # 0.9 * Total Power * (RAPL DRAM / (RAPL Package + RAPL DRAM)) -> Total CPU Memory Power
+                  (
+                      sum by (instance) (irate(ceems_rapl_dram_joules_total{job="{{.Job}}"}[{{.RateInterval}}]))
+                    /
+                      (
+                          sum by (instance) (irate(ceems_rapl_package_joules_total{job="{{.Job}}"}[{{.RateInterval}}]))
+                        +
+                          sum by (instance) (irate(ceems_rapl_dram_joules_total{job="{{.Job}}"}[{{.RateInterval}}]))
+                      )
+                  )
+              * on (instance) group_right () # Total CPU Memory Power * (Compute Unit Memory / Total Memory) -> Compute Unit CPU Memory Power
+                (
+                    ceems_compute_unit_memory_used_bytes{job="{{.Job}}"}
+                  / on (instance) group_left ()
+                    (
+                        ceems_meminfo_MemTotal_bytes{job="{{.Job}}"}
+                      - on (instance)
+                        ceems_meminfo_MemAvailable_bytes{job="{{.Job}}"}
+                    )
+                )
+{{- end }}
+            +
+                0.1 * instance:{{.HostPowerSeries}}:pue{job="{{.Job}}"} # Total Misc Power Usage
+              * on (instance) group_right () # Total Misc Power usage / Number of Compute Units -> Misc Power Usage by Compute Unit
+                (
+                    ceems_compute_unit_memory_used_bytes{job="{{.Job}}"}
+                  /
+                    (
+                        ceems_compute_unit_memory_used_bytes{job="{{.Job}}"}
+                      * on (instance) group_left ()
+                        ceems_compute_units{job="{{.Job}}"}
+                    ) > 0
+                )
+{{ range $i, $v := .Providers }}
+      # Total equivalent emissions rate (g/s) due to the power consumed by the compute unit.
+      # The equivalent emissions are estimated using emission factor from {{$v}} for country
+      # {{$.CountryCode}}
+      - record: uuid:ceems_compute_unit_cpu_emissions_g_s:pue
+        expr: |2
+          label_replace(
+              uuid:ceems_compute_unit_cpu_power_watts:pue{job="{{$.Job}}"} / 3.6e+06,
+              "provider",
+              "{{$v}}",
+              "instance",
+              "(.*)"
+            )
+          * on (provider) group_left ()
+            ceems_emissions_gCo2_kWh{country_code="{{$.CountryCode}}",provider="{{$v}}"}  
+{{ end }}

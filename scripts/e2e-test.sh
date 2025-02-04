@@ -321,6 +321,28 @@ then
   logfile="${tmpdir}/redfish_proxy.log"
   fixture_output="${tmpdir}/e2e-test-redfish-proxy-output.txt"
   pidfile="${tmpdir}/redfish_proxy.pid"
+
+elif [[ "${scenario}" =~ ^"tool" ]]
+then
+
+  if [ "${scenario}" = "tool-recording-rules" ]
+  then
+    desc="ceems tool to generate recording rules"
+    fixture='cmd/ceems_tool/testdata/output/e2e-test-recording-rules-output.txt'
+  elif [ "${scenario}" = "tool-relabel-configs" ]
+  then
+    desc="ceems tool to generate relabel config"
+    fixture='cmd/ceems_tool/testdata/output/e2e-test-relabel-config-output.txt'
+  elif [ "${scenario}" = "tool-web-config" ]
+  then
+    desc="ceems tool to generate web config"
+    fixture='cmd/ceems_tool/testdata/output/e2e-test-web-config-output.txt'
+  fi
+
+  logfile="${tmpdir}/ceems_tool.log"
+  fixture_output="${tmpdir}/e2e-test-ceems-tool-output.txt"
+  pidfile="${tmpdir}/ceems_tool.pid"
+
 fi
 
 # Current time stamp
@@ -911,7 +933,7 @@ then
     waitport "${port2}"
 
     get -H "X-Grafana-User: usr1" -H "X-Ceems-Cluster-Id: slurm-1" "127.0.0.1:${port}/api/v1/query?query=foo\{uuid=\"1481510\"\}&time=1713032179.506" > "${fixture_output}"
-    ./bin/pyro_requestor -url "http://localhost:${port2}/querier.v1.QuerierService/SelectMergeStacktraces" -username usr1 -cluster-id slurm-1 -uuid 1481510 -start 1713032179 >> "${fixture_output}"
+    ./bin/pyro_requestor -url "http://localhost:${port2}/querier.v1.QuerierService/SelectMergeStacktraces" -username usr1 -cluster-id slurm-1 -uuid 1481510 -start 1713032179000 >> "${fixture_output}"
 
   elif [[ "${scenario}" = "lb-allow-user-query-db" ]] 
   then
@@ -943,7 +965,7 @@ then
     waitport "${port2}"
 
     get -H "X-Grafana-User: usr1" -H "X-Ceems-Cluster-Id: slurm-0" "127.0.0.1:${port}/api/v1/query?query=foo\{uuid=\"1479763\"\}&time=1645450627" > "${fixture_output}"
-    ./bin/pyro_requestor -url "http://localhost:${port2}/querier.v1.QuerierService/SelectMergeStacktraces" -username usr1 -cluster-id slurm-0 -uuid 1479763 -start 1645450627 >> "${fixture_output}"
+    ./bin/pyro_requestor -url "http://localhost:${port2}/querier.v1.QuerierService/SelectMergeStacktraces" -username usr1 -cluster-id slurm-0 -uuid 1479763 -start 1645450627000 >> "${fixture_output}"
 
   elif [[ "${scenario}" = "lb-forbid-user-query-api" ]] 
   then
@@ -992,7 +1014,7 @@ then
     waitport "${port2}"
 
     get -H "X-Grafana-User: usr1" -H "X-Ceems-Cluster-Id: slurm-1" "127.0.0.1:${port}/api/v1/query?query=foo\{uuid=\"1481510\"\}&time=1676990946" > "${fixture_output}"
-    ./bin/pyro_requestor -url "http://localhost:${port2}/querier.v1.QuerierService/SelectMergeStacktraces" -username usr1 -cluster-id slurm-1 -uuid 1481510 -start 1676990946 >> "${fixture_output}"
+    ./bin/pyro_requestor -url "http://localhost:${port2}/querier.v1.QuerierService/SelectMergeStacktraces" -username usr1 -cluster-id slurm-1 -uuid 1481510 -start 1676990946000 >> "${fixture_output}"
 
   elif [[ "${scenario}" = "lb-allow-user-query-api" ]] 
   then
@@ -1041,7 +1063,7 @@ then
     waitport "${port2}"
 
     get -H "X-Grafana-User: usr1" -H "X-Ceems-Cluster-Id: slurm-0" "127.0.0.1:${port}/api/v1/query?query=foo\{uuid=\"1479763\"\}&time=1645450627" > "${fixture_output}"
-    ./bin/pyro_requestor -url "http://localhost:${port2}/querier.v1.QuerierService/SelectMergeStacktraces" -username usr1 -cluster-id slurm-0 -uuid 1479763 -start 1645450627 >> "${fixture_output}"
+    ./bin/pyro_requestor -url "http://localhost:${port2}/querier.v1.QuerierService/SelectMergeStacktraces" -username usr1 -cluster-id slurm-0 -uuid 1479763 -start 1645450627000 >> "${fixture_output}"
 
   elif [[ "${scenario}" = "lb-allow-admin-query" ]] 
   then
@@ -1073,7 +1095,7 @@ then
     waitport "${port2}"
 
     get -H "X-Grafana-User: grafana" -H "X-Ceems-Cluster-Id: slurm-1" -H "Content-Type: application/x-www-form-urlencoded" -X POST -d "query=foo{uuid=\"1479765\"}" "127.0.0.1:${port}/api/v1/query" > "${fixture_output}"
-    ./bin/pyro_requestor -url "http://localhost:${port2}/querier.v1.QuerierService/SelectMergeStacktraces" -username grafana -cluster-id slurm-1 -uuid 1479765 -start 1645450627 >> "${fixture_output}"
+    ./bin/pyro_requestor -url "http://localhost:${port2}/querier.v1.QuerierService/SelectMergeStacktraces" -username grafana -cluster-id slurm-1 -uuid 1479765 -start 1645450627000 >> "${fixture_output}"
 
   elif [[ "${scenario}" = "lb-auth" ]] 
   then
@@ -1129,6 +1151,7 @@ then
       get -H "X-Real-IP: 192.168.1.${i}" "127.0.0.1:${port}" >> "${fixture_output}"
     done
     get -H "X-Redfish-Url: http://localhost:5000" "127.0.0.1:${port}" >> "${fixture_output}"
+
   elif [ "${scenario}" = "redfish-proxy-frontend-tls-backend-plain" ]
   then
     export PATH="${GOBIN:-}:${PATH}"
@@ -1151,6 +1174,7 @@ then
       get -H "X-Real-IP: 192.168.1.${i}" "https://127.0.0.1:${port}" >> "${fixture_output}"
     done
     get -H "X-Redfish-Url: http://localhost:5000" "https://127.0.0.1:${port}" >> "${fixture_output}"
+
   elif [ "${scenario}" = "redfish-proxy-frontend-plain-backend-tls" ]
   then
     export PATH="${GOBIN:-}:${PATH}"
@@ -1172,6 +1196,7 @@ then
       get -H "X-Real-IP: 192.168.1.${i}" "127.0.0.1:${port}" >> "${fixture_output}"
     done
     get -H "X-Redfish-Url: https://localhost:5005" "127.0.0.1:${port}" >> "${fixture_output}"
+
   elif [ "${scenario}" = "redfish-proxy-frontend-tls-backend-tls" ]
   then
     export PATH="${GOBIN:-}:${PATH}"
@@ -1194,6 +1219,7 @@ then
       get -H "X-Real-IP: 192.168.1.${i}" "https://127.0.0.1:${port}" >> "${fixture_output}"
     done
     get -H "X-Redfish-Url: https://localhost:5005" "https://127.0.0.1:${port}" >> "${fixture_output}"
+
   elif [ "${scenario}" = "redfish-proxy-targetless-frontend-plain-backend-plain" ]
   then
     export PATH="${GOBIN:-}:${PATH}"
@@ -1211,6 +1237,243 @@ then
     waitport "${port}"
     get -H "X-Redfish-Url: http://localhost:5000" "http://127.0.0.1:${port}" >> "${fixture_output}"
   fi
+
+elif [[ "${scenario}" =~ ^"tool" ]]
+then
+  if [ ! -x ./bin/ceems_tool ]
+  then
+      echo './bin/ceems_tool not found. Consider running `go build` first.' >&2
+      exit 1
+  fi
+
+  export PATH="${GOBIN:-}:${PATH}"
+
+  if [ "${scenario}" = "tool-recording-rules" ] 
+  then
+      ./bin/mock_servers redfish > /dev/null 2>&1 &
+      MOCK_REDFISH_PID=$!
+
+      waitport "5000"
+
+      ./bin/mock_exporters dcgm amd-smi > /dev/null 2>&1 &
+      MOCK_SERVERS_PID=$!
+
+      waitport "9400"
+      waitport "9500"
+
+      # IPMI and RAPL available
+      ./bin/ceems_exporter \
+        --path.sysfs="pkg/collector/testdata/sys" \
+        --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
+        --path.procfs="pkg/collector/testdata/proc" \
+        --collector.cgroups.force-version="v1" \
+        --collector.slurm \
+        --collector.ipmi_dcmi \
+        --collector.ipmi_dcmi.test-mode \
+        --collector.ipmi_dcmi.cmd="pkg/collector/testdata/ipmi/freeipmi/ipmi-dcmi" \
+        --collector.empty-hostname-label \
+        --web.listen-address "127.0.0.1:9010" \
+        --web.disable-exporter-metrics \
+        --log.level="debug" > /dev/null 2>&1 &
+      MOCK_EXPORTER1_PID=$!
+
+      # Only RAPL available
+      ./bin/ceems_exporter \
+        --path.sysfs="pkg/collector/testdata/sys" \
+        --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
+        --path.procfs="pkg/collector/testdata/proc" \
+        --collector.cgroups.force-version="v1" \
+        --collector.slurm \
+        --collector.empty-hostname-label \
+        --web.listen-address "127.0.0.1:9011" \
+        --web.disable-exporter-metrics \
+        --log.level="debug" > /dev/null 2>&1 &
+      MOCK_EXPORTER2_PID=$!
+
+      # Only Redfish available with SINGLE CHASSIS
+      ./bin/ceems_exporter \
+        --path.sysfs="pkg/collector/testdata/sys" \
+        --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
+        --path.procfs="pkg/collector/testdata/proc" \
+        --collector.cgroups.force-version="v1" \
+        --collector.slurm \
+        --collector.redfish \
+        --collector.redfish.web-config="pkg/collector/testdata/redfish/config.yml" \
+        --collector.empty-hostname-label \
+        --web.listen-address "127.0.0.1:9012" \
+        --web.disable-exporter-metrics \
+        --log.level="debug" > /dev/null 2>&1 &
+      MOCK_EXPORTER3_PID=$!
+
+      # Redfish and RAPL available
+      ./bin/ceems_exporter \
+        --path.sysfs="pkg/collector/testdata/sys" \
+        --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
+        --path.procfs="pkg/collector/testdata/proc" \
+        --collector.cgroups.force-version="v1" \
+        --collector.slurm \
+        --collector.gpu.type="nvidia" \
+        --collector.gpu.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
+        --collector.redfish \
+        --collector.redfish.web-config="pkg/collector/testdata/redfish/config.yml" \
+        --collector.empty-hostname-label \
+        --web.listen-address "127.0.0.1:9013" \
+        --web.disable-exporter-metrics \
+        --log.level="debug" > /dev/null 2>&1 &
+      MOCK_EXPORTER4_PID=$!
+
+      # Cray available
+      ./bin/ceems_exporter \
+        --path.sysfs="pkg/collector/testdata/sys" \
+        --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
+        --path.procfs="pkg/collector/testdata/proc" \
+        --collector.cgroups.force-version="v1" \
+        --collector.slurm \
+        --collector.gpu.type="amd" \
+        --collector.gpu.rocm-smi-path="pkg/collector/testdata/rocm-smi" \
+        --collector.cray_pm_counters \
+        --collector.empty-hostname-label \
+        --web.listen-address "127.0.0.1:9014" \
+        --web.disable-exporter-metrics \
+        --log.level="debug" > /dev/null 2>&1 &
+      MOCK_EXPORTER5_PID=$!
+
+      # Only IPMI available (No RAPL). IPMI includes GPU power
+      ./bin/ceems_exporter \
+        --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
+        --path.procfs="pkg/collector/testdata/proc" \
+        --collector.cgroups.force-version="v1" \
+        --collector.slurm \
+        --collector.gpu.type="nvidia" \
+        --collector.gpu.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
+        --collector.ipmi_dcmi \
+        --collector.ipmi_dcmi.test-mode \
+        --collector.ipmi_dcmi.cmd="pkg/collector/testdata/ipmi/openipmi/ipmitool" \
+        --collector.empty-hostname-label \
+        --web.listen-address "127.0.0.1:9015" \
+        --web.disable-exporter-metrics \
+        --log.level="debug" > /dev/null 2>&1 &
+      MOCK_EXPORTER6_PID=$!
+
+      # Emissions target
+      ./bin/ceems_exporter \
+        --collector.disable-defaults \
+        --collector.emissions \
+        --collector.emissions.provider=owid \
+        --collector.empty-hostname-label \
+        --web.listen-address "127.0.0.1:9016" \
+        --web.disable-exporter-metrics \
+        --log.level="debug" > /dev/null 2>&1 &
+      MOCK_EXPORTER7_PID=$!
+
+      waitport "9010"
+      waitport "9011"
+      waitport "9012"
+      waitport "9013"
+      waitport "9014"
+      waitport "9015"
+      waitport "9016"
+
+      prometheus \
+        --config.file cmd/ceems_tool/testdata/prometheus.yml \
+        --storage.tsdb.retention.time 10y \
+        --storage.tsdb.path "${tmpdir}/tsdb" \
+        --log.level="debug" >> "${logfile}" 2>&1 &
+      PROMETHEUS_PID=$!
+
+      # Time stamp when scrapping
+      scrapestart=$(date +%s)
+
+      waitport "9090"
+
+      # Sleep a while for Prometheus to scrape metrics
+      sleep 30
+
+      ./bin/ceems_tool tsdb create-recording-rules --country-code=FR --output-dir "${tmpdir}/rules" >> "${logfile}" 2>&1
+
+      # Add content of each recording file to fixture_output
+      find "${tmpdir}/rules" -type f -print0 | while IFS= read -r -d $'\0' file; do 
+          echo $(basename "${file}") >> "${fixture_output}"
+          cat "$file" >> "${fixture_output}"
+      done
+
+      # Current time stamp
+      scrapeend=$(date +%s)
+
+      # Generate metrics from these recording rules
+      promtool tsdb create-blocks-from rules --start="${scrapestart}" --end="${scrapeend}" --eval-interval=500ms --output-dir="${tmpdir}/tsdb" "${tmpdir}/rules/cpu-only-ipmi.rules" >> "${logfile}" 2>&1
+
+      # Kill and restart Prom to sync data
+      kill -9 "${PROMETHEUS_PID}"
+
+      prometheus \
+        --config.file cmd/ceems_tool/testdata/prometheus.yml \
+        --storage.tsdb.retention.time 10y \
+        --storage.tsdb.path "${tmpdir}/tsdb" \
+        --log.level="debug" >> "${logfile}" 2>&1 &
+      PROMETHEUS_PID=$!
+
+      echo "${PROMETHEUS_PID} ${MOCK_REDFISH_PID} ${MOCK_SERVERS_PID} ${MOCK_EXPORTER1_PID} ${MOCK_EXPORTER2_PID} ${MOCK_EXPORTER3_PID} ${MOCK_EXPORTER4_PID} ${MOCK_EXPORTER5_PID} ${MOCK_EXPORTER6_PID} ${MOCK_EXPORTER7_PID}" > "${pidfile}"
+      
+      # Sleep 10 seconds for data to sync
+      sleep 10
+
+      # Generate TSDB updater queries
+      ./bin/ceems_tool tsdb create-ceems-tsdb-updater-queries >> "${fixture_output}" 2>&1
+  elif [ "${scenario}" = "tool-relabel-configs" ] 
+  then
+      ./bin/mock_exporters dcgm amd-smi >> "${logfile}" 2>&1 &
+      MOCK_SERVERS_PID=$!
+
+      waitport "9400"
+      waitport "9500"
+
+      prometheus \
+      --config.file cmd/ceems_tool/testdata/prometheus.yml \
+      --storage.tsdb.retention.time 10y \
+      --storage.tsdb.path "${tmpdir}/tsdb" \
+      --log.level="debug" >> "${logfile}" 2>&1 &
+      PROMETHEUS_PID=$!
+
+      waitport "9090"
+
+      # Sleep a while for Prometheus to scrape metrics
+      sleep 20
+
+      echo "${PROMETHEUS_PID} ${MOCK_SERVERS_PID}" > "${pidfile}"
+
+      ./bin/ceems_tool tsdb create-relabel-configs > "${fixture_output}" 2>&1
+
+  elif [ "${scenario}" = "tool-web-config" ] 
+  then
+      ./bin/ceems_tool config create-web-config --tls --tls.host example.com --output-dir "${tmpdir}/config" > "${logfile}" 2>&1
+
+      # Check if config is valid by starting a CEEMS exporter
+      ./bin/ceems_exporter \
+        --path.sysfs="pkg/collector/testdata/sys" \
+        --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
+        --path.procfs="pkg/collector/testdata/proc" \
+        --web.listen-address "127.0.0.1:${port}" \
+        --web.config.file="${tmpdir}/config/web-config.yml" \
+        --web.disable-exporter-metrics \
+        --log.level="debug" >> "${logfile}" 2>&1 &
+      EXPORTER_PID=$!
+
+      waitport "${port}"
+
+      echo "${EXPORTER_PID}" > "${pidfile}"
+
+      # Find basic auth password from logfile
+      logtext=$(cat "${logfile}")
+      regex='plain text password for basic auth is (.*)
+store (.*)'
+
+      [[ $logtext =~ $regex ]]
+      secret=${BASH_REMATCH[1]}
+      
+      get "https://ceems:${secret}@127.0.0.1:${port}/metrics" | grep -E -v "${skip_re}" > "${fixture_output}"
+  fi
+
 fi
 
 # Make classic diff and if it fails attempt to compare JSON

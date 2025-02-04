@@ -56,6 +56,13 @@ contents:
     file_info:
       mode: 0511
 
+  # CEEMS tool binary
+  - src: .build/linux-${GOARCH}/ceems_tool
+    dst: /usr/local/bin/ceems_tool
+    expand: true
+    file_info:
+      mode: 0511
+
   # CEEMS API server web config file
   - src: build/config/common/web-config.yml
     dst: /etc/ceems_api_server/web-config.yml

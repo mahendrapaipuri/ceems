@@ -9,6 +9,8 @@ build:
     binaries:
         - name: mock_servers
           path: ./scripts/mock_servers
+        - name: mock_exporters
+          path: ./scripts/mock_exporters
         - name: pyro_requestor
           path: ./scripts/pyro_requestor
     tags:

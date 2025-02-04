@@ -1,0 +1,17 @@
+---
+
+queries:
+[[- range $i, $v := .Queries ]]
+  [[$i]]:
+[[- range $ii, $q := $v ]]
+[[- $metricexists := SliceContains $.FoundSeries $q.Series ]]
+[[- $providerexists := true ]]
+[[- if StringContains $q.Series "emissions" ]]
+[[- $providerexists = SliceContains $.Providers $ii ]]
+[[- end ]]
+[[- if and $metricexists $providerexists ]]
+[[- $query := printf $q.Query $q.Series ]]
+    [[$ii]]: [[$query]]
+[[- end ]]
+[[ end ]]
+[[ end ]]

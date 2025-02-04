@@ -1,0 +1,81 @@
+---
+
+global:
+  scrape_interval: 500ms
+  evaluation_interval: 1s
+
+# scrape configuration
+scrape_configs:
+  # Only CPU hosts with IPMI available
+  - job_name: cpu-only-ipmi
+    static_configs:
+      - targets: ["localhost:9010"]
+        labels:
+          instance: compute-ipmi-0:9010
+
+  # Only CPU hosts whith only RAPL available
+  - job_name: cpu-only-rapl
+    static_configs:
+      - targets: ["localhost:9011"]
+        labels:
+          instance: compute-rapl-0:9011
+
+  # Only CPU hosts with Redfish available with ONE CHASSIS
+  - job_name: cpu-only-redfish
+    metric_relabel_configs:
+      - action: drop
+        source_labels: [chassis]
+        regex: Chassis_2
+    static_configs:
+      - targets: ["localhost:9012"]
+        labels:
+          instance: compute-redfish-0:9012
+  
+  # CPU and NVIDIA GPU hosts with Redfish available with TWO CHASSIS
+  - job_name: cpu-redfish-nvidia-gpu
+    static_configs:
+      - targets: ["localhost:9013"]
+        labels:
+          instance: compute-redfish-0:9013
+
+  # NVIDIA DCGM job for above hosts
+  - job_name: nvidia-gpu
+    static_configs:
+      - targets: ["localhost:9400"]
+        labels:
+          instance: compute-redfish-0:9400
+
+  # CPU and AMD GPUs with Cray available
+  - job_name: cpu-cray-amd-gpu
+    static_configs:
+      - targets: ["localhost:9014"]
+        labels:
+          instance: compute-cray-0:9014
+
+  # AMD SMI job for above hosts
+  - job_name: amd-gpu
+    static_configs:
+      - targets: ["localhost:9500"]
+        labels:
+          instance: compute-cray-0:9500
+
+  # CPU and NVIDIA GPU hosts with IPMI available and including GPU power
+  - job_name: cpu-ipmi-nvidia-gpu
+    static_configs:
+      - targets: ["localhost:9015"]
+        labels:
+          instance: compute-ipmi-nvidia-0:9015
+
+  # NVIDIA DCGM job for above hosts
+  - job_name: ipmi-nvidia-gpu
+    static_configs:
+      - targets: ["localhost:9400"]
+        labels:
+          instance: compute-ipmi-nvidia-0:9400
+
+  # Emissions job
+  - job_name: emissions
+    static_configs:
+      - targets: ["localhost:9016"]
+        labels:
+          instance: compute-emissions:9016
