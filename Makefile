@@ -149,7 +149,7 @@ update_testdata:
 
 ifeq ($(CGO_BUILD), 0)
 .PHONY: test-e2e
-test-e2e: build pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked
+test-e2e: $(PROMTOOL) build pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked
 	@echo ">> running end-to-end tests"
 	./scripts/e2e-test.sh -s exporter-cgroups-v1
 	./scripts/e2e-test.sh -s exporter-cgroups-v1-memory-subsystem
