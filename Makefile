@@ -125,7 +125,7 @@ coverage:
 test: pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked bpf
 	@echo ">> running tests"
 	$(GO) test -short $(test-flags) $(pkgs)
-	cat $(coverage-file).tmp | grep -v "main.go" > $(coverage-file)
+	cat $(coverage-file).tmp | grep -v "cmd" > $(coverage-file)
 
 .PHONY: test-32bit
 test-32bit: pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked bpf
