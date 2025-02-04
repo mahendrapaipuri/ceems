@@ -60,7 +60,7 @@ COMMIT;`
 
 func dummyTSDBServer(clusterID string) *httptest.Server {
 	// Start test server
-	expected := tsdb.Response{
+	expected := tsdb.Response[any]{
 		Status: "success",
 		Data: map[string]string{
 			"storageRetention": "30d",
