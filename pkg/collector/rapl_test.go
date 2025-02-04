@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	expectedEnergyMetrics = []float64{258218293244, 130570505826}
+	expectedEnergyMetrics = []float64{258218293244, 24468409791, 130570505826, 64930394974}
 	expectedPowerLimits   = map[sysfs.RaplZone]uint64{
 		{
 			Name:           "package",
@@ -25,11 +25,23 @@ var (
 			MaxMicrojoules: 0x3d08f5c252,
 		}: 0xaba9500,
 		{
+			Name:           "dram",
+			Index:          0,
+			Path:           "testdata/sys/class/powercap/intel-rapl:0:0",
+			MaxMicrojoules: 65712999613,
+		}: 0,
+		{
 			Name:           "package",
 			Index:          1,
 			Path:           "testdata/sys/class/powercap/intel-rapl:1",
 			MaxMicrojoules: 0x3d08f5c252,
 		}: 0xaba9500,
+		{
+			Name:           "dram",
+			Index:          1,
+			Path:           "testdata/sys/class/powercap/intel-rapl:1:0",
+			MaxMicrojoules: 65712999613,
+		}: 0,
 	}
 )
 

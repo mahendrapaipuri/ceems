@@ -32,7 +32,7 @@ func mockGPUDevices() []Device {
 		{domain: 0, bus: 77, device: 0, function: 0},
 	}
 
-	for i := 0; i <= 4; i++ {
+	for i := range 4 {
 		devs[i] = Device{
 			globalIndex: strconv.Itoa(i),
 			uuid:        fmt.Sprintf("GPU-%d", i),

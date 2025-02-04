@@ -1,0 +1,114 @@
+---
+# Recording rules for scrape job {{.Job}}
+#
+# The following recording rules provide several CPU related metrics of the individual
+# compute units. Each of these metrics involving multiple raw metrics to compute them.
+# Performing such queries involving multiple metrics is a computational intensive
+# operation for Prometheus and hence, we leverage recording rules to estimate them
+# in the real time and store them in the TSDB. The downside of this approach is that
+# it creates new metrics which consume more space. However, we add atmost 10 new metrics
+# which should not increase the disk use of TSDB enormously.
+#
+groups:
+  - name: compute-unit-rules-{{.Job}}
+    interval: {{.EvaluationInterval}}
+    rules:
+      # CPU usage (%) of compute unit. It is percentage of CPU cycles spent by the compute unit.
+      - record: uuid:ceems_compute_unit_cpu_usage:ratio_irate
+        expr: |2
+          (
+              irate(ceems_compute_unit_cpu_user_seconds_total{job="{{.Job}}"}[{{.RateInterval}}])
+            +
+              irate(ceems_compute_unit_cpu_system_seconds_total{job="{{.Job}}"}[{{.RateInterval}}])
+          ) * 100
+          /
+            (ceems_compute_unit_cpus{job="{{.Job}}"} > 0)
+
+      # CPU memory usage (%) of compute unit. It is percentage of CPU memory used by compute unit relative to
+      # the available memory to the compute unit.
+      - record: uuid:ceems_compute_unit_cpu_memory_usage:ratio
+        expr: |2
+          ceems_compute_unit_memory_used_bytes{job="{{.Job}}"} * 100
+          /
+          (ceems_compute_unit_memory_total_bytes{job="{{.Job}}"} > 0)
+
+      # Total power (Watts) consumed by the instance by including Power Usage Effectiveness (PUE) value.
+      # By default, a PUE of 1 is used.
+      - record: instance:ceems_rapl_package_joules_total:pue
+        expr: {{.PUE}} * ceems_rapl_package_joules_total{job="{{.Job}}"}
+
+      # Total power (Watts) consumed by the instance by including Power Usage Effectiveness (PUE) value.
+      # By default, a PUE of 1 is used.
+      - record: instance:ceems_rapl_dram_joules_total:pue
+        expr: {{.PUE}} * ceems_rapl_dram_joules_total{job="{{.Job}}"}
+
+      # Unit's CPU total energy usage estimated from IPMI DCMI
+      - record: uuid:ceems_compute_unit_cpu_power_watts:pue
+        expr: |2
+          (
+                  sum by (instance) (irate(ceems_rapl_package_joules_total{job="{{.Job}}"}[{{.RateInterval}}]))
+                /
+                  (
+                      sum by (instance) (irate(ceems_rapl_package_joules_total{job="{{.Job}}"}[{{.RateInterval}}]))
+                    +
+                      (
+                          sum by (instance) (irate(ceems_rapl_dram_joules_total{job="{{.Job}}"}[{{.RateInterval}}]))
+                        or
+                          sum by (instance) (irate(ceems_rapl_package_joules_total{job="{{.Job}}"}[{{.RateInterval}}])) * 0
+                      )
+                  )
+              )
+            * on (instance) group_right ()
+              (
+                  (
+                      irate(ceems_compute_unit_cpu_user_seconds_total{job="{{.Job}}"}[{{.RateInterval}}])
+                    +
+                      irate(ceems_compute_unit_cpu_system_seconds_total{job="{{.Job}}"}[{{.RateInterval}}])
+                  )
+                / on (instance) group_left ()
+                  sum by (instance) (irate(ceems_cpu_seconds_total{job="{{.Job}}",mode!~"idle|iowait|steal"}[{{.RateInterval}}]))
+              )
+          +
+              (
+                  (
+                          sum by (instance) (irate(ceems_rapl_dram_joules_total{job="{{.Job}}"}[{{.RateInterval}}]))
+                        or
+                          sum by (instance) (irate(ceems_rapl_package_joules_total{job="{{.Job}}"}[{{.RateInterval}}])) * 0
+                      )
+                /
+                  (
+                      sum by (instance) (irate(ceems_rapl_package_joules_total{job="{{.Job}}"}[{{.RateInterval}}]))
+                    +
+                      (
+                          sum by (instance) (irate(ceems_rapl_dram_joules_total{job="{{.Job}}"}[{{.RateInterval}}]))
+                        or
+                          sum by (instance) (irate(ceems_rapl_package_joules_total{job="{{.Job}}"}[{{.RateInterval}}])) * 0
+                      )
+                  )
+              )
+            * on (instance) group_right ()
+              (
+                  ceems_compute_unit_memory_used_bytes{job="{{.Job}}"}
+                / on (instance) group_left ()
+                  (
+                      ceems_meminfo_MemTotal_bytes{job="{{.Job}}"}
+                    - on (instance)
+                      ceems_meminfo_MemAvailable_bytes{job="{{.Job}}"}
+                  )
+              )
+{{ range $i, $v := .Providers }}
+      # Total equivalent emissions rate (g/s) due to the power consumed by the compute unit.
+      # The equivalent emissions are estimated using emission factor from {{$v}} for country
+      # {{$.CountryCode}}
+      - record: uuid:ceems_compute_unit_cpu_emissions_g_s:pue
+        expr: |2
+          label_replace(
+              uuid:ceems_compute_unit_cpu_power_watts:pue{job="{{$.Job}}"} / 3.6e+06,
+              "provider",
+              "{{$v}}",
+              "instance",
+              "(.*)"
+            )
+          * on (provider) group_left ()
+            ceems_emissions_gCo2_kWh{country_code="{{$.CountryCode}}",provider="{{$v}}"} 
+{{ end }}

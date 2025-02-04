@@ -88,7 +88,7 @@ func testRedfishServer() *httptest.Server {
 				return
 			}
 
-			if data, err := os.ReadFile("testdata/redfish/chassis.json"); err == nil {
+			if data, err := os.ReadFile("testdata/redfish/chassis_1.json"); err == nil {
 				w.Write(data)
 
 				return
@@ -100,7 +100,31 @@ func testRedfishServer() *httptest.Server {
 				return
 			}
 
-			if data, err := os.ReadFile("testdata/redfish/chassis_power.json"); err == nil {
+			if data, err := os.ReadFile("testdata/redfish/chassis_1_power.json"); err == nil {
+				w.Write(data)
+
+				return
+			}
+		} else if r.URL.Path == "/redfish/v1/Chassis/Chassis-2" {
+			if !hasToken(r) {
+				w.WriteHeader(http.StatusUnauthorized)
+
+				return
+			}
+
+			if data, err := os.ReadFile("testdata/redfish/chassis_2.json"); err == nil {
+				w.Write(data)
+
+				return
+			}
+		} else if r.URL.Path == "/redfish/v1/Chassis/Chassis-2/Power" {
+			if !hasToken(r) {
+				w.WriteHeader(http.StatusUnauthorized)
+
+				return
+			}
+
+			if data, err := os.ReadFile("testdata/redfish/chassis_2_power.json"); err == nil {
 				w.Write(data)
 
 				return
@@ -263,10 +287,10 @@ func TestPowerReadings(t *testing.T) {
 
 	// Expected power readings
 	expected := map[string]map[string]float64{
-		"avg":     {"Chassis_1": 365},
-		"current": {"Chassis_1": 397},
-		"max":     {"Chassis_1": 609},
-		"min":     {"Chassis_1": 326},
+		"avg":     {"Chassis_1": 365, "Chassis_2": 1734},
+		"current": {"Chassis_1": 397, "Chassis_2": 1696},
+		"max":     {"Chassis_1": 609, "Chassis_2": 2155},
+		"min":     {"Chassis_1": 326, "Chassis_2": 588},
 	}
 
 	// Get power readings

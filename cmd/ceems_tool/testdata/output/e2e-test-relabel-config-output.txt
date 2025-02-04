@@ -1,0 +1,65 @@
+Merge the following scrape_configs with the current config.
+scrape_configs:
+  - job: ipmi-nvidia-gpu
+    relabel_configs:
+      - source_labels:
+          - UUID
+        target_label: gpuuuid
+        regex: (.*)
+        replacement: $1
+        action: replace
+      - regex: UUID
+        action: labeldrop
+      - source_labels:
+          - GPU_I_ID
+        target_label: gpuiid
+        regex: (.*)
+        replacement: $1
+        action: replace
+      - regex: GPU_I_ID
+        action: labeldrop
+  - job: nvidia-gpu
+    relabel_configs:
+      - source_labels:
+          - UUID
+        target_label: gpuuuid
+        regex: (.*)
+        replacement: $1
+        action: replace
+      - regex: UUID
+        action: labeldrop
+      - source_labels:
+          - GPU_I_ID
+        target_label: gpuiid
+        regex: (.*)
+        replacement: $1
+        action: replace
+      - regex: GPU_I_ID
+        action: labeldrop
+  - job: amd-gpu
+    relabel_configs:
+      - source_labels:
+          - gpu_power
+        target_label: index
+        regex: (.*)
+        replacement: $1
+        action: replace
+      - regex: gpu_power
+        action: labeldrop
+      - source_labels:
+          - gpu_use_percent
+        target_label: index
+        regex: (.*)
+        replacement: $1
+        action: replace
+      - regex: gpu_use_percent
+        action: labeldrop
+      - source_labels:
+          - gpu_memory_use_percent
+        target_label: index
+        regex: (.*)
+        replacement: $1
+        action: replace
+      - regex: gpu_memory_use_percent
+        action: labeldrop
+

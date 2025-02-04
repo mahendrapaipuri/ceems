@@ -223,9 +223,12 @@ func New(c *Config) (*CEEMSServer, func(), error) {
 	// Create a sub router with apiVersion as PathPrefix
 	subRouter := router.PathPrefix(routePrefix).Subrouter()
 
-	// If the prefix is missing for the root path, prepend it.
+	// If the prefix is missing for the root path or health endpoint, prepend it.
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, routePrefix, http.StatusFound)
+	})
+	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, routePrefix+"health", http.StatusFound)
 	})
 
 	subRouter.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -386,7 +389,7 @@ func (s *CEEMSServer) setHeaders(w http.ResponseWriter) {
 // setWriteDeadline sets write deadline to the request.
 func (s *CEEMSServer) setWriteDeadline(deadline time.Duration, w http.ResponseWriter) {
 	// Response controller
-	rc := http.NewResponseController(w) //nolint:bodyclose
+	rc := http.NewResponseController(w)
 
 	// Set write deadline to this request
 	if err := rc.SetWriteDeadline(time.Now().Add(deadline)); err != nil {
@@ -416,7 +419,7 @@ func (s *CEEMSServer) health(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
+		w.Write([]byte("CEEMS API Server is healthy"))
 	}
 }
 

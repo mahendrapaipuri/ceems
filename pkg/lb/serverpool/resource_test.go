@@ -23,7 +23,7 @@ var rbIDs = []string{"rb0", "rb1"}
 
 func dummyServer(retention string) *httptest.Server {
 	// Start test server
-	expected := tsdb.Response{
+	expected := tsdb.Response[any]{
 		Status: "success",
 		Data: map[string]string{
 			"storageRetention": retention,

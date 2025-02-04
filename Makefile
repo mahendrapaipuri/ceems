@@ -67,7 +67,8 @@ else
 	PROMU_CONF ?= .promu-go.yml
 	pkgs := ./pkg/collector ./pkg/emissions ./pkg/tsdb ./pkg/grafana \
 			./internal/common ./internal/osexec ./internal/structset \
-			./internal/security ./cmd/ceems_exporter ./cmd/redfish_proxy
+			./internal/security ./cmd/ceems_exporter ./cmd/redfish_proxy \
+			./cmd/ceems_tool
 	checkmetrics := checkmetrics
 	checkrules := checkrules
 	checkbpf := checkbpf
@@ -148,7 +149,7 @@ update_testdata:
 
 ifeq ($(CGO_BUILD), 0)
 .PHONY: test-e2e
-test-e2e: build pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked
+test-e2e: $(PROMTOOL) build pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked
 	@echo ">> running end-to-end tests"
 	./scripts/e2e-test.sh -s exporter-cgroups-v1
 	./scripts/e2e-test.sh -s exporter-cgroups-v1-memory-subsystem
@@ -167,6 +168,9 @@ test-e2e: build pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc
 	./scripts/e2e-test.sh -s redfish-proxy-frontend-plain-backend-tls
 	./scripts/e2e-test.sh -s redfish-proxy-frontend-tls-backend-tls
 	./scripts/e2e-test.sh -s redfish-proxy-targetless-frontend-plain-backend-plain
+	./scripts/e2e-test.sh -s tool-recording-rules
+	./scripts/e2e-test.sh -s tool-relabel-configs
+	./scripts/e2e-test.sh -s tool-web-config
 else
 .PHONY: test-e2e
 test-e2e: $(PROMTOOL) build pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked
@@ -229,6 +233,9 @@ test-e2e-update: build pkg/collector/testdata/sys/.unpacked pkg/collector/testda
 	./scripts/e2e-test.sh -s redfish-proxy-frontend-plain-backend-tls -u || true
 	./scripts/e2e-test.sh -s redfish-proxy-frontend-tls-backend-tls -u || true
 	./scripts/e2e-test.sh -s redfish-proxy-targetless-frontend-plain-backend-plain -u || true
+	./scripts/e2e-test.sh -s tool-recording-rules -u || true
+	./scripts/e2e-test.sh -s tool-relabel-configs -u || true
+	./scripts/e2e-test.sh -s tool-web-config -u || true
 else
 .PHONY: test-e2e-update
 test-e2e-update: $(PROMTOOL) build pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked
@@ -286,7 +293,7 @@ skip-checkmetrics: $(PROMTOOL)
 .PHONY: checkrules
 checkrules: $(PROMTOOL)
 	@echo ">> checking rules for correctness"
-	find . -name "*.rules" | xargs -I {} $(PROMTOOL) check rules {}
+	find . -not \( -path ./rules -prune \) -not \( -path ./cmd/ceems_tool/rules -prune \) -name "*.rules" | xargs -I {} $(PROMTOOL) check rules {}
 
 .PHONY: skip-checkrules
 skip-checkrules: $(PROMTOOL)

@@ -94,7 +94,7 @@ func (i *IPMIClient) Do(req *ipmiReq, t time.Duration) (*ipmiResp, error) {
 
 	var serverFD int
 	if fd < math.MaxInt {
-		serverFD = int(fd) //nolint:gosec
+		serverFD = int(fd)
 	} else {
 		serverFD = math.MaxInt - 1
 	}

@@ -7,7 +7,6 @@ linters:
     - dupword
     - exhaustruct
     - exportloopref  # deprecated
-    - gomnd
     - gocognit
     - gocyclo
     - gocritic
@@ -15,7 +14,6 @@ linters:
     - funlen
     - ireturn
     - err113
-    - execinquery
     - mnd
     - nestif
     - testpackage
@@ -50,3 +48,21 @@ linters-settings:
       - name: unused-parameter
         severity: warning
         disabled: true
+  recvcheck:
+    # Disables the built-in method exclusions:
+    # - `MarshalText`
+    # - `MarshalJSON`
+    # - `MarshalYAML`
+    # - `MarshalXML`
+    # - `MarshalBinary`
+    # - `GobEncode`
+    # Default: false
+    disable-builtin: true
+    # User-defined method exclusions.
+    # The format is `struct_name.method_name` (ex: `Foo.MethodName`).
+    # A wildcard `*` can use as a struct name (ex: `*.MethodName`).
+    # Default: []
+    exclusions:
+      - "*.String"
+      - "*.Value"
+      - "*.MarshalJSON"

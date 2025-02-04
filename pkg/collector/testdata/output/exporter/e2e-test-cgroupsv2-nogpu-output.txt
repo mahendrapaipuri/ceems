@@ -92,6 +92,14 @@ ceems_meminfo_MemFree_bytes{hostname=""} 4.50891776e+08
 # HELP ceems_meminfo_MemTotal_bytes Memory information field MemTotal_bytes.
 # TYPE ceems_meminfo_MemTotal_bytes gauge
 ceems_meminfo_MemTotal_bytes{hostname=""} 1.6042172416e+10
+# HELP ceems_rapl_dram_joules_total Current RAPL dram value in joules
+# TYPE ceems_rapl_dram_joules_total counter
+ceems_rapl_dram_joules_total{hostname="",index="0",path="pkg/collector/testdata/sys/class/powercap/intel-rapl:0:0"} 24468.409791
+ceems_rapl_dram_joules_total{hostname="",index="1",path="pkg/collector/testdata/sys/class/powercap/intel-rapl:1:0"} 64930.394974
+# HELP ceems_rapl_dram_power_limit_watts_total Current RAPL dram power limit in watts
+# TYPE ceems_rapl_dram_power_limit_watts_total counter
+ceems_rapl_dram_power_limit_watts_total{hostname="",index="0",path="pkg/collector/testdata/sys/class/powercap/intel-rapl:0:0"} 0
+ceems_rapl_dram_power_limit_watts_total{hostname="",index="1",path="pkg/collector/testdata/sys/class/powercap/intel-rapl:1:0"} 0
 # HELP ceems_rapl_package_joules_total Current RAPL package value in joules
 # TYPE ceems_rapl_package_joules_total counter
 ceems_rapl_package_joules_total{hostname="",index="0",path="pkg/collector/testdata/sys/class/powercap/intel-rapl:0"} 258218.293244

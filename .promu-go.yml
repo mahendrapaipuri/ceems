@@ -8,6 +8,8 @@ build:
     binaries:
         - name: ceems_exporter
           path: ./cmd/ceems_exporter
+        - name: ceems_tool
+          path: ./cmd/ceems_tool
         - name: redfish_proxy
           path: ./cmd/redfish_proxy
     tags:

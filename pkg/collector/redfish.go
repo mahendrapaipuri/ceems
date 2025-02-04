@@ -208,7 +208,7 @@ func (c *redfishCollector) Stop(_ context.Context) error {
 	c.logger.Debug("Stopping", "collector", redfishCollectorSubsystem)
 
 	// Delete sesssion and close all idle connections before exiting
-	c.client.Logout()
+	c.logout()
 
 	return nil
 }
@@ -230,6 +230,16 @@ func (c *redfishCollector) connect() error {
 	}
 
 	return nil
+}
+
+// logout logs out from active session and set client to nil so that new client can be
+// started.
+func (c *redfishCollector) logout() {
+	// Attempt to log out before creating new client
+	c.client.Logout()
+
+	// Set client to nil
+	c.client = nil
 }
 
 // Update implements Collector and exposes Redfish power related metrics.
@@ -256,7 +266,7 @@ func (c *redfishCollector) powerReadings() map[string]map[string]float64 {
 			power = c.cachedPower[chassisID]
 
 			// Attempt to log out and create new client
-			c.client.Logout()
+			c.logout()
 
 			if err := c.connect(); err != nil {
 				c.logger.Error("Failed to create new redfish client", "err", err)

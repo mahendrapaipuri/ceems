@@ -32,7 +32,7 @@ func Request(ctx context.Context, url string, client *http.Client) (interface{},
 	}
 
 	// Unpack into data
-	var data Response
+	var data Response[any]
 	if err = json.Unmarshal(body, &data); err != nil {
 		return nil, err
 	}

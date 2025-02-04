@@ -259,7 +259,7 @@ func TestParsePyroQueryParams(t *testing.T) {
 				Start:         1735209190,
 			},
 			uuids: []string{"123"},
-			start: 1735209190000,
+			start: 1735209000,
 		},
 		{
 			message: &querierv1.SelectMergeStacktracesRequest{
@@ -268,7 +268,7 @@ func TestParsePyroQueryParams(t *testing.T) {
 			},
 			uuids: []string{"123"},
 			rmIDs: "default",
-			start: 1735209190000,
+			start: 1735209000,
 		},
 	}
 

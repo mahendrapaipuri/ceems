@@ -37,7 +37,7 @@ func main() {
 	)
 	startTime := flag.Int64(
 		"start",
-		time.Now().Unix(),
+		time.Now().UnixMilli(),
 		"Unix time stamp",
 	)
 

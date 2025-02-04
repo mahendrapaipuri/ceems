@@ -1,0 +1,50 @@
+# HELP ceems_cpu_count Number of CPUs.
+# TYPE ceems_cpu_count gauge
+ceems_cpu_count{hostname=""} 8
+# HELP ceems_cpu_per_core_count Number of logical CPUs per physical core.
+# TYPE ceems_cpu_per_core_count gauge
+ceems_cpu_per_core_count{hostname=""} 2
+# HELP ceems_cpu_seconds_total Seconds the CPUs spent in each mode.
+# TYPE ceems_cpu_seconds_total counter
+ceems_cpu_seconds_total{hostname="",mode="idle"} 89790.04
+ceems_cpu_seconds_total{hostname="",mode="iowait"} 35.52
+ceems_cpu_seconds_total{hostname="",mode="irq"} 0.02
+ceems_cpu_seconds_total{hostname="",mode="nice"} 6.12
+ceems_cpu_seconds_total{hostname="",mode="softirq"} 39.44
+ceems_cpu_seconds_total{hostname="",mode="steal"} 0
+ceems_cpu_seconds_total{hostname="",mode="system"} 1119.22
+ceems_cpu_seconds_total{hostname="",mode="user"} 3018.54
+# HELP ceems_exporter_build_info A metric with a constant '1' value labeled by version, revision, branch, goversion from which ceems_exporter was built, and the goos and goarch for the build.
+# TYPE ceems_exporter_build_info gauge
+# HELP ceems_meminfo_MemAvailable_bytes Memory information field MemAvailable_bytes.
+# TYPE ceems_meminfo_MemAvailable_bytes gauge
+ceems_meminfo_MemAvailable_bytes{hostname=""} 0
+# HELP ceems_meminfo_MemFree_bytes Memory information field MemFree_bytes.
+# TYPE ceems_meminfo_MemFree_bytes gauge
+ceems_meminfo_MemFree_bytes{hostname=""} 4.50891776e+08
+# HELP ceems_meminfo_MemTotal_bytes Memory information field MemTotal_bytes.
+# TYPE ceems_meminfo_MemTotal_bytes gauge
+ceems_meminfo_MemTotal_bytes{hostname=""} 1.6042172416e+10
+# HELP ceems_rapl_dram_joules_total Current RAPL dram value in joules
+# TYPE ceems_rapl_dram_joules_total counter
+ceems_rapl_dram_joules_total{hostname="",index="0",path="pkg/collector/testdata/sys/class/powercap/intel-rapl:0:0"} 24468.409791
+ceems_rapl_dram_joules_total{hostname="",index="1",path="pkg/collector/testdata/sys/class/powercap/intel-rapl:1:0"} 64930.394974
+# HELP ceems_rapl_dram_power_limit_watts_total Current RAPL dram power limit in watts
+# TYPE ceems_rapl_dram_power_limit_watts_total counter
+ceems_rapl_dram_power_limit_watts_total{hostname="",index="0",path="pkg/collector/testdata/sys/class/powercap/intel-rapl:0:0"} 0
+ceems_rapl_dram_power_limit_watts_total{hostname="",index="1",path="pkg/collector/testdata/sys/class/powercap/intel-rapl:1:0"} 0
+# HELP ceems_rapl_package_joules_total Current RAPL package value in joules
+# TYPE ceems_rapl_package_joules_total counter
+ceems_rapl_package_joules_total{hostname="",index="0",path="pkg/collector/testdata/sys/class/powercap/intel-rapl:0"} 258218.293244
+ceems_rapl_package_joules_total{hostname="",index="1",path="pkg/collector/testdata/sys/class/powercap/intel-rapl:1"} 130570.505826
+# HELP ceems_rapl_package_power_limit_watts_total Current RAPL package power limit in watts
+# TYPE ceems_rapl_package_power_limit_watts_total counter
+ceems_rapl_package_power_limit_watts_total{hostname="",index="0",path="pkg/collector/testdata/sys/class/powercap/intel-rapl:0"} 180
+ceems_rapl_package_power_limit_watts_total{hostname="",index="1",path="pkg/collector/testdata/sys/class/powercap/intel-rapl:1"} 180
+# HELP ceems_scrape_collector_duration_seconds ceems_exporter: Duration of a collector scrape.
+# TYPE ceems_scrape_collector_duration_seconds gauge
+# HELP ceems_scrape_collector_success ceems_exporter: Whether a collector succeeded.
+# TYPE ceems_scrape_collector_success gauge
+ceems_scrape_collector_success{collector="cpu"} 1
+ceems_scrape_collector_success{collector="meminfo"} 1
+ceems_scrape_collector_success{collector="rapl"} 1

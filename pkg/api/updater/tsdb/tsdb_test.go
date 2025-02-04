@@ -21,7 +21,7 @@ import (
 
 func mockTSDBServer() *httptest.Server {
 	// Start test server
-	expected := tsdb.Response{
+	expected := tsdb.Response[any]{
 		Status: "success",
 		Data: map[string]interface{}{
 			"resultType": "vector",
@@ -299,7 +299,7 @@ func TestTSDBUpdateSuccessSingleInstance(t *testing.T) {
 	require.NoError(t, err)
 
 	updatedUnits := tsdb.Update(context.Background(), time.Now().Add(-5*time.Minute), time.Now(), units)
-	for i := range len(expectedUnits) {
+	for i := range expectedUnits {
 		assert.Equal(t, expectedUnits[i], updatedUnits[0].Units[i], "Unit: %d", i)
 	}
 }

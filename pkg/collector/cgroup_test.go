@@ -148,7 +148,7 @@ func TestCgroupsV1Metrics(t *testing.T) {
 		cpuUser:         0.39,
 		cpuSystem:       0.45,
 		cpuTotal:        1.012410966,
-		cpus:            0,
+		cpus:            2,
 		cpuPressure:     0,
 		memoryRSS:       1.0407936e+07,
 		memoryCache:     2.1086208e+07,

@@ -826,6 +826,86 @@ Path: sys/class/powercap/intel-rapl:0/uevent
 Lines: 0
 Mode: 640
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/class/powercap/intel-rapl:0:0
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0:0/constraint_0_max_power_uw
+Lines: 1
+64500000
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0:0/constraint_0_name
+Lines: 1
+long_term
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0:0/constraint_0_power_limit_uw
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0:0/constraint_0_time_window_us
+Lines: 1
+976
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0:0/device
+SymlinkTo: ../../intel-rapl:0
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0:0/enabled
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0:0/energy_uj
+Lines: 1
+24468409791
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0:0/max_energy_range_uj
+Lines: 1
+65712999613
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0:0/name
+Lines: 1
+dram
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/class/powercap/intel-rapl:0:0/power
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0:0/power/autosuspend_delay_ms
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0:0/power/control
+Lines: 1
+auto
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0:0/power/runtime_active_time
+Lines: 1
+0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0:0/power/runtime_status
+Lines: 1
+unsupported
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0:0/power/runtime_suspended_time
+Lines: 1
+0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0:0/subsystem
+SymlinkTo: ../../../../../../class/powercap
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:0:0/uevent
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Directory: sys/class/powercap/intel-rapl:1
 Mode: 775
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1003,6 +1083,86 @@ Path: sys/class/powercap/intel-rapl:1/subsystem
 SymlinkTo: ../../../../../class/powercap
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: sys/class/powercap/intel-rapl:1/uevent
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/class/powercap/intel-rapl:1:0
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1:0/constraint_0_max_power_uw
+Lines: 1
+64500000
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1:0/constraint_0_name
+Lines: 1
+long_term
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1:0/constraint_0_power_limit_uw
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1:0/constraint_0_time_window_us
+Lines: 1
+976
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1:0/device
+SymlinkTo: ../../intel-rapl:1
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1:0/enabled
+Lines: 1
+0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1:0/energy_uj
+Lines: 1
+64930394974
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1:0/max_energy_range_uj
+Lines: 1
+65712999613
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1:0/name
+Lines: 1
+dram
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/class/powercap/intel-rapl:1:0/power
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1:0/power/autosuspend_delay_ms
+Lines: 0
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1:0/power/control
+Lines: 1
+auto
+Mode: 640
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1:0/power/runtime_active_time
+Lines: 1
+0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1:0/power/runtime_status
+Lines: 1
+unsupported
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1:0/power/runtime_suspended_time
+Lines: 1
+0
+Mode: 440
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1:0/subsystem
+SymlinkTo: ../../../../../../class/powercap
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/powercap/intel-rapl:1:0/uevent
 Lines: 0
 Mode: 640
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -4044,6 +4204,39 @@ Lines: 5
 9563
 9616
 9870
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/cpuset
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/cpuset/slurm
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/cpuset/slurm/uid_1000
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/cpuset/slurm/uid_1000/job_1009248
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/cpuset/slurm/uid_1000/job_1009248/cpuset.cpus
+Lines: 1
+0-1EOF
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/cpuset/slurm/uid_1000/job_1009249
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/cpuset/slurm/uid_1000/job_1009249/cpuset.cpus
+Lines: 1
+0-1EOF
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/fs/cgroup/cpuset/slurm/uid_1000/job_1009250
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/fs/cgroup/cpuset/slurm/uid_1000/job_1009250/cpuset.cpus
+Lines: 1
+0-1EOF
 Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Directory: sys/fs/cgroup/machine.slice

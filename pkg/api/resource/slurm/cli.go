@@ -441,7 +441,7 @@ func parseSacctMgrCmdOutput(sacctMgrOutput string, currentTime string) ([]models
 	// Transform map into slice of projects
 	projectModels := make([]models.Project, len(projects))
 
-	for i := range len(projects) {
+	for i := range projects {
 		projectUsers := projectUserMap[projects[i]]
 
 		// Sort users
@@ -463,7 +463,7 @@ func parseSacctMgrCmdOutput(sacctMgrOutput string, currentTime string) ([]models
 	// Transform map into slice of users
 	userModels := make([]models.User, len(users))
 
-	for i := range len(users) {
+	for i := range users {
 		userProjects := userProjectMap[users[i]]
 
 		// Sort projects

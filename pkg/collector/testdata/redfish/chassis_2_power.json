@@ -1,0 +1,43 @@
+{
+    "@odata.type": "#Power.v1_7_0.Power",
+    "Id": "Power",
+    "Name": "Power",
+    "PowerControl": [
+        {
+            "@odata.id": "/redfish/v1/Chassis/Chassis-2/Power#/PowerControl/0",
+            "MemberId": "0",
+            "Name": "System Input Power",
+            "PowerConsumedWatts": 1696,
+            "PowerRequestedWatts": 2000,
+            "PowerAvailableWatts": 0,
+            "PowerCapacityWatts": 2500,
+            "PowerAllocatedWatts": 2500,
+            "PowerMetrics": {
+                "IntervalInMin": 30,
+                "MinConsumedWatts": 588,
+                "MaxConsumedWatts": 2155,
+                "AverageConsumedWatts": 1734
+            },
+            "PowerLimit": {
+                "LimitInWatts": 2700,
+                "LimitException": "LogEventOnly",
+                "CorrectionInMs": 50
+            },
+            "RelatedItem": [
+                {
+                    "@odata.id": "/redfish/v1/Systems/437XR1138R2"
+                },
+                {
+                    "@odata.id": "/redfish/v1/Chassis/Chassis-2"
+                }
+            ],
+            "Status": {
+                "State": "Enabled",
+                "Health": "OK"
+            },
+            "Oem": {}
+        }
+    ],
+    "Oem": {},
+    "@odata.id": "/redfish/v1/Chassis/Chassis-2/Power"
+} 

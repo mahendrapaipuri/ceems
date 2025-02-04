@@ -12,6 +12,8 @@ build:
           path: ./cmd/ceems_api_server
         - name: ceems_lb
           path: ./cmd/ceems_lb
+        - name: ceems_tool
+          path: ./cmd/ceems_tool
         - name: redfish_proxy
           path: ./cmd/redfish_proxy
     flags: -a -tags 'netgo osusergo static_build'

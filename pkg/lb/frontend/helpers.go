@@ -191,13 +191,15 @@ func parsePyroRequest(p *ReqParams, r *http.Request) error {
 	}
 
 	// Parse Pyroscope's start query in request query params
+	// The times are already in milliseconds and so we need to
+	// convert it to seconds before setting it to struct.
 	if start := data.GetStart(); start == 0 {
 		p.queryPeriod = 0 * time.Second
-		p.time = time.Now().Local().UnixMilli()
+		p.time = time.Now().UTC().UnixMilli()
 	} else {
-		startTime := time.Unix(start, 0)
-		p.queryPeriod = time.Now().Local().Sub(startTime)
-		p.time = startTime.Local().UnixMilli()
+		startTime := time.Unix(start/1000, 0).UTC()
+		p.queryPeriod = time.Now().UTC().Sub(startTime)
+		p.time = startTime.UnixMilli()
 	}
 
 	return nil
