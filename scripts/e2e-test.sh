@@ -1456,6 +1456,7 @@ then
         --web.listen-address "127.0.0.1:${port}" \
         --web.config.file="${tmpdir}/config/web-config.yml" \
         --web.disable-exporter-metrics \
+        --collector.empty-hostname-label \
         --log.level="debug" >> "${logfile}" 2>&1 &
       EXPORTER_PID=$!
 
