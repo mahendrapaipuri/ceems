@@ -254,7 +254,7 @@ func ExecuteAsWithTimeout(
 // convertToUint converts int to uint32 after checking bounds.
 func convertToUint(i int) (uint32, error) {
 	if i >= 0 && i <= math.MaxInt32 {
-		return uint32(i), nil //nolint:gosec
+		return uint32(i), nil
 	}
 
 	return 0, ErrInvalidUID

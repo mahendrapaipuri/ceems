@@ -389,7 +389,7 @@ func (s *CEEMSServer) setHeaders(w http.ResponseWriter) {
 // setWriteDeadline sets write deadline to the request.
 func (s *CEEMSServer) setWriteDeadline(deadline time.Duration, w http.ResponseWriter) {
 	// Response controller
-	rc := http.NewResponseController(w) //nolint:bodyclose
+	rc := http.NewResponseController(w)
 
 	// Set write deadline to this request
 	if err := rc.SetWriteDeadline(time.Now().Add(deadline)); err != nil {

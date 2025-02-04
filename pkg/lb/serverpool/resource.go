@@ -71,7 +71,7 @@ func (s *resourceBased) Target(id string, d time.Duration) backend.Server {
 	// period, return the one that has least connections
 	activeConnections := math.MaxInt32
 
-	for i := range len(targetBackends) {
+	for i := range targetBackends {
 		if !targetBackends[i].IsAlive() {
 			continue
 		}

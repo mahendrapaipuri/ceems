@@ -98,6 +98,14 @@ ceems_meminfo_MemFree_bytes{hostname=""} 4.50891776e+08
 # HELP ceems_meminfo_MemTotal_bytes Memory information field MemTotal_bytes.
 # TYPE ceems_meminfo_MemTotal_bytes gauge
 ceems_meminfo_MemTotal_bytes{hostname=""} 1.6042172416e+10
+# HELP ceems_rapl_dram_joules_total Current RAPL dram value in joules
+# TYPE ceems_rapl_dram_joules_total counter
+ceems_rapl_dram_joules_total{hostname="",index="0",path="pkg/collector/testdata/sys/class/powercap/intel-rapl:0:0"} 24468.409791
+ceems_rapl_dram_joules_total{hostname="",index="1",path="pkg/collector/testdata/sys/class/powercap/intel-rapl:1:0"} 64930.394974
+# HELP ceems_rapl_dram_power_limit_watts_total Current RAPL dram power limit in watts
+# TYPE ceems_rapl_dram_power_limit_watts_total counter
+ceems_rapl_dram_power_limit_watts_total{hostname="",index="0",path="pkg/collector/testdata/sys/class/powercap/intel-rapl:0:0"} 0
+ceems_rapl_dram_power_limit_watts_total{hostname="",index="1",path="pkg/collector/testdata/sys/class/powercap/intel-rapl:1:0"} 0
 # HELP ceems_rapl_package_joules_total Current RAPL package value in joules
 # TYPE ceems_rapl_package_joules_total counter
 ceems_rapl_package_joules_total{hostname="",index="0",path="pkg/collector/testdata/sys/class/powercap/intel-rapl:0"} 258218.293244
@@ -109,15 +117,19 @@ ceems_rapl_package_power_limit_watts_total{hostname="",index="1",path="pkg/colle
 # HELP ceems_redfish_avg_watts Average Power consumption in watts
 # TYPE ceems_redfish_avg_watts gauge
 ceems_redfish_avg_watts{chassis="Chassis_1",hostname=""} 365
+ceems_redfish_avg_watts{chassis="Chassis_2",hostname=""} 1734
 # HELP ceems_redfish_current_watts Current Power consumption in watts
 # TYPE ceems_redfish_current_watts gauge
 ceems_redfish_current_watts{chassis="Chassis_1",hostname=""} 397
+ceems_redfish_current_watts{chassis="Chassis_2",hostname=""} 1696
 # HELP ceems_redfish_max_watts Maximum Power consumption in watts
 # TYPE ceems_redfish_max_watts gauge
 ceems_redfish_max_watts{chassis="Chassis_1",hostname=""} 609
+ceems_redfish_max_watts{chassis="Chassis_2",hostname=""} 2155
 # HELP ceems_redfish_min_watts Minimum Power consumption in watts
 # TYPE ceems_redfish_min_watts gauge
 ceems_redfish_min_watts{chassis="Chassis_1",hostname=""} 326
+ceems_redfish_min_watts{chassis="Chassis_2",hostname=""} 588
 # HELP ceems_scrape_collector_duration_seconds ceems_exporter: Duration of a collector scrape.
 # TYPE ceems_scrape_collector_duration_seconds gauge
 # HELP ceems_scrape_collector_success ceems_exporter: Whether a collector succeeded.

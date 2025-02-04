@@ -181,7 +181,7 @@ func (u UnitUpdater) Update(
 	}
 
 	// Iterate through units and apply updater for each clusterUnit
-	for i := range len(clusterUnits) {
+	for i := range clusterUnits {
 		if len(clusterUnits[i].Units) == 0 || len(clusterUnits[i].Cluster.Updaters) == 0 {
 			continue
 		}

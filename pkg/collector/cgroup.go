@@ -718,7 +718,7 @@ func (c *cgroupCollector) doUpdate(metrics []cgMetric) []cgMetric {
 
 	// No need for any lock primitives here as we read/write
 	// a different element of slice in each go routine
-	for i := range len(metrics) {
+	for i := range metrics {
 		go func(idx int) {
 			defer wg.Done()
 

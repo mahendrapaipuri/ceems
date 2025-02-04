@@ -33,7 +33,7 @@ const (
 
 // config is the container for the configuration of a given TSDB instance.
 type tsdbConfig struct {
-	QueryMaxSeries  int                          `yaml:"query_max_series"`
+	QueryMaxSeries  uint64                       `yaml:"query_max_series"`
 	QueryMinSamples float64                      `yaml:"query_min_samples"`
 	CutoffDuration  model.Duration               `yaml:"cutoff_duration"`
 	DeleteIgnore    bool                         `yaml:"delete_ignored"`
@@ -251,7 +251,7 @@ func (t *tsdbUpdater) update(
 	// Loop over all units and find earliest start time of a unit
 	j := 0
 
-	for i := range len(units) {
+	for i := range units {
 		uuid = units[i].UUID
 		// If unit is empty struct ignore
 		if uuid == "" {
@@ -284,7 +284,7 @@ func (t *tsdbUpdater) update(
 
 	// Estimate a batch size based on scrape interval, duration, query max samples and total time series
 	samplesPerSeries := max(uint64(duration.Seconds()/settings.ScrapeInterval.Seconds()), 1)
-	maxLabels := settings.QueryMaxSamples / (uint64(t.config.QueryMaxSeries) * samplesPerSeries)
+	maxLabels := settings.QueryMaxSamples / (t.config.QueryMaxSeries * samplesPerSeries)
 	batchSize := min(max(int(t.config.QueryMinSamples*float64(maxLabels)), 10), len(allUnitUUIDs[:j]))
 
 	// Batch UUIDs into slices of 1000 so that we make TSDB requests for each 1000 units
@@ -335,7 +335,7 @@ func (t *tsdbUpdater) update(
 	// NOTE: We can improve this by using reflect package by naming queries
 	// after field names. That will allow us to dynamically look up struct
 	// field using query name and set the properties.
-	for i := range len(units) {
+	for i := range units {
 		uuid := units[i].UUID
 
 		// Update with CPU metrics
