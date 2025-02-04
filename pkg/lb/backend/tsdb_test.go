@@ -23,13 +23,13 @@ const (
 
 func TestTSDBConfigSuccess(t *testing.T) {
 	// Start test server
-	expectedRuntime := tsdb.Response{
+	expectedRuntime := tsdb.Response[any]{
 		Status: "success",
 		Data: map[string]string{
 			"storageRetention": "30d",
 		},
 	}
-	expectedRange := tsdb.Response{
+	expectedRange := tsdb.Response[any]{
 		Status: "success",
 		Data: map[string]interface{}{
 			"resultType": "matrix",
@@ -75,14 +75,14 @@ func TestTSDBConfigSuccess(t *testing.T) {
 
 func TestTSDBConfigSuccessWithTwoRetentions(t *testing.T) {
 	// Start test server
-	expectedRuntime := tsdb.Response{
+	expectedRuntime := tsdb.Response[any]{
 		Status: "success",
 		Data: map[string]string{
 			"storageRetention": "30d or 10GiB",
 		},
 	}
 
-	expectedRange := tsdb.Response{
+	expectedRange := tsdb.Response[any]{
 		Status: "success",
 		Data: map[string]interface{}{
 			"resultType": "matrix",
@@ -123,14 +123,14 @@ func TestTSDBConfigSuccessWithTwoRetentions(t *testing.T) {
 
 func TestTSDBConfigSuccessWithRetentionSize(t *testing.T) {
 	// Start test server
-	expectedRuntime := tsdb.Response{
+	expectedRuntime := tsdb.Response[any]{
 		Status: "success",
 		Data: map[string]string{
 			"storageRetention": "10GiB",
 		},
 	}
 
-	expectedRange := tsdb.Response{
+	expectedRange := tsdb.Response[any]{
 		Status: "success",
 		Data: map[string]interface{}{
 			"resultType": "matrix",

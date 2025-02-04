@@ -2,7 +2,9 @@
 package tsdb
 
 import (
+	"bytes"
 	"context"
+	"encoding/gob"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -36,13 +38,20 @@ type Metric map[string]float64
 // RangeMetric defines TSDB range metrics.
 type RangeMetric map[string][]interface{}
 
+// Series is TSDB series.
+type Series struct {
+	Name     string `json:"__name__"`
+	Job      string `json:"job"`
+	Instance string `json:"instance"`
+}
+
 // Response is the TSDB response model.
-type Response struct {
-	Status    string      `json:"status"`
-	Data      interface{} `json:"data,omitempty"`
-	ErrorType string      `json:"errorType,omitempty"`
-	Error     string      `json:"error,omitempty"`
-	Warnings  []string    `json:"warnings,omitempty"`
+type Response[T any] struct {
+	Status    string   `json:"status"`
+	Data      T        `json:"data,omitempty"`
+	ErrorType string   `json:"errorType,omitempty"`
+	Error     string   `json:"error,omitempty"`
+	Warnings  []string `json:"warnings,omitempty"`
 }
 
 type Settings struct {
@@ -74,6 +83,8 @@ const (
 	defaultQueryTimeout       = 2 * time.Minute
 	defaultQueryMaxSamples    = 50000000
 )
+
+const errorStatus = "error"
 
 var defaultSettings = Settings{
 	ScrapeInterval:     defaultScrapeInterval,
@@ -119,6 +130,16 @@ func New(webURL string, config config_util.HTTPClientConfig, logger *slog.Logger
 		settingsCacheTTL: 6 * time.Hour, // Update TSDB settings for every 6 hours
 		available:        true,
 	}, nil
+}
+
+// Series endpoint.
+func (t *TSDB) seriesEndpoint() *url.URL {
+	return t.URL.JoinPath("/api/v1/series")
+}
+
+// Labels endpoint.
+func (t *TSDB) labelsEndpoint() *url.URL {
+	return t.URL.JoinPath("/api/v1/labels")
 }
 
 // Delete endpoint.
@@ -313,6 +334,157 @@ func (t *TSDB) Flags(ctx context.Context) (map[string]interface{}, error) {
 	return flagsData, nil
 }
 
+func GetBytes(key interface{}) ([]byte, error) {
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+
+	err := enc.Encode(key)
+	if err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
+// Series makes a TSDB query to get series.
+func (t *TSDB) Series(ctx context.Context, matchers []string, start time.Time, end time.Time) ([]Series, error) {
+	// Add form data to request
+	// TSDB expects time stamps in UTC zone
+	values := url.Values{
+		"match[]": matchers,
+	}
+
+	// If times are not zero, set them in query params
+	if !start.IsZero() {
+		values.Add("start", start.UTC().Format(time.RFC3339Nano))
+	}
+
+	if !end.IsZero() {
+		values.Add("end", end.UTC().Format(time.RFC3339Nano))
+	}
+
+	// Create a new POST request
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		t.seriesEndpoint().String(),
+		strings.NewReader(values.Encode()),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Add necessary headers
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+	// Make request
+	resp, err := t.Client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// Read response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	// Unpack into data
+	var data Response[[]Series]
+	if err = json.Unmarshal(body, &data); err != nil {
+		return nil, err
+	}
+
+	// Check if Status is error
+	if data.Status == errorStatus {
+		return nil, fmt.Errorf("error response from TSDB: %v", data)
+	}
+
+	// Check if Data exists on response
+	if data.Data == nil {
+		return nil, fmt.Errorf("TSDB response returned no data: %v", data)
+	}
+
+	// Check response code
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("query returned status: %d", resp.StatusCode)
+	}
+
+	return data.Data, nil
+}
+
+// Labels makes a TSDB query to get list of labels.
+func (t *TSDB) Labels(ctx context.Context, matchers []string, start time.Time, end time.Time) ([]string, error) {
+	// Add form data to request
+	// TSDB expects time stamps in UTC zone
+	values := url.Values{}
+
+	// If matchers are provided add to query
+	for _, matcher := range matchers {
+		values.Add("match[]", matcher)
+	}
+
+	// If times are not zero, add to query params
+	if !start.IsZero() {
+		values.Add("start", start.UTC().Format(time.RFC3339Nano))
+	}
+
+	if !end.IsZero() {
+		values.Add("end", end.UTC().Format(time.RFC3339Nano))
+	}
+
+	// Create a new POST request
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		t.labelsEndpoint().String(),
+		strings.NewReader(values.Encode()),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Add necessary headers
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+	// Make request
+	resp, err := t.Client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// Read response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	// Unpack into data
+	var data Response[[]string]
+	if err = json.Unmarshal(body, &data); err != nil {
+		return nil, err
+	}
+
+	// Check if Status is error
+	if data.Status == errorStatus {
+		return nil, fmt.Errorf("error response from TSDB: %v", data)
+	}
+
+	// Check if Data exists on response
+	if data.Data == nil {
+		return nil, fmt.Errorf("TSDB response returned no data: %v", data)
+	}
+
+	// Check response code
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("query returned status: %d", resp.StatusCode)
+	}
+
+	return data.Data, nil
+}
+
 // Query makes a TSDB query.
 func (t *TSDB) Query(ctx context.Context, query string, queryTime time.Time) (Metric, error) {
 	// Add form data to request
@@ -358,13 +530,13 @@ func (t *TSDB) Query(ctx context.Context, query string, queryTime time.Time) (Me
 	}
 
 	// Unpack into data
-	var data Response
+	var data Response[any]
 	if err = json.Unmarshal(body, &data); err != nil {
 		return nil, err
 	}
 
 	// Check if Status is error
-	if data.Status == "error" {
+	if data.Status == errorStatus {
 		return nil, fmt.Errorf("error response from TSDB: %v", data)
 	}
 
@@ -493,13 +665,13 @@ func (t *TSDB) RangeQuery(
 	}
 
 	// Unpack into data
-	var data Response
+	var data Response[any]
 	if err = json.Unmarshal(body, &data); err != nil {
 		return nil, err
 	}
 
 	// Check if Status is error
-	if data.Status == "error" {
+	if data.Status == errorStatus {
 		return nil, fmt.Errorf("error response from TSDB: %v", data)
 	}
 
