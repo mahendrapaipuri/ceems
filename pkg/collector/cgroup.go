@@ -45,6 +45,8 @@ const (
 )
 
 // Regular expressions of cgroup paths for different resource managers.
+// ^.*/(?:(.*?)_)?slurm(?:_(.*?)/)?(?:.*?)/job_([0-9]+)(?:.*$)
+// ^.*/slurm(?:_(.*?))?/(?:.*?)/job_([0-9]+)(?:.*$)
 /*
 	For v1 possibilities are /cpuacct/slurm/uid_1000/job_211
 							 /memory/slurm/uid_1000/job_211
@@ -54,8 +56,9 @@ const (
 							/system.slice/slurmstepd.scope/job_211/step_extern/user/task_0
 */
 var (
-	slurmCgroupPathRegex  = regexp.MustCompile("^.*/slurm(?:.*?)/job_([0-9]+)(?:.*$)")
-	slurmIgnoreProcsRegex = regexp.MustCompile("slurmstepd:(.*)|sleep ([0-9]+)|/bin/bash (.*)/slurm_script")
+	slurmCgroupV1PathRegex = regexp.MustCompile("^.*/slurm(?:_(?P<host>.*?)/)?(?:.*?)job_(?P<id>[0-9]+)(?:.*$)")
+	slurmCgroupV2PathRegex = regexp.MustCompile("^.*/(?:(?P<host>.*?)_)?slurm(?:.*?)/job_(?P<id>[0-9]+)(?:.*$)")
+	slurmIgnoreProcsRegex  = regexp.MustCompile("slurmstepd:(.*)|sleep ([0-9]+)|/bin/bash (.*)/slurm_script")
 )
 
 // Ref: https://libvirt.org/cgroups.html#legacy-cgroups-layout
@@ -68,7 +71,7 @@ var (
 							 /machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000001.scope/libvirt
 */
 var (
-	libvirtCgroupPathRegex = regexp.MustCompile("^.*/(?:.+?)-qemu-(?:[0-9]+)-(instance-[0-9a-f]+)(?:.*$)")
+	libvirtCgroupPathRegex = regexp.MustCompile("^.*/(?:.+?)-qemu-(?:[0-9]+)-(?P<id>instance-[0-9a-f]+)(?:.*$)")
 )
 
 // CLI options.
@@ -97,6 +100,7 @@ func (c *cgroupPath) String() string {
 type cgroup struct {
 	id       string
 	uuid     string // uuid is the identifier known to user whereas id is identifier used by resource manager internally
+	hostname string
 	procs    []procfs.Proc
 	path     cgroupPath
 	children []cgroupPath // All the children under this root cgroup
@@ -119,10 +123,10 @@ type cgroupManager struct {
 	fs               procfs.FS
 	mode             cgroups.CGMode    // cgroups mode: unified, legacy, hybrid
 	root             string            // cgroups root
-	slice            string            // Slice under which cgroups are managed eg system.slice, machine.slice
-	scope            string            // Scope under which cgroups are managed eg slurmstepd.scope, machine-qemu\x2d1\x2dvm1.scope
+	slices           []string          // Slice(s) under which cgroups are managed eg system.slice, machine.slice
+	scopes           []string          // Scope(s) under which cgroups are managed eg slurmstepd.scope, machine-qemu\x2d1\x2dvm1.scope
 	activeController string            // Active controller for cgroups v1
-	mountPoint       string            // Path under which resource manager creates cgroups
+	mountPoints      []string          // Path(s) under which resource manager creates cgroups
 	manager          string            // cgroup manager
 	idRegex          *regexp.Regexp    // Regular expression to capture cgroup ID set by resource manager
 	isChild          func(string) bool // Function to identify child cgroup paths. Function must return true if cgroup is a child to root cgroup
@@ -132,27 +136,34 @@ type cgroupManager struct {
 // String implements stringer interface of the struct.
 func (c *cgroupManager) String() string {
 	return fmt.Sprintf(
-		"mode: %d root: %s slice: %s scope: %s mount: %s manager: %s",
+		"mode: %d manager: %s  root: %s slice(s): %s scope(s): %s mount(s): %s",
 		c.mode,
-		c.root,
-		c.slice,
-		c.scope,
-		c.mountPoint,
 		c.manager,
+		c.root,
+		strings.Join(c.slices, ","),
+		strings.Join(c.scopes, ","),
+		strings.Join(c.mountPoints, ","),
 	)
 }
 
-// setMountPoint sets mountPoint for thc cgroupManager struct.
-func (c *cgroupManager) setMountPoint() {
+// setMountPoints discover mount points for the current manager.
+func (c *cgroupManager) setMountPoints() {
 	switch c.manager {
 	case slurm:
 		switch c.mode { //nolint:exhaustive
 		case cgroups.Unified:
 			// /sys/fs/cgroup/system.slice/slurmstepd.scope
-			c.mountPoint = filepath.Join(c.root, c.slice, c.scope)
+			// /sys/fs/cgroup/system.slice/node0_slurmstepd.scope
+			for _, slice := range c.slices {
+				for _, scope := range c.scopes {
+					c.mountPoints = append(c.mountPoints, filepath.Join(c.root, slice, scope))
+				}
+			}
 		default:
 			// /sys/fs/cgroup/cpuacct/slurm
-			c.mountPoint = filepath.Join(c.root, c.activeController, c.manager)
+			for _, slice := range c.slices {
+				c.mountPoints = append(c.mountPoints, filepath.Join(c.root, c.activeController, slice))
+			}
 
 			// For cgroups v1 we need to shift root to /sys/fs/cgroup/cpuacct
 			c.root = filepath.Join(c.root, c.activeController)
@@ -161,16 +172,20 @@ func (c *cgroupManager) setMountPoint() {
 		switch c.mode { //nolint:exhaustive
 		case cgroups.Unified:
 			// /sys/fs/cgroup/machine.slice
-			c.mountPoint = filepath.Join(c.root, c.slice)
+			for _, slice := range c.slices {
+				c.mountPoints = append(c.mountPoints, filepath.Join(c.root, slice))
+			}
 		default:
 			// /sys/fs/cgroup/cpuacct/machine.slice
-			c.mountPoint = filepath.Join(c.root, c.activeController, c.slice)
+			for _, slice := range c.slices {
+				c.mountPoints = append(c.mountPoints, filepath.Join(c.root, c.activeController, slice))
+			}
 
 			// For cgroups v1 we need to shift root to /sys/fs/cgroup/cpuacct
 			c.root = filepath.Join(c.root, c.activeController)
 		}
 	default:
-		c.mountPoint = c.root
+		c.mountPoints = []string{c.root}
 	}
 }
 
@@ -184,81 +199,100 @@ func (c *cgroupManager) discover() ([]cgroup, error) {
 
 	// Walk through all cgroups and get cgroup paths
 	// https://goplay.tools/snippet/coVDkIozuhg
-	if err := filepath.WalkDir(c.mountPoint, func(p string, info fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
+	for _, mountPoint := range c.mountPoints {
+		if err := filepath.WalkDir(mountPoint, func(p string, info fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
 
-		// Ignore paths that are not directories
-		if !info.IsDir() {
-			return nil
-		}
+			// Ignore paths that are not directories
+			if !info.IsDir() {
+				return nil
+			}
 
-		// Get relative path of cgroup
-		rel, err := filepath.Rel(c.root, p)
-		if err != nil {
-			c.logger.Error("Failed to resolve relative path for cgroup", "path", p, "err", err)
+			// Get relative path of cgroup
+			rel, err := filepath.Rel(c.root, p)
+			if err != nil {
+				c.logger.Error("Failed to resolve relative path for cgroup", "path", p, "err", err)
 
-			return nil
-		}
+				return nil
+			}
 
-		// Unescape UTF-8 characters in cgroup path
-		sanitizedPath, err := unescapeString(p)
-		if err != nil {
-			c.logger.Error("Failed to sanitize cgroup path", "path", p, "err", err)
+			// Add leading slash to relative path
+			rel = "/" + rel
 
-			return nil
-		}
+			// Unescape UTF-8 characters in cgroup path
+			sanitizedPath, err := unescapeString(p)
+			if err != nil {
+				c.logger.Error("Failed to sanitize cgroup path", "path", p, "err", err)
 
-		// Get cgroup ID which is instance ID
-		cgroupIDMatches := c.idRegex.FindStringSubmatch(sanitizedPath)
-		if len(cgroupIDMatches) <= 1 {
-			return nil
-		}
+				return nil
+			}
 
-		id := strings.TrimSpace(cgroupIDMatches[1])
-		if id == "" {
-			c.logger.Error("Empty cgroup ID", "path", p)
+			// Find all matches of regex
+			matches := c.idRegex.FindStringSubmatch(sanitizedPath)
+			if len(matches) < 2 {
+				return nil
+			}
 
-			return nil
-		}
+			// Get capture group maps and map values to names
+			captureGrps := make(map[string]string)
+			for i, name := range c.idRegex.SubexpNames() {
+				if i != 0 && name != "" {
+					captureGrps[name] = matches[i]
+				}
+			}
 
-		// Find procs in this cgroup
-		if data, err := os.ReadFile(filepath.Join(p, "cgroup.procs")); err == nil {
-			scanner := bufio.NewScanner(bytes.NewReader(data))
-			for scanner.Scan() {
-				if pid, err := strconv.ParseInt(scanner.Text(), 10, 0); err == nil {
-					if proc, err := c.fs.Proc(int(pid)); err == nil {
-						cgroupProcs[id] = append(cgroupProcs[id], proc)
+			// Get cgroup ID which is instance ID
+			id := strings.TrimSpace(captureGrps["id"])
+			if id == "" {
+				c.logger.Error("Empty cgroup ID", "path", p)
+
+				return nil
+			}
+
+			// Optionally we get "virtual" hostname as well if it is in
+			// cgroup path (for SLURM only)
+			vhost := strings.TrimSpace(captureGrps["host"])
+
+			// Find procs in this cgroup
+			if data, err := os.ReadFile(filepath.Join(p, "cgroup.procs")); err == nil {
+				scanner := bufio.NewScanner(bytes.NewReader(data))
+				for scanner.Scan() {
+					if pid, err := strconv.ParseInt(scanner.Text(), 10, 0); err == nil {
+						if proc, err := c.fs.Proc(int(pid)); err == nil {
+							cgroupProcs[id] = append(cgroupProcs[id], proc)
+						}
 					}
 				}
 			}
-		}
 
-		// Ignore child cgroups. We are only interested in root cgroup
-		if c.isChild(p) {
+			// Ignore child cgroups. We are only interested in root cgroup
+			if c.isChild(p) {
+				cgroupChildren[id] = append(cgroupChildren[id], cgroupPath{abs: sanitizedPath, rel: rel})
+
+				return nil
+			}
+
+			// By default set id and uuid to same cgroup ID and if the resource
+			// manager has two representations, override it in corresponding
+			// collector. For instance, it applies only to libvirt
+			cgrp := cgroup{
+				id:       id,
+				uuid:     id,
+				path:     cgroupPath{abs: sanitizedPath, rel: rel},
+				hostname: vhost,
+			}
+
+			cgroups = append(cgroups, cgrp)
 			cgroupChildren[id] = append(cgroupChildren[id], cgroupPath{abs: sanitizedPath, rel: rel})
 
 			return nil
+		}); err != nil {
+			c.logger.Error("Error walking cgroup subsystem", "path", mountPoint, "err", err)
+
+			return nil, err
 		}
-
-		// By default set id and uuid to same cgroup ID and if the resource
-		// manager has two representations, override it in corresponding
-		// collector. For instance, it applies only to libvirt
-		cgrp := cgroup{
-			id:   id,
-			uuid: id,
-			path: cgroupPath{abs: sanitizedPath, rel: rel},
-		}
-
-		cgroups = append(cgroups, cgrp)
-		cgroupChildren[id] = append(cgroupChildren[id], cgroupPath{abs: sanitizedPath, rel: rel})
-
-		return nil
-	}); err != nil {
-		c.logger.Error("Error walking cgroup subsystem", "path", c.mountPoint, "err", err)
-
-		return nil, err
 	}
 
 	// Merge cgroupProcs and cgroupChildren with cgroups slice
@@ -288,15 +322,48 @@ func NewCgroupManager(name string, logger *slog.Logger) (*cgroupManager, error) 
 	var manager *cgroupManager
 
 	switch name {
+	/*
+		When SLURM is compiled with --enable-multiple-slurmd flag, SLURM
+		will create cgroup directories with nodename in it. This nodename
+		is the nodename declared in SLURM conf. Effectively this is to run
+		multiple "virtual" hosts within a single physical host.
+
+		In this case there will be multiple cgroup directories on each host
+		and we need to account for them. The name of cgroup directories is
+		created differently for v1 and v2.
+
+		In the case of v1, it will /slurm_{nodename}/cpuacct/
+		In the case of v2, it will be /system.slice/{nodename}_slurmstepd.scope/
+
+		We discover all the cgroup directories and add them to either slice or scope
+		depending on the version of cgroup. This way we discover cgroups from different
+		cgroup directories and we add a "special" label `cgrouphostname` in the metrics.
+
+		References:
+		https://github.com/SchedMD/slurm/blob/a5b7de91e64fb0206890361fcb0aed5bce08d41e/src/interfaces/cgroup.c#L173-L177
+		https://github.com/SchedMD/slurm/blob/a5b7de91e64fb0206890361fcb0aed5bce08d41e/src/plugins/cgroup/v2/cgroup_v2.c#L407-L416
+		https://github.com/SchedMD/slurm/blob/a5b7de91e64fb0206890361fcb0aed5bce08d41e/src/plugins/cgroup/v1/xcgroup.c#L365-L373
+		https://github.com/SchedMD/slurm/blob/a5b7de91e64fb0206890361fcb0aed5bce08d41e/src/common/read_config.c#L5574-L5581
+		https://slurm.schedmd.com/cgroup_v2.html#slurmd_startup
+	*/
 	case slurm:
 		if (*forceCgroupsVersion == "" && cgroups.Mode() == cgroups.Unified) || *forceCgroupsVersion == "v2" {
+			// Discover all cgroup roots
+			scopes, err := lookupCgroupRoots(filepath.Join(*cgroupfsPath, "system.slice"), "slurmstepd.scope")
+			if err != nil {
+				logger.Error("Failed to discover cgroup roots", "err", err)
+
+				return nil, err
+			}
+
 			manager = &cgroupManager{
-				logger: logger,
-				fs:     fs,
-				mode:   cgroups.Unified,
-				root:   *cgroupfsPath,
-				slice:  "system.slice",
-				scope:  "slurmstepd.scope",
+				logger:  logger,
+				fs:      fs,
+				mode:    cgroups.Unified,
+				root:    *cgroupfsPath,
+				idRegex: slurmCgroupV2PathRegex,
+				slices:  []string{"system.slice"},
+				scopes:  scopes,
 			}
 		} else {
 			var mode cgroups.CGMode
@@ -306,21 +373,27 @@ func NewCgroupManager(name string, logger *slog.Logger) (*cgroupManager, error) 
 				mode = cgroups.Mode()
 			}
 
+			// Discover all cgroup roots
+			slices, err := lookupCgroupRoots(filepath.Join(*cgroupfsPath, *activeController), "slurm")
+			if err != nil {
+				logger.Error("Failed to discover cgroup roots", "err", err)
+
+				return nil, err
+			}
+
 			manager = &cgroupManager{
 				logger:           logger,
 				fs:               fs,
 				mode:             mode,
 				root:             *cgroupfsPath,
+				idRegex:          slurmCgroupV1PathRegex,
 				activeController: *activeController,
-				slice:            slurm,
+				slices:           slices,
 			}
 		}
 
 		// Add manager field
 		manager.manager = slurm
-
-		// Add path regex
-		manager.idRegex = slurmCgroupPathRegex
 
 		// Identify child cgroup
 		manager.isChild = func(p string) bool {
@@ -330,8 +403,8 @@ func NewCgroupManager(name string, logger *slog.Logger) (*cgroupManager, error) 
 			return slurmIgnoreProcsRegex.MatchString(p)
 		}
 
-		// Set mountpoint
-		manager.setMountPoint()
+		// Set mountpoints
+		manager.setMountPoints()
 
 		return manager, nil
 
@@ -342,7 +415,7 @@ func NewCgroupManager(name string, logger *slog.Logger) (*cgroupManager, error) 
 				fs:     fs,
 				mode:   cgroups.Unified,
 				root:   *cgroupfsPath,
-				slice:  "machine.slice",
+				slices: []string{"machine.slice"},
 			}
 		} else {
 			var mode cgroups.CGMode
@@ -358,7 +431,7 @@ func NewCgroupManager(name string, logger *slog.Logger) (*cgroupManager, error) 
 				mode:             mode,
 				root:             *cgroupfsPath,
 				activeController: *activeController,
-				slice:            "machine.slice",
+				slices:           []string{"machine.slice"},
 			}
 		}
 
@@ -379,7 +452,7 @@ func NewCgroupManager(name string, logger *slog.Logger) (*cgroupManager, error) 
 		}
 
 		// Set mountpoint
-		manager.setMountPoint()
+		manager.setMountPoints()
 
 		return manager, nil
 
@@ -390,7 +463,7 @@ func NewCgroupManager(name string, logger *slog.Logger) (*cgroupManager, error) 
 
 // cgMetric contains metrics returned by cgroup.
 type cgMetric struct {
-	path            string
+	cgroup          cgroup
 	cpuUser         float64
 	cpuSystem       float64
 	cpuTotal        float64
@@ -412,7 +485,6 @@ type cgMetric struct {
 	blkioPressure   float64
 	rdmaHCAHandles  map[string]float64
 	rdmaHCAObjects  map[string]float64
-	uuid            string
 	err             bool
 }
 
@@ -502,136 +574,136 @@ func NewCgroupCollector(logger *slog.Logger, cgManager *cgroupManager, opts cgro
 		cgCPUUser: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_cpu_user_seconds_total"),
 			"Total job CPU user seconds",
-			[]string{"manager", "hostname", "uuid"},
+			[]string{"manager", "hostname", "cgrouphostname", "uuid"},
 			nil,
 		),
 		cgCPUSystem: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_cpu_system_seconds_total"),
 			"Total job CPU system seconds",
-			[]string{"manager", "hostname", "uuid"},
+			[]string{"manager", "hostname", "cgrouphostname", "uuid"},
 			nil,
 		),
 		cgCPUs: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_cpus"),
 			"Total number of job CPUs",
-			[]string{"manager", "hostname", "uuid"},
+			[]string{"manager", "hostname", "cgrouphostname", "uuid"},
 			nil,
 		),
 		cgCPUPressure: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_cpu_psi_seconds"),
 			"Total CPU PSI in seconds",
-			[]string{"manager", "hostname", "uuid"},
+			[]string{"manager", "hostname", "cgrouphostname", "uuid"},
 			nil,
 		),
 		cgMemoryRSS: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_memory_rss_bytes"),
 			"Memory RSS used in bytes",
-			[]string{"manager", "hostname", "uuid"},
+			[]string{"manager", "hostname", "cgrouphostname", "uuid"},
 			nil,
 		),
 		cgMemoryCache: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_memory_cache_bytes"),
 			"Memory cache used in bytes",
-			[]string{"manager", "hostname", "uuid"},
+			[]string{"manager", "hostname", "cgrouphostname", "uuid"},
 			nil,
 		),
 		cgMemoryUsed: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_memory_used_bytes"),
 			"Memory used in bytes",
-			[]string{"manager", "hostname", "uuid"},
+			[]string{"manager", "hostname", "cgrouphostname", "uuid"},
 			nil,
 		),
 		cgMemoryTotal: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_memory_total_bytes"),
 			"Memory total in bytes",
-			[]string{"manager", "hostname", "uuid"},
+			[]string{"manager", "hostname", "cgrouphostname", "uuid"},
 			nil,
 		),
 		cgMemoryFailCount: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_memory_fail_count"),
 			"Memory fail count",
-			[]string{"manager", "hostname", "uuid"},
+			[]string{"manager", "hostname", "cgrouphostname", "uuid"},
 			nil,
 		),
 		cgMemswUsed: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_memsw_used_bytes"),
 			"Swap used in bytes",
-			[]string{"manager", "hostname", "uuid"},
+			[]string{"manager", "hostname", "cgrouphostname", "uuid"},
 			nil,
 		),
 		cgMemswTotal: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_memsw_total_bytes"),
 			"Swap total in bytes",
-			[]string{"manager", "hostname", "uuid"},
+			[]string{"manager", "hostname", "cgrouphostname", "uuid"},
 			nil,
 		),
 		cgMemswFailCount: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_memsw_fail_count"),
 			"Swap fail count",
-			[]string{"manager", "hostname", "uuid"},
+			[]string{"manager", "hostname", "cgrouphostname", "uuid"},
 			nil,
 		),
 		cgMemoryPressure: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_memory_psi_seconds"),
 			"Total memory PSI in seconds",
-			[]string{"manager", "hostname", "uuid"},
+			[]string{"manager", "hostname", "cgrouphostname", "uuid"},
 			nil,
 		),
 		cgBlkioReadBytes: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_blkio_read_total_bytes"),
 			"Total block IO read bytes",
-			[]string{"manager", "hostname", "uuid", "device"},
+			[]string{"manager", "hostname", "cgrouphostname", "uuid", "device"},
 			nil,
 		),
 		cgBlkioWriteBytes: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_blkio_write_total_bytes"),
 			"Total block IO write bytes",
-			[]string{"manager", "hostname", "uuid", "device"},
+			[]string{"manager", "hostname", "cgrouphostname", "uuid", "device"},
 			nil,
 		),
 		cgBlkioReadReqs: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_blkio_read_total_requests"),
 			"Total block IO read requests",
-			[]string{"manager", "hostname", "uuid", "device"},
+			[]string{"manager", "hostname", "cgrouphostname", "uuid", "device"},
 			nil,
 		),
 		cgBlkioWriteReqs: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_blkio_write_total_requests"),
 			"Total block IO write requests",
-			[]string{"manager", "hostname", "uuid", "device"},
+			[]string{"manager", "hostname", "cgrouphostname", "uuid", "device"},
 			nil,
 		),
 		cgBlkioPressure: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_blkio_psi_seconds"),
 			"Total block IO PSI in seconds",
-			[]string{"manager", "hostname", "uuid", "device"},
+			[]string{"manager", "hostname", "cgrouphostname", "uuid", "device"},
 			nil,
 		),
 		cgRDMAHCAHandles: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_rdma_hca_handles"),
 			"Current number of RDMA HCA handles",
-			[]string{"manager", "hostname", "uuid", "device"},
+			[]string{"manager", "hostname", "cgrouphostname", "uuid", "device"},
 			nil,
 		),
 		cgRDMAHCAObjects: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_rdma_hca_objects"),
 			"Current number of RDMA HCA objects",
-			[]string{"manager", "hostname", "uuid", "device"},
+			[]string{"manager", "hostname", "cgrouphostname", "uuid", "device"},
 			nil,
 		),
 		collectError: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, genericSubsystem, "collect_error"),
 			"Indicates collection error, 0=no error, 1=error",
-			[]string{"manager", "hostname", "uuid"},
+			[]string{"manager", "hostname", "cgrouphostname", "uuid"},
 			nil,
 		),
 	}, nil
 }
 
 // Update updates cgroup metrics on given channel.
-func (c *cgroupCollector) Update(ch chan<- prometheus.Metric, metrics []cgMetric) error {
+func (c *cgroupCollector) Update(ch chan<- prometheus.Metric, cgroups []cgroup) error {
 	// Fetch metrics
-	metrics = c.doUpdate(metrics)
+	metrics := c.doUpdate(cgroups)
 
 	// First send num jobs on the current host
 	ch <- prometheus.MustNewConstMetric(c.numCgs, prometheus.GaugeValue, float64(len(metrics)), c.cgroupManager.manager, c.hostname)
@@ -639,65 +711,65 @@ func (c *cgroupCollector) Update(ch chan<- prometheus.Metric, metrics []cgMetric
 	// Send metrics of each cgroup
 	for _, m := range metrics {
 		if m.err {
-			ch <- prometheus.MustNewConstMetric(c.collectError, prometheus.GaugeValue, float64(1), c.cgroupManager.manager, c.hostname, m.uuid)
+			ch <- prometheus.MustNewConstMetric(c.collectError, prometheus.GaugeValue, float64(1), c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
 		}
 
 		// CPU stats
-		ch <- prometheus.MustNewConstMetric(c.cgCPUUser, prometheus.CounterValue, m.cpuUser, c.cgroupManager.manager, c.hostname, m.uuid)
-		ch <- prometheus.MustNewConstMetric(c.cgCPUSystem, prometheus.CounterValue, m.cpuSystem, c.cgroupManager.manager, c.hostname, m.uuid)
-		ch <- prometheus.MustNewConstMetric(c.cgCPUs, prometheus.GaugeValue, float64(m.cpus), c.cgroupManager.manager, c.hostname, m.uuid)
+		ch <- prometheus.MustNewConstMetric(c.cgCPUUser, prometheus.CounterValue, m.cpuUser, c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
+		ch <- prometheus.MustNewConstMetric(c.cgCPUSystem, prometheus.CounterValue, m.cpuSystem, c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
+		ch <- prometheus.MustNewConstMetric(c.cgCPUs, prometheus.GaugeValue, float64(m.cpus), c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
 
 		// Memory stats
-		ch <- prometheus.MustNewConstMetric(c.cgMemoryRSS, prometheus.GaugeValue, m.memoryRSS, c.cgroupManager.manager, c.hostname, m.uuid)
-		ch <- prometheus.MustNewConstMetric(c.cgMemoryCache, prometheus.GaugeValue, m.memoryCache, c.cgroupManager.manager, c.hostname, m.uuid)
-		ch <- prometheus.MustNewConstMetric(c.cgMemoryUsed, prometheus.GaugeValue, m.memoryUsed, c.cgroupManager.manager, c.hostname, m.uuid)
-		ch <- prometheus.MustNewConstMetric(c.cgMemoryTotal, prometheus.GaugeValue, m.memoryTotal, c.cgroupManager.manager, c.hostname, m.uuid)
-		ch <- prometheus.MustNewConstMetric(c.cgMemoryFailCount, prometheus.GaugeValue, m.memoryFailCount, c.cgroupManager.manager, c.hostname, m.uuid)
+		ch <- prometheus.MustNewConstMetric(c.cgMemoryRSS, prometheus.GaugeValue, m.memoryRSS, c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
+		ch <- prometheus.MustNewConstMetric(c.cgMemoryCache, prometheus.GaugeValue, m.memoryCache, c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
+		ch <- prometheus.MustNewConstMetric(c.cgMemoryUsed, prometheus.GaugeValue, m.memoryUsed, c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
+		ch <- prometheus.MustNewConstMetric(c.cgMemoryTotal, prometheus.GaugeValue, m.memoryTotal, c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
+		ch <- prometheus.MustNewConstMetric(c.cgMemoryFailCount, prometheus.GaugeValue, m.memoryFailCount, c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
 
 		// Memory swap stats
 		if c.opts.collectSwapMemStats {
-			ch <- prometheus.MustNewConstMetric(c.cgMemswUsed, prometheus.GaugeValue, m.memswUsed, c.cgroupManager.manager, c.hostname, m.uuid)
-			ch <- prometheus.MustNewConstMetric(c.cgMemswTotal, prometheus.GaugeValue, m.memswTotal, c.cgroupManager.manager, c.hostname, m.uuid)
-			ch <- prometheus.MustNewConstMetric(c.cgMemswFailCount, prometheus.GaugeValue, m.memswFailCount, c.cgroupManager.manager, c.hostname, m.uuid)
+			ch <- prometheus.MustNewConstMetric(c.cgMemswUsed, prometheus.GaugeValue, m.memswUsed, c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
+			ch <- prometheus.MustNewConstMetric(c.cgMemswTotal, prometheus.GaugeValue, m.memswTotal, c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
+			ch <- prometheus.MustNewConstMetric(c.cgMemswFailCount, prometheus.GaugeValue, m.memswFailCount, c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
 		}
 
 		// Block IO stats
 		if c.opts.collectBlockIOStats {
 			for device := range m.blkioReadBytes {
 				if v, ok := m.blkioReadBytes[device]; ok && v > 0 {
-					ch <- prometheus.MustNewConstMetric(c.cgBlkioReadBytes, prometheus.GaugeValue, v, c.cgroupManager.manager, c.hostname, m.uuid, device)
+					ch <- prometheus.MustNewConstMetric(c.cgBlkioReadBytes, prometheus.GaugeValue, v, c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid, device)
 				}
 
 				if v, ok := m.blkioWriteBytes[device]; ok && v > 0 {
-					ch <- prometheus.MustNewConstMetric(c.cgBlkioWriteBytes, prometheus.GaugeValue, v, c.cgroupManager.manager, c.hostname, m.uuid, device)
+					ch <- prometheus.MustNewConstMetric(c.cgBlkioWriteBytes, prometheus.GaugeValue, v, c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid, device)
 				}
 
 				if v, ok := m.blkioReadReqs[device]; ok && v > 0 {
-					ch <- prometheus.MustNewConstMetric(c.cgBlkioReadReqs, prometheus.GaugeValue, v, c.cgroupManager.manager, c.hostname, m.uuid, device)
+					ch <- prometheus.MustNewConstMetric(c.cgBlkioReadReqs, prometheus.GaugeValue, v, c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid, device)
 				}
 
 				if v, ok := m.blkioWriteReqs[device]; ok && v > 0 {
-					ch <- prometheus.MustNewConstMetric(c.cgBlkioWriteReqs, prometheus.GaugeValue, v, c.cgroupManager.manager, c.hostname, m.uuid, device)
+					ch <- prometheus.MustNewConstMetric(c.cgBlkioWriteReqs, prometheus.GaugeValue, v, c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid, device)
 				}
 			}
 		}
 
 		// PSI stats
 		if c.opts.collectPSIStats {
-			ch <- prometheus.MustNewConstMetric(c.cgCPUPressure, prometheus.GaugeValue, m.cpuPressure, c.cgroupManager.manager, c.hostname, m.uuid)
-			ch <- prometheus.MustNewConstMetric(c.cgMemoryPressure, prometheus.GaugeValue, m.memoryPressure, c.cgroupManager.manager, c.hostname, m.uuid)
+			ch <- prometheus.MustNewConstMetric(c.cgCPUPressure, prometheus.GaugeValue, m.cpuPressure, c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
+			ch <- prometheus.MustNewConstMetric(c.cgMemoryPressure, prometheus.GaugeValue, m.memoryPressure, c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
 		}
 
 		// RDMA stats
 		for device, handles := range m.rdmaHCAHandles {
 			if handles > 0 {
-				ch <- prometheus.MustNewConstMetric(c.cgRDMAHCAHandles, prometheus.GaugeValue, handles, c.cgroupManager.manager, c.hostname, m.uuid, device)
+				ch <- prometheus.MustNewConstMetric(c.cgRDMAHCAHandles, prometheus.GaugeValue, handles, c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid, device)
 			}
 		}
 
 		for device, objects := range m.rdmaHCAHandles {
 			if objects > 0 {
-				ch <- prometheus.MustNewConstMetric(c.cgRDMAHCAObjects, prometheus.GaugeValue, objects, c.cgroupManager.manager, c.hostname, m.uuid, device)
+				ch <- prometheus.MustNewConstMetric(c.cgRDMAHCAObjects, prometheus.GaugeValue, objects, c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid, device)
 			}
 		}
 	}
@@ -711,18 +783,21 @@ func (c *cgroupCollector) Stop(_ context.Context) error {
 }
 
 // doUpdate gets metrics of current active cgroups.
-func (c *cgroupCollector) doUpdate(metrics []cgMetric) []cgMetric {
+func (c *cgroupCollector) doUpdate(cgroups []cgroup) []cgMetric {
 	// Start wait group for go routines
 	wg := &sync.WaitGroup{}
-	wg.Add(len(metrics))
+	wg.Add(len(cgroups))
+
+	// Initialise metrics
+	metrics := make([]cgMetric, len(cgroups))
 
 	// No need for any lock primitives here as we read/write
 	// a different element of slice in each go routine
-	for i := range metrics {
+	for i, cgroup := range cgroups {
 		go func(idx int) {
 			defer wg.Done()
 
-			c.update(&metrics[idx])
+			metrics[idx] = c.update(cgroup)
 		}(i)
 	}
 
@@ -733,11 +808,11 @@ func (c *cgroupCollector) doUpdate(metrics []cgMetric) []cgMetric {
 }
 
 // update get metrics of a given cgroup path.
-func (c *cgroupCollector) update(m *cgMetric) {
+func (c *cgroupCollector) update(cgrp cgroup) cgMetric {
 	if c.cgroupManager.mode == cgroups.Unified {
-		c.statsV2(m)
+		return c.statsV2(cgrp)
 	} else {
-		c.statsV1(m)
+		return c.statsV1(cgrp)
 	}
 }
 
@@ -815,8 +890,11 @@ func (c *cgroupCollector) getCPUs(path string) ([]string, error) {
 }
 
 // statsV1 fetches metrics from cgroups v1.
-func (c *cgroupCollector) statsV1(metric *cgMetric) {
-	path := metric.path
+func (c *cgroupCollector) statsV1(cgrp cgroup) cgMetric {
+	path := cgrp.path.rel
+	metric := cgMetric{
+		cgroup: cgrp,
+	}
 
 	c.logger.Debug("Loading cgroup v1", "path", path)
 
@@ -826,7 +904,7 @@ func (c *cgroupCollector) statsV1(metric *cgMetric) {
 
 		c.logger.Error("Failed to load cgroups", "path", path, "err", err)
 
-		return
+		return metric
 	}
 
 	// Load cgroup stats
@@ -836,7 +914,7 @@ func (c *cgroupCollector) statsV1(metric *cgMetric) {
 
 		c.logger.Error("Failed to stat cgroups", "path", path, "err", err)
 
-		return
+		return metric
 	}
 
 	if stats == nil {
@@ -844,7 +922,7 @@ func (c *cgroupCollector) statsV1(metric *cgMetric) {
 
 		c.logger.Error("Cgroup stats are nil", "path", path)
 
-		return
+		return metric
 	}
 
 	// Get CPU stats
@@ -937,11 +1015,16 @@ func (c *cgroupCollector) statsV1(metric *cgMetric) {
 			metric.rdmaHCAObjects[device.GetDevice()] = float64(device.GetHcaObjects())
 		}
 	}
+
+	return metric
 }
 
 // statsV2 fetches metrics from cgroups v2.
-func (c *cgroupCollector) statsV2(metric *cgMetric) {
-	path := metric.path
+func (c *cgroupCollector) statsV2(cgrp cgroup) cgMetric {
+	path := cgrp.path.rel
+	metric := cgMetric{
+		cgroup: cgrp,
+	}
 
 	c.logger.Debug("Loading cgroup v2", "path", path)
 
@@ -952,7 +1035,7 @@ func (c *cgroupCollector) statsV2(metric *cgMetric) {
 
 		c.logger.Error("Failed to load cgroups", "path", path, "err", err)
 
-		return
+		return metric
 	}
 
 	// Get stats from cgroup
@@ -962,7 +1045,7 @@ func (c *cgroupCollector) statsV2(metric *cgMetric) {
 
 		c.logger.Error("Failed to stat cgroups", "path", path, "err", err)
 
-		return
+		return metric
 	}
 
 	if stats == nil {
@@ -970,7 +1053,7 @@ func (c *cgroupCollector) statsV2(metric *cgMetric) {
 
 		c.logger.Error("Cgroup stats are nil", "path", path)
 
-		return
+		return metric
 	}
 
 	// Get CPU stats
@@ -1057,6 +1140,8 @@ func (c *cgroupCollector) statsV2(metric *cgMetric) {
 			metric.rdmaHCAObjects[device.GetDevice()] = float64(device.GetHcaObjects())
 		}
 	}
+
+	return metric
 }
 
 // subsystem returns cgroups v1 subsystems.

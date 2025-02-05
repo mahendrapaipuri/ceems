@@ -31,9 +31,9 @@ func TestPerfCollector(t *testing.T) {
 
 	// cgroup manager
 	cgManager := &cgroupManager{
-		mode:       cgroups.Unified,
-		mountPoint: "testdata/sys/fs/cgroup/system.slice/slurmstepd.scope",
-		idRegex:    slurmCgroupPathRegex,
+		mode:        cgroups.Unified,
+		mountPoints: []string{"testdata/sys/fs/cgroup/system.slice/slurmstepd.scope"},
+		idRegex:     slurmCgroupV2PathRegex,
 		ignoreProc: func(p string) bool {
 			return slurmIgnoreProcsRegex.MatchString(p)
 		},
@@ -108,10 +108,18 @@ func TestDiscoverProcess(t *testing.T) {
 	require.NoError(t, err)
 
 	// expected
-	expectedCgroupIDs := []string{"1009248", "1009249"}
+	expectedCgroupIDs := []string{
+		"1009248", "1009249",
+		"2009248", "2009249",
+		"3009248", "3009249",
+	}
 	expectedCgroupProcs := map[string][]int{
 		"1009248": {46231, 46281},
 		"1009249": {46235, 46236},
+		"2009248": {56231, 56281},
+		"2009249": {56235, 56236},
+		"3009248": {66231, 66281},
+		"3009249": {66235, 66236},
 	}
 
 	// Get cgroup IDs

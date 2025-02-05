@@ -66,6 +66,7 @@ type slurmReadProcSecurityCtxData struct {
 // jobProps contains SLURM job properties.
 type jobProps struct {
 	uuid        string   // This is SLURM's job ID
+	hostname    string   // This is cgroup hostname when multiple slurmds are enabled
 	gpuOrdinals []string // GPU ordinals bound to job
 }
 
@@ -75,9 +76,8 @@ func (p *jobProps) emptyGPUOrdinals() bool {
 }
 
 type slurmMetrics struct {
-	cgMetrics []cgMetric
-	jobProps  []jobProps
-	cgroups   []cgroup
+	jobProps []jobProps
+	cgroups  []cgroup
 }
 
 type slurmCollector struct {
@@ -236,6 +236,7 @@ func NewSlurmCollector(logger *slog.Logger) (Collector, error) {
 			[]string{
 				"manager",
 				"hostname",
+				"cgrouphostname",
 				"uuid",
 				"index",
 				"hindex",
@@ -270,7 +271,7 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 		defer wg.Done()
 
 		// Update cgroup metrics
-		if err := c.cgroupCollector.Update(ch, metrics.cgMetrics); err != nil {
+		if err := c.cgroupCollector.Update(ch, metrics.cgroups); err != nil {
 			c.logger.Error("Failed to update cgroup stats", "err", err)
 		}
 
@@ -400,6 +401,7 @@ func (c *slurmCollector) updateGPUOrdinals(ch chan<- prometheus.Metric, jobProps
 				flagValue,
 				c.cgroupManager.manager,
 				c.hostname,
+				p.hostname,
 				p.uuid,
 				gpuOrdinal,
 				fmt.Sprintf("%s/gpu-%s", c.hostname, gpuOrdinal),
@@ -417,8 +419,6 @@ func (c *slurmCollector) jobProperties(cgroups []cgroup) slurmMetrics {
 
 	var jProps []jobProps
 
-	var cgMetrics []cgMetric
-
 	var gpuOrdinals []string
 
 	// Iterate over all active cgroups and get job properties
@@ -429,7 +429,7 @@ func (c *slurmCollector) jobProperties(cgroups []cgroup) slurmMetrics {
 		if len(c.gpuDevs) > 0 {
 			if jobPropsCached, ok := c.jobPropsCache[jobuuid]; !ok || (ok && jobPropsCached.emptyGPUOrdinals()) {
 				gpuOrdinals = c.gpuOrdinals(jobuuid, cgrp.procs)
-				c.jobPropsCache[jobuuid] = jobProps{uuid: jobuuid, gpuOrdinals: gpuOrdinals}
+				c.jobPropsCache[jobuuid] = jobProps{uuid: jobuuid, hostname: cgrp.hostname, gpuOrdinals: gpuOrdinals}
 				jProps = append(jProps, c.jobPropsCache[jobuuid])
 			} else {
 				jProps = append(jProps, c.jobPropsCache[jobuuid])
@@ -440,9 +440,6 @@ func (c *slurmCollector) jobProperties(cgroups []cgroup) slurmMetrics {
 		if !slices.Contains(activeJobUUIDs, jobuuid) {
 			activeJobUUIDs = append(activeJobUUIDs, jobuuid)
 		}
-
-		// Add to cgroups only if it is a root cgroup
-		cgMetrics = append(cgMetrics, cgMetric{uuid: jobuuid, path: "/" + cgrp.path.rel})
 	}
 
 	// Remove expired jobs from jobPropsCache
@@ -452,7 +449,7 @@ func (c *slurmCollector) jobProperties(cgroups []cgroup) slurmMetrics {
 		}
 	}
 
-	return slurmMetrics{cgMetrics: cgMetrics, jobProps: jProps, cgroups: cgroups}
+	return slurmMetrics{jobProps: jProps, cgroups: cgroups}
 }
 
 // jobMetrics returns initialised metric structs.

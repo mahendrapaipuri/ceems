@@ -105,7 +105,6 @@ type instanceProps struct {
 }
 
 type libvirtMetrics struct {
-	cgMetrics     []cgMetric
 	instanceProps []instanceProps
 	cgroups       []cgroup
 }
@@ -257,6 +256,7 @@ func NewLibvirtCollector(logger *slog.Logger) (Collector, error) {
 			[]string{
 				"manager",
 				"hostname",
+				"cgrouphostname",
 				"uuid",
 				"index",
 				"hindex",
@@ -290,7 +290,7 @@ func (c *libvirtCollector) Update(ch chan<- prometheus.Metric) error {
 		defer wg.Done()
 
 		// Update cgroup metrics
-		if err := c.cgroupCollector.Update(ch, metrics.cgMetrics); err != nil {
+		if err := c.cgroupCollector.Update(ch, metrics.cgroups); err != nil {
 			c.logger.Error("Failed to update cgroup stats", "err", err)
 		}
 
@@ -430,6 +430,7 @@ func (c *libvirtCollector) updateGPUOrdinals(ch chan<- prometheus.Metric, instan
 				flagValue,
 				c.cgroupManager.manager,
 				c.hostname,
+				"", // This empty label will be dropped by Prom anyways. Just for consistency!
 				p.uuid,
 				gpuOrdinal,
 				fmt.Sprintf("%s/gpu-%s", c.hostname, gpuOrdinal),
@@ -446,8 +447,6 @@ func (c *libvirtCollector) instanceProperties(cgroups []cgroup) libvirtMetrics {
 	var activeInstanceIDs []string
 
 	var instnProps []instanceProps
-
-	var cgMetrics []cgMetric
 
 	// It is possible from Openstack to resize instances by changing flavour. It means
 	// it is possible to add GPUs to non-GPU instances, so we need to invalidate
@@ -475,8 +474,6 @@ func (c *libvirtCollector) instanceProperties(cgroups []cgroup) libvirtMetrics {
 		if !slices.Contains(activeInstanceIDs, instanceID) {
 			activeInstanceIDs = append(activeInstanceIDs, instanceID)
 		}
-
-		cgMetrics = append(cgMetrics, cgMetric{uuid: cgroups[icgrp].uuid, path: "/" + cgroups[icgrp].path.rel})
 	}
 
 	// Remove terminated instances from instancePropsCache
@@ -486,7 +483,7 @@ func (c *libvirtCollector) instanceProperties(cgroups []cgroup) libvirtMetrics {
 		}
 	}
 
-	return libvirtMetrics{cgMetrics: cgMetrics, instanceProps: instnProps, cgroups: cgroups}
+	return libvirtMetrics{instanceProps: instnProps, cgroups: cgroups}
 }
 
 // getInstanceProperties returns instance properties parsed from XML file.

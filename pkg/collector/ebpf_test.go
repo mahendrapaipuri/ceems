@@ -229,9 +229,9 @@ func TestActiveCgroupsV2(t *testing.T) {
 	// Get active cgroups
 	c.discoverCgroups(cgroups)
 
-	assert.Len(t, c.activeCgroupInodes, 39)
-	assert.Len(t, c.cgroupIDUUIDCache, 39)
-	assert.Len(t, c.cgroupPathIDCache, 39)
+	assert.Len(t, c.activeCgroupInodes, 117)
+	assert.Len(t, c.cgroupIDUUIDCache, 117)
+	assert.Len(t, c.cgroupPathIDCache, 117)
 
 	// Get cgroup IDs
 	var uuids []string
@@ -241,7 +241,13 @@ func TestActiveCgroupsV2(t *testing.T) {
 		}
 	}
 
-	assert.ElementsMatch(t, []string{"1009248", "1009249", "1009250"}, uuids)
+	expectedUUIDs := []string{
+		"1009248", "1009249", "1009250",
+		"2009248", "2009249", "2009250",
+		"3009248", "3009249", "3009250",
+	}
+
+	assert.ElementsMatch(t, expectedUUIDs, uuids)
 }
 
 func TestActiveCgroupsV1(t *testing.T) {
@@ -280,9 +286,9 @@ func TestActiveCgroupsV1(t *testing.T) {
 	// Get active cgroups
 	c.discoverCgroups(cgroups)
 
-	assert.Len(t, c.activeCgroupInodes, 6)
-	assert.Len(t, c.cgroupIDUUIDCache, 6)
-	assert.Len(t, c.cgroupPathIDCache, 6)
+	assert.Len(t, c.activeCgroupInodes, 18)
+	assert.Len(t, c.cgroupIDUUIDCache, 18)
+	assert.Len(t, c.cgroupPathIDCache, 18)
 
 	// Get cgroup IDs
 	var uuids []string
@@ -292,7 +298,13 @@ func TestActiveCgroupsV1(t *testing.T) {
 		}
 	}
 
-	assert.ElementsMatch(t, []string{"1009248", "1009249", "1009250"}, uuids)
+	expectedUUIDs := []string{
+		"1009248", "1009249", "1009250",
+		"2009248", "2009249", "2009250",
+		"3009248", "3009249", "3009250",
+	}
+
+	assert.ElementsMatch(t, expectedUUIDs, uuids)
 }
 
 func TestVFSBPFObjects(t *testing.T) {

@@ -28,10 +28,10 @@ func TestRDMACollector(t *testing.T) {
 
 	// cgroup manager
 	cgManager := &cgroupManager{
-		logger:     slog.New(slog.NewTextHandler(io.Discard, nil)),
-		mode:       cgroups.Unified,
-		mountPoint: "testdata/sys/fs/cgroup/system.slice/slurmstepd.scope",
-		idRegex:    slurmCgroupPathRegex,
+		logger:      slog.New(slog.NewTextHandler(io.Discard, nil)),
+		mode:        cgroups.Unified,
+		mountPoints: []string{"testdata/sys/fs/cgroup/system.slice/slurmstepd.scope"},
+		idRegex:     slurmCgroupV2PathRegex,
 		ignoreProc: func(p string) bool {
 			return slurmIgnoreProcsRegex.MatchString(p)
 		},
@@ -190,7 +190,7 @@ func TestLinkCountersSysWide(t *testing.T) {
 	cgManager := &cgroupManager{
 		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
 		mode:    cgroups.Unified,
-		idRegex: slurmCgroupPathRegex,
+		idRegex: slurmCgroupV2PathRegex,
 		ignoreProc: func(p string) bool {
 			return slurmIgnoreProcsRegex.MatchString(p)
 		},

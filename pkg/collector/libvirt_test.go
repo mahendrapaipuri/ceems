@@ -72,10 +72,10 @@ func TestLibvirtInstanceProps(t *testing.T) {
 
 	// cgroup Manager
 	cgManager := &cgroupManager{
-		logger:     slog.New(slog.NewTextHandler(io.Discard, nil)),
-		mode:       cgroups.Unified,
-		mountPoint: "testdata/sys/fs/cgroup/machine.slice",
-		idRegex:    libvirtCgroupPathRegex,
+		logger:      slog.New(slog.NewTextHandler(io.Discard, nil)),
+		mode:        cgroups.Unified,
+		mountPoints: []string{"testdata/sys/fs/cgroup/machine.slice"},
+		idRegex:     libvirtCgroupPathRegex,
 		isChild: func(p string) bool {
 			return strings.Contains(p, "/libvirt")
 		},
@@ -153,11 +153,11 @@ func TestInstancePropsCaching(t *testing.T) {
 
 	// cgroup Manager
 	cgManager := &cgroupManager{
-		logger:     slog.New(slog.NewTextHandler(io.Discard, nil)),
-		mode:       cgroups.Unified,
-		root:       cgroupsPath,
-		mountPoint: cgroupsPath + "/cpuacct/machine.slice",
-		idRegex:    libvirtCgroupPathRegex,
+		logger:      slog.New(slog.NewTextHandler(io.Discard, nil)),
+		mode:        cgroups.Unified,
+		root:        cgroupsPath,
+		mountPoints: []string{cgroupsPath + "/cpuacct/machine.slice"},
+		idRegex:     libvirtCgroupPathRegex,
 		isChild: func(p string) bool {
 			return strings.Contains(p, "/libvirt")
 		},
