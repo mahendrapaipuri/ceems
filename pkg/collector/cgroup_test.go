@@ -25,9 +25,9 @@ func TestNewCgroupCollector(t *testing.T) {
 
 	// cgroup Manager
 	cgManager := &cgroupManager{
-		mode:       cgroups.Unified,
-		mountPoint: "testdata/sys/fs/cgroup/system.slice/slurmstepd.scope",
-		idRegex:    slurmCgroupPathRegex,
+		mode:        cgroups.Unified,
+		mountPoints: []string{"testdata/sys/fs/cgroup/system.slice/slurmstepd.scope"},
+		idRegex:     slurmCgroupV2PathRegex,
 	}
 
 	// opts
@@ -67,9 +67,9 @@ func TestCgroupsV2Metrics(t *testing.T) {
 
 	// cgroup Manager
 	cgManager := &cgroupManager{
-		mode:       cgroups.Unified,
-		mountPoint: "testdata/sys/fs/cgroup/system.slice/slurmstepd.scope",
-		idRegex:    slurmCgroupPathRegex,
+		mode:        cgroups.Unified,
+		mountPoints: []string{"testdata/sys/fs/cgroup/system.slice/slurmstepd.scope"},
+		idRegex:     slurmCgroupV2PathRegex,
 	}
 
 	// opts
@@ -85,8 +85,12 @@ func TestCgroupsV2Metrics(t *testing.T) {
 		logger:        slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 
+	cgroups := []cgroup{
+		{uuid: "1009249", path: cgroupPath{rel: "/system.slice/slurmstepd.scope/job_1009249"}},
+	}
+
 	expectedMetrics := cgMetric{
-		path:            "/system.slice/slurmstepd.scope/job_1009249",
+		cgroup:          cgroups[0],
 		cpuUser:         60375.292848,
 		cpuSystem:       115.777502,
 		cpuTotal:        60491.070351,
@@ -111,7 +115,7 @@ func TestCgroupsV2Metrics(t *testing.T) {
 		err:             false,
 	}
 
-	metric := c.doUpdate([]cgMetric{{path: expectedMetrics.path}})
+	metric := c.doUpdate(cgroups)
 	assert.Equal(t, expectedMetrics, metric[0])
 }
 
@@ -125,9 +129,9 @@ func TestCgroupsV1Metrics(t *testing.T) {
 
 	// cgroup Manager
 	cgManager := &cgroupManager{
-		mode:       cgroups.Legacy,
-		mountPoint: "testdata/sys/fs/cgroup/cpuacct/slurm",
-		idRegex:    slurmCgroupPathRegex,
+		mode:        cgroups.Legacy,
+		mountPoints: []string{"testdata/sys/fs/cgroup/cpuacct/slurm"},
+		idRegex:     slurmCgroupV1PathRegex,
 	}
 
 	// opts
@@ -143,8 +147,12 @@ func TestCgroupsV1Metrics(t *testing.T) {
 		hostMemInfo:   map[string]float64{"MemTotal_bytes": float64(123456), "SwapTotal_bytes": float64(1234)},
 	}
 
+	cgroups := []cgroup{
+		{uuid: "1009248", path: cgroupPath{rel: "/slurm/uid_1000/job_1009248"}},
+	}
+
 	expectedMetrics := cgMetric{
-		path:            "/slurm/uid_1000/job_1009248",
+		cgroup:          cgroups[0],
 		cpuUser:         0.39,
 		cpuSystem:       0.45,
 		cpuTotal:        1.012410966,
@@ -164,7 +172,7 @@ func TestCgroupsV1Metrics(t *testing.T) {
 		err:             false,
 	}
 
-	metric := c.doUpdate([]cgMetric{{path: expectedMetrics.path}})
+	metric := c.doUpdate(cgroups)
 	assert.Equal(t, expectedMetrics, metric[0])
 }
 
@@ -181,19 +189,25 @@ func TestNewCgroupManagerV2(t *testing.T) {
 	manager, err := NewCgroupManager("slurm", slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
-	assert.Equal(t, "testdata/sys/fs/cgroup/system.slice/slurmstepd.scope", manager.mountPoint)
+	expectedMountPoints := []string{
+		"testdata/sys/fs/cgroup/system.slice/slurmstepd.scope",
+		"testdata/sys/fs/cgroup/system.slice/node0_slurmstepd.scope",
+		"testdata/sys/fs/cgroup/system.slice/node1_slurmstepd.scope",
+	}
+
+	assert.ElementsMatch(t, expectedMountPoints, manager.mountPoints)
 	assert.NotNil(t, manager.isChild)
 	assert.NotNil(t, manager.ignoreProc)
 
 	cgroups, err := manager.discover()
 	require.NoError(t, err)
-	assert.Len(t, cgroups, 3)
+	assert.Len(t, cgroups, 9)
 
 	// libvirt case
 	manager, err = NewCgroupManager("libvirt", slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
-	assert.Equal(t, "testdata/sys/fs/cgroup/machine.slice", manager.mountPoint)
+	assert.ElementsMatch(t, []string{"testdata/sys/fs/cgroup/machine.slice"}, manager.mountPoints)
 	assert.NotNil(t, manager.isChild)
 	assert.NotNil(t, manager.ignoreProc)
 
@@ -215,19 +229,25 @@ func TestNewCgroupManagerV1(t *testing.T) {
 	manager, err := NewCgroupManager("slurm", slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
-	assert.Equal(t, "testdata/sys/fs/cgroup/cpuacct/slurm", manager.mountPoint)
+	expectedMountPoints := []string{
+		"testdata/sys/fs/cgroup/cpuacct/slurm",
+		"testdata/sys/fs/cgroup/cpuacct/slurm_host0",
+		"testdata/sys/fs/cgroup/cpuacct/slurm_host1",
+	}
+
+	assert.Equal(t, expectedMountPoints, manager.mountPoints)
 	assert.NotNil(t, manager.isChild)
 	assert.NotNil(t, manager.ignoreProc)
 
 	cgroups, err := manager.discover()
 	require.NoError(t, err)
-	assert.Len(t, cgroups, 3)
+	assert.Len(t, cgroups, 9)
 
 	// libvirt case
 	manager, err = NewCgroupManager("libvirt", slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
-	assert.Equal(t, "testdata/sys/fs/cgroup/cpuacct/machine.slice", manager.mountPoint)
+	assert.Equal(t, []string{"testdata/sys/fs/cgroup/cpuacct/machine.slice"}, manager.mountPoints)
 	assert.NotNil(t, manager.isChild)
 	assert.NotNil(t, manager.ignoreProc)
 

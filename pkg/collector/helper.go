@@ -3,6 +3,7 @@ package collector
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -153,6 +154,46 @@ func readUintFromFile(path string) (uint64, error) {
 	}
 
 	return strconv.ParseUint(strings.TrimSpace(string(data)), 10, 64)
+}
+
+// lookupCgroupRoots walks over the cgroup `rootDir` to check if `name` exists in any
+// cgroup path and returns all the found relative root directories.
+func lookupCgroupRoots(rootDir string, name string) ([]string, error) {
+	var foundCgroupRoots []string
+
+	// Walk through all cgroups and get cgroup paths
+	if err := filepath.WalkDir(rootDir, func(p string, info fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Ignore paths that are not directories
+		if !info.IsDir() {
+			return nil
+		}
+
+		// Check if name is in path
+		// Once we add the directory to foundCgroupRoots, we need to
+		// skip all the sub directories of this directory.
+		// We are lookin only for leaf folders
+		if strings.Contains(p, name) {
+			// Get relative path of cgroup
+			rel, err := filepath.Rel(rootDir, p)
+			if err != nil {
+				return nil //nolint:nilerr
+			}
+
+			foundCgroupRoots = append(foundCgroupRoots, rel)
+
+			return filepath.SkipDir
+		}
+
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return foundCgroupRoots, nil
 }
 
 // // lookupIPs returns all the IP addresses of the current host.

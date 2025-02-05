@@ -163,18 +163,15 @@ func TestSlurmJobPropsWithProcsFS(t *testing.T) {
 	require.NoError(t, err)
 
 	expectedProps := []jobProps{
-		{
-			uuid:        "1009248",
-			gpuOrdinals: []string{"2", "3"},
-		},
-		{
-			uuid:        "1009249",
-			gpuOrdinals: []string{"0"},
-		},
-		{
-			uuid:        "1009250",
-			gpuOrdinals: []string{"1"},
-		},
+		{uuid: "1009248", gpuOrdinals: []string{"2", "3"}},
+		{uuid: "1009249", gpuOrdinals: []string{"0"}},
+		{uuid: "1009250", gpuOrdinals: []string{"1"}},
+		{uuid: "2009248", hostname: "host0"},
+		{uuid: "2009249", hostname: "host0"},
+		{uuid: "2009250", hostname: "host0"},
+		{uuid: "3009248", hostname: "host1"},
+		{uuid: "3009249", hostname: "host1"},
+		{uuid: "3009250", hostname: "host1"},
 	}
 
 	metrics, err := c.jobMetrics()
@@ -199,12 +196,12 @@ func TestJobPropsCaching(t *testing.T) {
 
 	// cgroup Manager
 	cgManager := &cgroupManager{
-		logger:     slog.New(slog.NewTextHandler(io.Discard, nil)),
-		fs:         fs,
-		mode:       cgroups.Legacy,
-		root:       cgroupsPath,
-		idRegex:    slurmCgroupPathRegex,
-		mountPoint: cgroupsPath + "/cpuacct/slurm",
+		logger:      slog.New(slog.NewTextHandler(io.Discard, nil)),
+		fs:          fs,
+		mode:        cgroups.Legacy,
+		root:        cgroupsPath,
+		idRegex:     slurmCgroupV1PathRegex,
+		mountPoints: []string{cgroupsPath + "/cpuacct/slurm"},
 		isChild: func(p string) bool {
 			return false
 		},
