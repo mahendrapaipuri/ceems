@@ -1,0 +1,129 @@
+---
+# Recording rules for NVIDIA GPUs scrape job <gpu_job>.
+#
+# These rules map the GPU usage to the compute unit `uuid` which gives
+# GPU metrics for each compute unit.
+#
+# We leverage these rules to include PUE (Power Usage Effectiveness) in the Power
+# estimation as well.
+#
+# Placeholders to replace:
+# <job>: Prometheus job name
+# <gpu_job>: Prometheus job name under which DCGM exporter is running on the same host
+# <eval_interval>: Evaluation interval
+# <rate_interval>: Rate interval
+#
+groups:
+  - name: compute-unit-gpu-rules-<gpu_job>
+    interval: <eval_interval>
+    rules:
+      # GPU Usage (%) by compute unit
+      - record: uuid:ceems_gpu_usage:ratio
+        expr: |2
+            DCGM_FI_DEV_GPU_UTIL{job="<gpu_job>"}
+            * on (gpuuuid,gpuiid) group_right ()
+            ceems_compute_unit_gpu_index_flag{job="<job>"}
+
+      # GPU Memory Usage (%) by compute unit
+      - record: uuid:ceems_gpu_memory_usage:ratio
+        expr: |2
+          (
+              DCGM_FI_DEV_FB_USED{job="<gpu_job>"} * 100
+            /
+              (DCGM_FI_DEV_FB_USED{job="<gpu_job>"} + DCGM_FI_DEV_FB_FREE{job="<gpu_job>"})
+          )
+          * on (gpuuuid,gpuiid) group_right ()
+          ceems_compute_unit_gpu_index_flag{job="<job>"}
+      
+      # Total power (Watts) consumed by the GPU by accounting Power Usage Effectiveness (PUE) value.
+      - record: dev:DCGM_FI_DEV_POWER_USAGE:pue
+        expr: 1 * DCGM_FI_DEV_POWER_USAGE{job="<gpu_job>"}
+
+      - record: uuid:ceems_gpu_power_watts:pue
+        expr: |2
+          dev:DCGM_FI_DEV_POWER_USAGE:pue{job="<gpu_job>"}
+          * on (gpuuuid,gpuiid) group_right()
+          ceems_compute_unit_gpu_index_flag{job="<job>"}
+
+      # Total equivalent emissions rate (g/s) from GPU due to the power consumed by the compute unit's GPUs.
+      # The equivalent emissions are estimated using emission factor from owid for country
+      # FR
+      - record: uuid:ceems_gpu_emissions_g_s:pue
+        expr: |2
+          label_replace(
+              dev:DCGM_FI_DEV_POWER_USAGE:pue{job="<gpu_job>"} / 3.6e+06
+            * on (gpuuuid,gpuiid) group_right ()
+              ceems_compute_unit_gpu_index_flag{job="<job>"},
+              "provider",
+              "owid",
+              "instance",
+              "(.*)"
+            )
+          * on (provider) group_left ()
+            label_replace(
+              ceems_emissions_gCo2_kWh{country_code="FR",provider="owid"},
+              "common_label",
+              "mock",
+              "instance",
+              "(.*)"
+            ) 
+
+
+      # Profiling metrics
+      - record: uuid:ceems_gpu_sm_active:ratio
+        expr: |2
+          DCGM_FI_PROF_SM_ACTIVE{job="<gpu_job>"} * 100
+          * on (gpuuuid,gpuiid) group_right ()
+          ceems_compute_unit_gpu_index_flag{job="<job>"}
+
+      - record: uuid:ceems_gpu_sm_occupancy:ratio
+        expr: |2
+          DCGM_FI_PROF_SM_OCCUPANCY{job="<gpu_job>"} * 100
+          * on (gpuuuid,gpuiid) group_right ()
+          ceems_compute_unit_gpu_index_flag{job="<job>"}
+
+      - record: uuid:ceems_gpu_gr_engine_active:ratio
+        expr: |2
+          DCGM_FI_PROF_GR_ENGINE_ACTIVE{job="<gpu_job>"} * 100
+          * on (gpuuuid,gpuiid) group_right ()
+          ceems_compute_unit_gpu_index_flag{job="<job>"}
+
+
+  # The following recording rules estimate the average GPU, GPU memory usages and
+  # total GPU power and its equivalent emissions aggregared for all hosts 
+  # per Prometheus job.
+  # 
+  - name: host-agg-gpu-rules-<gpu_job>
+    interval: <eval_interval>
+    rules:
+      # Average GPU Usage (%) for all hosts aggregated per Prometheus job
+      - record: job:ceems_gpu_usage:avg
+        expr: avg by (job) (DCGM_FI_DEV_GPU_UTIL{job="<gpu_job>"})
+
+      # Average GPU memory usage (%) for all hosts aggregated per Prometheus job
+      - record: job:ceems_gpu_memory_usage:avg_ratio
+        expr: |2
+          avg by (job) (
+            (
+                DCGM_FI_DEV_FB_USED{job="<gpu_job>"} * 100
+              /
+                (DCGM_FI_DEV_FB_USED{job="<gpu_job>"} + DCGM_FI_DEV_FB_FREE{job="<gpu_job>"})
+            )
+          )
+
+      # Total power usage (Watts) by GPUs on all hosts aggregated per Prometheus job
+      - record: job:ceems_gpu_power_watts:pue
+        expr: sum by (job)(1 * DCGM_FI_DEV_POWER_USAGE{job="<gpu_job>"})
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by GPUs on all ths hosts
+      # in a Prometheus job accounting PUE value.
+      # The equivalent emissions are estimated for country FR
+      - record: job:ceems_gpu_emissions_g_s:pue
+        expr: |2
+          sum by (job, country_code, country, provider) (
+            (
+                job:ceems_gpu_power_watts:pue{job="<gpu_job>"} / 3.6e+06
+              * on (job) group_right ()
+                label_replace(ceems_emissions_gCo2_kWh, "job", "<gpu_job>", "instance", "(.*)")
+            )
+          )

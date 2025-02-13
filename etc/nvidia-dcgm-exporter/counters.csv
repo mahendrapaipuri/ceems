@@ -12,8 +12,12 @@ DCGM_FI_DEV_GPU_TEMP,    gauge, GPU temperature (in C).
 
 # Power
 DCGM_FI_DEV_POWER_USAGE,              gauge, Power draw (in W).
+DCGM_FI_DEV_POWER_USAGE_INSTANT,      gauge, Instantaneous power draw (in W).
 DCGM_FI_DEV_TOTAL_ENERGY_CONSUMPTION, counter, Total energy consumption since boot (in mJ).
 DCGM_FI_DEV_POWER_MGMT_LIMIT,         gauge, Power limit (in W).
+DCGM_FI_DEV_NVSWITCH_POWER_VDD,       gauge, NvSwitch Power VDD (in W).
+DCGM_FI_DEV_NVSWITCH_POWER_DVDD,      gauge, NvSwitch Power DVDD (in W).
+DCGM_FI_DEV_NVSWITCH_POWER_HVDD,      gauge, NvSwitch Power HVDD (in W).
 
 # PCIE
 # DCGM_FI_DEV_PCIE_TX_THROUGHPUT,  counter, Total number of bytes transmitted through PCIe TX (in KB) via NVML.

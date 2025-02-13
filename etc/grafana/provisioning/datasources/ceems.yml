@@ -1,0 +1,81 @@
+---
+# Configuration file version
+apiVersion: 1
+
+# List of datasources that CEEMS uses
+datasources:
+  # Vanilla Prometheus datasource that DOES NOT IMPOSE ANY ACCESS CONTROL
+  - name: prom
+    type: prometheus
+    access: proxy
+    # Replace it with Prometheus URL
+    url: <PROMETHEUS_URL>
+    basicAuth: true
+    # Replace it with Prometheus basic auth username
+    basicAuthUser: <PROMETHEUS_BASIC_AUTH_USERNAME>
+    secureJsonData:
+      # Replace it with Prometheus basic auth password
+      basicAuthPassword: <PROMETHEUS_BASIC_AUTH_PASSWORD>
+
+  # CEEMS LB which provides ACCESS CONTROL to backend Prometheus datasource
+  - name: ceems-lb-tsdb
+    type: prometheus
+    access: proxy
+    url: <CEEMS_LB_TSDB_URL>
+    basicAuth: true
+    # Replace it with CEEMS LB basic auth username
+    basicAuthUser: <CEEMS_LB_BASIC_AUTH_USERNAME>
+    jsonData:
+      httpHeaderName1: X-Ceems-Cluster-Id
+    secureJsonData:
+      # Replace it with CEEMS LB basic auth password
+      basicAuthPassword: <CEEMS_LB_BASIC_AUTH_PASSWORD>
+      # Replace it with cluster id defined in CEEMS API server and CEEMS LB configs
+      httpHeaderValue1: <CEEMS_CLUSTER_ID>
+
+  # Vanilla Pyroscope datasource that DOES NOT IMPOSE ANY ACCESS CONTROL
+  - name: pyro
+    type: pyroscope
+    access: proxy
+    # Replace it with Pyroscope URL
+    url: <PYROSCOPE_URL>
+    # If Pyroscope server has basic authentication
+    # configured ensure that it has been added here as well
+
+  # CEEMS LB which provides ACCESS CONTROL to backend Pyroscope datasource
+  - name: ceems-lb-pyro
+    # It should be of Pyroscope type
+    type: pyroscope
+    access: proxy
+    url: <CEEMS_LB_PYRO_URL>
+    basicAuth: true
+    basicAuthUser: <CEEMS_LB_BASIC_AUTH_USERNAME>
+    jsonData:
+      # This is CRUCIAL. We need to send this header for CEEMS LB
+      # to proxy the request to correct backend
+      httpHeaderName1: X-Ceems-Cluster-Id
+    secureJsonData:
+      basicAuthPassword: <CEEMS_LB_BASIC_AUTH_PASSWORD>
+      # It must be the same `id` configured across CEEMS components
+      httpHeaderValue1: slurm-cluster
+
+  # CEEMS API server JSON datasource
+  - name: ceems-api
+    type: yesoreyeram-infinity-datasource
+    basicAuth: true
+    # Replace it with CEEMS API server basic auth username
+    basicAuthUser: <CEEMS_API_SERVER_BASIC_AUTH_USERNAME>
+    jsonData:
+      auth_method: basicAuth
+      timeout: 120
+      # Replace it with CEEMS API server URL
+      allowedHosts:
+        - <CEEMS_API_SERVER_URL>
+      httpHeaderName1: X-Grafana-User
+    secureJsonData:
+      # Replace it with CEEMS API server basic auth password
+      basicAuthPassword: <CEEMS_API_SERVER_BASIC_AUTH_PASSWORD>
+      # This will be replaced by username before passing to API server
+      # This feature is available only for yesoreyeram-infinity-datasource >= 3.x
+      # IMPORTANT: Need $$ to escape $
+      httpHeaderValue1: $${__user.login}

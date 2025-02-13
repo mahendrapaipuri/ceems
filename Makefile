@@ -293,7 +293,7 @@ skip-checkmetrics: $(PROMTOOL)
 .PHONY: checkrules
 checkrules: $(PROMTOOL)
 	@echo ">> checking rules for correctness"
-	find . -not \( -path ./rules -prune \) -not \( -path ./cmd/ceems_tool/rules -prune \) -name "*.rules" | xargs -I {} $(PROMTOOL) check rules {}
+	find . -not \( -path ./rules -prune \) -not \( -path ./cmd/ceems_tool/rules -prune \) -not \( -path ./etc/prometheus/rules -prune \) -name "*.rules" | xargs -I {} $(PROMTOOL) check rules {}
 
 .PHONY: skip-checkrules
 skip-checkrules: $(PROMTOOL)

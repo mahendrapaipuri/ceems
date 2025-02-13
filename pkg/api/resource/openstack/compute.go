@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"slices"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -217,11 +216,14 @@ func (o *openstackManager) activeInstances(ctx context.Context, start time.Time,
 		}
 
 		// Tags
+		// IMPORTANT: Openstack user facing API does not provide any details
+		// of the compute node or hypervisor. So, we should be fetch any of those
+		// details neither and should not store it in our dashboard
 		tags := models.Tag{
-			"metadata":       server.Metadata,
-			"tags":           server.Tags,
-			"server_groups":  strings.Join(server.ServerGroups, ","),
-			"hypervisor":     server.HypervisorHostname,
+			"metadata": server.Metadata,
+			"tags":     server.Tags,
+			// "server_groups":  strings.Join(server.ServerGroups, ","),
+			// "hypervisor":     server.HypervisorHostname,
 			"reservation_id": server.ReservationID,
 			"power_state":    server.PowerState.String(),
 			"az":             server.AvailabilityZone,

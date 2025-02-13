@@ -70,6 +70,7 @@ TaskPlugin=task/cgroup,task/affinity
 JobAcctGatherType=jobacct_gather/cgroup 
 SelectType=select/con_tres
 SelectTypeParameters=CR_CPU_Memory # or CR_Core_Memory
+AccountingStorageTRES=gres/gpu # or any other TRES resources declared in your SLURM config
 ```
 
 ### cgroups v2

@@ -15,10 +15,10 @@ import (
 
 // CLI opts.
 var (
-	cgManager = CEEMSExporterApp.Flag(
-		"discoverer.alloy-targets.resource-manager",
-		"Discover Grafana Alloy targets from this resource manager [supported: slurm].",
-	).Enum("slurm")
+	enableDiscoverer = CEEMSExporterApp.Flag(
+		"discoverer.alloy-targets",
+		"Enable Grafana Alloy targets discoverer (default: false).",
+	).Default("false").Bool()
 	alloyTargetEnvVars = CEEMSExporterApp.Flag(
 		"discoverer.alloy-targets.env-var",
 		"Enable continuous profiling by Grafana Alloy only on the processes having any of these environment variables.",
@@ -29,7 +29,7 @@ var (
 	).Default("false").Bool()
 )
 
-var selfTargetID = "__internal_ceems_exporter"
+const selfTargetID = "__internal_ceems_exporter"
 
 const (
 	contentTypeHeader = "Content-Type"
@@ -68,18 +68,21 @@ type CEEMSAlloyTargetDiscoverer struct {
 
 // NewAlloyTargetDiscoverer returns a new HTTP alloy discoverer.
 func NewAlloyTargetDiscoverer(logger *slog.Logger) (*CEEMSAlloyTargetDiscoverer, error) {
-	// If no resource manager is provided, return an instance with enabled set to false
-	if *cgManager == "" {
+	var cgManager string
+
+	// Check if either SLURM or k8s collector is enabled
+	switch {
+	case *collectorState["slurm"]:
+		cgManager = "slurm"
+	}
+
+	// Discoverer is not enabled or supported collector is not enabled
+	if !*enableDiscoverer || cgManager == "" {
 		return &CEEMSAlloyTargetDiscoverer{logger: logger, enabled: false}, nil
 	}
 
-	// Make alloyTargetOpts
-	opts := alloyTargetOpts{
-		targetEnvVars: *alloyTargetEnvVars,
-	}
-
 	// Get SLURM's cgroup details
-	cgroupManager, err := NewCgroupManager(*cgManager, logger)
+	cgroupManager, err := NewCgroupManager(cgManager, logger)
 	if err != nil {
 		logger.Info("Failed to create cgroup manager", "err", err)
 
@@ -87,6 +90,11 @@ func NewAlloyTargetDiscoverer(logger *slog.Logger) (*CEEMSAlloyTargetDiscoverer,
 	}
 
 	logger.Info("cgroup: " + cgroupManager.String())
+
+	// Make alloyTargetOpts
+	opts := alloyTargetOpts{
+		targetEnvVars: *alloyTargetEnvVars,
+	}
 
 	discoverer := &CEEMSAlloyTargetDiscoverer{
 		logger:        logger,

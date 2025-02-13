@@ -619,7 +619,7 @@ then
         --path.sysfs="pkg/collector/testdata/sys" \
         --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
         --path.procfs="pkg/collector/testdata/proc" \
-        --discoverer.alloy-targets.resource-manager="slurm" \
+        --discoverer.alloy-targets \
         --collector.cgroups.force-version="v2" \
         --collector.slurm \
         --collector.ipmi_dcmi \
@@ -635,7 +635,7 @@ then
         --path.sysfs="pkg/collector/testdata/sys" \
         --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
         --path.procfs="pkg/collector/testdata/proc" \
-        --discoverer.alloy-targets.resource-manager="slurm" \
+        --discoverer.alloy-targets \
         --collector.slurm \
         --collector.cgroups.force-version="v1" \
         --collector.ipmi_dcmi \
@@ -1255,7 +1255,7 @@ then
 
       waitport "5000"
 
-      ./bin/mock_exporters dcgm amd-smi > /dev/null 2>&1 &
+      ./bin/mock_exporters test-mode dcgm amd-smi > /dev/null 2>&1 &
       MOCK_SERVERS_PID=$!
 
       waitport "9400"
@@ -1389,7 +1389,25 @@ then
       # Sleep a while for Prometheus to scrape metrics
       sleep 30
 
-      ./bin/ceems_tool tsdb create-recording-rules --country-code=FR --output-dir "${tmpdir}/rules" >> "${logfile}" 2>&1
+      echo "0" | ./bin/ceems_tool tsdb create-recording-rules --country-code=FR --output-dir "${tmpdir}/rules" >> "${logfile}" 2>&1
+
+      # Add content of each recording file to fixture_output
+      find "${tmpdir}/rules" -type f -print0 | sort -z | while IFS= read -r -d $'\0' file; do 
+          echo $(basename "${file}") >> "${fixture_output}"
+          cat "$file" >> "${fixture_output}"
+      done
+
+      # Rules without emissions target
+      echo "1" | ./bin/ceems_tool tsdb create-recording-rules --country-code=FR --disable-providers --output-dir "${tmpdir}/rules" >> "${logfile}" 2>&1
+
+      # Add content of each recording file to fixture_output
+      find "${tmpdir}/rules" -type f -print0 | sort -z | while IFS= read -r -d $'\0' file; do 
+          echo $(basename "${file}") >> "${fixture_output}"
+          cat "$file" >> "${fixture_output}"
+      done
+
+      # Rules with static emission factor
+      echo "1" | ./bin/ceems_tool tsdb create-recording-rules --emission-factor=50 --output-dir "${tmpdir}/rules" >> "${logfile}" 2>&1
 
       # Add content of each recording file to fixture_output
       find "${tmpdir}/rules" -type f -print0 | sort -z | while IFS= read -r -d $'\0' file; do 
@@ -1422,7 +1440,7 @@ then
       ./bin/ceems_tool tsdb create-ceems-tsdb-updater-queries >> "${fixture_output}" 2>&1
   elif [ "${scenario}" = "tool-relabel-configs" ] 
   then
-      ./bin/mock_exporters dcgm amd-smi >> "${logfile}" 2>&1 &
+      ./bin/mock_exporters test-mode dcgm amd-smi >> "${logfile}" 2>&1 &
       MOCK_SERVERS_PID=$!
 
       waitport "9400"

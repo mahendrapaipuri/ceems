@@ -1,0 +1,3992 @@
+{
+    "__inputs": [
+      {
+        "name": "DS_PROMETHEUS",
+        "label": "Prometheus datasource. When CEEMS LB is enabled, datasource corresponding to CEEMS LB must be configured here.",
+        "description": "",
+        "type": "datasource",
+        "pluginId": "prometheus",
+        "pluginName": "Prometheus"
+      },
+      {
+        "name": "DS_GRAFANA-PYROSCOPE-DATASOURCE",
+        "label": "grafana-pyroscope-datasource",
+        "description": "",
+        "type": "datasource",
+        "pluginId": "grafana-pyroscope-datasource",
+        "pluginName": "Grafana Pyroscope"
+      }
+    ],
+    "__elements": {},
+    "__requires": [
+      {
+        "type": "panel",
+        "id": "flamegraph",
+        "name": "Flame Graph",
+        "version": ""
+      },
+      {
+        "type": "grafana",
+        "id": "grafana",
+        "name": "Grafana",
+        "version": "11.3.1"
+      },
+      {
+        "type": "datasource",
+        "id": "grafana-pyroscope-datasource",
+        "name": "Grafana Pyroscope",
+        "version": "11.3.0"
+      },
+      {
+        "type": "datasource",
+        "id": "prometheus",
+        "name": "Prometheus",
+        "version": "1.0.0"
+      },
+      {
+        "type": "panel",
+        "id": "text",
+        "name": "Text",
+        "version": ""
+      },
+      {
+        "type": "panel",
+        "id": "timeseries",
+        "name": "Time series",
+        "version": ""
+      }
+    ],
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": {
+            "type": "grafana",
+            "uid": "-- Grafana --"
+          },
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "type": "dashboard"
+        }
+      ]
+    },
+    "description": "Time series metrics of a SLURM job",
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 0,
+    "id": null,
+    "links": [
+      {
+        "asDropdown": false,
+        "icon": "info",
+        "includeVars": false,
+        "keepTime": false,
+        "tags": [],
+        "targetBlank": true,
+        "title": "Powered by CEEMS",
+        "tooltip": "Go To GitHub",
+        "type": "link",
+        "url": "https://github.com/mahendrapaipuri/ceems"
+      }
+    ],
+    "panels": [
+      {
+        "gridPos": {
+          "h": 13,
+          "w": 8,
+          "x": 0,
+          "y": 0
+        },
+        "id": 53,
+        "options": {
+          "code": {
+            "language": "plaintext",
+            "showLineNumbers": false,
+            "showMiniMap": false
+          },
+          "content": "<span> \n  The following metrics are aggregated over entire job duration\n</span>\n<br>\n<br>\n\n<table><tbody>\n  <tr>\n    <th rowspan=\"4\">Average Utilization (%)</th>\n    <th>CPU</th>\n    <td colspan=\"3\">${cpu_usage}</td>\n  </tr>\n  <tr>\n    <th>CPU Memory</th>\n    <td colspan=\"3\">${cpumem_usage}</td>\n  </tr>\n  <tr>\n    <th>GPU</th>\n    <td colspan=\"3\">${gpu_usage}</td>\n  </tr>\n  <tr>\n    <th>GPU Memory</td>\n    <td colspan=\"3\">${gpumem_usage}</td>\n  </tr>\n  <tr>\n    <th rowspan=\"3\">Energy Consumption (kWh)</th>\n    <th>Host</th>\n    <td colspan=\"3\">${cpu_energy}</td>\n  </tr>\n  <tr>\n    <th>GPU</th>\n    <td colspan=\"3\">${gpu_energy}</td>\n  </tr>\n  <tr>\n    <th>Total</th>\n    <td colspan=\"3\">${total_energy}</td>\n  </tr>\n  <tr>\n    <th rowspan=\"4\">Equivalent Emissions (gms)</th>\n    <th>Emission Factor</th>\n    <th>RTE</th>\n    <th>Electricity Maps</th>\n    <th>OWID</th>\n  </tr>\n  <tr>\n    <th>Host</th>\n    <td>${cpu_emissions_rte}</td>\n    <td>${cpu_emissions_emaps}</td>\n    <td>${cpu_emissions_owid}</td>\n  </tr>\n  <tr>\n    <th>GPU</th>\n    <td>${gpu_emissions_rte}</td>\n    <td>${gpu_emissions_emaps}</td>\n    <td>${gpu_emissions_owid}</td>\n  </tr>\n  <tr>\n    <th>Total</th>\n    <td>${total_emissions_rte}</td>\n    <td>${total_emissions_emaps}</td>\n    <td>${total_emissions_owid}</td>\n  </tr>\n</tbody></table>",
+          "mode": "html"
+        },
+        "pluginVersion": "11.3.1",
+        "title": "Aggregate Metrics",
+        "type": "text"
+      },
+      {
+        "gridPos": {
+          "h": 13,
+          "w": 8,
+          "x": 8,
+          "y": 0
+        },
+        "id": 31,
+        "options": {
+          "code": {
+            "language": "plaintext",
+            "showLineNumbers": false,
+            "showMiniMap": false
+          },
+          "content": "<span> \n  Following table gives different job meta data\n</span>\n<br>\n<br>\n\n<table width=\"100%\">\n  <thead>\n    <tr>\n      <th scope=\"col\">Attribute</th>\n      <th scope=\"col\">Value</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th scope=\"row\">ID</th>\n      <td>${jobid}</td>\n    </tr>\n    <tr>\n      <th scope=\"row\">Name</th>\n      <td>${name}</td>\n    </tr>\n    <tr>\n      <th scope=\"row\">Account</th>\n      <td>${account}</td>\n    </tr>\n    <tr>\n      <th scope=\"row\">Partition</th>\n      <td>${partition}</td>\n    </tr>\n    <tr>\n      <th scope=\"row\">QoS</th>\n      <td>${qos}</td>\n    </tr>\n    <tr>\n      <th scope=\"row\">Submit Time</th>\n      <td>${submit:date:YYYY-MM-DD HH:mm:SS Z}</td>\n    </tr>\n    <tr>\n      <th scope=\"row\">Start Time</th>\n      <td>${__from:date:YYYY-MM-DD HH:mm:SS Z}</td>\n    </tr>\n    <tr>\n      <th scope=\"row\">End Time</th>\n      <td>${__to:date:YYYY-MM-DD HH:mm:SS Z}</td>\n    </tr>\n    <tr>\n      <th scope=\"row\">Elapsed Time</th>\n      <td>${elapsed}</td>\n    </tr>\n    <tr>\n      <th scope=\"row\">State</th>\n      <td>${state}</td>\n    </tr>\n    <tr>\n      <th scope=\"row\">Nodelist</th>\n      <td>${nodelist}</td>\n    </tr>\n  </tbody>\n</table>\n",
+          "mode": "html"
+        },
+        "pluginVersion": "11.3.1",
+        "title": "Job Details",
+        "type": "text"
+      },
+      {
+        "gridPos": {
+          "h": 13,
+          "w": 8,
+          "x": 16,
+          "y": 0
+        },
+        "id": 54,
+        "options": {
+          "code": {
+            "language": "plaintext",
+            "showLineNumbers": false,
+            "showMiniMap": false
+          },
+          "content": "This dashboard presents the time series metrics of job ${jobid} submitted using project ${account}.\nCurrently the following time series metrics are available:\n\n- **CPU Stats**:\n\n    - *CPU Usage*: This shows the usage of CPU by the job and it is estimated using CPU time.\n        In one second interval, if CPU works only for 0.2 seconds, CPU usage will be reported as 20%. \n        If a job allocates _n_ cpus and uses all _n_\n        cpus all the time, the usage will be 100% all the time. If the job uses only _n/2_ cpus or uses\n        _n_ cpus only 50% of time, the resulting CPU usage will be 50%.\n\n    - *CPU Memory Usage*: This is the percentage of memory used by the job compared to the memory available\n        within SLURM job.\n\n    - *Host Energy Usage*: This is the energy consumption estimated based on total energy consumption\n        (excluding GPUs) of the\n        compute node and the resources used by the job. Thus it includes CPU, CPU memory and other peripherals \n        on the compute node excluding GPUs. The estimation is made using CPU time, memory used\n        by the job relative to total CPU time and total memory used by the entire node. If there are multiple\n        jobs running on the node at a given time, the reported energy consumption is the energy consumed only\n        by the current job.\n<br />\n\n- **CPU Performance Stats**: \n\n    - *CPU Frequency*: The average frequency at which all the cores in the job allocation are running during the\n        execution of the job.\n\n    - *CPU IPC*: Instructions Per Cylce (IPC) gives number of instructions finished per CPU cycle. An IPC value of more\n        than 1 indicates a good performing code. Higher the value of IPC, better the code performance.\n\n    - *CPU Software Events*: Two different software events are presented: Context switches and CPU migrations. Context\n        switches happens when execution context changes from user mode to kernel mod or *vice-versa*. Context switch is\n        an expensive operation and hence, more context switches means lower performing code. CPU migraion happens when\n        execution of task change from one CPU core to another. Lower is better and it can be achieved using\n        [CPU pinning](https://slurm.schedmd.com/cpu_management.html).\n    \n    - *Page Faults*: Page faults happen when task access a memory region that is not \"prepared\". A minor page fault\n        happens when page is loaded into the memory but it not mapped. On the otherhand major fault happens when page\n        is not loaded in the memory. Lower is better. Minor page faults will not have huge impact on the performance\n        where as higher major page faults indicates bad memory management by the code.\n\n    - *Cache Events*: Cache events indicate the cache efficiency of the code. Currently supported events are L1 read\n        misses ratio and LL read/write misses ratio. Lower is better. L1 is first level cache with very fast access times\n        but limited size where LL is last level cache with slower access times but with larger size. A higher miss ratio\n        indicates that the code needs to fetch the data from the memory often indicates bad caching efficiency.\n<br />\n\n- **GPU Stats**:\n\n    - *GPU Usage*: This shows the GPU usage reported by [NVML](https://developer.nvidia.com/management-library-nvml).\n        According to [NVML docs](https://docs.nvidia.com/deploy/nvml-api/structnvmlUtilization__t.html#structnvmlUtilization__t),\n        it is percent of time over the past sample period during which one or more kernels was executing on the GPU.\n\n    - *GPU Memory Usage*: This is the percentage of memory used by the job compared to the available memory on\n        the GPU.\n\n    - *GPU Energy Usage*: This is the energy consumption reported by [NVML](https://developer.nvidia.com/management-library-nvml)\n        by the GPU.\n<br />\n\n- **GPU Profiling Stats**: NVIDIA DCGM [docs](https://docs.nvidia.com/datacenter/dcgm/latest/user-guide/feature-overview.html#profiling-metrics)\nexplains all the presented GPU profiling metrics.\n<br />\n\n- **IO Stats**:\n\n    - *Read/Write bandwidths*: Read/Write bandwidths from different compute nodes for different\n        file systems.\n\n    - *Read/Write Requests*: Number of requests for read/write from different compute nodes for different \n        file systems.\n\n    - *Read/Write Errors*: Number of errors while executing read/write requests from different compute nodes\n        for different file systems.\n<br />\n\n- **Profiling**: This is very minimal/low overhead profiling of the code done using continuous profiling tool\n    [Grafana Alloy](https://grafana.com/docs/alloy/latest/). In a nutshell, the profiler samples the code\n    at a frequency and builds a histogram of data of how many times code executed in different regions of\n    the code. By resolving the regions to the function names, a flame graph is built to show the time spent\n    in each function of the code. For the better resolution of the function names, debug symbols must be\n    included in the application binaries. It is also recommended to include frame pointers using the flag\n    `-fno-omit-frame-pointer` in the compiler options. More details on how to intrepret flame graphs can be\n    found in [Grafana Pyroscope Docs](https://grafana.com/docs/pyroscope/latest/introduction/flamegraphs/).",
+          "mode": "markdown"
+        },
+        "pluginVersion": "11.3.1",
+        "title": "README",
+        "type": "text"
+      },
+      {
+        "collapsed": true,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 13
+        },
+        "id": 1,
+        "panels": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${DS_PROMETHEUS}"
+            },
+            "description": "Time series of CPU usage for different hosts in the job",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "barWidthFactor": 0.6,
+                  "drawStyle": "line",
+                  "fillOpacity": 20,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "linear",
+                  "lineStyle": {
+                    "fill": "solid"
+                  },
+                  "lineWidth": 1,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "auto",
+                  "spanNulls": false,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "mappings": [],
+                "min": 0,
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                },
+                "unit": "percent"
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 8,
+              "w": 8,
+              "x": 0,
+              "y": 14
+            },
+            "id": 2,
+            "interval": "10s",
+            "maxDataPoints": 1448,
+            "options": {
+              "legend": {
+                "calcs": [
+                  "min",
+                  "max",
+                  "mean"
+                ],
+                "displayMode": "table",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "mode": "single",
+                "sort": "none"
+              }
+            },
+            "pluginVersion": "11.3.1",
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "uuid:ceems_cpu_usage:ratio_irate{instance=~\"${host}\",uuid=\"${jobid}\"}",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "CPU Total on {{hostname}}",
+                "range": true,
+                "refId": "A"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "avg(uuid:ceems_cpu_usage:ratio_irate{uuid=\"${jobid}\"})",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "CPU Total on all nodes",
+                "range": true,
+                "refId": "B"
+              }
+            ],
+            "title": "CPU Utilization",
+            "type": "timeseries"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${DS_PROMETHEUS}"
+            },
+            "description": "Time series of CPU memory usage for different hosts in the job",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "barWidthFactor": 0.6,
+                  "drawStyle": "line",
+                  "fillOpacity": 20,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "linear",
+                  "lineStyle": {
+                    "fill": "solid"
+                  },
+                  "lineWidth": 1,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "auto",
+                  "spanNulls": false,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "mappings": [],
+                "min": 0,
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                },
+                "unit": "bytes"
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 8,
+              "w": 8,
+              "x": 8,
+              "y": 14
+            },
+            "id": 3,
+            "interval": "10s",
+            "maxDataPoints": 1488,
+            "options": {
+              "legend": {
+                "calcs": [
+                  "min",
+                  "max",
+                  "mean"
+                ],
+                "displayMode": "table",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "mode": "single",
+                "sort": "none"
+              }
+            },
+            "pluginVersion": "11.3.1",
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "ceems_compute_unit_memory_total_bytes{instance=~\"${host}\",uuid=\"${jobid}\"}",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Total usable on {{hostname}}",
+                "range": true,
+                "refId": "A"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "exemplar": false,
+                "expr": "ceems_compute_unit_memory_used_bytes{instance=~\"${host}\",uuid=\"${jobid}\"}",
+                "format": "time_series",
+                "instant": false,
+                "legendFormat": "Used on {{hostname}}",
+                "range": true,
+                "refId": "B"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "ceems_compute_unit_memory_rss_bytes{instance=~\"${host}\",uuid=\"${jobid}\"}",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "RSS on {{hostname}}",
+                "range": true,
+                "refId": "C"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "ceems_compute_unit_memory_cache_bytes{instance=~\"${host}\",uuid=\"${jobid}\"}",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Cached on {{hostname}}",
+                "range": true,
+                "refId": "D"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "sum(ceems_compute_unit_memory_total_bytes{uuid=\"${jobid}\"})",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Total usagable on all nodes",
+                "range": true,
+                "refId": "E"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "sum(ceems_compute_unit_memory_used_bytes{uuid=\"${jobid}\"})",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Total used on all nodes",
+                "range": true,
+                "refId": "F"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "sum(ceems_compute_unit_memory_rss_bytes{uuid=\"${jobid}\"})",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Total RSS on all nodes",
+                "range": true,
+                "refId": "G"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "sum(ceems_compute_unit_memory_cache_bytes{uuid=\"${jobid}\"})",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Total Cached on all nodes",
+                "range": true,
+                "refId": "H"
+              }
+            ],
+            "title": "CPU Memory Utilization",
+            "type": "timeseries"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${DS_PROMETHEUS}"
+            },
+            "description": "Time series of estimated Host power usage of different compute nodes in the job",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "barWidthFactor": 0.6,
+                  "drawStyle": "line",
+                  "fillOpacity": 20,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "linear",
+                  "lineStyle": {
+                    "fill": "solid"
+                  },
+                  "lineWidth": 1,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "auto",
+                  "spanNulls": false,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "mappings": [],
+                "min": 0,
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                },
+                "unit": "watt"
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 8,
+              "w": 8,
+              "x": 16,
+              "y": 14
+            },
+            "id": 4,
+            "interval": "10s",
+            "maxDataPoints": 1488,
+            "options": {
+              "legend": {
+                "calcs": [
+                  "min",
+                  "max",
+                  "mean"
+                ],
+                "displayMode": "table",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "mode": "single",
+                "sort": "none"
+              }
+            },
+            "pluginVersion": "11.3.1",
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "uuid:ceems_host_power_watts:pue{instance=~\"${host}\",uuid=\"${jobid}\"}",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Total consumption on {{hostname}}",
+                "range": true,
+                "refId": "A"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "sum(uuid:ceems_host_power_watts:pue{uuid=\"${jobid}\"})",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Total consumption on all nodes",
+                "range": true,
+                "refId": "B"
+              }
+            ],
+            "title": "Host Power Usage",
+            "type": "timeseries"
+          }
+        ],
+        "title": "CPU Stats",
+        "type": "row"
+      },
+      {
+        "collapsed": true,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 14
+        },
+        "id": 48,
+        "panels": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${DS_PROMETHEUS}"
+            },
+            "description": "Time series of CPU Frequency",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "barWidthFactor": 0.6,
+                  "drawStyle": "line",
+                  "fillOpacity": 20,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "linear",
+                  "lineStyle": {
+                    "fill": "solid"
+                  },
+                  "lineWidth": 1,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "auto",
+                  "spanNulls": false,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "mappings": [],
+                "min": 0,
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green"
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                },
+                "unit": "rothz"
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 8,
+              "w": 8,
+              "x": 0,
+              "y": 198
+            },
+            "id": 43,
+            "interval": "10s",
+            "maxDataPoints": 1488,
+            "options": {
+              "legend": {
+                "calcs": [
+                  "min",
+                  "max",
+                  "mean"
+                ],
+                "displayMode": "table",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "mode": "single",
+                "sort": "none"
+              }
+            },
+            "pluginVersion": "11.4.0",
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "irate(ceems_perf_cpucycles_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval]) / ceems_compute_unit_cpus{instance=~\"${host}\",uuid=\"${jobid}\"}",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "CPU Freq. on {{hostname}}",
+                "range": true,
+                "refId": "A"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "irate(ceems_perf_ref_cpucycles_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval]) / ceems_compute_unit_cpus{instance=~\"${host}\",uuid=\"${jobid}\"}",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Ref CPU Freq. on {{hostname}}",
+                "range": true,
+                "refId": "B"
+              }
+            ],
+            "title": "CPU Frequency",
+            "type": "timeseries"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${DS_PROMETHEUS}"
+            },
+            "description": "Time series of Instructions per Cycle (IPC). A value of more than 1 can be interpreted as good.",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "barWidthFactor": 0.6,
+                  "drawStyle": "line",
+                  "fillOpacity": 20,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "linear",
+                  "lineStyle": {
+                    "fill": "solid"
+                  },
+                  "lineWidth": 1,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "auto",
+                  "spanNulls": false,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "mappings": [],
+                "min": 0,
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green"
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                },
+                "unit": "si:isns/cycle"
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 8,
+              "w": 9,
+              "x": 8,
+              "y": 198
+            },
+            "id": 47,
+            "interval": "10s",
+            "maxDataPoints": 1488,
+            "options": {
+              "legend": {
+                "calcs": [
+                  "min",
+                  "max",
+                  "mean"
+                ],
+                "displayMode": "table",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "mode": "single",
+                "sort": "none"
+              }
+            },
+            "pluginVersion": "11.4.0",
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "irate(ceems_perf_instructions_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval]) / irate(ceems_perf_cpucycles_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval])",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "CPU IPC on {{hostname}}",
+                "range": true,
+                "refId": "A"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "sum(irate(ceems_perf_instructions_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval]) / irate(ceems_perf_cpucycles_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval]))",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Total CPU IPC",
+                "range": true,
+                "refId": "B"
+              }
+            ],
+            "title": "CPU IPC",
+            "type": "timeseries"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${DS_PROMETHEUS}"
+            },
+            "description": "Time series of CPU Software Events",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "barWidthFactor": 0.6,
+                  "drawStyle": "line",
+                  "fillOpacity": 20,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "linear",
+                  "lineStyle": {
+                    "fill": "solid"
+                  },
+                  "lineWidth": 1,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "auto",
+                  "spanNulls": false,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "mappings": [],
+                "min": 0,
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green"
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                },
+                "unit": "cps"
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 8,
+              "w": 7,
+              "x": 17,
+              "y": 198
+            },
+            "id": 45,
+            "interval": "10s",
+            "maxDataPoints": 1488,
+            "options": {
+              "legend": {
+                "calcs": [
+                  "min",
+                  "max",
+                  "mean"
+                ],
+                "displayMode": "table",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "mode": "single",
+                "sort": "none"
+              }
+            },
+            "pluginVersion": "11.4.0",
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "irate(ceems_perf_context_switches_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval])",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Context Switches on {{hostname}}",
+                "range": true,
+                "refId": "A"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "irate(ceems_perf_cpu_migrations_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval])",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "CPU Migrations on {{hostname}}",
+                "range": true,
+                "refId": "B"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "sum(irate(ceems_perf_context_switches_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval]))",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Total Context Switches",
+                "range": true,
+                "refId": "C"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "sum(irate(ceems_perf_cpu_migrations_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval]))",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Total CPU Migrations",
+                "range": true,
+                "refId": "D"
+              }
+            ],
+            "title": "CPU Software Events",
+            "type": "timeseries"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${DS_PROMETHEUS}"
+            },
+            "description": "Time series of Page Fault Events. Major fault happens when memory needs to be fetched from disk where as minor fault happens when memory needs to be mapped. Higher major faults means bad memory performance. Minor faults do not have huge performance impact.",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "barWidthFactor": 0.6,
+                  "drawStyle": "line",
+                  "fillOpacity": 20,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "linear",
+                  "lineStyle": {
+                    "fill": "solid"
+                  },
+                  "lineWidth": 1,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "auto",
+                  "spanNulls": false,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "mappings": [],
+                "min": 0,
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green"
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                },
+                "unit": "cps"
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 0,
+              "y": 206
+            },
+            "id": 46,
+            "interval": "10s",
+            "maxDataPoints": 1488,
+            "options": {
+              "legend": {
+                "calcs": [
+                  "min",
+                  "max",
+                  "mean"
+                ],
+                "displayMode": "table",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "mode": "single",
+                "sort": "none"
+              }
+            },
+            "pluginVersion": "11.4.0",
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "irate(ceems_perf_major_faults_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval])",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Major Faults on {{hostname}}",
+                "range": true,
+                "refId": "A"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "irate(ceems_perf_minor_faults_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval])",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Minor Faults on {{hostname}}",
+                "range": true,
+                "refId": "B"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "sum(irate(ceems_perf_major_faults_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval]))",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Total Major Faults",
+                "range": true,
+                "refId": "C"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "sum(irate(ceems_perf_minor_faults_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval]))",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Total Minor Faults",
+                "range": true,
+                "refId": "D"
+              }
+            ],
+            "title": "Page Fault Events",
+            "type": "timeseries"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${DS_PROMETHEUS}"
+            },
+            "description": "Time series of Cache events. L1 is the smallest and fastest cache whereas LL is the largest and slowest cache. Misses is the percentage of times that data is not found on L1/LL cache and it needs to be fetched from higher caches/memory. A smaller value means the program is using the cache efficiently. A higher value indicates a memory bound program.",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "barWidthFactor": 0.6,
+                  "drawStyle": "line",
+                  "fillOpacity": 20,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "linear",
+                  "lineStyle": {
+                    "fill": "solid"
+                  },
+                  "lineWidth": 1,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "auto",
+                  "spanNulls": false,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "mappings": [],
+                "min": 0,
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green"
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                },
+                "unit": "percent"
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 12,
+              "y": 206
+            },
+            "id": 44,
+            "interval": "10s",
+            "maxDataPoints": 1488,
+            "options": {
+              "legend": {
+                "calcs": [
+                  "min",
+                  "max",
+                  "mean"
+                ],
+                "displayMode": "table",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "mode": "single",
+                "sort": "none"
+              }
+            },
+            "pluginVersion": "11.4.0",
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "irate(ceems_perf_cache_l1d_read_misses_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval]) * 100 / irate(ceems_perf_cache_l1d_read_hits_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval])",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "L1 Data Read Misses on {{hostname}}",
+                "range": true,
+                "refId": "A"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "irate(ceems_perf_cache_ll_read_misses_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval]) / irate(ceems_perf_cache_ll_read_hits_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval])",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "LL Data Read Misses on {{hostname}}",
+                "range": true,
+                "refId": "B"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "irate(ceems_perf_cache_ll_write_misses_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval]) / irate(ceems_perf_cache_ll_write_hits_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval])",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "LL Data Write Misses on {{hostname}}",
+                "range": true,
+                "refId": "C"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "avg(irate(ceems_perf_cache_l1d_read_misses_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval]) * 100 / irate(ceems_perf_cache_l1d_read_hits_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval]))",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Avg L1 Data Read Misses",
+                "range": true,
+                "refId": "D"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "avg(irate(ceems_perf_cache_ll_read_misses_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval]) / irate(ceems_perf_cache_ll_read_hits_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval]))",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Avg LL Data Read Misses",
+                "range": true,
+                "refId": "E"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "avg(irate(ceems_perf_cache_ll_write_misses_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval]) / irate(ceems_perf_cache_ll_write_hits_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval]))",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Avg LL Data Write Misses",
+                "range": true,
+                "refId": "F"
+              }
+            ],
+            "title": "CPU Cache Events",
+            "type": "timeseries"
+          }
+        ],
+        "title": "CPU Performance Stats",
+        "type": "row"
+      },
+      {
+        "collapsed": true,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 15
+        },
+        "id": 7,
+        "panels": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${DS_PROMETHEUS}"
+            },
+            "description": "Time series of GPU usage reported by nVIDIA-DCGM for different GPUs in the job",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "barWidthFactor": 0.6,
+                  "drawStyle": "line",
+                  "fillOpacity": 20,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "linear",
+                  "lineWidth": 1,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "auto",
+                  "spanNulls": false,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                },
+                "unit": "percent"
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 8,
+              "w": 8,
+              "x": 0,
+              "y": 60
+            },
+            "id": 8,
+            "interval": "10s",
+            "maxDataPoints": 1488,
+            "options": {
+              "legend": {
+                "calcs": [
+                  "min",
+                  "max",
+                  "mean"
+                ],
+                "displayMode": "table",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "mode": "single",
+                "sort": "none"
+              }
+            },
+            "pluginVersion": "11.3.1",
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "uuid:ceems_gpu_usage:ratio{instance=~\"${host}\",gpuuuid=~\"${gpu}\",uuid=\"${jobid}\"}",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "GPU: {{index}} on {{hostname}}",
+                "range": true,
+                "refId": "A"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "avg(uuid:ceems_gpu_usage:ratio{instance=~\"${host}\",gpuuuid=~\"${gpu}\",uuid=\"${jobid}\"})",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Average Usage on all GPUs",
+                "range": true,
+                "refId": "B"
+              }
+            ],
+            "title": "GPU Utilization",
+            "type": "timeseries"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${DS_PROMETHEUS}"
+            },
+            "description": "Time series of GPU memory usage reported by nVIDIA-DCGM for different GPUs in the job",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "barWidthFactor": 0.6,
+                  "drawStyle": "line",
+                  "fillOpacity": 20,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "linear",
+                  "lineWidth": 1,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "auto",
+                  "spanNulls": false,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                },
+                "unit": "percent"
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 8,
+              "w": 8,
+              "x": 8,
+              "y": 60
+            },
+            "id": 22,
+            "interval": "10s",
+            "maxDataPoints": 1488,
+            "options": {
+              "legend": {
+                "calcs": [
+                  "min",
+                  "max",
+                  "mean"
+                ],
+                "displayMode": "table",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "mode": "single",
+                "sort": "none"
+              }
+            },
+            "pluginVersion": "11.3.1",
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "uuid:ceems_gpu_memory_usage:ratio{instance=~\"${host}\", gpuuuid=~\"${gpu}\",uuid=\"${jobid}\"}",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "GPU: {{index}} on {{hostname}}",
+                "range": true,
+                "refId": "A"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "avg(uuid:ceems_gpu_memory_usage:ratio{instance=~\"${host}\", gpuuuid=~\"${gpu}\",uuid=\"${jobid}\"})",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Average Memory Usage on all GPUs",
+                "range": true,
+                "refId": "B"
+              }
+            ],
+            "title": "GPU Memory Utilization",
+            "type": "timeseries"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${DS_PROMETHEUS}"
+            },
+            "description": "Time series of GPU power usage reported by nVIDIA-DCGM for different GPUs in the job",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "barWidthFactor": 0.6,
+                  "drawStyle": "line",
+                  "fillOpacity": 20,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "linear",
+                  "lineWidth": 1,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "auto",
+                  "spanNulls": false,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                },
+                "unit": "watt"
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 8,
+              "w": 8,
+              "x": 16,
+              "y": 60
+            },
+            "id": 25,
+            "interval": "10s",
+            "maxDataPoints": 1488,
+            "options": {
+              "legend": {
+                "calcs": [
+                  "min",
+                  "max",
+                  "mean"
+                ],
+                "displayMode": "table",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "mode": "single",
+                "sort": "none"
+              }
+            },
+            "pluginVersion": "11.3.1",
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "uuid:ceems_gpu_power_watts:pue{instance=~\"${host}\", gpuuuid=~\"${gpu}\",uuid=\"${jobid}\"}",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "GPU: {{index}} on {{hostname}}",
+                "range": true,
+                "refId": "A"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "sum(uuid:ceems_gpu_power_watts:pue{uuid=\"${jobid}\"})",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Total Usage on all GPUs",
+                "range": true,
+                "refId": "B"
+              }
+            ],
+            "title": "GPU Power Usage",
+            "type": "timeseries"
+          }
+        ],
+        "title": "GPU Stats",
+        "type": "row"
+      },
+      {
+        "collapsed": true,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 16
+        },
+        "id": 42,
+        "panels": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${DS_PROMETHEUS}"
+            },
+            "description": "Time series of GPU SM Activity & Occupancy reported by nVIDIA-DCGM for different GPUs in the job",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "barWidthFactor": 0.6,
+                  "drawStyle": "line",
+                  "fillOpacity": 20,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "linear",
+                  "lineWidth": 1,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "auto",
+                  "spanNulls": false,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green"
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                },
+                "unit": "percent"
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 8,
+              "w": 8,
+              "x": 0,
+              "y": 384
+            },
+            "id": 34,
+            "interval": "10s",
+            "maxDataPoints": 1488,
+            "options": {
+              "legend": {
+                "calcs": [
+                  "min",
+                  "max",
+                  "mean"
+                ],
+                "displayMode": "table",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "mode": "single",
+                "sort": "none"
+              }
+            },
+            "pluginVersion": "11.4.0",
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "uuid:ceems_gpu_sm_active:ratio{instance=~\"${host}\",gpuuuid=~\"${gpu}\",uuid=\"${jobid}\"}",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "SM Activity on GPU: {{index}} on {{hostname}}",
+                "range": true,
+                "refId": "A"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "avg(uuid:ceems_gpu_sm_active:ratio{uuid=\"${jobid}\"})",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Average SM Activity on all GPUs",
+                "range": true,
+                "refId": "B"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "uuid:ceems_gpu_sm_occupancy:ratio{instance=~\"${host}\",gpuuuid=~\"${gpu}\",uuid=\"${jobid}\"}",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "SM Occupancy GPU: {{index}} on {{hostname}}",
+                "range": true,
+                "refId": "C"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "avg(uuid:ceems_gpu_sm_occupancy:ratio{uuid=\"${jobid}\"})",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Average SM Occupancy on all GPUs",
+                "range": true,
+                "refId": "D"
+              }
+            ],
+            "title": "GPU SM Activity & Occupancy",
+            "type": "timeseries"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${DS_PROMETHEUS}"
+            },
+            "description": "Time series of GPU Graphics and Tensor Engines Activity reported by nVIDIA-DCGM for different GPUs in the job",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "barWidthFactor": 0.6,
+                  "drawStyle": "line",
+                  "fillOpacity": 20,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "linear",
+                  "lineWidth": 1,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "auto",
+                  "spanNulls": false,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green"
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                },
+                "unit": "percent"
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 8,
+              "w": 8,
+              "x": 8,
+              "y": 384
+            },
+            "id": 35,
+            "interval": "10s",
+            "maxDataPoints": 1488,
+            "options": {
+              "legend": {
+                "calcs": [
+                  "min",
+                  "max",
+                  "mean"
+                ],
+                "displayMode": "table",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "mode": "single",
+                "sort": "none"
+              }
+            },
+            "pluginVersion": "11.4.0",
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "uuid:ceems_gpu_gr_engine_active:ratio{instance=~\"${host}\",gpuuuid=~\"${gpu}\",uuid=\"${jobid}\"}",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Graphics Engine Activity on GPU: {{index}} on {{hostname}}",
+                "range": true,
+                "refId": "A"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "avg(uuid:ceems_gpu_gr_engine_active:ratio{uuid=\"${jobid}\"})",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Average Graphics Engine Activity on all GPUs",
+                "range": true,
+                "refId": "B"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "uuid:ceems_gpu_pipe_tensor_active:ratio{instance=~\"${host}\",gpuuuid=~\"${gpu}\",uuid=\"${jobid}\"}",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Tensor Pipe Activity on GPU: {{index}} on {{hostname}}",
+                "range": true,
+                "refId": "C"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "avg(uuid:ceems_gpu_pipe_tensor_active:ratio{uuid=\"${jobid}\"})",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Average Tensor Pipe Activity on all GPUs",
+                "range": true,
+                "refId": "D"
+              }
+            ],
+            "title": "GPU Graphics and Tensor Engines Activity",
+            "type": "timeseries"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${DS_PROMETHEUS}"
+            },
+            "description": "Time series of GPU FP{64, 32, 16} Engines Activity reported by nVIDIA-DCGM for different GPUs in the job",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "barWidthFactor": 0.6,
+                  "drawStyle": "line",
+                  "fillOpacity": 20,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "linear",
+                  "lineWidth": 1,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "auto",
+                  "spanNulls": false,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green"
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                },
+                "unit": "percent"
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 8,
+              "w": 8,
+              "x": 16,
+              "y": 384
+            },
+            "id": 39,
+            "interval": "10s",
+            "maxDataPoints": 1488,
+            "options": {
+              "legend": {
+                "calcs": [
+                  "min",
+                  "max",
+                  "mean"
+                ],
+                "displayMode": "table",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "mode": "single",
+                "sort": "none"
+              }
+            },
+            "pluginVersion": "11.4.0",
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "uuid:ceems_gpu_pipe_fp64_active:ratio{instance=~\"${host}\",gpuuuid=~\"${gpu}\",uuid=\"${jobid}\"}",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "FP64 Activity on GPU: {{index}} on {{hostname}}",
+                "range": true,
+                "refId": "A"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "uuid:ceems_gpu_pipe_fp32_active:ratio{instance=~\"${host}\",gpuuuid=~\"${gpu}\",uuid=\"${jobid}\"}",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "FP32 Activity on GPU: {{index}} on {{hostname}}",
+                "range": true,
+                "refId": "B"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "uuid:ceems_gpu_pipe_fp16_active:ratio{instance=~\"${host}\",gpuuuid=~\"${gpu}\",uuid=\"${jobid}\"}",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "FP16 Activity on GPU: {{index}} on {{hostname}}",
+                "range": true,
+                "refId": "C"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "avg(uuid:ceems_gpu_pipe_fp64_active:ratio{uuid=\"${jobid}\"})",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Average FP64 Engine Activity on all GPUs",
+                "range": true,
+                "refId": "D"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "avg(uuid:ceems_gpu_pipe_fp32_active:ratio{uuid=\"${jobid}\"})",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Average FP32 Engine Activity on all GPUs",
+                "range": true,
+                "refId": "E"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "avg(uuid:ceems_gpu_pipe_fp16_active:ratio{uuid=\"${jobid}\"})",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Average FP16 Engine Activity on all GPUs",
+                "range": true,
+                "refId": "F"
+              }
+            ],
+            "title": "GPU FP Engines Activity",
+            "type": "timeseries"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${DS_PROMETHEUS}"
+            },
+            "description": "Time series of fraction of cycles where data was sent to or received from GPU reported by nVIDIA-DCGM for different GPUs in the job",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "barWidthFactor": 0.6,
+                  "drawStyle": "line",
+                  "fillOpacity": 20,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "linear",
+                  "lineWidth": 1,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "auto",
+                  "spanNulls": false,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green"
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                },
+                "unit": "percent"
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 8,
+              "w": 8,
+              "x": 0,
+              "y": 392
+            },
+            "id": 38,
+            "interval": "10s",
+            "maxDataPoints": 1488,
+            "options": {
+              "legend": {
+                "calcs": [
+                  "min",
+                  "max",
+                  "mean"
+                ],
+                "displayMode": "table",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "mode": "single",
+                "sort": "none"
+              }
+            },
+            "pluginVersion": "11.4.0",
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "uuid:ceems_gpu_dram_active:ratio{instance=~\"${host}\",gpuuuid=~\"${gpu}\",uuid=\"${jobid}\"}",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "GPU: {{index}} on {{hostname}}",
+                "range": true,
+                "refId": "A"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "avg(uuid:ceems_gpu_dram_active:ratio{uuid=\"${jobid}\"})",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Average Memory BW Utilization on all GPUs",
+                "range": true,
+                "refId": "B"
+              }
+            ],
+            "title": "GPU Memory BW Utilization",
+            "type": "timeseries"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${DS_PROMETHEUS}"
+            },
+            "description": "Time series of GPU NVLink Bandwidth reported by nVIDIA-DCGM for different GPUs in the job",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "barWidthFactor": 0.6,
+                  "drawStyle": "line",
+                  "fillOpacity": 20,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "linear",
+                  "lineWidth": 1,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "auto",
+                  "spanNulls": false,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green"
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                },
+                "unit": "binBps"
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 8,
+              "w": 8,
+              "x": 8,
+              "y": 392
+            },
+            "id": 40,
+            "interval": "10s",
+            "maxDataPoints": 1488,
+            "options": {
+              "legend": {
+                "calcs": [
+                  "min",
+                  "max",
+                  "mean"
+                ],
+                "displayMode": "table",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "mode": "single",
+                "sort": "none"
+              }
+            },
+            "pluginVersion": "11.4.0",
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "uuid:ceems_gpu_nvlink_tx_bytes:ratio{instance=~\"${host}\",gpuuuid=~\"${gpu}\",uuid=\"${jobid}\"}",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Transmitted on GPU: {{index}} on {{hostname}}",
+                "range": true,
+                "refId": "A"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "avg(uuid:ceems_gpu_nvlink_tx_bytes:ratio{uuid=\"${jobid}\"})",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Average Transmitted Bandwidth on all GPUs",
+                "range": true,
+                "refId": "B"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "uuid:ceems_gpu_nvlink_rx_bytes:ratio{instance=~\"${host}\",gpuuuid=~\"${gpu}\",uuid=\"${jobid}\"}",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Received on GPU: {{index}} on {{hostname}}",
+                "range": true,
+                "refId": "C"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "avg(uuid:ceems_gpu_nvlink_rx_bytes:ratio{uuid=\"${jobid}\"})",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Average Received Bandwidth on all GPUs",
+                "range": true,
+                "refId": "D"
+              }
+            ],
+            "title": "GPU NVLink Bandwidth",
+            "type": "timeseries"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${DS_PROMETHEUS}"
+            },
+            "description": "Time series of GPU PCIe Bandwidth reported by nVIDIA-DCGM for different GPUs in the job",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "barWidthFactor": 0.6,
+                  "drawStyle": "line",
+                  "fillOpacity": 20,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "linear",
+                  "lineWidth": 1,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "auto",
+                  "spanNulls": false,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green"
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                },
+                "unit": "binBps"
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 8,
+              "w": 8,
+              "x": 16,
+              "y": 392
+            },
+            "id": 41,
+            "interval": "10s",
+            "maxDataPoints": 1488,
+            "options": {
+              "legend": {
+                "calcs": [
+                  "min",
+                  "max",
+                  "mean"
+                ],
+                "displayMode": "table",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "mode": "single",
+                "sort": "none"
+              }
+            },
+            "pluginVersion": "11.4.0",
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "uuid:ceems_gpu_pcie_tx_bytes:ratio{instance=~\"${host}\",gpuuuid=~\"${gpu}\",uuid=\"${jobid}\"}",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Transmitted on GPU: {{index}} on {{hostname}}",
+                "range": true,
+                "refId": "A"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "avg(uuid:ceems_gpu_pcie_tx_bytes:ratio{uuid=\"${jobid}\"})",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Average Transmitted Bandwidth on all GPUs",
+                "range": true,
+                "refId": "B"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "uuid:ceems_gpu_pcie_rx_bytes:ratio{instance=~\"${host}\",gpuuuid=~\"${gpu}\",uuid=\"${jobid}\"}",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Received on GPU: {{index}} on {{hostname}}",
+                "range": true,
+                "refId": "C"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "avg(uuid:ceems_gpu_pcie_rx_bytes:ratio{uuid=\"${jobid}\"})",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Average Received Bandwidth on all GPUs",
+                "range": true,
+                "refId": "D"
+              }
+            ],
+            "title": "GPU PCIe Bandwidth",
+            "type": "timeseries"
+          }
+        ],
+        "title": "GPU Profiling Stats",
+        "type": "row"
+      },
+      {
+        "collapsed": true,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 17
+        },
+        "id": 52,
+        "panels": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${DS_PROMETHEUS}"
+            },
+            "description": "Time series of Read/Write Bandwidth to different file systems.",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "barWidthFactor": 0.6,
+                  "drawStyle": "line",
+                  "fillOpacity": 20,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "linear",
+                  "lineWidth": 1,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "auto",
+                  "spanNulls": false,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green"
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                },
+                "unit": "binBps"
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 8,
+              "w": 8,
+              "x": 0,
+              "y": 217
+            },
+            "id": 49,
+            "interval": "10s",
+            "maxDataPoints": 1488,
+            "options": {
+              "legend": {
+                "calcs": [
+                  "min",
+                  "max",
+                  "mean"
+                ],
+                "displayMode": "table",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "mode": "single",
+                "sort": "none"
+              }
+            },
+            "pluginVersion": "11.4.0",
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "irate(ceems_ebpf_read_bytes_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval])",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Read Bandwith on {{mountpoint}} from {{hostname}}",
+                "range": true,
+                "refId": "A"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "irate(ceems_ebpf_write_bytes_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval])",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Write Bandwith on {{mountpoint}} from {{hostname}}",
+                "range": true,
+                "refId": "B"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "sum by (mountpoint) (irate(ceems_ebpf_read_bytes_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval]))",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Total Read Bandwith from {{mountpoint}}",
+                "range": true,
+                "refId": "C"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "sum by (mountpoint) (irate(ceems_ebpf_write_bytes_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval]))",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Total Write Bandwith from {{mountpoint}}",
+                "range": true,
+                "refId": "D"
+              }
+            ],
+            "title": "IO Read/Write Bandwidth",
+            "type": "timeseries"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${DS_PROMETHEUS}"
+            },
+            "description": "Time series of Read/Write Requests to different file systems.",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "barWidthFactor": 0.6,
+                  "drawStyle": "line",
+                  "fillOpacity": 20,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "linear",
+                  "lineWidth": 1,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "auto",
+                  "spanNulls": false,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green"
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                },
+                "unit": "reqps"
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 8,
+              "w": 8,
+              "x": 8,
+              "y": 217
+            },
+            "id": 50,
+            "interval": "10s",
+            "maxDataPoints": 1488,
+            "options": {
+              "legend": {
+                "calcs": [
+                  "min",
+                  "max",
+                  "mean"
+                ],
+                "displayMode": "table",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "mode": "single",
+                "sort": "none"
+              }
+            },
+            "pluginVersion": "11.4.0",
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "irate(ceems_ebpf_read_requests_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval])",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Read Requests on {{mountpoint}} from {{hostname}}",
+                "range": true,
+                "refId": "A"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "irate(ceems_ebpf_write_requests_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval])",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Write Requests on {{mountpoint}} from {{hostname}}",
+                "range": true,
+                "refId": "B"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "sum by (mountpoint) (irate(ceems_ebpf_read_requests_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval]))",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Total Read Requests on {{mountpoint}}",
+                "range": true,
+                "refId": "C"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "sum by (mountpoint) (irate(ceems_ebpf_write_requests_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval]))",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Total Write Requests on {{mountpoint}}",
+                "range": true,
+                "refId": "D"
+              }
+            ],
+            "title": "IO Read/Write Requests",
+            "type": "timeseries"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${DS_PROMETHEUS}"
+            },
+            "description": "Time series of Read/Write Errors to different file systems.",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "barWidthFactor": 0.6,
+                  "drawStyle": "line",
+                  "fillOpacity": 20,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "linear",
+                  "lineWidth": 1,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "auto",
+                  "spanNulls": false,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green"
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                },
+                "unit": "si:errors/s"
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 8,
+              "w": 8,
+              "x": 16,
+              "y": 217
+            },
+            "id": 51,
+            "interval": "10s",
+            "maxDataPoints": 1488,
+            "options": {
+              "legend": {
+                "calcs": [
+                  "min",
+                  "max",
+                  "mean"
+                ],
+                "displayMode": "table",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "mode": "single",
+                "sort": "none"
+              }
+            },
+            "pluginVersion": "11.4.0",
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "irate(ceems_ebpf_read_errors_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval])",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Read Errors on {{mountpoint}} from {{hostname}}",
+                "range": true,
+                "refId": "A"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "irate(ceems_ebpf_write_errors_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval])",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Write Errors on {{mountpoint}} from {{hostname}}",
+                "range": true,
+                "refId": "B"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "sum by (mountpoint) (irate(ceems_ebpf_read_errors_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval]))",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Total Read Errors on {{mountpoint}}",
+                "range": true,
+                "refId": "C"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "sum by (mountpoint) (irate(ceems_ebpf_write_errors_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval]))",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Total Write Errors on {{mountpoint}}",
+                "range": true,
+                "refId": "D"
+              }
+            ],
+            "title": "IO Read/Write Errors",
+            "type": "timeseries"
+          }
+        ],
+        "title": "IO Stats",
+        "type": "row"
+      },
+      {
+        "collapsed": true,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 18
+        },
+        "id": 58,
+        "panels": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${DS_PROMETHEUS}"
+            },
+            "description": "Time series of Job Network Ingress/Egress Bandwidth.",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "barWidthFactor": 0.6,
+                  "drawStyle": "line",
+                  "fillOpacity": 20,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "linear",
+                  "lineWidth": 1,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "auto",
+                  "spanNulls": false,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                },
+                "unit": "binBps"
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 0,
+              "y": 19
+            },
+            "id": 59,
+            "options": {
+              "legend": {
+                "calcs": [
+                  "min",
+                  "max",
+                  "mean"
+                ],
+                "displayMode": "table",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "mode": "single",
+                "sort": "none"
+              }
+            },
+            "pluginVersion": "11.3.1",
+            "targets": [
+              {
+                "editorMode": "code",
+                "expr": "irate(ceems_ebpf_ingress_bytes_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval])",
+                "legendFormat": "Ingress Bandwith {{proto}}/{{family}} on {{hostname}}",
+                "range": true,
+                "refId": "A"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "irate(ceems_ebpf_egress_bytes_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval])",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Egress Bandwith {{proto}}/{{family}} on {{hostname}}",
+                "range": true,
+                "refId": "B"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "sum by (proto,family) (irate(ceems_ebpf_ingress_bytes_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval]))",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Total Ingress Bandwith {{proto}}/{{family}}",
+                "range": true,
+                "refId": "C"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "sum by (proto,family) (irate(ceems_ebpf_egress_bytes_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval]))",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Total Egress Bandwith {{proto}}/{{family}}",
+                "range": true,
+                "refId": "D"
+              }
+            ],
+            "title": "Network Ingress/Egress Bandwidth",
+            "type": "timeseries"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${DS_PROMETHEUS}"
+            },
+            "description": "Time series of Job Network Ingress/Egress Packets.",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "barWidthFactor": 0.6,
+                  "drawStyle": "line",
+                  "fillOpacity": 20,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "linear",
+                  "lineWidth": 1,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "auto",
+                  "spanNulls": false,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                },
+                "unit": "pps"
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 12,
+              "y": 19
+            },
+            "id": 60,
+            "options": {
+              "legend": {
+                "calcs": [
+                  "min",
+                  "max",
+                  "mean"
+                ],
+                "displayMode": "table",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "mode": "single",
+                "sort": "none"
+              }
+            },
+            "pluginVersion": "11.3.1",
+            "targets": [
+              {
+                "editorMode": "code",
+                "expr": "irate(ceems_ebpf_ingress_packets_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval])",
+                "legendFormat": "Ingress Packets {{proto}}/{{family}} on {{hostname}}",
+                "range": true,
+                "refId": "A"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "irate(ceems_ebpf_egress_packets_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval])",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Egress Packets {{proto}}/{{family}} on {{hostname}}",
+                "range": true,
+                "refId": "B"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "sum by (proto,family) (irate(ceems_ebpf_ingress_packets_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval]))",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Total Ingress Packets {{proto}}/{{family}}",
+                "range": true,
+                "refId": "C"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "sum by (proto,family) (irate(ceems_ebpf_egress_packets_total{instance=~\"${host}\",uuid=\"${jobid}\"}[$__rate_interval]))",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Total Egress Packets {{proto}}/{{family}}",
+                "range": true,
+                "refId": "D"
+              }
+            ],
+            "title": "Network Ingress/Egress Packets",
+            "type": "timeseries"
+          }
+        ],
+        "title": "Network Stats",
+        "type": "row"
+      },
+      {
+        "collapsed": true,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 18
+        },
+        "id": 55,
+        "panels": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${DS_PROMETHEUS}"
+            },
+            "description": "Time series of total CPU time for all hosts in the job",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "barWidthFactor": 0.6,
+                  "drawStyle": "line",
+                  "fillOpacity": 20,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "linear",
+                  "lineStyle": {
+                    "fill": "solid"
+                  },
+                  "lineWidth": 1,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "auto",
+                  "spanNulls": false,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "mappings": [],
+                "min": 0,
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                },
+                "unit": "s"
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 7,
+              "w": 24,
+              "x": 0,
+              "y": 19
+            },
+            "id": 57,
+            "interval": "10s",
+            "maxDataPoints": 1448,
+            "options": {
+              "legend": {
+                "calcs": [
+                  "min",
+                  "max",
+                  "mean"
+                ],
+                "displayMode": "table",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "mode": "single",
+                "sort": "none"
+              }
+            },
+            "pluginVersion": "11.3.1",
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${DS_PROMETHEUS}"
+                },
+                "editorMode": "code",
+                "expr": "sum(irate(ceems_compute_unit_cpu_user_seconds_total{uuid=\"${jobid}\"}[$__rate_interval]) + irate(ceems_compute_unit_cpu_system_seconds_total{uuid=\"${jobid}\"}[$__rate_interval]))",
+                "hide": false,
+                "instant": false,
+                "legendFormat": "Total CPU Time",
+                "range": true,
+                "refId": "A"
+              }
+            ],
+            "title": "CPU Time",
+            "type": "timeseries"
+          },
+          {
+            "datasource": {
+              "type": "grafana-pyroscope-datasource",
+              "uid": "${DS_GRAFANA-PYROSCOPE-DATASOURCE}"
+            },
+            "description": "Flame graph of job profiling made using Grafana Alloy.",
+            "fieldConfig": {
+              "defaults": {},
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 29,
+              "w": 24,
+              "x": 0,
+              "y": 26
+            },
+            "id": 56,
+            "options": {},
+            "pluginVersion": "11.3.1",
+            "targets": [
+              {
+                "datasource": {
+                  "type": "grafana-pyroscope-datasource",
+                  "uid": "${DS_GRAFANA-PYROSCOPE-DATASOURCE}"
+                },
+                "groupBy": [],
+                "labelSelector": "{service_name=\"${jobid}\"}",
+                "profileTypeId": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+                "queryType": "profile",
+                "refId": "A",
+                "spanSelector": []
+              }
+            ],
+            "title": "Profile",
+            "type": "flamegraph"
+          }
+        ],
+        "title": "Profiling",
+        "type": "row"
+      }
+    ],
+    "schemaVersion": 40,
+    "tags": [
+      "slurm",
+      "emissions",
+      "energy",
+      "batch"
+    ],
+    "templating": {
+      "list": [
+        {
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "hide": 2,
+          "label": "JobID",
+          "name": "jobid",
+          "options": [
+            {
+              "selected": true,
+              "text": "",
+              "value": ""
+            }
+          ],
+          "query": "",
+          "type": "textbox"
+        },
+        {
+          "current": {},
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "definition": "label_values(ceems_compute_unit_cpus{uuid=\"$jobid\"},instance)",
+          "description": "Compute Node Name",
+          "includeAll": false,
+          "label": "Compute Node:",
+          "multi": true,
+          "name": "host",
+          "options": [],
+          "query": {
+            "qryType": 1,
+            "query": "label_values(ceems_compute_unit_cpus{uuid=\"$jobid\"},instance)",
+            "refId": "PrometheusVariableQueryEditor-VariableQuery"
+          },
+          "refresh": 2,
+          "regex": "^(?=.*?(?<text>[^.]*))(?<value>.+)",
+          "type": "query"
+        },
+        {
+          "current": {},
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "definition": "query_result(max_over_time(ceems_compute_unit_gpu_index_flag{instance=~\"${host}\",uuid=\"${jobid}\"}[$__range:]))",
+          "label": "GPU:",
+          "multi": true,
+          "name": "gpu",
+          "options": [],
+          "query": {
+            "qryType": 3,
+            "query": "query_result(max_over_time(ceems_compute_unit_gpu_index_flag{instance=~\"${host}\",uuid=\"${jobid}\"}[$__range:]))",
+            "refId": "PrometheusVariableQueryEditor-VariableQuery"
+          },
+          "refresh": 1,
+          "regex": "/index=\"(?<text>[^\"]+)|gpuuuid=\"(?<value>[^\"]+)/g",
+          "type": "query"
+        },
+        {
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "hide": 2,
+          "name": "name",
+          "options": [
+            {
+              "selected": true,
+              "text": "",
+              "value": ""
+            }
+          ],
+          "query": "",
+          "type": "textbox"
+        },
+        {
+          "current": {
+            "text": "1738943876000",
+            "value": "1738943876000"
+          },
+          "hide": 2,
+          "name": "submit",
+          "options": [
+            {
+              "selected": true,
+              "text": "1738943876000",
+              "value": "1738943876000"
+            }
+          ],
+          "query": "1738943876000",
+          "type": "textbox"
+        },
+        {
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "hide": 2,
+          "name": "nodelist",
+          "options": [
+            {
+              "selected": true,
+              "text": "",
+              "value": ""
+            }
+          ],
+          "query": "",
+          "type": "textbox"
+        },
+        {
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "hide": 2,
+          "name": "state",
+          "options": [
+            {
+              "selected": true,
+              "text": "",
+              "value": ""
+            }
+          ],
+          "query": "",
+          "type": "textbox"
+        },
+        {
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "hide": 2,
+          "name": "elapsed",
+          "options": [
+            {
+              "selected": true,
+              "text": "",
+              "value": ""
+            }
+          ],
+          "query": "",
+          "type": "textbox"
+        },
+        {
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "hide": 2,
+          "name": "account",
+          "options": [
+            {
+              "selected": true,
+              "text": "",
+              "value": ""
+            }
+          ],
+          "query": "",
+          "type": "textbox"
+        },
+        {
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "hide": 2,
+          "name": "partition",
+          "options": [
+            {
+              "selected": true,
+              "text": "",
+              "value": ""
+            }
+          ],
+          "query": "",
+          "type": "textbox"
+        },
+        {
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "hide": 2,
+          "name": "qos",
+          "options": [
+            {
+              "selected": true,
+              "text": "",
+              "value": ""
+            }
+          ],
+          "query": "",
+          "type": "textbox"
+        },
+        {
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "hide": 2,
+          "name": "cpu_usage",
+          "options": [
+            {
+              "selected": true,
+              "text": "",
+              "value": ""
+            }
+          ],
+          "query": "",
+          "type": "textbox"
+        },
+        {
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "hide": 2,
+          "name": "cpumem_usage",
+          "options": [
+            {
+              "selected": true,
+              "text": "",
+              "value": ""
+            }
+          ],
+          "query": "",
+          "type": "textbox"
+        },
+        {
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "hide": 2,
+          "name": "cpu_energy",
+          "options": [
+            {
+              "selected": true,
+              "text": "",
+              "value": ""
+            }
+          ],
+          "query": "",
+          "type": "textbox"
+        },
+        {
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "hide": 2,
+          "name": "cpu_emissions_rte",
+          "options": [
+            {
+              "selected": true,
+              "text": "",
+              "value": ""
+            }
+          ],
+          "query": "",
+          "type": "textbox"
+        },
+        {
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "hide": 2,
+          "name": "cpu_emissions_emaps",
+          "options": [
+            {
+              "selected": true,
+              "text": "",
+              "value": ""
+            }
+          ],
+          "query": "",
+          "type": "textbox"
+        },
+        {
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "hide": 2,
+          "name": "cpu_emissions_owid",
+          "options": [
+            {
+              "selected": true,
+              "text": "",
+              "value": ""
+            }
+          ],
+          "query": "",
+          "type": "textbox"
+        },
+        {
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "hide": 2,
+          "name": "gpu_usage",
+          "options": [
+            {
+              "selected": true,
+              "text": "",
+              "value": ""
+            }
+          ],
+          "query": "",
+          "type": "textbox"
+        },
+        {
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "hide": 2,
+          "name": "gpumem_usage",
+          "options": [
+            {
+              "selected": true,
+              "text": "",
+              "value": ""
+            }
+          ],
+          "query": "",
+          "type": "textbox"
+        },
+        {
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "hide": 2,
+          "name": "gpu_energy",
+          "options": [
+            {
+              "selected": true,
+              "text": "",
+              "value": ""
+            }
+          ],
+          "query": "",
+          "type": "textbox"
+        },
+        {
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "hide": 2,
+          "name": "gpu_emissions_rte",
+          "options": [
+            {
+              "selected": true,
+              "text": "",
+              "value": ""
+            }
+          ],
+          "query": "",
+          "type": "textbox"
+        },
+        {
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "hide": 2,
+          "name": "gpu_emissions_emaps",
+          "options": [
+            {
+              "selected": true,
+              "text": "",
+              "value": ""
+            }
+          ],
+          "query": "",
+          "type": "textbox"
+        },
+        {
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "hide": 2,
+          "name": "gpu_emissions_owid",
+          "options": [
+            {
+              "selected": true,
+              "text": "",
+              "value": ""
+            }
+          ],
+          "query": "",
+          "type": "textbox"
+        },
+        {
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "hide": 2,
+          "name": "total_energy",
+          "options": [
+            {
+              "selected": true,
+              "text": "",
+              "value": ""
+            }
+          ],
+          "query": "",
+          "type": "textbox"
+        },
+        {
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "hide": 2,
+          "name": "total_emissions_rte",
+          "options": [
+            {
+              "selected": true,
+              "text": "",
+              "value": ""
+            }
+          ],
+          "query": "",
+          "type": "textbox"
+        },
+        {
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "hide": 2,
+          "name": "total_emissions_emaps",
+          "options": [
+            {
+              "selected": true,
+              "text": "",
+              "value": ""
+            }
+          ],
+          "query": "",
+          "type": "textbox"
+        },
+        {
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "hide": 2,
+          "name": "total_emissions_owid",
+          "options": [
+            {
+              "selected": true,
+              "text": "",
+              "value": ""
+            }
+          ],
+          "query": "",
+          "type": "textbox"
+        }
+      ]
+    },
+    "time": {
+      "from": "2025-02-07T15:58:19.000Z",
+      "to": "2025-02-07T16:05:03.000Z"
+    },
+    "timepicker": {
+      "hidden": true,
+      "refresh_intervals": [
+        "5m",
+        "15m",
+        "30m",
+        "1h",
+        "2h",
+        "1d"
+      ]
+    },
+    "timezone": "",
+    "title": "Single Job Metrics",
+    "uid": "ee9dysqetkow0aslurm",
+    "version": 1,
+    "weekStart": ""
+  }
+  

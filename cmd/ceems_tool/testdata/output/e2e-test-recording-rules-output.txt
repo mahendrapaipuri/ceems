@@ -1,46 +1,49 @@
-amd-gpu.rules
+amd-gpu-gpu.rules
 ---
-# Recording rules for AMD GPUs in cpu-cray-amd-gpu
+# Recording rules for AMD GPUs scrape job amd-gpu.
+#
+# These rules map the GPU usage to the compute unit `uuid` which gives
+# GPU metrics for each compute unit.
 #
 # We leverage these rules to include PUE (Power Usage Effectiveness) in the Power
 # estimation as well.
 #
 groups:
-  - name: compute-unit-gpu-rules-cpu-cray-amd-gpu
+  - name: compute-unit-gpu-rules-amd-gpu
+    interval: 1s
     rules:
       # GPU Usage (%) by compute unit
-      - record: uuid:ceems_compute_unit_gpu_usage:ratio
+      - record: uuid:ceems_gpu_usage:ratio
         expr: |2
             amd_gpu_use_percent{job="amd-gpu"}
             * on (index) group_right ()
             ceems_compute_unit_gpu_index_flag{job="cpu-cray-amd-gpu"}
 
       # GPU Memory Usage (%) by compute unit
-      - record: uuid:ceems_compute_unit_gpu_memory_usage:ratio
+      - record: uuid:ceems_gpu_memory_usage:ratio
         expr: |2
           amd_gpu_memory_use_percent{job="amd-gpu"}
           * on (index) group_right ()
           ceems_compute_unit_gpu_index_flag{job="cpu-cray-amd-gpu"}
       
-      # Total power (Watts) consumed by the GPU by including Power Usage Effectiveness (PUE) value.
-      # By default, a PUE of 1 is used.
+      # Total power (Watts) consumed by the GPU by accounting Power Usage Effectiveness (PUE) value.
       # AMD GPU power is in micro Watts and we need to convert it to Watts here
-      - record: dev:amg_gpu_power_watts:pue
-        expr: 1 * amg_gpu_power{job="amd-gpu"} / 1e6
+      - record: dev:amd_gpu_power_watts:pue
+        expr: 1 * amd_gpu_power{job="amd-gpu"} / 1e6
 
-      - record: uuid:ceems_compute_unit_gpu_power_watts:pue
+      - record: uuid:ceems_gpu_power_watts:pue
         expr: |2
-          dev:amg_gpu_power_watts:pue{job="amd-gpu"}
+          dev:amd_gpu_power_watts:pue{job="amd-gpu"}
           * on (index) group_right()
           ceems_compute_unit_gpu_index_flag{job="cpu-cray-amd-gpu"}
 
-      # Total equivalent emissions rate (g/s) from GPU due to the power consumed by the compute unit.
+      # Total equivalent emissions rate (g/s) from GPU due to the power consumed by the compute unit's GPUs.
       # The equivalent emissions are estimated using emission factor from owid for country
       # FR
-      - record: uuid:ceems_compute_unit_gpu_emissions_g_s:pue
+      - record: uuid:ceems_gpu_emissions_g_s:pue
         expr: |2
           label_replace(
-              dev:amg_gpu_power_watts:pue{job="amd-gpu"} / 3.6e+06
+              dev:amd_gpu_power_watts:pue{job="amd-gpu"} / 3.6e+06
             * on (index) group_right ()
               ceems_compute_unit_gpu_index_flag{job="cpu-cray-amd-gpu"},
               "provider",
@@ -57,6 +60,39 @@ groups:
               "(.*)"
             ) 
 
+
+  # The following recording rules estimate the average GPU, GPU memory usages and
+  # total GPU power and its equivalent emissions aggregared for all hosts 
+  # per Prometheus job.
+  # 
+  - name: host-agg-gpu-rules-amd-gpu
+    interval: 2s
+    rules:
+      # Average GPU Usage (%) for all hosts aggregated per Prometheus job
+      - record: job:ceems_gpu_usage:avg
+        expr: avg by (job) (amd_gpu_use_percent{job="amd-gpu"})
+
+      # Average GPU memory usage (%) for all hosts aggregated per Prometheus job
+      - record: job:ceems_gpu_memory_usage:avg_ratio
+        expr: avg by (job) (amd_gpu_memory_use_percent{job="amd-gpu"})
+
+      # Total power usage (Watts) by GPUs on all hosts aggregated per Prometheus job
+      # AMD GPU power is in micro Watts and we need to convert it to Watts here
+      - record: job:ceems_gpu_power_watts:pue
+        expr: sum by (job)(1 * amd_gpu_power{job="amd-gpu"} / 1e6)
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by GPUs on all ths hosts
+      # in a Prometheus job accounting PUE value.
+      # The equivalent emissions are estimated for country FR
+      - record: job:ceems_gpu_emissions_g_s:pue
+        expr: |2
+          sum by (job, country_code, country, provider) (
+            (
+                job:ceems_gpu_power_watts:pue{job="amd-gpu"} / 3.6e+06
+              * on (job) group_right ()
+                label_replace(ceems_emissions_gCo2_kWh, "job", "amd-gpu", "instance", "(.*)")
+            )
+          )
 cpu-cray-amd-gpu.rules
 ---
 # Recording rules for scrape job cpu-cray-amd-gpu
@@ -74,7 +110,7 @@ groups:
     interval: 1s
     rules:
       # CPU usage (%) of compute unit. It is percentage of CPU cycles spent by the compute unit.
-      - record: uuid:ceems_compute_unit_cpu_usage:ratio_irate
+      - record: uuid:ceems_cpu_usage:ratio_irate
         expr: |2
           (
               irate(ceems_compute_unit_cpu_user_seconds_total{job="cpu-cray-amd-gpu"}[2s])
@@ -86,18 +122,17 @@ groups:
 
       # CPU memory usage (%) of compute unit. It is percentage of CPU memory used by compute unit relative to
       # the available memory to the compute unit.
-      - record: uuid:ceems_compute_unit_cpu_memory_usage:ratio
+      - record: uuid:ceems_cpu_memory_usage:ratio
         expr: |2
           ceems_compute_unit_memory_used_bytes{job="cpu-cray-amd-gpu"} * 100
           /
           (ceems_compute_unit_memory_total_bytes{job="cpu-cray-amd-gpu"} > 0)
 
-      # Total power (Watts) consumed by the instance by including Power Usage Effectiveness (PUE) value.
-      # By default, a PUE of 1 is used.
+      # Total host power (Watts) consumed by the instance by accouting Power Usage Effectiveness (PUE) value.
       - record: instance:ceems_cray_pm_counters_power_watts:pue
         expr: 1 * ceems_cray_pm_counters_power_watts{job="cpu-cray-amd-gpu"}
 
-      # Total power (Watts) consumed by the compute unit including PUE value.
+      # Total host power (Watts) consumed by the compute unit accouting PUE value.
       #
       # Cray PM counters provide power consumption by CPU, memory and entire node.
       # This power consumption by the CPU and memory are split among all the running compute units
@@ -110,7 +145,7 @@ groups:
       # Misc power is the power consumption by all other peripherals on the compute host like NIC, disks, PCIe, etc.
       # This misc power is split equally among all running compute units at a given time.
       #
-      - record: uuid:ceems_compute_unit_cpu_power_watts:pue
+      - record: uuid:ceems_host_power_watts:pue
         expr: |2
             instance:ceems_cray_pm_counters_power_watts:pue{domain="cpu",job="cpu-cray-amd-gpu"} # CPU Power Usage by Compute Unit
                 * on (instance) group_right ()
@@ -154,13 +189,13 @@ groups:
                     0
                 )
 
-      # Total equivalent emissions rate (g/s) due to the power consumed by the compute unit.
+      # Total equivalent emissions rate (g/s) due to the host power consumed by the compute unit.
       # The equivalent emissions are estimated using emission factor from owid for country
       # FR
-      - record: uuid:ceems_compute_unit_cpu_emissions_g_s:pue
+      - record: uuid:ceems_host_emissions_g_s:pue
         expr: |2
           label_replace(
-              uuid:ceems_compute_unit_cpu_power_watts:pue{job="cpu-cray-amd-gpu"} / 3.6e+06,
+              uuid:ceems_host_power_watts:pue{job="cpu-cray-amd-gpu"} / 3.6e+06,
               "provider",
               "owid",
               "instance",
@@ -168,6 +203,71 @@ groups:
             )
           * on (provider) group_left ()
             ceems_emissions_gCo2_kWh{country_code="FR",provider="owid"} 
+
+
+  # The following recording rules estimate the average CPU, CPU memory usages and
+  # total host power (excluding GPUs) and its equivalent emissions aggregared for all hosts 
+  # per Prometheus job.
+  # 
+  - name: host-agg-rules-cpu-cray-amd-gpu
+    interval: 2s
+    rules:
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU cycles spent by the host.
+      - record: job:ceems_cpu_usage:avg_ratio_irate
+        expr: |2
+          avg by (job) (
+            (
+                  sum by (job, instance) (
+                    irate(ceems_cpu_seconds_total{job="cpu-cray-amd-gpu",mode!~"idle|iowait|steal"}[2s])
+                  )
+                *
+                  100
+              / on (instance) group_left ()
+                ((ceems_cpu_count{job="cpu-cray-amd-gpu"} > 0) / ceems_cpu_per_core_count{job="cpu-cray-amd-gpu"})
+            )
+          )
+
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU memory used by host relative to
+      # the available memory to the host.
+      - record: job:ceems_cpu_memory_usage:avg_ratio
+        expr: |2
+          avg by (job) (
+              (
+                (
+                    1
+                  -
+                    (ceems_meminfo_MemAvailable_bytes{job="cpu-cray-amd-gpu"} / ceems_meminfo_MemTotal_bytes{job="cpu-cray-amd-gpu"})
+                )
+              )
+            )
+          *
+            100
+
+      # Total power (Watts) consumed by all hosts excluding GPUs in a Prometheus job accounting PUE value.
+      - record: job:ceems_host_power_watts:pue
+        expr: |2
+          sum by (job) (
+              1
+            *
+              (
+                  ceems_cray_pm_counters_power_watts{domain="node",job="cpu-cray-amd-gpu"}
+                - on (instance) group_left ()
+                  sum by (instance) (ceems_cray_pm_counters_power_watts{domain=~"accel.*",job="cpu-cray-amd-gpu"})
+              )
+          )
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by all ths hosts excluding GPUs
+      # in a Prometheus job accounting PUE value.
+      # The equivalent emissions are estimated for country FR
+      - record: job:ceems_host_emissions_g_s:pue
+        expr: |2
+          sum by (job, country_code, country, provider) (
+            (
+                job:ceems_host_power_watts:pue{job="cpu-cray-amd-gpu"} / 3.6e+06
+              * on (job) group_right ()
+                label_replace(ceems_emissions_gCo2_kWh, "job", "cpu-cray-amd-gpu", "instance", "(.*)")
+            )
+          )
 
 cpu-ipmi-nvidia-gpu.rules
 ---
@@ -186,7 +286,7 @@ groups:
     interval: 1s
     rules:
       # CPU usage (%) of compute unit. It is percentage of CPU cycles spent by the compute unit.
-      - record: uuid:ceems_compute_unit_cpu_usage:ratio_irate
+      - record: uuid:ceems_cpu_usage:ratio_irate
         expr: |2
           (
               irate(ceems_compute_unit_cpu_user_seconds_total{job="cpu-ipmi-nvidia-gpu"}[2s])
@@ -198,24 +298,26 @@ groups:
 
       # CPU memory usage (%) of compute unit. It is percentage of CPU memory used by compute unit relative to
       # the available memory to the compute unit.
-      - record: uuid:ceems_compute_unit_cpu_memory_usage:ratio
+      - record: uuid:ceems_cpu_memory_usage:ratio
         expr: |2
           ceems_compute_unit_memory_used_bytes{job="cpu-ipmi-nvidia-gpu"} * 100
           /
           (ceems_compute_unit_memory_total_bytes{job="cpu-ipmi-nvidia-gpu"} > 0)
 
-      # Total power (Watts) consumed by the instance by including Power Usage Effectiveness (PUE) value.
-      # By default, a PUE of 1 is used.
-      #
+      # Total power (Watts) consumed by the instance by accounting Power Usage Effectiveness (PUE) value.
       - record: instance:ceems_ipmi_dcmi_current_watts:pue
-        expr: 1 * (label_replace(ceems_ipmi_dcmi_current_watts{job="cpu-ipmi-nvidia-gpu"}, "instancehost", "$1", "instance", "([^:]+):\\d+") - on (instancehost) group_left () sum by (instancehost) (label_replace(DCGM_FI_DEV_POWER_USAGE{job="ipmi-nvidia-gpu"} / 1,  "instancehost", "$1", "instance", "([^:]+):\\d+"))) > 0
+        expr: 1 * (label_replace(ceems_ipmi_dcmi_current_watts{job="cpu-ipmi-nvidia-gpu"}, "instancehost", "$1", "instance", "([^:]+):\\d+") - on (instancehost) group_left () sum by (instancehost) (label_replace(DCGM_FI_DEV_POWER_USAGE_INSTANT{job="ipmi-nvidia-gpu"} / 1,  "instancehost", "$1", "instance", "([^:]+):\\d+"))) > 0
 
-      # Total power (Watts) consumed by the compute unit including PUE value.
+      # Total host power (Watts) consumed by the compute unit accounting PUE value.
       #
       # Firstly, we make an assumption that 90% of power is consumed by CPU, DRAM and 10% by other
       # peripherals like network, storage, etc.
       #
-      # We leverage RAPL package and DRAM to split the rest of 90% power between CPU and DRAM
+      # (If the assumption does not fit your infrastructure, you can manually change the values
+      # in the rules. For instance, if the server has many storage disks, the 10 % can be increased
+      # further to account for disk power consumption.)
+      #
+      # We leverage RAPL package and DRAM counters to split the rest of 90% power between CPU and DRAM
       # components, when available. When RAPL counters are not available, we assume all 90% power 
       # is consumed by CPU.
       #
@@ -233,9 +335,9 @@ groups:
       # Compute Unit CPU Memory Power = Total CPU DRAM Power * (Compute Unit Memory / Total Memory)
       # Misc Power Usage by Compute Unit = 0.1 * Total Power / Number of Compute Units
       #
-      # Total Compute Unit Power = Compute Unit CPU Power + Compute Unit CPU Memory Power + Misc Power Usage by Compute Unit
+      # Total Compute Unit Host Power = Compute Unit CPU Power + Compute Unit CPU Memory Power + Misc Power Usage by Compute Unit
       #
-      - record: uuid:ceems_compute_unit_cpu_power_watts:pue
+      - record: uuid:ceems_host_power_watts:pue
         expr: |2
             0.9 * instance:ceems_ipmi_dcmi_current_watts:pue{job="cpu-ipmi-nvidia-gpu"} # Assumption 90% Power usage by CPU, CPU memory and other peripherals.
               * on (instance) group_right () # Total CPU Power * (Compute CPU Time / Total CPU Time) -> Compute Unit CPU Power
@@ -264,18 +366,74 @@ groups:
       # Total equivalent emissions rate (g/s) due to the power consumed by the compute unit.
       # The equivalent emissions are estimated using emission factor from owid for country
       # FR
-      - record: uuid:ceems_compute_unit_cpu_emissions_g_s:pue
+      - record: uuid:ceems_host_emissions_g_s:pue
         expr: |2
           label_replace(
-              uuid:ceems_compute_unit_cpu_power_watts:pue{job="cpu-ipmi-nvidia-gpu"} / 3.6e+06,
+              uuid:ceems_host_power_watts:pue{job="cpu-ipmi-nvidia-gpu"} / 3.6e+06,
               "provider",
               "owid",
               "instance",
               "(.*)"
             )
           * on (provider) group_left ()
-            ceems_emissions_gCo2_kWh{country_code="FR",provider="owid"}  
+            ceems_emissions_gCo2_kWh{country_code="FR",provider="owid"} 
 
+
+  # The following recording rules estimate the average CPU, CPU memory usages and
+  # total host power (excluding GPUs) and its equivalent emissions aggregared for all hosts 
+  # per Prometheus job.
+  # 
+  - name: host-agg-rules-cpu-ipmi-nvidia-gpu
+    interval: 2s
+    rules:
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU cycles spent by the host.
+      - record: job:ceems_cpu_usage:avg_ratio_irate
+        expr: |2
+          avg by (job) (
+            (
+                  sum by (job, instance) (
+                    irate(ceems_cpu_seconds_total{job="cpu-ipmi-nvidia-gpu",mode!~"idle|iowait|steal"}[2s])
+                  )
+                *
+                  100
+              / on (instance) group_left ()
+                ((ceems_cpu_count{job="cpu-ipmi-nvidia-gpu"} > 0) / ceems_cpu_per_core_count{job="cpu-ipmi-nvidia-gpu"})
+            )
+          )
+
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU memory used by host relative to
+      # the available memory to the host.
+      - record: job:ceems_cpu_memory_usage:avg_ratio
+        expr: |2
+          avg by (job) (
+              (
+                (
+                    1
+                  -
+                    (ceems_meminfo_MemAvailable_bytes{job="cpu-ipmi-nvidia-gpu"} / ceems_meminfo_MemTotal_bytes{job="cpu-ipmi-nvidia-gpu"})
+                )
+              )
+            )
+          *
+            100
+
+      # Total power (Watts) consumed by all hosts excluding GPUs in a Prometheus job accounting PUE value.
+      - record: job:ceems_host_power_watts:pue
+        expr: |2
+          sum by (job) (1 * (label_replace(ceems_ipmi_dcmi_current_watts{job="cpu-ipmi-nvidia-gpu"}, "instancehost", "$1", "instance", "([^:]+):\\d+") - on (instancehost) group_left () sum by (instancehost) (label_replace(DCGM_FI_DEV_POWER_USAGE_INSTANT{job="ipmi-nvidia-gpu"} / 1,  "instancehost", "$1", "instance", "([^:]+):\\d+"))) > 0)
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by all ths hosts excluding GPUs
+      # in a Prometheus job accounting PUE value.
+      # The equivalent emissions are estimated for country FR
+      - record: job:ceems_host_emissions_g_s:pue
+        expr: |2
+          sum by (job, country_code, country, provider) (
+            (
+                job:ceems_host_power_watts:pue{job="cpu-ipmi-nvidia-gpu"} / 3.6e+06
+              * on (job) group_right ()
+                label_replace(ceems_emissions_gCo2_kWh, "job", "cpu-ipmi-nvidia-gpu", "instance", "(.*)")
+            )
+          )
 cpu-only-ipmi.rules
 ---
 # Recording rules for scrape job cpu-only-ipmi
@@ -293,7 +451,7 @@ groups:
     interval: 1s
     rules:
       # CPU usage (%) of compute unit. It is percentage of CPU cycles spent by the compute unit.
-      - record: uuid:ceems_compute_unit_cpu_usage:ratio_irate
+      - record: uuid:ceems_cpu_usage:ratio_irate
         expr: |2
           (
               irate(ceems_compute_unit_cpu_user_seconds_total{job="cpu-only-ipmi"}[2s])
@@ -305,24 +463,26 @@ groups:
 
       # CPU memory usage (%) of compute unit. It is percentage of CPU memory used by compute unit relative to
       # the available memory to the compute unit.
-      - record: uuid:ceems_compute_unit_cpu_memory_usage:ratio
+      - record: uuid:ceems_cpu_memory_usage:ratio
         expr: |2
           ceems_compute_unit_memory_used_bytes{job="cpu-only-ipmi"} * 100
           /
           (ceems_compute_unit_memory_total_bytes{job="cpu-only-ipmi"} > 0)
 
-      # Total power (Watts) consumed by the instance by including Power Usage Effectiveness (PUE) value.
-      # By default, a PUE of 1 is used.
-      #
+      # Total power (Watts) consumed by the instance by accounting Power Usage Effectiveness (PUE) value.
       - record: instance:ceems_ipmi_dcmi_current_watts:pue
         expr: 1 * ceems_ipmi_dcmi_current_watts{job="cpu-only-ipmi"}
 
-      # Total power (Watts) consumed by the compute unit including PUE value.
+      # Total host power (Watts) consumed by the compute unit accounting PUE value.
       #
       # Firstly, we make an assumption that 90% of power is consumed by CPU, DRAM and 10% by other
       # peripherals like network, storage, etc.
       #
-      # We leverage RAPL package and DRAM to split the rest of 90% power between CPU and DRAM
+      # (If the assumption does not fit your infrastructure, you can manually change the values
+      # in the rules. For instance, if the server has many storage disks, the 10 % can be increased
+      # further to account for disk power consumption.)
+      #
+      # We leverage RAPL package and DRAM counters to split the rest of 90% power between CPU and DRAM
       # components, when available. When RAPL counters are not available, we assume all 90% power 
       # is consumed by CPU.
       #
@@ -340,9 +500,9 @@ groups:
       # Compute Unit CPU Memory Power = Total CPU DRAM Power * (Compute Unit Memory / Total Memory)
       # Misc Power Usage by Compute Unit = 0.1 * Total Power / Number of Compute Units
       #
-      # Total Compute Unit Power = Compute Unit CPU Power + Compute Unit CPU Memory Power + Misc Power Usage by Compute Unit
+      # Total Compute Unit Host Power = Compute Unit CPU Power + Compute Unit CPU Memory Power + Misc Power Usage by Compute Unit
       #
-      - record: uuid:ceems_compute_unit_cpu_power_watts:pue
+      - record: uuid:ceems_host_power_watts:pue
         expr: |2
             0.9 * instance:ceems_ipmi_dcmi_current_watts:pue{job="cpu-only-ipmi"} # Assumption 90% Power usage by CPU, CPU memory and other peripherals.
                 * on (instance) group_left () # 0.9 * Total Power * (RAPL Package / (RAPL Package + RAPL DRAM)) -> Total CPU Power
@@ -403,18 +563,74 @@ groups:
       # Total equivalent emissions rate (g/s) due to the power consumed by the compute unit.
       # The equivalent emissions are estimated using emission factor from owid for country
       # FR
-      - record: uuid:ceems_compute_unit_cpu_emissions_g_s:pue
+      - record: uuid:ceems_host_emissions_g_s:pue
         expr: |2
           label_replace(
-              uuid:ceems_compute_unit_cpu_power_watts:pue{job="cpu-only-ipmi"} / 3.6e+06,
+              uuid:ceems_host_power_watts:pue{job="cpu-only-ipmi"} / 3.6e+06,
               "provider",
               "owid",
               "instance",
               "(.*)"
             )
           * on (provider) group_left ()
-            ceems_emissions_gCo2_kWh{country_code="FR",provider="owid"}  
+            ceems_emissions_gCo2_kWh{country_code="FR",provider="owid"} 
 
+
+  # The following recording rules estimate the average CPU, CPU memory usages and
+  # total host power (excluding GPUs) and its equivalent emissions aggregared for all hosts 
+  # per Prometheus job.
+  # 
+  - name: host-agg-rules-cpu-only-ipmi
+    interval: 2s
+    rules:
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU cycles spent by the host.
+      - record: job:ceems_cpu_usage:avg_ratio_irate
+        expr: |2
+          avg by (job) (
+            (
+                  sum by (job, instance) (
+                    irate(ceems_cpu_seconds_total{job="cpu-only-ipmi",mode!~"idle|iowait|steal"}[2s])
+                  )
+                *
+                  100
+              / on (instance) group_left ()
+                ((ceems_cpu_count{job="cpu-only-ipmi"} > 0) / ceems_cpu_per_core_count{job="cpu-only-ipmi"})
+            )
+          )
+
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU memory used by host relative to
+      # the available memory to the host.
+      - record: job:ceems_cpu_memory_usage:avg_ratio
+        expr: |2
+          avg by (job) (
+              (
+                (
+                    1
+                  -
+                    (ceems_meminfo_MemAvailable_bytes{job="cpu-only-ipmi"} / ceems_meminfo_MemTotal_bytes{job="cpu-only-ipmi"})
+                )
+              )
+            )
+          *
+            100
+
+      # Total power (Watts) consumed by all hosts excluding GPUs in a Prometheus job accounting PUE value.
+      - record: job:ceems_host_power_watts:pue
+        expr: |2
+          sum by (job) (1 * ceems_ipmi_dcmi_current_watts{job="cpu-only-ipmi"})
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by all ths hosts excluding GPUs
+      # in a Prometheus job accounting PUE value.
+      # The equivalent emissions are estimated for country FR
+      - record: job:ceems_host_emissions_g_s:pue
+        expr: |2
+          sum by (job, country_code, country, provider) (
+            (
+                job:ceems_host_power_watts:pue{job="cpu-only-ipmi"} / 3.6e+06
+              * on (job) group_right ()
+                label_replace(ceems_emissions_gCo2_kWh, "job", "cpu-only-ipmi", "instance", "(.*)")
+            )
+          )
 cpu-only-rapl.rules
 ---
 # Recording rules for scrape job cpu-only-rapl
@@ -432,7 +648,7 @@ groups:
     interval: 1s
     rules:
       # CPU usage (%) of compute unit. It is percentage of CPU cycles spent by the compute unit.
-      - record: uuid:ceems_compute_unit_cpu_usage:ratio_irate
+      - record: uuid:ceems_cpu_usage:ratio_irate
         expr: |2
           (
               irate(ceems_compute_unit_cpu_user_seconds_total{job="cpu-only-rapl"}[2s])
@@ -444,38 +660,36 @@ groups:
 
       # CPU memory usage (%) of compute unit. It is percentage of CPU memory used by compute unit relative to
       # the available memory to the compute unit.
-      - record: uuid:ceems_compute_unit_cpu_memory_usage:ratio
+      - record: uuid:ceems_cpu_memory_usage:ratio
         expr: |2
           ceems_compute_unit_memory_used_bytes{job="cpu-only-rapl"} * 100
           /
           (ceems_compute_unit_memory_total_bytes{job="cpu-only-rapl"} > 0)
 
-      # Total power (Watts) consumed by the instance by including Power Usage Effectiveness (PUE) value.
+      # Total power (Watts) consumed by the instance by accounting Power Usage Effectiveness (PUE) value.
       # By default, a PUE of 1 is used.
       - record: instance:ceems_rapl_package_joules_total:pue
         expr: 1 * ceems_rapl_package_joules_total{job="cpu-only-rapl"}
 
-      # Total power (Watts) consumed by the instance by including Power Usage Effectiveness (PUE) value.
+      # Total power (Watts) consumed by the instance by accounting Power Usage Effectiveness (PUE) value.
       # By default, a PUE of 1 is used.
       - record: instance:ceems_rapl_dram_joules_total:pue
         expr: 1 * ceems_rapl_dram_joules_total{job="cpu-only-rapl"}
 
-      # Unit's CPU total energy usage estimated from IPMI DCMI
-      - record: uuid:ceems_compute_unit_cpu_power_watts:pue
+      # Total power (Watts) consumed by the compute unit accounting PUE value.
+      #
+      # RAPL exposes mainly package and DRAM. Depending on CPU models other
+      # domains like core, uncore, psys can also be exposed. Current rules
+      # consider only package and DRAM.
+      #
+      # Compute Unit CPU Power = Total RAPL Package Power * (Compute Unit CPU Time / Total Node CPU Time)
+      # Compute Unit Memory Power = Total RAPL DRAM Power * (Compute Unit Memory Usage / Total Node Memory Usage)
+      # Compute Unit Host Power = Compute Unit CPU Power + Compute Unit Memory Power
+      #
+      - record: uuid:ceems_host_power_watts:pue
         expr: |2
           (
-                  sum by (instance) (irate(ceems_rapl_package_joules_total{job="cpu-only-rapl"}[2s]))
-                /
-                  (
-                      sum by (instance) (irate(ceems_rapl_package_joules_total{job="cpu-only-rapl"}[2s]))
-                    +
-                      (
-                          sum by (instance) (irate(ceems_rapl_dram_joules_total{job="cpu-only-rapl"}[2s]))
-                        or
-                          sum by (instance) (irate(ceems_rapl_package_joules_total{job="cpu-only-rapl"}[2s])) * 0
-                      )
-                  )
-              )
+              sum by (instance) (irate(instance:ceems_rapl_package_joules_total:pue{job="cpu-only-rapl"}[2s]))
             * on (instance) group_right ()
               (
                   (
@@ -487,23 +701,7 @@ groups:
                   sum by (instance) (irate(ceems_cpu_seconds_total{job="cpu-only-rapl",mode!~"idle|iowait|steal"}[2s]))
               )
           +
-              (
-                  (
-                          sum by (instance) (irate(ceems_rapl_dram_joules_total{job="cpu-only-rapl"}[2s]))
-                        or
-                          sum by (instance) (irate(ceems_rapl_package_joules_total{job="cpu-only-rapl"}[2s])) * 0
-                      )
-                /
-                  (
-                      sum by (instance) (irate(ceems_rapl_package_joules_total{job="cpu-only-rapl"}[2s]))
-                    +
-                      (
-                          sum by (instance) (irate(ceems_rapl_dram_joules_total{job="cpu-only-rapl"}[2s]))
-                        or
-                          sum by (instance) (irate(ceems_rapl_package_joules_total{job="cpu-only-rapl"}[2s])) * 0
-                      )
-                  )
-              )
+              sum by (instance) (irate(instance:ceems_rapl_dram_joules_total:pue{job="cpu-only-rapl"}[2s]))
             * on (instance) group_right ()
               (
                   ceems_compute_unit_memory_used_bytes{job="cpu-only-rapl"}
@@ -514,14 +712,15 @@ groups:
                       ceems_meminfo_MemAvailable_bytes{job="cpu-only-rapl"}
                   )
               )
+          )
 
       # Total equivalent emissions rate (g/s) due to the power consumed by the compute unit.
       # The equivalent emissions are estimated using emission factor from owid for country
       # FR
-      - record: uuid:ceems_compute_unit_cpu_emissions_g_s:pue
+      - record: uuid:ceems_host_emissions_g_s:pue
         expr: |2
           label_replace(
-              uuid:ceems_compute_unit_cpu_power_watts:pue{job="cpu-only-rapl"} / 3.6e+06,
+              uuid:ceems_host_power_watts:pue{job="cpu-only-rapl"} / 3.6e+06,
               "provider",
               "owid",
               "instance",
@@ -530,6 +729,70 @@ groups:
           * on (provider) group_left ()
             ceems_emissions_gCo2_kWh{country_code="FR",provider="owid"} 
 
+
+  # The following recording rules estimate the average CPU, CPU memory usages and
+  # total host power (excluding GPUs) and its equivalent emissions aggregared for all hosts 
+  # per Prometheus job.
+  # 
+  - name: host-agg-rules-cpu-only-rapl
+    interval: 2s
+    rules:
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU cycles spent by the host.
+      - record: job:ceems_cpu_usage:avg_ratio_irate
+        expr: |2
+          avg by (job) (
+            (
+                  sum by (job, instance) (
+                    irate(ceems_cpu_seconds_total{job="cpu-only-rapl",mode!~"idle|iowait|steal"}[2s])
+                  )
+                *
+                  100
+              / on (instance) group_left ()
+                ((ceems_cpu_count{job="cpu-only-rapl"} > 0) / ceems_cpu_per_core_count{job="cpu-only-rapl"})
+            )
+          )
+
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU memory used by host relative to
+      # the available memory to the host.
+      - record: job:ceems_cpu_memory_usage:avg_ratio
+        expr: |2
+          avg by (job) (
+              (
+                (
+                    1
+                  -
+                    (ceems_meminfo_MemAvailable_bytes{job="cpu-only-rapl"} / ceems_meminfo_MemTotal_bytes{job="cpu-only-rapl"})
+                )
+              )
+            )
+          *
+            100
+
+      # Total power (Watts) consumed by all hosts excluding GPUs in a Prometheus job accounting PUE value.
+      - record: job:ceems_host_power_watts:pue
+        expr: |2
+          sum by (job) (
+              1
+            *
+              (
+                  sum by (instance) (irate(ceems_rapl_package_joules_total{job="cpu-only-rapl"}[2s]))
+                +
+                  sum by (instance) (irate(ceems_rapl_dram_joules_total{job="cpu-only-rapl"}[2s]))
+              )
+          )
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by all ths hosts excluding GPUs
+      # in a Prometheus job accounting PUE value.
+      # The equivalent emissions are estimated for country FR
+      - record: job:ceems_host_emissions_g_s:pue
+        expr: |2
+          sum by (job, country_code, country, provider) (
+            (
+                job:ceems_host_power_watts:pue{job="cpu-only-rapl"} / 3.6e+06
+              * on (job) group_right ()
+                label_replace(ceems_emissions_gCo2_kWh, "job", "cpu-only-rapl", "instance", "(.*)")
+            )
+          )
 cpu-only-redfish.rules
 ---
 # Recording rules for scrape job cpu-only-redfish
@@ -547,7 +810,7 @@ groups:
     interval: 1s
     rules:
       # CPU usage (%) of compute unit. It is percentage of CPU cycles spent by the compute unit.
-      - record: uuid:ceems_compute_unit_cpu_usage:ratio_irate
+      - record: uuid:ceems_cpu_usage:ratio_irate
         expr: |2
           (
               irate(ceems_compute_unit_cpu_user_seconds_total{job="cpu-only-redfish"}[2s])
@@ -559,24 +822,26 @@ groups:
 
       # CPU memory usage (%) of compute unit. It is percentage of CPU memory used by compute unit relative to
       # the available memory to the compute unit.
-      - record: uuid:ceems_compute_unit_cpu_memory_usage:ratio
+      - record: uuid:ceems_cpu_memory_usage:ratio
         expr: |2
           ceems_compute_unit_memory_used_bytes{job="cpu-only-redfish"} * 100
           /
           (ceems_compute_unit_memory_total_bytes{job="cpu-only-redfish"} > 0)
 
-      # Total power (Watts) consumed by the instance by including Power Usage Effectiveness (PUE) value.
-      # By default, a PUE of 1 is used.
-      #
+      # Total power (Watts) consumed by the instance by accounting Power Usage Effectiveness (PUE) value.
       - record: instance:ceems_redfish_current_watts:pue
         expr: 1 * ceems_redfish_current_watts{job="cpu-only-redfish",chassis="Chassis_1"}
 
-      # Total power (Watts) consumed by the compute unit including PUE value.
+      # Total host power (Watts) consumed by the compute unit accounting PUE value.
       #
       # Firstly, we make an assumption that 90% of power is consumed by CPU, DRAM and 10% by other
       # peripherals like network, storage, etc.
       #
-      # We leverage RAPL package and DRAM to split the rest of 90% power between CPU and DRAM
+      # (If the assumption does not fit your infrastructure, you can manually change the values
+      # in the rules. For instance, if the server has many storage disks, the 10 % can be increased
+      # further to account for disk power consumption.)
+      #
+      # We leverage RAPL package and DRAM counters to split the rest of 90% power between CPU and DRAM
       # components, when available. When RAPL counters are not available, we assume all 90% power 
       # is consumed by CPU.
       #
@@ -594,9 +859,9 @@ groups:
       # Compute Unit CPU Memory Power = Total CPU DRAM Power * (Compute Unit Memory / Total Memory)
       # Misc Power Usage by Compute Unit = 0.1 * Total Power / Number of Compute Units
       #
-      # Total Compute Unit Power = Compute Unit CPU Power + Compute Unit CPU Memory Power + Misc Power Usage by Compute Unit
+      # Total Compute Unit Host Power = Compute Unit CPU Power + Compute Unit CPU Memory Power + Misc Power Usage by Compute Unit
       #
-      - record: uuid:ceems_compute_unit_cpu_power_watts:pue
+      - record: uuid:ceems_host_power_watts:pue
         expr: |2
             0.9 * instance:ceems_redfish_current_watts:pue{job="cpu-only-redfish"} # Assumption 90% Power usage by CPU, CPU memory and other peripherals.
                 * on (instance) group_left () # 0.9 * Total Power * (RAPL Package / (RAPL Package + RAPL DRAM)) -> Total CPU Power
@@ -657,18 +922,74 @@ groups:
       # Total equivalent emissions rate (g/s) due to the power consumed by the compute unit.
       # The equivalent emissions are estimated using emission factor from owid for country
       # FR
-      - record: uuid:ceems_compute_unit_cpu_emissions_g_s:pue
+      - record: uuid:ceems_host_emissions_g_s:pue
         expr: |2
           label_replace(
-              uuid:ceems_compute_unit_cpu_power_watts:pue{job="cpu-only-redfish"} / 3.6e+06,
+              uuid:ceems_host_power_watts:pue{job="cpu-only-redfish"} / 3.6e+06,
               "provider",
               "owid",
               "instance",
               "(.*)"
             )
           * on (provider) group_left ()
-            ceems_emissions_gCo2_kWh{country_code="FR",provider="owid"}  
+            ceems_emissions_gCo2_kWh{country_code="FR",provider="owid"} 
 
+
+  # The following recording rules estimate the average CPU, CPU memory usages and
+  # total host power (excluding GPUs) and its equivalent emissions aggregared for all hosts 
+  # per Prometheus job.
+  # 
+  - name: host-agg-rules-cpu-only-redfish
+    interval: 2s
+    rules:
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU cycles spent by the host.
+      - record: job:ceems_cpu_usage:avg_ratio_irate
+        expr: |2
+          avg by (job) (
+            (
+                  sum by (job, instance) (
+                    irate(ceems_cpu_seconds_total{job="cpu-only-redfish",mode!~"idle|iowait|steal"}[2s])
+                  )
+                *
+                  100
+              / on (instance) group_left ()
+                ((ceems_cpu_count{job="cpu-only-redfish"} > 0) / ceems_cpu_per_core_count{job="cpu-only-redfish"})
+            )
+          )
+
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU memory used by host relative to
+      # the available memory to the host.
+      - record: job:ceems_cpu_memory_usage:avg_ratio
+        expr: |2
+          avg by (job) (
+              (
+                (
+                    1
+                  -
+                    (ceems_meminfo_MemAvailable_bytes{job="cpu-only-redfish"} / ceems_meminfo_MemTotal_bytes{job="cpu-only-redfish"})
+                )
+              )
+            )
+          *
+            100
+
+      # Total power (Watts) consumed by all hosts excluding GPUs in a Prometheus job accounting PUE value.
+      - record: job:ceems_host_power_watts:pue
+        expr: |2
+          sum by (job) (1 * ceems_redfish_current_watts{job="cpu-only-redfish",chassis="Chassis_1"})
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by all ths hosts excluding GPUs
+      # in a Prometheus job accounting PUE value.
+      # The equivalent emissions are estimated for country FR
+      - record: job:ceems_host_emissions_g_s:pue
+        expr: |2
+          sum by (job, country_code, country, provider) (
+            (
+                job:ceems_host_power_watts:pue{job="cpu-only-redfish"} / 3.6e+06
+              * on (job) group_right ()
+                label_replace(ceems_emissions_gCo2_kWh, "job", "cpu-only-redfish", "instance", "(.*)")
+            )
+          )
 cpu-redfish-nvidia-gpu.rules
 ---
 # Recording rules for scrape job cpu-redfish-nvidia-gpu
@@ -686,7 +1007,7 @@ groups:
     interval: 1s
     rules:
       # CPU usage (%) of compute unit. It is percentage of CPU cycles spent by the compute unit.
-      - record: uuid:ceems_compute_unit_cpu_usage:ratio_irate
+      - record: uuid:ceems_cpu_usage:ratio_irate
         expr: |2
           (
               irate(ceems_compute_unit_cpu_user_seconds_total{job="cpu-redfish-nvidia-gpu"}[2s])
@@ -698,34 +1019,26 @@ groups:
 
       # CPU memory usage (%) of compute unit. It is percentage of CPU memory used by compute unit relative to
       # the available memory to the compute unit.
-      - record: uuid:ceems_compute_unit_cpu_memory_usage:ratio
+      - record: uuid:ceems_cpu_memory_usage:ratio
         expr: |2
           ceems_compute_unit_memory_used_bytes{job="cpu-redfish-nvidia-gpu"} * 100
           /
           (ceems_compute_unit_memory_total_bytes{job="cpu-redfish-nvidia-gpu"} > 0)
 
-      # Total power (Watts) consumed by the instance by including Power Usage Effectiveness (PUE) value.
-      # By default, a PUE of 1 is used.
-      #
-      # Current redfish exports power readings for following chassis:
-      # - Chassis_1
-      # - Chassis_2
-      #
-      # Please choose an appropriate chassis that reports the power usage of host alone (excluding GPUs)
-      # and replace it in "<CHASSIS_NAME>" field.
-      #
-      # If selected Chassis INCLUDES GPU power consumption, replace
-      # expr for instance:ceems_redfish_current_watts:pue with following:
-      # 1.000000 * (label_replace(ceems_redfish_current_watts{job="cpu-redfish-nvidia-gpu",chassis"<CHASSIS_NAME>"},  "instancehost", "$1", "instance", "([^:]+):\\d+") - on (instancehost) group_left () sum by (instancehost) (label_replace(DCGM_FI_DEV_POWER_USAGE{job="nvidia-gpu"} / 1,  "instancehost", "$1", "instance", "([^:]+):\\d+"))) > 0
+      # Total power (Watts) consumed by the instance by accounting Power Usage Effectiveness (PUE) value.
       - record: instance:ceems_redfish_current_watts:pue
-        expr: 1 * ceems_redfish_current_watts{job="cpu-redfish-nvidia-gpu",chassis="<CHASSIS_NAME>"}
+        expr: 1 * ceems_redfish_current_watts{job="cpu-redfish-nvidia-gpu",chassis="Chassis_1"}
 
-      # Total power (Watts) consumed by the compute unit including PUE value.
+      # Total host power (Watts) consumed by the compute unit accounting PUE value.
       #
       # Firstly, we make an assumption that 90% of power is consumed by CPU, DRAM and 10% by other
       # peripherals like network, storage, etc.
       #
-      # We leverage RAPL package and DRAM to split the rest of 90% power between CPU and DRAM
+      # (If the assumption does not fit your infrastructure, you can manually change the values
+      # in the rules. For instance, if the server has many storage disks, the 10 % can be increased
+      # further to account for disk power consumption.)
+      #
+      # We leverage RAPL package and DRAM counters to split the rest of 90% power between CPU and DRAM
       # components, when available. When RAPL counters are not available, we assume all 90% power 
       # is consumed by CPU.
       #
@@ -743,9 +1056,9 @@ groups:
       # Compute Unit CPU Memory Power = Total CPU DRAM Power * (Compute Unit Memory / Total Memory)
       # Misc Power Usage by Compute Unit = 0.1 * Total Power / Number of Compute Units
       #
-      # Total Compute Unit Power = Compute Unit CPU Power + Compute Unit CPU Memory Power + Misc Power Usage by Compute Unit
+      # Total Compute Unit Host Power = Compute Unit CPU Power + Compute Unit CPU Memory Power + Misc Power Usage by Compute Unit
       #
-      - record: uuid:ceems_compute_unit_cpu_power_watts:pue
+      - record: uuid:ceems_host_power_watts:pue
         expr: |2
             0.9 * instance:ceems_redfish_current_watts:pue{job="cpu-redfish-nvidia-gpu"} # Assumption 90% Power usage by CPU, CPU memory and other peripherals.
                 * on (instance) group_left () # 0.9 * Total Power * (RAPL Package / (RAPL Package + RAPL DRAM)) -> Total CPU Power
@@ -806,65 +1119,124 @@ groups:
       # Total equivalent emissions rate (g/s) due to the power consumed by the compute unit.
       # The equivalent emissions are estimated using emission factor from owid for country
       # FR
-      - record: uuid:ceems_compute_unit_cpu_emissions_g_s:pue
+      - record: uuid:ceems_host_emissions_g_s:pue
         expr: |2
           label_replace(
-              uuid:ceems_compute_unit_cpu_power_watts:pue{job="cpu-redfish-nvidia-gpu"} / 3.6e+06,
+              uuid:ceems_host_power_watts:pue{job="cpu-redfish-nvidia-gpu"} / 3.6e+06,
               "provider",
               "owid",
               "instance",
               "(.*)"
             )
           * on (provider) group_left ()
-            ceems_emissions_gCo2_kWh{country_code="FR",provider="owid"}  
+            ceems_emissions_gCo2_kWh{country_code="FR",provider="owid"} 
 
-ipmi-nvidia-gpu.rules
+
+  # The following recording rules estimate the average CPU, CPU memory usages and
+  # total host power (excluding GPUs) and its equivalent emissions aggregared for all hosts 
+  # per Prometheus job.
+  # 
+  - name: host-agg-rules-cpu-redfish-nvidia-gpu
+    interval: 2s
+    rules:
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU cycles spent by the host.
+      - record: job:ceems_cpu_usage:avg_ratio_irate
+        expr: |2
+          avg by (job) (
+            (
+                  sum by (job, instance) (
+                    irate(ceems_cpu_seconds_total{job="cpu-redfish-nvidia-gpu",mode!~"idle|iowait|steal"}[2s])
+                  )
+                *
+                  100
+              / on (instance) group_left ()
+                ((ceems_cpu_count{job="cpu-redfish-nvidia-gpu"} > 0) / ceems_cpu_per_core_count{job="cpu-redfish-nvidia-gpu"})
+            )
+          )
+
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU memory used by host relative to
+      # the available memory to the host.
+      - record: job:ceems_cpu_memory_usage:avg_ratio
+        expr: |2
+          avg by (job) (
+              (
+                (
+                    1
+                  -
+                    (ceems_meminfo_MemAvailable_bytes{job="cpu-redfish-nvidia-gpu"} / ceems_meminfo_MemTotal_bytes{job="cpu-redfish-nvidia-gpu"})
+                )
+              )
+            )
+          *
+            100
+
+      # Total power (Watts) consumed by all hosts excluding GPUs in a Prometheus job accounting PUE value.
+      - record: job:ceems_host_power_watts:pue
+        expr: |2
+          sum by (job) (1 * ceems_redfish_current_watts{job="cpu-redfish-nvidia-gpu",chassis="Chassis_1"})
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by all ths hosts excluding GPUs
+      # in a Prometheus job accounting PUE value.
+      # The equivalent emissions are estimated for country FR
+      - record: job:ceems_host_emissions_g_s:pue
+        expr: |2
+          sum by (job, country_code, country, provider) (
+            (
+                job:ceems_host_power_watts:pue{job="cpu-redfish-nvidia-gpu"} / 3.6e+06
+              * on (job) group_right ()
+                label_replace(ceems_emissions_gCo2_kWh, "job", "cpu-redfish-nvidia-gpu", "instance", "(.*)")
+            )
+          )
+ipmi-nvidia-gpu-gpu.rules
 ---
-# Recording rules for NVIDIA GPUs in cpu-ipmi-nvidia-gpu
+# Recording rules for NVIDIA GPUs scrape job ipmi-nvidia-gpu.
+#
+# These rules map the GPU usage to the compute unit `uuid` which gives
+# GPU metrics for each compute unit.
 #
 # We leverage these rules to include PUE (Power Usage Effectiveness) in the Power
 # estimation as well.
 #
 groups:
-  - name: compute-unit-gpu-rules-cpu-ipmi-nvidia-gpu
+  - name: compute-unit-gpu-rules-ipmi-nvidia-gpu
+    interval: 1s
     rules:
       # GPU Usage (%) by compute unit
-      - record: uuid:ceems_compute_unit_gpu_usage:ratio
+      - record: uuid:ceems_gpu_usage:ratio
         expr: |2
             DCGM_FI_DEV_GPU_UTIL{job="ipmi-nvidia-gpu"}
-            * on (gpuuuid) group_right ()
+            * on (gpuuuid,gpuiid) group_right ()
             ceems_compute_unit_gpu_index_flag{job="cpu-ipmi-nvidia-gpu"}
 
       # GPU Memory Usage (%) by compute unit
-      - record: uuid:ceems_compute_unit_gpu_memory_usage:ratio
+      - record: uuid:ceems_gpu_memory_usage:ratio
         expr: |2
           (
               DCGM_FI_DEV_FB_USED{job="ipmi-nvidia-gpu"} * 100
             /
               (DCGM_FI_DEV_FB_USED{job="ipmi-nvidia-gpu"} + DCGM_FI_DEV_FB_FREE{job="ipmi-nvidia-gpu"})
           )
-          * on (gpuuuid) group_right ()
+          * on (gpuuuid,gpuiid) group_right ()
           ceems_compute_unit_gpu_index_flag{job="cpu-ipmi-nvidia-gpu"}
       
-      # Total power (Watts) consumed by the GPU by including Power Usage Effectiveness (PUE) value.
-      # By default, a PUE of 1 is used.
-      - record: dev:DCGM_FI_DEV_POWER_USAGE:pue
-        expr: 1 * DCGM_FI_DEV_POWER_USAGE{job="ipmi-nvidia-gpu"}
+      # Total power (Watts) consumed by the GPU by accounting Power Usage Effectiveness (PUE) value.
+      - record: dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue
+        expr: 1 * DCGM_FI_DEV_POWER_USAGE_INSTANT{job="ipmi-nvidia-gpu"}
 
-      - record: uuid:ceems_compute_unit_gpu_power_watts:pue
+      - record: uuid:ceems_gpu_power_watts:pue
         expr: |2
-          dev:DCGM_FI_DEV_POWER_USAGE:pue{job="ipmi-nvidia-gpu"}
-          * on (gpuuuid) group_right()
+          dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue{job="ipmi-nvidia-gpu"}
+          * on (gpuuuid,gpuiid) group_right()
           ceems_compute_unit_gpu_index_flag{job="cpu-ipmi-nvidia-gpu"}
 
-      # Total equivalent emissions rate (g/s) from GPU due to the power consumed by the compute unit.
+      # Total equivalent emissions rate (g/s) from GPU due to the power consumed by the compute unit's GPUs.
       # The equivalent emissions are estimated using emission factor from owid for country
       # FR
-      - record: uuid:ceems_compute_unit_gpu_emissions_g_s:pue
+      - record: uuid:ceems_gpu_emissions_g_s:pue
         expr: |2
           label_replace(
-              dev:DCGM_FI_DEV_POWER_USAGE:pue{job="ipmi-nvidia-gpu"} / 3.6e+06
-            * on (gpuuuid) group_right ()
+              dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue{job="ipmi-nvidia-gpu"} / 3.6e+06
+            * on (gpuuuid,gpuiid) group_right ()
               ceems_compute_unit_gpu_index_flag{job="cpu-ipmi-nvidia-gpu"},
               "provider",
               "owid",
@@ -880,73 +1252,116 @@ groups:
               "(.*)"
             ) 
 
+
       # Profiling metrics
 
-      - record: uuid:ceems_compute_unit_gpu_sm_active:ratio
+      - record: uuid:ceems_gpu_sm_active:ratio
         expr: |2
           DCGM_FI_PROF_SM_ACTIVE{job="ipmi-nvidia-gpu"} * 100
-          * on (gpuuuid) group_right ()
+          * on (gpuuuid,gpuiid) group_right ()
           ceems_compute_unit_gpu_index_flag{job="cpu-ipmi-nvidia-gpu"}
 
-      - record: uuid:ceems_compute_unit_gpu_sm_occupancy:ratio
+      - record: uuid:ceems_gpu_sm_occupancy:ratio
         expr: |2
           DCGM_FI_PROF_SM_OCCUPANCY{job="ipmi-nvidia-gpu"} * 100
-          * on (gpuuuid) group_right ()
+          * on (gpuuuid,gpuiid) group_right ()
           ceems_compute_unit_gpu_index_flag{job="cpu-ipmi-nvidia-gpu"}
 
-      - record: uuid:ceems_compute_unit_gpu_gr_engine_active:ratio
+      - record: uuid:ceems_gpu_gr_engine_active:ratio
         expr: |2
           DCGM_FI_PROF_GR_ENGINE_ACTIVE{job="ipmi-nvidia-gpu"} * 100
-          * on (gpuuuid) group_right ()
+          * on (gpuuuid,gpuiid) group_right ()
           ceems_compute_unit_gpu_index_flag{job="cpu-ipmi-nvidia-gpu"}
 
-nvidia-gpu.rules
+
+  # The following recording rules estimate the average GPU, GPU memory usages and
+  # total GPU power and its equivalent emissions aggregared for all hosts 
+  # per Prometheus job.
+  # 
+  - name: host-agg-gpu-rules-ipmi-nvidia-gpu
+    interval: 2s
+    rules:
+      # Average GPU Usage (%) for all hosts aggregated per Prometheus job
+      - record: job:ceems_gpu_usage:avg
+        expr: avg by (job) (DCGM_FI_DEV_GPU_UTIL{job="ipmi-nvidia-gpu"})
+
+      # Average GPU memory usage (%) for all hosts aggregated per Prometheus job
+      - record: job:ceems_gpu_memory_usage:avg_ratio
+        expr: |2
+          avg by (job) (
+            (
+                DCGM_FI_DEV_FB_USED{job="ipmi-nvidia-gpu"} * 100
+              /
+                (DCGM_FI_DEV_FB_USED{job="ipmi-nvidia-gpu"} + DCGM_FI_DEV_FB_FREE{job="ipmi-nvidia-gpu"})
+            )
+          )
+
+      # Total power usage (Watts) by GPUs on all hosts aggregated per Prometheus job
+      - record: job:ceems_gpu_power_watts:pue
+        expr: sum by (job)(1 * DCGM_FI_DEV_POWER_USAGE_INSTANT{job="ipmi-nvidia-gpu"})
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by GPUs on all ths hosts
+      # in a Prometheus job accounting PUE value.
+      # The equivalent emissions are estimated for country FR
+      - record: job:ceems_gpu_emissions_g_s:pue
+        expr: |2
+          sum by (job, country_code, country, provider) (
+            (
+                job:ceems_gpu_power_watts:pue{job="ipmi-nvidia-gpu"} / 3.6e+06
+              * on (job) group_right ()
+                label_replace(ceems_emissions_gCo2_kWh, "job", "ipmi-nvidia-gpu", "instance", "(.*)")
+            )
+          )
+nvidia-gpu-gpu.rules
 ---
-# Recording rules for NVIDIA GPUs in cpu-redfish-nvidia-gpu
+# Recording rules for NVIDIA GPUs scrape job nvidia-gpu.
+#
+# These rules map the GPU usage to the compute unit `uuid` which gives
+# GPU metrics for each compute unit.
 #
 # We leverage these rules to include PUE (Power Usage Effectiveness) in the Power
 # estimation as well.
 #
 groups:
-  - name: compute-unit-gpu-rules-cpu-redfish-nvidia-gpu
+  - name: compute-unit-gpu-rules-nvidia-gpu
+    interval: 1s
     rules:
       # GPU Usage (%) by compute unit
-      - record: uuid:ceems_compute_unit_gpu_usage:ratio
+      - record: uuid:ceems_gpu_usage:ratio
         expr: |2
             DCGM_FI_DEV_GPU_UTIL{job="nvidia-gpu"}
-            * on (gpuuuid) group_right ()
+            * on (gpuuuid,gpuiid) group_right ()
             ceems_compute_unit_gpu_index_flag{job="cpu-redfish-nvidia-gpu"}
 
       # GPU Memory Usage (%) by compute unit
-      - record: uuid:ceems_compute_unit_gpu_memory_usage:ratio
+      - record: uuid:ceems_gpu_memory_usage:ratio
         expr: |2
           (
               DCGM_FI_DEV_FB_USED{job="nvidia-gpu"} * 100
             /
               (DCGM_FI_DEV_FB_USED{job="nvidia-gpu"} + DCGM_FI_DEV_FB_FREE{job="nvidia-gpu"})
           )
-          * on (gpuuuid) group_right ()
+          * on (gpuuuid,gpuiid) group_right ()
           ceems_compute_unit_gpu_index_flag{job="cpu-redfish-nvidia-gpu"}
       
-      # Total power (Watts) consumed by the GPU by including Power Usage Effectiveness (PUE) value.
-      # By default, a PUE of 1 is used.
-      - record: dev:DCGM_FI_DEV_POWER_USAGE:pue
-        expr: 1 * DCGM_FI_DEV_POWER_USAGE{job="nvidia-gpu"}
+      # Total power (Watts) consumed by the GPU by accounting Power Usage Effectiveness (PUE) value.
+      - record: dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue
+        expr: 1 * DCGM_FI_DEV_POWER_USAGE_INSTANT{job="nvidia-gpu"}
 
-      - record: uuid:ceems_compute_unit_gpu_power_watts:pue
+      - record: uuid:ceems_gpu_power_watts:pue
         expr: |2
-          dev:DCGM_FI_DEV_POWER_USAGE:pue{job="nvidia-gpu"}
-          * on (gpuuuid) group_right()
+          dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue{job="nvidia-gpu"}
+          * on (gpuuuid,gpuiid) group_right()
           ceems_compute_unit_gpu_index_flag{job="cpu-redfish-nvidia-gpu"}
 
-      # Total equivalent emissions rate (g/s) from GPU due to the power consumed by the compute unit.
+      # Total equivalent emissions rate (g/s) from GPU due to the power consumed by the compute unit's GPUs.
       # The equivalent emissions are estimated using emission factor from owid for country
       # FR
-      - record: uuid:ceems_compute_unit_gpu_emissions_g_s:pue
+      - record: uuid:ceems_gpu_emissions_g_s:pue
         expr: |2
           label_replace(
-              dev:DCGM_FI_DEV_POWER_USAGE:pue{job="nvidia-gpu"} / 3.6e+06
-            * on (gpuuuid) group_right ()
+              dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue{job="nvidia-gpu"} / 3.6e+06
+            * on (gpuuuid,gpuiid) group_right ()
               ceems_compute_unit_gpu_index_flag{job="cpu-redfish-nvidia-gpu"},
               "provider",
               "owid",
@@ -962,36 +1377,3008 @@ groups:
               "(.*)"
             ) 
 
+
       # Profiling metrics
 
-      - record: uuid:ceems_compute_unit_gpu_sm_active:ratio
+      - record: uuid:ceems_gpu_sm_active:ratio
         expr: |2
           DCGM_FI_PROF_SM_ACTIVE{job="nvidia-gpu"} * 100
-          * on (gpuuuid) group_right ()
+          * on (gpuuuid,gpuiid) group_right ()
           ceems_compute_unit_gpu_index_flag{job="cpu-redfish-nvidia-gpu"}
 
-      - record: uuid:ceems_compute_unit_gpu_sm_occupancy:ratio
+      - record: uuid:ceems_gpu_sm_occupancy:ratio
         expr: |2
           DCGM_FI_PROF_SM_OCCUPANCY{job="nvidia-gpu"} * 100
-          * on (gpuuuid) group_right ()
+          * on (gpuuuid,gpuiid) group_right ()
           ceems_compute_unit_gpu_index_flag{job="cpu-redfish-nvidia-gpu"}
 
-      - record: uuid:ceems_compute_unit_gpu_gr_engine_active:ratio
+      - record: uuid:ceems_gpu_gr_engine_active:ratio
         expr: |2
           DCGM_FI_PROF_GR_ENGINE_ACTIVE{job="nvidia-gpu"} * 100
-          * on (gpuuuid) group_right ()
+          * on (gpuuuid,gpuiid) group_right ()
           ceems_compute_unit_gpu_index_flag{job="cpu-redfish-nvidia-gpu"}
 
+
+  # The following recording rules estimate the average GPU, GPU memory usages and
+  # total GPU power and its equivalent emissions aggregared for all hosts 
+  # per Prometheus job.
+  # 
+  - name: host-agg-gpu-rules-nvidia-gpu
+    interval: 2s
+    rules:
+      # Average GPU Usage (%) for all hosts aggregated per Prometheus job
+      - record: job:ceems_gpu_usage:avg
+        expr: avg by (job) (DCGM_FI_DEV_GPU_UTIL{job="nvidia-gpu"})
+
+      # Average GPU memory usage (%) for all hosts aggregated per Prometheus job
+      - record: job:ceems_gpu_memory_usage:avg_ratio
+        expr: |2
+          avg by (job) (
+            (
+                DCGM_FI_DEV_FB_USED{job="nvidia-gpu"} * 100
+              /
+                (DCGM_FI_DEV_FB_USED{job="nvidia-gpu"} + DCGM_FI_DEV_FB_FREE{job="nvidia-gpu"})
+            )
+          )
+
+      # Total power usage (Watts) by GPUs on all hosts aggregated per Prometheus job
+      - record: job:ceems_gpu_power_watts:pue
+        expr: sum by (job)(1 * DCGM_FI_DEV_POWER_USAGE_INSTANT{job="nvidia-gpu"})
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by GPUs on all ths hosts
+      # in a Prometheus job accounting PUE value.
+      # The equivalent emissions are estimated for country FR
+      - record: job:ceems_gpu_emissions_g_s:pue
+        expr: |2
+          sum by (job, country_code, country, provider) (
+            (
+                job:ceems_gpu_power_watts:pue{job="nvidia-gpu"} / 3.6e+06
+              * on (job) group_right ()
+                label_replace(ceems_emissions_gCo2_kWh, "job", "nvidia-gpu", "instance", "(.*)")
+            )
+          )
+amd-gpu-gpu.rules
+---
+# Recording rules for AMD GPUs scrape job amd-gpu.
+#
+# These rules map the GPU usage to the compute unit `uuid` which gives
+# GPU metrics for each compute unit.
+#
+# We leverage these rules to include PUE (Power Usage Effectiveness) in the Power
+# estimation as well.
+#
+groups:
+  - name: compute-unit-gpu-rules-amd-gpu
+    interval: 1s
+    rules:
+      # GPU Usage (%) by compute unit
+      - record: uuid:ceems_gpu_usage:ratio
+        expr: |2
+            amd_gpu_use_percent{job="amd-gpu"}
+            * on (index) group_right ()
+            ceems_compute_unit_gpu_index_flag{job="cpu-cray-amd-gpu"}
+
+      # GPU Memory Usage (%) by compute unit
+      - record: uuid:ceems_gpu_memory_usage:ratio
+        expr: |2
+          amd_gpu_memory_use_percent{job="amd-gpu"}
+          * on (index) group_right ()
+          ceems_compute_unit_gpu_index_flag{job="cpu-cray-amd-gpu"}
+      
+      # Total power (Watts) consumed by the GPU by accounting Power Usage Effectiveness (PUE) value.
+      # AMD GPU power is in micro Watts and we need to convert it to Watts here
+      - record: dev:amd_gpu_power_watts:pue
+        expr: 1 * amd_gpu_power{job="amd-gpu"} / 1e6
+
+      - record: uuid:ceems_gpu_power_watts:pue
+        expr: |2
+          dev:amd_gpu_power_watts:pue{job="amd-gpu"}
+          * on (index) group_right()
+          ceems_compute_unit_gpu_index_flag{job="cpu-cray-amd-gpu"}
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by the compute unit's GPUs.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # FR
+      - record: uuid:ceems_gpu_emissions_g_s:pue
+        expr: |2
+          label_replace(
+              dev:amd_gpu_power_watts:pue{job="amd-gpu"} / 3.6e+06
+            * on (index) group_right ()
+              ceems_compute_unit_gpu_index_flag{job="cpu-cray-amd-gpu"},
+              "provider",
+              "owid",
+              "instance",
+              "(.*)"
+            )
+          * 56.03859
+
+  # The following recording rules estimate the average GPU, GPU memory usages and
+  # total GPU power and its equivalent emissions aggregared for all hosts 
+  # per Prometheus job.
+  # 
+  - name: host-agg-gpu-rules-amd-gpu
+    interval: 2s
+    rules:
+      # Average GPU Usage (%) for all hosts aggregated per Prometheus job
+      - record: job:ceems_gpu_usage:avg
+        expr: avg by (job) (amd_gpu_use_percent{job="amd-gpu"})
+
+      # Average GPU memory usage (%) for all hosts aggregated per Prometheus job
+      - record: job:ceems_gpu_memory_usage:avg_ratio
+        expr: avg by (job) (amd_gpu_memory_use_percent{job="amd-gpu"})
+
+      # Total power usage (Watts) by GPUs on all hosts aggregated per Prometheus job
+      # AMD GPU power is in micro Watts and we need to convert it to Watts here
+      - record: job:ceems_gpu_power_watts:pue
+        expr: sum by (job)(1 * amd_gpu_power{job="amd-gpu"} / 1e6)
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by GPUs on all ths hosts
+      # in a Prometheus job accounting PUE value.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # FR
+      - record: job:ceems_gpu_emissions_g_s:pue
+        expr: |2
+          label_replace(
+            label_replace(
+              56.03859 * job:ceems_gpu_power_watts:pue{job="amd-gpu"} / 3.6e+06,
+              "provider",
+              "owid",
+              "instance",
+              "(.*)"
+            ),
+            "country_code",
+            "FR",
+            "instance",
+            "(.*)"
+          )
+cpu-cray-amd-gpu.rules
+---
+# Recording rules for scrape job cpu-cray-amd-gpu
+#
+# The following recording rules provide several CPU related metrics of the individual
+# compute units. Each of these metrics involving multiple raw metrics to compute them.
+# Performing such queries involving multiple metrics is a computational intensive
+# operation for Prometheus and hence, we leverage recording rules to estimate them
+# in the real time and store them in the TSDB. The downside of this approach is that
+# it creates new metrics which consume more space. However, we add atmost 10 new metrics
+# which should not increase the disk use of TSDB enormously.
+#
+groups:
+  - name: compute-unit-rules-cpu-cray-amd-gpu
+    interval: 1s
+    rules:
+      # CPU usage (%) of compute unit. It is percentage of CPU cycles spent by the compute unit.
+      - record: uuid:ceems_cpu_usage:ratio_irate
+        expr: |2
+          (
+              irate(ceems_compute_unit_cpu_user_seconds_total{job="cpu-cray-amd-gpu"}[2s])
+            +
+              irate(ceems_compute_unit_cpu_system_seconds_total{job="cpu-cray-amd-gpu"}[2s])
+          ) * 100
+          /
+            (ceems_compute_unit_cpus{job="cpu-cray-amd-gpu"} > 0)
+
+      # CPU memory usage (%) of compute unit. It is percentage of CPU memory used by compute unit relative to
+      # the available memory to the compute unit.
+      - record: uuid:ceems_cpu_memory_usage:ratio
+        expr: |2
+          ceems_compute_unit_memory_used_bytes{job="cpu-cray-amd-gpu"} * 100
+          /
+          (ceems_compute_unit_memory_total_bytes{job="cpu-cray-amd-gpu"} > 0)
+
+      # Total host power (Watts) consumed by the instance by accouting Power Usage Effectiveness (PUE) value.
+      - record: instance:ceems_cray_pm_counters_power_watts:pue
+        expr: 1 * ceems_cray_pm_counters_power_watts{job="cpu-cray-amd-gpu"}
+
+      # Total host power (Watts) consumed by the compute unit accouting PUE value.
+      #
+      # Cray PM counters provide power consumption by CPU, memory and entire node.
+      # This power consumption by the CPU and memory are split among all the running compute units
+      # based on CPU time and memory used by the compute unit.
+      #
+      # Compute Unit CPU Power = Total CPU Power * (Compute Unit CPU Time / Total Node CPU Time)
+      # Compute Unit Memory Power = Total Memory Power * (Compute Unit Memory Usage / Total Node Memory Usage)
+      # Compute Unit Misc Power = (Total Node Power - (Total CPU Power + Total Memory Power)) / Number of Compute Units
+      #
+      # Misc power is the power consumption by all other peripherals on the compute host like NIC, disks, PCIe, etc.
+      # This misc power is split equally among all running compute units at a given time.
+      #
+      - record: uuid:ceems_host_power_watts:pue
+        expr: |2
+            instance:ceems_cray_pm_counters_power_watts:pue{domain="cpu",job="cpu-cray-amd-gpu"} # CPU Power Usage by Compute Unit
+                * on (instance) group_right ()
+                  (
+                      (
+                          irate(ceems_compute_unit_cpu_user_seconds_total{job="cpu-cray-amd-gpu"}[2s])
+                        +
+                          irate(ceems_compute_unit_cpu_system_seconds_total{job="cpu-cray-amd-gpu"}[2s])
+                      )
+                    / on (instance) group_left ()
+                      sum by (instance) (irate(ceems_cpu_seconds_total{job="cpu-cray-amd-gpu",mode!~"idle|iowait|steal"}[2s]))
+                  )
+              +
+                  instance:ceems_cray_pm_counters_power_watts:pue{domain="memory",job="cpu-cray-amd-gpu"} # CPU Memory Power Usage by Compute Unit
+                * on (instance) group_right ()
+                  (
+                      ceems_compute_unit_memory_used_bytes{job="cpu-cray-amd-gpu"}
+                    / on (instance) group_left ()
+                      (
+                          ceems_meminfo_MemTotal_bytes{job="cpu-cray-amd-gpu"}
+                        - on (instance)
+                          ceems_meminfo_MemAvailable_bytes{job="cpu-cray-amd-gpu"}
+                      )
+                  )
+            +
+                (
+                    instance:ceems_cray_pm_counters_power_watts:pue{domain="node",job="cpu-cray-amd-gpu"} # Misc Power Usage by Compute Unit   
+                  - on (instance)
+                    sum by (instance) (instance:ceems_cray_pm_counters_power_watts:pue{domain!~"node",job="cpu-cray-amd-gpu"})
+                )
+              * on (instance) group_right ()
+                (
+                      ceems_compute_unit_memory_used_bytes{job="cpu-cray-amd-gpu"}
+                    /
+                      (
+                          ceems_compute_unit_memory_used_bytes{job="cpu-cray-amd-gpu"}
+                        * on (instance) group_left ()
+                          ceems_compute_units{job="cpu-cray-amd-gpu"}
+                      )
+                  >
+                    0
+                )
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by the compute unit.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # FR
+      - record: uuid:ceems_host_emissions_g_s:pue
+        expr: |2
+          label_replace(
+              uuid:ceems_host_power_watts:pue{job="cpu-cray-amd-gpu"} / 3.6e+06,
+              "provider",
+              "owid",
+              "instance",
+              "(.*)"
+            )
+          * 56.03859
+
+  # The following recording rules estimate the average CPU, CPU memory usages and
+  # total host power (excluding GPUs) and its equivalent emissions aggregared for all hosts 
+  # per Prometheus job.
+  # 
+  - name: host-agg-rules-cpu-cray-amd-gpu
+    interval: 2s
+    rules:
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU cycles spent by the host.
+      - record: job:ceems_cpu_usage:avg_ratio_irate
+        expr: |2
+          avg by (job) (
+            (
+                  sum by (job, instance) (
+                    irate(ceems_cpu_seconds_total{job="cpu-cray-amd-gpu",mode!~"idle|iowait|steal"}[2s])
+                  )
+                *
+                  100
+              / on (instance) group_left ()
+                ((ceems_cpu_count{job="cpu-cray-amd-gpu"} > 0) / ceems_cpu_per_core_count{job="cpu-cray-amd-gpu"})
+            )
+          )
+
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU memory used by host relative to
+      # the available memory to the host.
+      - record: job:ceems_cpu_memory_usage:avg_ratio
+        expr: |2
+          avg by (job) (
+              (
+                (
+                    1
+                  -
+                    (ceems_meminfo_MemAvailable_bytes{job="cpu-cray-amd-gpu"} / ceems_meminfo_MemTotal_bytes{job="cpu-cray-amd-gpu"})
+                )
+              )
+            )
+          *
+            100
+
+      # Total power (Watts) consumed by all hosts excluding GPUs in a Prometheus job accounting PUE value.
+      - record: job:ceems_host_power_watts:pue
+        expr: |2
+          sum by (job) (
+              1
+            *
+              (
+                  ceems_cray_pm_counters_power_watts{domain="node",job="cpu-cray-amd-gpu"}
+                - on (instance) group_left ()
+                  sum by (instance) (ceems_cray_pm_counters_power_watts{domain=~"accel.*",job="cpu-cray-amd-gpu"})
+              )
+          )
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by all ths hosts excluding GPUs
+      # in a Prometheus job accounting PUE value.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # FR
+      - record: job:ceems_host_emissions_g_s:pue
+        expr: |2
+          label_replace(
+            label_replace(
+              56.03859 * job:ceems_host_power_watts:pue{job="cpu-cray-amd-gpu"} / 3.6e+06,
+              "provider",
+              "owid",
+              "instance",
+              "(.*)"
+            ),
+            "country_code",
+            "FR",
+            "instance",
+            "(.*)"
+          )
+
+cpu-ipmi-nvidia-gpu.rules
+---
+# Recording rules for scrape job cpu-ipmi-nvidia-gpu
+#
+# The following recording rules provide several CPU related metrics of the individual
+# compute units. Each of these metrics involving multiple raw metrics to compute them.
+# Performing such queries involving multiple metrics is a computational intensive
+# operation for Prometheus and hence, we leverage recording rules to estimate them
+# in the real time and store them in the TSDB. The downside of this approach is that
+# it creates new metrics which consume more space. However, we add atmost 10 new metrics
+# which should not increase the disk use of TSDB enormously.
+#
+groups:
+  - name: compute-unit-rules-cpu-ipmi-nvidia-gpu
+    interval: 1s
+    rules:
+      # CPU usage (%) of compute unit. It is percentage of CPU cycles spent by the compute unit.
+      - record: uuid:ceems_cpu_usage:ratio_irate
+        expr: |2
+          (
+              irate(ceems_compute_unit_cpu_user_seconds_total{job="cpu-ipmi-nvidia-gpu"}[2s])
+            +
+              irate(ceems_compute_unit_cpu_system_seconds_total{job="cpu-ipmi-nvidia-gpu"}[2s])
+          ) * 100
+          /
+            (ceems_compute_unit_cpus{job="cpu-ipmi-nvidia-gpu"} > 0)
+
+      # CPU memory usage (%) of compute unit. It is percentage of CPU memory used by compute unit relative to
+      # the available memory to the compute unit.
+      - record: uuid:ceems_cpu_memory_usage:ratio
+        expr: |2
+          ceems_compute_unit_memory_used_bytes{job="cpu-ipmi-nvidia-gpu"} * 100
+          /
+          (ceems_compute_unit_memory_total_bytes{job="cpu-ipmi-nvidia-gpu"} > 0)
+
+      # Total power (Watts) consumed by the instance by accounting Power Usage Effectiveness (PUE) value.
+      - record: instance:ceems_ipmi_dcmi_current_watts:pue
+        expr: 1 * (label_replace(ceems_ipmi_dcmi_current_watts{job="cpu-ipmi-nvidia-gpu"}, "instancehost", "$1", "instance", "([^:]+):\\d+") - on (instancehost) group_left () sum by (instancehost) (label_replace(DCGM_FI_DEV_POWER_USAGE_INSTANT{job="ipmi-nvidia-gpu"} / 1,  "instancehost", "$1", "instance", "([^:]+):\\d+"))) > 0
+
+      # Total host power (Watts) consumed by the compute unit accounting PUE value.
+      #
+      # Firstly, we make an assumption that 90% of power is consumed by CPU, DRAM and 10% by other
+      # peripherals like network, storage, etc.
+      #
+      # (If the assumption does not fit your infrastructure, you can manually change the values
+      # in the rules. For instance, if the server has many storage disks, the 10 % can be increased
+      # further to account for disk power consumption.)
+      #
+      # We leverage RAPL package and DRAM counters to split the rest of 90% power between CPU and DRAM
+      # components, when available. When RAPL counters are not available, we assume all 90% power 
+      # is consumed by CPU.
+      #
+      # At node level, power consumed by CPU and DRAM can be estimated as
+      #
+      # Total CPU Power = 0.9 * Total Power * (RAPL Package / (RAPL Package + RAPL DRAM)) 
+      # Total CPU DRAM Power = 0.9 * Total Power * (RAPL DRAM / (RAPL Package + RAPL DRAM))
+      #
+      # Now we have power usage at node level for CPU and DRAM. We split it further at the
+      # compute unit level using CPU time and DRAM usage by the compute unit. For rest of
+      # of the power usage like network, storage, we split it equally among all compute units 
+      # that running on the node at a given time.
+      #
+      # Compute Unit CPU Power = Total CPU Power * (Compute CPU Time / Total CPU Time)
+      # Compute Unit CPU Memory Power = Total CPU DRAM Power * (Compute Unit Memory / Total Memory)
+      # Misc Power Usage by Compute Unit = 0.1 * Total Power / Number of Compute Units
+      #
+      # Total Compute Unit Host Power = Compute Unit CPU Power + Compute Unit CPU Memory Power + Misc Power Usage by Compute Unit
+      #
+      - record: uuid:ceems_host_power_watts:pue
+        expr: |2
+            0.9 * instance:ceems_ipmi_dcmi_current_watts:pue{job="cpu-ipmi-nvidia-gpu"} # Assumption 90% Power usage by CPU, CPU memory and other peripherals.
+              * on (instance) group_right () # Total CPU Power * (Compute CPU Time / Total CPU Time) -> Compute Unit CPU Power
+                (
+                    (
+                        irate(ceems_compute_unit_cpu_user_seconds_total{job="cpu-ipmi-nvidia-gpu"}[2s])
+                      +
+                        irate(ceems_compute_unit_cpu_system_seconds_total{job="cpu-ipmi-nvidia-gpu"}[2s])
+                    )
+                  / on (instance) group_left ()
+                    sum by (instance) (irate(ceems_cpu_seconds_total{job="cpu-ipmi-nvidia-gpu",mode!~"idle|iowait|steal"}[2s]))
+                )
+            +
+                0.1 * instance:ceems_ipmi_dcmi_current_watts:pue{job="cpu-ipmi-nvidia-gpu"} # Total Misc Power Usage
+              * on (instance) group_right () # Total Misc Power usage / Number of Compute Units -> Misc Power Usage by Compute Unit
+                (
+                    ceems_compute_unit_memory_used_bytes{job="cpu-ipmi-nvidia-gpu"}
+                  /
+                    (
+                        ceems_compute_unit_memory_used_bytes{job="cpu-ipmi-nvidia-gpu"}
+                      * on (instance) group_left ()
+                        ceems_compute_units{job="cpu-ipmi-nvidia-gpu"}
+                    ) > 0
+                )
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by the compute unit.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # FR
+      - record: uuid:ceems_host_emissions_g_s:pue
+        expr: |2
+          label_replace(
+              uuid:ceems_host_power_watts:pue{job="cpu-ipmi-nvidia-gpu"} / 3.6e+06,
+              "provider",
+              "owid",
+              "instance",
+              "(.*)"
+            )
+          * 56.03859
+
+  # The following recording rules estimate the average CPU, CPU memory usages and
+  # total host power (excluding GPUs) and its equivalent emissions aggregared for all hosts 
+  # per Prometheus job.
+  # 
+  - name: host-agg-rules-cpu-ipmi-nvidia-gpu
+    interval: 2s
+    rules:
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU cycles spent by the host.
+      - record: job:ceems_cpu_usage:avg_ratio_irate
+        expr: |2
+          avg by (job) (
+            (
+                  sum by (job, instance) (
+                    irate(ceems_cpu_seconds_total{job="cpu-ipmi-nvidia-gpu",mode!~"idle|iowait|steal"}[2s])
+                  )
+                *
+                  100
+              / on (instance) group_left ()
+                ((ceems_cpu_count{job="cpu-ipmi-nvidia-gpu"} > 0) / ceems_cpu_per_core_count{job="cpu-ipmi-nvidia-gpu"})
+            )
+          )
+
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU memory used by host relative to
+      # the available memory to the host.
+      - record: job:ceems_cpu_memory_usage:avg_ratio
+        expr: |2
+          avg by (job) (
+              (
+                (
+                    1
+                  -
+                    (ceems_meminfo_MemAvailable_bytes{job="cpu-ipmi-nvidia-gpu"} / ceems_meminfo_MemTotal_bytes{job="cpu-ipmi-nvidia-gpu"})
+                )
+              )
+            )
+          *
+            100
+
+      # Total power (Watts) consumed by all hosts excluding GPUs in a Prometheus job accounting PUE value.
+      - record: job:ceems_host_power_watts:pue
+        expr: |2
+          sum by (job) (1 * (label_replace(ceems_ipmi_dcmi_current_watts{job="cpu-ipmi-nvidia-gpu"}, "instancehost", "$1", "instance", "([^:]+):\\d+") - on (instancehost) group_left () sum by (instancehost) (label_replace(DCGM_FI_DEV_POWER_USAGE_INSTANT{job="ipmi-nvidia-gpu"} / 1,  "instancehost", "$1", "instance", "([^:]+):\\d+"))) > 0)
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by all ths hosts excluding GPUs
+      # in a Prometheus job accounting PUE value.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # FR
+      - record: job:ceems_host_emissions_g_s:pue
+        expr: |2
+          label_replace(
+            label_replace(
+              56.03859 * job:ceems_host_power_watts:pue{job="cpu-ipmi-nvidia-gpu"} / 3.6e+06,
+              "provider",
+              "owid",
+              "instance",
+              "(.*)"
+            ),
+            "country_code",
+            "FR",
+            "instance",
+            "(.*)"
+          )
+cpu-only-ipmi.rules
+---
+# Recording rules for scrape job cpu-only-ipmi
+#
+# The following recording rules provide several CPU related metrics of the individual
+# compute units. Each of these metrics involving multiple raw metrics to compute them.
+# Performing such queries involving multiple metrics is a computational intensive
+# operation for Prometheus and hence, we leverage recording rules to estimate them
+# in the real time and store them in the TSDB. The downside of this approach is that
+# it creates new metrics which consume more space. However, we add atmost 10 new metrics
+# which should not increase the disk use of TSDB enormously.
+#
+groups:
+  - name: compute-unit-rules-cpu-only-ipmi
+    interval: 1s
+    rules:
+      # CPU usage (%) of compute unit. It is percentage of CPU cycles spent by the compute unit.
+      - record: uuid:ceems_cpu_usage:ratio_irate
+        expr: |2
+          (
+              irate(ceems_compute_unit_cpu_user_seconds_total{job="cpu-only-ipmi"}[2s])
+            +
+              irate(ceems_compute_unit_cpu_system_seconds_total{job="cpu-only-ipmi"}[2s])
+          ) * 100
+          /
+            (ceems_compute_unit_cpus{job="cpu-only-ipmi"} > 0)
+
+      # CPU memory usage (%) of compute unit. It is percentage of CPU memory used by compute unit relative to
+      # the available memory to the compute unit.
+      - record: uuid:ceems_cpu_memory_usage:ratio
+        expr: |2
+          ceems_compute_unit_memory_used_bytes{job="cpu-only-ipmi"} * 100
+          /
+          (ceems_compute_unit_memory_total_bytes{job="cpu-only-ipmi"} > 0)
+
+      # Total power (Watts) consumed by the instance by accounting Power Usage Effectiveness (PUE) value.
+      - record: instance:ceems_ipmi_dcmi_current_watts:pue
+        expr: 1 * ceems_ipmi_dcmi_current_watts{job="cpu-only-ipmi"}
+
+      # Total host power (Watts) consumed by the compute unit accounting PUE value.
+      #
+      # Firstly, we make an assumption that 90% of power is consumed by CPU, DRAM and 10% by other
+      # peripherals like network, storage, etc.
+      #
+      # (If the assumption does not fit your infrastructure, you can manually change the values
+      # in the rules. For instance, if the server has many storage disks, the 10 % can be increased
+      # further to account for disk power consumption.)
+      #
+      # We leverage RAPL package and DRAM counters to split the rest of 90% power between CPU and DRAM
+      # components, when available. When RAPL counters are not available, we assume all 90% power 
+      # is consumed by CPU.
+      #
+      # At node level, power consumed by CPU and DRAM can be estimated as
+      #
+      # Total CPU Power = 0.9 * Total Power * (RAPL Package / (RAPL Package + RAPL DRAM)) 
+      # Total CPU DRAM Power = 0.9 * Total Power * (RAPL DRAM / (RAPL Package + RAPL DRAM))
+      #
+      # Now we have power usage at node level for CPU and DRAM. We split it further at the
+      # compute unit level using CPU time and DRAM usage by the compute unit. For rest of
+      # of the power usage like network, storage, we split it equally among all compute units 
+      # that running on the node at a given time.
+      #
+      # Compute Unit CPU Power = Total CPU Power * (Compute CPU Time / Total CPU Time)
+      # Compute Unit CPU Memory Power = Total CPU DRAM Power * (Compute Unit Memory / Total Memory)
+      # Misc Power Usage by Compute Unit = 0.1 * Total Power / Number of Compute Units
+      #
+      # Total Compute Unit Host Power = Compute Unit CPU Power + Compute Unit CPU Memory Power + Misc Power Usage by Compute Unit
+      #
+      - record: uuid:ceems_host_power_watts:pue
+        expr: |2
+            0.9 * instance:ceems_ipmi_dcmi_current_watts:pue{job="cpu-only-ipmi"} # Assumption 90% Power usage by CPU, CPU memory and other peripherals.
+                * on (instance) group_left () # 0.9 * Total Power * (RAPL Package / (RAPL Package + RAPL DRAM)) -> Total CPU Power
+                  (
+                      sum by (instance) (irate(ceems_rapl_package_joules_total{job="cpu-only-ipmi"}[2s]))
+                    /
+                      (
+                          sum by (instance) (irate(ceems_rapl_package_joules_total{job="cpu-only-ipmi"}[2s]))
+                        +
+                          sum by (instance) (irate(ceems_rapl_dram_joules_total{job="cpu-only-ipmi"}[2s]))
+                      )
+                  )
+              * on (instance) group_right () # Total CPU Power * (Compute CPU Time / Total CPU Time) -> Compute Unit CPU Power
+                (
+                    (
+                        irate(ceems_compute_unit_cpu_user_seconds_total{job="cpu-only-ipmi"}[2s])
+                      +
+                        irate(ceems_compute_unit_cpu_system_seconds_total{job="cpu-only-ipmi"}[2s])
+                    )
+                  / on (instance) group_left ()
+                    sum by (instance) (irate(ceems_cpu_seconds_total{job="cpu-only-ipmi",mode!~"idle|iowait|steal"}[2s]))
+                )
+            +
+                  0.9 * instance:ceems_ipmi_dcmi_current_watts:pue{job="cpu-only-ipmi"}
+                * on (instance) group_left () # 0.9 * Total Power * (RAPL DRAM / (RAPL Package + RAPL DRAM)) -> Total CPU Memory Power
+                  (
+                      sum by (instance) (irate(ceems_rapl_dram_joules_total{job="cpu-only-ipmi"}[2s]))
+                    /
+                      (
+                          sum by (instance) (irate(ceems_rapl_package_joules_total{job="cpu-only-ipmi"}[2s]))
+                        +
+                          sum by (instance) (irate(ceems_rapl_dram_joules_total{job="cpu-only-ipmi"}[2s]))
+                      )
+                  )
+              * on (instance) group_right () # Total CPU Memory Power * (Compute Unit Memory / Total Memory) -> Compute Unit CPU Memory Power
+                (
+                    ceems_compute_unit_memory_used_bytes{job="cpu-only-ipmi"}
+                  / on (instance) group_left ()
+                    (
+                        ceems_meminfo_MemTotal_bytes{job="cpu-only-ipmi"}
+                      - on (instance)
+                        ceems_meminfo_MemAvailable_bytes{job="cpu-only-ipmi"}
+                    )
+                )
+            +
+                0.1 * instance:ceems_ipmi_dcmi_current_watts:pue{job="cpu-only-ipmi"} # Total Misc Power Usage
+              * on (instance) group_right () # Total Misc Power usage / Number of Compute Units -> Misc Power Usage by Compute Unit
+                (
+                    ceems_compute_unit_memory_used_bytes{job="cpu-only-ipmi"}
+                  /
+                    (
+                        ceems_compute_unit_memory_used_bytes{job="cpu-only-ipmi"}
+                      * on (instance) group_left ()
+                        ceems_compute_units{job="cpu-only-ipmi"}
+                    ) > 0
+                )
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by the compute unit.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # FR
+      - record: uuid:ceems_host_emissions_g_s:pue
+        expr: |2
+          label_replace(
+              uuid:ceems_host_power_watts:pue{job="cpu-only-ipmi"} / 3.6e+06,
+              "provider",
+              "owid",
+              "instance",
+              "(.*)"
+            )
+          * 56.03859
+
+  # The following recording rules estimate the average CPU, CPU memory usages and
+  # total host power (excluding GPUs) and its equivalent emissions aggregared for all hosts 
+  # per Prometheus job.
+  # 
+  - name: host-agg-rules-cpu-only-ipmi
+    interval: 2s
+    rules:
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU cycles spent by the host.
+      - record: job:ceems_cpu_usage:avg_ratio_irate
+        expr: |2
+          avg by (job) (
+            (
+                  sum by (job, instance) (
+                    irate(ceems_cpu_seconds_total{job="cpu-only-ipmi",mode!~"idle|iowait|steal"}[2s])
+                  )
+                *
+                  100
+              / on (instance) group_left ()
+                ((ceems_cpu_count{job="cpu-only-ipmi"} > 0) / ceems_cpu_per_core_count{job="cpu-only-ipmi"})
+            )
+          )
+
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU memory used by host relative to
+      # the available memory to the host.
+      - record: job:ceems_cpu_memory_usage:avg_ratio
+        expr: |2
+          avg by (job) (
+              (
+                (
+                    1
+                  -
+                    (ceems_meminfo_MemAvailable_bytes{job="cpu-only-ipmi"} / ceems_meminfo_MemTotal_bytes{job="cpu-only-ipmi"})
+                )
+              )
+            )
+          *
+            100
+
+      # Total power (Watts) consumed by all hosts excluding GPUs in a Prometheus job accounting PUE value.
+      - record: job:ceems_host_power_watts:pue
+        expr: |2
+          sum by (job) (1 * ceems_ipmi_dcmi_current_watts{job="cpu-only-ipmi"})
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by all ths hosts excluding GPUs
+      # in a Prometheus job accounting PUE value.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # FR
+      - record: job:ceems_host_emissions_g_s:pue
+        expr: |2
+          label_replace(
+            label_replace(
+              56.03859 * job:ceems_host_power_watts:pue{job="cpu-only-ipmi"} / 3.6e+06,
+              "provider",
+              "owid",
+              "instance",
+              "(.*)"
+            ),
+            "country_code",
+            "FR",
+            "instance",
+            "(.*)"
+          )
+cpu-only-rapl.rules
+---
+# Recording rules for scrape job cpu-only-rapl
+#
+# The following recording rules provide several CPU related metrics of the individual
+# compute units. Each of these metrics involving multiple raw metrics to compute them.
+# Performing such queries involving multiple metrics is a computational intensive
+# operation for Prometheus and hence, we leverage recording rules to estimate them
+# in the real time and store them in the TSDB. The downside of this approach is that
+# it creates new metrics which consume more space. However, we add atmost 10 new metrics
+# which should not increase the disk use of TSDB enormously.
+#
+groups:
+  - name: compute-unit-rules-cpu-only-rapl
+    interval: 1s
+    rules:
+      # CPU usage (%) of compute unit. It is percentage of CPU cycles spent by the compute unit.
+      - record: uuid:ceems_cpu_usage:ratio_irate
+        expr: |2
+          (
+              irate(ceems_compute_unit_cpu_user_seconds_total{job="cpu-only-rapl"}[2s])
+            +
+              irate(ceems_compute_unit_cpu_system_seconds_total{job="cpu-only-rapl"}[2s])
+          ) * 100
+          /
+            (ceems_compute_unit_cpus{job="cpu-only-rapl"} > 0)
+
+      # CPU memory usage (%) of compute unit. It is percentage of CPU memory used by compute unit relative to
+      # the available memory to the compute unit.
+      - record: uuid:ceems_cpu_memory_usage:ratio
+        expr: |2
+          ceems_compute_unit_memory_used_bytes{job="cpu-only-rapl"} * 100
+          /
+          (ceems_compute_unit_memory_total_bytes{job="cpu-only-rapl"} > 0)
+
+      # Total power (Watts) consumed by the instance by accounting Power Usage Effectiveness (PUE) value.
+      # By default, a PUE of 1 is used.
+      - record: instance:ceems_rapl_package_joules_total:pue
+        expr: 1 * ceems_rapl_package_joules_total{job="cpu-only-rapl"}
+
+      # Total power (Watts) consumed by the instance by accounting Power Usage Effectiveness (PUE) value.
+      # By default, a PUE of 1 is used.
+      - record: instance:ceems_rapl_dram_joules_total:pue
+        expr: 1 * ceems_rapl_dram_joules_total{job="cpu-only-rapl"}
+
+      # Total power (Watts) consumed by the compute unit accounting PUE value.
+      #
+      # RAPL exposes mainly package and DRAM. Depending on CPU models other
+      # domains like core, uncore, psys can also be exposed. Current rules
+      # consider only package and DRAM.
+      #
+      # Compute Unit CPU Power = Total RAPL Package Power * (Compute Unit CPU Time / Total Node CPU Time)
+      # Compute Unit Memory Power = Total RAPL DRAM Power * (Compute Unit Memory Usage / Total Node Memory Usage)
+      # Compute Unit Host Power = Compute Unit CPU Power + Compute Unit Memory Power
+      #
+      - record: uuid:ceems_host_power_watts:pue
+        expr: |2
+          (
+              sum by (instance) (irate(instance:ceems_rapl_package_joules_total:pue{job="cpu-only-rapl"}[2s]))
+            * on (instance) group_right ()
+              (
+                  (
+                      irate(ceems_compute_unit_cpu_user_seconds_total{job="cpu-only-rapl"}[2s])
+                    +
+                      irate(ceems_compute_unit_cpu_system_seconds_total{job="cpu-only-rapl"}[2s])
+                  )
+                / on (instance) group_left ()
+                  sum by (instance) (irate(ceems_cpu_seconds_total{job="cpu-only-rapl",mode!~"idle|iowait|steal"}[2s]))
+              )
+          +
+              sum by (instance) (irate(instance:ceems_rapl_dram_joules_total:pue{job="cpu-only-rapl"}[2s]))
+            * on (instance) group_right ()
+              (
+                  ceems_compute_unit_memory_used_bytes{job="cpu-only-rapl"}
+                / on (instance) group_left ()
+                  (
+                      ceems_meminfo_MemTotal_bytes{job="cpu-only-rapl"}
+                    - on (instance)
+                      ceems_meminfo_MemAvailable_bytes{job="cpu-only-rapl"}
+                  )
+              )
+          )
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by the compute unit.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # FR
+      - record: uuid:ceems_host_emissions_g_s:pue
+        expr: |2
+          label_replace(
+              uuid:ceems_host_power_watts:pue{job="cpu-only-rapl"} / 3.6e+06,
+              "provider",
+              "owid",
+              "instance",
+              "(.*)"
+            )
+          * 56.03859
+
+  # The following recording rules estimate the average CPU, CPU memory usages and
+  # total host power (excluding GPUs) and its equivalent emissions aggregared for all hosts 
+  # per Prometheus job.
+  # 
+  - name: host-agg-rules-cpu-only-rapl
+    interval: 2s
+    rules:
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU cycles spent by the host.
+      - record: job:ceems_cpu_usage:avg_ratio_irate
+        expr: |2
+          avg by (job) (
+            (
+                  sum by (job, instance) (
+                    irate(ceems_cpu_seconds_total{job="cpu-only-rapl",mode!~"idle|iowait|steal"}[2s])
+                  )
+                *
+                  100
+              / on (instance) group_left ()
+                ((ceems_cpu_count{job="cpu-only-rapl"} > 0) / ceems_cpu_per_core_count{job="cpu-only-rapl"})
+            )
+          )
+
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU memory used by host relative to
+      # the available memory to the host.
+      - record: job:ceems_cpu_memory_usage:avg_ratio
+        expr: |2
+          avg by (job) (
+              (
+                (
+                    1
+                  -
+                    (ceems_meminfo_MemAvailable_bytes{job="cpu-only-rapl"} / ceems_meminfo_MemTotal_bytes{job="cpu-only-rapl"})
+                )
+              )
+            )
+          *
+            100
+
+      # Total power (Watts) consumed by all hosts excluding GPUs in a Prometheus job accounting PUE value.
+      - record: job:ceems_host_power_watts:pue
+        expr: |2
+          sum by (job) (
+              1
+            *
+              (
+                  sum by (instance) (irate(ceems_rapl_package_joules_total{job="cpu-only-rapl"}[2s]))
+                +
+                  sum by (instance) (irate(ceems_rapl_dram_joules_total{job="cpu-only-rapl"}[2s]))
+              )
+          )
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by all ths hosts excluding GPUs
+      # in a Prometheus job accounting PUE value.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # FR
+      - record: job:ceems_host_emissions_g_s:pue
+        expr: |2
+          label_replace(
+            label_replace(
+              56.03859 * job:ceems_host_power_watts:pue{job="cpu-only-rapl"} / 3.6e+06,
+              "provider",
+              "owid",
+              "instance",
+              "(.*)"
+            ),
+            "country_code",
+            "FR",
+            "instance",
+            "(.*)"
+          )
+cpu-only-redfish.rules
+---
+# Recording rules for scrape job cpu-only-redfish
+#
+# The following recording rules provide several CPU related metrics of the individual
+# compute units. Each of these metrics involving multiple raw metrics to compute them.
+# Performing such queries involving multiple metrics is a computational intensive
+# operation for Prometheus and hence, we leverage recording rules to estimate them
+# in the real time and store them in the TSDB. The downside of this approach is that
+# it creates new metrics which consume more space. However, we add atmost 10 new metrics
+# which should not increase the disk use of TSDB enormously.
+#
+groups:
+  - name: compute-unit-rules-cpu-only-redfish
+    interval: 1s
+    rules:
+      # CPU usage (%) of compute unit. It is percentage of CPU cycles spent by the compute unit.
+      - record: uuid:ceems_cpu_usage:ratio_irate
+        expr: |2
+          (
+              irate(ceems_compute_unit_cpu_user_seconds_total{job="cpu-only-redfish"}[2s])
+            +
+              irate(ceems_compute_unit_cpu_system_seconds_total{job="cpu-only-redfish"}[2s])
+          ) * 100
+          /
+            (ceems_compute_unit_cpus{job="cpu-only-redfish"} > 0)
+
+      # CPU memory usage (%) of compute unit. It is percentage of CPU memory used by compute unit relative to
+      # the available memory to the compute unit.
+      - record: uuid:ceems_cpu_memory_usage:ratio
+        expr: |2
+          ceems_compute_unit_memory_used_bytes{job="cpu-only-redfish"} * 100
+          /
+          (ceems_compute_unit_memory_total_bytes{job="cpu-only-redfish"} > 0)
+
+      # Total power (Watts) consumed by the instance by accounting Power Usage Effectiveness (PUE) value.
+      - record: instance:ceems_redfish_current_watts:pue
+        expr: 1 * ceems_redfish_current_watts{job="cpu-only-redfish",chassis="Chassis_1"}
+
+      # Total host power (Watts) consumed by the compute unit accounting PUE value.
+      #
+      # Firstly, we make an assumption that 90% of power is consumed by CPU, DRAM and 10% by other
+      # peripherals like network, storage, etc.
+      #
+      # (If the assumption does not fit your infrastructure, you can manually change the values
+      # in the rules. For instance, if the server has many storage disks, the 10 % can be increased
+      # further to account for disk power consumption.)
+      #
+      # We leverage RAPL package and DRAM counters to split the rest of 90% power between CPU and DRAM
+      # components, when available. When RAPL counters are not available, we assume all 90% power 
+      # is consumed by CPU.
+      #
+      # At node level, power consumed by CPU and DRAM can be estimated as
+      #
+      # Total CPU Power = 0.9 * Total Power * (RAPL Package / (RAPL Package + RAPL DRAM)) 
+      # Total CPU DRAM Power = 0.9 * Total Power * (RAPL DRAM / (RAPL Package + RAPL DRAM))
+      #
+      # Now we have power usage at node level for CPU and DRAM. We split it further at the
+      # compute unit level using CPU time and DRAM usage by the compute unit. For rest of
+      # of the power usage like network, storage, we split it equally among all compute units 
+      # that running on the node at a given time.
+      #
+      # Compute Unit CPU Power = Total CPU Power * (Compute CPU Time / Total CPU Time)
+      # Compute Unit CPU Memory Power = Total CPU DRAM Power * (Compute Unit Memory / Total Memory)
+      # Misc Power Usage by Compute Unit = 0.1 * Total Power / Number of Compute Units
+      #
+      # Total Compute Unit Host Power = Compute Unit CPU Power + Compute Unit CPU Memory Power + Misc Power Usage by Compute Unit
+      #
+      - record: uuid:ceems_host_power_watts:pue
+        expr: |2
+            0.9 * instance:ceems_redfish_current_watts:pue{job="cpu-only-redfish"} # Assumption 90% Power usage by CPU, CPU memory and other peripherals.
+                * on (instance) group_left () # 0.9 * Total Power * (RAPL Package / (RAPL Package + RAPL DRAM)) -> Total CPU Power
+                  (
+                      sum by (instance) (irate(ceems_rapl_package_joules_total{job="cpu-only-redfish"}[2s]))
+                    /
+                      (
+                          sum by (instance) (irate(ceems_rapl_package_joules_total{job="cpu-only-redfish"}[2s]))
+                        +
+                          sum by (instance) (irate(ceems_rapl_dram_joules_total{job="cpu-only-redfish"}[2s]))
+                      )
+                  )
+              * on (instance) group_right () # Total CPU Power * (Compute CPU Time / Total CPU Time) -> Compute Unit CPU Power
+                (
+                    (
+                        irate(ceems_compute_unit_cpu_user_seconds_total{job="cpu-only-redfish"}[2s])
+                      +
+                        irate(ceems_compute_unit_cpu_system_seconds_total{job="cpu-only-redfish"}[2s])
+                    )
+                  / on (instance) group_left ()
+                    sum by (instance) (irate(ceems_cpu_seconds_total{job="cpu-only-redfish",mode!~"idle|iowait|steal"}[2s]))
+                )
+            +
+                  0.9 * instance:ceems_redfish_current_watts:pue{job="cpu-only-redfish"}
+                * on (instance) group_left () # 0.9 * Total Power * (RAPL DRAM / (RAPL Package + RAPL DRAM)) -> Total CPU Memory Power
+                  (
+                      sum by (instance) (irate(ceems_rapl_dram_joules_total{job="cpu-only-redfish"}[2s]))
+                    /
+                      (
+                          sum by (instance) (irate(ceems_rapl_package_joules_total{job="cpu-only-redfish"}[2s]))
+                        +
+                          sum by (instance) (irate(ceems_rapl_dram_joules_total{job="cpu-only-redfish"}[2s]))
+                      )
+                  )
+              * on (instance) group_right () # Total CPU Memory Power * (Compute Unit Memory / Total Memory) -> Compute Unit CPU Memory Power
+                (
+                    ceems_compute_unit_memory_used_bytes{job="cpu-only-redfish"}
+                  / on (instance) group_left ()
+                    (
+                        ceems_meminfo_MemTotal_bytes{job="cpu-only-redfish"}
+                      - on (instance)
+                        ceems_meminfo_MemAvailable_bytes{job="cpu-only-redfish"}
+                    )
+                )
+            +
+                0.1 * instance:ceems_redfish_current_watts:pue{job="cpu-only-redfish"} # Total Misc Power Usage
+              * on (instance) group_right () # Total Misc Power usage / Number of Compute Units -> Misc Power Usage by Compute Unit
+                (
+                    ceems_compute_unit_memory_used_bytes{job="cpu-only-redfish"}
+                  /
+                    (
+                        ceems_compute_unit_memory_used_bytes{job="cpu-only-redfish"}
+                      * on (instance) group_left ()
+                        ceems_compute_units{job="cpu-only-redfish"}
+                    ) > 0
+                )
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by the compute unit.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # FR
+      - record: uuid:ceems_host_emissions_g_s:pue
+        expr: |2
+          label_replace(
+              uuid:ceems_host_power_watts:pue{job="cpu-only-redfish"} / 3.6e+06,
+              "provider",
+              "owid",
+              "instance",
+              "(.*)"
+            )
+          * 56.03859
+
+  # The following recording rules estimate the average CPU, CPU memory usages and
+  # total host power (excluding GPUs) and its equivalent emissions aggregared for all hosts 
+  # per Prometheus job.
+  # 
+  - name: host-agg-rules-cpu-only-redfish
+    interval: 2s
+    rules:
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU cycles spent by the host.
+      - record: job:ceems_cpu_usage:avg_ratio_irate
+        expr: |2
+          avg by (job) (
+            (
+                  sum by (job, instance) (
+                    irate(ceems_cpu_seconds_total{job="cpu-only-redfish",mode!~"idle|iowait|steal"}[2s])
+                  )
+                *
+                  100
+              / on (instance) group_left ()
+                ((ceems_cpu_count{job="cpu-only-redfish"} > 0) / ceems_cpu_per_core_count{job="cpu-only-redfish"})
+            )
+          )
+
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU memory used by host relative to
+      # the available memory to the host.
+      - record: job:ceems_cpu_memory_usage:avg_ratio
+        expr: |2
+          avg by (job) (
+              (
+                (
+                    1
+                  -
+                    (ceems_meminfo_MemAvailable_bytes{job="cpu-only-redfish"} / ceems_meminfo_MemTotal_bytes{job="cpu-only-redfish"})
+                )
+              )
+            )
+          *
+            100
+
+      # Total power (Watts) consumed by all hosts excluding GPUs in a Prometheus job accounting PUE value.
+      - record: job:ceems_host_power_watts:pue
+        expr: |2
+          sum by (job) (1 * ceems_redfish_current_watts{job="cpu-only-redfish",chassis="Chassis_1"})
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by all ths hosts excluding GPUs
+      # in a Prometheus job accounting PUE value.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # FR
+      - record: job:ceems_host_emissions_g_s:pue
+        expr: |2
+          label_replace(
+            label_replace(
+              56.03859 * job:ceems_host_power_watts:pue{job="cpu-only-redfish"} / 3.6e+06,
+              "provider",
+              "owid",
+              "instance",
+              "(.*)"
+            ),
+            "country_code",
+            "FR",
+            "instance",
+            "(.*)"
+          )
+cpu-redfish-nvidia-gpu.rules
+---
+# Recording rules for scrape job cpu-redfish-nvidia-gpu
+#
+# The following recording rules provide several CPU related metrics of the individual
+# compute units. Each of these metrics involving multiple raw metrics to compute them.
+# Performing such queries involving multiple metrics is a computational intensive
+# operation for Prometheus and hence, we leverage recording rules to estimate them
+# in the real time and store them in the TSDB. The downside of this approach is that
+# it creates new metrics which consume more space. However, we add atmost 10 new metrics
+# which should not increase the disk use of TSDB enormously.
+#
+groups:
+  - name: compute-unit-rules-cpu-redfish-nvidia-gpu
+    interval: 1s
+    rules:
+      # CPU usage (%) of compute unit. It is percentage of CPU cycles spent by the compute unit.
+      - record: uuid:ceems_cpu_usage:ratio_irate
+        expr: |2
+          (
+              irate(ceems_compute_unit_cpu_user_seconds_total{job="cpu-redfish-nvidia-gpu"}[2s])
+            +
+              irate(ceems_compute_unit_cpu_system_seconds_total{job="cpu-redfish-nvidia-gpu"}[2s])
+          ) * 100
+          /
+            (ceems_compute_unit_cpus{job="cpu-redfish-nvidia-gpu"} > 0)
+
+      # CPU memory usage (%) of compute unit. It is percentage of CPU memory used by compute unit relative to
+      # the available memory to the compute unit.
+      - record: uuid:ceems_cpu_memory_usage:ratio
+        expr: |2
+          ceems_compute_unit_memory_used_bytes{job="cpu-redfish-nvidia-gpu"} * 100
+          /
+          (ceems_compute_unit_memory_total_bytes{job="cpu-redfish-nvidia-gpu"} > 0)
+
+      # Total power (Watts) consumed by the instance by accounting Power Usage Effectiveness (PUE) value.
+      - record: instance:ceems_redfish_current_watts:pue
+        expr: 1 * (label_replace(ceems_redfish_current_watts{job="cpu-redfish-nvidia-gpu",chassis="Chassis_2"}, "instancehost", "$1", "instance", "([^:]+):\\d+") - on (instancehost) group_left () sum by (instancehost) (label_replace(DCGM_FI_DEV_POWER_USAGE_INSTANT{job="nvidia-gpu"} / 1,  "instancehost", "$1", "instance", "([^:]+):\\d+"))) > 0
+
+      # Total host power (Watts) consumed by the compute unit accounting PUE value.
+      #
+      # Firstly, we make an assumption that 90% of power is consumed by CPU, DRAM and 10% by other
+      # peripherals like network, storage, etc.
+      #
+      # (If the assumption does not fit your infrastructure, you can manually change the values
+      # in the rules. For instance, if the server has many storage disks, the 10 % can be increased
+      # further to account for disk power consumption.)
+      #
+      # We leverage RAPL package and DRAM counters to split the rest of 90% power between CPU and DRAM
+      # components, when available. When RAPL counters are not available, we assume all 90% power 
+      # is consumed by CPU.
+      #
+      # At node level, power consumed by CPU and DRAM can be estimated as
+      #
+      # Total CPU Power = 0.9 * Total Power * (RAPL Package / (RAPL Package + RAPL DRAM)) 
+      # Total CPU DRAM Power = 0.9 * Total Power * (RAPL DRAM / (RAPL Package + RAPL DRAM))
+      #
+      # Now we have power usage at node level for CPU and DRAM. We split it further at the
+      # compute unit level using CPU time and DRAM usage by the compute unit. For rest of
+      # of the power usage like network, storage, we split it equally among all compute units 
+      # that running on the node at a given time.
+      #
+      # Compute Unit CPU Power = Total CPU Power * (Compute CPU Time / Total CPU Time)
+      # Compute Unit CPU Memory Power = Total CPU DRAM Power * (Compute Unit Memory / Total Memory)
+      # Misc Power Usage by Compute Unit = 0.1 * Total Power / Number of Compute Units
+      #
+      # Total Compute Unit Host Power = Compute Unit CPU Power + Compute Unit CPU Memory Power + Misc Power Usage by Compute Unit
+      #
+      - record: uuid:ceems_host_power_watts:pue
+        expr: |2
+            0.9 * instance:ceems_redfish_current_watts:pue{job="cpu-redfish-nvidia-gpu"} # Assumption 90% Power usage by CPU, CPU memory and other peripherals.
+                * on (instance) group_left () # 0.9 * Total Power * (RAPL Package / (RAPL Package + RAPL DRAM)) -> Total CPU Power
+                  (
+                      sum by (instance) (irate(ceems_rapl_package_joules_total{job="cpu-redfish-nvidia-gpu"}[2s]))
+                    /
+                      (
+                          sum by (instance) (irate(ceems_rapl_package_joules_total{job="cpu-redfish-nvidia-gpu"}[2s]))
+                        +
+                          sum by (instance) (irate(ceems_rapl_dram_joules_total{job="cpu-redfish-nvidia-gpu"}[2s]))
+                      )
+                  )
+              * on (instance) group_right () # Total CPU Power * (Compute CPU Time / Total CPU Time) -> Compute Unit CPU Power
+                (
+                    (
+                        irate(ceems_compute_unit_cpu_user_seconds_total{job="cpu-redfish-nvidia-gpu"}[2s])
+                      +
+                        irate(ceems_compute_unit_cpu_system_seconds_total{job="cpu-redfish-nvidia-gpu"}[2s])
+                    )
+                  / on (instance) group_left ()
+                    sum by (instance) (irate(ceems_cpu_seconds_total{job="cpu-redfish-nvidia-gpu",mode!~"idle|iowait|steal"}[2s]))
+                )
+            +
+                  0.9 * instance:ceems_redfish_current_watts:pue{job="cpu-redfish-nvidia-gpu"}
+                * on (instance) group_left () # 0.9 * Total Power * (RAPL DRAM / (RAPL Package + RAPL DRAM)) -> Total CPU Memory Power
+                  (
+                      sum by (instance) (irate(ceems_rapl_dram_joules_total{job="cpu-redfish-nvidia-gpu"}[2s]))
+                    /
+                      (
+                          sum by (instance) (irate(ceems_rapl_package_joules_total{job="cpu-redfish-nvidia-gpu"}[2s]))
+                        +
+                          sum by (instance) (irate(ceems_rapl_dram_joules_total{job="cpu-redfish-nvidia-gpu"}[2s]))
+                      )
+                  )
+              * on (instance) group_right () # Total CPU Memory Power * (Compute Unit Memory / Total Memory) -> Compute Unit CPU Memory Power
+                (
+                    ceems_compute_unit_memory_used_bytes{job="cpu-redfish-nvidia-gpu"}
+                  / on (instance) group_left ()
+                    (
+                        ceems_meminfo_MemTotal_bytes{job="cpu-redfish-nvidia-gpu"}
+                      - on (instance)
+                        ceems_meminfo_MemAvailable_bytes{job="cpu-redfish-nvidia-gpu"}
+                    )
+                )
+            +
+                0.1 * instance:ceems_redfish_current_watts:pue{job="cpu-redfish-nvidia-gpu"} # Total Misc Power Usage
+              * on (instance) group_right () # Total Misc Power usage / Number of Compute Units -> Misc Power Usage by Compute Unit
+                (
+                    ceems_compute_unit_memory_used_bytes{job="cpu-redfish-nvidia-gpu"}
+                  /
+                    (
+                        ceems_compute_unit_memory_used_bytes{job="cpu-redfish-nvidia-gpu"}
+                      * on (instance) group_left ()
+                        ceems_compute_units{job="cpu-redfish-nvidia-gpu"}
+                    ) > 0
+                )
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by the compute unit.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # FR
+      - record: uuid:ceems_host_emissions_g_s:pue
+        expr: |2
+          label_replace(
+              uuid:ceems_host_power_watts:pue{job="cpu-redfish-nvidia-gpu"} / 3.6e+06,
+              "provider",
+              "owid",
+              "instance",
+              "(.*)"
+            )
+          * 56.03859
+
+  # The following recording rules estimate the average CPU, CPU memory usages and
+  # total host power (excluding GPUs) and its equivalent emissions aggregared for all hosts 
+  # per Prometheus job.
+  # 
+  - name: host-agg-rules-cpu-redfish-nvidia-gpu
+    interval: 2s
+    rules:
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU cycles spent by the host.
+      - record: job:ceems_cpu_usage:avg_ratio_irate
+        expr: |2
+          avg by (job) (
+            (
+                  sum by (job, instance) (
+                    irate(ceems_cpu_seconds_total{job="cpu-redfish-nvidia-gpu",mode!~"idle|iowait|steal"}[2s])
+                  )
+                *
+                  100
+              / on (instance) group_left ()
+                ((ceems_cpu_count{job="cpu-redfish-nvidia-gpu"} > 0) / ceems_cpu_per_core_count{job="cpu-redfish-nvidia-gpu"})
+            )
+          )
+
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU memory used by host relative to
+      # the available memory to the host.
+      - record: job:ceems_cpu_memory_usage:avg_ratio
+        expr: |2
+          avg by (job) (
+              (
+                (
+                    1
+                  -
+                    (ceems_meminfo_MemAvailable_bytes{job="cpu-redfish-nvidia-gpu"} / ceems_meminfo_MemTotal_bytes{job="cpu-redfish-nvidia-gpu"})
+                )
+              )
+            )
+          *
+            100
+
+      # Total power (Watts) consumed by all hosts excluding GPUs in a Prometheus job accounting PUE value.
+      - record: job:ceems_host_power_watts:pue
+        expr: |2
+          sum by (job) (1 * (label_replace(ceems_redfish_current_watts{job="cpu-redfish-nvidia-gpu",chassis="Chassis_2"}, "instancehost", "$1", "instance", "([^:]+):\\d+") - on (instancehost) group_left () sum by (instancehost) (label_replace(DCGM_FI_DEV_POWER_USAGE_INSTANT{job="nvidia-gpu"} / 1,  "instancehost", "$1", "instance", "([^:]+):\\d+"))) > 0)
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by all ths hosts excluding GPUs
+      # in a Prometheus job accounting PUE value.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # FR
+      - record: job:ceems_host_emissions_g_s:pue
+        expr: |2
+          label_replace(
+            label_replace(
+              56.03859 * job:ceems_host_power_watts:pue{job="cpu-redfish-nvidia-gpu"} / 3.6e+06,
+              "provider",
+              "owid",
+              "instance",
+              "(.*)"
+            ),
+            "country_code",
+            "FR",
+            "instance",
+            "(.*)"
+          )
+ipmi-nvidia-gpu-gpu.rules
+---
+# Recording rules for NVIDIA GPUs scrape job ipmi-nvidia-gpu.
+#
+# These rules map the GPU usage to the compute unit `uuid` which gives
+# GPU metrics for each compute unit.
+#
+# We leverage these rules to include PUE (Power Usage Effectiveness) in the Power
+# estimation as well.
+#
+groups:
+  - name: compute-unit-gpu-rules-ipmi-nvidia-gpu
+    interval: 1s
+    rules:
+      # GPU Usage (%) by compute unit
+      - record: uuid:ceems_gpu_usage:ratio
+        expr: |2
+            DCGM_FI_DEV_GPU_UTIL{job="ipmi-nvidia-gpu"}
+            * on (gpuuuid,gpuiid) group_right ()
+            ceems_compute_unit_gpu_index_flag{job="cpu-ipmi-nvidia-gpu"}
+
+      # GPU Memory Usage (%) by compute unit
+      - record: uuid:ceems_gpu_memory_usage:ratio
+        expr: |2
+          (
+              DCGM_FI_DEV_FB_USED{job="ipmi-nvidia-gpu"} * 100
+            /
+              (DCGM_FI_DEV_FB_USED{job="ipmi-nvidia-gpu"} + DCGM_FI_DEV_FB_FREE{job="ipmi-nvidia-gpu"})
+          )
+          * on (gpuuuid,gpuiid) group_right ()
+          ceems_compute_unit_gpu_index_flag{job="cpu-ipmi-nvidia-gpu"}
+      
+      # Total power (Watts) consumed by the GPU by accounting Power Usage Effectiveness (PUE) value.
+      - record: dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue
+        expr: 1 * DCGM_FI_DEV_POWER_USAGE_INSTANT{job="ipmi-nvidia-gpu"}
+
+      - record: uuid:ceems_gpu_power_watts:pue
+        expr: |2
+          dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue{job="ipmi-nvidia-gpu"}
+          * on (gpuuuid,gpuiid) group_right()
+          ceems_compute_unit_gpu_index_flag{job="cpu-ipmi-nvidia-gpu"}
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by the compute unit's GPUs.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # FR
+      - record: uuid:ceems_gpu_emissions_g_s:pue
+        expr: |2
+          label_replace(
+              dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue{job="ipmi-nvidia-gpu"} / 3.6e+06
+            * on (gpuuuid,gpuiid) group_right ()
+              ceems_compute_unit_gpu_index_flag{job="cpu-ipmi-nvidia-gpu"},
+              "provider",
+              "owid",
+              "instance",
+              "(.*)"
+            )
+          * 56.03859
+
+      # Profiling metrics
+
+      - record: uuid:ceems_gpu_sm_active:ratio
+        expr: |2
+          DCGM_FI_PROF_SM_ACTIVE{job="ipmi-nvidia-gpu"} * 100
+          * on (gpuuuid,gpuiid) group_right ()
+          ceems_compute_unit_gpu_index_flag{job="cpu-ipmi-nvidia-gpu"}
+
+      - record: uuid:ceems_gpu_sm_occupancy:ratio
+        expr: |2
+          DCGM_FI_PROF_SM_OCCUPANCY{job="ipmi-nvidia-gpu"} * 100
+          * on (gpuuuid,gpuiid) group_right ()
+          ceems_compute_unit_gpu_index_flag{job="cpu-ipmi-nvidia-gpu"}
+
+      - record: uuid:ceems_gpu_gr_engine_active:ratio
+        expr: |2
+          DCGM_FI_PROF_GR_ENGINE_ACTIVE{job="ipmi-nvidia-gpu"} * 100
+          * on (gpuuuid,gpuiid) group_right ()
+          ceems_compute_unit_gpu_index_flag{job="cpu-ipmi-nvidia-gpu"}
+
+
+  # The following recording rules estimate the average GPU, GPU memory usages and
+  # total GPU power and its equivalent emissions aggregared for all hosts 
+  # per Prometheus job.
+  # 
+  - name: host-agg-gpu-rules-ipmi-nvidia-gpu
+    interval: 2s
+    rules:
+      # Average GPU Usage (%) for all hosts aggregated per Prometheus job
+      - record: job:ceems_gpu_usage:avg
+        expr: avg by (job) (DCGM_FI_DEV_GPU_UTIL{job="ipmi-nvidia-gpu"})
+
+      # Average GPU memory usage (%) for all hosts aggregated per Prometheus job
+      - record: job:ceems_gpu_memory_usage:avg_ratio
+        expr: |2
+          avg by (job) (
+            (
+                DCGM_FI_DEV_FB_USED{job="ipmi-nvidia-gpu"} * 100
+              /
+                (DCGM_FI_DEV_FB_USED{job="ipmi-nvidia-gpu"} + DCGM_FI_DEV_FB_FREE{job="ipmi-nvidia-gpu"})
+            )
+          )
+
+      # Total power usage (Watts) by GPUs on all hosts aggregated per Prometheus job
+      - record: job:ceems_gpu_power_watts:pue
+        expr: sum by (job)(1 * DCGM_FI_DEV_POWER_USAGE_INSTANT{job="ipmi-nvidia-gpu"})
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by GPUs on all ths hosts
+      # in a Prometheus job accounting PUE value.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # FR
+      - record: job:ceems_gpu_emissions_g_s:pue
+        expr: |2
+          label_replace(
+            label_replace(
+              56.03859 * job:ceems_gpu_power_watts:pue{job="ipmi-nvidia-gpu"} / 3.6e+06,
+              "provider",
+              "owid",
+              "instance",
+              "(.*)"
+            ),
+            "country_code",
+            "FR",
+            "instance",
+            "(.*)"
+          )
+nvidia-gpu-gpu.rules
+---
+# Recording rules for NVIDIA GPUs scrape job nvidia-gpu.
+#
+# These rules map the GPU usage to the compute unit `uuid` which gives
+# GPU metrics for each compute unit.
+#
+# We leverage these rules to include PUE (Power Usage Effectiveness) in the Power
+# estimation as well.
+#
+groups:
+  - name: compute-unit-gpu-rules-nvidia-gpu
+    interval: 1s
+    rules:
+      # GPU Usage (%) by compute unit
+      - record: uuid:ceems_gpu_usage:ratio
+        expr: |2
+            DCGM_FI_DEV_GPU_UTIL{job="nvidia-gpu"}
+            * on (gpuuuid,gpuiid) group_right ()
+            ceems_compute_unit_gpu_index_flag{job="cpu-redfish-nvidia-gpu"}
+
+      # GPU Memory Usage (%) by compute unit
+      - record: uuid:ceems_gpu_memory_usage:ratio
+        expr: |2
+          (
+              DCGM_FI_DEV_FB_USED{job="nvidia-gpu"} * 100
+            /
+              (DCGM_FI_DEV_FB_USED{job="nvidia-gpu"} + DCGM_FI_DEV_FB_FREE{job="nvidia-gpu"})
+          )
+          * on (gpuuuid,gpuiid) group_right ()
+          ceems_compute_unit_gpu_index_flag{job="cpu-redfish-nvidia-gpu"}
+      
+      # Total power (Watts) consumed by the GPU by accounting Power Usage Effectiveness (PUE) value.
+      - record: dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue
+        expr: 1 * DCGM_FI_DEV_POWER_USAGE_INSTANT{job="nvidia-gpu"}
+
+      - record: uuid:ceems_gpu_power_watts:pue
+        expr: |2
+          dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue{job="nvidia-gpu"}
+          * on (gpuuuid,gpuiid) group_right()
+          ceems_compute_unit_gpu_index_flag{job="cpu-redfish-nvidia-gpu"}
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by the compute unit's GPUs.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # FR
+      - record: uuid:ceems_gpu_emissions_g_s:pue
+        expr: |2
+          label_replace(
+              dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue{job="nvidia-gpu"} / 3.6e+06
+            * on (gpuuuid,gpuiid) group_right ()
+              ceems_compute_unit_gpu_index_flag{job="cpu-redfish-nvidia-gpu"},
+              "provider",
+              "owid",
+              "instance",
+              "(.*)"
+            )
+          * 56.03859
+
+      # Profiling metrics
+
+      - record: uuid:ceems_gpu_sm_active:ratio
+        expr: |2
+          DCGM_FI_PROF_SM_ACTIVE{job="nvidia-gpu"} * 100
+          * on (gpuuuid,gpuiid) group_right ()
+          ceems_compute_unit_gpu_index_flag{job="cpu-redfish-nvidia-gpu"}
+
+      - record: uuid:ceems_gpu_sm_occupancy:ratio
+        expr: |2
+          DCGM_FI_PROF_SM_OCCUPANCY{job="nvidia-gpu"} * 100
+          * on (gpuuuid,gpuiid) group_right ()
+          ceems_compute_unit_gpu_index_flag{job="cpu-redfish-nvidia-gpu"}
+
+      - record: uuid:ceems_gpu_gr_engine_active:ratio
+        expr: |2
+          DCGM_FI_PROF_GR_ENGINE_ACTIVE{job="nvidia-gpu"} * 100
+          * on (gpuuuid,gpuiid) group_right ()
+          ceems_compute_unit_gpu_index_flag{job="cpu-redfish-nvidia-gpu"}
+
+
+  # The following recording rules estimate the average GPU, GPU memory usages and
+  # total GPU power and its equivalent emissions aggregared for all hosts 
+  # per Prometheus job.
+  # 
+  - name: host-agg-gpu-rules-nvidia-gpu
+    interval: 2s
+    rules:
+      # Average GPU Usage (%) for all hosts aggregated per Prometheus job
+      - record: job:ceems_gpu_usage:avg
+        expr: avg by (job) (DCGM_FI_DEV_GPU_UTIL{job="nvidia-gpu"})
+
+      # Average GPU memory usage (%) for all hosts aggregated per Prometheus job
+      - record: job:ceems_gpu_memory_usage:avg_ratio
+        expr: |2
+          avg by (job) (
+            (
+                DCGM_FI_DEV_FB_USED{job="nvidia-gpu"} * 100
+              /
+                (DCGM_FI_DEV_FB_USED{job="nvidia-gpu"} + DCGM_FI_DEV_FB_FREE{job="nvidia-gpu"})
+            )
+          )
+
+      # Total power usage (Watts) by GPUs on all hosts aggregated per Prometheus job
+      - record: job:ceems_gpu_power_watts:pue
+        expr: sum by (job)(1 * DCGM_FI_DEV_POWER_USAGE_INSTANT{job="nvidia-gpu"})
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by GPUs on all ths hosts
+      # in a Prometheus job accounting PUE value.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # FR
+      - record: job:ceems_gpu_emissions_g_s:pue
+        expr: |2
+          label_replace(
+            label_replace(
+              56.03859 * job:ceems_gpu_power_watts:pue{job="nvidia-gpu"} / 3.6e+06,
+              "provider",
+              "owid",
+              "instance",
+              "(.*)"
+            ),
+            "country_code",
+            "FR",
+            "instance",
+            "(.*)"
+          )
+amd-gpu-gpu.rules
+---
+# Recording rules for AMD GPUs scrape job amd-gpu.
+#
+# These rules map the GPU usage to the compute unit `uuid` which gives
+# GPU metrics for each compute unit.
+#
+# We leverage these rules to include PUE (Power Usage Effectiveness) in the Power
+# estimation as well.
+#
+groups:
+  - name: compute-unit-gpu-rules-amd-gpu
+    interval: 1s
+    rules:
+      # GPU Usage (%) by compute unit
+      - record: uuid:ceems_gpu_usage:ratio
+        expr: |2
+            amd_gpu_use_percent{job="amd-gpu"}
+            * on (index) group_right ()
+            ceems_compute_unit_gpu_index_flag{job="cpu-cray-amd-gpu"}
+
+      # GPU Memory Usage (%) by compute unit
+      - record: uuid:ceems_gpu_memory_usage:ratio
+        expr: |2
+          amd_gpu_memory_use_percent{job="amd-gpu"}
+          * on (index) group_right ()
+          ceems_compute_unit_gpu_index_flag{job="cpu-cray-amd-gpu"}
+      
+      # Total power (Watts) consumed by the GPU by accounting Power Usage Effectiveness (PUE) value.
+      # AMD GPU power is in micro Watts and we need to convert it to Watts here
+      - record: dev:amd_gpu_power_watts:pue
+        expr: 1 * amd_gpu_power{job="amd-gpu"} / 1e6
+
+      - record: uuid:ceems_gpu_power_watts:pue
+        expr: |2
+          dev:amd_gpu_power_watts:pue{job="amd-gpu"}
+          * on (index) group_right()
+          ceems_compute_unit_gpu_index_flag{job="cpu-cray-amd-gpu"}
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by the compute unit's GPUs.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # 
+      - record: uuid:ceems_gpu_emissions_g_s:pue
+        expr: |2
+          label_replace(
+              dev:amd_gpu_power_watts:pue{job="amd-gpu"} / 3.6e+06
+            * on (index) group_right ()
+              ceems_compute_unit_gpu_index_flag{job="cpu-cray-amd-gpu"},
+              "provider",
+              "custom",
+              "instance",
+              "(.*)"
+            )
+          * 50
+
+  # The following recording rules estimate the average GPU, GPU memory usages and
+  # total GPU power and its equivalent emissions aggregared for all hosts 
+  # per Prometheus job.
+  # 
+  - name: host-agg-gpu-rules-amd-gpu
+    interval: 2s
+    rules:
+      # Average GPU Usage (%) for all hosts aggregated per Prometheus job
+      - record: job:ceems_gpu_usage:avg
+        expr: avg by (job) (amd_gpu_use_percent{job="amd-gpu"})
+
+      # Average GPU memory usage (%) for all hosts aggregated per Prometheus job
+      - record: job:ceems_gpu_memory_usage:avg_ratio
+        expr: avg by (job) (amd_gpu_memory_use_percent{job="amd-gpu"})
+
+      # Total power usage (Watts) by GPUs on all hosts aggregated per Prometheus job
+      # AMD GPU power is in micro Watts and we need to convert it to Watts here
+      - record: job:ceems_gpu_power_watts:pue
+        expr: sum by (job)(1 * amd_gpu_power{job="amd-gpu"} / 1e6)
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by GPUs on all ths hosts
+      # in a Prometheus job accounting PUE value.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # 
+      - record: job:ceems_gpu_emissions_g_s:pue
+        expr: |2
+          label_replace(
+            label_replace(
+              50 * job:ceems_gpu_power_watts:pue{job="amd-gpu"} / 3.6e+06,
+              "provider",
+              "custom",
+              "instance",
+              "(.*)"
+            ),
+            "country_code",
+            "",
+            "instance",
+            "(.*)"
+          )
+cpu-cray-amd-gpu.rules
+---
+# Recording rules for scrape job cpu-cray-amd-gpu
+#
+# The following recording rules provide several CPU related metrics of the individual
+# compute units. Each of these metrics involving multiple raw metrics to compute them.
+# Performing such queries involving multiple metrics is a computational intensive
+# operation for Prometheus and hence, we leverage recording rules to estimate them
+# in the real time and store them in the TSDB. The downside of this approach is that
+# it creates new metrics which consume more space. However, we add atmost 10 new metrics
+# which should not increase the disk use of TSDB enormously.
+#
+groups:
+  - name: compute-unit-rules-cpu-cray-amd-gpu
+    interval: 1s
+    rules:
+      # CPU usage (%) of compute unit. It is percentage of CPU cycles spent by the compute unit.
+      - record: uuid:ceems_cpu_usage:ratio_irate
+        expr: |2
+          (
+              irate(ceems_compute_unit_cpu_user_seconds_total{job="cpu-cray-amd-gpu"}[2s])
+            +
+              irate(ceems_compute_unit_cpu_system_seconds_total{job="cpu-cray-amd-gpu"}[2s])
+          ) * 100
+          /
+            (ceems_compute_unit_cpus{job="cpu-cray-amd-gpu"} > 0)
+
+      # CPU memory usage (%) of compute unit. It is percentage of CPU memory used by compute unit relative to
+      # the available memory to the compute unit.
+      - record: uuid:ceems_cpu_memory_usage:ratio
+        expr: |2
+          ceems_compute_unit_memory_used_bytes{job="cpu-cray-amd-gpu"} * 100
+          /
+          (ceems_compute_unit_memory_total_bytes{job="cpu-cray-amd-gpu"} > 0)
+
+      # Total host power (Watts) consumed by the instance by accouting Power Usage Effectiveness (PUE) value.
+      - record: instance:ceems_cray_pm_counters_power_watts:pue
+        expr: 1 * ceems_cray_pm_counters_power_watts{job="cpu-cray-amd-gpu"}
+
+      # Total host power (Watts) consumed by the compute unit accouting PUE value.
+      #
+      # Cray PM counters provide power consumption by CPU, memory and entire node.
+      # This power consumption by the CPU and memory are split among all the running compute units
+      # based on CPU time and memory used by the compute unit.
+      #
+      # Compute Unit CPU Power = Total CPU Power * (Compute Unit CPU Time / Total Node CPU Time)
+      # Compute Unit Memory Power = Total Memory Power * (Compute Unit Memory Usage / Total Node Memory Usage)
+      # Compute Unit Misc Power = (Total Node Power - (Total CPU Power + Total Memory Power)) / Number of Compute Units
+      #
+      # Misc power is the power consumption by all other peripherals on the compute host like NIC, disks, PCIe, etc.
+      # This misc power is split equally among all running compute units at a given time.
+      #
+      - record: uuid:ceems_host_power_watts:pue
+        expr: |2
+            instance:ceems_cray_pm_counters_power_watts:pue{domain="cpu",job="cpu-cray-amd-gpu"} # CPU Power Usage by Compute Unit
+                * on (instance) group_right ()
+                  (
+                      (
+                          irate(ceems_compute_unit_cpu_user_seconds_total{job="cpu-cray-amd-gpu"}[2s])
+                        +
+                          irate(ceems_compute_unit_cpu_system_seconds_total{job="cpu-cray-amd-gpu"}[2s])
+                      )
+                    / on (instance) group_left ()
+                      sum by (instance) (irate(ceems_cpu_seconds_total{job="cpu-cray-amd-gpu",mode!~"idle|iowait|steal"}[2s]))
+                  )
+              +
+                  instance:ceems_cray_pm_counters_power_watts:pue{domain="memory",job="cpu-cray-amd-gpu"} # CPU Memory Power Usage by Compute Unit
+                * on (instance) group_right ()
+                  (
+                      ceems_compute_unit_memory_used_bytes{job="cpu-cray-amd-gpu"}
+                    / on (instance) group_left ()
+                      (
+                          ceems_meminfo_MemTotal_bytes{job="cpu-cray-amd-gpu"}
+                        - on (instance)
+                          ceems_meminfo_MemAvailable_bytes{job="cpu-cray-amd-gpu"}
+                      )
+                  )
+            +
+                (
+                    instance:ceems_cray_pm_counters_power_watts:pue{domain="node",job="cpu-cray-amd-gpu"} # Misc Power Usage by Compute Unit   
+                  - on (instance)
+                    sum by (instance) (instance:ceems_cray_pm_counters_power_watts:pue{domain!~"node",job="cpu-cray-amd-gpu"})
+                )
+              * on (instance) group_right ()
+                (
+                      ceems_compute_unit_memory_used_bytes{job="cpu-cray-amd-gpu"}
+                    /
+                      (
+                          ceems_compute_unit_memory_used_bytes{job="cpu-cray-amd-gpu"}
+                        * on (instance) group_left ()
+                          ceems_compute_units{job="cpu-cray-amd-gpu"}
+                      )
+                  >
+                    0
+                )
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by the compute unit.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # 
+      - record: uuid:ceems_host_emissions_g_s:pue
+        expr: |2
+          label_replace(
+              uuid:ceems_host_power_watts:pue{job="cpu-cray-amd-gpu"} / 3.6e+06,
+              "provider",
+              "custom",
+              "instance",
+              "(.*)"
+            )
+          * 50
+
+  # The following recording rules estimate the average CPU, CPU memory usages and
+  # total host power (excluding GPUs) and its equivalent emissions aggregared for all hosts 
+  # per Prometheus job.
+  # 
+  - name: host-agg-rules-cpu-cray-amd-gpu
+    interval: 2s
+    rules:
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU cycles spent by the host.
+      - record: job:ceems_cpu_usage:avg_ratio_irate
+        expr: |2
+          avg by (job) (
+            (
+                  sum by (job, instance) (
+                    irate(ceems_cpu_seconds_total{job="cpu-cray-amd-gpu",mode!~"idle|iowait|steal"}[2s])
+                  )
+                *
+                  100
+              / on (instance) group_left ()
+                ((ceems_cpu_count{job="cpu-cray-amd-gpu"} > 0) / ceems_cpu_per_core_count{job="cpu-cray-amd-gpu"})
+            )
+          )
+
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU memory used by host relative to
+      # the available memory to the host.
+      - record: job:ceems_cpu_memory_usage:avg_ratio
+        expr: |2
+          avg by (job) (
+              (
+                (
+                    1
+                  -
+                    (ceems_meminfo_MemAvailable_bytes{job="cpu-cray-amd-gpu"} / ceems_meminfo_MemTotal_bytes{job="cpu-cray-amd-gpu"})
+                )
+              )
+            )
+          *
+            100
+
+      # Total power (Watts) consumed by all hosts excluding GPUs in a Prometheus job accounting PUE value.
+      - record: job:ceems_host_power_watts:pue
+        expr: |2
+          sum by (job) (
+              1
+            *
+              (
+                  ceems_cray_pm_counters_power_watts{domain="node",job="cpu-cray-amd-gpu"}
+                - on (instance) group_left ()
+                  sum by (instance) (ceems_cray_pm_counters_power_watts{domain=~"accel.*",job="cpu-cray-amd-gpu"})
+              )
+          )
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by all ths hosts excluding GPUs
+      # in a Prometheus job accounting PUE value.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # 
+      - record: job:ceems_host_emissions_g_s:pue
+        expr: |2
+          label_replace(
+            label_replace(
+              50 * job:ceems_host_power_watts:pue{job="cpu-cray-amd-gpu"} / 3.6e+06,
+              "provider",
+              "custom",
+              "instance",
+              "(.*)"
+            ),
+            "country_code",
+            "",
+            "instance",
+            "(.*)"
+          )
+
+cpu-ipmi-nvidia-gpu.rules
+---
+# Recording rules for scrape job cpu-ipmi-nvidia-gpu
+#
+# The following recording rules provide several CPU related metrics of the individual
+# compute units. Each of these metrics involving multiple raw metrics to compute them.
+# Performing such queries involving multiple metrics is a computational intensive
+# operation for Prometheus and hence, we leverage recording rules to estimate them
+# in the real time and store them in the TSDB. The downside of this approach is that
+# it creates new metrics which consume more space. However, we add atmost 10 new metrics
+# which should not increase the disk use of TSDB enormously.
+#
+groups:
+  - name: compute-unit-rules-cpu-ipmi-nvidia-gpu
+    interval: 1s
+    rules:
+      # CPU usage (%) of compute unit. It is percentage of CPU cycles spent by the compute unit.
+      - record: uuid:ceems_cpu_usage:ratio_irate
+        expr: |2
+          (
+              irate(ceems_compute_unit_cpu_user_seconds_total{job="cpu-ipmi-nvidia-gpu"}[2s])
+            +
+              irate(ceems_compute_unit_cpu_system_seconds_total{job="cpu-ipmi-nvidia-gpu"}[2s])
+          ) * 100
+          /
+            (ceems_compute_unit_cpus{job="cpu-ipmi-nvidia-gpu"} > 0)
+
+      # CPU memory usage (%) of compute unit. It is percentage of CPU memory used by compute unit relative to
+      # the available memory to the compute unit.
+      - record: uuid:ceems_cpu_memory_usage:ratio
+        expr: |2
+          ceems_compute_unit_memory_used_bytes{job="cpu-ipmi-nvidia-gpu"} * 100
+          /
+          (ceems_compute_unit_memory_total_bytes{job="cpu-ipmi-nvidia-gpu"} > 0)
+
+      # Total power (Watts) consumed by the instance by accounting Power Usage Effectiveness (PUE) value.
+      - record: instance:ceems_ipmi_dcmi_current_watts:pue
+        expr: 1 * (label_replace(ceems_ipmi_dcmi_current_watts{job="cpu-ipmi-nvidia-gpu"}, "instancehost", "$1", "instance", "([^:]+):\\d+") - on (instancehost) group_left () sum by (instancehost) (label_replace(DCGM_FI_DEV_POWER_USAGE_INSTANT{job="ipmi-nvidia-gpu"} / 1,  "instancehost", "$1", "instance", "([^:]+):\\d+"))) > 0
+
+      # Total host power (Watts) consumed by the compute unit accounting PUE value.
+      #
+      # Firstly, we make an assumption that 90% of power is consumed by CPU, DRAM and 10% by other
+      # peripherals like network, storage, etc.
+      #
+      # (If the assumption does not fit your infrastructure, you can manually change the values
+      # in the rules. For instance, if the server has many storage disks, the 10 % can be increased
+      # further to account for disk power consumption.)
+      #
+      # We leverage RAPL package and DRAM counters to split the rest of 90% power between CPU and DRAM
+      # components, when available. When RAPL counters are not available, we assume all 90% power 
+      # is consumed by CPU.
+      #
+      # At node level, power consumed by CPU and DRAM can be estimated as
+      #
+      # Total CPU Power = 0.9 * Total Power * (RAPL Package / (RAPL Package + RAPL DRAM)) 
+      # Total CPU DRAM Power = 0.9 * Total Power * (RAPL DRAM / (RAPL Package + RAPL DRAM))
+      #
+      # Now we have power usage at node level for CPU and DRAM. We split it further at the
+      # compute unit level using CPU time and DRAM usage by the compute unit. For rest of
+      # of the power usage like network, storage, we split it equally among all compute units 
+      # that running on the node at a given time.
+      #
+      # Compute Unit CPU Power = Total CPU Power * (Compute CPU Time / Total CPU Time)
+      # Compute Unit CPU Memory Power = Total CPU DRAM Power * (Compute Unit Memory / Total Memory)
+      # Misc Power Usage by Compute Unit = 0.1 * Total Power / Number of Compute Units
+      #
+      # Total Compute Unit Host Power = Compute Unit CPU Power + Compute Unit CPU Memory Power + Misc Power Usage by Compute Unit
+      #
+      - record: uuid:ceems_host_power_watts:pue
+        expr: |2
+            0.9 * instance:ceems_ipmi_dcmi_current_watts:pue{job="cpu-ipmi-nvidia-gpu"} # Assumption 90% Power usage by CPU, CPU memory and other peripherals.
+              * on (instance) group_right () # Total CPU Power * (Compute CPU Time / Total CPU Time) -> Compute Unit CPU Power
+                (
+                    (
+                        irate(ceems_compute_unit_cpu_user_seconds_total{job="cpu-ipmi-nvidia-gpu"}[2s])
+                      +
+                        irate(ceems_compute_unit_cpu_system_seconds_total{job="cpu-ipmi-nvidia-gpu"}[2s])
+                    )
+                  / on (instance) group_left ()
+                    sum by (instance) (irate(ceems_cpu_seconds_total{job="cpu-ipmi-nvidia-gpu",mode!~"idle|iowait|steal"}[2s]))
+                )
+            +
+                0.1 * instance:ceems_ipmi_dcmi_current_watts:pue{job="cpu-ipmi-nvidia-gpu"} # Total Misc Power Usage
+              * on (instance) group_right () # Total Misc Power usage / Number of Compute Units -> Misc Power Usage by Compute Unit
+                (
+                    ceems_compute_unit_memory_used_bytes{job="cpu-ipmi-nvidia-gpu"}
+                  /
+                    (
+                        ceems_compute_unit_memory_used_bytes{job="cpu-ipmi-nvidia-gpu"}
+                      * on (instance) group_left ()
+                        ceems_compute_units{job="cpu-ipmi-nvidia-gpu"}
+                    ) > 0
+                )
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by the compute unit.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # 
+      - record: uuid:ceems_host_emissions_g_s:pue
+        expr: |2
+          label_replace(
+              uuid:ceems_host_power_watts:pue{job="cpu-ipmi-nvidia-gpu"} / 3.6e+06,
+              "provider",
+              "custom",
+              "instance",
+              "(.*)"
+            )
+          * 50
+
+  # The following recording rules estimate the average CPU, CPU memory usages and
+  # total host power (excluding GPUs) and its equivalent emissions aggregared for all hosts 
+  # per Prometheus job.
+  # 
+  - name: host-agg-rules-cpu-ipmi-nvidia-gpu
+    interval: 2s
+    rules:
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU cycles spent by the host.
+      - record: job:ceems_cpu_usage:avg_ratio_irate
+        expr: |2
+          avg by (job) (
+            (
+                  sum by (job, instance) (
+                    irate(ceems_cpu_seconds_total{job="cpu-ipmi-nvidia-gpu",mode!~"idle|iowait|steal"}[2s])
+                  )
+                *
+                  100
+              / on (instance) group_left ()
+                ((ceems_cpu_count{job="cpu-ipmi-nvidia-gpu"} > 0) / ceems_cpu_per_core_count{job="cpu-ipmi-nvidia-gpu"})
+            )
+          )
+
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU memory used by host relative to
+      # the available memory to the host.
+      - record: job:ceems_cpu_memory_usage:avg_ratio
+        expr: |2
+          avg by (job) (
+              (
+                (
+                    1
+                  -
+                    (ceems_meminfo_MemAvailable_bytes{job="cpu-ipmi-nvidia-gpu"} / ceems_meminfo_MemTotal_bytes{job="cpu-ipmi-nvidia-gpu"})
+                )
+              )
+            )
+          *
+            100
+
+      # Total power (Watts) consumed by all hosts excluding GPUs in a Prometheus job accounting PUE value.
+      - record: job:ceems_host_power_watts:pue
+        expr: |2
+          sum by (job) (1 * (label_replace(ceems_ipmi_dcmi_current_watts{job="cpu-ipmi-nvidia-gpu"}, "instancehost", "$1", "instance", "([^:]+):\\d+") - on (instancehost) group_left () sum by (instancehost) (label_replace(DCGM_FI_DEV_POWER_USAGE_INSTANT{job="ipmi-nvidia-gpu"} / 1,  "instancehost", "$1", "instance", "([^:]+):\\d+"))) > 0)
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by all ths hosts excluding GPUs
+      # in a Prometheus job accounting PUE value.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # 
+      - record: job:ceems_host_emissions_g_s:pue
+        expr: |2
+          label_replace(
+            label_replace(
+              50 * job:ceems_host_power_watts:pue{job="cpu-ipmi-nvidia-gpu"} / 3.6e+06,
+              "provider",
+              "custom",
+              "instance",
+              "(.*)"
+            ),
+            "country_code",
+            "",
+            "instance",
+            "(.*)"
+          )
+cpu-only-ipmi.rules
+---
+# Recording rules for scrape job cpu-only-ipmi
+#
+# The following recording rules provide several CPU related metrics of the individual
+# compute units. Each of these metrics involving multiple raw metrics to compute them.
+# Performing such queries involving multiple metrics is a computational intensive
+# operation for Prometheus and hence, we leverage recording rules to estimate them
+# in the real time and store them in the TSDB. The downside of this approach is that
+# it creates new metrics which consume more space. However, we add atmost 10 new metrics
+# which should not increase the disk use of TSDB enormously.
+#
+groups:
+  - name: compute-unit-rules-cpu-only-ipmi
+    interval: 1s
+    rules:
+      # CPU usage (%) of compute unit. It is percentage of CPU cycles spent by the compute unit.
+      - record: uuid:ceems_cpu_usage:ratio_irate
+        expr: |2
+          (
+              irate(ceems_compute_unit_cpu_user_seconds_total{job="cpu-only-ipmi"}[2s])
+            +
+              irate(ceems_compute_unit_cpu_system_seconds_total{job="cpu-only-ipmi"}[2s])
+          ) * 100
+          /
+            (ceems_compute_unit_cpus{job="cpu-only-ipmi"} > 0)
+
+      # CPU memory usage (%) of compute unit. It is percentage of CPU memory used by compute unit relative to
+      # the available memory to the compute unit.
+      - record: uuid:ceems_cpu_memory_usage:ratio
+        expr: |2
+          ceems_compute_unit_memory_used_bytes{job="cpu-only-ipmi"} * 100
+          /
+          (ceems_compute_unit_memory_total_bytes{job="cpu-only-ipmi"} > 0)
+
+      # Total power (Watts) consumed by the instance by accounting Power Usage Effectiveness (PUE) value.
+      - record: instance:ceems_ipmi_dcmi_current_watts:pue
+        expr: 1 * ceems_ipmi_dcmi_current_watts{job="cpu-only-ipmi"}
+
+      # Total host power (Watts) consumed by the compute unit accounting PUE value.
+      #
+      # Firstly, we make an assumption that 90% of power is consumed by CPU, DRAM and 10% by other
+      # peripherals like network, storage, etc.
+      #
+      # (If the assumption does not fit your infrastructure, you can manually change the values
+      # in the rules. For instance, if the server has many storage disks, the 10 % can be increased
+      # further to account for disk power consumption.)
+      #
+      # We leverage RAPL package and DRAM counters to split the rest of 90% power between CPU and DRAM
+      # components, when available. When RAPL counters are not available, we assume all 90% power 
+      # is consumed by CPU.
+      #
+      # At node level, power consumed by CPU and DRAM can be estimated as
+      #
+      # Total CPU Power = 0.9 * Total Power * (RAPL Package / (RAPL Package + RAPL DRAM)) 
+      # Total CPU DRAM Power = 0.9 * Total Power * (RAPL DRAM / (RAPL Package + RAPL DRAM))
+      #
+      # Now we have power usage at node level for CPU and DRAM. We split it further at the
+      # compute unit level using CPU time and DRAM usage by the compute unit. For rest of
+      # of the power usage like network, storage, we split it equally among all compute units 
+      # that running on the node at a given time.
+      #
+      # Compute Unit CPU Power = Total CPU Power * (Compute CPU Time / Total CPU Time)
+      # Compute Unit CPU Memory Power = Total CPU DRAM Power * (Compute Unit Memory / Total Memory)
+      # Misc Power Usage by Compute Unit = 0.1 * Total Power / Number of Compute Units
+      #
+      # Total Compute Unit Host Power = Compute Unit CPU Power + Compute Unit CPU Memory Power + Misc Power Usage by Compute Unit
+      #
+      - record: uuid:ceems_host_power_watts:pue
+        expr: |2
+            0.9 * instance:ceems_ipmi_dcmi_current_watts:pue{job="cpu-only-ipmi"} # Assumption 90% Power usage by CPU, CPU memory and other peripherals.
+                * on (instance) group_left () # 0.9 * Total Power * (RAPL Package / (RAPL Package + RAPL DRAM)) -> Total CPU Power
+                  (
+                      sum by (instance) (irate(ceems_rapl_package_joules_total{job="cpu-only-ipmi"}[2s]))
+                    /
+                      (
+                          sum by (instance) (irate(ceems_rapl_package_joules_total{job="cpu-only-ipmi"}[2s]))
+                        +
+                          sum by (instance) (irate(ceems_rapl_dram_joules_total{job="cpu-only-ipmi"}[2s]))
+                      )
+                  )
+              * on (instance) group_right () # Total CPU Power * (Compute CPU Time / Total CPU Time) -> Compute Unit CPU Power
+                (
+                    (
+                        irate(ceems_compute_unit_cpu_user_seconds_total{job="cpu-only-ipmi"}[2s])
+                      +
+                        irate(ceems_compute_unit_cpu_system_seconds_total{job="cpu-only-ipmi"}[2s])
+                    )
+                  / on (instance) group_left ()
+                    sum by (instance) (irate(ceems_cpu_seconds_total{job="cpu-only-ipmi",mode!~"idle|iowait|steal"}[2s]))
+                )
+            +
+                  0.9 * instance:ceems_ipmi_dcmi_current_watts:pue{job="cpu-only-ipmi"}
+                * on (instance) group_left () # 0.9 * Total Power * (RAPL DRAM / (RAPL Package + RAPL DRAM)) -> Total CPU Memory Power
+                  (
+                      sum by (instance) (irate(ceems_rapl_dram_joules_total{job="cpu-only-ipmi"}[2s]))
+                    /
+                      (
+                          sum by (instance) (irate(ceems_rapl_package_joules_total{job="cpu-only-ipmi"}[2s]))
+                        +
+                          sum by (instance) (irate(ceems_rapl_dram_joules_total{job="cpu-only-ipmi"}[2s]))
+                      )
+                  )
+              * on (instance) group_right () # Total CPU Memory Power * (Compute Unit Memory / Total Memory) -> Compute Unit CPU Memory Power
+                (
+                    ceems_compute_unit_memory_used_bytes{job="cpu-only-ipmi"}
+                  / on (instance) group_left ()
+                    (
+                        ceems_meminfo_MemTotal_bytes{job="cpu-only-ipmi"}
+                      - on (instance)
+                        ceems_meminfo_MemAvailable_bytes{job="cpu-only-ipmi"}
+                    )
+                )
+            +
+                0.1 * instance:ceems_ipmi_dcmi_current_watts:pue{job="cpu-only-ipmi"} # Total Misc Power Usage
+              * on (instance) group_right () # Total Misc Power usage / Number of Compute Units -> Misc Power Usage by Compute Unit
+                (
+                    ceems_compute_unit_memory_used_bytes{job="cpu-only-ipmi"}
+                  /
+                    (
+                        ceems_compute_unit_memory_used_bytes{job="cpu-only-ipmi"}
+                      * on (instance) group_left ()
+                        ceems_compute_units{job="cpu-only-ipmi"}
+                    ) > 0
+                )
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by the compute unit.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # 
+      - record: uuid:ceems_host_emissions_g_s:pue
+        expr: |2
+          label_replace(
+              uuid:ceems_host_power_watts:pue{job="cpu-only-ipmi"} / 3.6e+06,
+              "provider",
+              "custom",
+              "instance",
+              "(.*)"
+            )
+          * 50
+
+  # The following recording rules estimate the average CPU, CPU memory usages and
+  # total host power (excluding GPUs) and its equivalent emissions aggregared for all hosts 
+  # per Prometheus job.
+  # 
+  - name: host-agg-rules-cpu-only-ipmi
+    interval: 2s
+    rules:
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU cycles spent by the host.
+      - record: job:ceems_cpu_usage:avg_ratio_irate
+        expr: |2
+          avg by (job) (
+            (
+                  sum by (job, instance) (
+                    irate(ceems_cpu_seconds_total{job="cpu-only-ipmi",mode!~"idle|iowait|steal"}[2s])
+                  )
+                *
+                  100
+              / on (instance) group_left ()
+                ((ceems_cpu_count{job="cpu-only-ipmi"} > 0) / ceems_cpu_per_core_count{job="cpu-only-ipmi"})
+            )
+          )
+
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU memory used by host relative to
+      # the available memory to the host.
+      - record: job:ceems_cpu_memory_usage:avg_ratio
+        expr: |2
+          avg by (job) (
+              (
+                (
+                    1
+                  -
+                    (ceems_meminfo_MemAvailable_bytes{job="cpu-only-ipmi"} / ceems_meminfo_MemTotal_bytes{job="cpu-only-ipmi"})
+                )
+              )
+            )
+          *
+            100
+
+      # Total power (Watts) consumed by all hosts excluding GPUs in a Prometheus job accounting PUE value.
+      - record: job:ceems_host_power_watts:pue
+        expr: |2
+          sum by (job) (1 * ceems_ipmi_dcmi_current_watts{job="cpu-only-ipmi"})
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by all ths hosts excluding GPUs
+      # in a Prometheus job accounting PUE value.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # 
+      - record: job:ceems_host_emissions_g_s:pue
+        expr: |2
+          label_replace(
+            label_replace(
+              50 * job:ceems_host_power_watts:pue{job="cpu-only-ipmi"} / 3.6e+06,
+              "provider",
+              "custom",
+              "instance",
+              "(.*)"
+            ),
+            "country_code",
+            "",
+            "instance",
+            "(.*)"
+          )
+cpu-only-rapl.rules
+---
+# Recording rules for scrape job cpu-only-rapl
+#
+# The following recording rules provide several CPU related metrics of the individual
+# compute units. Each of these metrics involving multiple raw metrics to compute them.
+# Performing such queries involving multiple metrics is a computational intensive
+# operation for Prometheus and hence, we leverage recording rules to estimate them
+# in the real time and store them in the TSDB. The downside of this approach is that
+# it creates new metrics which consume more space. However, we add atmost 10 new metrics
+# which should not increase the disk use of TSDB enormously.
+#
+groups:
+  - name: compute-unit-rules-cpu-only-rapl
+    interval: 1s
+    rules:
+      # CPU usage (%) of compute unit. It is percentage of CPU cycles spent by the compute unit.
+      - record: uuid:ceems_cpu_usage:ratio_irate
+        expr: |2
+          (
+              irate(ceems_compute_unit_cpu_user_seconds_total{job="cpu-only-rapl"}[2s])
+            +
+              irate(ceems_compute_unit_cpu_system_seconds_total{job="cpu-only-rapl"}[2s])
+          ) * 100
+          /
+            (ceems_compute_unit_cpus{job="cpu-only-rapl"} > 0)
+
+      # CPU memory usage (%) of compute unit. It is percentage of CPU memory used by compute unit relative to
+      # the available memory to the compute unit.
+      - record: uuid:ceems_cpu_memory_usage:ratio
+        expr: |2
+          ceems_compute_unit_memory_used_bytes{job="cpu-only-rapl"} * 100
+          /
+          (ceems_compute_unit_memory_total_bytes{job="cpu-only-rapl"} > 0)
+
+      # Total power (Watts) consumed by the instance by accounting Power Usage Effectiveness (PUE) value.
+      # By default, a PUE of 1 is used.
+      - record: instance:ceems_rapl_package_joules_total:pue
+        expr: 1 * ceems_rapl_package_joules_total{job="cpu-only-rapl"}
+
+      # Total power (Watts) consumed by the instance by accounting Power Usage Effectiveness (PUE) value.
+      # By default, a PUE of 1 is used.
+      - record: instance:ceems_rapl_dram_joules_total:pue
+        expr: 1 * ceems_rapl_dram_joules_total{job="cpu-only-rapl"}
+
+      # Total power (Watts) consumed by the compute unit accounting PUE value.
+      #
+      # RAPL exposes mainly package and DRAM. Depending on CPU models other
+      # domains like core, uncore, psys can also be exposed. Current rules
+      # consider only package and DRAM.
+      #
+      # Compute Unit CPU Power = Total RAPL Package Power * (Compute Unit CPU Time / Total Node CPU Time)
+      # Compute Unit Memory Power = Total RAPL DRAM Power * (Compute Unit Memory Usage / Total Node Memory Usage)
+      # Compute Unit Host Power = Compute Unit CPU Power + Compute Unit Memory Power
+      #
+      - record: uuid:ceems_host_power_watts:pue
+        expr: |2
+          (
+              sum by (instance) (irate(instance:ceems_rapl_package_joules_total:pue{job="cpu-only-rapl"}[2s]))
+            * on (instance) group_right ()
+              (
+                  (
+                      irate(ceems_compute_unit_cpu_user_seconds_total{job="cpu-only-rapl"}[2s])
+                    +
+                      irate(ceems_compute_unit_cpu_system_seconds_total{job="cpu-only-rapl"}[2s])
+                  )
+                / on (instance) group_left ()
+                  sum by (instance) (irate(ceems_cpu_seconds_total{job="cpu-only-rapl",mode!~"idle|iowait|steal"}[2s]))
+              )
+          +
+              sum by (instance) (irate(instance:ceems_rapl_dram_joules_total:pue{job="cpu-only-rapl"}[2s]))
+            * on (instance) group_right ()
+              (
+                  ceems_compute_unit_memory_used_bytes{job="cpu-only-rapl"}
+                / on (instance) group_left ()
+                  (
+                      ceems_meminfo_MemTotal_bytes{job="cpu-only-rapl"}
+                    - on (instance)
+                      ceems_meminfo_MemAvailable_bytes{job="cpu-only-rapl"}
+                  )
+              )
+          )
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by the compute unit.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # 
+      - record: uuid:ceems_host_emissions_g_s:pue
+        expr: |2
+          label_replace(
+              uuid:ceems_host_power_watts:pue{job="cpu-only-rapl"} / 3.6e+06,
+              "provider",
+              "custom",
+              "instance",
+              "(.*)"
+            )
+          * 50
+
+  # The following recording rules estimate the average CPU, CPU memory usages and
+  # total host power (excluding GPUs) and its equivalent emissions aggregared for all hosts 
+  # per Prometheus job.
+  # 
+  - name: host-agg-rules-cpu-only-rapl
+    interval: 2s
+    rules:
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU cycles spent by the host.
+      - record: job:ceems_cpu_usage:avg_ratio_irate
+        expr: |2
+          avg by (job) (
+            (
+                  sum by (job, instance) (
+                    irate(ceems_cpu_seconds_total{job="cpu-only-rapl",mode!~"idle|iowait|steal"}[2s])
+                  )
+                *
+                  100
+              / on (instance) group_left ()
+                ((ceems_cpu_count{job="cpu-only-rapl"} > 0) / ceems_cpu_per_core_count{job="cpu-only-rapl"})
+            )
+          )
+
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU memory used by host relative to
+      # the available memory to the host.
+      - record: job:ceems_cpu_memory_usage:avg_ratio
+        expr: |2
+          avg by (job) (
+              (
+                (
+                    1
+                  -
+                    (ceems_meminfo_MemAvailable_bytes{job="cpu-only-rapl"} / ceems_meminfo_MemTotal_bytes{job="cpu-only-rapl"})
+                )
+              )
+            )
+          *
+            100
+
+      # Total power (Watts) consumed by all hosts excluding GPUs in a Prometheus job accounting PUE value.
+      - record: job:ceems_host_power_watts:pue
+        expr: |2
+          sum by (job) (
+              1
+            *
+              (
+                  sum by (instance) (irate(ceems_rapl_package_joules_total{job="cpu-only-rapl"}[2s]))
+                +
+                  sum by (instance) (irate(ceems_rapl_dram_joules_total{job="cpu-only-rapl"}[2s]))
+              )
+          )
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by all ths hosts excluding GPUs
+      # in a Prometheus job accounting PUE value.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # 
+      - record: job:ceems_host_emissions_g_s:pue
+        expr: |2
+          label_replace(
+            label_replace(
+              50 * job:ceems_host_power_watts:pue{job="cpu-only-rapl"} / 3.6e+06,
+              "provider",
+              "custom",
+              "instance",
+              "(.*)"
+            ),
+            "country_code",
+            "",
+            "instance",
+            "(.*)"
+          )
+cpu-only-redfish.rules
+---
+# Recording rules for scrape job cpu-only-redfish
+#
+# The following recording rules provide several CPU related metrics of the individual
+# compute units. Each of these metrics involving multiple raw metrics to compute them.
+# Performing such queries involving multiple metrics is a computational intensive
+# operation for Prometheus and hence, we leverage recording rules to estimate them
+# in the real time and store them in the TSDB. The downside of this approach is that
+# it creates new metrics which consume more space. However, we add atmost 10 new metrics
+# which should not increase the disk use of TSDB enormously.
+#
+groups:
+  - name: compute-unit-rules-cpu-only-redfish
+    interval: 1s
+    rules:
+      # CPU usage (%) of compute unit. It is percentage of CPU cycles spent by the compute unit.
+      - record: uuid:ceems_cpu_usage:ratio_irate
+        expr: |2
+          (
+              irate(ceems_compute_unit_cpu_user_seconds_total{job="cpu-only-redfish"}[2s])
+            +
+              irate(ceems_compute_unit_cpu_system_seconds_total{job="cpu-only-redfish"}[2s])
+          ) * 100
+          /
+            (ceems_compute_unit_cpus{job="cpu-only-redfish"} > 0)
+
+      # CPU memory usage (%) of compute unit. It is percentage of CPU memory used by compute unit relative to
+      # the available memory to the compute unit.
+      - record: uuid:ceems_cpu_memory_usage:ratio
+        expr: |2
+          ceems_compute_unit_memory_used_bytes{job="cpu-only-redfish"} * 100
+          /
+          (ceems_compute_unit_memory_total_bytes{job="cpu-only-redfish"} > 0)
+
+      # Total power (Watts) consumed by the instance by accounting Power Usage Effectiveness (PUE) value.
+      - record: instance:ceems_redfish_current_watts:pue
+        expr: 1 * ceems_redfish_current_watts{job="cpu-only-redfish",chassis="Chassis_1"}
+
+      # Total host power (Watts) consumed by the compute unit accounting PUE value.
+      #
+      # Firstly, we make an assumption that 90% of power is consumed by CPU, DRAM and 10% by other
+      # peripherals like network, storage, etc.
+      #
+      # (If the assumption does not fit your infrastructure, you can manually change the values
+      # in the rules. For instance, if the server has many storage disks, the 10 % can be increased
+      # further to account for disk power consumption.)
+      #
+      # We leverage RAPL package and DRAM counters to split the rest of 90% power between CPU and DRAM
+      # components, when available. When RAPL counters are not available, we assume all 90% power 
+      # is consumed by CPU.
+      #
+      # At node level, power consumed by CPU and DRAM can be estimated as
+      #
+      # Total CPU Power = 0.9 * Total Power * (RAPL Package / (RAPL Package + RAPL DRAM)) 
+      # Total CPU DRAM Power = 0.9 * Total Power * (RAPL DRAM / (RAPL Package + RAPL DRAM))
+      #
+      # Now we have power usage at node level for CPU and DRAM. We split it further at the
+      # compute unit level using CPU time and DRAM usage by the compute unit. For rest of
+      # of the power usage like network, storage, we split it equally among all compute units 
+      # that running on the node at a given time.
+      #
+      # Compute Unit CPU Power = Total CPU Power * (Compute CPU Time / Total CPU Time)
+      # Compute Unit CPU Memory Power = Total CPU DRAM Power * (Compute Unit Memory / Total Memory)
+      # Misc Power Usage by Compute Unit = 0.1 * Total Power / Number of Compute Units
+      #
+      # Total Compute Unit Host Power = Compute Unit CPU Power + Compute Unit CPU Memory Power + Misc Power Usage by Compute Unit
+      #
+      - record: uuid:ceems_host_power_watts:pue
+        expr: |2
+            0.9 * instance:ceems_redfish_current_watts:pue{job="cpu-only-redfish"} # Assumption 90% Power usage by CPU, CPU memory and other peripherals.
+                * on (instance) group_left () # 0.9 * Total Power * (RAPL Package / (RAPL Package + RAPL DRAM)) -> Total CPU Power
+                  (
+                      sum by (instance) (irate(ceems_rapl_package_joules_total{job="cpu-only-redfish"}[2s]))
+                    /
+                      (
+                          sum by (instance) (irate(ceems_rapl_package_joules_total{job="cpu-only-redfish"}[2s]))
+                        +
+                          sum by (instance) (irate(ceems_rapl_dram_joules_total{job="cpu-only-redfish"}[2s]))
+                      )
+                  )
+              * on (instance) group_right () # Total CPU Power * (Compute CPU Time / Total CPU Time) -> Compute Unit CPU Power
+                (
+                    (
+                        irate(ceems_compute_unit_cpu_user_seconds_total{job="cpu-only-redfish"}[2s])
+                      +
+                        irate(ceems_compute_unit_cpu_system_seconds_total{job="cpu-only-redfish"}[2s])
+                    )
+                  / on (instance) group_left ()
+                    sum by (instance) (irate(ceems_cpu_seconds_total{job="cpu-only-redfish",mode!~"idle|iowait|steal"}[2s]))
+                )
+            +
+                  0.9 * instance:ceems_redfish_current_watts:pue{job="cpu-only-redfish"}
+                * on (instance) group_left () # 0.9 * Total Power * (RAPL DRAM / (RAPL Package + RAPL DRAM)) -> Total CPU Memory Power
+                  (
+                      sum by (instance) (irate(ceems_rapl_dram_joules_total{job="cpu-only-redfish"}[2s]))
+                    /
+                      (
+                          sum by (instance) (irate(ceems_rapl_package_joules_total{job="cpu-only-redfish"}[2s]))
+                        +
+                          sum by (instance) (irate(ceems_rapl_dram_joules_total{job="cpu-only-redfish"}[2s]))
+                      )
+                  )
+              * on (instance) group_right () # Total CPU Memory Power * (Compute Unit Memory / Total Memory) -> Compute Unit CPU Memory Power
+                (
+                    ceems_compute_unit_memory_used_bytes{job="cpu-only-redfish"}
+                  / on (instance) group_left ()
+                    (
+                        ceems_meminfo_MemTotal_bytes{job="cpu-only-redfish"}
+                      - on (instance)
+                        ceems_meminfo_MemAvailable_bytes{job="cpu-only-redfish"}
+                    )
+                )
+            +
+                0.1 * instance:ceems_redfish_current_watts:pue{job="cpu-only-redfish"} # Total Misc Power Usage
+              * on (instance) group_right () # Total Misc Power usage / Number of Compute Units -> Misc Power Usage by Compute Unit
+                (
+                    ceems_compute_unit_memory_used_bytes{job="cpu-only-redfish"}
+                  /
+                    (
+                        ceems_compute_unit_memory_used_bytes{job="cpu-only-redfish"}
+                      * on (instance) group_left ()
+                        ceems_compute_units{job="cpu-only-redfish"}
+                    ) > 0
+                )
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by the compute unit.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # 
+      - record: uuid:ceems_host_emissions_g_s:pue
+        expr: |2
+          label_replace(
+              uuid:ceems_host_power_watts:pue{job="cpu-only-redfish"} / 3.6e+06,
+              "provider",
+              "custom",
+              "instance",
+              "(.*)"
+            )
+          * 50
+
+  # The following recording rules estimate the average CPU, CPU memory usages and
+  # total host power (excluding GPUs) and its equivalent emissions aggregared for all hosts 
+  # per Prometheus job.
+  # 
+  - name: host-agg-rules-cpu-only-redfish
+    interval: 2s
+    rules:
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU cycles spent by the host.
+      - record: job:ceems_cpu_usage:avg_ratio_irate
+        expr: |2
+          avg by (job) (
+            (
+                  sum by (job, instance) (
+                    irate(ceems_cpu_seconds_total{job="cpu-only-redfish",mode!~"idle|iowait|steal"}[2s])
+                  )
+                *
+                  100
+              / on (instance) group_left ()
+                ((ceems_cpu_count{job="cpu-only-redfish"} > 0) / ceems_cpu_per_core_count{job="cpu-only-redfish"})
+            )
+          )
+
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU memory used by host relative to
+      # the available memory to the host.
+      - record: job:ceems_cpu_memory_usage:avg_ratio
+        expr: |2
+          avg by (job) (
+              (
+                (
+                    1
+                  -
+                    (ceems_meminfo_MemAvailable_bytes{job="cpu-only-redfish"} / ceems_meminfo_MemTotal_bytes{job="cpu-only-redfish"})
+                )
+              )
+            )
+          *
+            100
+
+      # Total power (Watts) consumed by all hosts excluding GPUs in a Prometheus job accounting PUE value.
+      - record: job:ceems_host_power_watts:pue
+        expr: |2
+          sum by (job) (1 * ceems_redfish_current_watts{job="cpu-only-redfish",chassis="Chassis_1"})
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by all ths hosts excluding GPUs
+      # in a Prometheus job accounting PUE value.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # 
+      - record: job:ceems_host_emissions_g_s:pue
+        expr: |2
+          label_replace(
+            label_replace(
+              50 * job:ceems_host_power_watts:pue{job="cpu-only-redfish"} / 3.6e+06,
+              "provider",
+              "custom",
+              "instance",
+              "(.*)"
+            ),
+            "country_code",
+            "",
+            "instance",
+            "(.*)"
+          )
+cpu-redfish-nvidia-gpu.rules
+---
+# Recording rules for scrape job cpu-redfish-nvidia-gpu
+#
+# The following recording rules provide several CPU related metrics of the individual
+# compute units. Each of these metrics involving multiple raw metrics to compute them.
+# Performing such queries involving multiple metrics is a computational intensive
+# operation for Prometheus and hence, we leverage recording rules to estimate them
+# in the real time and store them in the TSDB. The downside of this approach is that
+# it creates new metrics which consume more space. However, we add atmost 10 new metrics
+# which should not increase the disk use of TSDB enormously.
+#
+groups:
+  - name: compute-unit-rules-cpu-redfish-nvidia-gpu
+    interval: 1s
+    rules:
+      # CPU usage (%) of compute unit. It is percentage of CPU cycles spent by the compute unit.
+      - record: uuid:ceems_cpu_usage:ratio_irate
+        expr: |2
+          (
+              irate(ceems_compute_unit_cpu_user_seconds_total{job="cpu-redfish-nvidia-gpu"}[2s])
+            +
+              irate(ceems_compute_unit_cpu_system_seconds_total{job="cpu-redfish-nvidia-gpu"}[2s])
+          ) * 100
+          /
+            (ceems_compute_unit_cpus{job="cpu-redfish-nvidia-gpu"} > 0)
+
+      # CPU memory usage (%) of compute unit. It is percentage of CPU memory used by compute unit relative to
+      # the available memory to the compute unit.
+      - record: uuid:ceems_cpu_memory_usage:ratio
+        expr: |2
+          ceems_compute_unit_memory_used_bytes{job="cpu-redfish-nvidia-gpu"} * 100
+          /
+          (ceems_compute_unit_memory_total_bytes{job="cpu-redfish-nvidia-gpu"} > 0)
+
+      # Total power (Watts) consumed by the instance by accounting Power Usage Effectiveness (PUE) value.
+      - record: instance:ceems_redfish_current_watts:pue
+        expr: 1 * (label_replace(ceems_redfish_current_watts{job="cpu-redfish-nvidia-gpu",chassis="Chassis_2"}, "instancehost", "$1", "instance", "([^:]+):\\d+") - on (instancehost) group_left () sum by (instancehost) (label_replace(DCGM_FI_DEV_POWER_USAGE_INSTANT{job="nvidia-gpu"} / 1,  "instancehost", "$1", "instance", "([^:]+):\\d+"))) > 0
+
+      # Total host power (Watts) consumed by the compute unit accounting PUE value.
+      #
+      # Firstly, we make an assumption that 90% of power is consumed by CPU, DRAM and 10% by other
+      # peripherals like network, storage, etc.
+      #
+      # (If the assumption does not fit your infrastructure, you can manually change the values
+      # in the rules. For instance, if the server has many storage disks, the 10 % can be increased
+      # further to account for disk power consumption.)
+      #
+      # We leverage RAPL package and DRAM counters to split the rest of 90% power between CPU and DRAM
+      # components, when available. When RAPL counters are not available, we assume all 90% power 
+      # is consumed by CPU.
+      #
+      # At node level, power consumed by CPU and DRAM can be estimated as
+      #
+      # Total CPU Power = 0.9 * Total Power * (RAPL Package / (RAPL Package + RAPL DRAM)) 
+      # Total CPU DRAM Power = 0.9 * Total Power * (RAPL DRAM / (RAPL Package + RAPL DRAM))
+      #
+      # Now we have power usage at node level for CPU and DRAM. We split it further at the
+      # compute unit level using CPU time and DRAM usage by the compute unit. For rest of
+      # of the power usage like network, storage, we split it equally among all compute units 
+      # that running on the node at a given time.
+      #
+      # Compute Unit CPU Power = Total CPU Power * (Compute CPU Time / Total CPU Time)
+      # Compute Unit CPU Memory Power = Total CPU DRAM Power * (Compute Unit Memory / Total Memory)
+      # Misc Power Usage by Compute Unit = 0.1 * Total Power / Number of Compute Units
+      #
+      # Total Compute Unit Host Power = Compute Unit CPU Power + Compute Unit CPU Memory Power + Misc Power Usage by Compute Unit
+      #
+      - record: uuid:ceems_host_power_watts:pue
+        expr: |2
+            0.9 * instance:ceems_redfish_current_watts:pue{job="cpu-redfish-nvidia-gpu"} # Assumption 90% Power usage by CPU, CPU memory and other peripherals.
+                * on (instance) group_left () # 0.9 * Total Power * (RAPL Package / (RAPL Package + RAPL DRAM)) -> Total CPU Power
+                  (
+                      sum by (instance) (irate(ceems_rapl_package_joules_total{job="cpu-redfish-nvidia-gpu"}[2s]))
+                    /
+                      (
+                          sum by (instance) (irate(ceems_rapl_package_joules_total{job="cpu-redfish-nvidia-gpu"}[2s]))
+                        +
+                          sum by (instance) (irate(ceems_rapl_dram_joules_total{job="cpu-redfish-nvidia-gpu"}[2s]))
+                      )
+                  )
+              * on (instance) group_right () # Total CPU Power * (Compute CPU Time / Total CPU Time) -> Compute Unit CPU Power
+                (
+                    (
+                        irate(ceems_compute_unit_cpu_user_seconds_total{job="cpu-redfish-nvidia-gpu"}[2s])
+                      +
+                        irate(ceems_compute_unit_cpu_system_seconds_total{job="cpu-redfish-nvidia-gpu"}[2s])
+                    )
+                  / on (instance) group_left ()
+                    sum by (instance) (irate(ceems_cpu_seconds_total{job="cpu-redfish-nvidia-gpu",mode!~"idle|iowait|steal"}[2s]))
+                )
+            +
+                  0.9 * instance:ceems_redfish_current_watts:pue{job="cpu-redfish-nvidia-gpu"}
+                * on (instance) group_left () # 0.9 * Total Power * (RAPL DRAM / (RAPL Package + RAPL DRAM)) -> Total CPU Memory Power
+                  (
+                      sum by (instance) (irate(ceems_rapl_dram_joules_total{job="cpu-redfish-nvidia-gpu"}[2s]))
+                    /
+                      (
+                          sum by (instance) (irate(ceems_rapl_package_joules_total{job="cpu-redfish-nvidia-gpu"}[2s]))
+                        +
+                          sum by (instance) (irate(ceems_rapl_dram_joules_total{job="cpu-redfish-nvidia-gpu"}[2s]))
+                      )
+                  )
+              * on (instance) group_right () # Total CPU Memory Power * (Compute Unit Memory / Total Memory) -> Compute Unit CPU Memory Power
+                (
+                    ceems_compute_unit_memory_used_bytes{job="cpu-redfish-nvidia-gpu"}
+                  / on (instance) group_left ()
+                    (
+                        ceems_meminfo_MemTotal_bytes{job="cpu-redfish-nvidia-gpu"}
+                      - on (instance)
+                        ceems_meminfo_MemAvailable_bytes{job="cpu-redfish-nvidia-gpu"}
+                    )
+                )
+            +
+                0.1 * instance:ceems_redfish_current_watts:pue{job="cpu-redfish-nvidia-gpu"} # Total Misc Power Usage
+              * on (instance) group_right () # Total Misc Power usage / Number of Compute Units -> Misc Power Usage by Compute Unit
+                (
+                    ceems_compute_unit_memory_used_bytes{job="cpu-redfish-nvidia-gpu"}
+                  /
+                    (
+                        ceems_compute_unit_memory_used_bytes{job="cpu-redfish-nvidia-gpu"}
+                      * on (instance) group_left ()
+                        ceems_compute_units{job="cpu-redfish-nvidia-gpu"}
+                    ) > 0
+                )
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by the compute unit.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # 
+      - record: uuid:ceems_host_emissions_g_s:pue
+        expr: |2
+          label_replace(
+              uuid:ceems_host_power_watts:pue{job="cpu-redfish-nvidia-gpu"} / 3.6e+06,
+              "provider",
+              "custom",
+              "instance",
+              "(.*)"
+            )
+          * 50
+
+  # The following recording rules estimate the average CPU, CPU memory usages and
+  # total host power (excluding GPUs) and its equivalent emissions aggregared for all hosts 
+  # per Prometheus job.
+  # 
+  - name: host-agg-rules-cpu-redfish-nvidia-gpu
+    interval: 2s
+    rules:
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU cycles spent by the host.
+      - record: job:ceems_cpu_usage:avg_ratio_irate
+        expr: |2
+          avg by (job) (
+            (
+                  sum by (job, instance) (
+                    irate(ceems_cpu_seconds_total{job="cpu-redfish-nvidia-gpu",mode!~"idle|iowait|steal"}[2s])
+                  )
+                *
+                  100
+              / on (instance) group_left ()
+                ((ceems_cpu_count{job="cpu-redfish-nvidia-gpu"} > 0) / ceems_cpu_per_core_count{job="cpu-redfish-nvidia-gpu"})
+            )
+          )
+
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU memory used by host relative to
+      # the available memory to the host.
+      - record: job:ceems_cpu_memory_usage:avg_ratio
+        expr: |2
+          avg by (job) (
+              (
+                (
+                    1
+                  -
+                    (ceems_meminfo_MemAvailable_bytes{job="cpu-redfish-nvidia-gpu"} / ceems_meminfo_MemTotal_bytes{job="cpu-redfish-nvidia-gpu"})
+                )
+              )
+            )
+          *
+            100
+
+      # Total power (Watts) consumed by all hosts excluding GPUs in a Prometheus job accounting PUE value.
+      - record: job:ceems_host_power_watts:pue
+        expr: |2
+          sum by (job) (1 * (label_replace(ceems_redfish_current_watts{job="cpu-redfish-nvidia-gpu",chassis="Chassis_2"}, "instancehost", "$1", "instance", "([^:]+):\\d+") - on (instancehost) group_left () sum by (instancehost) (label_replace(DCGM_FI_DEV_POWER_USAGE_INSTANT{job="nvidia-gpu"} / 1,  "instancehost", "$1", "instance", "([^:]+):\\d+"))) > 0)
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by all ths hosts excluding GPUs
+      # in a Prometheus job accounting PUE value.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # 
+      - record: job:ceems_host_emissions_g_s:pue
+        expr: |2
+          label_replace(
+            label_replace(
+              50 * job:ceems_host_power_watts:pue{job="cpu-redfish-nvidia-gpu"} / 3.6e+06,
+              "provider",
+              "custom",
+              "instance",
+              "(.*)"
+            ),
+            "country_code",
+            "",
+            "instance",
+            "(.*)"
+          )
+ipmi-nvidia-gpu-gpu.rules
+---
+# Recording rules for NVIDIA GPUs scrape job ipmi-nvidia-gpu.
+#
+# These rules map the GPU usage to the compute unit `uuid` which gives
+# GPU metrics for each compute unit.
+#
+# We leverage these rules to include PUE (Power Usage Effectiveness) in the Power
+# estimation as well.
+#
+groups:
+  - name: compute-unit-gpu-rules-ipmi-nvidia-gpu
+    interval: 1s
+    rules:
+      # GPU Usage (%) by compute unit
+      - record: uuid:ceems_gpu_usage:ratio
+        expr: |2
+            DCGM_FI_DEV_GPU_UTIL{job="ipmi-nvidia-gpu"}
+            * on (gpuuuid,gpuiid) group_right ()
+            ceems_compute_unit_gpu_index_flag{job="cpu-ipmi-nvidia-gpu"}
+
+      # GPU Memory Usage (%) by compute unit
+      - record: uuid:ceems_gpu_memory_usage:ratio
+        expr: |2
+          (
+              DCGM_FI_DEV_FB_USED{job="ipmi-nvidia-gpu"} * 100
+            /
+              (DCGM_FI_DEV_FB_USED{job="ipmi-nvidia-gpu"} + DCGM_FI_DEV_FB_FREE{job="ipmi-nvidia-gpu"})
+          )
+          * on (gpuuuid,gpuiid) group_right ()
+          ceems_compute_unit_gpu_index_flag{job="cpu-ipmi-nvidia-gpu"}
+      
+      # Total power (Watts) consumed by the GPU by accounting Power Usage Effectiveness (PUE) value.
+      - record: dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue
+        expr: 1 * DCGM_FI_DEV_POWER_USAGE_INSTANT{job="ipmi-nvidia-gpu"}
+
+      - record: uuid:ceems_gpu_power_watts:pue
+        expr: |2
+          dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue{job="ipmi-nvidia-gpu"}
+          * on (gpuuuid,gpuiid) group_right()
+          ceems_compute_unit_gpu_index_flag{job="cpu-ipmi-nvidia-gpu"}
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by the compute unit's GPUs.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # 
+      - record: uuid:ceems_gpu_emissions_g_s:pue
+        expr: |2
+          label_replace(
+              dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue{job="ipmi-nvidia-gpu"} / 3.6e+06
+            * on (gpuuuid,gpuiid) group_right ()
+              ceems_compute_unit_gpu_index_flag{job="cpu-ipmi-nvidia-gpu"},
+              "provider",
+              "custom",
+              "instance",
+              "(.*)"
+            )
+          * 50
+
+      # Profiling metrics
+
+      - record: uuid:ceems_gpu_sm_active:ratio
+        expr: |2
+          DCGM_FI_PROF_SM_ACTIVE{job="ipmi-nvidia-gpu"} * 100
+          * on (gpuuuid,gpuiid) group_right ()
+          ceems_compute_unit_gpu_index_flag{job="cpu-ipmi-nvidia-gpu"}
+
+      - record: uuid:ceems_gpu_sm_occupancy:ratio
+        expr: |2
+          DCGM_FI_PROF_SM_OCCUPANCY{job="ipmi-nvidia-gpu"} * 100
+          * on (gpuuuid,gpuiid) group_right ()
+          ceems_compute_unit_gpu_index_flag{job="cpu-ipmi-nvidia-gpu"}
+
+      - record: uuid:ceems_gpu_gr_engine_active:ratio
+        expr: |2
+          DCGM_FI_PROF_GR_ENGINE_ACTIVE{job="ipmi-nvidia-gpu"} * 100
+          * on (gpuuuid,gpuiid) group_right ()
+          ceems_compute_unit_gpu_index_flag{job="cpu-ipmi-nvidia-gpu"}
+
+
+  # The following recording rules estimate the average GPU, GPU memory usages and
+  # total GPU power and its equivalent emissions aggregared for all hosts 
+  # per Prometheus job.
+  # 
+  - name: host-agg-gpu-rules-ipmi-nvidia-gpu
+    interval: 2s
+    rules:
+      # Average GPU Usage (%) for all hosts aggregated per Prometheus job
+      - record: job:ceems_gpu_usage:avg
+        expr: avg by (job) (DCGM_FI_DEV_GPU_UTIL{job="ipmi-nvidia-gpu"})
+
+      # Average GPU memory usage (%) for all hosts aggregated per Prometheus job
+      - record: job:ceems_gpu_memory_usage:avg_ratio
+        expr: |2
+          avg by (job) (
+            (
+                DCGM_FI_DEV_FB_USED{job="ipmi-nvidia-gpu"} * 100
+              /
+                (DCGM_FI_DEV_FB_USED{job="ipmi-nvidia-gpu"} + DCGM_FI_DEV_FB_FREE{job="ipmi-nvidia-gpu"})
+            )
+          )
+
+      # Total power usage (Watts) by GPUs on all hosts aggregated per Prometheus job
+      - record: job:ceems_gpu_power_watts:pue
+        expr: sum by (job)(1 * DCGM_FI_DEV_POWER_USAGE_INSTANT{job="ipmi-nvidia-gpu"})
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by GPUs on all ths hosts
+      # in a Prometheus job accounting PUE value.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # 
+      - record: job:ceems_gpu_emissions_g_s:pue
+        expr: |2
+          label_replace(
+            label_replace(
+              50 * job:ceems_gpu_power_watts:pue{job="ipmi-nvidia-gpu"} / 3.6e+06,
+              "provider",
+              "custom",
+              "instance",
+              "(.*)"
+            ),
+            "country_code",
+            "",
+            "instance",
+            "(.*)"
+          )
+nvidia-gpu-gpu.rules
+---
+# Recording rules for NVIDIA GPUs scrape job nvidia-gpu.
+#
+# These rules map the GPU usage to the compute unit `uuid` which gives
+# GPU metrics for each compute unit.
+#
+# We leverage these rules to include PUE (Power Usage Effectiveness) in the Power
+# estimation as well.
+#
+groups:
+  - name: compute-unit-gpu-rules-nvidia-gpu
+    interval: 1s
+    rules:
+      # GPU Usage (%) by compute unit
+      - record: uuid:ceems_gpu_usage:ratio
+        expr: |2
+            DCGM_FI_DEV_GPU_UTIL{job="nvidia-gpu"}
+            * on (gpuuuid,gpuiid) group_right ()
+            ceems_compute_unit_gpu_index_flag{job="cpu-redfish-nvidia-gpu"}
+
+      # GPU Memory Usage (%) by compute unit
+      - record: uuid:ceems_gpu_memory_usage:ratio
+        expr: |2
+          (
+              DCGM_FI_DEV_FB_USED{job="nvidia-gpu"} * 100
+            /
+              (DCGM_FI_DEV_FB_USED{job="nvidia-gpu"} + DCGM_FI_DEV_FB_FREE{job="nvidia-gpu"})
+          )
+          * on (gpuuuid,gpuiid) group_right ()
+          ceems_compute_unit_gpu_index_flag{job="cpu-redfish-nvidia-gpu"}
+      
+      # Total power (Watts) consumed by the GPU by accounting Power Usage Effectiveness (PUE) value.
+      - record: dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue
+        expr: 1 * DCGM_FI_DEV_POWER_USAGE_INSTANT{job="nvidia-gpu"}
+
+      - record: uuid:ceems_gpu_power_watts:pue
+        expr: |2
+          dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue{job="nvidia-gpu"}
+          * on (gpuuuid,gpuiid) group_right()
+          ceems_compute_unit_gpu_index_flag{job="cpu-redfish-nvidia-gpu"}
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by the compute unit's GPUs.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # 
+      - record: uuid:ceems_gpu_emissions_g_s:pue
+        expr: |2
+          label_replace(
+              dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue{job="nvidia-gpu"} / 3.6e+06
+            * on (gpuuuid,gpuiid) group_right ()
+              ceems_compute_unit_gpu_index_flag{job="cpu-redfish-nvidia-gpu"},
+              "provider",
+              "custom",
+              "instance",
+              "(.*)"
+            )
+          * 50
+
+      # Profiling metrics
+
+      - record: uuid:ceems_gpu_sm_active:ratio
+        expr: |2
+          DCGM_FI_PROF_SM_ACTIVE{job="nvidia-gpu"} * 100
+          * on (gpuuuid,gpuiid) group_right ()
+          ceems_compute_unit_gpu_index_flag{job="cpu-redfish-nvidia-gpu"}
+
+      - record: uuid:ceems_gpu_sm_occupancy:ratio
+        expr: |2
+          DCGM_FI_PROF_SM_OCCUPANCY{job="nvidia-gpu"} * 100
+          * on (gpuuuid,gpuiid) group_right ()
+          ceems_compute_unit_gpu_index_flag{job="cpu-redfish-nvidia-gpu"}
+
+      - record: uuid:ceems_gpu_gr_engine_active:ratio
+        expr: |2
+          DCGM_FI_PROF_GR_ENGINE_ACTIVE{job="nvidia-gpu"} * 100
+          * on (gpuuuid,gpuiid) group_right ()
+          ceems_compute_unit_gpu_index_flag{job="cpu-redfish-nvidia-gpu"}
+
+
+  # The following recording rules estimate the average GPU, GPU memory usages and
+  # total GPU power and its equivalent emissions aggregared for all hosts 
+  # per Prometheus job.
+  # 
+  - name: host-agg-gpu-rules-nvidia-gpu
+    interval: 2s
+    rules:
+      # Average GPU Usage (%) for all hosts aggregated per Prometheus job
+      - record: job:ceems_gpu_usage:avg
+        expr: avg by (job) (DCGM_FI_DEV_GPU_UTIL{job="nvidia-gpu"})
+
+      # Average GPU memory usage (%) for all hosts aggregated per Prometheus job
+      - record: job:ceems_gpu_memory_usage:avg_ratio
+        expr: |2
+          avg by (job) (
+            (
+                DCGM_FI_DEV_FB_USED{job="nvidia-gpu"} * 100
+              /
+                (DCGM_FI_DEV_FB_USED{job="nvidia-gpu"} + DCGM_FI_DEV_FB_FREE{job="nvidia-gpu"})
+            )
+          )
+
+      # Total power usage (Watts) by GPUs on all hosts aggregated per Prometheus job
+      - record: job:ceems_gpu_power_watts:pue
+        expr: sum by (job)(1 * DCGM_FI_DEV_POWER_USAGE_INSTANT{job="nvidia-gpu"})
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by GPUs on all ths hosts
+      # in a Prometheus job accounting PUE value.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # 
+      - record: job:ceems_gpu_emissions_g_s:pue
+        expr: |2
+          label_replace(
+            label_replace(
+              50 * job:ceems_gpu_power_watts:pue{job="nvidia-gpu"} / 3.6e+06,
+              "provider",
+              "custom",
+              "instance",
+              "(.*)"
+            ),
+            "country_code",
+            "",
+            "instance",
+            "(.*)"
+          )
 Queries for TSDB updater:
 ---
 
 queries:
   avg_cpu_mem_usage:
-    global: avg_over_time(avg by (uuid) (uuid:ceems_compute_unit_cpu_memory_usage:ratio{uuid=~"{{.UUIDs}}"} > 0 < inf)[{{.Range}}:])
+    global: avg_over_time(avg by (uuid) (uuid:ceems_cpu_memory_usage:ratio{uuid=~"{{.UUIDs}}"} > 0 < inf)[{{.Range}}:])
 
 
   avg_cpu_usage:
-    global: avg_over_time(avg by (uuid) (uuid:ceems_compute_unit_cpu_usage:ratio_irate{uuid=~"{{.UUIDs}}"} > 0 < inf)[{{.Range}}:])
+    global: avg_over_time(avg by (uuid) (uuid:ceems_cpu_usage:ratio_irate{uuid=~"{{.UUIDs}}"} > 0 < inf)[{{.Range}}:])
 
 
   avg_gpu_mem_usage:

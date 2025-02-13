@@ -1,0 +1,180 @@
+---
+# Recording rules for scrape job <job>
+#
+# The following recording rules provide several CPU related metrics of the individual
+# compute units. Each of these metrics involving multiple raw metrics to compute them.
+# Performing such queries involving multiple metrics is a computational intensive
+# operation for Prometheus and hence, we leverage recording rules to estimate them
+# in the real time and store them in the TSDB. The downside of this approach is that
+# it creates new metrics which consume more space. However, we add atmost 10 new metrics
+# which should not increase the disk use of TSDB enormously.
+#
+# Placeholders to replace:
+# <job>: Prometheus job name
+# <eval_interval>: Evaluation interval
+# <rate_interval>: Rate interval
+#
+groups:
+  - name: compute-unit-rules-<job>
+    interval: <eval_interval>
+    rules:
+      # CPU usage (%) of compute unit. It is percentage of CPU cycles spent by the compute unit.
+      - record: uuid:ceems_cpu_usage:ratio_irate
+        expr: |2
+          (
+              irate(ceems_compute_unit_cpu_user_seconds_total{job="<job>"}[<rate_interval>])
+            +
+              irate(ceems_compute_unit_cpu_system_seconds_total{job="<job>"}[<rate_interval>])
+          ) * 100
+          /
+            (ceems_compute_unit_cpus{job="<job>"} > 0)
+
+      # CPU memory usage (%) of compute unit. It is percentage of CPU memory used by compute unit relative to
+      # the available memory to the compute unit.
+      - record: uuid:ceems_cpu_memory_usage:ratio
+        expr: |2
+          ceems_compute_unit_memory_used_bytes{job="<job>"} * 100
+          /
+          (ceems_compute_unit_memory_total_bytes{job="<job>"} > 0)
+
+      # Total host power (Watts) consumed by the instance by accouting Power Usage Effectiveness (PUE) value.
+      - record: instance:ceems_cray_pm_counters_power_watts:pue
+        expr: 1 * ceems_cray_pm_counters_power_watts{job="<job>"}
+
+      # Total host power (Watts) consumed by the compute unit accouting PUE value.
+      #
+      # Cray PM counters provide power consumption by CPU, memory and entire node.
+      # This power consumption by the CPU and memory are split among all the running compute units
+      # based on CPU time and memory used by the compute unit.
+      #
+      # Compute Unit CPU Power = Total CPU Power * (Compute Unit CPU Time / Total Node CPU Time)
+      # Compute Unit Memory Power = Total Memory Power * (Compute Unit Memory Usage / Total Node Memory Usage)
+      # Compute Unit Misc Power = (Total Node Power - (Total CPU Power + Total Memory Power)) / Number of Compute Units
+      #
+      # Misc power is the power consumption by all other peripherals on the compute host like NIC, disks, PCIe, etc.
+      # This misc power is split equally among all running compute units at a given time.
+      #
+      - record: uuid:ceems_host_power_watts:pue
+        expr: |2
+            instance:ceems_cray_pm_counters_power_watts:pue{domain="cpu",job="<job>"} # CPU Power Usage by Compute Unit
+                * on (instance) group_right ()
+                  (
+                      (
+                          irate(ceems_compute_unit_cpu_user_seconds_total{job="<job>"}[<rate_interval>])
+                        +
+                          irate(ceems_compute_unit_cpu_system_seconds_total{job="<job>"}[<rate_interval>])
+                      )
+                    / on (instance) group_left ()
+                      sum by (instance) (irate(ceems_cpu_seconds_total{job="<job>",mode!~"idle|iowait|steal"}[<rate_interval>]))
+                  )
+              +
+                  instance:ceems_cray_pm_counters_power_watts:pue{domain="memory",job="<job>"} # CPU Memory Power Usage by Compute Unit
+                * on (instance) group_right ()
+                  (
+                      ceems_compute_unit_memory_used_bytes{job="<job>"}
+                    / on (instance) group_left ()
+                      (
+                          ceems_meminfo_MemTotal_bytes{job="<job>"}
+                        - on (instance)
+                          ceems_meminfo_MemAvailable_bytes{job="<job>"}
+                      )
+                  )
+            +
+                (
+                    instance:ceems_cray_pm_counters_power_watts:pue{domain="node",job="<job>"} # Misc Power Usage by Compute Unit   
+                  - on (instance)
+                    sum by (instance) (instance:ceems_cray_pm_counters_power_watts:pue{domain!~"node",job="<job>"})
+                )
+              * on (instance) group_right ()
+                (
+                      ceems_compute_unit_memory_used_bytes{job="<job>"}
+                    /
+                      (
+                          ceems_compute_unit_memory_used_bytes{job="<job>"}
+                        * on (instance) group_left ()
+                          ceems_compute_units{job="<job>"}
+                      )
+                  >
+                    0
+                )
+
+      # Total equivalent emissions rate (g/s) due to the host power consumed by the compute unit.
+      # The equivalent emissions are estimated using emission factor from owid for country
+      # FR
+      - record: uuid:ceems_host_emissions_g_s:pue
+        expr: |2
+          label_replace(
+              uuid:ceems_host_power_watts:pue{job="<job>"} / 3.6e+06,
+              "provider",
+              "owid",
+              "instance",
+              "(.*)"
+            )
+          * on (provider) group_left ()
+            ceems_emissions_gCo2_kWh{country_code="FR",provider="owid"} 
+
+
+  # The following recording rules estimate the average CPU, CPU memory usages and
+  # total host power (excluding GPUs) and its equivalent emissions aggregared for all hosts 
+  # per Prometheus job.
+  # 
+  - name: host-agg-rules-<job>
+    interval: <eval_interval>
+    rules:
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU cycles spent by the host.
+      - record: job:ceems_cpu_usage:avg_ratio_irate
+        expr: |2
+          avg by (job) (
+            (
+                  sum by (job, instance) (
+                    irate(ceems_cpu_seconds_total{job="<job>",mode!~"idle|iowait|steal"}[<rate_interval>])
+                  )
+                *
+                  100
+              / on (instance) group_left ()
+                ((ceems_cpu_count{job="<job>"} > 0) / ceems_cpu_per_core_count{job="<job>"})
+            )
+          )
+
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU memory used by host relative to
+      # the available memory to the host.
+      - record: job:ceems_cpu_memory_usage:avg_ratio
+        expr: |2
+          avg by (job) (
+              (
+                (
+                    1
+                  -
+                    (ceems_meminfo_MemAvailable_bytes{job="<job>"} / ceems_meminfo_MemTotal_bytes{job="<job>"})
+                )
+              )
+            )
+          *
+            100
+
+      # Total power (Watts) consumed by all hosts excluding GPUs in a Prometheus job accounting PUE value.
+      - record: job:ceems_host_power_watts:pue
+        expr: |2
+          sum by (job) (
+              1
+            *
+              (
+                  ceems_cray_pm_counters_power_watts{domain="node",job="<job>"}
+                - on (instance) group_left ()
+                  sum by (instance) (ceems_cray_pm_counters_power_watts{domain=~"accel.*",job="<job>"})
+              )
+          )
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by all ths hosts excluding GPUs
+      # in a Prometheus job accounting PUE value.
+      # The equivalent emissions are estimated for country FR
+      - record: job:ceems_host_emissions_g_s:pue
+        expr: |2
+          sum by (job, country_code, country, provider) (
+            (
+                job:ceems_host_power_watts:pue{job="<job>"} / 3.6e+06
+              * on (job) group_right ()
+                label_replace(ceems_emissions_gCo2_kWh, "job", "<job>", "instance", "(.*)")
+            )
+          )
+

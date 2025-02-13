@@ -62,7 +62,10 @@
         "MESO",
         "mgmt",
         "HWMON",
-        "gpuiid"
+        "gpuiid",
+        "yesoreyeram",
+        "distros",
+        "pyro"
     ],
     // flagWords - list of words to be always considered incorrect
     // This is useful for offensive words and common spelling errors.

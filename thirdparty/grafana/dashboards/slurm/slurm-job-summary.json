@@ -1,0 +1,2277 @@
+{
+    "__inputs": [
+      {
+        "name": "DS_CEEMS-API",
+        "label": "CEEMS API Server's datasource",
+        "description": "",
+        "type": "datasource",
+        "pluginId": "yesoreyeram-infinity-datasource",
+        "pluginName": "Infinity"
+      },
+      {
+        "name": "VAR_CLUSTER_ID",
+        "type": "constant",
+        "label": "CEEMS Cluster ID defined in CEEMS API server config",
+        "value": "",
+        "description": "CEEMS Cluster ID defined in CEEMS API server config"
+      },
+      {
+        "name": "VAR_ENDPOINT",
+        "type": "constant",
+        "label": "Set it to /admin for admin dashboards to consult usage statistics of any user. For user dashboards that restrict data to current logged user, set it to empty space",
+        "value": "",
+        "description": "Set it to /admin for admin dashboards to consult usage statistics of any user. For user dashboards that restrict data to current logged user, set it to empty space"
+      }
+    ],
+    "__elements": {},
+    "__requires": [
+      {
+        "type": "panel",
+        "id": "gauge",
+        "name": "Gauge",
+        "version": ""
+      },
+      {
+        "type": "grafana",
+        "id": "grafana",
+        "name": "Grafana",
+        "version": "11.4.0"
+      },
+      {
+        "type": "panel",
+        "id": "piechart",
+        "name": "Pie chart",
+        "version": ""
+      },
+      {
+        "type": "panel",
+        "id": "stat",
+        "name": "Stat",
+        "version": ""
+      },
+      {
+        "type": "panel",
+        "id": "table",
+        "name": "Table",
+        "version": ""
+      },
+      {
+        "type": "panel",
+        "id": "text",
+        "name": "Text",
+        "version": ""
+      },
+      {
+        "type": "datasource",
+        "id": "yesoreyeram-infinity-datasource",
+        "name": "Infinity",
+        "version": "3.0.0-beta.1"
+      }
+    ],
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": {
+            "type": "grafana",
+            "uid": "-- Grafana --"
+          },
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "type": "dashboard"
+        }
+      ]
+    },
+    "description": "List of SLURM jobs",
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 0,
+    "id": null,
+    "links": [
+      {
+        "asDropdown": false,
+        "icon": "info",
+        "includeVars": false,
+        "keepTime": false,
+        "tags": [],
+        "targetBlank": true,
+        "title": "Powered by CEEMS",
+        "tooltip": "Go To GitHub",
+        "type": "link",
+        "url": "https://github.com/mahendrapaipuri/ceems"
+      }
+    ],
+    "panels": [
+      {
+        "collapsed": false,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 0
+        },
+        "id": 9,
+        "panels": [],
+        "title": "Aggregate Usage Statistics of User ${user} from ${__from:date:YYYY-MM-DD HH:mm:ss} to ${__to:date:YYYY-MM-DD HH:mm:ss}",
+        "type": "row"
+      },
+      {
+        "datasource": {
+          "type": "yesoreyeram-infinity-datasource",
+          "uid": "${DS_CEEMS-API}"
+        },
+        "description": "Average usage statistics of all jobs of the user",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "orange",
+                  "value": 30
+                },
+                {
+                  "color": "green",
+                  "value": 70
+                }
+              ]
+            },
+            "unit": "percent"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 12,
+          "w": 8,
+          "x": 0,
+          "y": 1
+        },
+        "id": 10,
+        "options": {
+          "minVizHeight": 75,
+          "minVizWidth": 75,
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "mean"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "showThresholdLabels": false,
+          "showThresholdMarkers": true,
+          "sizing": "auto"
+        },
+        "pluginVersion": "11.4.0",
+        "targets": [
+          {
+            "columns": [
+              {
+                "selector": "avg_cpu_usage.global",
+                "text": "Average CPU Usage",
+                "type": "number"
+              },
+              {
+                "selector": "avg_gpu_usage.global",
+                "text": "Average GPU Usage",
+                "type": "number"
+              },
+              {
+                "selector": "avg_cpu_mem_usage.global",
+                "text": "Average CPU Mem Usage",
+                "type": "number"
+              },
+              {
+                "selector": "avg_gpu_mem_usage.global",
+                "text": "Average GPU Mem Usage",
+                "type": "number"
+              },
+              {
+                "selector": "username",
+                "text": "User",
+                "type": "string"
+              }
+            ],
+            "datasource": {
+              "type": "yesoreyeram-infinity-datasource",
+              "uid": "${DS_CEEMS-API}"
+            },
+            "filterExpression": "User == \"${user}\"",
+            "filters": [],
+            "format": "table",
+            "global_query_id": "",
+            "parser": "backend",
+            "refId": "A",
+            "root_selector": "data",
+            "source": "url",
+            "type": "json",
+            "url": "/api/v1/usage/current${VAR_ENDPOINT}",
+            "url_options": {
+              "data": "",
+              "headers": [],
+              "method": "GET",
+              "params": [
+                {
+                  "key": "project",
+                  "value": "${account}"
+                },
+                {
+                  "key": "from",
+                  "value": "${__from:date:seconds}"
+                },
+                {
+                  "key": "to",
+                  "value": "${__to:date:seconds}"
+                },
+                {
+                  "key": "cluster_id",
+                  "value": "${VAR_CLUSTER_ID}"
+                },
+                {
+                  "key": "user",
+                  "value": "${user}"
+                },
+                {
+                  "key": "field",
+                  "value": "avg_cpu_usage"
+                },
+                {
+                  "key": "field",
+                  "value": "avg_cpu_mem_usage"
+                },
+                {
+                  "key": "field",
+                  "value": "avg_gpu_usage"
+                },
+                {
+                  "key": "field",
+                  "value": "avg_gpu_mem_usage"
+                },
+                {
+                  "key": "field",
+                  "value": "username"
+                }
+              ]
+            }
+          }
+        ],
+        "title": "⚙️ Average Utilization by ${user} ⚙️",
+        "type": "gauge"
+      },
+      {
+        "datasource": {
+          "type": "yesoreyeram-infinity-datasource",
+          "uid": "${DS_CEEMS-API}"
+        },
+        "description": "Total energy consumption of all jobs of the user",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            },
+            "unit": "kwatth"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 6,
+          "w": 8,
+          "x": 8,
+          "y": 1
+        },
+        "id": 35,
+        "options": {
+          "colorMode": "none",
+          "graphMode": "none",
+          "justifyMode": "center",
+          "orientation": "auto",
+          "percentChangeColorMode": "standard",
+          "reduceOptions": {
+            "calcs": [
+              "sum"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "showPercentChange": false,
+          "textMode": "auto",
+          "wideLayout": true
+        },
+        "pluginVersion": "11.4.0",
+        "targets": [
+          {
+            "columns": [
+              {
+                "selector": "total_cpu_energy_usage_kwh.total",
+                "text": "Host",
+                "type": "number"
+              },
+              {
+                "selector": "total_gpu_energy_usage_kwh.total",
+                "text": "GPU",
+                "type": "number"
+              },
+              {
+                "selector": "username",
+                "text": "User",
+                "type": "string"
+              }
+            ],
+            "computed_columns": [],
+            "datasource": {
+              "type": "yesoreyeram-infinity-datasource",
+              "uid": "${DS_CEEMS-API}"
+            },
+            "filterExpression": "User == \"${user}\"",
+            "filters": [],
+            "format": "table",
+            "global_query_id": "",
+            "parser": "backend",
+            "refId": "A",
+            "root_selector": "data",
+            "source": "url",
+            "type": "json",
+            "url": "/api/v1/usage/current${VAR_ENDPOINT}",
+            "url_options": {
+              "data": "",
+              "headers": [],
+              "method": "GET",
+              "params": [
+                {
+                  "key": "project",
+                  "value": "${account}"
+                },
+                {
+                  "key": "user",
+                  "value": "${user}"
+                },
+                {
+                  "key": "from",
+                  "value": "${__from:date:seconds}"
+                },
+                {
+                  "key": "to",
+                  "value": "${__to:date:seconds}"
+                },
+                {
+                  "key": "field",
+                  "value": "total_cpu_energy_usage_kwh"
+                },
+                {
+                  "key": "field",
+                  "value": "total_gpu_energy_usage_kwh"
+                },
+                {
+                  "key": "field",
+                  "value": "username"
+                }
+              ]
+            }
+          }
+        ],
+        "title": "⚡ Total Energy Consumption by ${user} ⚡",
+        "transformations": [
+          {
+            "id": "calculateField",
+            "options": {
+              "alias": "Total",
+              "binary": {
+                "left": {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "Host"
+                  }
+                },
+                "right": {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "GPU"
+                  }
+                }
+              },
+              "mode": "binary",
+              "reduce": {
+                "reducer": "sum"
+              }
+            }
+          },
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {
+                "User": true
+              },
+              "includeByName": {},
+              "indexByName": {
+                "GPU": 1,
+                "Host": 0,
+                "Total": 3,
+                "User": 2
+              },
+              "renameByName": {}
+            }
+          }
+        ],
+        "type": "stat"
+      },
+      {
+        "gridPos": {
+          "h": 12,
+          "w": 8,
+          "x": 16,
+          "y": 1
+        },
+        "id": 31,
+        "options": {
+          "code": {
+            "language": "plaintext",
+            "showLineNumbers": false,
+            "showMiniMap": false
+          },
+          "content": "# README\n\nThe panels to the left show the overall usage by the user\n<span style=\"color:red\">**${user}**</span> using the project <span style=\"color:red\">**${account}**</span>\nduring the period\n${__from:date:YYYY-MM-DD HH:mm:ss} to ${__to:date:YYYY-MM-DD HH:mm:ss}.\n\n- Average CPU, GPU, CPU memory and GPU memory usage is the average over all the jobs\nof the user during the above stated period.\n\n- Total energy usage is the total energy consumed by the jobs of the user during the above\nstated period.\n\n  - Host corresponds to the energy consumption by host components such as CPU, CPU memory and other\n  peripherals of the node excluding GPU (if present)\n  - GPU corresponds to the energy consumption of GPUs alone.\n  - Total is the sum of power consumption of Host and GPUs.\n\n- Total emissions is the total equivalent emissions due the energy consumed by the jobs\nof the user during the above stated period. Real time emission factors\n[RTE eCO2](https://www.rte-france.com/en/eco2mix/co2-emissions),\n[Electricity Maps](https://app.electricitymaps.com/map/72h) and\nstatic emission factor from [OWID](https://ourworldindata.org/co2-and-greenhouse-gas-emissions)\nare supported in the estimation of the emissions.\n\n  - Host is the equivalent emissions due to the energy consumed by host components such as CPU, CPU memory and\n  other peripherals of the node excluding GPU (if present)\n  - GPU is the equivalent emissions due to energy consumption of GPUs alone.\n  - Total is the sum of equivalent emissions of Host and GPUs.",
+          "mode": "markdown"
+        },
+        "pluginVersion": "11.4.0",
+        "type": "text"
+      },
+      {
+        "datasource": {
+          "type": "yesoreyeram-infinity-datasource",
+          "uid": "${DS_CEEMS-API}"
+        },
+        "description": "Total emissions from the energy consumption of all jobs of the user using emission factor from RTE eCO2 mix data",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            },
+            "unit": "massg"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 6,
+          "w": 8,
+          "x": 8,
+          "y": 7
+        },
+        "id": 36,
+        "options": {
+          "colorMode": "none",
+          "graphMode": "none",
+          "justifyMode": "center",
+          "orientation": "auto",
+          "percentChangeColorMode": "standard",
+          "reduceOptions": {
+            "calcs": [
+              "sum"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "showPercentChange": false,
+          "textMode": "auto",
+          "wideLayout": true
+        },
+        "pluginVersion": "11.4.0",
+        "targets": [
+          {
+            "columns": [
+              {
+                "selector": "total_cpu_emissions_gms",
+                "text": "Host",
+                "type": "string"
+              },
+              {
+                "selector": "total_gpu_emissions_gms",
+                "text": "GPU",
+                "type": "string"
+              },
+              {
+                "selector": "username",
+                "text": "User",
+                "type": "string"
+              }
+            ],
+            "computed_columns": [],
+            "datasource": {
+              "type": "yesoreyeram-infinity-datasource",
+              "uid": "${DS_CEEMS-API}"
+            },
+            "filterExpression": "User == \"${user}\"",
+            "filters": [],
+            "format": "table",
+            "global_query_id": "",
+            "parser": "backend",
+            "refId": "A",
+            "root_selector": "data",
+            "source": "url",
+            "type": "json",
+            "url": "/api/v1/usage/current${VAR_ENDPOINT}",
+            "url_options": {
+              "data": "",
+              "headers": [],
+              "method": "GET",
+              "params": [
+                {
+                  "key": "project",
+                  "value": "${account}"
+                },
+                {
+                  "key": "user",
+                  "value": "${user}"
+                },
+                {
+                  "key": "cluster_id",
+                  "value": "${VAR_CLUSTER_ID}"
+                },
+                {
+                  "key": "from",
+                  "value": "${__from:date:seconds}"
+                },
+                {
+                  "key": "to",
+                  "value": "${__to:date:seconds}"
+                },
+                {
+                  "key": "field",
+                  "value": "total_cpu_emissions_gms"
+                },
+                {
+                  "key": "field",
+                  "value": "total_gpu_emissions_gms"
+                },
+                {
+                  "key": "field",
+                  "value": "username"
+                }
+              ]
+            }
+          }
+        ],
+        "title": "👣 Total Equivalent Emissions estimated using ${provider:text} by ${user} 👣",
+        "transformations": [
+          {
+            "id": "extractFields",
+            "options": {
+              "format": "json",
+              "jsonPaths": [
+                {
+                  "alias": "Host rte",
+                  "path": "rte_total"
+                },
+                {
+                  "alias": "Host emaps",
+                  "path": "emaps_total"
+                },
+                {
+                  "alias": "Host owid",
+                  "path": "owid_total"
+                }
+              ],
+              "source": "Host"
+            }
+          },
+          {
+            "id": "extractFields",
+            "options": {
+              "format": "json",
+              "jsonPaths": [
+                {
+                  "alias": "GPU rte",
+                  "path": "rte_total"
+                },
+                {
+                  "alias": "GPU emaps",
+                  "path": "emaps_total"
+                },
+                {
+                  "alias": "GPU owid",
+                  "path": "owid_total"
+                }
+              ],
+              "source": "GPU"
+            }
+          },
+          {
+            "id": "filterFieldsByName",
+            "options": {
+              "byVariable": false,
+              "include": {
+                "pattern": "(Host|GPU)\\s*${provider}"
+              }
+            }
+          },
+          {
+            "id": "calculateField",
+            "options": {
+              "alias": "Total",
+              "binary": {
+                "left": {
+                  "matcher": {
+                    "id": "byType",
+                    "options": "number"
+                  }
+                },
+                "right": {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "GPU"
+                  }
+                }
+              },
+              "mode": "reduceRow",
+              "reduce": {
+                "include": [],
+                "reducer": "sum"
+              }
+            }
+          },
+          {
+            "id": "renameByRegex",
+            "options": {
+              "regex": "(Host|GPU)(.*)",
+              "renamePattern": "$1"
+            }
+          }
+        ],
+        "type": "stat"
+      },
+      {
+        "collapsed": true,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 13
+        },
+        "id": 45,
+        "panels": [
+          {
+            "datasource": {
+              "type": "yesoreyeram-infinity-datasource",
+              "uid": "${DS_CEEMS-API}"
+            },
+            "description": "Average usage statistics of all jobs of the user",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red"
+                    },
+                    {
+                      "color": "orange",
+                      "value": 30
+                    },
+                    {
+                      "color": "green",
+                      "value": 70
+                    }
+                  ]
+                },
+                "unit": "percent"
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 12,
+              "w": 8,
+              "x": 0,
+              "y": 14
+            },
+            "id": 42,
+            "options": {
+              "minVizHeight": 75,
+              "minVizWidth": 75,
+              "orientation": "auto",
+              "reduceOptions": {
+                "calcs": [
+                  "mean"
+                ],
+                "fields": "",
+                "values": false
+              },
+              "showThresholdLabels": false,
+              "showThresholdMarkers": true,
+              "sizing": "auto"
+            },
+            "pluginVersion": "11.4.0",
+            "targets": [
+              {
+                "columns": [
+                  {
+                    "selector": "avg_cpu_usage.global",
+                    "text": "Average CPU Usage",
+                    "type": "number"
+                  },
+                  {
+                    "selector": "avg_gpu_usage.global",
+                    "text": "Average GPU Usage",
+                    "type": "number"
+                  },
+                  {
+                    "selector": "avg_cpu_mem_usage.global",
+                    "text": "Average CPU Mem Usage",
+                    "type": "number"
+                  },
+                  {
+                    "selector": "avg_gpu_mem_usage.global",
+                    "text": "Average GPU Mem Usage",
+                    "type": "number"
+                  },
+                  {
+                    "selector": "username",
+                    "text": "User",
+                    "type": "string"
+                  }
+                ],
+                "datasource": {
+                  "type": "yesoreyeram-infinity-datasource",
+                  "uid": "${DS_CEEMS-API}"
+                },
+                "filterExpression": "",
+                "filters": [],
+                "format": "table",
+                "global_query_id": "",
+                "parser": "backend",
+                "refId": "A",
+                "root_selector": "data",
+                "source": "url",
+                "type": "json",
+                "url": "/api/v1/usage/current${VAR_ENDPOINT}",
+                "url_options": {
+                  "data": "",
+                  "headers": [],
+                  "method": "GET",
+                  "params": [
+                    {
+                      "key": "project",
+                      "value": "${account}"
+                    },
+                    {
+                      "key": "from",
+                      "value": "${__from:date:seconds}"
+                    },
+                    {
+                      "key": "to",
+                      "value": "${__to:date:seconds}"
+                    },
+                    {
+                      "key": "cluster_id",
+                      "value": "${VAR_CLUSTER_ID}"
+                    },
+                    {
+                      "key": "field",
+                      "value": "avg_cpu_usage"
+                    },
+                    {
+                      "key": "field",
+                      "value": "avg_cpu_mem_usage"
+                    },
+                    {
+                      "key": "field",
+                      "value": "avg_gpu_usage"
+                    },
+                    {
+                      "key": "field",
+                      "value": "avg_gpu_mem_usage"
+                    },
+                    {
+                      "key": "field",
+                      "value": "username"
+                    }
+                  ]
+                }
+              }
+            ],
+            "title": "⚙️ Average Utilization by ${account} ⚙️",
+            "type": "gauge"
+          },
+          {
+            "datasource": {
+              "type": "yesoreyeram-infinity-datasource",
+              "uid": "${DS_CEEMS-API}"
+            },
+            "description": "Total energy consumption of all jobs of the user",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green"
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                },
+                "unit": "kwatth"
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 6,
+              "w": 8,
+              "x": 8,
+              "y": 14
+            },
+            "id": 44,
+            "options": {
+              "colorMode": "none",
+              "graphMode": "none",
+              "justifyMode": "center",
+              "orientation": "auto",
+              "percentChangeColorMode": "standard",
+              "reduceOptions": {
+                "calcs": [
+                  "sum"
+                ],
+                "fields": "",
+                "values": false
+              },
+              "showPercentChange": false,
+              "textMode": "auto",
+              "wideLayout": true
+            },
+            "pluginVersion": "11.4.0",
+            "targets": [
+              {
+                "columns": [
+                  {
+                    "selector": "total_cpu_energy_usage_kwh.total",
+                    "text": "Host",
+                    "type": "number"
+                  },
+                  {
+                    "selector": "total_gpu_energy_usage_kwh.total",
+                    "text": "GPU",
+                    "type": "number"
+                  },
+                  {
+                    "selector": "username",
+                    "text": "User",
+                    "type": "string"
+                  }
+                ],
+                "computed_columns": [],
+                "datasource": {
+                  "type": "yesoreyeram-infinity-datasource",
+                  "uid": "${DS_CEEMS-API}"
+                },
+                "filterExpression": "",
+                "filters": [],
+                "format": "table",
+                "global_query_id": "",
+                "parser": "backend",
+                "refId": "A",
+                "root_selector": "data",
+                "source": "url",
+                "type": "json",
+                "url": "/api/v1/usage/current${VAR_ENDPOINT}",
+                "url_options": {
+                  "data": "",
+                  "headers": [],
+                  "method": "GET",
+                  "params": [
+                    {
+                      "key": "project",
+                      "value": "${account}"
+                    },
+                    {
+                      "key": "from",
+                      "value": "${__from:date:seconds}"
+                    },
+                    {
+                      "key": "to",
+                      "value": "${__to:date:seconds}"
+                    },
+                    {
+                      "key": "field",
+                      "value": "total_cpu_energy_usage_kwh"
+                    },
+                    {
+                      "key": "field",
+                      "value": "total_gpu_energy_usage_kwh"
+                    },
+                    {
+                      "key": "field",
+                      "value": "username"
+                    }
+                  ]
+                }
+              }
+            ],
+            "title": "⚡ Total Energy Consumption by ${account} ⚡",
+            "transformations": [
+              {
+                "id": "calculateField",
+                "options": {
+                  "alias": "Total",
+                  "binary": {
+                    "left": {
+                      "matcher": {
+                        "id": "byName",
+                        "options": "Host"
+                      }
+                    },
+                    "right": {
+                      "matcher": {
+                        "id": "byName",
+                        "options": "GPU"
+                      }
+                    }
+                  },
+                  "mode": "binary",
+                  "reduce": {
+                    "reducer": "sum"
+                  }
+                }
+              },
+              {
+                "id": "organize",
+                "options": {
+                  "excludeByName": {
+                    "User": true
+                  },
+                  "includeByName": {},
+                  "indexByName": {
+                    "GPU": 1,
+                    "Host": 0,
+                    "Total": 3,
+                    "User": 2
+                  },
+                  "renameByName": {}
+                }
+              }
+            ],
+            "type": "stat"
+          },
+          {
+            "fieldConfig": {
+              "defaults": {},
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 12,
+              "w": 8,
+              "x": 16,
+              "y": 14
+            },
+            "id": 48,
+            "options": {
+              "code": {
+                "language": "plaintext",
+                "showLineNumbers": false,
+                "showMiniMap": false
+              },
+              "content": "# README\n\nThe panels to the left show the overall usage by the project\n<span style=\"color:red\">**${account}**</span> during the period\n${__from:date:YYYY-MM-DD HH:mm:ss} to ${__to:date:YYYY-MM-DD HH:mm:ss}. This includes\nthe usage of all the users in the project. For consulting only user specific usage,\nplease refer to the panels above.\n\n- Average CPU, GPU, CPU memory and GPU memory usage is the average over all the jobs\nof the user during the above stated period.\n\n- Total energy usage is the total energy consumed by the jobs of the user during the above\nstated period.\n\n  - Host corresponds to the energy consumption by host components such as CPU, CPU memory and other\n  peripherals of the node excluding GPU (if present)\n  - GPU corresponds to the energy consumption of GPUs alone.\n  - Total is the sum of power consumption of Host and GPUs.\n\n- Total emissions is the total equivalent emissions due the energy consumed by the jobs\nof the user during the above stated period. Real time emission factors\n[RTE eCO2](https://www.rte-france.com/en/eco2mix/co2-emissions),\n[Electricity Maps](https://app.electricitymaps.com/map/72h) and\nstatic emission factor from [OWID](https://ourworldindata.org/co2-and-greenhouse-gas-emissions)\nare supported in the estimation of the emissions.\n\n  - Host corresponds to the energy consumption by host components such as CPU, CPU memory and other\n  peripherals of the node excluding GPU (if present)\n  - GPU is the equivalent emissions due to energy consumption of GPUs alone.\n  - Total is the sum of equivalent emissions of Host and GPUs.",
+              "mode": "markdown"
+            },
+            "pluginVersion": "11.4.0",
+            "title": "",
+            "type": "text"
+          },
+          {
+            "datasource": {
+              "type": "yesoreyeram-infinity-datasource",
+              "uid": "${DS_CEEMS-API}"
+            },
+            "description": "Total emissions from the energy consumption of all jobs of the user using emission factor from RTE eCO2 mix data",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green"
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                },
+                "unit": "massg"
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 6,
+              "w": 8,
+              "x": 8,
+              "y": 94
+            },
+            "id": 50,
+            "options": {
+              "colorMode": "none",
+              "graphMode": "none",
+              "justifyMode": "center",
+              "orientation": "auto",
+              "percentChangeColorMode": "standard",
+              "reduceOptions": {
+                "calcs": [
+                  "sum"
+                ],
+                "fields": "",
+                "values": false
+              },
+              "showPercentChange": false,
+              "textMode": "auto",
+              "wideLayout": true
+            },
+            "pluginVersion": "11.4.0",
+            "targets": [
+              {
+                "columns": [
+                  {
+                    "selector": "total_cpu_emissions_gms",
+                    "text": "Host",
+                    "type": "string"
+                  },
+                  {
+                    "selector": "total_gpu_emissions_gms",
+                    "text": "GPU",
+                    "type": "string"
+                  },
+                  {
+                    "selector": "username",
+                    "text": "User",
+                    "type": "string"
+                  }
+                ],
+                "computed_columns": [],
+                "datasource": {
+                  "type": "yesoreyeram-infinity-datasource",
+                  "uid": "${DS_CEEMS-API}"
+                },
+                "filterExpression": "",
+                "filters": [],
+                "format": "table",
+                "global_query_id": "",
+                "parser": "backend",
+                "refId": "A",
+                "root_selector": "data",
+                "source": "url",
+                "type": "json",
+                "url": "/api/v1/usage/current${VAR_ENDPOINT}",
+                "url_options": {
+                  "data": "",
+                  "headers": [],
+                  "method": "GET",
+                  "params": [
+                    {
+                      "key": "project",
+                      "value": "${account}"
+                    },
+                    {
+                      "key": "user",
+                      "value": "${user}"
+                    },
+                    {
+                      "key": "cluster_id",
+                      "value": "${VAR_CLUSTER_ID}"
+                    },
+                    {
+                      "key": "from",
+                      "value": "${__from:date:seconds}"
+                    },
+                    {
+                      "key": "to",
+                      "value": "${__to:date:seconds}"
+                    },
+                    {
+                      "key": "field",
+                      "value": "total_cpu_emissions_gms"
+                    },
+                    {
+                      "key": "field",
+                      "value": "total_gpu_emissions_gms"
+                    },
+                    {
+                      "key": "field",
+                      "value": "username"
+                    }
+                  ]
+                }
+              }
+            ],
+            "title": "👣 Total Equivalent Emissions estimated using ${provider:text} by ${account} 👣",
+            "transformations": [
+              {
+                "id": "extractFields",
+                "options": {
+                  "format": "json",
+                  "jsonPaths": [
+                    {
+                      "alias": "Host rte",
+                      "path": "rte_total"
+                    },
+                    {
+                      "alias": "Host emaps",
+                      "path": "emaps_total"
+                    },
+                    {
+                      "alias": "Host owid",
+                      "path": "owid_total"
+                    }
+                  ],
+                  "source": "Host"
+                }
+              },
+              {
+                "id": "extractFields",
+                "options": {
+                  "format": "json",
+                  "jsonPaths": [
+                    {
+                      "alias": "GPU rte",
+                      "path": "rte_total"
+                    },
+                    {
+                      "alias": "GPU emaps",
+                      "path": "emaps_total"
+                    },
+                    {
+                      "alias": "GPU owid",
+                      "path": "owid_total"
+                    }
+                  ],
+                  "source": "GPU"
+                }
+              },
+              {
+                "id": "filterFieldsByName",
+                "options": {
+                  "byVariable": false,
+                  "include": {
+                    "pattern": "(Host|GPU)\\s*${provider}"
+                  }
+                }
+              },
+              {
+                "id": "calculateField",
+                "options": {
+                  "alias": "Total",
+                  "binary": {
+                    "left": {
+                      "matcher": {
+                        "id": "byType",
+                        "options": "number"
+                      }
+                    },
+                    "right": {
+                      "matcher": {
+                        "id": "byName",
+                        "options": "GPU"
+                      }
+                    }
+                  },
+                  "mode": "reduceRow",
+                  "reduce": {
+                    "reducer": "sum"
+                  }
+                }
+              },
+              {
+                "id": "renameByRegex",
+                "options": {
+                  "regex": "(Host|GPU)(.*)",
+                  "renamePattern": "$1"
+                }
+              }
+            ],
+            "type": "stat"
+          }
+        ],
+        "title": "Aggregate Usage Statistics of Project ${account} from ${__from:date:YYYY-MM-DD HH:mm:ss} to ${__to:date:YYYY-MM-DD HH:mm:ss}",
+        "type": "row"
+      },
+      {
+        "collapsed": true,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 14
+        },
+        "id": 41,
+        "panels": [
+          {
+            "datasource": {
+              "type": "yesoreyeram-infinity-datasource",
+              "uid": "${DS_CEEMS-API}"
+            },
+            "description": "Total energy consumption of each user in the project ${account}",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  }
+                },
+                "fieldMinMax": false,
+                "mappings": [],
+                "unit": "kwatth"
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 10,
+              "w": 8,
+              "x": 0,
+              "y": 15
+            },
+            "id": 37,
+            "options": {
+              "displayLabels": [
+                "name",
+                "value"
+              ],
+              "legend": {
+                "displayMode": "table",
+                "placement": "right",
+                "showLegend": true,
+                "values": [
+                  "value",
+                  "percent"
+                ]
+              },
+              "pieType": "donut",
+              "reduceOptions": {
+                "calcs": [
+                  "allValues"
+                ],
+                "fields": "/^Total$/",
+                "values": true
+              },
+              "tooltip": {
+                "mode": "single",
+                "sort": "none"
+              }
+            },
+            "pluginVersion": "11.4.0",
+            "targets": [
+              {
+                "columns": [
+                  {
+                    "selector": "total_cpu_energy_usage_kwh.total",
+                    "text": "Host",
+                    "type": "number"
+                  },
+                  {
+                    "selector": "username",
+                    "text": "User",
+                    "type": "string"
+                  },
+                  {
+                    "selector": "total_gpu_energy_usage_kwh.total",
+                    "text": "GPU",
+                    "type": "number"
+                  }
+                ],
+                "datasource": {
+                  "type": "yesoreyeram-infinity-datasource",
+                  "uid": "${DS_CEEMS-API}"
+                },
+                "filters": [],
+                "format": "table",
+                "global_query_id": "",
+                "parser": "backend",
+                "refId": "A",
+                "root_selector": "data",
+                "source": "url",
+                "type": "json",
+                "url": "/api/v1/usage/current${VAR_ENDPOINT}",
+                "url_options": {
+                  "data": "",
+                  "headers": [],
+                  "method": "GET",
+                  "params": [
+                    {
+                      "key": "project",
+                      "value": "${account}"
+                    },
+                    {
+                      "key": "from",
+                      "value": "${__from:date:seconds}"
+                    },
+                    {
+                      "key": "to",
+                      "value": "${__to:date:seconds}"
+                    },
+                    {
+                      "key": "cluster_id",
+                      "value": "${VAR_CLUSTER_ID}"
+                    },
+                    {
+                      "key": "user",
+                      "value": "${user}"
+                    },
+                    {
+                      "key": "field",
+                      "value": "total_cpu_energy_usage_kwh"
+                    },
+                    {
+                      "key": "field",
+                      "value": "username"
+                    },
+                    {
+                      "key": "field",
+                      "value": "total_gpu_energy_usage_kwh"
+                    }
+                  ]
+                }
+              }
+            ],
+            "title": "⚡ Total Energy Consumption by users of ${account} ⚡",
+            "transformations": [
+              {
+                "id": "calculateField",
+                "options": {
+                  "alias": "Total",
+                  "binary": {
+                    "left": {
+                      "matcher": {
+                        "id": "byName",
+                        "options": "Host"
+                      }
+                    },
+                    "right": {
+                      "matcher": {
+                        "id": "byName",
+                        "options": "GPU"
+                      }
+                    }
+                  },
+                  "mode": "binary",
+                  "reduce": {
+                    "reducer": "sum"
+                  },
+                  "replaceFields": false
+                }
+              }
+            ],
+            "type": "piechart"
+          },
+          {
+            "datasource": {
+              "type": "yesoreyeram-infinity-datasource",
+              "uid": "${DS_CEEMS-API}"
+            },
+            "description": "Total emissions from the energy consumption of all jobs of the user using emission factor from RTE eCO2 mix data",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  }
+                },
+                "mappings": [],
+                "unit": "massg"
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 10,
+              "w": 8,
+              "x": 8,
+              "y": 15
+            },
+            "id": 51,
+            "options": {
+              "displayLabels": [
+                "name",
+                "value"
+              ],
+              "legend": {
+                "displayMode": "table",
+                "placement": "right",
+                "showLegend": true,
+                "values": [
+                  "percent",
+                  "value"
+                ]
+              },
+              "pieType": "donut",
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "/^Total$/",
+                "values": true
+              },
+              "tooltip": {
+                "mode": "single",
+                "sort": "none"
+              }
+            },
+            "pluginVersion": "11.4.0",
+            "targets": [
+              {
+                "columns": [
+                  {
+                    "selector": "total_cpu_emissions_gms",
+                    "text": "Host",
+                    "type": "string"
+                  },
+                  {
+                    "selector": "total_gpu_emissions_gms",
+                    "text": "GPU",
+                    "type": "string"
+                  },
+                  {
+                    "selector": "username",
+                    "text": "User",
+                    "type": "string"
+                  }
+                ],
+                "computed_columns": [],
+                "datasource": {
+                  "type": "yesoreyeram-infinity-datasource",
+                  "uid": "${DS_CEEMS-API}"
+                },
+                "filterExpression": "",
+                "filters": [],
+                "format": "table",
+                "global_query_id": "",
+                "parser": "backend",
+                "refId": "A",
+                "root_selector": "data",
+                "source": "url",
+                "type": "json",
+                "url": "/api/v1/usage/current${VAR_ENDPOINT}",
+                "url_options": {
+                  "data": "",
+                  "headers": [],
+                  "method": "GET",
+                  "params": [
+                    {
+                      "key": "project",
+                      "value": "${account}"
+                    },
+                    {
+                      "key": "user",
+                      "value": "${user}"
+                    },
+                    {
+                      "key": "cluster_id",
+                      "value": "${VAR_CLUSTER_ID}"
+                    },
+                    {
+                      "key": "from",
+                      "value": "${__from:date:seconds}"
+                    },
+                    {
+                      "key": "to",
+                      "value": "${__to:date:seconds}"
+                    },
+                    {
+                      "key": "field",
+                      "value": "total_cpu_emissions_gms"
+                    },
+                    {
+                      "key": "field",
+                      "value": "total_gpu_emissions_gms"
+                    },
+                    {
+                      "key": "field",
+                      "value": "username"
+                    }
+                  ]
+                }
+              }
+            ],
+            "title": "👣 Total Equivalent Emissions  estimated using ${provider:text} by users of ${account} 👣",
+            "transformations": [
+              {
+                "id": "extractFields",
+                "options": {
+                  "format": "json",
+                  "jsonPaths": [
+                    {
+                      "alias": "Host rte",
+                      "path": "rte_total"
+                    },
+                    {
+                      "alias": "Host emaps",
+                      "path": "emaps_total"
+                    },
+                    {
+                      "alias": "Host owid",
+                      "path": "owid_total"
+                    }
+                  ],
+                  "source": "Host"
+                }
+              },
+              {
+                "id": "extractFields",
+                "options": {
+                  "format": "json",
+                  "jsonPaths": [
+                    {
+                      "alias": "GPU rte",
+                      "path": "rte_total"
+                    },
+                    {
+                      "alias": "GPU emaps",
+                      "path": "emaps_total"
+                    },
+                    {
+                      "alias": "GPU owid",
+                      "path": "owid_total"
+                    }
+                  ],
+                  "source": "GPU"
+                }
+              },
+              {
+                "id": "filterFieldsByName",
+                "options": {
+                  "byVariable": false,
+                  "include": {
+                    "pattern": "(((Host|GPU)\\s*${provider})|User)"
+                  }
+                }
+              },
+              {
+                "id": "calculateField",
+                "options": {
+                  "alias": "Total",
+                  "binary": {
+                    "left": {
+                      "matcher": {
+                        "id": "byType",
+                        "options": "number"
+                      }
+                    },
+                    "right": {
+                      "matcher": {
+                        "id": "byName",
+                        "options": "GPU"
+                      }
+                    }
+                  },
+                  "mode": "reduceRow",
+                  "reduce": {
+                    "reducer": "sum"
+                  }
+                }
+              },
+              {
+                "id": "renameByRegex",
+                "options": {
+                  "regex": "(Host|GPU)(.*)",
+                  "renamePattern": "$1"
+                }
+              }
+            ],
+            "type": "piechart"
+          },
+          {
+            "fieldConfig": {
+              "defaults": {},
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 10,
+              "w": 8,
+              "x": 16,
+              "y": 15
+            },
+            "id": 49,
+            "options": {
+              "code": {
+                "language": "plaintext",
+                "showLineNumbers": false,
+                "showMiniMap": false
+              },
+              "content": "# README\n\nThe panels to the left show the breakdown of total energy consumption and\nequivalent emissions for project\n<span style=\"color:red\">**${account}**</span> during the period\n${__from:date:YYYY-MM-DD HH:mm:ss} to ${__to:date:YYYY-MM-DD HH:mm:ss}.\n\n- Total energy consumption is sum of energy consumed by host and GPUs (if present)\nfor all jobs ran during this period.\n\n- Total equivalent emissions is the sum of equivalent emissions from the energy\nconsumed by host and GPUs (if present) for all jobs ran during this period. Real time emission factors\n[RTE eCO2](https://www.rte-france.com/en/eco2mix/co2-emissions),\n[Electricity Maps](https://app.electricitymaps.com/map/72h) and\nstatic emission factor from [OWID](https://ourworldindata.org/co2-and-greenhouse-gas-emissions)\nare supported in the estimation of the emissions.\n",
+              "mode": "markdown"
+            },
+            "pluginVersion": "11.4.0",
+            "title": "",
+            "type": "text"
+          }
+        ],
+        "title": "Breakdown of ${account}'s Energy & Emissions Usage  from ${__from:date:YYYY-MM-DD HH:mm:ss} to ${__to:date:YYYY-MM-DD HH:mm:ss}",
+        "type": "row"
+      },
+      {
+        "collapsed": true,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 15
+        },
+        "id": 32,
+        "panels": [
+          {
+            "datasource": {
+              "type": "yesoreyeram-infinity-datasource",
+              "uid": "${DS_CEEMS-API}"
+            },
+            "description": "List of all SLURM jobs of user ${user} with project ${account}. By clicking the row, user will be redirected to the dashboard that shows the time series metrics of that compute unit.",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "align": "left",
+                  "cellOptions": {
+                    "type": "auto",
+                    "wrapText": false
+                  },
+                  "filterable": true,
+                  "inspect": false
+                },
+                "links": [
+                  {
+                    "targetBlank": true,
+                    "title": "SLURM Job Metrics Dashboard",
+                    "url": "/d/ee9dysqetkow0aslurm/_?orgId=1﻿&var-jobid=${__data.fields.JobID}﻿﻿﻿﻿&from=﻿﻿﻿﻿${__data.fields.started_at_ts}﻿﻿﻿﻿&to=﻿﻿﻿﻿${__data.fields.ended_at_ts}﻿﻿﻿﻿&var-provider=rte&var-submit=﻿﻿﻿﻿${__data.fields.created_at_ts}﻿﻿﻿&var-name=﻿﻿﻿${__data.fields.Name}﻿﻿﻿&var-nodelist=﻿﻿﻿${__data.fields.Nodelist}﻿﻿&var-state=﻿﻿${__data.fields.State}﻿﻿&var-elapsed=﻿﻿${__data.fields.Elapsed}﻿&var-account=${account}&var-partition=${__data.fields.Partition}&var-qos=${__data.fields.QoS}&var-cpu_usage=${__data.fields[\"CPU Usage (%)\"]}&var-cpumem_usage=${__data.fields[\"CPU Mem Usage (%)\"]}&var-cpu_energy=${__data.fields[\"Host Energy (kWh)\"]}&var-cpu_emissions_rte=${__data.fields[\"Host Emissions RTE (gms)\"]}&var-cpu_emissions_emaps=${__data.fields[\"Host Emissions EMaps (gms)\"]}&var-cpu_emissions_owid=${__data.fields[\"Host Emissions OWID (gms)\"]}&var-gpu_usage=${__data.fields[\"GPU Usage (%)\"]}&var-gpumem_usage=${__data.fields[\"GPU Mem Usage (%)\"]}&var-gpu_energy=${__data.fields[\"GPU Energy (kWh)\"]}&var-gpu_emissions_rte=${__data.fields[\"GPU Emissions RTE (gms)\"]}&var-gpu_emissions_emaps=${__data.fields[\"GPU Emissions EMaps (gms)\"]}&var-gpu_emissions_owid=${__data.fields[\"GPU Emissions OWID (gms)\"]}&var-total_energy=${__data.fields[\"Total Energy (kWh)\"]}&var-total_emissions_rte=${__data.fields[\"Total Emissions RTE (gms)\"]}&var-total_emissions_emaps=${__data.fields[\"Total Emissions EMaps (gms)\"]}&var-total_emissions_owid=${__data.fields[\"Total Emissions OWID (gms)\"]}"
+                  }
+                ],
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                }
+              },
+              "overrides": [
+                {
+                  "matcher": {
+                    "id": "byRegexp",
+                    "options": "/(Partition|QoS|created_at_ts|ended_at_ts|project|started_at_ts)/"
+                  },
+                  "properties": [
+                    {
+                      "id": "custom.hidden",
+                      "value": true
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "ended_at_ts"
+                  },
+                  "properties": [
+                    {
+                      "id": "noValue",
+                      "value": "now"
+                    }
+                  ]
+                }
+              ]
+            },
+            "gridPos": {
+              "h": 27,
+              "w": 24,
+              "x": 0,
+              "y": 26
+            },
+            "id": 52,
+            "options": {
+              "cellHeight": "sm",
+              "footer": {
+                "countRows": false,
+                "enablePagination": true,
+                "fields": "",
+                "reducer": [
+                  "sum"
+                ],
+                "show": false
+              },
+              "showHeader": true,
+              "sortBy": [
+                {
+                  "desc": true,
+                  "displayName": "Start Time"
+                }
+              ]
+            },
+            "pluginVersion": "11.4.0",
+            "targets": [
+              {
+                "columns": [
+                  {
+                    "selector": "uuid",
+                    "text": "JobID",
+                    "type": "number"
+                  },
+                  {
+                    "selector": "started_at",
+                    "text": "Start Time",
+                    "timestampFormat": "2006-01-02T15:04:05Z07:00",
+                    "type": "string"
+                  },
+                  {
+                    "selector": "ended_at",
+                    "text": "End Time",
+                    "type": "string"
+                  },
+                  {
+                    "selector": "elapsed",
+                    "text": "Elapsed",
+                    "type": "string"
+                  },
+                  {
+                    "selector": "state",
+                    "text": "State",
+                    "type": "string"
+                  },
+                  {
+                    "selector": "avg_cpu_usage.global",
+                    "text": "CPU Usage (%)",
+                    "type": "number"
+                  },
+                  {
+                    "selector": "total_cpu_energy_usage_kwh.total",
+                    "text": "Host Energy (kWh)",
+                    "type": "number"
+                  },
+                  {
+                    "selector": "total_cpu_emissions_gms.rte_total",
+                    "text": "Host Emissions RTE (gms)",
+                    "type": "number"
+                  },
+                  {
+                    "selector": "avg_gpu_usage.global",
+                    "text": "GPU Usage (%)",
+                    "type": "number"
+                  },
+                  {
+                    "selector": "total_gpu_energy_usage_kwh.total",
+                    "text": "GPU Energy (kWh)",
+                    "type": "number"
+                  },
+                  {
+                    "selector": "total_gpu_emissions_gms.rte_total",
+                    "text": "GPU Emissions RTE (gms)",
+                    "type": "number"
+                  },
+                  {
+                    "selector": "tags.nodelist",
+                    "text": "Nodelist",
+                    "type": "string"
+                  },
+                  {
+                    "selector": "started_at_ts",
+                    "text": "",
+                    "type": "number"
+                  },
+                  {
+                    "selector": "ended_at_ts",
+                    "text": "",
+                    "type": "number"
+                  },
+                  {
+                    "selector": "username",
+                    "text": "",
+                    "type": "string"
+                  },
+                  {
+                    "selector": "project",
+                    "text": "",
+                    "type": "string"
+                  },
+                  {
+                    "selector": "total_time_seconds.walltime",
+                    "text": "",
+                    "type": "number"
+                  },
+                  {
+                    "selector": "avg_cpu_mem_usage.global",
+                    "text": "CPU Mem Usage (%)",
+                    "type": "number"
+                  },
+                  {
+                    "selector": "avg_gpu_mem_usage.global",
+                    "text": "GPU Mem Usage (%)",
+                    "type": "number"
+                  },
+                  {
+                    "selector": "created_at_ts",
+                    "text": "",
+                    "type": "number"
+                  },
+                  {
+                    "selector": "name",
+                    "text": "Name",
+                    "type": "string"
+                  },
+                  {
+                    "selector": "tags.partition",
+                    "text": "Partition",
+                    "type": "string"
+                  },
+                  {
+                    "selector": "tags.qos",
+                    "text": "QoS",
+                    "type": "string"
+                  },
+                  {
+                    "selector": "total_cpu_emissions_gms.emaps_total",
+                    "text": "Host Emissions EMaps (gms)",
+                    "type": "number"
+                  },
+                  {
+                    "selector": "total_cpu_emissions_gms.owid_total",
+                    "text": "Host Emissions OWID (gms)",
+                    "type": "number"
+                  },
+                  {
+                    "selector": "total_gpu_emissions_gms.emaps_total",
+                    "text": "GPU Emissions EMaps (gms)",
+                    "type": "number"
+                  },
+                  {
+                    "selector": "total_gpu_emissions_gms.owid_total",
+                    "text": "GPU Emissions OWID (gms)",
+                    "type": "number"
+                  }
+                ],
+                "computed_columns": [],
+                "datasource": {
+                  "type": "yesoreyeram-infinity-datasource",
+                  "uid": "${DS_CEEMS-API}"
+                },
+                "filters": [],
+                "format": "table",
+                "global_query_id": "",
+                "pagination_mode": "none",
+                "parser": "backend",
+                "refId": "A",
+                "root_selector": "data",
+                "source": "url",
+                "type": "json",
+                "url": "/api/v1/units${VAR_ENDPOINT}",
+                "url_options": {
+                  "data": "",
+                  "headers": [],
+                  "method": "GET",
+                  "params": [
+                    {
+                      "key": "project",
+                      "value": "${account}"
+                    },
+                    {
+                      "key": "from",
+                      "value": "${__from:date:seconds}"
+                    },
+                    {
+                      "key": "to",
+                      "value": "${__to:date:seconds}"
+                    },
+                    {
+                      "key": "cluster_id",
+                      "value": "${VAR_CLUSTER_ID}"
+                    },
+                    {
+                      "key": "user",
+                      "value": "${user}"
+                    },
+                    {
+                      "key": "running",
+                      "value": "1"
+                    }
+                  ]
+                }
+              }
+            ],
+            "title": "List of SLURM Jobs",
+            "transformations": [
+              {
+                "id": "calculateField",
+                "options": {
+                  "alias": "Total Energy (kWh)",
+                  "binary": {
+                    "left": {
+                      "matcher": {
+                        "id": "byName",
+                        "options": "Host Energy (kWh)"
+                      }
+                    },
+                    "right": {
+                      "matcher": {
+                        "id": "byName",
+                        "options": "GPU Energy (kWh)"
+                      }
+                    }
+                  },
+                  "mode": "binary",
+                  "reduce": {
+                    "reducer": "sum"
+                  }
+                }
+              },
+              {
+                "id": "calculateField",
+                "options": {
+                  "alias": "Total Emissions EMaps (gms)",
+                  "binary": {
+                    "left": {
+                      "matcher": {
+                        "id": "byName",
+                        "options": "Host Emissions EMaps (gms)"
+                      }
+                    },
+                    "right": {
+                      "matcher": {
+                        "id": "byName",
+                        "options": "GPU Emissions EMaps (gms)"
+                      }
+                    }
+                  },
+                  "mode": "binary",
+                  "reduce": {
+                    "reducer": "sum"
+                  }
+                }
+              },
+              {
+                "id": "calculateField",
+                "options": {
+                  "alias": "Total Emissions OWID (gms)",
+                  "binary": {
+                    "left": {
+                      "matcher": {
+                        "id": "byName",
+                        "options": "Host Emissions OWID (gms)"
+                      }
+                    },
+                    "right": {
+                      "matcher": {
+                        "id": "byName",
+                        "options": "GPU Emissions OWID (gms)"
+                      }
+                    }
+                  },
+                  "mode": "binary",
+                  "reduce": {
+                    "reducer": "sum"
+                  }
+                }
+              },
+              {
+                "id": "calculateField",
+                "options": {
+                  "alias": "Total Emissions RTE (gms)",
+                  "binary": {
+                    "left": {
+                      "matcher": {
+                        "id": "byName",
+                        "options": "Host Emissions RTE (gms)"
+                      }
+                    },
+                    "right": {
+                      "matcher": {
+                        "id": "byName",
+                        "options": "GPU Emissions RTE (gms)"
+                      }
+                    }
+                  },
+                  "mode": "binary",
+                  "reduce": {
+                    "reducer": "sum"
+                  }
+                }
+              },
+              {
+                "id": "organize",
+                "options": {
+                  "excludeByName": {
+                    "Partition": false,
+                    "QoS": false,
+                    "created_at_ts": false,
+                    "ended_at_ts": false,
+                    "project": false,
+                    "started_at_ts": false,
+                    "total_time_seconds.walltime": true,
+                    "username": true
+                  },
+                  "includeByName": {},
+                  "indexByName": {
+                    "CPU Mem Usage (%)": 11,
+                    "CPU Usage (%)": 10,
+                    "Elapsed": 4,
+                    "End Time": 3,
+                    "GPU Emissions EMaps (gms)": 20,
+                    "GPU Emissions OWID (gms)": 21,
+                    "GPU Emissions RTE (gms)": 19,
+                    "GPU Energy (kWh)": 18,
+                    "GPU Mem Usage (%)": 17,
+                    "GPU Usage (%)": 16,
+                    "Host Emissions EMaps (gms)": 14,
+                    "Host Emissions OWID (gms)": 15,
+                    "Host Emissions RTE (gms)": 13,
+                    "Host Energy (kWh)": 12,
+                    "JobID": 0,
+                    "Name": 1,
+                    "Nodelist": 22,
+                    "Partition": 23,
+                    "QoS": 24,
+                    "Start Time": 2,
+                    "State": 5,
+                    "Total Emissions EMaps (gms)": 8,
+                    "Total Emissions OWID (gms)": 9,
+                    "Total Emissions RTE (gms)": 7,
+                    "Total Energy (kWh)": 6,
+                    "created_at_ts": 25,
+                    "ended_at_ts": 26,
+                    "project": 27,
+                    "started_at_ts": 28,
+                    "total_time_seconds.walltime": 29,
+                    "username": 30
+                  },
+                  "renameByName": {}
+                }
+              }
+            ],
+            "type": "table"
+          }
+        ],
+        "title": "Job Metrics from ${__from:date:YYYY-MM-DD HH:mm:ss} to ${__to:date:YYYY-MM-DD HH:mm:ss}",
+        "type": "row"
+      }
+    ],
+    "refresh": "",
+    "schemaVersion": 40,
+    "tags": [
+      "job",
+      "aggregate",
+      "slurm",
+      "energy",
+      "emissions"
+    ],
+    "templating": {
+      "list": [
+        {
+          "current": {},
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "${DS_CEEMS-API}"
+          },
+          "definition": "",
+          "includeAll": false,
+          "label": "User:",
+          "name": "user",
+          "options": [],
+          "query": {
+            "infinityQuery": {
+              "columns": [
+                {
+                  "selector": "name",
+                  "text": "__text",
+                  "type": "string"
+                },
+                {
+                  "selector": "name",
+                  "text": "__value",
+                  "type": "string"
+                }
+              ],
+              "filters": [],
+              "format": "table",
+              "parser": "backend",
+              "refId": "",
+              "root_selector": "data",
+              "source": "url",
+              "type": "json",
+              "url": "/api/v1/users${VAR_ENDPOINT}",
+              "url_options": {
+                "data": "",
+                "headers": [],
+                "method": "GET",
+                "params": [
+                  {
+                    "key": "cluster_id",
+                    "value": "${VAR_CLUSTER_ID}"
+                  }
+                ]
+              }
+            },
+            "query": "",
+            "queryType": "infinity"
+          },
+          "refresh": 1,
+          "regex": "",
+          "type": "query"
+        },
+        {
+          "current": {},
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "${DS_CEEMS-API}"
+          },
+          "definition": "",
+          "includeAll": false,
+          "label": "Account:",
+          "name": "account",
+          "options": [],
+          "query": {
+            "infinityQuery": {
+              "columns": [
+                {
+                  "selector": "",
+                  "text": "",
+                  "type": "string"
+                }
+              ],
+              "filters": [],
+              "format": "table",
+              "parser": "backend",
+              "refId": "",
+              "root_selector": "data.projects[*]",
+              "source": "url",
+              "type": "uql",
+              "uql": "parse-json\n| scope \"data\"\n| jsonata \"[projects]\"",
+              "url": "/api/v1/users${VAR_ENDPOINT}",
+              "url_options": {
+                "data": "",
+                "headers": [],
+                "method": "GET",
+                "params": [
+                  {
+                    "key": "cluster_id",
+                    "value": "${VAR_CLUSTER_ID}"
+                  },
+                  {
+                    "key": "user",
+                    "value": "${user}"
+                  }
+                ]
+              }
+            },
+            "query": "",
+            "queryType": "infinity"
+          },
+          "refresh": 1,
+          "regex": "",
+          "type": "query"
+        },
+        {
+          "current": {
+            "text": "rte",
+            "value": "rte"
+          },
+          "label": "Emission Factor Provider:",
+          "name": "provider",
+          "options": [
+            {
+              "selected": true,
+              "text": "RTE eCO2 Mix",
+              "value": "rte"
+            },
+            {
+              "selected": false,
+              "text": "Electricity Maps",
+              "value": "emaps"
+            },
+            {
+              "selected": false,
+              "text": "OWID",
+              "value": "owid"
+            }
+          ],
+          "query": "RTE eCO2 Mix : rte, Electricity Maps : emaps, OWID : owid",
+          "type": "custom"
+        }
+      ]
+    },
+    "time": {
+      "from": "now-90d",
+      "to": "now"
+    },
+    "timepicker": {
+      "refresh_intervals": [
+        "5m",
+        "15m",
+        "30m",
+        "1h",
+        "2h",
+        "1d"
+      ]
+    },
+    "timezone": "",
+    "title": "User SLURM Job Summary",
+    "version": 1,
+    "weekStart": ""
+  }
+  

@@ -1,0 +1,29 @@
+[Unit]
+Description=NVIDIA DCGM Exporter Container
+After=network-online.target
+ConditionPathExists=/etc/dcgm-exporter/web-config.yml
+
+[Container]
+# Metadata
+Label=app=nvidia-dcgm-exporter
+ContainerName=nvidia-dcgm-exporter
+Image=nvcr.io/nvidia/k8s/dcgm-exporter:latest
+
+# Bind mount that contains web config file
+Volume=/etc/dcgm-exporter:/etc/dcgm-exporter
+
+# Arguments as documented in official docs
+# https://docs.nvidia.com/datacenter/cloud-native/gpu-telemetry/latest/dcgm-exporter.html
+PodmanArgs=--gpus all --net host --cap-add SYS_ADMIN
+
+# Environment variable to set web config file
+# Always ensure to configure at least basic auth
+Environment=DCGM_EXPORTER_WEB_CONFIG_FILE=/etc/dcgm-exporter/web-config.yml
+
+[Service]
+Restart=always
+RestartSec=1
+StartLimitInterval=0
+
+[Install]
+WantedBy=multi-user.target default.target

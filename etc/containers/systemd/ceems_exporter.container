@@ -1,0 +1,38 @@
+[Unit]
+Description=CEEMS Exporter Container
+After=network-online.target
+ConditionPathExists=/etc/ceems_exporter
+
+[Container]
+# Metadata
+Label=app=ceems_exporter
+ContainerName=ceems_exporter
+Image=quay.io/mahendrapaipuri/ceems:latest
+
+# Container network
+Network=ceems_exporter.network
+
+# Bind mount that contains web config file
+Volume=/etc/ceems_exporter:/etc/ceems_exporter
+
+# Exporter needs a lot of privileges to be able to
+# read `/proc`, `/sys`, `/dev`. We need to run with 
+# `--privileged` option to get it working reliably. 
+# Exporter will drop all the unnecessary privileges
+# based on the runtime config and run the process as 
+# `nobody` user.
+PodmanArgs=--privileged
+
+# Command to execute. Add CLI arguments here
+Exec=/bin/ceems_exporter 
+
+# Port to bind to on the host
+PublishPort=9010:9010
+
+[Service]
+Restart=always
+RestartSec=1
+StartLimitInterval=0
+
+[Install]
+WantedBy=multi-user.target default.target

@@ -14,7 +14,7 @@ groups:
     interval: {{.EvaluationInterval}}
     rules:
       # CPU usage (%) of compute unit. It is percentage of CPU cycles spent by the compute unit.
-      - record: uuid:ceems_compute_unit_cpu_usage:ratio_irate
+      - record: uuid:ceems_cpu_usage:ratio_irate
         expr: |2
           (
               irate(ceems_compute_unit_cpu_user_seconds_total{job="{{.Job}}"}[{{.RateInterval}}])
@@ -26,51 +26,36 @@ groups:
 
       # CPU memory usage (%) of compute unit. It is percentage of CPU memory used by compute unit relative to
       # the available memory to the compute unit.
-      - record: uuid:ceems_compute_unit_cpu_memory_usage:ratio
+      - record: uuid:ceems_cpu_memory_usage:ratio
         expr: |2
           ceems_compute_unit_memory_used_bytes{job="{{.Job}}"} * 100
           /
           (ceems_compute_unit_memory_total_bytes{job="{{.Job}}"} > 0)
 
-      # Total power (Watts) consumed by the instance by including Power Usage Effectiveness (PUE) value.
-      # By default, a PUE of 1 is used.
-      #
-{{- $chassis := "" -}}
-{{- $chassislength := len .Chassis -}} 
-{{- if gt $chassislength 1 }}
-      # Current redfish exports power readings for following chassis:
-{{- range $i, $v := .Chassis }}
-      # - {{$v}}
-{{- end }}
-      #
-      # Please choose an appropriate chassis that reports the power usage of host alone (excluding GPUs)
-      # and replace it in "<CHASSIS_NAME>" field.
-      #
-{{- $chassis = ",chassis=\"<CHASSIS_NAME>\"" -}}
-{{- else if eq $chassislength 1 }}
-{{- $chassisName := index .Chassis 0 -}}
-{{- $chassis = printf ",chassis=\"%s\"" $chassisName }}
+      # Total power (Watts) consumed by the instance by accounting Power Usage Effectiveness (PUE) value.
+{{- $chassislabel := "" -}}
+{{- if ne $.Chassis "" }}
+{{- $chassislabel = printf ",chassis=\"%s\"" $.Chassis }}
 {{- end }}
 {{- $query := "" -}}
-{{- if and (.GPUPowerInHostPower) (le $chassislength 1) }}
-{{- $query = printf "(label_replace(%s{job=\"%s\"%s}, \"instancehost\", \"$1\", \"instance\", \"([^:]+):\\\\d+\") - on (instancehost) group_left () sum by (instancehost) (label_replace(%s{job=\"%s\"} / %d,  \"instancehost\", \"$1\", \"instance\", \"([^:]+):\\\\d+\"))) > 0"  $.HostPowerSeries $.Job $chassis $.GPUPowerSeries $.GPUJob $.GPUPowerScaler }}
+{{- if .GPUPowerInHostPower }}
+{{- $query = printf "(label_replace(%s{job=\"%s\"%s}, \"instancehost\", \"$1\", \"instance\", \"([^:]+):\\\\d+\") - on (instancehost) group_left () sum by (instancehost) (label_replace(%s{job=\"%s\"} / %d,  \"instancehost\", \"$1\", \"instance\", \"([^:]+):\\\\d+\"))) > 0"  $.HostPowerSeries $.Job $chassislabel $.GPUPowerSeries $.GPUJob $.GPUPowerScaler }}
 {{- else }}
-{{- if and (ne $.GPUJob "") (gt $chassislength 1) }}
-      # If selected Chassis INCLUDES GPU power consumption, replace
-      # expr for instance:{{.HostPowerSeries}}:pue with following:
-      # {{ printf "%f * (label_replace(%s{job=\"%s\",chassis\"<CHASSIS_NAME>\"},  \"instancehost\", \"$1\", \"instance\", \"([^:]+):\\\\d+\") - on (instancehost) group_left () sum by (instancehost) (label_replace(%s{job=\"%s\"} / %d,  \"instancehost\", \"$1\", \"instance\", \"([^:]+):\\\\d+\"))) > 0"  $.PUE $.HostPowerSeries $.Job $.GPUPowerSeries $.GPUJob $.GPUPowerScaler }}
-{{- end }}
-{{- $query = printf "%s{job=\"%s\"%s}" $.HostPowerSeries $.Job $chassis }}
+{{- $query = printf "%s{job=\"%s\"%s}" $.HostPowerSeries $.Job $chassislabel }}
 {{- end }}
       - record: instance:{{.HostPowerSeries}}:pue
         expr: {{.PUE}} * {{$query}}
 
-      # Total power (Watts) consumed by the compute unit including PUE value.
+      # Total host power (Watts) consumed by the compute unit accounting PUE value.
       #
       # Firstly, we make an assumption that 90% of power is consumed by CPU, DRAM and 10% by other
       # peripherals like network, storage, etc.
       #
-      # We leverage RAPL package and DRAM to split the rest of 90% power between CPU and DRAM
+      # (If the assumption does not fit your infrastructure, you can manually change the values
+      # in the rules. For instance, if the server has many storage disks, the 10 % can be increased
+      # further to account for disk power consumption.)
+      #
+      # We leverage RAPL package and DRAM counters to split the rest of 90% power between CPU and DRAM
       # components, when available. When RAPL counters are not available, we assume all 90% power 
       # is consumed by CPU.
       #
@@ -88,9 +73,9 @@ groups:
       # Compute Unit CPU Memory Power = Total CPU DRAM Power * (Compute Unit Memory / Total Memory)
       # Misc Power Usage by Compute Unit = 0.1 * Total Power / Number of Compute Units
       #
-      # Total Compute Unit Power = Compute Unit CPU Power + Compute Unit CPU Memory Power + Misc Power Usage by Compute Unit
+      # Total Compute Unit Host Power = Compute Unit CPU Power + Compute Unit CPU Memory Power + Misc Power Usage by Compute Unit
       #
-      - record: uuid:ceems_compute_unit_cpu_power_watts:pue
+      - record: uuid:ceems_host_power_watts:pue
         expr: |2
             0.9 * instance:{{.HostPowerSeries}}:pue{job="{{.Job}}"} # Assumption 90% Power usage by CPU, CPU memory and other peripherals.
 {{- if .RAPLAvailable }}
@@ -151,19 +136,122 @@ groups:
                         ceems_compute_units{job="{{.Job}}"}
                     ) > 0
                 )
+{{- $numproviders := len .Providers -}}
+{{- if gt $numproviders 0 }}
 {{ range $i, $v := .Providers }}
       # Total equivalent emissions rate (g/s) due to the power consumed by the compute unit.
       # The equivalent emissions are estimated using emission factor from {{$v}} for country
       # {{$.CountryCode}}
-      - record: uuid:ceems_compute_unit_cpu_emissions_g_s:pue
+      - record: uuid:ceems_host_emissions_g_s:pue
         expr: |2
           label_replace(
-              uuid:ceems_compute_unit_cpu_power_watts:pue{job="{{$.Job}}"} / 3.6e+06,
+              uuid:ceems_host_power_watts:pue{job="{{$.Job}}"} / 3.6e+06,
               "provider",
               "{{$v}}",
               "instance",
               "(.*)"
             )
           * on (provider) group_left ()
-            ceems_emissions_gCo2_kWh{country_code="{{$.CountryCode}}",provider="{{$v}}"}  
+            ceems_emissions_gCo2_kWh{country_code="{{$.CountryCode}}",provider="{{$v}}"} 
 {{ end }}
+{{- else }}
+{{- if gt $.EmissionFactor.Value 0.0 }}
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by the compute unit.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # {{$.CountryCode}}
+      - record: uuid:ceems_host_emissions_g_s:pue
+        expr: |2
+          label_replace(
+              uuid:ceems_host_power_watts:pue{job="{{$.Job}}"} / 3.6e+06,
+              "provider",
+              "{{$.EmissionFactor.Provider}}",
+              "instance",
+              "(.*)"
+            )
+          * {{$.EmissionFactor.Value}}
+{{- end }}
+{{- end }}
+
+  # The following recording rules estimate the average CPU, CPU memory usages and
+  # total host power (excluding GPUs) and its equivalent emissions aggregared for all hosts 
+  # per Prometheus job.
+  # 
+  - name: host-agg-rules-{{.Job}}
+    interval: {{.RateInterval}}
+    rules:
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU cycles spent by the host.
+      - record: job:ceems_cpu_usage:avg_ratio_irate
+        expr: |2
+          avg by (job) (
+            (
+                  sum by (job, instance) (
+                    irate(ceems_cpu_seconds_total{job="{{$.Job}}",mode!~"idle|iowait|steal"}[{{.RateInterval}}])
+                  )
+                *
+                  100
+              / on (instance) group_left ()
+                ((ceems_cpu_count{job="{{$.Job}}"} > 0) / ceems_cpu_per_core_count{job="{{$.Job}}"})
+            )
+          )
+
+      # Average CPU usage (%) of all hosts in a Prometheus job. It is percentage of CPU memory used by host relative to
+      # the available memory to the host.
+      - record: job:ceems_cpu_memory_usage:avg_ratio
+        expr: |2
+          avg by (job) (
+              (
+                (
+                    1
+                  -
+                    (ceems_meminfo_MemAvailable_bytes{job="{{$.Job}}"} / ceems_meminfo_MemTotal_bytes{job="{{$.Job}}"})
+                )
+              )
+            )
+          *
+            100
+
+      # Total power (Watts) consumed by all hosts excluding GPUs in a Prometheus job accounting PUE value.
+      - record: job:ceems_host_power_watts:pue
+        expr: |2
+          sum by (job) ({{.PUE}} * {{$query}})
+          
+{{- $numproviders := len .Providers -}}
+{{- if gt $numproviders 0 }}
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by all ths hosts excluding GPUs
+      # in a Prometheus job accounting PUE value.
+      # The equivalent emissions are estimated for country {{$.CountryCode}}
+      - record: job:ceems_host_emissions_g_s:pue
+        expr: |2
+          sum by (job, country_code, country, provider) (
+            (
+                job:ceems_host_power_watts:pue{job="{{$.Job}}"} / 3.6e+06
+              * on (job) group_right ()
+                label_replace(ceems_emissions_gCo2_kWh, "job", "{{$.Job}}", "instance", "(.*)")
+            )
+          )
+{{- else }}
+{{- if gt $.EmissionFactor.Value 0.0 }}
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by all ths hosts excluding GPUs
+      # in a Prometheus job accounting PUE value.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # {{$.CountryCode}}
+      - record: job:ceems_host_emissions_g_s:pue
+        expr: |2
+          label_replace(
+            label_replace(
+              {{$.EmissionFactor.Value}} * job:ceems_host_power_watts:pue{job="{{$.Job}}"} / 3.6e+06,
+              "provider",
+              "{{$.EmissionFactor.Provider}}",
+              "instance",
+              "(.*)"
+            ),
+            "country_code",
+            "{{$.CountryCode}}",
+            "instance",
+            "(.*)"
+          )
+{{- end }}
+{{- end }}

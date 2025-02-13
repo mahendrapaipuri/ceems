@@ -1,0 +1,60 @@
+// This config file is designed to discover targets of running SLURM jobs/k8s pods
+// and profile them using eBPF and send profiles to Pyroscope.
+//
+// Placeholders to replace:
+// CEEMS_EXPORTER_URL: URL at which CEEMS exporter is reachable
+// CEEMS_EXPORTER_PASSWORD: Plain text password of CEEMS Exporter
+// PYROSCOPE_URL: URL at which Pyroscope server is reachable
+logging {
+	level  = "info"
+	format = "logfmt"
+}
+
+// Configure mTLS as a auth mechanism so that users on compute nodes
+// will not be able to access Alloy's UI
+// There is no way to disable server as of now (20250213)
+// Ref: https://github.com/grafana/alloy/issues/1509
+http {
+	tls {
+		cert_file        = "/etc/alloy/tls/server/alloy.crt"
+		key_file         = "/etc/alloy/tls/server/alloy.key"
+		client_ca_file   = "/etc/alloy/tls/ca/alloy.crt"
+		client_auth_type = "RequireAndVerifyClientCert"
+	}
+}
+
+// Discover all targets using /alloy-targets endpoint of CEEMS exporter
+discovery.http "procs" {
+	url              = "<CEEMS_EXPORTER_URL>/alloy-targets"
+	refresh_interval = "30s"
+
+	// Configure the basic auth of CEEMS exporter server here
+	basic_auth {
+		username = "ceems"
+		password = "<CEEMS_EXPORTER_PASSWORD>"
+	}
+}
+
+// Collect eBPF profiles every 30 seconds and forward them to Pyroscope
+pyroscope.ebpf "default" {
+	collect_interval       = "30s"
+	demangle               = "full"
+	python_enabled         = true
+	collect_kernel_profile = false
+	forward_to             = [pyroscope.write.monitoring.receiver]
+	targets                = discovery.http.procs.targets
+}
+
+// Configure Pyroscope server
+// If Pyroscope server has authentication configured
+// it must be setup here as well.
+pyroscope.write "monitoring" {
+	endpoint {
+		url = "<PYROSCOPE_URL>"
+	}
+
+	// https://grafana.com/docs/agent/latest/flow/reference/stdlib/constants/
+	external_labels = {
+		"hostname" = constants.hostname,
+	}
+}

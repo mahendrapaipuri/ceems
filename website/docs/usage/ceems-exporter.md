@@ -8,8 +8,8 @@ sidebar_position: 1
 
 :::important[IMPORTANT]
 
-Currently CEEMS exporter supports only exporting SLURM job metrics. Consequently, CEEMS
-support only SLURM resource manager. Adding support for Openstack and libvirt is in next milestone.
+Currently CEEMS exporter supports exporting SLURM job and Openstack VM metrics.
+Adding support for k8s is in next milestone.
 
 :::
 
@@ -52,17 +52,7 @@ In order to disable default collectors, we need to add `no` prefix to the collec
 The following command will disable IPMI and RAPL collectors:
 
 ```bash
-ceems_exporter --no-collector.ipmi_dcmi --no-collector.rapl
-```
-
-If a custom IPMI DCMI implementation is used that does not give power usage in one
-of the [one of these formats](https://github.com/mahendrapaipuri/ceems/blob/c031e0e5b484c30ad8b6e2b68e35874441e9d167/pkg/collector/ipmi.go#L35-L92)
-supported by the exporter, it is necessary to write a wrapper that outputs the usage
-in one of the supported format. This wrapper script can be provided to the exporter
-using following command:
-
-```bash
-ceems_exporter --collector.ipmi_dcmi.cmd="/path/to/wrapper/script"
+ceems_exporter --no-collector.rapl
 ```
 
 By default no authentication is imposed on the exporter web server. In production this
