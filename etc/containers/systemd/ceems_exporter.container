@@ -1,11 +1,12 @@
 [Unit]
 Description=CEEMS Exporter Container
 After=network-online.target
+ConditionPathExists=/etc/ceems_exporter
 
 [Container]
 # Metadata
-Label=app=ceems-exporter
-ContainerName=ceems-exporter
+Label=app=ceems_exporter
+ContainerName=ceems_exporter
 Image=quay.io/mahendrapaipuri/ceems:latest
 
 # Container network
@@ -27,6 +28,11 @@ Exec=/bin/ceems_exporter
 
 # Port to bind to on the host
 PublishPort=9010:9010
+
+[Service]
+Restart=always
+RestartSec=1
+StartLimitInterval=0
 
 [Install]
 WantedBy=multi-user.target default.target

@@ -2,4 +2,4 @@
 Description=CEEMS Exporter Container Network
 
 [Network]
-Label=app=ceems-exporter
+Label=app=ceems_exporter
