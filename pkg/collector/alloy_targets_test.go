@@ -48,7 +48,8 @@ func TestAlloyDiscovererSlurmCgroupsV2(t *testing.T) {
 	_, err := CEEMSExporterApp.Parse([]string{
 		"--path.procfs", "testdata/proc",
 		"--path.cgroupfs", "testdata/sys/fs/cgroup",
-		"--discoverer.alloy-targets.resource-manager", "slurm",
+		"--discoverer.alloy-targets",
+		"--collector.slurm",
 		"--collector.cgroups.force-version", "v2",
 	})
 	require.NoError(t, err)
@@ -65,7 +66,8 @@ func TestAlloyDiscovererSlurmCgroupsV1(t *testing.T) {
 	_, err := CEEMSExporterApp.Parse([]string{
 		"--path.procfs", "testdata/proc",
 		"--path.cgroupfs", "testdata/sys/fs/cgroup",
-		"--discoverer.alloy-targets.resource-manager", "slurm",
+		"--discoverer.alloy-targets",
+		"--collector.slurm",
 		"--collector.cgroups.force-version", "v1",
 	})
 	require.NoError(t, err)
@@ -82,7 +84,8 @@ func TestAlloyDiscovererSlurmCgroupsV2WithEnviron(t *testing.T) {
 	_, err := CEEMSExporterApp.Parse([]string{
 		"--path.procfs", "testdata/proc",
 		"--path.cgroupfs", "testdata/sys/fs/cgroup",
-		"--discoverer.alloy-targets.resource-manager", "slurm",
+		"--discoverer.alloy-targets",
+		"--collector.slurm",
 		"--discoverer.alloy-targets.env-var", "ENABLE_PROFILING",
 		"--collector.cgroups.force-version", "v2",
 		"--discoverer.alloy-targets.self-profiler",
