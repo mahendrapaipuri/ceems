@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
@@ -37,9 +40,14 @@ func main() {
 		httpConfigFilePath string
 		outDir             string
 
-		evalInterval time.Duration
-		pueValue     float64
-		countryCode  string
+		start string
+		end   string
+
+		evalInterval        time.Duration
+		pueValue            float64
+		emissionFactorValue float64
+		countryCode         string
+		disableProviders    bool
 
 		webConfigBasicAuth   bool
 		webConfigTLS         bool
@@ -104,17 +112,29 @@ func main() {
 		"url", "The URL for the Prometheus server.",
 	).Default("http://localhost:9090").URLVar(&promServerURL)
 	tsdbRecRulesCmd.Flag(
+		"start", "The time to start querying for metrics. Must be a RFC3339 formatted date or Unix timestamp. Default is 2 hours ago.",
+	).StringVar(&start)
+	tsdbRecRulesCmd.Flag(
+		"end", "The time to end querying for metrics. Must be a RFC3339 formatted date or Unix timestamp. Default is current time.",
+	).StringVar(&end)
+	tsdbRecRulesCmd.Flag(
 		"pue", "Power Usage Effectiveness (PUE) value to use in power estimation rules.",
 	).Default("1").Float64Var(&pueValue)
 	tsdbRecRulesCmd.Flag(
+		"emission-factor", "Static emission factor in gCO2/kWh value to use in equivalent emission estimation rules.",
+	).Default("0").Float64Var(&emissionFactorValue)
+	tsdbRecRulesCmd.Flag(
 		"country-code", "ISO-2 code of the country to use in emissions estimation rules.",
-	).Required().StringVar(&countryCode)
+	).StringVar(&countryCode)
 	tsdbRecRulesCmd.Flag(
 		"eval-interval", "Evaluation interval for the rules. If not set, default will be used.",
 	).Default("0s").DurationVar(&evalInterval)
 	tsdbRecRulesCmd.Flag(
 		"output-dir", "Output directory to place rules files.",
 	).Default("rules").StringVar(&outDir)
+	tsdbRecRulesCmd.Flag(
+		"disable-providers", "Disable providers (only for e2e testing).",
+	).Hidden().Default("false").BoolVar(&disableProviders)
 
 	tsdbRelabelConfigCmd := tsdbCmd.Command("create-relabel-configs", "Create Prometheus relabel configs.")
 	tsdbRelabelConfigCmd.Flag(
@@ -123,6 +143,12 @@ func main() {
 	tsdbRelabelConfigCmd.Flag(
 		"url", "The URL for the Prometheus server.",
 	).Default("http://localhost:9090").URLVar(&promServerURL)
+	tsdbRelabelConfigCmd.Flag(
+		"start", "The time to start querying for metrics. Must be a RFC3339 formatted date or Unix timestamp. Default is 2 hours ago.",
+	).StringVar(&start)
+	tsdbRelabelConfigCmd.Flag(
+		"end", "The time to end querying for metrics. Must be a RFC3339 formatted date or Unix timestamp. Default is current time.",
+	).StringVar(&end)
 
 	tsdbUpdaterConfigCmd := tsdbCmd.Command("create-ceems-tsdb-updater-queries", "Create CEEMS API TSDB updater queries.")
 	tsdbUpdaterConfigCmd.Flag(
@@ -131,6 +157,12 @@ func main() {
 	tsdbUpdaterConfigCmd.Flag(
 		"url", "The URL for the Prometheus server.",
 	).Default("http://localhost:9090").URLVar(&promServerURL)
+	tsdbUpdaterConfigCmd.Flag(
+		"start", "The time to start querying for metrics. Must be a RFC3339 formatted date or Unix timestamp. Default is 2 hours ago.",
+	).StringVar(&start)
+	tsdbUpdaterConfigCmd.Flag(
+		"end", "The time to end querying for metrics. Must be a RFC3339 formatted date or Unix timestamp. Default is current time.",
+	).StringVar(&end)
 
 	parsedCmd := kingpin.MustParse(app.Parse(os.Args[1:]))
 
@@ -172,17 +204,22 @@ func main() {
 	case tsdbUpdaterConfigCmd.FullCommand():
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 		defer cancel()
-		os.Exit(checkErr(GenerateTSDBUpdaterConfig(ctx, promServerURL, httpRoundTripper)))
+		os.Exit(checkErr(GenerateTSDBUpdaterConfig(ctx, promServerURL, start, end, httpRoundTripper)))
 
 	case tsdbRecRulesCmd.FullCommand():
+		// Both country code and emission factor cannot be used together
+		if countryCode != "" && emissionFactorValue > 0 {
+			kingpin.Fatalf("--country-code and --emission-factor cannot be used together. Set atmost one.")
+		}
+
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 		defer cancel()
-		os.Exit(checkErr(CreatePromRecordingRules(ctx, promServerURL, pueValue, countryCode, evalInterval, outDir, httpRoundTripper)))
+		os.Exit(checkErr(CreatePromRecordingRules(ctx, promServerURL, start, end, pueValue, emissionFactorValue, countryCode, evalInterval, outDir, disableProviders, httpRoundTripper)))
 
 	case tsdbRelabelConfigCmd.FullCommand():
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 		defer cancel()
-		os.Exit(checkErr(CreatePromRelabelConfig(ctx, promServerURL, httpRoundTripper)))
+		os.Exit(checkErr(CreatePromRelabelConfig(ctx, promServerURL, start, end, httpRoundTripper)))
 	}
 }
 
@@ -324,6 +361,50 @@ func intersection[T constraints.Ordered](pS ...[]T) []T {
 	}
 
 	return result
+}
+
+func parseTimes(start, end string) (time.Time, time.Time, error) {
+	var stime, etime time.Time
+
+	var err error
+
+	if end == "" {
+		etime = time.Now().UTC()
+	} else {
+		etime, err = parseTime(end)
+		if err != nil {
+			return time.Time{}, time.Time{}, fmt.Errorf("error parsing end time: %w", err)
+		}
+	}
+
+	if start == "" {
+		stime = time.Now().UTC().Add(-3 * time.Hour)
+	} else {
+		stime, err = parseTime(start)
+		if err != nil {
+			return time.Time{}, time.Time{}, fmt.Errorf("error parsing start time: %w", err)
+		}
+	}
+
+	if !stime.Before(etime) {
+		return time.Time{}, time.Time{}, errors.New("start time is not before end time")
+	}
+
+	return stime, etime, nil
+}
+
+func parseTime(s string) (time.Time, error) {
+	if t, err := strconv.ParseFloat(s, 64); err == nil {
+		s, ns := math.Modf(t)
+
+		return time.Unix(int64(s), int64(ns*float64(time.Second))).UTC(), nil
+	}
+
+	if t, err := time.Parse(time.RFC3339Nano, s); err == nil {
+		return t, nil
+	}
+
+	return time.Time{}, fmt.Errorf("cannot parse %q to a valid timestamp", s)
 }
 
 func checkErr(err error) int {

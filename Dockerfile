@@ -9,6 +9,7 @@ COPY .build/${OS}-${ARCH}/ceems_exporter /bin/ceems_exporter
 COPY .build/${OS}-${ARCH}/ceems_api_server /bin/ceems_api_server
 COPY .build/${OS}-${ARCH}/ceems_lb /bin/ceems_lb
 COPY .build/${OS}-${ARCH}/redfish_proxy /bin/redfish_proxy
+COPY .build/${OS}-${ARCH}/ceems_tool /bin/ceems_tool
 COPY build/config/ceems_exporter/redfish_exporter_config.yml /etc/ceems_exporter/redfish_config.yml
 COPY build/config/ceems_api_server/ceems_api_server.yml /etc/ceems_api_server/config.yml
 COPY build/config/ceems_lb/ceems_lb.yml /etc/ceems_lb/config.yml

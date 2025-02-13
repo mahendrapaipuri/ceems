@@ -11,7 +11,6 @@ import (
 	"slices"
 	"strings"
 	"text/template"
-	"time"
 )
 
 // Embed the updater directory.
@@ -26,65 +25,65 @@ type TSDBQuery struct {
 var tsdbQueries = map[string]map[string]TSDBQuery{
 	"avg_cpu_usage": {
 		"global": TSDBQuery{
-			Series: "uuid:ceems_compute_unit_cpu_usage:ratio_irate",
+			Series: "uuid:ceems_cpu_usage:ratio_irate",
 			Query:  `avg_over_time(avg by (uuid) (%s{uuid=~"{{.UUIDs}}"} > 0 < inf)[{{.Range}}:])`,
 		},
 	},
 	"avg_cpu_mem_usage": {
 		"global": TSDBQuery{
-			Series: "uuid:ceems_compute_unit_cpu_memory_usage:ratio",
+			Series: "uuid:ceems_cpu_memory_usage:ratio",
 			Query:  `avg_over_time(avg by (uuid) (%s{uuid=~"{{.UUIDs}}"} > 0 < inf)[{{.Range}}:])`,
 		},
 	},
 	"total_cpu_energy_usage_kwh": {
 		"total": TSDBQuery{
-			Series: "uuid:ceems_compute_unit_cpu_power_watts:pue",
+			Series: "uuid:ceems_host_power_watts:pue",
 			Query:  `sum_over_time(sum by (uuid) (%s{uuid=~"{{.UUIDs}}"} > 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 3.6e9`,
 		},
 	},
 	"total_cpu_emissions_gms": {
 		"rte_total": TSDBQuery{
-			Series: "uuid:ceems_compute_unit_cpu_emissions_g_s:pue",
+			Series: "uuid:ceems_host_emissions_g_s:pue",
 			Query:  `sum_over_time(sum by (uuid) (%s{uuid=~"{{.UUIDs}}",provider="rte"} > 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 1e3`,
 		},
 		"emaps_total": TSDBQuery{
-			Series: "uuid:ceems_compute_unit_cpu_emissions_g_s:pue",
+			Series: "uuid:ceems_host_emissions_g_s:pue",
 			Query:  `sum_over_time(sum by (uuid) (%s{uuid=~"{{.UUIDs}}",provider="emaps"} > 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 1e3`,
 		},
 		"owid_total": TSDBQuery{
-			Series: "uuid:ceems_compute_unit_cpu_emissions_g_s:pue",
+			Series: "uuid:ceems_host_emissions_g_s:pue",
 			Query:  `sum_over_time(sum by (uuid) (%s{uuid=~"{{.UUIDs}}",provider="owid"} > 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 1e3`,
 		},
 	},
 	"avg_gpu_usage": {
 		"global": TSDBQuery{
-			Series: "uuid:ceems_compute_unit_gpu_usage:ratio",
+			Series: "uuid:ceems_gpu_usage:ratio",
 			Query:  `avg_over_time(avg by (uuid) (%s{uuid=~"{{.UUIDs}}"} > 0 < inf)[{{.Range}}:])`,
 		},
 	},
 	"avg_gpu_mem_usage": {
 		"global": TSDBQuery{
-			Series: "uuid:ceems_compute_unit_gpu_memory_usage:ratio",
+			Series: "uuid:ceems_gpu_memory_usage:ratio",
 			Query:  `avg_over_time(avg by (uuid) (%s{uuid=~"{{.UUIDs}}"} > 0 < inf)[{{.Range}}:])`,
 		},
 	},
 	"total_gpu_energy_usage_kwh": {
 		"total": TSDBQuery{
-			Series: "uuid:ceems_compute_unit_gpu_power_watts:pue",
+			Series: "uuid:ceems_gpu_power_watts:pue",
 			Query:  `sum_over_time(sum by (uuid) (%s{uuid=~"{{.UUIDs}}"} > 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 3.6e9`,
 		},
 	},
 	"total_gpu_emissions_gms": {
 		"rte_total": TSDBQuery{
-			Series: "uuid:ceems_compute_unit_gpu_emissions_g_s:pue",
+			Series: "uuid:ceems_gpu_emissions_g_s:pue",
 			Query:  `sum_over_time(sum by (uuid) (%s{uuid=~"{{.UUIDs}}",provider="rte"} > 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 1e3`,
 		},
 		"emaps_total": TSDBQuery{
-			Series: "uuid:ceems_compute_unit_gpu_emissions_g_s:pue",
+			Series: "uuid:ceems_gpu_emissions_g_s:pue",
 			Query:  `sum_over_time(sum by (uuid) (%s{uuid=~"{{.UUIDs}}",provider="emaps"} > 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 1e3`,
 		},
 		"owid_total": TSDBQuery{
-			Series: "uuid:ceems_compute_unit_gpu_emissions_g_s:pue",
+			Series: "uuid:ceems_gpu_emissions_g_s:pue",
 			Query:  `sum_over_time(sum by (uuid) (%s{uuid=~"{{.UUIDs}}",provider="owid"} > 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 1e3`,
 		},
 	},
@@ -98,10 +97,20 @@ type tsdbQueriesTemplateData struct {
 }
 
 // GenerateTSDBUpdaterConfig generates TSDB updater config.
-func GenerateTSDBUpdaterConfig(ctx context.Context, serverURL *url.URL, roundTripper http.RoundTripper) error {
+func GenerateTSDBUpdaterConfig(ctx context.Context, serverURL *url.URL, start string, end string, roundTripper http.RoundTripper) error {
+	// Parse times
+	stime, etime, err := parseTimes(start, end)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "error parsing start and/or end time(s):", err)
+
+		return err
+	}
+
 	// Make a new API client
 	api, err := newAPI(serverURL, roundTripper, nil)
 	if err != nil {
+		fmt.Fprintln(os.Stderr, "error creating new API client:", err)
+
 		return err
 	}
 
@@ -117,7 +126,7 @@ func GenerateTSDBUpdaterConfig(ctx context.Context, serverURL *url.URL, roundTri
 	}
 
 	// Run query to get matching series.
-	labelset, _, err := api.Series(ctx, allSeries, time.Now().Add(-time.Minute), time.Now()) // Ignoring warnings for now.
+	labelset, _, err := api.Series(ctx, allSeries, stime, etime) // Ignoring warnings for now.
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "error fetching labelsets:", err)
 
@@ -132,7 +141,7 @@ func GenerateTSDBUpdaterConfig(ctx context.Context, serverURL *url.URL, roundTri
 	}
 
 	// Get all providers of emission factors
-	providers, _, err := api.LabelValues(ctx, "provider", []string{"uuid:ceems_compute_unit_gpu_emissions_g_s:pue"}, time.Now().Add(-time.Minute), time.Now()) // Ignoring warnings for now.
+	providers, _, err := api.LabelValues(ctx, "provider", []string{"uuid:ceems_host_emissions_g_s:pue"}, stime, etime) // Ignoring warnings for now.
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "error fetching emission factor providers:", err)
 

@@ -1,65 +1,71 @@
 Merge the following scrape_configs with the current config.
 scrape_configs:
   - job: ipmi-nvidia-gpu
-    relabel_configs:
+    metric_relabel_configs:
       - source_labels:
+          - modelName
           - UUID
         target_label: gpuuuid
-        regex: (.*)
-        replacement: $1
+        regex: NVIDIA(.*);(.*)
+        replacement: $2
+        action: replace
+      - source_labels:
+          - modelName
+          - GPU_I_ID
+        target_label: gpuiid
+        regex: NVIDIA(.*);(.*)
+        replacement: $2
         action: replace
       - regex: UUID
         action: labeldrop
-      - source_labels:
-          - GPU_I_ID
-        target_label: gpuiid
-        regex: (.*)
-        replacement: $1
-        action: replace
       - regex: GPU_I_ID
         action: labeldrop
   - job: nvidia-gpu
-    relabel_configs:
+    metric_relabel_configs:
       - source_labels:
+          - modelName
           - UUID
         target_label: gpuuuid
-        regex: (.*)
-        replacement: $1
+        regex: NVIDIA(.*);(.*)
+        replacement: $2
+        action: replace
+      - source_labels:
+          - modelName
+          - GPU_I_ID
+        target_label: gpuiid
+        regex: NVIDIA(.*);(.*)
+        replacement: $2
         action: replace
       - regex: UUID
         action: labeldrop
-      - source_labels:
-          - GPU_I_ID
-        target_label: gpuiid
-        regex: (.*)
-        replacement: $1
-        action: replace
       - regex: GPU_I_ID
         action: labeldrop
   - job: amd-gpu
-    relabel_configs:
+    metric_relabel_configs:
       - source_labels:
           - gpu_power
         target_label: index
         regex: (.*)
         replacement: $1
         action: replace
-      - regex: gpu_power
-        action: labeldrop
       - source_labels:
+          - index
           - gpu_use_percent
         target_label: index
-        regex: (.*)
+        regex: ;(.+)
         replacement: $1
         action: replace
-      - regex: gpu_use_percent
-        action: labeldrop
       - source_labels:
+          - index
           - gpu_memory_use_percent
         target_label: index
-        regex: (.*)
+        regex: ;(.+)
         replacement: $1
         action: replace
+      - regex: gpu_power
+        action: labeldrop
+      - regex: gpu_use_percent
+        action: labeldrop
       - regex: gpu_memory_use_percent
         action: labeldrop
 

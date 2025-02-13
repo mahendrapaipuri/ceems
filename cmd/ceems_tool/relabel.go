@@ -14,12 +14,12 @@ import (
 )
 
 var gpuSeries = []string{
-	"DCGM_FI_DEV_POWER_USAGE",
+	"DCGM_FI_DEV_POWER_USAGE_INSTANT",
 	"amd_gpu_power",
 }
 
-// RelabelConfig contains the Prometheus relabel config.
-type RelabelConfig struct {
+// MetricRelabelConfig contains the Prometheus metric relabel config.
+type MetricRelabelConfig struct {
 	SourceLabels []string `yaml:"source_labels,omitempty"`
 	TargetLabel  string   `yaml:"target_label,omitempty"`
 	Regex        string   `yaml:"regex,omitempty"`
@@ -29,8 +29,8 @@ type RelabelConfig struct {
 
 // ScrapeConfig represents Prometheus scrape config.
 type ScrapeConfig struct {
-	Job            model.LabelValue `yaml:"job"`
-	RelabelConfigs []RelabelConfig  `yaml:"relabel_configs"`
+	Job            model.LabelValue      `yaml:"job"`
+	RelabelConfigs []MetricRelabelConfig `yaml:"metric_relabel_configs"`
 }
 
 // PromConfig is container for Prometheus config.
@@ -43,16 +43,28 @@ type PromConfig struct {
 func CreatePromRelabelConfig(
 	ctx context.Context,
 	serverURL *url.URL,
+	start string,
+	end string,
 	roundTripper http.RoundTripper,
 ) error {
+	// Parse times
+	stime, etime, err := parseTimes(start, end)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "error parsing start and/or end time(s):", err)
+
+		return err
+	}
+
 	// Make a new API client
 	api, err := newAPI(serverURL, roundTripper, nil)
 	if err != nil {
+		fmt.Fprintln(os.Stderr, "error creating new API client:", err)
+
 		return err
 	}
 
 	// Get necessary job meta data
-	activeJobs, jobSeries, _, err := jobSeriesMetaData(ctx, api, gpuSeries)
+	activeJobs, jobSeries, _, err := jobSeriesMetaData(ctx, api, stime, etime, gpuSeries)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "error fetching series label values:", err)
 
@@ -64,29 +76,33 @@ func CreatePromRelabelConfig(
 
 	// Loop over all activeJobs to generate metric_relabel config
 	for _, job := range activeJobs {
-		var relabelConfigs []RelabelConfig
+		var relabelConfigs []MetricRelabelConfig
 
 		switch {
 		case slices.Contains(jobSeries[job], model.LabelValue(gpuSeries[0])):
 			// GPU UUID and MIG Instance ID
-			relabelConfigs = []RelabelConfig{
+			// Merge with modelName to ensure we match labels only on
+			// DCGM exporter series. This way even if we apply relabel
+			// config on CEEMS targets, we do not lose gpuuuid and gpuiid
+			// labels that we are using
+			relabelConfigs = []MetricRelabelConfig{
 				{
-					SourceLabels: []string{"UUID"},
+					SourceLabels: []string{"modelName", "UUID"},
 					TargetLabel:  "gpuuuid",
-					Regex:        "(.*)",
-					Replacement:  "$1",
+					Regex:        "NVIDIA(.*);(.*)",
+					Replacement:  "$2",
+					Action:       "replace",
+				},
+				{
+					SourceLabels: []string{"modelName", "GPU_I_ID"},
+					TargetLabel:  "gpuiid",
+					Regex:        "NVIDIA(.*);(.*)",
+					Replacement:  "$2",
 					Action:       "replace",
 				},
 				{
 					Regex:  "UUID",
 					Action: "labeldrop",
-				},
-				{
-					SourceLabels: []string{"GPU_I_ID"},
-					TargetLabel:  "gpuiid",
-					Regex:        "(.*)",
-					Replacement:  "$1",
-					Action:       "replace",
 				},
 				{
 					Regex:  "GPU_I_ID",
@@ -96,7 +112,9 @@ func CreatePromRelabelConfig(
 		case slices.Contains(jobSeries[job], model.LabelValue(gpuSeries[1])):
 			// Seems like AMD SMI exporter using a different label name for each
 			// metric series to identify GPU index
-			relabelConfigs = []RelabelConfig{
+			// Having duplicate target_label can be problematic
+			// Workaround proposed here: https://stackoverflow.com/questions/70093340/prometheus-multiple-source-label-in-relabel-config
+			relabelConfigs = []MetricRelabelConfig{
 				{
 					SourceLabels: []string{"gpu_power"},
 					TargetLabel:  "index",
@@ -105,26 +123,27 @@ func CreatePromRelabelConfig(
 					Action:       "replace",
 				},
 				{
+					SourceLabels: []string{"index", "gpu_use_percent"},
+					TargetLabel:  "index",
+					Regex:        ";(.+)",
+					Replacement:  "$1",
+					Action:       "replace",
+				},
+				{
+					SourceLabels: []string{"index", "gpu_memory_use_percent"},
+					TargetLabel:  "index",
+					Regex:        ";(.+)",
+					Replacement:  "$1",
+					Action:       "replace",
+				},
+				{
 					Regex:  "gpu_power",
 					Action: "labeldrop",
 				},
-				{
-					SourceLabels: []string{"gpu_use_percent"},
-					TargetLabel:  "index",
-					Regex:        "(.*)",
-					Replacement:  "$1",
-					Action:       "replace",
-				},
+
 				{
 					Regex:  "gpu_use_percent",
 					Action: "labeldrop",
-				},
-				{
-					SourceLabels: []string{"gpu_memory_use_percent"},
-					TargetLabel:  "index",
-					Regex:        "(.*)",
-					Replacement:  "$1",
-					Action:       "replace",
 				},
 				{
 					Regex:  "gpu_memory_use_percent",

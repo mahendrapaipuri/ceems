@@ -17,6 +17,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+var minNvGPUPower, maxNvGPUPower, minAMDGPUPower, maxAMDGPUPower float64
+
 type Device struct {
 	UUID    string
 	IID     string
@@ -30,9 +32,14 @@ type dcgmCollector struct {
 	gpuMemFree     *prometheus.Desc
 	gpuMemUsed     *prometheus.Desc
 	gpuPower       *prometheus.Desc
+	gpuPowerInst   *prometheus.Desc
 	gpuSMActive    *prometheus.Desc
 	gpuSMOcc       *prometheus.Desc
 	gpuGREngActive *prometheus.Desc
+}
+
+func randFloat(minVal, maxVal float64) float64 {
+	return minVal + rand.Float64()*(maxVal-minVal) //nolint:gosec
 }
 
 func newDCGMCollector() *dcgmCollector {
@@ -59,6 +66,10 @@ func newDCGMCollector() *dcgmCollector {
 			[]string{"Hostname", "UUID", "GPU_I_ID", "device", "gpu", "pci_bus_id", "modelName"}, nil,
 		),
 		gpuPower: prometheus.NewDesc("DCGM_FI_DEV_POWER_USAGE",
+			"GPU power",
+			[]string{"Hostname", "UUID", "GPU_I_ID", "device", "gpu", "pci_bus_id", "modelName"}, nil,
+		),
+		gpuPowerInst: prometheus.NewDesc("DCGM_FI_DEV_POWER_USAGE_INSTANT",
 			"GPU power",
 			[]string{"Hostname", "UUID", "GPU_I_ID", "device", "gpu", "pci_bus_id", "modelName"}, nil,
 		),
@@ -103,8 +114,14 @@ func (collector *dcgmCollector) Collect(ch chan<- prometheus.Metric) {
 			collector.gpuMemFree, prometheus.GaugeValue, 100*rand.Float64(), "host", dev.UUID, dev.IID, //nolint:gosec
 			fmt.Sprintf("nvidia%d", idev), strconv.Itoa(idev), dev.PCIAddr, "NVIDIA A100 80GiB",
 		)
+
+		power := randFloat(minNvGPUPower, maxNvGPUPower)
 		ch <- prometheus.MustNewConstMetric(
-			collector.gpuPower, prometheus.GaugeValue, 400*rand.Float64(), "host", dev.UUID, dev.IID, //nolint:gosec
+			collector.gpuPower, prometheus.GaugeValue, power, "host", dev.UUID, dev.IID,
+			fmt.Sprintf("nvidia%d", idev), strconv.Itoa(idev), dev.PCIAddr, "NVIDIA A100 80GiB",
+		)
+		ch <- prometheus.MustNewConstMetric(
+			collector.gpuPowerInst, prometheus.GaugeValue, power, "host", dev.UUID, dev.IID,
 			fmt.Sprintf("nvidia%d", idev), strconv.Itoa(idev), dev.PCIAddr, "NVIDIA A100 80GiB",
 		)
 		ch <- prometheus.MustNewConstMetric(
@@ -173,8 +190,9 @@ func (collector *amdSMICollector) Collect(ch chan<- prometheus.Metric) {
 			collector.gpuMemUtil, prometheus.GaugeValue, 100*rand.Float64(), strconv.Itoa(idev), //nolint:gosec
 			"Advanced Micro Devices Inc",
 		)
+		// GPU power reported in micro Watts
 		ch <- prometheus.MustNewConstMetric(
-			collector.gpuPower, prometheus.GaugeValue, 500*rand.Float64(), strconv.Itoa(idev), //nolint:gosec
+			collector.gpuPower, prometheus.GaugeValue, randFloat(minAMDGPUPower, maxAMDGPUPower), strconv.Itoa(idev),
 			"Advanced Micro Devices Inc",
 		)
 	}
@@ -243,6 +261,19 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT)
+
+	// For e2e tests use constant power usage for reproducibility
+	if slices.Contains(args, "test-mode") {
+		minNvGPUPower = 200.0
+		maxNvGPUPower = 200.0
+		minAMDGPUPower = 100000000.0
+		maxAMDGPUPower = 100000000.0
+	} else {
+		minNvGPUPower = 60.0
+		maxNvGPUPower = 700.0
+		minAMDGPUPower = 30000000.0
+		maxAMDGPUPower = 500000000.0
+	}
 
 	if slices.Contains(args, "dcgm") {
 		go func() {

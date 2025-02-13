@@ -4,16 +4,21 @@ import (
 	"bytes"
 	"context"
 	"embed"
+	"errors"
 	"fmt"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
 
+	"github.com/mahendrapaipuri/ceems/pkg/emissions"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
 )
@@ -33,7 +38,7 @@ var (
 		"ceems_redfish_current_watts",
 		"ceems_cray_pm_counters_power_watts",
 		"ceems_emissions_gCo2_kWh",
-		"DCGM_FI_DEV_POWER_USAGE",
+		"DCGM_FI_DEV_POWER_USAGE_INSTANT",
 		"amd_gpu_power",
 		"ceems_compute_unit_gpu_index_flag",
 	}
@@ -71,6 +76,11 @@ type gpuTemplateData struct {
 	nvProfSeries     model.LabelValues
 }
 
+type EmissionFactor struct {
+	Provider string
+	Value    float64
+}
+
 // rulesTemplateData contains data to be used inside templates.
 type rulesTemplateData struct {
 	GPU                *gpuTemplateData
@@ -79,8 +89,9 @@ type rulesTemplateData struct {
 	RAPLAvailable      bool
 	Job                model.LabelValue
 	PUE                float64
+	EmissionFactor     EmissionFactor
 	Providers          model.LabelValues
-	Chassis            model.LabelValues
+	Chassis            model.LabelValue
 	CountryCode        string
 	RateInterval       string
 	EvaluationInterval string
@@ -130,15 +141,29 @@ func (t *rulesTemplateData) NVProfSeries() model.LabelValues {
 func CreatePromRecordingRules(
 	ctx context.Context,
 	serverURL *url.URL,
+	start string,
+	end string,
 	pueValue float64,
+	emissionFactorValue float64,
 	countryCode string,
 	evalInterval time.Duration,
 	outDir string,
+	disableProviders bool,
 	roundTripper http.RoundTripper,
 ) error {
+	// Parse times
+	stime, etime, err := parseTimes(start, end)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "error parsing start and/or end time(s):", err)
+
+		return err
+	}
+
 	// Make a new API client
 	api, err := newAPI(serverURL, roundTripper, nil)
 	if err != nil {
+		fmt.Fprintln(os.Stderr, "error creating new API client:", err)
+
 		return err
 	}
 
@@ -164,15 +189,29 @@ func CreatePromRecordingRules(
 	}
 
 	// Get available emission factor providers
-	providers, err := efProviders(ctx, api, countryCode)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "error fetching emission factor providers:", err)
+	var emissionFactor EmissionFactor
 
-		return err
+	var providers model.LabelValues
+
+	if emissionFactorValue == 0 {
+		// If no emission factor value has been passed, attempt to get from time series or
+		// static OWID data
+		providers, err = efProviders(ctx, api, stime, etime, countryCode, disableProviders)
+		if err != nil {
+			if owid, err := emissions.NewOWIDProvider(slog.New(slog.NewTextHandler(io.Discard, nil))); err == nil {
+				if owidData, err := owid.Update(); err == nil {
+					emissionFactor = EmissionFactor{Provider: "owid", Value: owidData[countryCode].Factor}
+
+					fmt.Fprintln(os.Stderr, "static emission factor", emissionFactor.Value, "g/kWh from OWID data will be used")
+				}
+			}
+		}
+	} else {
+		emissionFactor = EmissionFactor{Provider: "custom", Value: emissionFactorValue}
 	}
 
 	// Get necessary job meta data
-	activeJobs, jobSeries, gpuJobMap, err := jobSeriesMetaData(ctx, api, append(seriesNames, nvidiaProfSeriesNames...))
+	activeJobs, jobSeries, gpuJobMap, err := jobSeriesMetaData(ctx, api, stime, etime, append(seriesNames, nvidiaProfSeriesNames...))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "error fetching series label values:", err)
 
@@ -220,12 +259,14 @@ func CreatePromRecordingRules(
 		fmt.Fprintln(os.Stderr, "generating recording rules for job", job, "in file", job+".rules")
 
 		// For redfish power usage counter, get all the possible chassis
-		var chassis model.LabelValues
+		var targetChassis model.LabelValue
+
+		var hostPowerLabel string
 
 		if hostPowerSeries == "ceems_redfish_current_watts" {
 			matcher := fmt.Sprintf(`ceems_redfish_current_watts{job="%s"}`, job)
 
-			chassis, _, err = api.LabelValues(ctx, "chassis", []string{matcher}, time.Now().Add(-time.Minute), time.Now()) // Ignoring warnings for now.
+			chassis, _, err := api.LabelValues(ctx, "chassis", []string{matcher}, stime, etime) // Ignoring warnings for now.
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "job:", job, "error fetching redfish chassis values:", err)
 
@@ -235,12 +276,57 @@ func CreatePromRecordingRules(
 			// If there are more than 1 chassis, emit log for operators to tell them to
 			// choose appropriate chassis to get CPU power usage
 			if len(chassis) > 1 {
-				fmt.Fprintln(os.Stderr, "IMPORTANT: Multiple chassis found for ceems_redfish_current_watts. Replace the CHASSIS_NAME placeholder with the one that reports host power usage (excluding GPUs) in file", job+".rules")
+				fmt.Fprintln(os.Stderr, "Multiple chassis found for ceems_redfish_current_watts for job", job)
+				fmt.Fprintln(os.Stderr, "Choose the chassis that reports host power usage")
+
+				for ichas, chas := range chassis {
+					msg := fmt.Sprintf("[%d]: %s", ichas, chas)
+					fmt.Fprintln(os.Stderr, msg)
+				}
+
+				// Read input from user
+				var input string
+
+				fmt.Fprintln(os.Stderr, "Enter number between 0 and", len(chassis)-1)
+
+				if _, err = fmt.Scanln(&input); err != nil {
+					fmt.Fprintln(os.Stderr, "failed to scan user input:", err)
+
+					return err
+				}
+
+				// Convert user response to int
+				idx, err := strconv.Atoi(input)
+				if err != nil {
+					fmt.Fprintln(os.Stderr, "invalid user input:", err)
+
+					return err
+				}
+
+				// Check whether user input is valid
+				if idx >= len(chassis) {
+					fmt.Fprintln(os.Stderr, "user input out of range. Must be between 0 and", len(chassis)-1)
+
+					return errors.New("user input out of range")
+				}
+
+				targetChassis = chassis[idx]
+			} else if len(chassis) == 1 {
+				targetChassis = chassis[0]
+			} else {
+				fmt.Fprintln(os.Stderr, "no chassis found for ceems_redfish_current_watts for job", job)
+
+				return errors.New("no chassis found for ceems_redfish_current_watts")
+			}
+
+			// If targetChassis is found, set up label
+			if targetChassis != "" {
+				hostPowerLabel = fmt.Sprintf(",chassis=\"%s\"", targetChassis)
 			}
 		}
 
 		// Check if GPUs are present on the hosts and get GPU related template data
-		gpu := gpuData(ctx, api, hostPowerSeries, job, nvProfSeries, gpuJobMap, jobSeries)
+		gpu := gpuData(ctx, api, stime, etime, hostPowerSeries, hostPowerLabel, job, nvProfSeries, gpuJobMap, jobSeries)
 
 		// Use a rate interval that is atleast 4 times of scrape interval
 		rateInterval := 4 * time.Duration(config.Global.ScrapeInterval)
@@ -255,8 +341,9 @@ func CreatePromRecordingRules(
 			HostPowerSeries:    hostPowerSeries,
 			RAPLAvailable:      slices.Contains(jobSeries[job], "ceems_rapl_package_joules_total") && slices.Contains(jobSeries[job], "ceems_rapl_dram_joules_total"),
 			Job:                job,
-			Chassis:            chassis,
+			Chassis:            targetChassis,
 			PUE:                pueValue,
+			EmissionFactor:     emissionFactor,
 			Providers:          providers,
 			CountryCode:        countryCode,
 			RateInterval:       rateInterval.String(),
@@ -300,17 +387,17 @@ func scrapeIntervals(ctx context.Context, api v1.API) (map[string]time.Duration,
 }
 
 // efProviders returns a slice of available emission factor providers.
-func efProviders(ctx context.Context, api v1.API, countryCode string) (model.LabelValues, error) {
+func efProviders(ctx context.Context, api v1.API, start time.Time, end time.Time, countryCode string, disableProviders bool) (model.LabelValues, error) {
 	// Run query to get label values.
 	matcher := fmt.Sprintf(`ceems_emissions_gCo2_kWh{country_code="%s"}`, countryCode)
 
-	providers, _, err := api.LabelValues(ctx, "provider", []string{matcher}, time.Now().Add(-time.Minute), time.Now()) // Ignoring warnings for now.
+	providers, _, err := api.LabelValues(ctx, "provider", []string{matcher}, start, end) // Ignoring warnings for now.
 	if err != nil {
 		return nil, err
 	}
 
 	// If no providers are found, exit
-	if len(providers) == 0 {
+	if len(providers) == 0 || disableProviders {
 		return nil, fmt.Errorf("no providers found for country code: %s", countryCode)
 	}
 
@@ -318,9 +405,9 @@ func efProviders(ctx context.Context, api v1.API, countryCode string) (model.Lab
 }
 
 // jobSeriesMetaData returns necessary metadata related to Prom job's series.
-func jobSeriesMetaData(ctx context.Context, api v1.API, series []string) (model.LabelValues, map[model.LabelValue]model.LabelValues, map[model.LabelValue]model.LabelValue, error) {
+func jobSeriesMetaData(ctx context.Context, api v1.API, start time.Time, end time.Time, series []string) (model.LabelValues, map[model.LabelValue]model.LabelValues, map[model.LabelValue]model.LabelValue, error) {
 	// Run query to get matching series.
-	foundSeries, _, err := api.Series(ctx, series, time.Now().Add(-time.Minute), time.Now()) // Ignoring warnings for now.
+	foundSeries, _, err := api.Series(ctx, series, start, end) // Ignoring warnings for now.
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -361,7 +448,7 @@ func jobSeriesMetaData(ctx context.Context, api v1.API, series []string) (model.
 
 	for _, cpuJob := range seriesJobs["ceems_compute_unit_gpu_index_flag"] {
 		// Look for NVIDIA GPU associations
-		for _, gpuJob := range seriesJobs["DCGM_FI_DEV_POWER_USAGE"] {
+		for _, gpuJob := range seriesJobs["DCGM_FI_DEV_POWER_USAGE_INSTANT"] {
 			// If job instances between CEEMS job and GPU job matches, we mark it as an association
 			if foundInstances := intersection(jobInstances[gpuJob], jobInstances[cpuJob]); len(foundInstances) > 0 {
 				gpuJobsMap[cpuJob] = gpuJob
@@ -414,7 +501,10 @@ func newTemplate(outDir string) (*template.Template, error) {
 func gpuData(
 	ctx context.Context,
 	api v1.API,
+	stime time.Time,
+	etime time.Time,
 	hostPowerSeries string,
+	hostPowerLabel string,
 	job model.LabelValue,
 	nvProfSeries model.LabelValues,
 	gpuJobMap map[model.LabelValue]model.LabelValue,
@@ -432,8 +522,8 @@ func gpuData(
 
 	// Based on GPU type get Get GPU power series name and template file name
 	switch {
-	case slices.Contains(jobSeries[gpu.job], "DCGM_FI_DEV_POWER_USAGE"):
-		gpu.powerSeries = "DCGM_FI_DEV_POWER_USAGE"
+	case slices.Contains(jobSeries[gpu.job], "DCGM_FI_DEV_POWER_USAGE_INSTANT"):
+		gpu.powerSeries = "DCGM_FI_DEV_POWER_USAGE_INSTANT"
 		gpu.powerScaler = 1
 		gpu.templateFile = "gpu-nvidia.rules"
 
@@ -445,20 +535,28 @@ func gpuData(
 		gpu.templateFile = "gpu-amd.rules"
 	}
 
+	// If host power series is cray, we dont need to check if GPU power is in host power
+	// Cray exposes all components separately
+	if hostPowerSeries == "ceems_cray_pm_counters_power_watts" {
+		return gpu
+	}
+
 	// Check if host power includes GPU power or not
 	query := fmt.Sprintf(
-		`avg(label_replace(%s{job="%s"}, "instancehost", "$1", "instance", "([^:]+):\\d+") - on (instancehost) group_left () sum by (instancehost) (label_replace(%s{job="%s"} / %d, "instancehost", "$1", "instance","([^:]+):\\d+")))`,
-		hostPowerSeries, job, gpu.powerSeries, gpu.job, gpu.powerScaler,
+		`avg_over_time((label_replace(%s{job="%s"%s}, "instancehost", "$1", "instance", "([^:]+):\\d+") - on (instancehost) group_left () sum by (instancehost) (label_replace(%s{job="%s"} / %d, "instancehost", "$1", "instance","([^:]+):\\d+")))[%s:])`,
+		hostPowerSeries, job, hostPowerLabel, gpu.powerSeries, gpu.job, gpu.powerScaler, etime.Sub(stime).Truncate(time.Minute).String(),
 	)
 
 	// Make query against Prometheus
-	if result, _, err := api.Query(ctx, query, time.Now()); err == nil {
+	if result, _, err := api.Query(ctx, query, etime); err == nil {
 		// If average value is more than 0, that means Host power includes GPU power
 		if val, ok := result.(model.Vector); ok && len(val) > 0 {
 			if val[0].Value > 0 {
 				gpu.powerInHostPower = true
 			}
 		}
+	} else {
+		fmt.Fprintln(os.Stderr, "failed to verify if host power reported by", hostPowerSeries, "for job", job, "includes GPU power. Please make manual check and modify rule appropriately. Error is:", err)
 	}
 
 	return gpu
@@ -480,7 +578,7 @@ func renderRules(tmpl *template.Template, tmplData *rulesTemplateData, outDir st
 
 	// If there is GPU related template data, we need to render recording rules for GPU
 	if tmplData.GPU != nil {
-		fmt.Fprintln(os.Stderr, "generating recording rules for GPU for job", tmplData.GPU.job, "in file", tmplData.GPU.job+".rules")
+		fmt.Fprintln(os.Stderr, "generating recording rules for GPU for job", tmplData.GPU.job, "in file", tmplData.GPU.job+"-gpu.rules")
 
 		buf := &bytes.Buffer{}
 		if err := tmpl.ExecuteTemplate(buf, tmplData.GPU.templateFile, tmplData); err != nil {
@@ -488,7 +586,7 @@ func renderRules(tmpl *template.Template, tmplData *rulesTemplateData, outDir st
 		}
 
 		// Write to CPU recording rules to file
-		path := filepath.Join(outDir, fmt.Sprintf("%s.rules", tmplData.GPU.job))
+		path := filepath.Join(outDir, fmt.Sprintf("%s-gpu.rules", tmplData.GPU.job))
 		if err := os.WriteFile(path, buf.Bytes(), 0o600); err != nil {
 			return err
 		}

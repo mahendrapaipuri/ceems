@@ -1,45 +1,51 @@
 ---
-# Recording rules for AMD GPUs in {{.Job}}
+# Recording rules for AMD GPUs scrape job {{.GPUJob}}.
+#
+# These rules map the GPU usage to the compute unit `uuid` which gives
+# GPU metrics for each compute unit.
 #
 # We leverage these rules to include PUE (Power Usage Effectiveness) in the Power
 # estimation as well.
 #
 groups:
-  - name: compute-unit-gpu-rules-{{.Job}}
+  - name: compute-unit-gpu-rules-{{.GPUJob}}
+    interval: {{.EvaluationInterval}}
     rules:
       # GPU Usage (%) by compute unit
-      - record: uuid:ceems_compute_unit_gpu_usage:ratio
+      - record: uuid:ceems_gpu_usage:ratio
         expr: |2
             amd_gpu_use_percent{job="{{.GPUJob}}"}
             * on (index) group_right ()
             ceems_compute_unit_gpu_index_flag{job="{{.Job}}"}
 
       # GPU Memory Usage (%) by compute unit
-      - record: uuid:ceems_compute_unit_gpu_memory_usage:ratio
+      - record: uuid:ceems_gpu_memory_usage:ratio
         expr: |2
           amd_gpu_memory_use_percent{job="{{.GPUJob}}"}
           * on (index) group_right ()
           ceems_compute_unit_gpu_index_flag{job="{{.Job}}"}
       
-      # Total power (Watts) consumed by the GPU by including Power Usage Effectiveness (PUE) value.
-      # By default, a PUE of 1 is used.
+      # Total power (Watts) consumed by the GPU by accounting Power Usage Effectiveness (PUE) value.
       # AMD GPU power is in micro Watts and we need to convert it to Watts here
-      - record: dev:amg_gpu_power_watts:pue
-        expr: 1 * amg_gpu_power{job="{{.GPUJob}}"} / 1e6
+      - record: dev:amd_gpu_power_watts:pue
+        expr: {{.PUE}} * amd_gpu_power{job="{{.GPUJob}}"} / 1e6
 
-      - record: uuid:ceems_compute_unit_gpu_power_watts:pue
+      - record: uuid:ceems_gpu_power_watts:pue
         expr: |2
-          dev:amg_gpu_power_watts:pue{job="{{.GPUJob}}"}
+          dev:amd_gpu_power_watts:pue{job="{{.GPUJob}}"}
           * on (index) group_right()
           ceems_compute_unit_gpu_index_flag{job="{{.Job}}"}
+          
+{{- $numproviders := len .Providers -}}
+{{- if gt $numproviders 0 }}
 {{ range $i, $v := .Providers }}
-      # Total equivalent emissions rate (g/s) from GPU due to the power consumed by the compute unit.
+      # Total equivalent emissions rate (g/s) from GPU due to the power consumed by the compute unit's GPUs.
       # The equivalent emissions are estimated using emission factor from {{$v}} for country
       # {{$.CountryCode}}
-      - record: uuid:ceems_compute_unit_gpu_emissions_g_s:pue
+      - record: uuid:ceems_gpu_emissions_g_s:pue
         expr: |2
           label_replace(
-              dev:amg_gpu_power_watts:pue{job="{{$.GPUJob}}"} / 3.6e+06
+              dev:amd_gpu_power_watts:pue{job="{{$.GPUJob}}"} / 3.6e+06
             * on (index) group_right ()
               ceems_compute_unit_gpu_index_flag{job="{{$.Job}}"},
               "provider",
@@ -56,3 +62,83 @@ groups:
               "(.*)"
             ) 
 {{ end }}
+{{- else }}
+{{- if gt $.EmissionFactor.Value 0.0 }}
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by the compute unit's GPUs.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # {{$.CountryCode}}
+      - record: uuid:ceems_gpu_emissions_g_s:pue
+        expr: |2
+          label_replace(
+              dev:amd_gpu_power_watts:pue{job="{{$.GPUJob}}"} / 3.6e+06
+            * on (index) group_right ()
+              ceems_compute_unit_gpu_index_flag{job="{{$.Job}}"},
+              "provider",
+              "{{$.EmissionFactor.Provider}}",
+              "instance",
+              "(.*)"
+            )
+          * {{$.EmissionFactor.Value}}
+{{- end }}
+{{- end }}
+
+  # The following recording rules estimate the average GPU, GPU memory usages and
+  # total GPU power and its equivalent emissions aggregared for all hosts 
+  # per Prometheus job.
+  # 
+  - name: host-agg-gpu-rules-{{.GPUJob}}
+    interval: {{.RateInterval}}
+    rules:
+      # Average GPU Usage (%) for all hosts aggregated per Prometheus job
+      - record: job:ceems_gpu_usage:avg
+        expr: avg by (job) (amd_gpu_use_percent{job="{{.GPUJob}}"})
+
+      # Average GPU memory usage (%) for all hosts aggregated per Prometheus job
+      - record: job:ceems_gpu_memory_usage:avg_ratio
+        expr: avg by (job) (amd_gpu_memory_use_percent{job="{{.GPUJob}}"})
+
+      # Total power usage (Watts) by GPUs on all hosts aggregated per Prometheus job
+      # AMD GPU power is in micro Watts and we need to convert it to Watts here
+      - record: job:ceems_gpu_power_watts:pue
+        expr: sum by (job)({{.PUE}} * amd_gpu_power{job="{{.GPUJob}}"} / 1e6)
+
+{{- $numproviders := len .Providers -}}
+{{- if gt $numproviders 0 }}
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by GPUs on all ths hosts
+      # in a Prometheus job accounting PUE value.
+      # The equivalent emissions are estimated for country {{$.CountryCode}}
+      - record: job:ceems_gpu_emissions_g_s:pue
+        expr: |2
+          sum by (job, country_code, country, provider) (
+            (
+                job:ceems_gpu_power_watts:pue{job="{{$.GPUJob}}"} / 3.6e+06
+              * on (job) group_right ()
+                label_replace(ceems_emissions_gCo2_kWh, "job", "{{$.GPUJob}}", "instance", "(.*)")
+            )
+          )
+{{- else }}
+{{- if gt $.EmissionFactor.Value 0.0 }}
+
+      # Total equivalent emissions rate (g/s) due to the power consumed by GPUs on all ths hosts
+      # in a Prometheus job accounting PUE value.
+      # The equivalent emissions are estimated using static emission factor from OWID for country
+      # {{$.CountryCode}}
+      - record: job:ceems_gpu_emissions_g_s:pue
+        expr: |2
+          label_replace(
+            label_replace(
+              {{$.EmissionFactor.Value}} * job:ceems_gpu_power_watts:pue{job="{{$.GPUJob}}"} / 3.6e+06,
+              "provider",
+              "{{$.EmissionFactor.Provider}}",
+              "instance",
+              "(.*)"
+            ),
+            "country_code",
+            "{{$.CountryCode}}",
+            "instance",
+            "(.*)"
+          )
+{{- end }}
+{{- end }}
