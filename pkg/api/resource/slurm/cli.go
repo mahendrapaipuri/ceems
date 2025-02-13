@@ -26,8 +26,10 @@ var (
 	// SLURM AllocTRES gives memory as 200M, 250.5G and we dont know if it gives without
 	// units. So, regex will capture the number and unit (if exists) and we convert it
 	// to bytes.
-	memRegex = regexp.MustCompile("([0-9.]+)([K|M|G|T]?)")
-	toBytes  = map[string]int64{
+	// Ref: https://regex101.com/r/rYAsU2/1
+	memRegex  = regexp.MustCompile("([0-9.]+)([K|M|G|T]?)")
+	gresRegex = regexp.MustCompile("gres/gpu(?:[^=]*)=([0-9]+)")
+	toBytes   = map[string]int64{
 		"K": 1024,
 		"M": 1024 * 1024,
 		"G": 1024 * 1024 * 1024,
@@ -202,6 +204,17 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 			var memString string
 
 			for _, elem := range strings.Split(components[sacctFieldMap["alloctres"]], ",") {
+				// For MIG devices, it can be gres/gpu:<MIG ID>
+				// https://github.com/SchedMD/slurm/blob/db91ac3046b3b7b845cce4a99127db8c6f14a8e8/testsuite/expect/test39.19#L70
+				// Use a regex gres\/gpu:([^=]+)=(\d+) for identifying number of instances
+				matches := gresRegex.FindStringSubmatch(elem)
+
+				if len(matches) == 2 {
+					if val, err := strconv.ParseInt(matches[1], 10, 64); err == nil {
+						ngpus = val
+					}
+				}
+
 				tresKV := strings.Split(elem, "=")
 				if tresKV[0] == "billing" {
 					billing, _ = strconv.ParseInt(tresKV[1], 10, 64)
@@ -213,13 +226,6 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 
 				if tresKV[0] == "cpu" {
 					ncpus, _ = strconv.ParseInt(tresKV[1], 10, 64)
-				}
-				// For MIG devices, it can be gres/gpu:<MIG ID>
-				// https://github.com/SchedMD/slurm/blob/db91ac3046b3b7b845cce4a99127db8c6f14a8e8/testsuite/expect/test39.19#L70
-				// Use a regex gres\/gpu:([^=]+)=(\d+) for identifying number of instances
-				// For the moment, use strings.HasPrefix to identify GPU
-				if strings.HasPrefix(tresKV[0], "gres/gpu") {
-					ngpus, _ = strconv.ParseInt(tresKV[1], 10, 64)
 				}
 
 				if tresKV[0] == "mem" {
