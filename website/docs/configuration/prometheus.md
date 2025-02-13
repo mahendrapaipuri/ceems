@@ -14,29 +14,64 @@ contains NVIDIA GPUs:
 
 ```yaml
 scrape_configs:
-  - job_name: "gpu-node-group"
+  # Scrape job containing NVIDIA DCGM exporter targets
+  - job: <job-name>
     metric_relabel_configs:
-      - source_labels: [UUID]
-        regex: (.*)
+      - source_labels:
+          - modelName
+          - UUID
         target_label: gpuuuid
-        replacement: $1
+        regex: NVIDIA(.*);(.*)
+        replacement: $2
         action: replace
-      - source_labels: [GPU_I_ID]
-        regex: (.*)
+      - source_labels:
+          - modelName
+          - GPU_I_ID
         target_label: gpuiid
-        replacement: $1
+        regex: NVIDIA(.*);(.*)
+        replacement: $2
         action: replace
       - regex: UUID
         action: labeldrop
       - regex: GPU_I_ID
         action: labeldrop
-      - regex: modelName
+
+  # Scrape job containing AMD SMI exporter targets
+  - job: <job-name>
+    metric_relabel_configs:
+      - source_labels:
+          - gpu_power
+        target_label: index
+        regex: (.*)
+        replacement: $1
+        action: replace
+      - source_labels:
+          - index
+          - gpu_use_percent
+        target_label: index
+        regex: ;(.+)
+        replacement: $1
+        action: replace
+      - source_labels:
+          - index
+          - gpu_memory_use_percent
+        target_label: index
+        regex: ;(.+)
+        replacement: $1
+        action: replace
+      - regex: gpu_power
         action: labeldrop
-    static_configs:
-      - targets: ["http://gpu-0:9400", "http://gpu-1:9400", ...]
+      - regex: gpu_use_percent
+        action: labeldrop
+      - regex: gpu_memory_use_percent
+        action: labeldrop
 ```
 
 The `metric_relabel_configs` renames `UUID` and `GPU_I_ID` which are
-the UUID and MIG instance ID of GPU, respectively and sets it to `gpuuuid` and
+the UUID and MIG instance ID of NVIDIA GPU, respectively and sets it to `gpuuuid` and
 `gpuiid` which are compatible with CEEMS exporter. Moreover the config also drops unused
-`UUID`, `GPU_I_ID` and `modelName` labels to reduce storage and cardinality.
+`UUID` and `GPU_I_ID` labels to reduce storage.
+
+Similarly, for AMD SMI exporter targets, `metric_relabel_configs` `gpu_power`,
+`gpu_use_percent` and `gpu_memory_use_percent` labels, which provides GPU index,
+to `index` that is compatible with CEEMS exporter.

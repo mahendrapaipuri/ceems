@@ -4,11 +4,29 @@ sidebar_position: 8
 
 # Grafana
 
+This document shows the necessary configuration for Grafana server and its
+datasources
+
+## Grafana Server
+
+The only configuration that needs to be added to the Grafana server in the
+`/etc/grafana/grafana.ini` file is the following:
+
+```ini
+[dataproxy]
+send_user_header = true
+```
+
+or the same can be done by setting `GF_DATAPROXY_SEND_USER_HEADER=true` environment
+variable on Grafana server.
+
+## Grafana Datasources
+
 When using CEEMS LB to provide access control and loading balancing for
 TSDB servers, the Prometheus datasource on the Grafana must be configured
 slightly differently than using a regular native Prometheus server. As
 discussed in [CEEMS LB Configuration](./ceems-lb.md#matching-backendsid-with-clustersid),
-a path parameter corresponding to the cluster must be appended to CEEMS LB server URL.
+a custom header must be added to the queries to CEEMS LB server.
 
 For instance, if CEEMS API server and CEEMS LB has following configuration:
 
