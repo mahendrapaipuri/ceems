@@ -1,0 +1,88 @@
+# This is a very basic configuration of Pyroscope server that
+# runs in a monolithic manner.
+#
+# Pyroscope needs to be bound a IP address other than localhost.
+# Following placeholders must be replaced in the config:
+#
+# <IP_ADDR>: Pyroscope server will be reachable at this IP address
+# <PORT>: Port on this IP address for the Pyroscope server to bind to
+# <INTF>: Interface of <IP_ADDR>
+#
+---
+
+# Run all components
+target: all
+
+# Server config.
+# Strongly recommend to setup `http_tls_config`
+# config to protect Pyroscope server with TLS
+# certificate as authentication mechanism
+server:
+  http_listen_address: <IP_ADDR>
+  http_listen_port: <PORT>
+
+# Limits config.
+limits:
+  # Do not limit query lookback. This lets
+  # users to query for the historical data
+  # as long as it exists in Pyroscope DB.
+  max_query_lookback: 0
+
+# Frontend config.
+frontend:
+  address: <IP_ADDR>
+  instance_interface_names:
+    - <INTF>
+
+# Frontend worker config.
+frontend_worker:
+  scheduler_address: <IP_ADDR>
+
+# Query scheduler config.
+query_scheduler:
+  ring:
+    instance_interface_names:
+      - <INTF>
+
+# Ingester config.
+ingester:
+  lifecycler:
+    address: <IP_ADDR>
+    interface_names:
+      - <INTF>
+
+# Storage gateway config.
+store_gateway:
+  sharding_ring:
+    instance_interface_names:
+      - <INTF>
+
+# Pyroscope DB config.
+pyroscopedb:
+  # Path where Profile data will be staged
+  data_path: /var/lib/pyroscope
+  # When free space on disk goes below 80GB, old
+  # profile data will be removed to be able to add
+  # new data
+  min_free_disk_gb: 80
+
+# Tracing config.
+tracing:
+  enabled: false
+
+# Storage config.
+storage:
+  # Use filesystem storage
+  backend: filesystem
+  # Path where profiling data will be stored.
+  # Use a long term fault tolerant storage.
+  filesystem:
+    dir: /longterm/storage/pyroscope
+
+# Profiling config.
+self_profiling:
+  disable_push: true
+
+# Analytics config.
+analytics:
+  reporting_enabled: false

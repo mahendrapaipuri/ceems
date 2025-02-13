@@ -5,47 +5,119 @@ directory contain sample recording rules files that can be used to estimate the
 energy and emissions time series metrics of each compute unit derived from different
 sources.
 
+## Using `ceems_tool`
+
+There is a utility tool `ceems_tool` that can be used to generate recording rules
+from Prometheus server once the CEEMS exporter targets have been configured and
+being scrapped by Prometheus successfully. We recommend to this tool to generate
+recording rules for your deployment. More details on how to generate rules can be
+found in [docs](https://mahendrapaipuri.github.io/ceems/docs/usage/ceems-tool).
+
 ## Rules
 
-The following recording rules must be modified appropriately according to the target
-cluster environment and added to the Prometheus deployment to estimate power usage
-of individual compute units.
+The following recording rules files are provided for reference purposes and `ceems_tool`
+must be preferred to generate recording rules.
 
-### `cpu-only-nodes.rules`
+### `host-power-ipmi.rules`
 
 The rules defined in this file are meant to be used for group of nodes that do not
-have any GPUs. The rules make the following assumptions:
+have any GPUs and IPMI DCMI is capable of reporting host power. The rules make the
+following assumptions:
 
-- Total server energy is reported by IPMI DCMI
+- Total host power is reported by IPMI DCMI
 - RAPL counters are available for both CPU and DRAM packages
 
 The provided rules estimate the power usage of individual compute units based on
 compute unit CPU and DRAM usage and total node's CPU and DRAM usage. More details
 are provided in the comments of the rules file.
 
-### `cpu-gpu-nodes.rules`
+### `host-power-cray-pmc.rules`
 
-The rules defined in this file are meant to be used for group of nodes that have
-GPUs (NVIDIA or AMD). The rules make the following assumptions:
+The rules defined in this file are meant to be used for group of Cray nodes where
+PMC counters are used to get host power usage. The rules make the following
+assumptions:
 
-- Total server energy is reported by IPMI DCMI and it **contains** power usage
-by GPUs as well
+- Total host power is reported by Cray PM counters.
+
+The provided rules estimate the power usage of individual compute units based on
+compute unit CPU and DRAM usage and total node's CPU and DRAM usage. More details
+are provided in the comments of the rules file.
+
+### `host-power-redfish.rules`
+
+The rules defined in this file are meant to be used for group of nodes that use
+Redfish to report host power. The rules make the following assumptions:
+
+- Total host power is reported by Redfish. Chassis that reports host power usage
+must be used.
 - RAPL counters are available for both CPU and DRAM packages
 
-As power usage reported by IPMI DCMI contains both CPU and GPU, we need to remove
-power usage by GPU to get the power usage by CPU alone. To do so, we leverage the
+The provided rules estimate the power usage of individual compute units based on
+compute unit CPU and DRAM usage and total node's CPU and DRAM usage. More details
+are provided in the comments of the rules file.
+
+### `host-power-rapl.rules`
+
+The rules defined in this file are meant to be used for group of nodes that uses
+only RAPL counters to get host power usage. The rules make the following assumptions:
+
+- RAPL counters are available for both CPU and DRAM packages
+
+The provided rules estimate the power usage of individual compute units based on
+compute unit CPU and DRAM usage and total node's CPU and DRAM usage. More details
+are provided in the comments of the rules file.
+
+### `host-power-ipmi-with-nvidia-gpus.rules`
+
+The rules defined in this file are meant to be used for group of nodes have NVIDIA
+GPUs and host power reported by IPMI DCMI **includes** GPUs power usage.
+The rules make the following assumptions:
+
+- Total host power (with GPUs power usage) is reported by IPMI DCMI
+- RAPL counters are **not available** for the host
+
+As power usage reported by IPMI DCMI contains both host and GPU, we need to remove
+power usage by GPU to get the power usage by host alone. To do so, we leverage the
 power usage reported by [NVIDIA DCGM exporter](https://github.com/NVIDIA/dcgm-exporter).
 
-### `gpu.rules`
+The provided rules estimate the power usage of individual compute units based on
+compute unit CPU and total node's CPU usage. More details
+are provided in the comments of the rules file.
+
+### `host-power-redfish-with-amd-gpus.rules`
+
+The rules defined in this file are meant to be used for group of nodes have AMD
+GPUs and host power reported by Redfish **includes** GPUs power usage.
+The rules make the following assumptions:
+
+- Total host power (with GPUs power usage) is reported by Redfish
+- RAPL counters are available for both CPU and DRAM packages
+
+As power usage reported by IPMI DCMI contains both host and GPU, we need to remove
+power usage by GPU to get the power usage by host alone. To do so, we leverage the
+power usage reported by [AMD SMI exporter](https://github.com/amd/amd_smi_exporter).
+
+The provided rules estimate the power usage of individual compute units based on
+compute unit CPU and total node's CPU usage. More details
+are provided in the comments of the rules file.
+
+### `nvidia-gpu.rules`
 
 The rules defined in this file are meant to be used for group of nodes that have
-GPUs (NVIDIA or AMD). The rules compute few derived metrics from metrics reported
+NVIDIA GPUs. The rules compute few derived metrics from metrics reported
 by [NVIDIA DCGM exporter](https://github.com/NVIDIA/dcgm-exporter) that are
+relevant to monitor overall cluster status.
+
+### `amd-gpu.rules`
+
+The rules defined in this file are meant to be used for group of nodes that have
+AMD GPUs. The rules compute few derived metrics from metrics reported
+by [AMD SMI exporter](https://github.com/amd/amd_smi_exporter) that are
 relevant to monitor overall cluster status.
 
 ## Installing rules
 
-The rules files must be modified appropriately by using correct job names and installed
+<!-- The rules files must be modified appropriately by using correct job names and installed
 to Prometheus deployment. For instance, imagine a target cluster can be grouped as follows:
 
 - `cpu-partition-1`: A group of nodes with only CPUs
@@ -77,12 +149,15 @@ sed 's/<sample-dcgm>/<dcgm-v100-partition-1>/g' gpu.rules > cluster_rules/dcgm-v
 # Create rules files for a100-partition-1
 sed -e 's/<sample-gpu>/<a100-partition-1>/g' -e 's/<sample-dcgm>/<dcgm-a100-partition-1>/g' cpu-gpu-nodes.rules > cluster_rules/a100-partition-1.rules
 sed 's/<sample-dcgm>/<dcgm-a100-partition-1>/g' gpu.rules > cluster_rules/dcgm-a100-partition-1.rules
-```
+``` -->
 
-The generated rules can be verified using [`promtool`](https://prometheus.io/docs/prometheus/latest/command-line/promtool/)
+After generating rules using `ceems_tool` or after replacing placeholders in the references rule files
+provided in this repository, we need to make sure they are valid. This can be done using
+[`promtool`](https://prometheus.io/docs/prometheus/latest/command-line/promtool/). Assuming generated
+rule files are placed in `myrules` folder:
 
 ```bash
-find cluster_rules -name "*.rules" | xargs -I {} promtool check rules {}
+find myrules -name "*.rules" | xargs -I {} promtool check rules {}
 ```
 
 Finally, all the rules files must be placed under the folder provided to `rules_files` key
