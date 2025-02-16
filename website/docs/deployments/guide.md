@@ -727,7 +727,7 @@ The next step is to setup dashboards to visualize the metrics of compute units.
 This can be done using Grafana provisioning as well. A reference set of dashboards
 are provided in the [repository](https://github.com/mahendrapaipuri/ceems/tree/main/thirdparty/grafana).
 More details on the dashboards are provided in the
-[README](https://github.com/mahendrapaipuri/ceems/blob/main/thirdparty/grafana/dashboards/README.md).
+[README](https://github.com/mahendrapaipuri/ceems/blob/main/thirdparty/grafana/README.md).
 
 ## Optional Steps
 
