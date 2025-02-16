@@ -20,6 +20,13 @@ Default interface and port can be changed using `--web.listen-address` CLI argum
 ceems_api_server --web.listen-address="localhost:8020"
 ```
 
+:::tip[TIP]
+
+All the available command line options are listed in
+[CEEMS API Server CLI docs](../cli/ceems-api-server.md).
+
+:::
+
 All the endpoints of CEEMS API server are discussed in detail in a dedicated
 [API documentation](/ceems/api).
 
