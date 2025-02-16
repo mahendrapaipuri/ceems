@@ -82,7 +82,7 @@ func (b *CEEMSServer) Main() error {
 	var (
 		webListenAddresses = b.App.Flag(
 			"web.listen-address",
-			"Addresses on which to expose metrics and web interface.",
+			"Addresses on which to expose API server and web interface.",
 		).Default(":9020").Strings()
 		webConfigFile = b.App.Flag(
 			"web.config.file",
@@ -92,6 +92,10 @@ func (b *CEEMSServer) Main() error {
 			"config.file",
 			"Path to CEEMS API server configuration file.",
 		).Envar("CEEMS_API_SERVER_CONFIG_FILE").Default("").String()
+		enableDebugServer = b.App.Flag(
+			"web.debug-server",
+			"Enable /debug/pprof profiling endpoints. (default: disabled).",
+		).Default("false").Bool()
 
 		// Testing related hidden CLI args
 		skipDeleteOldUnits = b.App.Flag(
@@ -244,12 +248,13 @@ func (b *CEEMSServer) Main() error {
 	serverConfig := &ceems_http.Config{
 		Logger: logger,
 		Web: ceems_http.WebConfig{
-			Addresses:        *webListenAddresses,
-			WebSystemdSocket: *systemdSocket,
-			WebConfigFile:    webConfigFilePath,
-			RoutePrefix:      config.Server.Web.RoutePrefix,
-			RequestsLimit:    config.Server.Web.RequestsLimit,
-			MaxQueryPeriod:   config.Server.Web.MaxQueryPeriod,
+			Addresses:         *webListenAddresses,
+			WebSystemdSocket:  *systemdSocket,
+			WebConfigFile:     webConfigFilePath,
+			EnableDebugServer: *enableDebugServer,
+			RoutePrefix:       config.Server.Web.RoutePrefix,
+			RequestsLimit:     config.Server.Web.RequestsLimit,
+			MaxQueryPeriod:    config.Server.Web.MaxQueryPeriod,
 		},
 		DB: *dbConfig,
 	}

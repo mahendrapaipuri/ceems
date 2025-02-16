@@ -31,7 +31,7 @@ var (
 	)
 	webListenAddresses = app.Flag(
 		"web.listen-address",
-		"Addresses on which to expose metrics and web interface.",
+		"Addresses on which to expose proxy server and web interface.",
 	).Default(":5000").Strings()
 	webConfigFile = app.Flag(
 		"web.config.file",
@@ -39,14 +39,14 @@ var (
 	).Default("").String()
 	configFile = app.Flag(
 		"config.file",
-		"Configuration file containing a list of nodes and their BMC addresses.",
+		"Path to configuration file of redfish proxy.",
 	).Envar("REDFISH_PROXY_CONFIG_FILE").Default("").String()
 	maxProcs = app.Flag(
 		"runtime.gomaxprocs", "The target number of CPUs Go will run on (GOMAXPROCS)",
 	).Envar("GOMAXPROCS").Default("1").Int()
 	enableDebugServer = app.Flag(
 		"web.debug-server",
-		"Enable debug server (default: disabled).",
+		"Enable /debug/pprof profiling (default: disabled).",
 	).Default("false").Bool()
 )
 

@@ -18,6 +18,15 @@ file that can be passed to each component using CLI argument. A
 [sample configuration file](https://github.com/mahendrapaipuri/ceems/blob/main/build/config/common/web-config.yml)
 is provided in the repository for the reference.
 
+:::tip[TIP]
+
+CEEMS provides a tooling application that can generate web configuration files with basic
+auth and TLS with self signed certificates. It can be used to generate a basic web
+configuration file for different CEEMS components. More details can be found in CEEMS Tool
+[Usage Docs](../usage/ceems-tool.md) and [CLI Docs](../cli/ceems-tool.md).
+
+:::
+
 A sample basic auth configuration can be set as follows:
 
 ```yaml

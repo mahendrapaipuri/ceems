@@ -57,7 +57,7 @@ type redfishCollector struct {
 var redfishConfigFile = CEEMSExporterApp.Flag(
 	"collector.redfish.web-config",
 	"Path to Redfish web configuration file.",
-).Default("").String()
+).Envar("CEEMS_EXPORTER_REDFISH_COLL_CONFIG_FILE").Default("").String()
 
 func init() {
 	RegisterCollector(redfishCollectorSubsystem, defaultDisabled, NewRedfishCollector)

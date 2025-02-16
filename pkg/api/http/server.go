@@ -58,14 +58,15 @@ const (
 
 // WebConfig makes HTTP web config from CLI args.
 type WebConfig struct {
-	Addresses        []string
-	WebSystemdSocket bool
-	WebConfigFile    string
-	RoutePrefix      string                  `yaml:"route_prefix"`
-	MaxQueryPeriod   model.Duration          `yaml:"max_query"`
-	RequestsLimit    int                     `yaml:"requests_limit"`
-	URL              string                  `yaml:"url"`
-	HTTPClientConfig config.HTTPClientConfig `yaml:",inline"`
+	Addresses         []string
+	WebSystemdSocket  bool
+	WebConfigFile     string
+	EnableDebugServer bool
+	RoutePrefix       string                  `yaml:"route_prefix"`
+	MaxQueryPeriod    model.Duration          `yaml:"max_query"`
+	RequestsLimit     int                     `yaml:"requests_limit"`
+	URL               string                  `yaml:"url"`
+	HTTPClientConfig  config.HTTPClientConfig `yaml:",inline"`
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
@@ -267,7 +268,9 @@ func New(c *Config) (*CEEMSServer, func(), error) {
 	subRouter.HandleFunc("/demo/{resource:(?:units|usage)}", server.demo).Methods(http.MethodGet)
 
 	// pprof debug end points. Expose them only on localhost
-	router.PathPrefix("/debug/").Handler(http.DefaultServeMux).Host("localhost")
+	if c.Web.EnableDebugServer {
+		router.PathPrefix("/debug/").Handler(http.DefaultServeMux).Host("localhost")
+	}
 
 	subRouter.PathPrefix("/swagger/").Handler(httpSwagger.Handler(
 		httpSwagger.URL("doc.json"), // The url pointing to API definition
