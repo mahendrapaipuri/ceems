@@ -90,7 +90,7 @@ func (b *CEEMSExporter) Main() error {
 		).Envar("GOMAXPROCS").Default("1").Int()
 		enableDebugServer = b.App.Flag(
 			"web.debug-server",
-			"Enable debug server (default: disabled).",
+			"Enable /debug/pprof profiling endpoints. (default: disabled).",
 		).Default("false").Bool()
 
 		// test CLI flags hidden

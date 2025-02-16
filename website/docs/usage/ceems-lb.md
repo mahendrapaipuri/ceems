@@ -20,6 +20,13 @@ binary
 ceems_lb --web.listen-address="localhost:8030"
 ```
 
+:::tip[TIP]
+
+All the available command line options are listed in
+[CEEMS LB CLI docs](../cli/ceems-lb.md).
+
+:::
+
 CEEMS LB supports both TSDB and Pyroscope backends and it starts a load balancing server
 for each of TSDB and Pyroscope when both backends are configured. In order to control the
 address of each instance of CEEMS LB, `--web.listen-address` can be repeated. The first

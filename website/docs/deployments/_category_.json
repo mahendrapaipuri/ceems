@@ -1,6 +1,6 @@
 {
   "label": "Deployment",
-  "position": 7,
+  "position": 51,
   "link": {
     "type": "generated-index",
     "description": "This section presents a deployment guide and common deployment scenarios of CEEMS."

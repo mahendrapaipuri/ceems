@@ -14,6 +14,13 @@ All the available options from the `ceems_tool` can be listed using `--help`
 ceems_tool --help
 ```
 
+:::tip[TIP]
+
+All the available command line options are listed in
+[CEEMS Tool CLI docs](../cli/ceems-tool.md).
+
+:::
+
 ## Prometheus Recording Rules
 
 Grafana dashboards provided by CEEMS rely on

@@ -8,10 +8,7 @@
       "pattern": "https://www.intel.com/content/dam/www/public/us/en/documents/technical-specifications/dcmi-v1-5-rev-spec.pdf"
     },
     {
-      "pattern": "https://github.com/mahendrapaipuri/ceems/tree"
-    },
-    {
-      "pattern": "https://github.com/mahendrapaipuri/ceems/blob"
+      "pattern": "https://github.com/mahendrapaipuri/ceems/tree/main/build/package"
     },
     {
       "pattern": "https://www.rte-france.com/en/eco2mix/co2-emissions"

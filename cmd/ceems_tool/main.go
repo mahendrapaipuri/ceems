@@ -93,7 +93,7 @@ func main() {
 		"tls", "Create web config file with self signed TLS certificates (default: disabled).",
 	).Default("false").BoolVar(&webConfigTLS)
 	webConfigCmd.Flag(
-		"tls.host", "Comma-separated hostnames and IPs to generate a certificate for.",
+		"tls.host", "Hostnames and/or IPs to generate a certificate for.",
 	).StringsVar(&webConfigTLSHosts)
 	webConfigCmd.Flag(
 		"tls.validity", "Validity for TLS certificates. Default is 1 year.",
@@ -112,7 +112,7 @@ func main() {
 		"url", "The URL for the Prometheus server.",
 	).Default("http://localhost:9090").URLVar(&promServerURL)
 	tsdbRecRulesCmd.Flag(
-		"start", "The time to start querying for metrics. Must be a RFC3339 formatted date or Unix timestamp. Default is 2 hours ago.",
+		"start", "The time to start querying for metrics. Must be a RFC3339 formatted date or Unix timestamp. Default is 3 hours ago.",
 	).StringVar(&start)
 	tsdbRecRulesCmd.Flag(
 		"end", "The time to end querying for metrics. Must be a RFC3339 formatted date or Unix timestamp. Default is current time.",
@@ -144,7 +144,7 @@ func main() {
 		"url", "The URL for the Prometheus server.",
 	).Default("http://localhost:9090").URLVar(&promServerURL)
 	tsdbRelabelConfigCmd.Flag(
-		"start", "The time to start querying for metrics. Must be a RFC3339 formatted date or Unix timestamp. Default is 2 hours ago.",
+		"start", "The time to start querying for metrics. Must be a RFC3339 formatted date or Unix timestamp. Default is 3 hours ago.",
 	).StringVar(&start)
 	tsdbRelabelConfigCmd.Flag(
 		"end", "The time to end querying for metrics. Must be a RFC3339 formatted date or Unix timestamp. Default is current time.",
@@ -158,7 +158,7 @@ func main() {
 		"url", "The URL for the Prometheus server.",
 	).Default("http://localhost:9090").URLVar(&promServerURL)
 	tsdbUpdaterConfigCmd.Flag(
-		"start", "The time to start querying for metrics. Must be a RFC3339 formatted date or Unix timestamp. Default is 2 hours ago.",
+		"start", "The time to start querying for metrics. Must be a RFC3339 formatted date or Unix timestamp. Default is 3 hours ago.",
 	).StringVar(&start)
 	tsdbUpdaterConfigCmd.Flag(
 		"end", "The time to end querying for metrics. Must be a RFC3339 formatted date or Unix timestamp. Default is current time.",

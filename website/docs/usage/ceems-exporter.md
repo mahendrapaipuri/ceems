@@ -24,7 +24,6 @@ List of collectors that are enabled by default are:
 - `cpu`: Node level CPU stats
 - `memory`: Node level memory stats
 - `rapl`: RAPL energy counters
-- `ipmi_dcmi`: Power usage from IPMI DCMI
 
 By default CEEMS exporter exposes metrics on all interfaces, port `9010` and
 at `/metrics` endpoint. This can be changed by setting `--web.listen-address` CLI flag
@@ -34,6 +33,13 @@ ceems_exporter --web.listen-address="localhost:8010"
 ```
 
 Above command will run exporter only on `localhost` and on port `8010`.
+
+:::tip[TIP]
+
+All the available command line options are listed in
+[CEEMS Exporter CLI docs](../cli/ceems-exporter.md).
+
+:::
 
 In order to enable SLURM collector, we need to add the following CLI flag
 
