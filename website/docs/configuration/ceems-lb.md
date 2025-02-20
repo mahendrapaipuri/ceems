@@ -39,7 +39,7 @@ A sample CEEMS LB config file is shown below:
 
 ```yaml
 ceems_lb:
-  strategy: resource-based
+  strategy: round-robin
   backends:
     - id: slurm-0
       tsdb: 
@@ -61,8 +61,8 @@ ceems_lb:
 ```
 
 - `strategy`: Load balancing strategy. Besides classical `round-robin` and
-`least-connection` strategies, a custom `resource-based` strategy is supported.
-In the  `resource-based` strategy, the query will be proxied to the TSDB instance
+`least-connection` strategies, a custom `round-robin` strategy is supported.
+In the  `round-robin` strategy, the query will be proxied to the TSDB instance
 that has the data based on the time period in the query.
 - `backends`: A list of objects describing each TSDB backend.
   - `backends[0].id`: It is **important**
@@ -81,7 +81,7 @@ that has the data based on the time period in the query.
 
 :::warning[WARNING]
 
-`resource-based` strategy is only supported for TSDB and when used along with
+`round-robin` strategy is only supported for TSDB and when used along with
 Pyroscope, the load balancing strategy for Pyroscope servers will be defaulted
 to `least-connection`.
 
@@ -167,7 +167,7 @@ onto `tsdb-1-replica`, we need to use the following config for
 
 ```yaml
 ceems_lb:
-  strategy: resource-based
+  strategy: round-robin
   backends:
     - id: slurm-0
       tsdb: 
@@ -369,7 +369,7 @@ updaters:
       <omitted for brevity>
 
 ceems_lb:
-  strategy: resource-based
+  strategy: round-robin
   backends:
     - id: slurm-0
       tsdb: 

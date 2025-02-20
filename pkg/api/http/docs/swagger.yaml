@@ -4,16 +4,25 @@ definitions:
       data:
         items: {}
         type: array
+        x-nullable: true
+        x-omitempty: true
       error:
         type: string
+        x-nullable: true
+        x-omitempty: true
       errorType:
-        $ref: '#/definitions/http.errorType'
+        allOf:
+        - $ref: '#/definitions/http.errorType'
+        x-nullable: true
+        x-omitempty: true
       status:
         type: string
       warnings:
         items:
           type: string
         type: array
+        x-nullable: true
+        x-omitempty: true
     type: object
   http.Response-models_Cluster:
     properties:
@@ -21,16 +30,25 @@ definitions:
         items:
           $ref: '#/definitions/models.Cluster'
         type: array
+        x-nullable: true
+        x-omitempty: true
       error:
         type: string
+        x-nullable: true
+        x-omitempty: true
       errorType:
-        $ref: '#/definitions/http.errorType'
+        allOf:
+        - $ref: '#/definitions/http.errorType'
+        x-nullable: true
+        x-omitempty: true
       status:
         type: string
       warnings:
         items:
           type: string
         type: array
+        x-nullable: true
+        x-omitempty: true
     type: object
   http.Response-models_Project:
     properties:
@@ -38,16 +56,25 @@ definitions:
         items:
           $ref: '#/definitions/models.Project'
         type: array
+        x-nullable: true
+        x-omitempty: true
       error:
         type: string
+        x-nullable: true
+        x-omitempty: true
       errorType:
-        $ref: '#/definitions/http.errorType'
+        allOf:
+        - $ref: '#/definitions/http.errorType'
+        x-nullable: true
+        x-omitempty: true
       status:
         type: string
       warnings:
         items:
           type: string
         type: array
+        x-nullable: true
+        x-omitempty: true
     type: object
   http.Response-models_Stat:
     properties:
@@ -55,16 +82,25 @@ definitions:
         items:
           $ref: '#/definitions/models.Stat'
         type: array
+        x-nullable: true
+        x-omitempty: true
       error:
         type: string
+        x-nullable: true
+        x-omitempty: true
       errorType:
-        $ref: '#/definitions/http.errorType'
+        allOf:
+        - $ref: '#/definitions/http.errorType'
+        x-nullable: true
+        x-omitempty: true
       status:
         type: string
       warnings:
         items:
           type: string
         type: array
+        x-nullable: true
+        x-omitempty: true
     type: object
   http.Response-models_Unit:
     properties:
@@ -72,16 +108,25 @@ definitions:
         items:
           $ref: '#/definitions/models.Unit'
         type: array
+        x-nullable: true
+        x-omitempty: true
       error:
         type: string
+        x-nullable: true
+        x-omitempty: true
       errorType:
-        $ref: '#/definitions/http.errorType'
+        allOf:
+        - $ref: '#/definitions/http.errorType'
+        x-nullable: true
+        x-omitempty: true
       status:
         type: string
       warnings:
         items:
           type: string
         type: array
+        x-nullable: true
+        x-omitempty: true
     type: object
   http.Response-models_Usage:
     properties:
@@ -89,16 +134,25 @@ definitions:
         items:
           $ref: '#/definitions/models.Usage'
         type: array
+        x-nullable: true
+        x-omitempty: true
       error:
         type: string
+        x-nullable: true
+        x-omitempty: true
       errorType:
-        $ref: '#/definitions/http.errorType'
+        allOf:
+        - $ref: '#/definitions/http.errorType'
+        x-nullable: true
+        x-omitempty: true
       status:
         type: string
       warnings:
         items:
           type: string
         type: array
+        x-nullable: true
+        x-omitempty: true
     type: object
   http.Response-models_User:
     properties:
@@ -106,16 +160,25 @@ definitions:
         items:
           $ref: '#/definitions/models.User'
         type: array
+        x-nullable: true
+        x-omitempty: true
       error:
         type: string
+        x-nullable: true
+        x-omitempty: true
       errorType:
-        $ref: '#/definitions/http.errorType'
+        allOf:
+        - $ref: '#/definitions/http.errorType'
+        x-nullable: true
+        x-omitempty: true
       status:
         type: string
       warnings:
         items:
           type: string
         type: array
+        x-nullable: true
+        x-omitempty: true
     type: object
   http.errorType:
     enum:
@@ -143,19 +206,12 @@ definitions:
     - errorUnavailable
     - errorNotFound
     - errorNotAcceptable
-  models.Allocation:
-    additionalProperties: true
-    type: object
   models.Cluster:
     properties:
       id:
         type: string
       manager:
         type: string
-    type: object
-  models.MetricMap:
-    additionalProperties:
-      type: number
     type: object
   models.Project:
     properties:
@@ -172,14 +228,22 @@ definitions:
         type: string
       tags:
         description: List of meta data tags of the project
-        items: {}
+        example:
+        - tag1
+        - tag2
+        items:
+          type: string
         type: array
       uid:
         description: Unique identifier of the project provided by cluster
         type: string
       users:
         description: List of users of the project
-        items: {}
+        example:
+        - usr1
+        - usr2
+        items:
+          type: string
         type: array
     type: object
   models.Stat:
@@ -209,32 +273,46 @@ definitions:
           kubernetes, etc
         type: string
     type: object
-  models.Tag:
-    additionalProperties: true
-    type: object
   models.Unit:
     properties:
       allocation:
-        allOf:
-        - $ref: '#/definitions/models.Allocation'
+        additionalProperties:
+          type: number
         description: Allocation map of unit. Only string and int64 values are supported
           in map
+        example:
+          cpus: 1
+          gpus: 1
+          mem: 10
+        type: object
       avg_cpu_mem_usage:
-        allOf:
-        - $ref: '#/definitions/models.MetricMap'
+        additionalProperties:
+          type: number
         description: Average CPU memory usage(s) during lifetime of unit
+        example:
+          global: 45.26
+        type: object
       avg_cpu_usage:
-        allOf:
-        - $ref: '#/definitions/models.MetricMap'
+        additionalProperties:
+          type: number
         description: Average CPU usage(s) during lifetime of unit
+        example:
+          global: 70.12
+        type: object
       avg_gpu_mem_usage:
-        allOf:
-        - $ref: '#/definitions/models.MetricMap'
+        additionalProperties:
+          type: number
         description: Average GPU memory usage(s) during lifetime of unit
+        example:
+          global: 45.26
+        type: object
       avg_gpu_usage:
-        allOf:
-        - $ref: '#/definitions/models.MetricMap'
+        additionalProperties:
+          type: number
         description: Average GPU usage(s) during lifetime of unit
+        example:
+          global: 70.12
+        type: object
       cluster_id:
         description: Identifier of the resource manager that owns compute unit. It
           is used to differentiate multiple clusters of same resource manager.
@@ -277,50 +355,88 @@ definitions:
         description: Current state of unit
         type: string
       tags:
-        allOf:
-        - $ref: '#/definitions/models.Tag'
+        additionalProperties:
+          type: string
         description: A map to store generic info. String and int64 are valid value
           types of map
+        example:
+          gid: "1000"
+          uid: "1000"
+          workdir: /home/user
+        type: object
       total_cpu_emissions_gms:
-        allOf:
-        - $ref: '#/definitions/models.MetricMap'
+        additionalProperties:
+          type: number
         description: Total CPU emissions from source(s) in grams during lifetime of
           unit
+        example:
+          emaps_total: 3.09
+          owid_total: 5.22
+        type: object
       total_cpu_energy_usage_kwh:
-        allOf:
-        - $ref: '#/definitions/models.MetricMap'
+        additionalProperties:
+          type: number
         description: Total CPU energy usage(s) in kWh during lifetime of unit
+        example:
+          total: 0.73
+        type: object
       total_gpu_emissions_gms:
-        allOf:
-        - $ref: '#/definitions/models.MetricMap'
+        additionalProperties:
+          type: number
         description: Total GPU emissions from source(s) in grams during lifetime of
           unit
+        example:
+          emaps_total: 12.09
+          owid_total: 15.22
+        type: object
       total_gpu_energy_usage_kwh:
-        allOf:
-        - $ref: '#/definitions/models.MetricMap'
+        additionalProperties:
+          type: number
         description: Total GPU energy usage(s) in kWh during lifetime of unit
+        example:
+          total: 5.39
+        type: object
       total_ingress_stats:
-        allOf:
-        - $ref: '#/definitions/models.MetricMap'
+        additionalProperties:
+          type: number
         description: Total Ingress statistics of unit
+        example:
+          total: 0.5
+        type: object
       total_io_read_stats:
-        allOf:
-        - $ref: '#/definitions/models.MetricMap'
+        additionalProperties:
+          type: number
         description: Total IO read statistics GB during lifetime of unit
+        example:
+          total: 4.6
+        type: object
       total_io_write_stats:
-        allOf:
-        - $ref: '#/definitions/models.MetricMap'
+        additionalProperties:
+          type: number
         description: Total IO write statistics during lifetime of unit
+        example:
+          total: 1.2
+        type: object
       total_outgress_stats:
-        allOf:
-        - $ref: '#/definitions/models.MetricMap'
+        additionalProperties:
+          type: number
         description: Total Outgress statistics of unit
+        example:
+          total: 0.1
+        type: object
       total_time_seconds:
-        allOf:
-        - $ref: '#/definitions/models.MetricMap'
+        additionalProperties:
+          type: number
         description: Different types of times in seconds consumed by the unit. This
           map contains at minimum `walltime`, `alloc_cputime`, `alloc_cpumemtime`,
           `alloc_gputime` and `alloc_gpumem_time` keys.
+        example:
+          alloc_cpumemtime: 1000
+          alloc_cputime: 100
+          alloc_gpumemtime: 100
+          alloc_gputime: 100
+          walltime: 100
+        type: object
       username:
         description: Username
         type: string
@@ -332,21 +448,33 @@ definitions:
   models.Usage:
     properties:
       avg_cpu_mem_usage:
-        allOf:
-        - $ref: '#/definitions/models.MetricMap'
+        additionalProperties:
+          type: number
         description: Average CPU memory usage(s) during lifetime of project
+        example:
+          global: 45.26
+        type: object
       avg_cpu_usage:
-        allOf:
-        - $ref: '#/definitions/models.MetricMap'
+        additionalProperties:
+          type: number
         description: Average CPU usage(s) during lifetime of project
+        example:
+          global: 70.12
+        type: object
       avg_gpu_mem_usage:
-        allOf:
-        - $ref: '#/definitions/models.MetricMap'
+        additionalProperties:
+          type: number
         description: Average GPU memory usage(s) during lifetime of project
+        example:
+          global: 45.26
+        type: object
       avg_gpu_usage:
-        allOf:
-        - $ref: '#/definitions/models.MetricMap'
+        additionalProperties:
+          type: number
         description: Average GPU usage(s) during lifetime of project
+        example:
+          global: 70.12
+        type: object
       cluster_id:
         description: Identifier of the resource manager that owns compute unit. It
           is used to differentiate multiple clusters of same resource manager.
@@ -365,45 +493,78 @@ definitions:
           kubernetes, etc
         type: string
       total_cpu_emissions_gms:
-        allOf:
-        - $ref: '#/definitions/models.MetricMap'
+        additionalProperties:
+          type: number
         description: Total CPU emissions from source(s) in grams during lifetime of
           project
+        example:
+          emaps_total: 3.09
+          owid_total: 5.22
+        type: object
       total_cpu_energy_usage_kwh:
-        allOf:
-        - $ref: '#/definitions/models.MetricMap'
+        additionalProperties:
+          type: number
         description: Total CPU energy usage(s) in kWh during lifetime of project
+        example:
+          total: 0.73
+        type: object
       total_gpu_emissions_gms:
-        allOf:
-        - $ref: '#/definitions/models.MetricMap'
+        additionalProperties:
+          type: number
         description: Total GPU emissions from source(s) in grams during lifetime of
           project
+        example:
+          emaps_total: 12.09
+          owid_total: 15.22
+        type: object
       total_gpu_energy_usage_kwh:
-        allOf:
-        - $ref: '#/definitions/models.MetricMap'
+        additionalProperties:
+          type: number
         description: Total GPU energy usage(s) in kWh during lifetime of project
+        example:
+          total: 5.39
+        type: object
       total_ingress_stats:
-        allOf:
-        - $ref: '#/definitions/models.MetricMap'
+        additionalProperties:
+          type: number
         description: Total Ingress statistics of unit
+        example:
+          total: 0.5
+        type: object
       total_io_read_stats:
-        allOf:
-        - $ref: '#/definitions/models.MetricMap'
+        additionalProperties:
+          type: number
         description: Total IO read statistics GB during lifetime of unit
+        example:
+          total: 4.6
+        type: object
       total_io_write_stats:
-        allOf:
-        - $ref: '#/definitions/models.MetricMap'
+        additionalProperties:
+          type: number
         description: Total IO write statistics during lifetime of unit
+        example:
+          total: 1.2
+        type: object
       total_outgress_stats:
-        allOf:
-        - $ref: '#/definitions/models.MetricMap'
+        additionalProperties:
+          type: number
         description: Total Outgress statistics of unit
+        example:
+          total: 0.1
+        type: object
       total_time_seconds:
-        allOf:
-        - $ref: '#/definitions/models.MetricMap'
+        additionalProperties:
+          type: number
         description: Different times in seconds consumed by the unit. This map must
           contain `walltime`, `alloc_cputime`, `alloc_cpumemtime`, `alloc_gputime`
           and `alloc_gpumem_time` keys.
+        example:
+          alloc_cpumemtime: 1000
+          alloc_cputime: 100
+          alloc_gpumemtime: 100
+          alloc_gputime: 100
+          walltime: 100
+        type: object
       username:
         description: Username
         type: string
@@ -419,7 +580,11 @@ definitions:
         type: string
       projects:
         description: List of projects of the user
-        items: {}
+        example:
+        - prj1
+        - prj2
+        items:
+          type: string
         type: array
       resource_manager:
         description: Name of the resource manager that owns user. Eg slurm, openstack,
@@ -427,7 +592,11 @@ definitions:
         type: string
       tags:
         description: List of meta data tags of the user
-        items: {}
+        example:
+        - tag1
+        - tag2
+        items:
+          type: string
         type: array
       uid:
         description: Unique identifier of the user provided by cluster
@@ -457,6 +626,9 @@ info:
     url: https://www.gnu.org/licenses/gpl-3.0.en.html
   title: CEEMS API
   version: "1.0"
+  x-logo:
+    altText: CEEMS logo
+    url: https://github.com/mahendrapaipuri/ceems/blob/main/website/static/img/logo.png
 paths:
   /clusters/admin:
     get:
@@ -949,6 +1121,7 @@ paths:
         - If the current user belongs to the same account/project/namespace as
         the compute unit. This means the users belonging to the same project can
         access each others compute units.
+        - If the current user has admin role
 
         The above checks must pass for **all** the queried units.
         If the check does not pass for at least one queried unit, a response 403 will be
@@ -1277,6 +1450,9 @@ paths:
         in the response.
 
         The details include list of projects that user is currently a part of.
+
+        When query parameter `role` is set to `admin`, only admin users will
+        will be returned
       parameters:
       - description: Current user name
         in: header
@@ -1297,6 +1473,10 @@ paths:
           type: string
         name: cluster_id
         type: array
+      - description: User role
+        in: query
+        name: role
+        type: string
       produces:
       - application/json
       responses:

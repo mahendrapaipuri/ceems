@@ -6,15 +6,14 @@ import (
 	"testing"
 
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
-	"github.com/mahendrapaipuri/ceems/pkg/lb/base"
 	"github.com/prometheus/common/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestPyroBackendWithBasicAuth(t *testing.T) {
-	c := base.ServerConfig{
-		Web: models.WebConfig{
+	c := &ServerConfig{
+		Web: &models.WebConfig{
 			URL: "http://localhost:4040",
 			HTTPClientConfig: config.HTTPClientConfig{
 				BasicAuth: &config.BasicAuth{
@@ -34,7 +33,7 @@ func TestPyroBackendWithBasicAuth(t *testing.T) {
 }
 
 func TestPyroBackendAlive(t *testing.T) {
-	c := base.ServerConfig{Web: models.WebConfig{URL: "http://localhost:4040"}}
+	c := &ServerConfig{Web: &models.WebConfig{URL: "http://localhost:4040"}}
 	b, err := NewPyroscope(c, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 

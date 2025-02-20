@@ -947,7 +947,7 @@ configuration file would be as follows:
 ```yml
 ceems_lb:
   # Load balancing strategy
-  strategy: resource-based
+  strategy: round-robin
 
   # List of Prometheus and/or Pyroscope backends
   backends:

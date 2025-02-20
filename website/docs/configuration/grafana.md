@@ -38,7 +38,8 @@ ceems_api_server:
 
   admin:
     users:
-      - adm1
+      # Add admin user of Grafana here to the list of admins
+      - admin
   
   web:
     url: http://localhost:9020
@@ -75,7 +76,7 @@ updaters:
       <omitted for brevity>
 
 ceems_lb:
-  strategy: resource-based
+  strategy: round-robin
   backends:
     - id: slurm-0
       tsdb_urls: 

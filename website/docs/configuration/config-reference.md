@@ -34,7 +34,7 @@ character in the source label should be converted to an underscore
 * `<managername>`: a string that identifies resource manager. Currently accepted values are `slurm`.
 * `<updatername>`: a string that identifies updater type. Currently accepted values are `tsdb`.
 * `<promql_query>`: a valid PromQL query string.
-* `<lbstrategy>`: a valid load balancing strategy. Currently accepted values are `round-robin`, `least-connection` and `resource-based`.
+* `<lbstrategy>`: a valid load balancing strategy. Currently accepted values are `round-robin`, and `least-connection`.
 * `<object>`: a generic object
 
 The other placeholders are specified separately.
@@ -548,25 +548,16 @@ A `queries_config` allows configuring PromQL queries for TSDB updater of CEEMS A
 # DBs outside of CEEMS components without hassle.
 #
 # The placeholder queries shown below should work out-of-the-box with CEEMS 
-# exporter and operators are free to deploy more exporters of their own and use
-# the metrics from them to estimate aggregated metrics of each compute unit
+# exporter when the recording rules to the Prometheus have been configured
+# using `ceems_tool`. If operators deploy more exporters of their own queries
+# must be modified accordingly.
 #
 # Average CPU utilisation
 #
 # Example of valid query:
 #
 # global:
-#   avg_over_time(
-#     avg by (uuid) (
-#       (
-#         rate(ceems_compute_unit_cpu_user_seconds_total{uuid=~"{{.UUIDs}}"}[{{.RateInterval}}])
-#         +
-#         rate(ceems_compute_unit_cpu_system_seconds_total{uuid=~"{{.UUIDs}}"}[{{.RateInterval}}])
-#       )
-#       /
-#       ceems_compute_unit_cpus{uuid=~"{{.UUIDs}}"}
-#     )[{{.Range}}:]
-#   ) * 100
+#   avg_over_time(avg by (uuid) (unit:ceems_compute_unit_cpu_usage:ratio_rate1m{uuid=~"{{.UUIDs}}"} > 0 < inf)[{{.Range}}:])
 avg_cpu_usage:
   [ <string>: <promql_query> ... ]
   
@@ -576,13 +567,7 @@ avg_cpu_usage:
 # Example of valid query:
 #
 # global:
-#   avg_over_time(
-#     avg by (uuid) (
-#       ceems_compute_unit_memory_used_bytes{uuid=~"{{.UUIDs}}"}
-#       /
-#       ceems_compute_unit_memory_total_bytes{uuid=~"{{.UUIDs}}"}
-#     )[{{.Range}}:]
-#   ) * 100
+#   avg_over_time(avg by (uuid) (unit:ceems_compute_unit_memory_usage:ratio{uuid=~"{{.UUIDs}}"} > 0 < inf)[{{.Range}}:])
 avg_cpu_mem_usage:
   [ <string>: <promql_query> ... ]
   
@@ -592,11 +577,7 @@ avg_cpu_mem_usage:
 # Example of valid query:
 #
 # total:
-#   sum_over_time(
-#     sum by (uuid) (
-#       unit:ceems_compute_unit_cpu_energy_usage:sum{uuid=~"{{.UUIDs}}"} * {{.ScrapeIntervalMilli}} / 3.6e9
-#     )[{{.Range}}:{{.ScrapeInterval}}]
-#   )
+#   sum_over_time(sum by (uuid) (unit:ceems_compute_unit_cpu_energy_usage:sum{uuid=~"{{.UUIDs}}"} > 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 3.6e9
 total_cpu_energy_usage_kwh:
   [ <string>: <promql_query> ... ]
   
@@ -604,47 +585,12 @@ total_cpu_energy_usage_kwh:
 # Total CPU emissions in gms
 #
 # Example of valid query:
-#
-# rte_total:
-#   sum_over_time(
-#     sum by (uuid) (
-#       label_replace(
-#         unit:ceems_compute_unit_cpu_energy_usage:sum{uuid=~"{{.UUIDs}}"} * {{.ScrapeIntervalMilli}} / 3.6e9,
-#         "common_label",
-#         "mock",
-#         "hostname",
-#         "(.*)"
-#       )
-#       * on (common_label) group_left ()
-#       label_replace(
-#         ceems_emissions_gCo2_kWh{provider="rte",country_code="fr"},
-#         "common_label",
-#         "mock",
-#         "hostname",
-#         "(.*)"
-#       )
-#     )[{{.Range}}:{{.ScrapeInterval}}]
-#   )
-# emaps_total:
-#   sum_over_time(
-#     sum by (uuid) (
-#       label_replace(
-#         unit:ceems_compute_unit_cpu_energy_usage:sum{uuid=~"{{.UUIDs}}"} * {{.ScrapeIntervalMilli}} / 3.6e9,
-#         "common_label",
-#         "mock",
-#         "hostname",
-#         "(.*)"
-#       )
-#       * on (common_label) group_left ()
-#       label_replace(
-#         ceems_emissions_gCo2_kWh{provider="emaps",country_code="fr"},
-#         "common_label",
-#         "mock",
-#         "hostname",
-#         "(.*)"
-#       )
-#     )[{{.Range}}:{{.ScrapeInterval}}]
-#   )
+# rte_total: |
+#   sum_over_time(sum by (uuid) (unit:ceems_compute_unit_cpu_emissions:sum{uuid=~"{{.UUIDs}}",provider="rte"} > 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 1e3
+# emaps_total: |
+#   sum_over_time(sum by (uuid) (unit:ceems_compute_unit_cpu_emissions:sum{uuid=~"{{.UUIDs}}",provider="emaps"} > 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 1e3
+# owid_total: |
+#   sum_over_time(sum by (uuid) (unit:ceems_compute_unit_cpu_emissions:sum{uuid=~"{{.UUIDs}}",provider="owid"} > 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 1e3
 total_cpu_emissions_gms:
   [ <string>: <promql_query> ... ]
   
@@ -654,13 +600,7 @@ total_cpu_emissions_gms:
 # Example of valid query:
 #
 # global:
-#   avg_over_time(
-#     avg by (uuid) (
-#       DCGM_FI_DEV_GPU_UTIL
-#       * on (gpuuuid) group_right ()
-#       ceems_compute_unit_gpu_index_flag{uuid=~"{{.UUIDs}}"}
-#     )[{{.Range}}:{{.ScrapeInterval}}]
-#   )
+#   avg_over_time(avg by (uuid) (unit:ceems_compute_unit_gpu_usage:ratio{uuid=~"{{.UUIDs}}"} > 0 < inf)[{{.Range}}:])
 avg_gpu_usage:
   [ <string>: <promql_query> ... ]
   
@@ -670,13 +610,7 @@ avg_gpu_usage:
 # Example of valid query:
 #
 # global:
-#   avg_over_time(
-#     avg by (uuid) (
-#       DCGM_FI_DEV_MEM_COPY_UTIL
-#       * on (gpuuuid) group_right ()
-#       ceems_compute_unit_gpu_index_flag{uuid=~"{{.UUIDs}}"}
-#     )[{{.Range}}:{{.ScrapeInterval}}]
-#   )
+#   avg_over_time(avg by (uuid) (unit:ceems_compute_unit_gpu_memory_usage:ratio{uuid=~"{{.UUIDs}}"} > 0 < inf)[{{.Range}}:])
 avg_gpu_mem_usage:
   [ <string>: <promql_query> ... ]
   
@@ -686,13 +620,7 @@ avg_gpu_mem_usage:
 # Example of valid query:
 #
 # total:
-#   sum_over_time(
-#     sum by (uuid) (
-#       instance:DCGM_FI_DEV_POWER_USAGE:pue_avg * {{.ScrapeIntervalMilli}} / 3.6e9
-#       * on (gpuuuid) group_right()
-#       ceems_compute_unit_gpu_index_flag{uuid=~"{{.UUIDs}}"}
-#     )[{{.Range}}:{{.ScrapeInterval}}]
-#   )
+#   sum_over_time(sum by (uuid) (unit:ceems_compute_unit_gpu_energy_usage:sum{uuid=~"{{.UUIDs}}"} > 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 3.6e9
 total_gpu_energy_usage_kwh:
   [ <string>: <promql_query> ... ]
   
@@ -701,83 +629,47 @@ total_gpu_energy_usage_kwh:
 #
 # Example of valid query:
 #
-# rte_total:
-#   sum_over_time(
-#     sum by (uuid) (
-#       label_replace(
-#         instance:DCGM_FI_DEV_POWER_USAGE:pue_avg * {{.ScrapeIntervalMilli}} / 3.6e+09
-#         * on (gpuuuid) group_right ()
-#         ceems_compute_unit_gpu_index_flag{uuid=~"{{.UUIDs}}"},
-#         "common_label",
-#         "mock",
-#         "instance",
-#         "(.*)"
-#       )
-#       * on (common_label) group_left ()
-#       label_replace(
-#         ceems_emissions_gCo2_kWh{provider="rte",country_code="fr"},
-#         "common_label",
-#         "mock",
-#         "instance",
-#         "(.*)"
-#       )
-#     )[{{.Range}}:{{.ScrapeInterval}}]
-#   )
-# emaps_total:
-#   sum_over_time(
-#     sum by (uuid) (
-#       label_replace(
-#         instance:DCGM_FI_DEV_POWER_USAGE:pue_avg * {{.ScrapeIntervalMilli}} / 3.6e+09
-#         * on (gpuuuid) group_right ()
-#         ceems_compute_unit_gpu_index_flag{uuid=~"{{.UUIDs}}"},
-#         "common_label",
-#         "mock",
-#         "instance",
-#         "(.*)"
-#       )
-#       * on (common_label) group_left ()
-#       label_replace(
-#         ceems_emissions_gCo2_kWh{provider="emaps",country_code="fr"},
-#         "common_label",
-#         "mock",
-#         "instance",
-#         "(.*)"
-#       )
-#     )[{{.Range}}:{{.ScrapeInterval}}]
-#   )
+# rte_total: |
+#   sum_over_time(sum by (uuid) (unit:ceems_compute_unit_gpu_emissions:sum{uuid=~"{{.UUIDs}}",provider="rte"} > 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 1e3
+# emaps_total: |
+#   sum_over_time(sum by (uuid) (unit:ceems_compute_unit_gpu_emissions:sum{uuid=~"{{.UUIDs}}",provider="emaps"} > 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 1e3
+# owid_total: |
+#   sum_over_time(sum by (uuid) (unit:ceems_compute_unit_gpu_emissions:sum{uuid=~"{{.UUIDs}}",provider="owid"} > 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 1e3
 total_gpu_emissions_gms:
   [ <string>: <promql_query> ... ]
   
 
 # Total IO write in GB stats
 #
-# Currently CEEMS exporter do not scrape this metric. Operators can configure
-# this metric from third party exporters, if and when available
+# Example of valid query:
 #
+# total: |
+#   sum by (uuid) (increase(ceems_ebpf_write_bytes_total{uuid=~"{{.UUIDs}}"}[{{.Range}}]) > 0 < inf) / 1e+09
 total_io_write_stats:
   [ <string>: <promql_query> ... ]
 
 # Total IO read in GB stats
 #
-# Currently CEEMS exporter do not scrape this metric. Operators can configure
-# this metric from third party exporters, if and when available
+# Example of valid query:
 #
+# total: |
+#   sum by (uuid) (increase(ceems_ebpf_read_bytes_total{uuid=~"{{.UUIDs}}"}[{{.Range}}]) > 0 < inf) / 1e+09
 total_io_read_stats:
   [ <string>: <promql_query> ... ]
 
 # Total ingress traffic stats
 #
-# Currently CEEMS exporter do not scrape this metric. Operators can configure
-# this metric from third party exporters, if and when available
+# Example of valid query:
 #
+# total: |
+#   sum by (uuid) (increase(ceems_ebpf_ingress_bytes_total{uuid=~"{{.UUIDs}}"}[{{.Range}}]) > 0 < inf) / 1e+09
 total_ingress_stats:
   [ <string>: <promql_query> ... ]
 
 # Total outgress traffic stats
 #
-# Currently CEEMS exporter do not scrape this metric. Operators can configure
-# this metric from third party exporters, if and when available
-#
+# total: |
+#   sum by (uuid) (increase(ceems_ebpf_egress_bytes_total{uuid=~"{{.UUIDs}}"}[{{.Range}}]) > 0 < inf) / 1e+09
 total_outgress_stats:
   [ <string>: <promql_query> ... ]
 ```
@@ -802,7 +694,6 @@ ceems_lb:
   #
   # - round-robin
   # - least-connection
-  # - resource-based
   #
   # Round robin and least connection are classic strategies.
   # Resource based works based on the query range in the TSDB query. The 

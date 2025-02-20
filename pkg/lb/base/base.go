@@ -3,7 +3,6 @@ package base
 
 import (
 	"github.com/alecthomas/kingpin/v2"
-	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 )
 
 // CEEMSLoadBalancerAppName is kingpin app name.
@@ -14,19 +13,6 @@ var CEEMSLoadBalancerApp = *kingpin.New(
 	CEEMSLoadBalancerAppName,
 	"CEEMS load balancer for TSDB and Pyroscope servers with access control support.",
 )
-
-// ServerConfig contains the configuration of backend server.
-type ServerConfig struct {
-	Web          models.WebConfig `yaml:"web"`
-	FilterLabels []string         `yaml:"filter_labels"`
-}
-
-// Backend defines backend server.
-type Backend struct {
-	ID    string         `yaml:"id"`
-	TSDBs []ServerConfig `yaml:"tsdb"`
-	Pyros []ServerConfig `yaml:"pyroscope"`
-}
 
 // LBType is type of load balancer server.
 type LBType int

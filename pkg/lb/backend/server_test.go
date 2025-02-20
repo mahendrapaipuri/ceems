@@ -12,14 +12,14 @@ import (
 
 func TestNewServer(t *testing.T) {
 	// TSDB
-	_, err := New(base.PromLB, base.ServerConfig{Web: models.WebConfig{URL: "http://localhost:9090"}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	_, err := New(base.PromLB, &ServerConfig{Web: &models.WebConfig{URL: "http://localhost:9090"}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	// Pyro
-	_, err = New(base.PyroLB, base.ServerConfig{Web: models.WebConfig{URL: "http://localhost:9090"}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	_, err = New(base.PyroLB, &ServerConfig{Web: &models.WebConfig{URL: "http://localhost:9090"}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	// Unknown
-	_, err = New(base.LBType(4), base.ServerConfig{Web: models.WebConfig{URL: "http://localhost:9090"}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	_, err = New(base.LBType(4), &ServerConfig{Web: &models.WebConfig{URL: "http://localhost:9090"}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.Error(t, err)
 }

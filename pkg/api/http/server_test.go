@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -28,12 +29,13 @@ import (
 )
 
 type testCase struct {
-	name    string
-	req     string
-	user    string
-	admin   bool
-	handler func(http.ResponseWriter, *http.Request)
-	code    int
+	name      string
+	req       string
+	user      string
+	admin     bool
+	urlParams url.Values
+	handler   func(http.ResponseWriter, *http.Request)
+	code      int
 }
 
 var (
@@ -52,6 +54,9 @@ var (
 	mockServerUsers = []models.User{
 		{Name: "foousr", ClusterID: "slurm-0", ResourceManager: "slurm", Projects: models.List{"foo"}},
 		{Name: "bar", ClusterID: "os-0", ResourceManager: "openstack", Projects: models.List{"bar"}},
+	}
+	mockAdmUsers = []models.AdminUsers{
+		{Users: models.List{"adm1", "adm2"}},
 	}
 	mockServerClusters = []models.Cluster{
 		{ID: "slurm-0", Manager: "slurm"},
@@ -86,13 +91,14 @@ func setupServer(d string) *CEEMSServer {
 	)
 	server.maxQueryPeriod = time.Hour * 168
 	server.queriers = queriers{
-		unit:    unitQuerier,
-		usage:   usageQuerier,
-		project: projectQuerier,
-		user:    userQuerier,
-		cluster: clusterQuerier,
-		stat:    statQuerier,
-		key:     keyQuerier,
+		unit:      unitQuerier,
+		usage:     usageQuerier,
+		project:   projectQuerier,
+		user:      userQuerier,
+		adminUser: adminUserQuerier,
+		cluster:   clusterQuerier,
+		stat:      statQuerier,
+		key:       keyQuerier,
 	}
 
 	return server
@@ -112,6 +118,10 @@ func projectQuerier(ctx context.Context, db *sql.DB, q Query, logger *slog.Logge
 
 func userQuerier(ctx context.Context, db *sql.DB, q Query, logger *slog.Logger) ([]models.User, error) {
 	return mockServerUsers, nil
+}
+
+func adminUserQuerier(ctx context.Context, db *sql.DB, q Query, logger *slog.Logger) ([]models.AdminUsers, error) {
+	return mockAdmUsers, nil
 }
 
 func clusterQuerier(ctx context.Context, db *sql.DB, q Query, logger *slog.Logger) ([]models.Cluster, error) {
@@ -154,16 +164,33 @@ func TestUsersHandlers(t *testing.T) {
 	// Test cases
 	tests := []testCase{
 		{
-			name:    "users",
-			req:     "/api/" + base.APIVersion + "/users?field=uuid&field=project",
+			name: "users",
+			req:  "/api/" + base.APIVersion + "/users",
+			urlParams: url.Values{
+				"field": []string{"uuid", "project"},
+			},
 			user:    "foousr",
 			admin:   false,
 			handler: server.users,
 			code:    200,
 		},
 		{
-			name:    "users admin",
-			req:     "/api/" + base.APIVersion + "/users/admin?project=foo",
+			name: "users admin",
+			req:  "/api/" + base.APIVersion + "/users/admin",
+			urlParams: url.Values{
+				"project": []string{"foo"},
+			},
+			user:    "foousr",
+			admin:   true,
+			handler: server.usersAdmin,
+			code:    200,
+		},
+		{
+			name: "admin users",
+			req:  "/api/" + base.APIVersion + "/users/admin",
+			urlParams: url.Values{
+				"role": []string{"admin"},
+			},
 			user:    "foousr",
 			admin:   true,
 			handler: server.usersAdmin,
@@ -176,9 +203,8 @@ func TestUsersHandlers(t *testing.T) {
 		request.Header.Set("X-Grafana-User", test.user)
 
 		if test.admin {
-			q := url.Values{}
-			q.Add("user", "foousr")
-			request.URL.RawQuery = q.Encode()
+			test.urlParams.Add("user", "foousr")
+			request.URL.RawQuery = test.urlParams.Encode()
 		}
 
 		// Start recorder
@@ -192,13 +218,22 @@ func TestUsersHandlers(t *testing.T) {
 		data, err := io.ReadAll(res.Body)
 		require.NoError(t, err)
 
-		// Unmarshal byte into structs.
-		var response Response[models.User]
-
-		json.Unmarshal(data, &response)
 		assert.Equal(t, test.code, w.Code)
-		assert.Equal(t, "success", response.Status)
-		assert.Equal(t, mockServerUsers, response.Data)
+
+		// Unmarshal byte into structs.
+		if test.urlParams.Has("role") {
+			var response Response[models.AdminUsers]
+
+			json.Unmarshal(data, &response)
+			assert.Equal(t, "success", response.Status)
+			assert.Equal(t, mockAdmUsers, response.Data)
+		} else {
+			var response Response[models.User]
+
+			json.Unmarshal(data, &response)
+			assert.Equal(t, "success", response.Status)
+			assert.Equal(t, mockServerUsers, response.Data)
+		}
 	}
 }
 
@@ -285,20 +320,46 @@ func TestUnitsHandler(t *testing.T) {
 	// Test cases
 	tests := []testCase{
 		{
-			name:    "units",
-			req:     "/api/" + base.APIVersion + "/units",
+			name:      "units",
+			req:       "/api/" + base.APIVersion + "/units",
+			user:      "foousr",
+			urlParams: url.Values{},
+			admin:     false,
+			handler:   server.units,
+			code:      200,
+		},
+		{
+			name: "units with query",
+			req:  "/api/" + base.APIVersion + "/units",
+			urlParams: url.Values{
+				"from": []string{strconv.FormatInt(time.Now().Unix(), 10)},
+				"to":   []string{strconv.FormatInt(time.Now().Unix(), 10)},
+			},
 			user:    "foousr",
 			admin:   false,
 			handler: server.units,
 			code:    200,
 		},
 		{
-			name:    "units admin",
-			req:     "/api/" + base.APIVersion + "/units/admin",
+			name: "units with invalid query params",
+			req:  "/api/" + base.APIVersion + "/units",
+			urlParams: url.Values{
+				"from": []string{"foo"},
+				"to":   []string{"bar"},
+			},
 			user:    "foousr",
-			admin:   true,
-			handler: server.unitsAdmin,
+			admin:   false,
+			handler: server.units,
 			code:    200,
+		},
+		{
+			name:      "units admin",
+			req:       "/api/" + base.APIVersion + "/units/admin",
+			user:      "foousr",
+			urlParams: url.Values{},
+			admin:     true,
+			handler:   server.unitsAdmin,
+			code:      200,
 		},
 	}
 
@@ -307,9 +368,8 @@ func TestUnitsHandler(t *testing.T) {
 		request.Header.Set("X-Grafana-User", test.user)
 
 		if test.admin {
-			q := url.Values{}
-			q.Add("user", "foousr")
-			request.URL.RawQuery = q.Encode()
+			test.urlParams.Add("user", "foousr")
+			request.URL.RawQuery = test.urlParams.Encode()
 		}
 
 		// Start recorder
@@ -462,20 +522,46 @@ func TestUsageErrorHandlers(t *testing.T) {
 	// Test cases
 	tests := []testCase{
 		{
-			name:    "current usage",
-			req:     "/api/" + base.APIVersion + "/usage/current",
-			user:    "foousr",
-			admin:   false,
-			handler: server.usage,
-			code:    200,
+			name:      "current usage",
+			req:       "/api/" + base.APIVersion + "/usage/current",
+			urlParams: url.Values{},
+			user:      "foousr",
+			admin:     false,
+			handler:   server.usage,
+			code:      200,
 		},
 		{
-			name:    "current usage admin",
-			req:     "/api/" + base.APIVersion + "/usage/current/admin",
+			name:      "current usage admin",
+			req:       "/api/" + base.APIVersion + "/usage/current/admin",
+			urlParams: url.Values{},
+			user:      "adm1",
+			admin:     true,
+			handler:   server.usageAdmin,
+			code:      200,
+		},
+		{
+			name: "current usage admin with query params",
+			req:  "/api/" + base.APIVersion + "/usage/current/admin",
+			urlParams: url.Values{
+				"from": []string{strconv.FormatInt(time.Now().Unix(), 10)},
+				"to":   []string{strconv.FormatInt(time.Now().Unix(), 10)},
+			},
 			user:    "adm1",
 			admin:   true,
 			handler: server.usageAdmin,
 			code:    200,
+		},
+		{
+			name: "current usage admin with invalid query params",
+			req:  "/api/" + base.APIVersion + "/usage/current/admin",
+			urlParams: url.Values{
+				"from": []string{"foo"},
+				"to":   []string{"bar"},
+			},
+			user:    "adm1",
+			admin:   true,
+			handler: server.usageAdmin,
+			code:    400,
 		},
 	}
 
@@ -484,9 +570,8 @@ func TestUsageErrorHandlers(t *testing.T) {
 		request.Header.Set("X-Grafana-User", test.user)
 
 		if test.admin {
-			q := url.Values{}
-			q.Add("user", "foousr")
-			request.URL.RawQuery = q.Encode()
+			test.urlParams.Add("user", "foousr")
+			request.URL.RawQuery = test.urlParams.Encode()
 		}
 
 		if strings.Contains(test.name, "current") {
@@ -506,14 +591,17 @@ func TestUsageErrorHandlers(t *testing.T) {
 		data, err := io.ReadAll(res.Body)
 		require.NoError(t, err)
 
-		// Unmarshal byte into structs.
-		var response Response[models.Usage]
-
-		json.Unmarshal(data, &response)
 		assert.Equal(t, test.code, w.Code)
-		assert.Equal(t, "success", response.Status)
-		assert.Equal(t, mockServerUsage, response.Data)
-		assert.NotEmpty(t, response.Warnings)
+
+		if test.code == 200 {
+			// Unmarshal byte into structs.
+			var response Response[models.Usage]
+
+			json.Unmarshal(data, &response)
+			assert.Equal(t, "success", response.Status)
+			assert.Equal(t, mockServerUsage, response.Data)
+			assert.NotEmpty(t, response.Warnings)
+		}
 	}
 }
 

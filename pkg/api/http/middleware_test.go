@@ -16,8 +16,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func mockAdminUsers(_ context.Context, _ *sql.DB, _ *slog.Logger) []string {
-	return []string{"adm1"}
+func mockAdminUsers(_ context.Context, _ *sql.DB) ([]string, error) {
+	return []string{"adm1"}, nil
 }
 
 func setupMiddleware() http.Handler {

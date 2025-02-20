@@ -483,209 +483,57 @@ updaters:
     extra_config:
       cutoff_duration: 5m
       queries:
-        # Average CPU utilisation
-        avg_cpu_usage: 
+        # Avgerage CPU utilisation
+        avg_cpu_usage:
           global: |
-            avg_over_time(
-              avg by (uuid) (
-                (
-                  irate(ceems_compute_unit_cpu_user_seconds_total{uuid=~"{{.UUIDs}}"}[{{.RateInterval}}])
-                  +
-                  irate(ceems_compute_unit_cpu_system_seconds_total{uuid=~"{{.UUIDs}}"}[{{.RateInterval}}])
-                )
-                /
-                ceems_compute_unit_cpus{uuid=~"{{.UUIDs}}"}
-              )[{{.Range}}:{{.ScrapeInterval}}]
-            ) * 100
-
+            avg_over_time(avg by (uuid) (unit:ceems_compute_unit_cpu_usage:ratio_rate1m{uuid=~"{{.UUIDs}}"} > 0 < inf)[{{.Range}}:])
+            
         # Avgerage CPU Memory utilisation
         avg_cpu_mem_usage:
           global: |
-            avg_over_time(
-              avg by (uuid) (
-                ceems_compute_unit_memory_used_bytes{uuid=~"{{.UUIDs}}"}
-                /
-                ceems_compute_unit_memory_total_bytes{uuid=~"{{.UUIDs}}"}
-              )[{{.Range}}:{{.ScrapeInterval}}]
-            ) * 100
-
+            avg_over_time(avg by (uuid) (unit:ceems_compute_unit_memory_usage:ratio{uuid=~"{{.UUIDs}}"} > 0 < inf)[{{.Range}}:])
+            
         # Total CPU energy usage in kWh
         total_cpu_energy_usage_kwh:
           total: |
-            sum_over_time(
-              sum by (uuid) (
-                unit:ceems_compute_unit_cpu_energy_usage:sum{uuid=~"{{.UUIDs}}"} * {{.ScrapeIntervalMilli}} / 3.6e9
-              )[{{.Range}}:{{.ScrapeInterval}}]
-            )
-
+            sum_over_time(sum by (uuid) (unit:ceems_compute_unit_cpu_energy_usage:sum{uuid=~"{{.UUIDs}}"} > 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 3.6e9
+            
         # Total CPU emissions in gms
         total_cpu_emissions_gms:
           rte_total: |
-            sum_over_time(
-              sum by (uuid) (
-                label_replace(
-                  unit:ceems_compute_unit_cpu_energy_usage:sum{uuid=~"{{.UUIDs}}"} * {{.ScrapeIntervalMilli}} / 3.6e9,
-                  "common_label",
-                  "mock",
-                  "hostname",
-                  "(.*)"
-                )
-                * on (common_label) group_left ()
-                label_replace(
-                  ceems_emissions_gCo2_kWh{provider="rte",country_code="FR"},
-                  "common_label",
-                  "mock",
-                  "hostname",
-                  "(.*)"
-                )
-              )[{{.Range}}:{{.ScrapeInterval}}]
-            )
+            sum_over_time(sum by (uuid) (unit:ceems_compute_unit_cpu_emissions:sum{uuid=~"{{.UUIDs}}",provider="rte"} > 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 1e3
 
           emaps_total: |
-            sum_over_time(
-              sum by (uuid) (
-                label_replace(
-                  unit:ceems_compute_unit_cpu_energy_usage:sum{uuid=~"{{.UUIDs}}"} * {{.ScrapeIntervalMilli}} / 3.6e9,
-                  "common_label",
-                  "mock",
-                  "hostname",
-                  "(.*)"
-                )
-                * on (common_label) group_left ()
-                label_replace(
-                  ceems_emissions_gCo2_kWh{provider="emaps",country_code="FR"},
-                  "common_label",
-                  "mock",
-                  "hostname",
-                  "(.*)"
-                )
-              )[{{.Range}}:{{.ScrapeInterval}}]
-            )
-
+            sum_over_time(sum by (uuid) (unit:ceems_compute_unit_cpu_emissions:sum{uuid=~"{{.UUIDs}}",provider="emaps"} > 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 1e3
+            
           owid_total: |
-            sum_over_time(
-              sum by (uuid) (
-                label_replace(
-                  unit:ceems_compute_unit_cpu_energy_usage:sum{uuid=~"{{.UUIDs}}"} * {{.ScrapeIntervalMilli}} / 3.6e9,
-                  "common_label",
-                  "mock",
-                  "hostname",
-                  "(.*)"
-                )
-                * on (common_label) group_left ()
-                label_replace(
-                  ceems_emissions_gCo2_kWh{provider="owid",country_code="FR"},
-                  "common_label",
-                  "mock",
-                  "hostname",
-                  "(.*)"
-                )
-              )[{{.Range}}:{{.ScrapeInterval}}]
-            )
-
+            sum_over_time(sum by (uuid) (unit:ceems_compute_unit_cpu_emissions:sum{uuid=~"{{.UUIDs}}",provider="owid"} > 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 1e3
+            
         # Average GPU utilization
         avg_gpu_usage:
           global: |
-            avg_over_time(
-              avg by (uuid) (
-                DCGM_FI_DEV_GPU_UTIL
-                * on (gpuuuid) group_right ()
-                ceems_compute_unit_gpu_index_flag{uuid=~"{{.UUIDs}}"}
-              )[{{.Range}}:{{.ScrapeInterval}}]
-            )
-
+            avg_over_time(avg by (uuid) (unit:ceems_compute_unit_gpu_usage:ratio{uuid=~"{{.UUIDs}}"} > 0 < inf)[{{.Range}}:])
+            
         # Average GPU memory utilization
         avg_gpu_mem_usage:
           global: |
-            avg_over_time(
-              avg by (uuid) (
-                DCGM_FI_DEV_MEM_COPY_UTIL
-                * on (gpuuuid) group_right ()
-                ceems_compute_unit_gpu_index_flag{uuid=~"{{.UUIDs}}"}
-              )[{{.Range}}:{{.ScrapeInterval}}]
-            )
-
+            avg_over_time(avg by (uuid) (unit:ceems_compute_unit_gpu_memory_usage:ratio{uuid=~"{{.UUIDs}}"} > 0 < inf)[{{.Range}}:])
+            
         # Total GPU energy usage in kWh
         total_gpu_energy_usage_kwh:
           total: |
-            sum_over_time(
-              sum by (uuid) (
-                instance:DCGM_FI_DEV_POWER_USAGE:pue_avg * {{.ScrapeIntervalMilli}} / 3.6e9
-                * on (gpuuuid) group_right()
-                ceems_compute_unit_gpu_index_flag{uuid=~"{{.UUIDs}}"}
-              )[{{.Range}}:{{.ScrapeInterval}}]
-            )
-
+            sum_over_time(sum by (uuid) (unit:ceems_compute_unit_gpu_energy_usage:sum{uuid=~"{{.UUIDs}}"} > 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 3.6e9
+            
         # Total GPU emissions in gms
         total_gpu_emissions_gms:
           rte_total: |
-            sum_over_time(
-              sum by (uuid) (
-                label_replace(
-                  instance:DCGM_FI_DEV_POWER_USAGE:pue_avg * {{.ScrapeIntervalMilli}} / 3.6e+09
-                  * on (gpuuuid) group_right ()
-                  ceems_compute_unit_gpu_index_flag{uuid=~"{{.UUIDs}}"},
-                  "common_label",
-                  "mock",
-                  "instance",
-                  "(.*)"
-                )
-                * on (common_label) group_left ()
-                label_replace(
-                  ceems_emissions_gCo2_kWh{provider="rte",country_code="FR"},
-                  "common_label",
-                  "mock",
-                  "instance",
-                  "(.*)"
-                )
-              )[{{.Range}}:{{.ScrapeInterval}}]
-            )
-
+            sum_over_time(sum by (uuid) (unit:ceems_compute_unit_gpu_emissions:sum{uuid=~"{{.UUIDs}}",provider="rte"} > 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 1e3
+            
           emaps_total: |
-            sum_over_time(
-              sum by (uuid) (
-                label_replace(
-                  instance:DCGM_FI_DEV_POWER_USAGE:pue_avg * {{.ScrapeIntervalMilli}} / 3.6e+09
-                  * on (gpuuuid) group_right ()
-                  ceems_compute_unit_gpu_index_flag{uuid=~"{{.UUIDs}}"},
-                  "common_label",
-                  "mock",
-                  "instance",
-                  "(.*)"
-                )
-                * on (common_label) group_left ()
-                label_replace(
-                  ceems_emissions_gCo2_kWh{provider="emaps",country_code="FR"},
-                  "common_label",
-                  "mock",
-                  "instance",
-                  "(.*)"
-                )
-              )[{{.Range}}:{{.ScrapeInterval}}]
-            )
-
+            sum_over_time(sum by (uuid) (unit:ceems_compute_unit_gpu_emissions:sum{uuid=~"{{.UUIDs}}",provider="emaps"} > 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 1e3
+            
           owid_total: |
-            sum_over_time(
-              sum by (uuid) (
-                label_replace(
-                  instance:DCGM_FI_DEV_POWER_USAGE:pue_avg * {{.ScrapeIntervalMilli}} / 3.6e+09
-                  * on (gpuuuid) group_right ()
-                  ceems_compute_unit_gpu_index_flag{uuid=~"{{.UUIDs}}"},
-                  "common_label",
-                  "mock",
-                  "instance",
-                  "(.*)"
-                )
-                * on (common_label) group_left ()
-                label_replace(
-                  ceems_emissions_gCo2_kWh{provider="owid",country_code="FR"},
-                  "common_label",
-                  "mock",
-                  "instance",
-                  "(.*)"
-                )
-              )[{{.Range}}:{{.ScrapeInterval}}]
-            )
+            sum_over_time(sum by (uuid) (unit:ceems_compute_unit_gpu_emissions:sum{uuid=~"{{.UUIDs}}",provider="owid"} > 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 1e3         
 ```
 
 The above configuration assumes that GPU compute nodes possess NVIDIA GPUs and

@@ -4,3 +4,7 @@
 # Hashed with command: htpasswd -nBC 10 "" | tr -d ':\n'
 basic_auth_users:
   prometheus: $2y$10$GQUblMhmbhVOvwQ4wSL2C.MFA.wVlKrROdWT92a27GhfrjfHvSy96
+
+tls_server_config:
+  cert_file: localhost.crt
+  key_file: localhost.key

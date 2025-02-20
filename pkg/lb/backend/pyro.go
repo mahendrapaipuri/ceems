@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mahendrapaipuri/ceems/pkg/lb/base"
 	"github.com/prometheus/common/config"
 )
 
@@ -23,7 +22,7 @@ type pyroServer struct {
 }
 
 // NewPyroscope returns an instance of backend Pyroscope server.
-func NewPyroscope(c base.ServerConfig, logger *slog.Logger) (Server, error) {
+func NewPyroscope(c *ServerConfig, logger *slog.Logger) (Server, error) {
 	webURL, err := url.Parse(c.Web.URL)
 	if err != nil {
 		return nil, err
@@ -105,6 +104,10 @@ func (b *pyroServer) Serve(w http.ResponseWriter, r *http.Request) {
 		b.connections--
 		b.mux.Unlock()
 	}()
+
+	// Always strip Authorization header from request so that
+	// roundtripper can add one that is configured in the config
+	r.Header.Del("Authorization")
 
 	b.mux.Lock()
 	b.connections++

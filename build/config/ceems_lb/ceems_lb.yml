@@ -77,12 +77,12 @@ ceems_lb:
             #   # configured file. It is mutually exclusive with `credentials`.
             #   credentials_file: ''
 
-            #   # Optional OAuth 2.0 configuration.
-            #   # Cannot be used at the same time as basic_auth or authorization.
-            #   #
-            #   oauth2:
-            #     client_id: ''
-            #     client_secret: ''
+            # # Optional OAuth 2.0 configuration.
+            # # Cannot be used at the same time as basic_auth or authorization.
+            # #
+            # oauth2:
+            #   client_id: ''
+            #   client_secret: ''
             #     # Read the client secret from a file.
             #     # It is mutually exclusive with `client_secret`.
             #     client_secret_file: ''
@@ -105,63 +105,63 @@ ceems_lb:
             #     #
             #     enable_http2: true
 
-            #   # Configures the API request's TLS settings.
+            # # Configures the API request's TLS settings.
+            # #
+            # tls_config:
+            #   # CA certificate to validate API server certificate with. 
+            #   # At most one of ca and ca_file is allowed.
             #   #
-            #   tls_config:
-            #     # CA certificate to validate API server certificate with. 
-            #     # At most one of ca and ca_file is allowed.
-            #     #
-            #     ca: ''
-            #     ca_file: ''
+            #   ca: ''
+            #   ca_file: ''
 
-            #     # Certificate and key for client cert authentication to the server.
-            #     # At most one of cert and cert_file is allowed.
-            #     # At most one of key and key_file is allowed.
-            #     #
-            #     cert: ''
-            #     cert_file: ''
-            #     key: ''
-            #     key_file: ''
+            #   # Certificate and key for client cert authentication to the server.
+            #   # At most one of cert and cert_file is allowed.
+            #   # At most one of key and key_file is allowed.
+            #   #
+            #   cert: ''
+            #   cert_file: ''
+            #   key: ''
+            #   key_file: ''
 
-            #     # Disable validation of the server certificate.
-            #     #
-            #     insecure_skip_verify: false
+            #   # Disable validation of the server certificate.
+            #   #
+            #   insecure_skip_verify: false
 
-            #     # Minimum acceptable TLS version. Accepted values: TLS10 (TLS 1.0), TLS11 (TLS
-            #     # 1.1), TLS12 (TLS 1.2), TLS13 (TLS 1.3).
-            #     # If unset, Prometheus will use Go default minimum version, which is TLS 1.2.
-            #     # See MinVersion in https://pkg.go.dev/crypto/tls#Config.
-            #     #
-            #     min_version: ''
-            #     # Maximum acceptable TLS version. Accepted values: TLS10 (TLS 1.0), TLS11 (TLS
-            #     # 1.1), TLS12 (TLS 1.2), TLS13 (TLS 1.3).
-            #     # If unset, Prometheus will use Go default maximum version, which is TLS 1.3.
-            #     # See MaxVersion in https://pkg.go.dev/crypto/tls#Config.
-            #     #
-            #     max_version: ''
+            #   # Minimum acceptable TLS version. Accepted values: TLS10 (TLS 1.0), TLS11 (TLS
+            #   # 1.1), TLS12 (TLS 1.2), TLS13 (TLS 1.3).
+            #   # If unset, Prometheus will use Go default minimum version, which is TLS 1.2.
+            #   # See MinVersion in https://pkg.go.dev/crypto/tls#Config.
+            #   #
+            #   min_version: ''
+            #   # Maximum acceptable TLS version. Accepted values: TLS10 (TLS 1.0), TLS11 (TLS
+            #   # 1.1), TLS12 (TLS 1.2), TLS13 (TLS 1.3).
+            #   # If unset, Prometheus will use Go default maximum version, which is TLS 1.3.
+            #   # See MaxVersion in https://pkg.go.dev/crypto/tls#Config.
+            #   #
+            #   max_version: ''
 
-            #   # List of headers that will be passed in the API requests to the server.
-            #   # Authentication related headers may be configured in this section. Header name
-            #   # must be configured as key and header value supports three different types of 
-            #   # headers: values, secrets and files.
-            #   #
-            #   # The difference between values and secrets is that secret will be redacted
-            #   # in server logs where as values will be emitted in the logs.
-            #   #
-            #   # Values are regular headers with values, secrets are headers that pass secret
-            #   # information like tokens and files pass the file content in the headers.
-            #   #
-            #   # Example:
-            #   # http_headers:
-            #   #   one:
-            #   #     values: [value1a, value1b, value1c]
-            #   #   two:
-            #   #     values: [value2a]
-            #   #     secrets: [value2b, value2c]
-            #   #   three:
-            #   #     files: [testdata/headers-file-a, testdata/headers-file-b, testdata/headers-file-c]
-            #   #
-            #   http_headers: {}
+            # # List of headers that will be passed in the API requests to the server.
+            # # Authentication related headers may be configured in this section. Header name
+            # # must be configured as key and header value supports three different types of 
+            # # headers: values, secrets and files.
+            # #
+            # # The difference between values and secrets is that secret will be redacted
+            # # in server logs where as values will be emitted in the logs.
+            # #
+            # # Values are regular headers with values, secrets are headers that pass secret
+            # # information like tokens and files pass the file content in the headers.
+            # #
+            # # Example:
+            # # http_headers:
+            # #   one:
+            # #     values: [value1a, value1b, value1c]
+            # #   two:
+            # #     values: [value2a]
+            # #     secrets: [value2b, value2c]
+            # #   three:
+            # #     files: [testdata/headers-file-a, testdata/headers-file-b, testdata/headers-file-c]
+            # #
+            # http_headers: {}
 
           # A list of labels that must be filtered before proxying
           # response back to the client.
@@ -204,12 +204,12 @@ ceems_lb:
               #   # configured file. It is mutually exclusive with `credentials`.
               #   credentials_file: ''
 
-              #   # Optional OAuth 2.0 configuration.
-              #   # Cannot be used at the same time as basic_auth or authorization.
-              #   #
-              #   oauth2:
-              #     client_id: ''
-              #     client_secret: ''
+              # # Optional OAuth 2.0 configuration.
+              # # Cannot be used at the same time as basic_auth or authorization.
+              # #
+              # oauth2:
+              #   client_id: ''
+              #   client_secret: ''
               #     # Read the client secret from a file.
               #     # It is mutually exclusive with `client_secret`.
               #     client_secret_file: ''
@@ -232,63 +232,63 @@ ceems_lb:
               #     #
               #     enable_http2: true
 
-              #   # Configures the API request's TLS settings.
+              # # Configures the API request's TLS settings.
+              # #
+              # tls_config:
+              #   # CA certificate to validate API server certificate with. 
+              #   # At most one of ca and ca_file is allowed.
               #   #
-              #   tls_config:
-              #     # CA certificate to validate API server certificate with. 
-              #     # At most one of ca and ca_file is allowed.
-              #     #
-              #     ca: ''
-              #     ca_file: ''
+              #   ca: ''
+              #   ca_file: ''
 
-              #     # Certificate and key for client cert authentication to the server.
-              #     # At most one of cert and cert_file is allowed.
-              #     # At most one of key and key_file is allowed.
-              #     #
-              #     cert: ''
-              #     cert_file: ''
-              #     key: ''
-              #     key_file: ''
+              #   # Certificate and key for client cert authentication to the server.
+              #   # At most one of cert and cert_file is allowed.
+              #   # At most one of key and key_file is allowed.
+              #   #
+              #   cert: ''
+              #   cert_file: ''
+              #   key: ''
+              #   key_file: ''
 
-              #     # Disable validation of the server certificate.
-              #     #
-              #     insecure_skip_verify: false
+              #   # Disable validation of the server certificate.
+              #   #
+              #   insecure_skip_verify: false
 
-              #     # Minimum acceptable TLS version. Accepted values: TLS10 (TLS 1.0), TLS11 (TLS
-              #     # 1.1), TLS12 (TLS 1.2), TLS13 (TLS 1.3).
-              #     # If unset, Prometheus will use Go default minimum version, which is TLS 1.2.
-              #     # See MinVersion in https://pkg.go.dev/crypto/tls#Config.
-              #     #
-              #     min_version: ''
-              #     # Maximum acceptable TLS version. Accepted values: TLS10 (TLS 1.0), TLS11 (TLS
-              #     # 1.1), TLS12 (TLS 1.2), TLS13 (TLS 1.3).
-              #     # If unset, Prometheus will use Go default maximum version, which is TLS 1.3.
-              #     # See MaxVersion in https://pkg.go.dev/crypto/tls#Config.
-              #     #
-              #     max_version: ''
+              #   # Minimum acceptable TLS version. Accepted values: TLS10 (TLS 1.0), TLS11 (TLS
+              #   # 1.1), TLS12 (TLS 1.2), TLS13 (TLS 1.3).
+              #   # If unset, Prometheus will use Go default minimum version, which is TLS 1.2.
+              #   # See MinVersion in https://pkg.go.dev/crypto/tls#Config.
+              #   #
+              #   min_version: ''
+              #   # Maximum acceptable TLS version. Accepted values: TLS10 (TLS 1.0), TLS11 (TLS
+              #   # 1.1), TLS12 (TLS 1.2), TLS13 (TLS 1.3).
+              #   # If unset, Prometheus will use Go default maximum version, which is TLS 1.3.
+              #   # See MaxVersion in https://pkg.go.dev/crypto/tls#Config.
+              #   #
+              #   max_version: ''
 
-              #   # List of headers that will be passed in the API requests to the server.
-              #   # Authentication related headers may be configured in this section. Header name
-              #   # must be configured as key and header value supports three different types of 
-              #   # headers: values, secrets and files.
-              #   #
-              #   # The difference between values and secrets is that secret will be redacted
-              #   # in server logs where as values will be emitted in the logs.
-              #   #
-              #   # Values are regular headers with values, secrets are headers that pass secret
-              #   # information like tokens and files pass the file content in the headers.
-              #   #
-              #   # Example:
-              #   # http_headers:
-              #   #   one:
-              #   #     values: [value1a, value1b, value1c]
-              #   #   two:
-              #   #     values: [value2a]
-              #   #     secrets: [value2b, value2c]
-              #   #   three:
-              #   #     files: [testdata/headers-file-a, testdata/headers-file-b, testdata/headers-file-c]
-              #   #
-              #   http_headers: {}
+              # # List of headers that will be passed in the API requests to the server.
+              # # Authentication related headers may be configured in this section. Header name
+              # # must be configured as key and header value supports three different types of 
+              # # headers: values, secrets and files.
+              # #
+              # # The difference between values and secrets is that secret will be redacted
+              # # in server logs where as values will be emitted in the logs.
+              # #
+              # # Values are regular headers with values, secrets are headers that pass secret
+              # # information like tokens and files pass the file content in the headers.
+              # #
+              # # Example:
+              # # http_headers:
+              # #   one:
+              # #     values: [value1a, value1b, value1c]
+              # #   two:
+              # #     values: [value2a]
+              # #     secrets: [value2b, value2c]
+              # #   three:
+              # #     files: [testdata/headers-file-a, testdata/headers-file-b, testdata/headers-file-c]
+              # #
+              # http_headers: {}
 
             # Currently filter_labels is NOT SUPPORTED for Pyroscope backend
             #

@@ -22,7 +22,6 @@ import (
 	ceems_api_http "github.com/mahendrapaipuri/ceems/pkg/api/http"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/backend"
-	"github.com/mahendrapaipuri/ceems/pkg/lb/base"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/serverpool"
 	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
 	"github.com/stretchr/testify/assert"
@@ -109,13 +108,13 @@ func TestNewFrontend(t *testing.T) {
 	err := setupClusterIDsDB(tmpDir)
 	require.NoError(t, err, "failed to setup test DB")
 
-	clusterID := "default"
+	clusterID := "slurm-0"
 
 	// Backends
 	dummyServer1 := dummyTSDBServer(clusterID)
 	defer dummyServer1.Close()
 
-	backend1, err := backend.NewTSDB(base.ServerConfig{Web: models.WebConfig{URL: dummyServer1.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	backend1, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer1.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	// Start manager
@@ -140,7 +139,7 @@ func TestNewFrontend(t *testing.T) {
 
 	var errStart error
 	go func() {
-		errStart = lb.Start()
+		errStart = lb.Start(context.Background())
 	}()
 	require.NoError(t, errStart)
 
@@ -156,7 +155,7 @@ func TestNewFrontendSingleGroup(t *testing.T) {
 	dummyServer1 := dummyTSDBServer(clusterID)
 	defer dummyServer1.Close()
 
-	backend1, err := backend.NewTSDB(base.ServerConfig{Web: models.WebConfig{URL: dummyServer1.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	backend1, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer1.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	// Start manager
@@ -250,14 +249,14 @@ func TestNewFrontendTwoGroups(t *testing.T) {
 	dummyServer1 := dummyTSDBServer("rm-0")
 	defer dummyServer1.Close()
 
-	backend1, err := backend.NewTSDB(base.ServerConfig{Web: models.WebConfig{URL: dummyServer1.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	backend1, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer1.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	// Backends for group 2
 	dummyServer2 := dummyTSDBServer("rm-1")
 	defer dummyServer2.Close()
 
-	backend2, err := backend.NewTSDB(base.ServerConfig{Web: models.WebConfig{URL: dummyServer2.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	backend2, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer2.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	// Start manager
@@ -277,9 +276,6 @@ func TestNewFrontendTwoGroups(t *testing.T) {
 	// New load balancer
 	lb, err := New(config)
 	require.NoError(t, err)
-
-	// Validate cluster IDs
-	require.NoError(t, lb.ValidateClusterIDs(context.Background()))
 
 	tests := []struct {
 		name      string
@@ -370,7 +366,7 @@ func TestValidateClusterIDsWithDBPass(t *testing.T) {
 	dummyServer := dummyTSDBServer("slurm-0")
 	defer dummyServer.Close()
 
-	backend, err := backend.NewTSDB(base.ServerConfig{Web: models.WebConfig{URL: dummyServer.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	backend, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	// Start manager
@@ -389,11 +385,8 @@ func TestValidateClusterIDsWithDBPass(t *testing.T) {
 	config.APIServer.Data.Path = tmpDir
 
 	// New load balancer
-	lb, err := New(config)
+	_, err = New(config)
 	require.NoError(t, err)
-
-	// Validate cluster IDs
-	require.NoError(t, lb.ValidateClusterIDs(context.Background()))
 }
 
 func TestValidateClusterIDsWithDBFail(t *testing.T) {
@@ -405,7 +398,7 @@ func TestValidateClusterIDsWithDBFail(t *testing.T) {
 	dummyServer := dummyTSDBServer("slurm-0")
 	defer dummyServer.Close()
 
-	backend, err := backend.NewTSDB(base.ServerConfig{Web: models.WebConfig{URL: dummyServer.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	backend, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	// Start manager
@@ -424,11 +417,8 @@ func TestValidateClusterIDsWithDBFail(t *testing.T) {
 	config.APIServer.Data.Path = tmpDir
 
 	// New load balancer
-	lb, err := New(config)
-	require.NoError(t, err)
-
-	// Validate cluster IDs
-	require.Error(t, lb.ValidateClusterIDs(context.Background()))
+	_, err = New(config)
+	require.Error(t, err)
 }
 
 func TestValidateClusterIDsWithAPIPass(t *testing.T) {
@@ -456,7 +446,7 @@ func TestValidateClusterIDsWithAPIPass(t *testing.T) {
 	dummyServer := dummyTSDBServer("slurm-0")
 	defer dummyServer.Close()
 
-	backend, err := backend.NewTSDB(base.ServerConfig{Web: models.WebConfig{URL: dummyServer.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	backend, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	// Start manager
@@ -475,11 +465,8 @@ func TestValidateClusterIDsWithAPIPass(t *testing.T) {
 	config.APIServer.Web.URL = ceemsServer.URL
 
 	// New load balancer
-	lb, err := New(config)
+	_, err = New(config)
 	require.NoError(t, err)
-
-	// Validate cluster IDs
-	require.NoError(t, lb.ValidateClusterIDs(context.Background()))
 }
 
 func TestValidateClusterIDsWithAPIFail(t *testing.T) {
@@ -499,7 +486,7 @@ func TestValidateClusterIDsWithAPIFail(t *testing.T) {
 	dummyServer := dummyTSDBServer("slurm-0")
 	defer dummyServer.Close()
 
-	backend, err := backend.NewTSDB(base.ServerConfig{Web: models.WebConfig{URL: dummyServer.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	backend, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	// Start manager
@@ -518,9 +505,6 @@ func TestValidateClusterIDsWithAPIFail(t *testing.T) {
 	config.APIServer.Web.URL = ceemsServer.URL
 
 	// New load balancer
-	lb, err := New(config)
-	require.NoError(t, err)
-
-	// Validate cluster IDs
-	require.Error(t, lb.ValidateClusterIDs(context.Background()))
+	_, err = New(config)
+	require.Error(t, err)
 }

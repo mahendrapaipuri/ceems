@@ -721,7 +721,7 @@ then
     get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/users/admin" > "${fixture_output}"
   elif [ "${scenario}" = "api-cluster-admin-query" ]
   then
-    get -H "X-Ceems-User: usr1" "127.0.0.1:${port}/api/${api_version}/clusters/admin" > "${fixture_output}"
+    get -H "X-Grafana-User: __ceems_srv_user" "127.0.0.1:${port}/api/${api_version}/clusters/admin" > "${fixture_output}"
   elif [ "${scenario}" = "api-uuid-query" ]
   then
     get -H "X-Grafana-User: usr2" "127.0.0.1:${port}/api/${api_version}/units?uuid=1481508&project=acc2&cluster_id=slurm-0" > "${fixture_output}"
@@ -834,7 +834,7 @@ then
 
     waitport "${port}"
 
-    get -H "X-Grafana-User: usr1" -H "X-Ceems-Cluster-Id: slurm-0" "127.0.0.1:${port}/api/v1/status/config" > "${fixture_output}"
+    get -H "X-Grafana-User: grafana" -H "X-Ceems-Cluster-Id: slurm-0" "127.0.0.1:${port}/api/v1/status/config" > "${fixture_output}"
 
   elif [[ "${scenario}" = "lb-basic-pyro-only" ]] 
   then
@@ -1044,6 +1044,7 @@ then
 
     ./bin/ceems_lb \
       --config.file pkg/lb/testdata/config-with-auth.yml \
+      --web.config.file pkg/lb/testdata/web-config-ceems.yml \
       --web.listen-address="127.0.0.1:${port}" \
       --log.level="debug" >> "${logfile}" 2>&1 &
     LB_PID=$!
@@ -1052,7 +1053,7 @@ then
 
     waitport "${port}"
 
-    get -H "X-Grafana-User: usr1" -H "X-Ceems-Cluster-Id: slurm-0" "127.0.0.1:${port}/api/v1/query?query=avg_cpu_usage\{uuid=\"1479763\"\}&time=1645450627" > "${fixture_output}"
+    get -H "X-Grafana-User: usr1" -H "X-Ceems-Cluster-Id: slurm-0" "http://ceems:password@127.0.0.1:${port}/api/v1/query?query=avg_cpu_usage\{uuid=\"1479763\"\}&time=1645450627" > "${fixture_output}"
   fi
 elif [[ "${scenario}" =~ ^"redfish" ]]
 then

@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mahendrapaipuri/ceems/pkg/lb/base"
 	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
 	"github.com/prometheus/common/config"
 )
@@ -31,7 +30,7 @@ type tsdbServer struct {
 }
 
 // NewTSDB returns an instance of backend TSDB server.
-func NewTSDB(c base.ServerConfig, logger *slog.Logger) (Server, error) {
+func NewTSDB(c *ServerConfig, logger *slog.Logger) (Server, error) {
 	webURL, err := url.Parse(c.Web.URL)
 	if err != nil {
 		return nil, err
@@ -153,6 +152,10 @@ func (b *tsdbServer) Serve(w http.ResponseWriter, r *http.Request) {
 		b.mux.Unlock()
 	}()
 
+	// Always strip Authorization header from request so that
+	// roundtripper can add one that is configured in the config
+	r.Header.Del("Authorization")
+
 	b.mux.Lock()
 	b.connections++
 	b.mux.Unlock()
@@ -164,6 +167,12 @@ func (b *tsdbServer) fetchRetentionPeriod() (time.Duration, error) {
 	// Create a context with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
+
+	// // Only used in e2e and unit tests
+	// // Return a long enough retention period
+	// if os.Getenv("__CEEMS_CI_TEST_RETENTION_PERIOD") != "" {
+	// 	return 10 * 365 * 24 * time.Hour, nil
+	// }
 
 	var period time.Duration
 

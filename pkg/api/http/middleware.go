@@ -20,7 +20,6 @@ const (
 	dashboardUserHeader = "X-Dashboard-User"
 	loggedUserHeader    = "X-Logged-User"
 	adminUserHeader     = "X-Admin-User"
-	ceemsUserHeader     = "X-Ceems-User" // Special header that will be included in requests from CEEMS LB
 )
 
 // Debug end point regex match.
@@ -34,7 +33,7 @@ type authenticationMiddleware struct {
 	routerPrefix    string
 	whitelistedURLs *regexp.Regexp
 	db              *sql.DB
-	adminUsers      func(context.Context, *sql.DB, *slog.Logger) []string
+	adminUsers      func(context.Context, *sql.DB) ([]string, error)
 }
 
 // Middleware function, which will be called for each request.
@@ -45,6 +44,8 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 		var admUsers []string
 
 		var q url.Values
+
+		var err error
 
 		// If requested URI is one of the following, skip checking for user header
 		//  - /
@@ -60,12 +61,6 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 			r.URL.Path == amw.routerPrefix ||
 			amw.whitelistedURLs.MatchString(r.URL.Path) ||
 			debugEndpoints.MatchString(r.URL.Path) {
-			goto end
-		}
-
-		// If request has "special" CEEMS header, pass through. It must be
-		// coming from other CEEMS components
-		if _, ok := r.Header[ceemsUserHeader]; ok {
 			goto end
 		}
 
@@ -95,7 +90,10 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 		r.URL.RawQuery = q.Encode()
 
 		// Fetch admin users from DB
-		admUsers = amw.adminUsers(r.Context(), amw.db, amw.logger)
+		admUsers, err = amw.adminUsers(r.Context(), amw.db)
+		if err != nil {
+			amw.logger.Error("Failed to fetch admin users", "loggedUser", loggedUser, "url", r.URL, "err", err)
+		}
 
 		// If current user is in list of admin users, get "actual" user from
 		// X-Dashboard-User header. For normal users, this header will be exactly same

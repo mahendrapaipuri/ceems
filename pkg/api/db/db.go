@@ -125,6 +125,10 @@ func (c *AdminConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return err
 	}
 
+	// Add a CEEM service account to list of admin users. This user will be
+	// used in the internal communications between CEEMS components
+	c.Users = append(c.Users, base.CEEMSServiceAccount)
+
 	return nil
 }
 

@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
-	"github.com/mahendrapaipuri/ceems/pkg/lb/base"
 	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
 	"github.com/prometheus/common/config"
 	"github.com/stretchr/testify/assert"
@@ -82,7 +81,7 @@ func TestTSDBConfigSuccess(t *testing.T) {
 	server := testTSDBServer("30d", false, false)
 	// defer server.Close()
 
-	b, err := NewTSDB(base.ServerConfig{Web: models.WebConfig{URL: server.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	b, err := NewTSDB(&ServerConfig{Web: &models.WebConfig{URL: server.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	assert.Equal(t, server.URL, b.URL().String())
@@ -101,7 +100,7 @@ func TestTSDBConfigSuccessWithTwoRetentions(t *testing.T) {
 	server := testTSDBServer("30d or 10GiB", false, false)
 	defer server.Close()
 
-	b, err := NewTSDB(base.ServerConfig{Web: models.WebConfig{URL: server.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	b, err := NewTSDB(&ServerConfig{Web: &models.WebConfig{URL: server.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	assert.Equal(t, server.URL, b.URL().String())
@@ -114,7 +113,7 @@ func TestTSDBConfigSuccessWithRetentionSize(t *testing.T) {
 	server := testTSDBServer("10GiB", false, false)
 	defer server.Close()
 
-	b, err := NewTSDB(base.ServerConfig{Web: models.WebConfig{URL: server.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	b, err := NewTSDB(&ServerConfig{Web: &models.WebConfig{URL: server.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	assert.Equal(t, server.URL, b.URL().String())
@@ -127,7 +126,7 @@ func TestTSDBConfigFail(t *testing.T) {
 	server := testTSDBServer("10GiB", true, false)
 	defer server.Close()
 
-	b, err := NewTSDB(base.ServerConfig{Web: models.WebConfig{URL: server.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	b, err := NewTSDB(&ServerConfig{Web: &models.WebConfig{URL: server.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
 	assert.Equal(t, server.URL, b.URL().String())
@@ -140,8 +139,8 @@ func TestTSDBBackendWithBasicAuth(t *testing.T) {
 	server := testTSDBServer("30d", false, true)
 	defer server.Close()
 
-	c := base.ServerConfig{
-		Web: models.WebConfig{
+	c := &ServerConfig{
+		Web: &models.WebConfig{
 			URL: server.URL,
 			HTTPClientConfig: config.HTTPClientConfig{
 				BasicAuth: &config.BasicAuth{
@@ -164,7 +163,7 @@ func TestTSDBQueryWithLabelFilter(t *testing.T) {
 	defer server.Close()
 
 	b, err := NewTSDB(
-		base.ServerConfig{Web: models.WebConfig{URL: server.URL}, FilterLabels: []string{"instance"}},
+		&ServerConfig{Web: &models.WebConfig{URL: server.URL}, FilterLabels: []string{"instance"}},
 		slog.New(slog.NewTextHandler(io.Discard, nil)),
 	)
 	require.NoError(t, err)
@@ -187,7 +186,7 @@ func TestTSDBQueryWithLabelFilter(t *testing.T) {
 }
 
 func TestTSDBBackendAlive(t *testing.T) {
-	c := base.ServerConfig{Web: models.WebConfig{URL: "http://localhost:9090"}}
+	c := &ServerConfig{Web: &models.WebConfig{URL: "http://localhost:9090"}}
 	b, err := NewTSDB(c, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 

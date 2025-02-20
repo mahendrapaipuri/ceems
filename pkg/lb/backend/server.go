@@ -8,7 +8,7 @@ import (
 )
 
 // New returns a backend server of type `t`.
-func New(t base.LBType, c base.ServerConfig, logger *slog.Logger) (Server, error) {
+func New(t base.LBType, c *ServerConfig, logger *slog.Logger) (Server, error) {
 	switch t {
 	case base.PromLB:
 		return NewTSDB(c, logger)

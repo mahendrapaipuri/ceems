@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
-	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
@@ -44,9 +43,6 @@ var (
 	ErrMissingIDs  = errors.New("missing ID for backend(s)")
 	ErrMissingURLs = errors.New("missing TSDB and Pyroscope URL(s) for backend(s)")
 )
-
-// RetryContextKey is the key used to set context value for retry.
-type RetryContextKey struct{}
 
 // CEEMSLBAppConfig contains the configuration of CEEMS load balancer app.
 type CEEMSLBAppConfig struct {
@@ -131,8 +127,8 @@ func (c *CEEMSLBAppConfig) UnmarshalYAML(unmarshal func(interface{}) error) erro
 
 // CEEMSLBConfig contains the CEEMS load balancer config.
 type CEEMSLBConfig struct {
-	Backends []base.Backend `yaml:"backends"`
-	Strategy string         `yaml:"strategy"`
+	Backends []lb_backend.Backend `yaml:"backends"`
+	Strategy string               `yaml:"strategy"`
 }
 
 // CEEMSLoadBalancer represents the `ceems_lb` cli.
@@ -283,6 +279,23 @@ func (lb *CEEMSLoadBalancer) Main() error {
 			return err
 		}
 
+		// Add backend servers to serverPool
+		for _, backend := range config.LB.Backends {
+			for _, serverCfg := range backendURLs(lbType, backend) {
+				// Set directory for reading files
+				serverCfg.Web.SetDirectory(filepath.Dir(webConfigFilePath))
+
+				backendServer, err := lb_backend.New(lbType, serverCfg, logger.With("backend_type", lbType))
+				if err != nil {
+					logger.Error("Could not set up backend server", "backend_type", lbType, "err", errors.Unwrap(err))
+
+					continue
+				}
+
+				managers[lbType].Add(backend.ID, backendServer)
+			}
+		}
+
 		// Create frontend config for load balancer
 		frontendConfig := &frontend.Config{
 			Logger:           logger.With("backend_type", lbType),
@@ -298,29 +311,6 @@ func (lb *CEEMSLoadBalancer) Main() error {
 		lbs[lbType], err = frontend.New(frontendConfig)
 		if err != nil {
 			logger.Error("Failed to create load balancer frontend", "backend_type", lbType, "err", err)
-
-			return err
-		}
-
-		// Add backend servers to serverPool
-		for _, backend := range config.LB.Backends {
-			for _, serverCfg := range backendURLs(lbType, backend) {
-				backendServer, err := lb_backend.New(lbType, serverCfg, logger.With("backend_type", lbType))
-				if err != nil {
-					logger.Error("Could not set up backend server", "backend_type", lbType, "err", errors.Unwrap(err))
-
-					continue
-				}
-
-				backendServer.ReverseProxy().ErrorHandler = errorHandler(backendServer, lbs[lbType], logger.With("backend_type", lbType))
-
-				managers[lbType].Add(backend.ID, backendServer)
-			}
-		}
-
-		// Validate configured cluster IDs against the ones in CEEMS DB
-		if err := lbs[lbType].ValidateClusterIDs(ctx); err != nil {
-			logger.Error("Failed to validate cluster IDs", "backend_type", lbType, "err", errors.Unwrap(err))
 
 			return err
 		}
@@ -341,7 +331,7 @@ func (lb *CEEMSLoadBalancer) Main() error {
 		// Initializing the server in a goroutine so that
 		// it won't block the graceful shutdown handling below
 		go func() {
-			if err := lbs[lbType].Start(); err != nil {
+			if err := lbs[lbType].Start(ctx); err != nil {
 				logger.Error("Failed to start load balancer", "backend_type", lbType, "err", err)
 			}
 		}()
@@ -391,7 +381,7 @@ func backendTypes(config *CEEMSLBAppConfig) []base.LBType {
 }
 
 // backendURLs returns slice of backend URLs based on backend type `t`.
-func backendURLs(t base.LBType, backend base.Backend) []base.ServerConfig {
+func backendURLs(t base.LBType, backend lb_backend.Backend) []*lb_backend.ServerConfig {
 	switch t {
 	case base.PromLB:
 		return backend.TSDBs
@@ -400,40 +390,6 @@ func backendURLs(t base.LBType, backend base.Backend) []base.ServerConfig {
 	}
 
 	return nil
-}
-
-// allowRetry checks if a failed request can be retried.
-func allowRetry(r *http.Request) bool {
-	if _, ok := r.Context().Value(RetryContextKey{}).(bool); ok {
-		return false
-	}
-
-	return true
-}
-
-// errorHandler returns a custom error handler for reverse proxy.
-func errorHandler(backendServer lb_backend.Server, lb frontend.LoadBalancer, logger *slog.Logger) func(http.ResponseWriter, *http.Request, error) {
-	return func(writer http.ResponseWriter, request *http.Request, err error) {
-		logger.Error("Failed to handle the request", "host", backendServer.URL().Host, "err", err)
-		backendServer.SetAlive(false)
-
-		// If already retried the request, return error
-		if !allowRetry(request) {
-			logger.Info("Max retry attempts reached, terminating", "address", request.RemoteAddr, "path", request.URL.Path)
-			http.Error(writer, "Service not available", http.StatusServiceUnavailable)
-
-			return
-		}
-
-		// Retry request and set context value so that we dont retry for second time
-		logger.Info("Attempting retry", "address", request.RemoteAddr, "path", request.URL.Path)
-		lb.Serve(
-			writer,
-			request.WithContext(
-				context.WithValue(request.Context(), RetryContextKey{}, true),
-			),
-		)
-	}
 }
 
 // monitor checks the backend servers health.

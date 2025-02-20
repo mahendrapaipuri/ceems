@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"database/sql"
+	"io"
 	"log/slog"
 	"slices"
 	"strconv"
@@ -16,44 +17,42 @@ const (
 	startTimeTol = 3600000 // 1 hour in milliseconds
 )
 
-// adminUsers returns a slice of admin users fetched from DB.
-func adminUsers(ctx context.Context, dbConn *sql.DB, logger *slog.Logger) []string {
+// Null logger for adminUsers function. We dont need to log
+// admin users query for each request.
+var (
+	nullLogger = slog.New(slog.NewTextHandler(io.Discard, nil))
+)
+
+// AdminUsers returns a slice of admin users fetched from DB.
+// Errors must always be checked to ensure no row scanning has failed.
+func AdminUsers(ctx context.Context, dbConn *sql.DB) ([]models.AdminUsers, error) {
+	// Initialise query
+	q := Query{}
+	q.query("SELECT * FROM " + base.AdminUsersDBTableName)
+
+	return Querier[models.AdminUsers](ctx, dbConn, q, nullLogger)
+}
+
+// AdminUserNames returns a slice of admin users names.
+func AdminUserNames(ctx context.Context, dbConn *sql.DB) ([]string, error) {
 	var users []string
 
-	//nolint:gosec
-	rows, err := dbConn.QueryContext(
-		ctx, "SELECT users FROM "+base.AdminUsersDBTableName,
-	)
+	// Fetch users
+	admins, err := AdminUsers(ctx, dbConn)
 	if err != nil {
-		logger.Error("Failed to query for admin users", "err", err)
-
-		return nil
+		return nil, err
 	}
-	defer rows.Close()
 
-	// Scan users rows
-	var usersList models.List
-	for rows.Next() {
-		if err := rows.Scan(&usersList); err != nil {
-			logger.Error("Failed to scan row for admin users query", "err", err)
-
-			continue
-		}
-
-		for _, user := range usersList {
+	// Get all admin users
+	for _, admin := range admins {
+		for _, user := range admin.Users {
 			if userString, ok := user.(string); ok {
 				users = append(users, userString)
 			}
 		}
 	}
 
-	// Ref: http://go-database-sql.org/errors.html
-	// Get all the errors during iteration
-	if err := rows.Err(); err != nil {
-		logger.Error("Errors during scanning rows", "err", err)
-	}
-
-	return users
+	return users, nil
 }
 
 // VerifyOwnership returns true if user is the owner of queried units.
@@ -71,11 +70,6 @@ func VerifyOwnership(
 	if db == nil {
 		logger.Warn("DB connection is empty. Skipping UUID verification")
 
-		return true
-	}
-
-	// If current user is in list of admin users, pass the check
-	if slices.Contains(adminUsers(ctx, db, logger), user) {
 		return true
 	}
 

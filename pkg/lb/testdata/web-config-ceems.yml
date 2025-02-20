@@ -1,0 +1,6 @@
+---
+
+# Password is password
+# Hashed with command: htpasswd -nBC 10 "" | tr -d ':\n'
+basic_auth_users:
+  ceems: $2y$10$GQUblMhmbhVOvwQ4wSL2C.MFA.wVlKrROdWT92a27GhfrjfHvSy96

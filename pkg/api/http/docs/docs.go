@@ -18,7 +18,11 @@ const docTemplate = `{
             "name": "GPL-3.0 license",
             "url": "https://www.gnu.org/licenses/gpl-3.0.en.html"
         },
-        "version": "{{.Version}}"
+        "version": "{{.Version}}",
+        "x-logo": {
+            "altText": "CEEMS logo",
+            "url": "https://github.com/mahendrapaipuri/ceems/blob/main/website/static/img/logo.png"
+        }
     },
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
@@ -600,7 +604,7 @@ const docTemplate = `{
                         "BasicAuth": []
                     }
                 ],
-                "description": "This endpoint will check if the current user is the owner of the\nqueried UUIDs. The current user is always identified by the header ` + "`" + `X-Grafana-User` + "`" + ` in\nthe request.\n\nA response of 200 means that the current user is the owner of the queried UUIDs.\nAny other response code should be treated as the current user not being the owner\nof the queried units.\n\nThe ownership check passes if any of the following conditions are ` + "`" + `true` + "`" + `:\n- If the current user is the _direct_ owner of the compute unit.\n- If the current user belongs to the same account/project/namespace as\nthe compute unit. This means the users belonging to the same project can\naccess each others compute units.\n\nThe above checks must pass for **all** the queried units.\nIf the check does not pass for at least one queried unit, a response 403 will be\nreturned.\n\nAny 500 response codes should be treated as failed check as well.",
+                "description": "This endpoint will check if the current user is the owner of the\nqueried UUIDs. The current user is always identified by the header ` + "`" + `X-Grafana-User` + "`" + ` in\nthe request.\n\nA response of 200 means that the current user is the owner of the queried UUIDs.\nAny other response code should be treated as the current user not being the owner\nof the queried units.\n\nThe ownership check passes if any of the following conditions are ` + "`" + `true` + "`" + `:\n- If the current user is the _direct_ owner of the compute unit.\n- If the current user belongs to the same account/project/namespace as\nthe compute unit. This means the users belonging to the same project can\naccess each others compute units.\n- If the current user has admin role\n\nThe above checks must pass for **all** the queried units.\nIf the check does not pass for at least one queried unit, a response 403 will be\nreturned.\n\nAny 500 response codes should be treated as failed check as well.",
                 "produces": [
                     "application/json"
                 ],
@@ -952,7 +956,7 @@ const docTemplate = `{
                         "BasicAuth": []
                     }
                 ],
-                "description": "This endpoint will show details of the queried user(s). The\ncurrent user is always identified by the header ` + "`" + `X-Grafana-User` + "`" + ` in\nthe request.\n\nThe user who is making the request must be in the list of admin users\nconfigured for the server.\n\nWhen the query parameter ` + "`" + `user` + "`" + ` is empty, all users will be returned\nin the response.\n\nThe details include list of projects that user is currently a part of.\n",
+                "description": "This endpoint will show details of the queried user(s). The\ncurrent user is always identified by the header ` + "`" + `X-Grafana-User` + "`" + ` in\nthe request.\n\nThe user who is making the request must be in the list of admin users\nconfigured for the server.\n\nWhen the query parameter ` + "`" + `user` + "`" + ` is empty, all users will be returned\nin the response.\n\nThe details include list of projects that user is currently a part of.\n\nWhen query parameter ` + "`" + `role` + "`" + ` is set to ` + "`" + `admin` + "`" + `, only admin users will\nwill be returned\n",
                 "produces": [
                     "application/json"
                 ],
@@ -987,6 +991,12 @@ const docTemplate = `{
                         "description": "Cluster ID",
                         "name": "cluster_id",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "User role",
+                        "name": "role",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -1018,13 +1028,23 @@ const docTemplate = `{
             "properties": {
                 "data": {
                     "type": "array",
-                    "items": {}
+                    "items": {},
+                    "x-nullable": true,
+                    "x-omitempty": true
                 },
                 "error": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true,
+                    "x-omitempty": true
                 },
                 "errorType": {
-                    "$ref": "#/definitions/http.errorType"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/http.errorType"
+                        }
+                    ],
+                    "x-nullable": true,
+                    "x-omitempty": true
                 },
                 "status": {
                     "type": "string"
@@ -1033,7 +1053,9 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
+                    },
+                    "x-nullable": true,
+                    "x-omitempty": true
                 }
             }
         },
@@ -1044,13 +1066,23 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/models.Cluster"
-                    }
+                    },
+                    "x-nullable": true,
+                    "x-omitempty": true
                 },
                 "error": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true,
+                    "x-omitempty": true
                 },
                 "errorType": {
-                    "$ref": "#/definitions/http.errorType"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/http.errorType"
+                        }
+                    ],
+                    "x-nullable": true,
+                    "x-omitempty": true
                 },
                 "status": {
                     "type": "string"
@@ -1059,7 +1091,9 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
+                    },
+                    "x-nullable": true,
+                    "x-omitempty": true
                 }
             }
         },
@@ -1070,13 +1104,23 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/models.Project"
-                    }
+                    },
+                    "x-nullable": true,
+                    "x-omitempty": true
                 },
                 "error": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true,
+                    "x-omitempty": true
                 },
                 "errorType": {
-                    "$ref": "#/definitions/http.errorType"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/http.errorType"
+                        }
+                    ],
+                    "x-nullable": true,
+                    "x-omitempty": true
                 },
                 "status": {
                     "type": "string"
@@ -1085,7 +1129,9 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
+                    },
+                    "x-nullable": true,
+                    "x-omitempty": true
                 }
             }
         },
@@ -1096,13 +1142,23 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/models.Stat"
-                    }
+                    },
+                    "x-nullable": true,
+                    "x-omitempty": true
                 },
                 "error": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true,
+                    "x-omitempty": true
                 },
                 "errorType": {
-                    "$ref": "#/definitions/http.errorType"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/http.errorType"
+                        }
+                    ],
+                    "x-nullable": true,
+                    "x-omitempty": true
                 },
                 "status": {
                     "type": "string"
@@ -1111,7 +1167,9 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
+                    },
+                    "x-nullable": true,
+                    "x-omitempty": true
                 }
             }
         },
@@ -1122,13 +1180,23 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/models.Unit"
-                    }
+                    },
+                    "x-nullable": true,
+                    "x-omitempty": true
                 },
                 "error": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true,
+                    "x-omitempty": true
                 },
                 "errorType": {
-                    "$ref": "#/definitions/http.errorType"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/http.errorType"
+                        }
+                    ],
+                    "x-nullable": true,
+                    "x-omitempty": true
                 },
                 "status": {
                     "type": "string"
@@ -1137,7 +1205,9 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
+                    },
+                    "x-nullable": true,
+                    "x-omitempty": true
                 }
             }
         },
@@ -1148,13 +1218,23 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/models.Usage"
-                    }
+                    },
+                    "x-nullable": true,
+                    "x-omitempty": true
                 },
                 "error": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true,
+                    "x-omitempty": true
                 },
                 "errorType": {
-                    "$ref": "#/definitions/http.errorType"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/http.errorType"
+                        }
+                    ],
+                    "x-nullable": true,
+                    "x-omitempty": true
                 },
                 "status": {
                     "type": "string"
@@ -1163,7 +1243,9 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
+                    },
+                    "x-nullable": true,
+                    "x-omitempty": true
                 }
             }
         },
@@ -1174,13 +1256,23 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/models.User"
-                    }
+                    },
+                    "x-nullable": true,
+                    "x-omitempty": true
                 },
                 "error": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true,
+                    "x-omitempty": true
                 },
                 "errorType": {
-                    "$ref": "#/definitions/http.errorType"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/http.errorType"
+                        }
+                    ],
+                    "x-nullable": true,
+                    "x-omitempty": true
                 },
                 "status": {
                     "type": "string"
@@ -1189,7 +1281,9 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
+                    },
+                    "x-nullable": true,
+                    "x-omitempty": true
                 }
             }
         },
@@ -1222,10 +1316,6 @@ const docTemplate = `{
                 "errorNotAcceptable"
             ]
         },
-        "models.Allocation": {
-            "type": "object",
-            "additionalProperties": true
-        },
         "models.Cluster": {
             "type": "object",
             "properties": {
@@ -1235,12 +1325,6 @@ const docTemplate = `{
                 "manager": {
                     "type": "string"
                 }
-            }
-        },
-        "models.MetricMap": {
-            "type": "object",
-            "additionalProperties": {
-                "type": "number"
             }
         },
         "models.Project": {
@@ -1261,7 +1345,13 @@ const docTemplate = `{
                 "tags": {
                     "description": "List of meta data tags of the project",
                     "type": "array",
-                    "items": {}
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "tag1",
+                        "tag2"
+                    ]
                 },
                 "uid": {
                     "description": "Unique identifier of the project provided by cluster",
@@ -1270,7 +1360,13 @@ const docTemplate = `{
                 "users": {
                     "description": "List of users of the project",
                     "type": "array",
-                    "items": {}
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "usr1",
+                        "usr2"
+                    ]
                 }
             }
         },
@@ -1307,52 +1403,60 @@ const docTemplate = `{
                 }
             }
         },
-        "models.Tag": {
-            "type": "object",
-            "additionalProperties": true
-        },
         "models.Unit": {
             "type": "object",
             "properties": {
                 "allocation": {
                     "description": "Allocation map of unit. Only string and int64 values are supported in map",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.Allocation"
-                        }
-                    ]
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number"
+                    },
+                    "example": {
+                        "cpus": 1,
+                        "gpus": 1,
+                        "mem": 10
+                    }
                 },
                 "avg_cpu_mem_usage": {
                     "description": "Average CPU memory usage(s) during lifetime of unit",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.MetricMap"
-                        }
-                    ]
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number"
+                    },
+                    "example": {
+                        "global": 45.26
+                    }
                 },
                 "avg_cpu_usage": {
                     "description": "Average CPU usage(s) during lifetime of unit",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.MetricMap"
-                        }
-                    ]
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number"
+                    },
+                    "example": {
+                        "global": 70.12
+                    }
                 },
                 "avg_gpu_mem_usage": {
                     "description": "Average GPU memory usage(s) during lifetime of unit",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.MetricMap"
-                        }
-                    ]
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number"
+                    },
+                    "example": {
+                        "global": 45.26
+                    }
                 },
                 "avg_gpu_usage": {
                     "description": "Average GPU usage(s) during lifetime of unit",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.MetricMap"
-                        }
-                    ]
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number"
+                    },
+                    "example": {
+                        "global": 70.12
+                    }
                 },
                 "cluster_id": {
                     "description": "Identifier of the resource manager that owns compute unit. It is used to differentiate multiple clusters of same resource manager.",
@@ -1408,83 +1512,111 @@ const docTemplate = `{
                 },
                 "tags": {
                     "description": "A map to store generic info. String and int64 are valid value types of map",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.Tag"
-                        }
-                    ]
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "example": {
+                        "gid": "1000",
+                        "uid": "1000",
+                        "workdir": "/home/user"
+                    }
                 },
                 "total_cpu_emissions_gms": {
                     "description": "Total CPU emissions from source(s) in grams during lifetime of unit",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.MetricMap"
-                        }
-                    ]
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number"
+                    },
+                    "example": {
+                        "emaps_total": 3.09,
+                        "owid_total": 5.22
+                    }
                 },
                 "total_cpu_energy_usage_kwh": {
                     "description": "Total CPU energy usage(s) in kWh during lifetime of unit",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.MetricMap"
-                        }
-                    ]
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number"
+                    },
+                    "example": {
+                        "total": 0.73
+                    }
                 },
                 "total_gpu_emissions_gms": {
                     "description": "Total GPU emissions from source(s) in grams during lifetime of unit",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.MetricMap"
-                        }
-                    ]
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number"
+                    },
+                    "example": {
+                        "emaps_total": 12.09,
+                        "owid_total": 15.22
+                    }
                 },
                 "total_gpu_energy_usage_kwh": {
                     "description": "Total GPU energy usage(s) in kWh during lifetime of unit",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.MetricMap"
-                        }
-                    ]
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number"
+                    },
+                    "example": {
+                        "total": 5.39
+                    }
                 },
                 "total_ingress_stats": {
                     "description": "Total Ingress statistics of unit",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.MetricMap"
-                        }
-                    ]
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number"
+                    },
+                    "example": {
+                        "total": 0.5
+                    }
                 },
                 "total_io_read_stats": {
                     "description": "Total IO read statistics GB during lifetime of unit",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.MetricMap"
-                        }
-                    ]
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number"
+                    },
+                    "example": {
+                        "total": 4.6
+                    }
                 },
                 "total_io_write_stats": {
                     "description": "Total IO write statistics during lifetime of unit",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.MetricMap"
-                        }
-                    ]
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number"
+                    },
+                    "example": {
+                        "total": 1.2
+                    }
                 },
                 "total_outgress_stats": {
                     "description": "Total Outgress statistics of unit",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.MetricMap"
-                        }
-                    ]
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number"
+                    },
+                    "example": {
+                        "total": 0.1
+                    }
                 },
                 "total_time_seconds": {
                     "description": "Different types of times in seconds consumed by the unit. This map contains at minimum ` + "`" + `walltime` + "`" + `, ` + "`" + `alloc_cputime` + "`" + `, ` + "`" + `alloc_cpumemtime` + "`" + `, ` + "`" + `alloc_gputime` + "`" + ` and ` + "`" + `alloc_gpumem_time` + "`" + ` keys.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.MetricMap"
-                        }
-                    ]
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number"
+                    },
+                    "example": {
+                        "alloc_cpumemtime": 1000,
+                        "alloc_cputime": 100,
+                        "alloc_gpumemtime": 100,
+                        "alloc_gputime": 100,
+                        "walltime": 100
+                    }
                 },
                 "username": {
                     "description": "Username",
@@ -1501,35 +1633,43 @@ const docTemplate = `{
             "properties": {
                 "avg_cpu_mem_usage": {
                     "description": "Average CPU memory usage(s) during lifetime of project",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.MetricMap"
-                        }
-                    ]
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number"
+                    },
+                    "example": {
+                        "global": 45.26
+                    }
                 },
                 "avg_cpu_usage": {
                     "description": "Average CPU usage(s) during lifetime of project",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.MetricMap"
-                        }
-                    ]
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number"
+                    },
+                    "example": {
+                        "global": 70.12
+                    }
                 },
                 "avg_gpu_mem_usage": {
                     "description": "Average GPU memory usage(s) during lifetime of project",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.MetricMap"
-                        }
-                    ]
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number"
+                    },
+                    "example": {
+                        "global": 45.26
+                    }
                 },
                 "avg_gpu_usage": {
                     "description": "Average GPU usage(s) during lifetime of project",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.MetricMap"
-                        }
-                    ]
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number"
+                    },
+                    "example": {
+                        "global": 70.12
+                    }
                 },
                 "cluster_id": {
                     "description": "Identifier of the resource manager that owns compute unit. It is used to differentiate multiple clusters of same resource manager.",
@@ -1553,75 +1693,99 @@ const docTemplate = `{
                 },
                 "total_cpu_emissions_gms": {
                     "description": "Total CPU emissions from source(s) in grams during lifetime of project",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.MetricMap"
-                        }
-                    ]
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number"
+                    },
+                    "example": {
+                        "emaps_total": 3.09,
+                        "owid_total": 5.22
+                    }
                 },
                 "total_cpu_energy_usage_kwh": {
                     "description": "Total CPU energy usage(s) in kWh during lifetime of project",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.MetricMap"
-                        }
-                    ]
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number"
+                    },
+                    "example": {
+                        "total": 0.73
+                    }
                 },
                 "total_gpu_emissions_gms": {
                     "description": "Total GPU emissions from source(s) in grams during lifetime of project",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.MetricMap"
-                        }
-                    ]
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number"
+                    },
+                    "example": {
+                        "emaps_total": 12.09,
+                        "owid_total": 15.22
+                    }
                 },
                 "total_gpu_energy_usage_kwh": {
                     "description": "Total GPU energy usage(s) in kWh during lifetime of project",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.MetricMap"
-                        }
-                    ]
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number"
+                    },
+                    "example": {
+                        "total": 5.39
+                    }
                 },
                 "total_ingress_stats": {
                     "description": "Total Ingress statistics of unit",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.MetricMap"
-                        }
-                    ]
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number"
+                    },
+                    "example": {
+                        "total": 0.5
+                    }
                 },
                 "total_io_read_stats": {
                     "description": "Total IO read statistics GB during lifetime of unit",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.MetricMap"
-                        }
-                    ]
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number"
+                    },
+                    "example": {
+                        "total": 4.6
+                    }
                 },
                 "total_io_write_stats": {
                     "description": "Total IO write statistics during lifetime of unit",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.MetricMap"
-                        }
-                    ]
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number"
+                    },
+                    "example": {
+                        "total": 1.2
+                    }
                 },
                 "total_outgress_stats": {
                     "description": "Total Outgress statistics of unit",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.MetricMap"
-                        }
-                    ]
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number"
+                    },
+                    "example": {
+                        "total": 0.1
+                    }
                 },
                 "total_time_seconds": {
                     "description": "Different times in seconds consumed by the unit. This map must contain ` + "`" + `walltime` + "`" + `, ` + "`" + `alloc_cputime` + "`" + `, ` + "`" + `alloc_cpumemtime` + "`" + `, ` + "`" + `alloc_gputime` + "`" + ` and ` + "`" + `alloc_gpumem_time` + "`" + ` keys.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.MetricMap"
-                        }
-                    ]
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number"
+                    },
+                    "example": {
+                        "alloc_cpumemtime": 1000,
+                        "alloc_cputime": 100,
+                        "alloc_gpumemtime": 100,
+                        "alloc_gputime": 100,
+                        "walltime": 100
+                    }
                 },
                 "username": {
                     "description": "Username",
@@ -1643,7 +1807,13 @@ const docTemplate = `{
                 "projects": {
                     "description": "List of projects of the user",
                     "type": "array",
-                    "items": {}
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "prj1",
+                        "prj2"
+                    ]
                 },
                 "resource_manager": {
                     "description": "Name of the resource manager that owns user. Eg slurm, openstack, kubernetes, etc",
@@ -1652,7 +1822,13 @@ const docTemplate = `{
                 "tags": {
                     "description": "List of meta data tags of the user",
                     "type": "array",
-                    "items": {}
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "tag1",
+                        "tag2"
+                    ]
                 },
                 "uid": {
                     "description": "Unique identifier of the user provided by cluster",
