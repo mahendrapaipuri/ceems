@@ -14,13 +14,6 @@ var CEEMSLoadBalancerApp = *kingpin.New(
 	"CEEMS load balancer for TSDB and Pyroscope servers with access control support.",
 )
 
-// Backend defines backend server.
-type Backend struct {
-	ID       string   `yaml:"id"`
-	TSDBURLs []string `yaml:"tsdb_urls"`
-	PyroURLs []string `yaml:"pyroscope_urls"`
-}
-
 // LBType is type of load balancer server.
 type LBType int
 

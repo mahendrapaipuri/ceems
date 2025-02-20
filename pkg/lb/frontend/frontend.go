@@ -6,10 +6,8 @@ package frontend
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"slices"
@@ -18,7 +16,6 @@ import (
 
 	ceems_api_base "github.com/mahendrapaipuri/ceems/pkg/api/base"
 	ceems_api_cli "github.com/mahendrapaipuri/ceems/pkg/api/cli"
-	ceems_api_http "github.com/mahendrapaipuri/ceems/pkg/api/http"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/base"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/serverpool"
@@ -48,9 +45,8 @@ type ReqParams struct {
 // LoadBalancer is the interface to implement.
 type LoadBalancer interface {
 	Serve(w http.ResponseWriter, r *http.Request)
-	Start() error
+	Start(ctx context.Context) error
 	Shutdown(ctx context.Context) error
-	ValidateClusterIDs(ctx context.Context) error
 }
 
 // Config makes a server config from CLI args.
@@ -82,7 +78,8 @@ func New(c *Config) (LoadBalancer, error) {
 		return nil, fmt.Errorf("failed to setup auth middleware: %w", err)
 	}
 
-	return &loadBalancer{
+	// Instantiate LB struct
+	lb := &loadBalancer{
 		logger: c.Logger,
 		lbType: c.LBType,
 		server: &http.Server{
@@ -96,11 +93,55 @@ func New(c *Config) (LoadBalancer, error) {
 		},
 		manager: c.Manager,
 		amw:     amw,
-	}, nil
+	}
+
+	// Setup a timeout context
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	// Validate LB
+	if err := lb.validate(ctx); err != nil {
+		return nil, fmt.Errorf("failed to valiate load balancer frontend: %w", err)
+	}
+
+	// Setup error handlers for backend servers
+	lb.errorHandlers()
+
+	return lb, nil
 }
 
-// ValidateClusterIDs validates the cluster IDs by checking them against DB.
-func (lb *loadBalancer) ValidateClusterIDs(ctx context.Context) error {
+// errorHandlers sets up error handlers for backend servers.
+func (lb *loadBalancer) errorHandlers() {
+	// Iterate over all backend servers
+	for _, backends := range lb.manager.Backends() {
+		for _, backend := range backends {
+			backend.ReverseProxy().ErrorHandler = func(writer http.ResponseWriter, request *http.Request, err error) {
+				lb.logger.Error("Failed to handle the request", "host", backend.URL().Host, "err", err)
+				backend.SetAlive(false)
+
+				// If already retried the request, return error
+				if !allowRetry(request) {
+					lb.logger.Info("Max retry attempts reached, terminating", "address", request.RemoteAddr, "path", request.URL.Path)
+					http.Error(writer, "Service not available", http.StatusServiceUnavailable)
+
+					return
+				}
+
+				// Retry request and set context value so that we dont retry for second time
+				lb.logger.Info("Attempting retry", "address", request.RemoteAddr, "path", request.URL.Path)
+				lb.Serve(
+					writer,
+					request.WithContext(
+						context.WithValue(request.Context(), RetryContextKey{}, true),
+					),
+				)
+			}
+		}
+	}
+}
+
+// validate validates the cluster IDs by checking them against DB.
+func (lb *loadBalancer) validate(ctx context.Context) error {
 	// Fetch all cluster IDs set in config file
 	for id := range lb.manager.Backends() {
 		lb.amw.clusterIDs = append(lb.amw.clusterIDs, id)
@@ -150,45 +191,14 @@ func (lb *loadBalancer) ValidateClusterIDs(ctx context.Context) error {
 			return err
 		}
 
-		// Add necessary headers. Value of header is not important only its presence
-		req.Header.Add(ceemsUserHeader, "admin")
+		// Add necessary headers
+		// Use service account as user which will be in list of admin users.
+		req.Header.Add(grafanaUserHeader, ceems_api_base.CEEMSServiceAccount)
 
 		// Make request
-		// If request failed, forbid the query. It can happen when CEEMS API server
-		// goes offline and we should wait for it to come back online
-		if resp, err := lb.amw.ceems.client.Do(req); err != nil {
+		clusters, err = ceemsAPIRequest[models.Cluster](req, lb.amw.ceems.client)
+		if err != nil {
 			return err
-		} else {
-			defer resp.Body.Close()
-
-			// Any status code other than 200 should be treated as check failure
-			if resp.StatusCode != http.StatusOK {
-				return fmt.Errorf("error response code %d from CEEMS API server", resp.StatusCode)
-			}
-
-			// Read response body
-			body, err := io.ReadAll(resp.Body)
-			if err != nil {
-				return err
-			}
-
-			// Unpack into data
-			var data ceems_api_http.Response[models.Cluster]
-			if err = json.Unmarshal(body, &data); err != nil {
-				return err
-			}
-
-			// Check if Status is error
-			if data.Status == "error" {
-				return fmt.Errorf("error response from CEEMS API server: %v", data)
-			}
-
-			// Check if Data exists on response
-			if data.Data == nil {
-				return fmt.Errorf("CEEMS API server response returned no data: %v", data)
-			}
-
-			clusters = data.Data
 		}
 	}
 
@@ -214,7 +224,7 @@ validate:
 }
 
 // Start server.
-func (lb *loadBalancer) Start() error {
+func (lb *loadBalancer) Start(_ context.Context) error {
 	// Apply middleware
 	lb.server.Handler = lb.amw.Middleware(http.HandlerFunc(lb.Serve))
 	lb.logger.Info("Starting "+base.CEEMSLoadBalancerAppName, "listening", lb.server.Addr)

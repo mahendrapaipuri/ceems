@@ -1,15 +1,37 @@
 ---
 
 ceems_lb:
-  strategy: resource-based
+  strategy: round-robin
   backends:
     - id: slurm-0
-      tsdb_urls: 
-        - http://prometheus:password@localhost:9090
+      tsdb: 
+        - web:
+            url: https://localhost:9090
+            basic_auth:
+              username: prometheus
+              password: password
+            tls_config:
+              cert_file: localhost.crt
+              key_file: localhost.key
+              insecure_skip_verify: true
+            http_headers:
+              X-Ceems-Test-Header:
+                values: [slurm-0]
 
     - id: slurm-1
-      tsdb_urls: 
-        - http://prometheus:password@localhost:9090
+      tsdb: 
+        - web:
+            url: https://localhost:9090
+            basic_auth:
+              username: prometheus
+              password: password
+            tls_config:
+              cert_file: localhost.crt
+              key_file: localhost.key
+              insecure_skip_verify: true
+            http_headers:
+              X-Ceems-Test-Header:
+                values: [slurm-1]
 
 ceems_api_server:
   data:

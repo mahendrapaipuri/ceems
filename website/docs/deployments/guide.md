@@ -947,18 +947,23 @@ configuration file would be as follows:
 ```yml
 ceems_lb:
   # Load balancing strategy
-  strategy: resource-based
+  strategy: round-robin
 
   # List of Prometheus and/or Pyroscope backends
   backends:
       # `id` should be the same as configured in `clusters` config.
     - id: slurm-cluster
-      tsdb_urls: 
-        - http://<PROMETHEUS_BASIC_AUTH_USERNAME>:<PROMETHEUS_BASIC_AUTH_PASSWORD>@<PROMETHEUS_URL>
+      tsdb: 
+        - web:
+            url: http://<PROMETHEUS_URL>
+            basic_auth:
+              username: <PROMETHEUS_BASIC_AUTH_USERNAME>
+              password: <PROMETHEUS_BASIC_AUTH_PASSWORD>
       
       # When Pyroscope is also deployed
-      pyroscope_urls:
-        - <PYROSCOPE_URL>
+      pyroscope:
+        - web:
+            url: <PYROSCOPE_URL>
 
 # Must be same config as configured for `ceems_api_server` at `/etc/ceems_api_server/config.yml`
 ceems_api_server:

@@ -6,6 +6,7 @@ package frontend
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -14,10 +15,12 @@ import (
 	"net/url"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	http_api "github.com/mahendrapaipuri/ceems/pkg/api/http"
+	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -117,9 +120,9 @@ func setupMiddlewareWithDB(tmpDir string) (http.Handler, error) {
 	amw := authenticationMiddleware{
 		logger:        slog.New(slog.NewTextHandler(io.Discard, nil)),
 		clusterIDs:    []string{"rm-0", "rm-1"},
-		ceems:         ceems{db: db},
+		ceems:         &ceems{db: db},
 		parseRequest:  parseTSDBRequest,
-		pathsACLRegex: regexpTSDBRestrictedPath,
+		pathsACLRegex: regexpAllowedTSDBResources,
 	}
 
 	// create a handler to use as "next" which will verify the request
@@ -144,9 +147,9 @@ func setupMiddlewareWithAPI(tmpDir string) (http.Handler, error) {
 	amw := authenticationMiddleware{
 		logger:        slog.New(slog.NewTextHandler(io.Discard, nil)),
 		clusterIDs:    []string{"rm-0", "rm-1"},
-		ceems:         ceems{webURL: ceemsURL, client: http.DefaultClient},
+		ceems:         &ceems{webURL: ceemsURL, client: http.DefaultClient},
 		parseRequest:  parseTSDBRequest,
-		pathsACLRegex: regexpTSDBRestrictedPath,
+		pathsACLRegex: regexpAllowedTSDBResources,
 	}
 
 	// create a handler to use as "next" which will verify the request
@@ -181,13 +184,37 @@ func setupCEEMSAPI(db *sql.DB) *httptest.Server {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		// Check if user is owner of the queries uuids
-		if http_api.VerifyOwnership(ctx, user, rmIDs, uuids, starts, db, slog.New(slog.NewTextHandler(io.Discard, nil))) { //nolint:contextcheck
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("success"))
+		if strings.HasSuffix(r.URL.Path, "verify") {
+			// Check if user is owner of the queries uuids
+			if http_api.VerifyOwnership( //nolint:contextcheck
+				ctx,
+				user,
+				rmIDs,
+				uuids,
+				starts,
+				db,
+				slog.New(slog.NewTextHandler(io.Discard, nil)),
+			) {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte("success"))
+			} else {
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte("fail"))
+			}
 		} else {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte("fail"))
+			if admins, err := http_api.AdminUsers(ctx, db); err == nil { //nolint:contextcheck
+				// Write response
+				w.WriteHeader(http.StatusOK)
+
+				response := http_api.Response[models.AdminUsers]{
+					Status: "success",
+					Data:   admins,
+				}
+
+				if err = json.NewEncoder(w).Encode(&response); err != nil {
+					w.Write([]byte("KO"))
+				}
+			}
 		}
 	}))
 
@@ -293,6 +320,22 @@ func TestMiddlewareWithDB(t *testing.T) {
 			header: true,
 			user:   "usr2",
 			code:   403,
+		},
+		{
+			name:   "forbid due blacklisted resource",
+			req:    "/config",
+			id:     "rm-0",
+			header: true,
+			user:   "usr3",
+			code:   403,
+		},
+		{
+			name:   "allow to blacklisted resource for admin users",
+			req:    "/runtimeinfo",
+			id:     "rm-0",
+			header: true,
+			user:   "adm1",
+			code:   200,
 		},
 	}
 

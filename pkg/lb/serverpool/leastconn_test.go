@@ -6,12 +6,12 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"net/http/httputil"
 	"net/url"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/backend"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -42,8 +42,9 @@ func TestUnAvailableBackends(t *testing.T) {
 
 			backendURLs[id][i] = backendURL
 
-			rp := httputil.NewSingleHostReverseProxy(backendURL)
-			backend := backend.NewTSDB(backendURL, rp, slog.New(slog.NewTextHandler(io.Discard, nil)))
+			backend, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: backendURL.String()}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+			require.NoError(t, err)
+
 			backends[id][i] = backend
 			manager.Add(id, backend)
 		}
@@ -98,8 +99,9 @@ func TestLeastConnectionLB(t *testing.T) {
 
 			backendURLs[id][i] = backendURL
 
-			rp := httputil.NewSingleHostReverseProxy(backendURL)
-			backend := backend.NewTSDB(backendURL, rp, slog.New(slog.NewTextHandler(io.Discard, nil)))
+			backend, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: backendURL.String()}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+			require.NoError(t, err)
+
 			backends[id][i] = backend
 			manager.Add(id, backend)
 		}

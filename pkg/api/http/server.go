@@ -102,13 +102,14 @@ type Config struct {
 }
 
 type queriers struct {
-	unit    func(context.Context, *sql.DB, Query, *slog.Logger) ([]models.Unit, error)
-	usage   func(context.Context, *sql.DB, Query, *slog.Logger) ([]models.Usage, error)
-	user    func(context.Context, *sql.DB, Query, *slog.Logger) ([]models.User, error)
-	project func(context.Context, *sql.DB, Query, *slog.Logger) ([]models.Project, error)
-	cluster func(context.Context, *sql.DB, Query, *slog.Logger) ([]models.Cluster, error)
-	stat    func(context.Context, *sql.DB, Query, *slog.Logger) ([]models.Stat, error)
-	key     func(context.Context, *sql.DB, Query, *slog.Logger) ([]models.Key, error)
+	unit      func(context.Context, *sql.DB, Query, *slog.Logger) ([]models.Unit, error)
+	usage     func(context.Context, *sql.DB, Query, *slog.Logger) ([]models.Usage, error)
+	user      func(context.Context, *sql.DB, Query, *slog.Logger) ([]models.User, error)
+	project   func(context.Context, *sql.DB, Query, *slog.Logger) ([]models.Project, error)
+	cluster   func(context.Context, *sql.DB, Query, *slog.Logger) ([]models.Cluster, error)
+	stat      func(context.Context, *sql.DB, Query, *slog.Logger) ([]models.Stat, error)
+	key       func(context.Context, *sql.DB, Query, *slog.Logger) ([]models.Key, error)
+	adminUser func(context.Context, *sql.DB, Query, *slog.Logger) ([]models.AdminUsers, error)
 }
 
 // CEEMSServer struct implements HTTP server for stats.
@@ -127,10 +128,10 @@ type CEEMSServer struct {
 // Response defines the response model of CEEMSAPIServer.
 type Response[T any] struct {
 	Status    string    `json:"status"`
-	Data      []T       `json:"data"`
-	ErrorType errorType `json:"errorType,omitempty"`
-	Error     string    `json:"error,omitempty"`
-	Warnings  []string  `json:"warnings,omitempty"`
+	Data      []T       `extensions:"x-nullable,x-omitempty" json:"data"`
+	ErrorType errorType `extensions:"x-nullable,x-omitempty" json:"errorType,omitempty"`
+	Error     string    `extensions:"x-nullable,x-omitempty" json:"error,omitempty"`
+	Warnings  []string  `extensions:"x-nullable,x-omitempty" json:"warnings,omitempty"`
 }
 
 var (
@@ -200,13 +201,14 @@ func New(c *Config) (*CEEMSServer, func(), error) {
 		dbConfig:       c.DB,
 		maxQueryPeriod: time.Duration(c.Web.MaxQueryPeriod),
 		queriers: queriers{
-			unit:    Querier[models.Unit],
-			usage:   Querier[models.Usage],
-			user:    Querier[models.User],
-			project: Querier[models.Project],
-			cluster: Querier[models.Cluster],
-			stat:    Querier[models.Stat],
-			key:     Querier[models.Key],
+			unit:      Querier[models.Unit],
+			usage:     Querier[models.Usage],
+			user:      Querier[models.User],
+			project:   Querier[models.Project],
+			cluster:   Querier[models.Cluster],
+			stat:      Querier[models.Stat],
+			key:       Querier[models.Key],
+			adminUser: Querier[models.AdminUsers],
 		},
 		healthCheck: getDBStatus,
 	}
@@ -302,7 +304,7 @@ func New(c *Config) (*CEEMSServer, func(), error) {
 		routerPrefix:    routePrefix,
 		whitelistedURLs: regexp.MustCompile(routePrefix + "(swagger|health|demo)(.*)"),
 		db:              server.db,
-		adminUsers:      adminUsers,
+		adminUsers:      AdminUserNames,
 	}
 	router.Use(amw.Middleware)
 
@@ -342,6 +344,8 @@ func New(c *Config) (*CEEMSServer, func(), error) {
 //	@securityDefinitions.basic	BasicAuth
 //
 //	@externalDocs.url			https://mahendrapaipuri.github.io/ceems/
+//
+//	@x-logo						{"url": "https://github.com/mahendrapaipuri/ceems/blob/main/website/static/img/logo.png", "altText": "CEEMS logo"}
 func (s *CEEMSServer) Start() error {
 	// Set swagger info
 	docs.SwaggerInfo.BasePath = "/api/" + base.APIVersion
@@ -865,6 +869,7 @@ func (s *CEEMSServer) units(w http.ResponseWriter, r *http.Request) {
 //	@Description	- If the current user belongs to the same account/project/namespace as
 //	@Description	the compute unit. This means the users belonging to the same project can
 //	@Description	access each others compute units.
+//	@Description	- If the current user has admin role
 //	@Description
 //	@Description	The above checks must pass for **all** the queried units.
 //	@Description	If the check does not pass for at least one queried unit, a response 403 will be
@@ -999,6 +1004,41 @@ func (s *CEEMSServer) clustersAdmin(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Get admin users.
+func (s *CEEMSServer) adminUsersQuerier(w http.ResponseWriter, r *http.Request) {
+	// Set headers
+	s.setHeaders(w)
+
+	// Make query
+	q := Query{}
+	q.query("SELECT * FROM " + base.AdminUsersDBTableName)
+
+	// Make query and get admin users list
+	adminUsersLists, err := s.queriers.adminUser(r.Context(), s.db, q, s.logger)
+	if adminUsersLists == nil && err != nil {
+		s.logger.Error("Failed to fetch admin user details", "err", err)
+		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
+
+		return
+	}
+
+	// Write response
+	w.WriteHeader(http.StatusOK)
+
+	usersResponse := Response[models.AdminUsers]{
+		Status: "success",
+		Data:   adminUsersLists,
+	}
+	if err != nil {
+		usersResponse.Warnings = append(usersResponse.Warnings, err.Error())
+	}
+
+	if err = json.NewEncoder(w).Encode(&usersResponse); err != nil {
+		s.logger.Error("Failed to encode response", "err", err)
+		w.Write([]byte("KO"))
+	}
+}
+
 // Get user details.
 func (s *CEEMSServer) usersQuerier(users []string, w http.ResponseWriter, r *http.Request) {
 	// Set headers
@@ -1098,12 +1138,16 @@ func (s *CEEMSServer) users(w http.ResponseWriter, r *http.Request) {
 //	@Description
 //	@Description	The details include list of projects that user is currently a part of.
 //	@Description
+//	@Description	When query parameter `role` is set to `admin`, only admin users will
+//	@Description	will be returned
+//	@Description
 //	@Security	BasicAuth
 //	@Tags		users
 //	@Produce	json
 //	@Param		X-Grafana-User	header		string		true	"Current user name"
 //	@Param		user			query		[]string	false	"User name"		collectionFormat(multi)
 //	@Param		cluster_id		query		[]string	false	"Cluster ID"	collectionFormat(multi)
+//	@Param		role			query		string		false	"User role"
 //	@Success	200				{object}	Response[models.User]
 //	@Failure	401				{object}	Response[any]
 //	@Failure	500				{object}	Response[any]
@@ -1114,6 +1158,14 @@ func (s *CEEMSServer) users(w http.ResponseWriter, r *http.Request) {
 func (s *CEEMSServer) usersAdmin(w http.ResponseWriter, r *http.Request) {
 	// Measure elapsed time
 	defer common.TimeTrack(time.Now(), "users admin endpoint", s.logger)
+
+	// Check for the role query parameter
+	if slices.Contains(r.URL.Query()["role"], "admin") {
+		// Query for admin users and write response
+		s.adminUsersQuerier(w, r)
+
+		return
+	}
 
 	// Query for users and write response
 	s.usersQuerier(r.URL.Query()["user"], w, r)

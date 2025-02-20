@@ -70,3 +70,6 @@ const APIVersion = "v1"
 var (
 	InvalidIDRegex = regexp.MustCompile("[^a-zA-Z0-9-_]")
 )
+
+// CEEMS service account that has admin status.
+const CEEMSServiceAccount = "__ceems_srv_user"
