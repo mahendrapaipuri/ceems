@@ -49,11 +49,6 @@ ceems_api_server:
       authorization:
         type: Bearer
         credentials: mysupersecretgrafanaservicetoken
-  
-  web:
-    max_query: 30d
-    requests_limit: 30
-    route_prefix: /ceems/
 ```
 
 The configuration for `ceems_api_server` has three sections namely, `data`, `admin` and `web`
@@ -94,7 +89,7 @@ and restart CEEMS API server. This section allows to provide the client configur
 Grafana. All possible client configuration options can be consulted in the
 [Config Reference](./config-reference.md#grafana-config).
 
-Finally, the section `web` can be used to configured HTTP server of CEEMS API server.
+<!-- Finally, the section `web` can be used to configured HTTP server of CEEMS API server.
 
 - `web.max_query`: Maximum allowable query period. Configure this value appropriately
 based on the needs as queries with too longer period can put considerable amount of
@@ -102,7 +97,7 @@ pressure on DB queries.
 - `web.requests_limit`: Maximum number of requests per minute per client identified by
 remote IP address.
 - `web.route_prefix`: All the CEEMS API end points will be prefixed by this value. It
-is useful when serving CEEMS API server behind a reverse proxy at a given path.
+is useful when serving CEEMS API server behind a reverse proxy at a given path. -->
 
 ## Clusters Configuration
 
@@ -323,17 +318,7 @@ updaters:
         # Average CPU utilisation
         avg_cpu_usage: 
           global: |
-            avg_over_time(
-              avg by (uuid) (
-                (
-                  irate(ceems_compute_unit_cpu_user_seconds_total{uuid=~"{{.UUIDs}}"}[{{.RateInterval}}])
-                  +
-                  irate(ceems_compute_unit_cpu_system_seconds_total{uuid=~"{{.UUIDs}}"}[{{.RateInterval}}])
-                )
-                /
-                ceems_compute_unit_cpus{uuid=~"{{.UUIDs}}"}
-              )[{{.Range}}:{{.ScrapeInterval}}]
-            ) * 100
+            avg_over_time(avg by (uuid) (unit:ceems_compute_unit_cpu_usage:ratio_rate1m{uuid=~"{{.UUIDs}}"} > 0 < inf)[{{.Range}}:])
 ```
 
 Similar to `clusters`, `updaters` is also a list of objects where each object
@@ -375,9 +360,6 @@ ceems_api_server:
   admin:
     users:
       - adm1
-  
-  web:
-    requests_limit: 30
 
 clusters:
   - id: slurm-0
@@ -398,9 +380,6 @@ ceems_api_server:
   admin:
     users:
       - adm1
-  
-  web:
-    requests_limit: 30
 
 clusters:
   - id: slurm-0
@@ -442,9 +421,6 @@ ceems_api_server:
   admin:
     users:
       - adm1
-  
-  web:
-    requests_limit: 30
 
 clusters:
   - id: slurm-0

@@ -20,6 +20,20 @@ Default interface and port can be changed using `--web.listen-address` CLI argum
 ceems_api_server --web.listen-address="localhost:8020"
 ```
 
+If CEEMS API server is running behind a reverse proxy at a prefix `/ceems`, the path prefix can
+be configured using:
+
+```bash
+ceems_api_server --web.route-prefix=/ceems
+```
+
+To limit the maximum query time period, `--query.max-period` can be used. For example, to set
+maximum allowable query period of 1 year:
+
+```bash
+ceems_api_server --query.max-period=1y
+```
+
 :::tip[TIP]
 
 All the available command line options are listed in
