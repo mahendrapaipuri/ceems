@@ -292,17 +292,17 @@ func (t *Client) Labels(ctx context.Context, matchers []string, start time.Time,
 
 // Query makes a Client query.
 func (t *Client) Query(ctx context.Context, query string, queryTime time.Time) (Metric, error) {
-	// We need to recommend to do it for whole Prometheus instance
-	//
-	// // Get current scrape interval to use as lookback_delta
-	// // This query parameter is undocumented on Prometheus. If we use
-	// // default value of 5m, we tend to have metrics 5m **after** compute
-	// // unit has finished which gives over estimation of energy
-	// if scrapeInterval := t.Settings(ctx).ScrapeInterval; scrapeInterval > 0 {
-	// 	values.Add("lookback_delta", scrapeInterval.String())
-	// }
+	// Get current scrape interval to use as lookback_delta
+	// This query parameter is undocumented on Prometheus. If we use
+	// default value of 5m, we tend to have metrics 5m **after** compute
+	// unit has finished which gives over estimation of energy
+	period := 10 * time.Second
+	if scrapeInterval := t.Settings(ctx).ScrapeInterval; scrapeInterval > 0 {
+		period = scrapeInterval
+	}
+
 	// Make API request to execute query
-	result, warnings, err := t.API.Query(ctx, query, queryTime)
+	result, warnings, err := t.API.Query(ctx, query, queryTime, v1.WithLookbackDelta(period))
 	if err != nil {
 		return nil, err
 	}
@@ -341,15 +341,15 @@ func (t *Client) RangeQuery(
 	endTime time.Time,
 	step time.Duration,
 ) (RangeMetric, error) {
-	// We need to recommend to do it for whole Prometheus instance
-	//
-	// // Get current scrape interval to use as lookback_delta
-	// // This query parameter is undocumented on Prometheus. If we use
-	// // default value of 5m, we tend to have metrics 5m **after** compute
-	// // unit has finished which gives over estimation of energy
-	// if scrapeInterval := t.Settings(ctx).ScrapeInterval; scrapeInterval > 0 {
-	// 	values.Add("lookback_delta", scrapeInterval.String())
-	// }
+	// Get current scrape interval to use as lookback_delta
+	// This query parameter is undocumented on Prometheus. If we use
+	// default value of 5m, we tend to have metrics 5m **after** compute
+	// unit has finished which gives over estimation of energy
+	period := 10 * time.Second
+	if scrapeInterval := t.Settings(ctx).ScrapeInterval; scrapeInterval > 0 {
+		period = scrapeInterval
+	}
+
 	// Make query range
 	queryRange := v1.Range{
 		Start: startTime,
@@ -361,7 +361,7 @@ func (t *Client) RangeQuery(
 	}
 
 	// Make API request to execute query
-	result, warnings, err := t.API.QueryRange(ctx, query, queryRange)
+	result, warnings, err := t.API.QueryRange(ctx, query, queryRange, v1.WithLookbackDelta(period))
 	if err != nil {
 		return nil, err
 	}

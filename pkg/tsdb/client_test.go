@@ -19,8 +19,10 @@ import (
 )
 
 var (
-	expectedSeries Response[[]model.LabelSet]
-	expectedLabels Response[[]string]
+	expectedSeries             Response[[]model.LabelSet]
+	expectedLabels             Response[[]string]
+	expectedQueryLookback      model.Duration
+	expectedQueryRangeLookback model.Duration
 )
 
 func testTSDBServer(emptyResponse bool) *httptest.Server {
@@ -164,10 +166,16 @@ func testTSDBServer(emptyResponse bool) *httptest.Server {
 				w.Write([]byte("KO"))
 			}
 		} else if strings.HasSuffix(r.URL.Path, "query") {
+			_ = r.ParseForm()
+			expectedQueryLookback, _ = model.ParseDuration(r.Form["lookback_delta"][0])
+
 			if err := json.NewEncoder(w).Encode(&expectedQuery); err != nil {
 				w.Write([]byte("KO"))
 			}
 		} else if strings.HasSuffix(r.URL.Path, "query_range") {
+			_ = r.ParseForm()
+			expectedQueryRangeLookback, _ = model.ParseDuration(r.Form["lookback_delta"][0])
+
 			if err := json.NewEncoder(w).Encode(&expectedQueryRange); err != nil {
 				w.Write([]byte("KO"))
 			}
@@ -344,9 +352,10 @@ func TestTSDBQuerySuccess(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, tsdb.Available())
 
-	m, err := tsdb.Query(context.Background(), "", time.Now())
+	m, err := tsdb.Query(context.Background(), "foo", time.Now())
 	require.NoError(t, err)
 	assert.Equal(t, Metric{"1": 1.1, "2": 2.2}, m)
+	assert.Equal(t, 15*time.Second, time.Duration(expectedQueryLookback))
 }
 
 func TestTSDBQueryFail(t *testing.T) {
@@ -384,6 +393,7 @@ func TestTSDBQueryRangeSuccess(t *testing.T) {
 		},
 		m,
 	)
+	assert.Equal(t, 15*time.Second, time.Duration(expectedQueryRangeLookback))
 }
 
 func TestTSDBQueryRangeFail(t *testing.T) {
