@@ -83,11 +83,16 @@ INSERT INTO users VALUES(6, 'rm-1', 'usr4', '["prj4"]');
 INSERT INTO users VALUES(7, 'rm-1', 'usr5', '["prj5"]');
 CREATE TABLE admin_users (
 	"id" integer not null primary key,
-	"source" text,
-	"users" text
+	"cluster_id" text,
+	"name" text,
+	"tags" text
 );
-INSERT INTO admin_users VALUES(1, 'ceems', '["adm1","adm2","adm3"]');
-INSERT INTO admin_users VALUES(2, 'grafana', '["adm4","adm5","adm6"]');
+INSERT INTO admin_users VALUES(1, 'all', 'adm1', '["ceems"]');
+INSERT INTO admin_users VALUES(2, 'all', 'adm2', '["ceems"]');
+INSERT INTO admin_users VALUES(3, 'all', 'adm3', '["ceems"]');
+INSERT INTO admin_users VALUES(4, 'all', 'adm4', '["grafana"]');
+INSERT INTO admin_users VALUES(5, 'all', 'adm5', '["grafana"]');
+INSERT INTO admin_users VALUES(6, 'all', 'adm6', '["grafana"]');
 COMMIT;`
 
 	_, err = db.Exec(stmts)

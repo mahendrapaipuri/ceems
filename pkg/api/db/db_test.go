@@ -968,14 +968,14 @@ func TestAdminUsersDBUpdate(t *testing.T) {
 	require.NoError(t, err, "failed to update admin users")
 
 	// Check admin users from grafana
-	assert.ElementsMatch(t, s.admin.users["grafana"], models.List{"foo", "bar"})
+	assert.ElementsMatch(t, s.admin.users["grafana"], []string{"foo", "bar"})
 
 	// do second update of admin users and users should not be duplicated
 	err = s.updateAdminUsers(context.Background())
 	require.NoError(t, err, "failed to update admin users")
 
 	// Check admin users from grafana
-	assert.ElementsMatch(t, s.admin.users["grafana"], models.List{"foo", "bar"})
+	assert.ElementsMatch(t, s.admin.users["grafana"], []string{"foo", "bar"})
 }
 
 func TestStatsDBBackup(t *testing.T) {

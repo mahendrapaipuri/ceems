@@ -25,12 +25,12 @@ var (
 
 // AdminUsers returns a slice of admin users fetched from DB.
 // Errors must always be checked to ensure no row scanning has failed.
-func AdminUsers(ctx context.Context, dbConn *sql.DB) ([]models.AdminUsers, error) {
+func AdminUsers(ctx context.Context, dbConn *sql.DB) ([]models.User, error) {
 	// Initialise query
 	q := Query{}
-	q.query("SELECT * FROM " + base.AdminUsersDBTableName)
+	q.query("SELECT cluster_id,name,tags FROM " + base.AdminUsersDBTableName)
 
-	return Querier[models.AdminUsers](ctx, dbConn, q, nullLogger)
+	return Querier[models.User](ctx, dbConn, q, nullLogger)
 }
 
 // AdminUserNames returns a slice of admin users names.
@@ -45,11 +45,7 @@ func AdminUserNames(ctx context.Context, dbConn *sql.DB) ([]string, error) {
 
 	// Get all admin users
 	for _, admin := range admins {
-		for _, user := range admin.Users {
-			if userString, ok := user.(string); ok {
-				users = append(users, userString)
-			}
-		}
+		users = append(users, admin.Name)
 	}
 
 	return users, nil

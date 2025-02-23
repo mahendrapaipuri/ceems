@@ -218,43 +218,6 @@ ceems_api_server:
       # #
       # http_headers: {}
 
-  # HTTP web related config for CEEMS API server.
-  #
-  web:
-    # Maximum allowable query range, ie, the difference between `from` and `to` query 
-    # parameters. 
-    #
-    # This can be used to restrict the query range made by the users to avoid OOM errors
-    # when handling too much data.
-    #
-    # Default value `0s` means no restrictions are imposed on the query.
-    #
-    # Units Supported: y, w, d, h, m, s, ms.
-    #
-    max_query: 0s
-
-    # Number of requests allowed in ONE MINUTE per client identified by Real IP address.
-    # Request headers `True-Client-IP`, `X-Real-IP` and `X-Forwarded-For` are looked up
-    # to get the real IP address.
-    #
-    # This is to effectively impose a rate limit for the entire CEEMS server irrespective
-    # of URL path. We advise to set it to a value based on your needs to avoid DoS/DDoS
-    # attacks.
-    #
-    # Rate limiting is done using the Sliding Window Counter pattern inspired by 
-    # CloudFlare https://blog.cloudflare.com/counting-things-a-lot-of-different-things/
-    #
-    # Default value `0` means no rate limiting is applied.
-    #
-    requests_limit: 0
-
-    # It will be used to prefix all HTTP endpoints served by CEEMS API server. 
-    # For example, if CEEMS API server is served via a reverse proxy. 
-    # 
-    # Default is '/'
-    #
-    route_prefix: '/'
-
 # A list of clusters from which CEEMS API server will fetch the compute units.
 # 
 # Each cluster must provide an unique `id`. The `id` will enable CEEMS to identify 

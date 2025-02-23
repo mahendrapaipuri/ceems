@@ -21,7 +21,7 @@ const docTemplate = `{
         "version": "{{.Version}}",
         "x-logo": {
             "altText": "CEEMS logo",
-            "url": "https://github.com/mahendrapaipuri/ceems/blob/main/website/static/img/logo.png"
+            "url": "https://raw.githubusercontent.com/mahendrapaipuri/ceems/refs/heads/main/website/static/img/logo.png"
         }
     },
     "host": "{{.Host}}",
@@ -107,32 +107,6 @@ const docTemplate = `{
                         "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/http.Response-any"
-                        }
-                    }
-                }
-            }
-        },
-        "/health": {
-            "get": {
-                "description": "This endpoint returns the health status of the server.\n\nA healthy server returns 200 response code and any other\nresponses should be treated as unhealthy server.",
-                "produces": [
-                    "text/plain"
-                ],
-                "tags": [
-                    "health"
-                ],
-                "summary": "Health status",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "503": {
-                        "description": "Service Unavailable",
-                        "schema": {
-                            "type": "string"
                         }
                     }
                 }
@@ -956,7 +930,7 @@ const docTemplate = `{
                         "BasicAuth": []
                     }
                 ],
-                "description": "This endpoint will show details of the queried user(s). The\ncurrent user is always identified by the header ` + "`" + `X-Grafana-User` + "`" + ` in\nthe request.\n\nThe user who is making the request must be in the list of admin users\nconfigured for the server.\n\nWhen the query parameter ` + "`" + `user` + "`" + ` is empty, all users will be returned\nin the response.\n\nThe details include list of projects that user is currently a part of.\n\nWhen query parameter ` + "`" + `role` + "`" + ` is set to ` + "`" + `admin` + "`" + `, only admin users will\nwill be returned\n",
+                "description": "This endpoint will show details of the queried user(s). The\ncurrent user is always identified by the header ` + "`" + `X-Grafana-User` + "`" + ` in\nthe request.\n\nThe user who is making the request must be in the list of admin users\nconfigured for the server.\n\nWhen the query parameter ` + "`" + `user` + "`" + ` is empty, all users will be returned\nin the response.\n\nThe details include list of projects that user is currently a part of.\n\nWhen query parameter ` + "`" + `role` + "`" + ` is set to ` + "`" + `admin` + "`" + `, only admin users will\nwill be returned. The ` + "`" + `tags` + "`" + ` values indicates the source of admin user.\n",
                 "produces": [
                     "application/json"
                 ],
@@ -1332,15 +1306,18 @@ const docTemplate = `{
             "properties": {
                 "cluster_id": {
                     "description": "Identifier of the resource manager that owns project. It is used to differentiate multiple clusters of same resource manager.",
-                    "type": "string"
+                    "type": "string",
+                    "example": "slurm-0"
                 },
                 "name": {
                     "description": "Name of the project",
-                    "type": "string"
+                    "type": "string",
+                    "example": "prj1"
                 },
                 "resource_manager": {
                     "description": "Name of the resource manager that owns project. Eg slurm, openstack, kubernetes, etc",
-                    "type": "string"
+                    "type": "string",
+                    "example": "slurm"
                 },
                 "tags": {
                     "description": "List of meta data tags of the project",
@@ -1355,7 +1332,8 @@ const docTemplate = `{
                 },
                 "uid": {
                     "description": "Unique identifier of the project provided by cluster",
-                    "type": "string"
+                    "type": "string",
+                    "example": "1000"
                 },
                 "users": {
                     "description": "List of users of the project",
@@ -1375,31 +1353,38 @@ const docTemplate = `{
             "properties": {
                 "cluster_id": {
                     "description": "Identifier of the resource manager that owns compute unit. It is used to differentiate multiple clusters of same resource manager.",
-                    "type": "string"
+                    "type": "string",
+                    "example": "slurm-0"
                 },
                 "num_active_units": {
                     "description": "Number of active units that are in running state",
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 800
                 },
                 "num_inactive_units": {
                     "description": "Number of inactive units that are in terminated/cancelled/error state",
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 200
                 },
                 "num_projects": {
                     "description": "Number of projects",
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 200
                 },
                 "num_units": {
                     "description": "Number of active and terminated units",
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 1000
                 },
                 "num_users": {
                     "description": "Number of users",
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 500
                 },
                 "resource_manager": {
                     "description": "Name of the resource manager that owns project. Eg slurm, openstack, kubernetes, etc",
-                    "type": "string"
+                    "type": "string",
+                    "example": "slurm"
                 }
             }
         },
@@ -1460,55 +1445,68 @@ const docTemplate = `{
                 },
                 "cluster_id": {
                     "description": "Identifier of the resource manager that owns compute unit. It is used to differentiate multiple clusters of same resource manager.",
-                    "type": "string"
+                    "type": "string",
+                    "example": "slurm-0"
                 },
                 "created_at": {
                     "description": "Creation time",
-                    "type": "string"
+                    "type": "string",
+                    "example": "2023-02-21T15:48:20+0100"
                 },
                 "created_at_ts": {
                     "description": "Creation timestamp",
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 1676990900000
                 },
                 "elapsed": {
                     "description": "Human readable total elapsed time string",
-                    "type": "string"
+                    "type": "string",
+                    "example": "2-00:10:20"
                 },
                 "ended_at": {
                     "description": "End time",
-                    "type": "string"
+                    "type": "string",
+                    "example": "Unknown"
                 },
                 "ended_at_ts": {
                     "description": "End timestamp",
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 0
                 },
                 "groupname": {
                     "description": "User group",
-                    "type": "string"
+                    "type": "string",
+                    "example": "grp1"
                 },
                 "name": {
                     "description": "Name of compute unit",
-                    "type": "string"
+                    "type": "string",
+                    "example": "my-slurm-job"
                 },
                 "project": {
                     "description": "Account in batch systems, Tenant in Openstack, Namespace in k8s",
-                    "type": "string"
+                    "type": "string",
+                    "example": "prj1"
                 },
                 "resource_manager": {
                     "description": "Name of the resource manager that owns compute unit. Eg slurm, openstack, kubernetes, etc",
-                    "type": "string"
+                    "type": "string",
+                    "example": "slurm"
                 },
                 "started_at": {
                     "description": "Start time",
-                    "type": "string"
+                    "type": "string",
+                    "example": "2023-02-21T15:49:06+0100"
                 },
                 "started_at_ts": {
                     "description": "Start timestamp",
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 1676990946000
                 },
                 "state": {
                     "description": "Current state of unit",
-                    "type": "string"
+                    "type": "string",
+                    "example": "RUNNING"
                 },
                 "tags": {
                     "description": "A map to store generic info. String and int64 are valid value types of map",
@@ -1620,11 +1618,13 @@ const docTemplate = `{
                 },
                 "username": {
                     "description": "Username",
-                    "type": "string"
+                    "type": "string",
+                    "example": "usr1"
                 },
                 "uuid": {
                     "description": "Unique identifier of unit. It can be Job ID for batch jobs, UUID for pods in k8s or VMs in Openstack",
-                    "type": "string"
+                    "type": "string",
+                    "example": "193048"
                 }
             }
         },
@@ -1673,23 +1673,28 @@ const docTemplate = `{
                 },
                 "cluster_id": {
                     "description": "Identifier of the resource manager that owns compute unit. It is used to differentiate multiple clusters of same resource manager.",
-                    "type": "string"
+                    "type": "string",
+                    "example": "slurm-0"
                 },
                 "groupname": {
                     "description": "User group",
-                    "type": "string"
+                    "type": "string",
+                    "example": "grp1"
                 },
                 "num_units": {
                     "description": "Number of consumed units",
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 145
                 },
                 "project": {
                     "description": "Account in batch systems, Tenant in Openstack, Namespace in k8s",
-                    "type": "string"
+                    "type": "string",
+                    "example": "prj1"
                 },
                 "resource_manager": {
                     "description": "Name of the resource manager that owns project. Eg slurm, openstack, kubernetes, etc",
-                    "type": "string"
+                    "type": "string",
+                    "example": "slurm"
                 },
                 "total_cpu_emissions_gms": {
                     "description": "Total CPU emissions from source(s) in grams during lifetime of project",
@@ -1789,7 +1794,8 @@ const docTemplate = `{
                 },
                 "username": {
                     "description": "Username",
-                    "type": "string"
+                    "type": "string",
+                    "example": "usr1"
                 }
             }
         },
@@ -1798,11 +1804,13 @@ const docTemplate = `{
             "properties": {
                 "cluster_id": {
                     "description": "Identifier of the resource manager that owns user. It is used to differentiate multiple clusters of same resource manager.",
-                    "type": "string"
+                    "type": "string",
+                    "example": "slurm-0"
                 },
                 "name": {
                     "description": "Name of the user",
-                    "type": "string"
+                    "type": "string",
+                    "example": "usr1"
                 },
                 "projects": {
                     "description": "List of projects of the user",
@@ -1817,7 +1825,8 @@ const docTemplate = `{
                 },
                 "resource_manager": {
                     "description": "Name of the resource manager that owns user. Eg slurm, openstack, kubernetes, etc",
-                    "type": "string"
+                    "type": "string",
+                    "example": "slurm"
                 },
                 "tags": {
                     "description": "List of meta data tags of the user",
@@ -1832,7 +1841,8 @@ const docTemplate = `{
                 },
                 "uid": {
                     "description": "Unique identifier of the user provided by cluster",
-                    "type": "string"
+                    "type": "string",
+                    "example": "1000"
                 }
             }
         }
@@ -1850,11 +1860,11 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "",
-	BasePath:         "",
-	Schemes:          []string{},
+	Host:             "ceems-demo.myaddr.tools:7443",
+	BasePath:         "/api/v1",
+	Schemes:          []string{"https"},
 	Title:            "CEEMS API",
-	Description:      "OpenAPI specification (OAS) for the CEEMS REST API.\n\nSee the Interactive Docs to try CEEMS API methods without writing code, and get\nthe complete schema of resources exposed by the API.\n\nIf basic auth is enabled, all the endpoints require authentication.\n\nAll the endpoints, except `health`, `swagger`, `debug` and `demo`,\nmust send a user-agent header.\n\nTimestamps must be specified in milliseconds, unless otherwise specified.",
+	Description:      "OpenAPI specification (OAS) for the CEEMS REST API.\n\nSee the Interactive Docs to try CEEMS API methods without writing code, and get\nthe complete schema of resources exposed by the API.\n\nIf basic auth is enabled, all the endpoints require authentication.\n\nAll the endpoints, except `health`, `swagger`, `debug` and `demo`,\nmust send a user-agent header.\n\nA demo instance of CEEMS API server is provided for the users to test. This\ninstance is running at `https://ceems-demo.myaddr.tools:7443` and it is the\ndefault server that will serve the requests originating from current OAS client.\n\nSome of the valid users for this demo instance are:\n- arnold\n- betty\n- edna\n- gazoo\n- wilma\n\nEvery request must contain a `X-Grafana-User` header with one of the usernames\nabove as the value to the header. This is how CEEMS API server recognise the user.\n\nSome of the valid projects for this demo instance are:\n- bedrock\n- cornerstone\n\nTo test admin resources, users can use `admin` as `X-Grafana-User`.\n\nTimestamps must be specified in milliseconds, unless otherwise specified.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

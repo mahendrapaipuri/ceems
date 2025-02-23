@@ -228,7 +228,7 @@ func (s *storageConfig) String() string {
 }
 
 type adminConfig struct {
-	users                map[string]models.List // Map of admin users from different sources
+	users                map[string][]string // Map of admin users from different sources
 	grafana              *grafana.Grafana
 	grafanaAdminTeamsIDs []string
 }
@@ -346,10 +346,8 @@ func New(c *Config) (*stats, error) {
 	}
 
 	// Make admin users map
-	adminUsers := make(map[string]models.List, len(AdminUsersSources))
-	for _, user := range c.Admin.Users {
-		adminUsers["ceems"] = append(adminUsers["ceems"], user)
-	}
+	adminUsers := make(map[string][]string, len(AdminUsersSources))
+	adminUsers["ceems"] = c.Admin.Users
 
 	// Admin config
 	adminConfig := &adminConfig{
@@ -463,11 +461,7 @@ func (s *stats) updateAdminUsers(ctx context.Context) error {
 	}
 
 	// Reset existing grafana admin users
-	s.admin.users["grafana"] = models.List{}
-
-	for _, u := range users {
-		s.admin.users["grafana"] = append(s.admin.users["grafana"], u)
-	}
+	s.admin.users["grafana"] = users
 
 	return nil
 }
@@ -771,13 +765,19 @@ func (s *stats) execStatements(
 
 	// Update admin users table
 	for _, source := range AdminUsersSources {
-		if _, err = stmts[base.AdminUsersDBTableName].ExecContext(
-			ctx,
-			sql.Named(base.AdminUsersDBTableStructFieldColNameMap["Source"], source),
-			sql.Named(base.AdminUsersDBTableStructFieldColNameMap["Users"], s.admin.users[source]),
-			sql.Named(base.AdminUsersDBTableStructFieldColNameMap["LastUpdatedAt"], currentTime.Format(base.DatetimeLayout)),
-		); err != nil {
-			s.logger.Error("Failed to update admin_users table in DB", "source", source, "err", err)
+		for _, user := range s.admin.users[source] {
+			if _, err = stmts[base.AdminUsersDBTableName].ExecContext(
+				ctx,
+				sql.Named(base.AdminUsersDBTableStructFieldColNameMap["ClusterID"], "all"),
+				sql.Named(base.AdminUsersDBTableStructFieldColNameMap["ResourceManager"], ""),
+				sql.Named(base.AdminUsersDBTableStructFieldColNameMap["UID"], ""),
+				sql.Named(base.AdminUsersDBTableStructFieldColNameMap["Name"], user),
+				sql.Named(base.AdminUsersDBTableStructFieldColNameMap["Projects"], models.List{}),
+				sql.Named(base.AdminUsersDBTableStructFieldColNameMap["Tags"], models.List{source}),
+				sql.Named(base.AdminUsersDBTableStructFieldColNameMap["LastUpdatedAt"], currentTime.Format(base.DatetimeLayout)),
+			); err != nil {
+				s.logger.Error("Failed to update admin_users table in DB", "source", source, "err", err)
+			}
 		}
 	}
 

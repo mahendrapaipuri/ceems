@@ -193,7 +193,7 @@ func (lb *loadBalancer) validate(ctx context.Context) error {
 
 		// Add necessary headers
 		// Use service account as user which will be in list of admin users.
-		req.Header.Add(grafanaUserHeader, ceems_api_base.CEEMSServiceAccount)
+		req.Header.Add(ceems_api_base.GrafanaUserHeader, ceems_api_base.CEEMSServiceAccount)
 
 		// Make request
 		clusters, err = ceemsAPIRequest[models.Cluster](req, lb.amw.ceems.client)

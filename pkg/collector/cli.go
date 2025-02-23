@@ -211,6 +211,7 @@ func (b *CEEMSExporter) Main() error {
 				Name:        b.App.Name,
 				Description: b.App.Help,
 				Version:     version.Info(),
+				HeaderColor: "#3cc9beff",
 				Links: []web.LandingLinks{
 					{
 						Address: *metricsPath,

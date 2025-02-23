@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"html/template"
 	"log/slog"
+	"net"
 	"net/http"
 	_ "net/http/pprof" // #nosec
 	"net/url"
@@ -61,20 +62,21 @@ type WebConfig struct {
 	Addresses         []string
 	WebSystemdSocket  bool
 	WebConfigFile     string
+	LandingConfig     *web.LandingConfig
 	EnableDebugServer bool
-	RoutePrefix       string                  `yaml:"route_prefix"`
-	MaxQueryPeriod    model.Duration          `yaml:"max_query"`
-	RequestsLimit     int                     `yaml:"requests_limit"`
+	UserHeaderNames   []string
+	ExternalURL       *url.URL
+	RoutePrefix       string
+	MaxQueryPeriod    model.Duration
+	RequestsLimit     int
+	CORSOrigin        *regexp.Regexp
 	URL               string                  `yaml:"url"`
 	HTTPClientConfig  config.HTTPClientConfig `yaml:",inline"`
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
 func (c *WebConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	// Set a default config
-	*c = WebConfig{
-		RoutePrefix: "/",
-	}
+	*c = WebConfig{}
 
 	type plain WebConfig
 
@@ -109,7 +111,7 @@ type queriers struct {
 	cluster   func(context.Context, *sql.DB, Query, *slog.Logger) ([]models.Cluster, error)
 	stat      func(context.Context, *sql.DB, Query, *slog.Logger) ([]models.Stat, error)
 	key       func(context.Context, *sql.DB, Query, *slog.Logger) ([]models.Key, error)
-	adminUser func(context.Context, *sql.DB, Query, *slog.Logger) ([]models.AdminUsers, error)
+	adminUser func(context.Context, *sql.DB, Query, *slog.Logger) ([]models.User, error)
 }
 
 // CEEMSServer struct implements HTTP server for stats.
@@ -117,6 +119,7 @@ type CEEMSServer struct {
 	logger         *slog.Logger
 	server         *http.Server
 	webConfig      *web.FlagConfig
+	externalURL    *url.URL
 	db             *sql.DB
 	dbConfig       db.Config
 	maxQueryPeriod time.Duration
@@ -193,6 +196,7 @@ func New(c *Config) (*CEEMSServer, func(), error) {
 			WriteTimeout:      10 * time.Second,
 			ReadHeaderTimeout: 2 * time.Second, // slowloris attack: https://app.deepsource.com/directory/analyzers/go/issues/GO-S2112
 		},
+		externalURL: c.Web.ExternalURL,
 		webConfig: &web.FlagConfig{
 			WebListenAddresses: &c.Web.Addresses,
 			WebSystemdSocket:   &c.Web.WebSystemdSocket,
@@ -208,7 +212,7 @@ func New(c *Config) (*CEEMSServer, func(), error) {
 			cluster:   Querier[models.Cluster],
 			stat:      Querier[models.Stat],
 			key:       Querier[models.Key],
-			adminUser: Querier[models.AdminUsers],
+			adminUser: Querier[models.User],
 		},
 		healthCheck: getDBStatus,
 	}
@@ -223,63 +227,55 @@ func New(c *Config) (*CEEMSServer, func(), error) {
 
 	c.Logger.Debug("CEEMS API server running on prefix", "prefix", routePrefix)
 
-	// Create a sub router with apiVersion as PathPrefix
-	subRouter := router.PathPrefix(routePrefix).Subrouter()
+	// Make a landing page from config
+	landingPage, err := web.NewLandingPage(*c.Web.LandingConfig)
+	if err != nil {
+		return nil, func() {}, fmt.Errorf("failed to create landing page: %w", err)
+	}
 
-	// If the prefix is missing for the root path or health endpoint, prepend it.
-	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, routePrefix, http.StatusFound)
-	})
-	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, routePrefix+"health", http.StatusFound)
-	})
-
-	subRouter.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`<html>
-			<head><title>CEEMS API Server</title></head>
-			<body>
-			<h1>Compute Stats</h1>
-			<p><a href="swagger/index.html">Swagger API</a></p>
-			</body>
-			</html>`))
-	})
-
-	// Allow only GET methods
-	subRouter.HandleFunc("/health", server.health).Methods(http.MethodGet)
-	subRouter.HandleFunc("/"+usersResourceName, server.users).Methods(http.MethodGet)
-	subRouter.HandleFunc("/"+projectsResourceName, server.projects).Methods(http.MethodGet)
-	subRouter.HandleFunc("/"+unitsResourceName, server.units).Methods(http.MethodGet)
-	subRouter.HandleFunc(fmt.Sprintf("/%s/{mode:(?:current|global)}", usageResourceName), server.usage).
-		Methods(http.MethodGet)
-	subRouter.HandleFunc(fmt.Sprintf("/%s/verify", unitsResourceName), server.verifyUnitsOwnership).
-		Methods(http.MethodGet)
-
-	// Admin end points
-	subRouter.HandleFunc(fmt.Sprintf("/%s/admin", usersResourceName), server.usersAdmin).Methods(http.MethodGet)
-	subRouter.HandleFunc(fmt.Sprintf("/%s/admin", projectsResourceName), server.projectsAdmin).Methods(http.MethodGet)
-	subRouter.HandleFunc(fmt.Sprintf("/%s/admin", clustersResourceName), server.clustersAdmin).Methods(http.MethodGet)
-	subRouter.HandleFunc(fmt.Sprintf("/%s/admin", unitsResourceName), server.unitsAdmin).Methods(http.MethodGet)
-	subRouter.HandleFunc(fmt.Sprintf("/%s/{mode:(?:current|global)}/admin", usageResourceName), server.usageAdmin).
-		Methods(http.MethodGet)
-	subRouter.HandleFunc(fmt.Sprintf("/%s/{mode:(?:current|global)}/admin", statsResourceName), server.statsAdmin).
-		Methods(http.MethodGet)
-
-	// A demo end point that returns mocked data for units and/or usage tables
-	subRouter.HandleFunc("/demo/{resource:(?:units|usage)}", server.demo).Methods(http.MethodGet)
+	// Landing page
+	router.Handle("/", landingPage)
 
 	// pprof debug end points. Expose them only on localhost
 	if c.Web.EnableDebugServer {
-		router.PathPrefix("/debug/").Handler(http.DefaultServeMux).Host("localhost")
+		router.PathPrefix("/debug/").Handler(http.DefaultServeMux).Methods(http.MethodGet).Host("localhost")
 	}
 
-	subRouter.PathPrefix("/swagger/").Handler(httpSwagger.Handler(
+	// Swagger
+	router.PathPrefix("/swagger/").Handler(httpSwagger.Handler(
 		httpSwagger.URL("doc.json"), // The url pointing to API definition
 		httpSwagger.DeepLinking(true),
 		httpSwagger.DocExpansion("list"),
 		httpSwagger.DomID("swagger-ui"),
-	)).Methods(http.MethodGet)
+	))
+
+	// Setup CORS
+	cors := newCORS(c.Web.CORSOrigin, c.Web.UserHeaderNames)
+
+	// Health endpoint
+	router.HandleFunc("/health", cors.wrap(server.health))
+
+	// Create a sub router with apiVersion as PathPrefix
+	// Allow only GET and OPTIONS methods
+	subRouter := router.Methods(http.MethodGet, http.MethodOptions).PathPrefix(routePrefix).Subrouter()
+
+	// Allow only GET methods
+	subRouter.HandleFunc("/"+usersResourceName, cors.wrap(server.users))
+	subRouter.HandleFunc("/"+projectsResourceName, cors.wrap(server.projects))
+	subRouter.HandleFunc("/"+unitsResourceName, cors.wrap(server.units))
+	subRouter.HandleFunc(fmt.Sprintf("/%s/{mode:(?:current|global)}", usageResourceName), cors.wrap(server.usage))
+	subRouter.HandleFunc(fmt.Sprintf("/%s/verify", unitsResourceName), cors.wrap(server.verifyUnitsOwnership))
+
+	// Admin end points
+	subRouter.HandleFunc(fmt.Sprintf("/%s/admin", usersResourceName), cors.wrap(server.usersAdmin))
+	subRouter.HandleFunc(fmt.Sprintf("/%s/admin", projectsResourceName), cors.wrap(server.projectsAdmin))
+	subRouter.HandleFunc(fmt.Sprintf("/%s/admin", clustersResourceName), cors.wrap(server.clustersAdmin))
+	subRouter.HandleFunc(fmt.Sprintf("/%s/admin", unitsResourceName), cors.wrap(server.unitsAdmin))
+	subRouter.HandleFunc(fmt.Sprintf("/%s/{mode:(?:current|global)}/admin", usageResourceName), cors.wrap(server.usageAdmin))
+	subRouter.HandleFunc(fmt.Sprintf("/%s/{mode:(?:current|global)}/admin", statsResourceName), cors.wrap(server.statsAdmin))
+
+	// A demo end point that returns mocked data for units and/or usage tables
+	subRouter.HandleFunc("/demo/{resource:(?:units|usage)}", cors.wrap(server.demo))
 
 	// Open DB connection
 	dsn := fmt.Sprintf(
@@ -298,14 +294,11 @@ func New(c *Config) (*CEEMSServer, func(), error) {
 	}
 
 	// Add a middleware that verifies headers and pass them in requests
-	// The middleware will fetch admin users from Grafana periodically to update list
-	amw := authenticationMiddleware{
-		logger:          c.Logger,
-		routerPrefix:    routePrefix,
-		whitelistedURLs: regexp.MustCompile(routePrefix + "(swagger|health|demo)(.*)"),
-		db:              server.db,
-		adminUsers:      AdminUserNames,
+	amw, err := newAuthenticationMiddleware(routePrefix, c.Web.UserHeaderNames, server.db, c.Logger)
+	if err != nil {
+		return nil, func() {}, fmt.Errorf("failed to create middleware: %w", err)
 	}
+
 	router.Use(amw.Middleware)
 
 	// Instantiate new cache for storing current usage query results with TTL of 15 min
@@ -332,6 +325,30 @@ func New(c *Config) (*CEEMSServer, func(), error) {
 //	@description	All the endpoints, except `health`, `swagger`, `debug` and `demo`,
 //	@description	must send a user-agent header.
 //	@description
+//	@description	A demo instance of CEEMS API server is provided for the users to test. This
+//	@description	instance is running at `https://ceems-demo.myaddr.tools:7443` and it is the
+//	@description	default server that will serve the requests originating from current OAS client.
+//	@description
+//	@description	Some of the valid users for this demo instance are:
+//	@description	- arnold
+//	@description	- betty
+//	@description	- edna
+//	@description	- gazoo
+//	@description	- wilma
+//	@description
+//	@description	Every request must contain a `X-Grafana-User` header with one of the usernames
+//	@description	above as the value to the header. This is how CEEMS API server recognise the user.
+//	@description
+//	@description	Some of the valid projects for this demo instance are:
+//	@description	- bedrock
+//	@description	- cornerstone
+//	@description
+//	@description	Demo instance have CORS enabled to allow cross-domain communication from the browser.
+//	@description   	All responses have a wildcard same-origin which makes them completely public and
+//	@description 	accessible to everyone, including any code on any site.
+//	@description
+//	@description	To test admin resources, users can use `admin` as `X-Grafana-User`.
+//	@description
 //	@description				Timestamps must be specified in milliseconds, unless otherwise specified.
 //
 //	@contact.name				Mahendra Paipuri
@@ -343,14 +360,30 @@ func New(c *Config) (*CEEMSServer, func(), error) {
 //
 //	@securityDefinitions.basic	BasicAuth
 //
+//	@host						ceems-demo.myaddr.tools:7443
+//	@BasePath					/api/v1
+//
+//	@schemes					https
+//
 //	@externalDocs.url			https://mahendrapaipuri.github.io/ceems/
 //
-//	@x-logo						{"url": "https://github.com/mahendrapaipuri/ceems/blob/main/website/static/img/logo.png", "altText": "CEEMS logo"}
-func (s *CEEMSServer) Start() error {
+//	@x-logo						{"url": "https://raw.githubusercontent.com/mahendrapaipuri/ceems/refs/heads/main/website/static/img/logo.png", "altText": "CEEMS logo"}
+func (s *CEEMSServer) Start(_ context.Context) error {
 	// Set swagger info
 	docs.SwaggerInfo.BasePath = "/api/" + base.APIVersion
 	docs.SwaggerInfo.Schemes = []string{"http", "https"}
 	docs.SwaggerInfo.Host = s.server.Addr
+
+	// If externalURL is set, use it for Swagger Host
+	if s.externalURL.Host != "" {
+		docs.SwaggerInfo.Host = s.externalURL.Host
+		docs.SwaggerInfo.Schemes = []string{s.externalURL.Scheme}
+	}
+
+	// If externalURL is not set, ensure the server address is of good format.
+	if host, port, err := net.SplitHostPort(docs.SwaggerInfo.Host); err == nil && host == "" {
+		docs.SwaggerInfo.Host = "localhost:" + port
+	}
 
 	s.logger.Info("Starting " + base.CEEMSServerAppName)
 
@@ -383,8 +416,8 @@ func (s *CEEMSServer) Shutdown(ctx context.Context) error {
 }
 
 // Get current user from the header.
-func (s *CEEMSServer) getUser(r *http.Request) (string, string) {
-	return r.Header.Get(loggedUserHeader), r.Header.Get(dashboardUserHeader)
+func (s *CEEMSServer) getUser(r *http.Request) string {
+	return r.Header.Get(base.LoggedUserHeader)
 }
 
 // setHeaders sets common response headers.
@@ -404,19 +437,6 @@ func (s *CEEMSServer) setWriteDeadline(deadline time.Duration, w http.ResponseWr
 	}
 }
 
-// health godoc
-//
-//	@Summary		Health status
-//	@Description	This endpoint returns the health status of the server.
-//	@Description
-//	@Description	A healthy server returns 200 response code and any other
-//	@Description	responses should be treated as unhealthy server.
-//	@Tags			health
-//	@Produce		plain
-//	@Success		200	{string}	OK
-//	@Failure		503	{string}	KO
-//	@Router			/health [get]
-//
 // Check status of server.
 func (s *CEEMSServer) health(w http.ResponseWriter, r *http.Request) {
 	if !s.healthCheck(s.db, s.logger) {
@@ -568,6 +588,7 @@ func (s *CEEMSServer) roundQueryWindow(r *http.Request) error {
 				common.Round(
 					time.Now().Add(-defaultQueryWindow).In(s.dbConfig.Data.Timezone.Location).Unix(),
 					cacheTTLSeconds,
+					"left",
 				), 10,
 			),
 		)
@@ -578,7 +599,7 @@ func (s *CEEMSServer) roundQueryWindow(r *http.Request) error {
 
 			return fmt.Errorf("query parameter 'from': %w", ErrMalformedTimeStamp)
 		} else {
-			q.Set("from", strconv.FormatInt(common.Round(ts, cacheTTLSeconds), 10))
+			q.Set("from", strconv.FormatInt(common.Round(ts, cacheTTLSeconds, "left"), 10))
 		}
 	}
 
@@ -589,6 +610,7 @@ func (s *CEEMSServer) roundQueryWindow(r *http.Request) error {
 				common.Round(
 					time.Now().In(s.dbConfig.Data.Timezone.Location).Unix(),
 					cacheTTLSeconds,
+					"right",
 				), 10,
 			),
 		)
@@ -599,7 +621,7 @@ func (s *CEEMSServer) roundQueryWindow(r *http.Request) error {
 
 			return fmt.Errorf("query parameter 'to': %w", ErrMalformedTimeStamp)
 		} else {
-			q.Set("to", strconv.FormatInt(common.Round(ts, cacheTTLSeconds), 10))
+			q.Set("to", strconv.FormatInt(common.Round(ts, cacheTTLSeconds, "right"), 10))
 		}
 	}
 
@@ -645,8 +667,8 @@ func (s *CEEMSServer) unitsQuerier(
 
 	var err error
 
-	// Get current logged user and dashboard user from headers
-	loggedUser, _ := s.getUser(r)
+	// Get current logged user from headers
+	loggedUser := s.getUser(r)
 
 	// Set headers
 	s.setHeaders(w)
@@ -660,7 +682,7 @@ func (s *CEEMSServer) unitsQuerier(
 	// Get fields query parameters if any
 	queriedFields := s.getQueriedFields(r.URL.Query(), base.UnitsDBTableColNames)
 	if len(queriedFields) == 0 {
-		s.logger.Error("Invalid query fields", "loggedUser", loggedUser, "err", errInvalidQueryField)
+		s.logger.Error("Invalid query fields", "logged_user", loggedUser, "err", errInvalidQueryField)
 		errorResponse[any](w, &apiError{errorBadData, errInvalidQueryField}, s.logger, nil)
 
 		return
@@ -720,7 +742,7 @@ queryUnits:
 	// Get all user units in the given time window
 	units, err := s.queriers.unit(r.Context(), s.db, q, s.logger)
 	if units == nil && err != nil {
-		s.logger.Error("Failed to fetch units", "loggedUser", loggedUser, "err", err)
+		s.logger.Error("Failed to fetch units", "logged_user", loggedUser, "err", err)
 		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
 
 		return
@@ -846,11 +868,11 @@ func (s *CEEMSServer) units(w http.ResponseWriter, r *http.Request) {
 	// Measure elapsed time
 	defer common.TimeTrack(time.Now(), "units endpoint", s.logger)
 
-	// Get current logged user and dashboard user from headers
-	_, dashboardUser := s.getUser(r)
+	// Get current logged user from headers
+	loggedUser := s.getUser(r)
 
 	// Query for units and write response
-	s.unitsQuerier([]string{dashboardUser}, w, r)
+	s.unitsQuerier([]string{loggedUser}, w, r)
 }
 
 // verifyUnitsOwnership         godoc
@@ -898,8 +920,8 @@ func (s *CEEMSServer) verifyUnitsOwnership(w http.ResponseWriter, r *http.Reques
 	// Set headers
 	s.setHeaders(w)
 
-	// Get current logged user and dashboard user from headers
-	_, dashboardUser := s.getUser(r)
+	// Get current logged user from headers
+	loggedUser := s.getUser(r)
 
 	// Get cluster ID
 	clusterID := r.URL.Query()["cluster_id"]
@@ -922,7 +944,7 @@ func (s *CEEMSServer) verifyUnitsOwnership(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Check if user is owner of the queries uuids
-	if VerifyOwnership(r.Context(), dashboardUser, clusterID, uuids, starts, s.db, s.logger) {
+	if VerifyOwnership(r.Context(), loggedUser, clusterID, uuids, starts, s.db, s.logger) {
 		w.WriteHeader(http.StatusOK)
 
 		response := Response[string]{
@@ -967,7 +989,7 @@ func (s *CEEMSServer) clustersAdmin(w http.ResponseWriter, r *http.Request) {
 	s.setHeaders(w)
 
 	// Get current user from header
-	_, dashboardUser := s.getUser(r)
+	loggerUser := s.getUser(r)
 
 	// Make query
 	q := Query{}
@@ -981,7 +1003,7 @@ func (s *CEEMSServer) clustersAdmin(w http.ResponseWriter, r *http.Request) {
 	// Make query and get list of cluster ids
 	clusterIDs, err := s.queriers.cluster(r.Context(), s.db, q, s.logger)
 	if clusterIDs == nil && err != nil {
-		s.logger.Error("Failed to fetch cluster IDs", "user", dashboardUser, "err", err)
+		s.logger.Error("Failed to fetch cluster IDs", "user", loggerUser, "err", err)
 		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
 
 		return
@@ -1025,7 +1047,7 @@ func (s *CEEMSServer) adminUsersQuerier(w http.ResponseWriter, r *http.Request) 
 	// Write response
 	w.WriteHeader(http.StatusOK)
 
-	usersResponse := Response[models.AdminUsers]{
+	usersResponse := Response[models.User]{
 		Status: "success",
 		Data:   adminUsersLists,
 	}
@@ -1117,10 +1139,10 @@ func (s *CEEMSServer) users(w http.ResponseWriter, r *http.Request) {
 	defer common.TimeTrack(time.Now(), "users endpoint", s.logger)
 
 	// Get current user from header
-	_, dashboardUser := s.getUser(r)
+	loggerUser := s.getUser(r)
 
 	// Query for users and write response
-	s.usersQuerier([]string{dashboardUser}, w, r)
+	s.usersQuerier([]string{loggerUser}, w, r)
 }
 
 // usersAdmin         godoc
@@ -1139,7 +1161,7 @@ func (s *CEEMSServer) users(w http.ResponseWriter, r *http.Request) {
 //	@Description	The details include list of projects that user is currently a part of.
 //	@Description
 //	@Description	When query parameter `role` is set to `admin`, only admin users will
-//	@Description	will be returned
+//	@Description	will be returned. The `tags` values indicates the source of admin user.
 //	@Description
 //	@Security	BasicAuth
 //	@Tags		users
@@ -1260,10 +1282,10 @@ func (s *CEEMSServer) projects(w http.ResponseWriter, r *http.Request) {
 	defer common.TimeTrack(time.Now(), "projects endpoint", s.logger)
 
 	// Get current user from header
-	_, dashboardUser := s.getUser(r)
+	loggerUser := s.getUser(r)
 
 	// Make query and write response
-	s.projectsQuerier([]string{dashboardUser}, w, r)
+	s.projectsQuerier([]string{loggerUser}, w, r)
 }
 
 // projectsAdmin         godoc
@@ -1453,6 +1475,15 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 
 			virtualTables = append(virtualTables, p)
 		}
+	}
+
+	// If virtualTables is empty the query will fail. Stop here and log any
+	// qErrs. If there is no activity within the given period, we end up
+	// in this situation and hence, we should not raise any error.
+	if len(virtualTables) == 0 {
+		s.logger.Error("No virtual tables found. Stopping query execution", "err", qErrs)
+
+		goto writer
 	}
 
 	if _, ok := r.URL.Query()["experimental"]; ok {
@@ -1650,7 +1681,7 @@ func (s *CEEMSServer) usage(w http.ResponseWriter, r *http.Request) {
 	s.setHeaders(w)
 
 	// Get current user from header
-	_, dashboardUser := s.getUser(r)
+	loggerUser := s.getUser(r)
 
 	// Get path parameter type
 	var mode string
@@ -1665,7 +1696,7 @@ func (s *CEEMSServer) usage(w http.ResponseWriter, r *http.Request) {
 	// Get fields query parameters if any
 	queriedFields := s.getQueriedFields(r.URL.Query(), base.UsageDBTableColNames)
 	if len(queriedFields) == 0 {
-		s.logger.Error("Invalid query fields", "loggedUser", dashboardUser)
+		s.logger.Error("Invalid query fields", "logged_user", loggerUser)
 		errorResponse[any](w, &apiError{errorBadData, errInvalidQueryField}, s.logger, nil)
 
 		return
@@ -1673,12 +1704,12 @@ func (s *CEEMSServer) usage(w http.ResponseWriter, r *http.Request) {
 
 	// handle current usage query
 	if mode == currentUsage {
-		s.currentUsage([]string{dashboardUser}, queriedFields, w, r)
+		s.currentUsage([]string{loggerUser}, queriedFields, w, r)
 	}
 
 	// handle global usage query
 	if mode == globalUsage {
-		s.globalUsage([]string{dashboardUser}, queriedFields, w, r)
+		s.globalUsage([]string{loggerUser}, queriedFields, w, r)
 	}
 }
 
@@ -1750,7 +1781,7 @@ func (s *CEEMSServer) usageAdmin(w http.ResponseWriter, r *http.Request) {
 	s.setHeaders(w)
 
 	// Get current user from header
-	_, dashboardUser := s.getUser(r)
+	loggerUser := s.getUser(r)
 
 	// Get path parameter type
 	var mode string
@@ -1765,7 +1796,7 @@ func (s *CEEMSServer) usageAdmin(w http.ResponseWriter, r *http.Request) {
 	// Get fields query parameters if any
 	queriedFields := s.getQueriedFields(r.URL.Query(), base.UsageDBTableColNames)
 	if len(queriedFields) == 0 {
-		s.logger.Error("Invalid query fields", "loggedUser", dashboardUser)
+		s.logger.Error("Invalid query fields", "logged_user", loggerUser)
 		errorResponse[any](w, &apiError{errorBadData, errInvalidQueryField}, s.logger, nil)
 
 		return

@@ -82,22 +82,35 @@ func TestRound(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    int64
+		side     string
 		expected int64
 	}{
 		{
-			name:     "Floor",
+			name:     "Default floor",
 			input:    400,
 			expected: 0,
 		},
 		{
-			name:     "Ceil",
+			name:     "Default ceil",
 			input:    897,
+			expected: 900,
+		},
+		{
+			name:     "Right round",
+			input:    400,
+			side:     "right",
+			expected: 900,
+		},
+		{
+			name:     "Left round",
+			input:    897,
+			side:     "left",
 			expected: 0,
 		},
 	}
 
 	for _, test := range tests {
-		got := Round(test.input, 900)
+		got := Round(test.input, 900, test.side)
 		assert.Equal(t, test.expected, got, test.name)
 	}
 }

@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	http_api "github.com/mahendrapaipuri/ceems/pkg/api/http"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/stretchr/testify/assert"
@@ -94,11 +95,16 @@ INSERT INTO users VALUES(6, 'rm-1', 'usr4', '["prj4"]');
 INSERT INTO users VALUES(7, 'rm-1', 'usr5', '["prj5"]');
 CREATE TABLE admin_users (
 	"id" integer not null primary key,
-	"source" text,
-	"users" text
+	"cluster_id" text,
+	"name" text,
+	"tags" text
 );
-INSERT INTO admin_users VALUES(1, 'ceems', '["adm1","adm2","adm3"]');
-INSERT INTO admin_users VALUES(2, 'grafana', '["adm4","adm5","adm6"]');
+INSERT INTO admin_users VALUES(1, 'all', 'adm1', '["ceems"]');
+INSERT INTO admin_users VALUES(2, 'all', 'adm2', '["ceems"]');
+INSERT INTO admin_users VALUES(3, 'all', 'adm3', '["ceems"]');
+INSERT INTO admin_users VALUES(4, 'all', 'adm4', '["grafana"]');
+INSERT INTO admin_users VALUES(5, 'all', 'adm5', '["grafana"]');
+INSERT INTO admin_users VALUES(6, 'all', 'adm6', '["grafana"]');
 COMMIT;`
 
 	_, err = db.Exec(stmts)
@@ -167,7 +173,7 @@ func setupCEEMSAPI(db *sql.DB) *httptest.Server {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 
 		// Get current logged user and dashboard user from headers
-		user := r.Header.Get(grafanaUserHeader)
+		user := r.Header.Get(base.GrafanaUserHeader)
 
 		// Get list of queried uuids and cluster IDs
 		uuids := r.URL.Query()["uuid"]
@@ -206,7 +212,7 @@ func setupCEEMSAPI(db *sql.DB) *httptest.Server {
 				// Write response
 				w.WriteHeader(http.StatusOK)
 
-				response := http_api.Response[models.AdminUsers]{
+				response := http_api.Response[models.User]{
 					Status: "success",
 					Data:   admins,
 				}
@@ -221,7 +227,7 @@ func setupCEEMSAPI(db *sql.DB) *httptest.Server {
 	return server
 }
 
-func TestMiddlewareWithDB(t *testing.T) {
+func TestMiddleware(t *testing.T) {
 	// Setup middleware handlers
 	handlerToTestDB, err := setupMiddlewareWithDB(t.TempDir())
 	require.NoError(t, err, "failed to setup middleware with DB")
@@ -342,11 +348,11 @@ func TestMiddlewareWithDB(t *testing.T) {
 	for _, test := range tests {
 		request := httptest.NewRequest(http.MethodGet, test.req, nil)
 		if test.header {
-			request.Header.Set(grafanaUserHeader, test.user)
+			request.Header.Set(base.GrafanaUserHeader, test.user)
 		}
 
 		if test.id != "" {
-			request.Header.Set(ceemsClusterIDHeader, test.id)
+			request.Header.Set(base.ClusterIDHeader, test.id)
 		}
 
 		// Tests with CEEMS DB

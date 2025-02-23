@@ -24,6 +24,7 @@ import (
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/db"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
+	"github.com/prometheus/exporter-toolkit/web"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -55,8 +56,9 @@ var (
 		{Name: "foousr", ClusterID: "slurm-0", ResourceManager: "slurm", Projects: models.List{"foo"}},
 		{Name: "bar", ClusterID: "os-0", ResourceManager: "openstack", Projects: models.List{"bar"}},
 	}
-	mockAdmUsers = []models.AdminUsers{
-		{Users: models.List{"adm1", "adm2"}},
+	mockAdmUsers = []models.User{
+		{Name: "adm1", Tags: models.List{"ceems"}},
+		{Name: "adm2", Tags: models.List{"grafana"}},
 	}
 	mockServerClusters = []models.Cluster{
 		{ID: "slurm-0", Manager: "slurm"},
@@ -84,8 +86,10 @@ func setupServer(d string) *CEEMSServer {
 				},
 			},
 			Web: WebConfig{
-				Addresses:     []string{"localhost:9020"}, // dummy address
-				RequestsLimit: 10,
+				Addresses:       []string{"localhost:9020"}, // dummy address
+				RequestsLimit:   10,
+				LandingConfig:   &web.LandingConfig{},
+				UserHeaderNames: []string{base.GrafanaUserHeader},
 			},
 		},
 	)
@@ -120,7 +124,7 @@ func userQuerier(ctx context.Context, db *sql.DB, q Query, logger *slog.Logger) 
 	return mockServerUsers, nil
 }
 
-func adminUserQuerier(ctx context.Context, db *sql.DB, q Query, logger *slog.Logger) ([]models.AdminUsers, error) {
+func adminUserQuerier(ctx context.Context, db *sql.DB, q Query, logger *slog.Logger) ([]models.User, error) {
 	return mockAdmUsers, nil
 }
 
@@ -222,7 +226,7 @@ func TestUsersHandlers(t *testing.T) {
 
 		// Unmarshal byte into structs.
 		if test.urlParams.Has("role") {
-			var response Response[models.AdminUsers]
+			var response Response[models.User]
 
 			json.Unmarshal(data, &response)
 			assert.Equal(t, "success", response.Status)
@@ -598,9 +602,9 @@ func TestUsageErrorHandlers(t *testing.T) {
 			var response Response[models.Usage]
 
 			json.Unmarshal(data, &response)
-			assert.Equal(t, "success", response.Status)
-			assert.Equal(t, mockServerUsage, response.Data)
-			assert.NotEmpty(t, response.Warnings)
+			assert.Equal(t, "success", response.Status, test.name)
+			assert.Empty(t, response.Data, test.name)
+			assert.NotEmpty(t, response.Warnings, test.name)
 		}
 	}
 }

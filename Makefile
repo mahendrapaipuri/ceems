@@ -202,6 +202,7 @@ test-e2e: $(PROMTOOL) build pkg/collector/testdata/sys/.unpacked pkg/collector/t
 	./scripts/e2e-test.sh -s api-verify-fail-query
 	./scripts/e2e-test.sh -s api-demo-units-query
 	./scripts/e2e-test.sh -s api-demo-usage-query
+	./scripts/e2e-test.sh -s api-cors-preflight
 	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-basic
 	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-basic-tsdb-only
 	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-basic-pyro-only
@@ -267,6 +268,7 @@ test-e2e-update: $(PROMTOOL) build pkg/collector/testdata/sys/.unpacked pkg/coll
 	./scripts/e2e-test.sh -s api-verify-fail-query -u || true
 	./scripts/e2e-test.sh -s api-demo-units-query -u || true
 	./scripts/e2e-test.sh -s api-demo-usage-query -u || true
+	./scripts/e2e-test.sh -s api-cors-preflight -u || true
 	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-basic -u || true
 	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-basic-tsdb-only -u || true
 	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-basic-pyro-only -u || true

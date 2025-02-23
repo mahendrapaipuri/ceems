@@ -1,3 +1,4 @@
+basePath: /api/v1
 definitions:
   http.Response-any:
     properties:
@@ -218,13 +219,16 @@ definitions:
       cluster_id:
         description: Identifier of the resource manager that owns project. It is used
           to differentiate multiple clusters of same resource manager.
+        example: slurm-0
         type: string
       name:
         description: Name of the project
+        example: prj1
         type: string
       resource_manager:
         description: Name of the resource manager that owns project. Eg slurm, openstack,
           kubernetes, etc
+        example: slurm
         type: string
       tags:
         description: List of meta data tags of the project
@@ -236,6 +240,7 @@ definitions:
         type: array
       uid:
         description: Unique identifier of the project provided by cluster
+        example: "1000"
         type: string
       users:
         description: List of users of the project
@@ -251,26 +256,33 @@ definitions:
       cluster_id:
         description: Identifier of the resource manager that owns compute unit. It
           is used to differentiate multiple clusters of same resource manager.
+        example: slurm-0
         type: string
       num_active_units:
         description: Number of active units that are in running state
+        example: 800
         type: integer
       num_inactive_units:
         description: Number of inactive units that are in terminated/cancelled/error
           state
+        example: 200
         type: integer
       num_projects:
         description: Number of projects
+        example: 200
         type: integer
       num_units:
         description: Number of active and terminated units
+        example: 1000
         type: integer
       num_users:
         description: Number of users
+        example: 500
         type: integer
       resource_manager:
         description: Name of the resource manager that owns project. Eg slurm, openstack,
           kubernetes, etc
+        example: slurm
         type: string
     type: object
   models.Unit:
@@ -316,43 +328,56 @@ definitions:
       cluster_id:
         description: Identifier of the resource manager that owns compute unit. It
           is used to differentiate multiple clusters of same resource manager.
+        example: slurm-0
         type: string
       created_at:
         description: Creation time
+        example: 2023-02-21T15:48:20+0100
         type: string
       created_at_ts:
         description: Creation timestamp
+        example: 1676990900000
         type: integer
       elapsed:
         description: Human readable total elapsed time string
+        example: 2-00:10:20
         type: string
       ended_at:
         description: End time
+        example: Unknown
         type: string
       ended_at_ts:
         description: End timestamp
+        example: 0
         type: integer
       groupname:
         description: User group
+        example: grp1
         type: string
       name:
         description: Name of compute unit
+        example: my-slurm-job
         type: string
       project:
         description: Account in batch systems, Tenant in Openstack, Namespace in k8s
+        example: prj1
         type: string
       resource_manager:
         description: Name of the resource manager that owns compute unit. Eg slurm,
           openstack, kubernetes, etc
+        example: slurm
         type: string
       started_at:
         description: Start time
+        example: 2023-02-21T15:49:06+0100
         type: string
       started_at_ts:
         description: Start timestamp
+        example: 1676990946000
         type: integer
       state:
         description: Current state of unit
+        example: RUNNING
         type: string
       tags:
         additionalProperties:
@@ -439,10 +464,12 @@ definitions:
         type: object
       username:
         description: Username
+        example: usr1
         type: string
       uuid:
         description: Unique identifier of unit. It can be Job ID for batch jobs, UUID
           for pods in k8s or VMs in Openstack
+        example: "193048"
         type: string
     type: object
   models.Usage:
@@ -478,19 +505,24 @@ definitions:
       cluster_id:
         description: Identifier of the resource manager that owns compute unit. It
           is used to differentiate multiple clusters of same resource manager.
+        example: slurm-0
         type: string
       groupname:
         description: User group
+        example: grp1
         type: string
       num_units:
         description: Number of consumed units
+        example: 145
         type: integer
       project:
         description: Account in batch systems, Tenant in Openstack, Namespace in k8s
+        example: prj1
         type: string
       resource_manager:
         description: Name of the resource manager that owns project. Eg slurm, openstack,
           kubernetes, etc
+        example: slurm
         type: string
       total_cpu_emissions_gms:
         additionalProperties:
@@ -567,6 +599,7 @@ definitions:
         type: object
       username:
         description: Username
+        example: usr1
         type: string
     type: object
   models.User:
@@ -574,9 +607,11 @@ definitions:
       cluster_id:
         description: Identifier of the resource manager that owns user. It is used
           to differentiate multiple clusters of same resource manager.
+        example: slurm-0
         type: string
       name:
         description: Name of the user
+        example: usr1
         type: string
       projects:
         description: List of projects of the user
@@ -589,6 +624,7 @@ definitions:
       resource_manager:
         description: Name of the resource manager that owns user. Eg slurm, openstack,
           kubernetes, etc
+        example: slurm
         type: string
       tags:
         description: List of meta data tags of the user
@@ -600,10 +636,12 @@ definitions:
         type: array
       uid:
         description: Unique identifier of the user provided by cluster
+        example: "1000"
         type: string
     type: object
 externalDocs:
   url: https://mahendrapaipuri.github.io/ceems/
+host: ceems-demo.myaddr.tools:7443
 info:
   contact:
     email: mahendra.paipuri@gmail.com
@@ -620,6 +658,26 @@ info:
     All the endpoints, except `health`, `swagger`, `debug` and `demo`,
     must send a user-agent header.
 
+    A demo instance of CEEMS API server is provided for the users to test. This
+    instance is running at `https://ceems-demo.myaddr.tools:7443` and it is the
+    default server that will serve the requests originating from current OAS client.
+
+    Some of the valid users for this demo instance are:
+    - arnold
+    - betty
+    - edna
+    - gazoo
+    - wilma
+
+    Every request must contain a `X-Grafana-User` header with one of the usernames
+    above as the value to the header. This is how CEEMS API server recognise the user.
+
+    Some of the valid projects for this demo instance are:
+    - bedrock
+    - cornerstone
+
+    To test admin resources, users can use `admin` as `X-Grafana-User`.
+
     Timestamps must be specified in milliseconds, unless otherwise specified.
   license:
     name: GPL-3.0 license
@@ -628,7 +686,7 @@ info:
   version: "1.0"
   x-logo:
     altText: CEEMS logo
-    url: https://github.com/mahendrapaipuri/ceems/blob/main/website/static/img/logo.png
+    url: https://raw.githubusercontent.com/mahendrapaipuri/ceems/refs/heads/main/website/static/img/logo.png
 paths:
   /clusters/admin:
     get:
@@ -703,27 +761,6 @@ paths:
       summary: Demo Units/Usage endpoints
       tags:
       - demo
-  /health:
-    get:
-      description: |-
-        This endpoint returns the health status of the server.
-
-        A healthy server returns 200 response code and any other
-        responses should be treated as unhealthy server.
-      produces:
-      - text/plain
-      responses:
-        "200":
-          description: OK
-          schema:
-            type: string
-        "503":
-          description: Service Unavailable
-          schema:
-            type: string
-      summary: Health status
-      tags:
-      - health
   /projects:
     get:
       description: |
@@ -1452,7 +1489,7 @@ paths:
         The details include list of projects that user is currently a part of.
 
         When query parameter `role` is set to `admin`, only admin users will
-        will be returned
+        will be returned. The `tags` values indicates the source of admin user.
       parameters:
       - description: Current user name
         in: header
@@ -1497,6 +1534,8 @@ paths:
       summary: Admin endpoint for fetching user details of _any_ user.
       tags:
       - users
+schemes:
+- https
 securityDefinitions:
   BasicAuth:
     type: basic
