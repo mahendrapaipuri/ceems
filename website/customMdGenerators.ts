@@ -20,7 +20,7 @@ ${servers
     if (!server.description) {
       server.description = 'Demo';
     }
-    return `| ${server.url} | ${server.description} | `.replace("\n", "<br/>");
+    return `| ${server.url} | ${server.description} | `.replace(/\n/g, "<br/>");
   })
   .join("\n")}
     `;

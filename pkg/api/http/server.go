@@ -344,8 +344,8 @@ func New(c *Config) (*CEEMSServer, func(), error) {
 //	@description	- cornerstone
 //	@description
 //	@description	Demo instance have CORS enabled to allow cross-domain communication from the browser.
-//	@description   	All responses have a wildcard same-origin which makes them completely public and
-//	@description 	accessible to everyone, including any code on any site.
+//	@description	All responses have a wildcard same-origin which makes them completely public and
+//	@description	accessible to everyone, including any code on any site.
 //	@description
 //	@description	To test admin resources, users can use `admin` as `X-Grafana-User`.
 //	@description

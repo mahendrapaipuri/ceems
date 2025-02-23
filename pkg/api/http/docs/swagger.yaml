@@ -676,6 +676,10 @@ info:
     - bedrock
     - cornerstone
 
+    Demo instance have CORS enabled to allow cross-domain communication from the browser.
+    All responses have a wildcard same-origin which makes them completely public and
+    accessible to everyone, including any code on any site.
+
     To test admin resources, users can use `admin` as `X-Grafana-User`.
 
     Timestamps must be specified in milliseconds, unless otherwise specified.
