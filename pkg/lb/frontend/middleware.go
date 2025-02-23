@@ -27,15 +27,6 @@ import (
 	"github.com/prometheus/common/config"
 )
 
-// Headers.
-const (
-	grafanaUserHeader    = "X-Grafana-User"
-	dashboardUserHeader  = "X-Dashboard-User"
-	loggedUserHeader     = "X-Logged-User"
-	adminUserHeader      = "X-Admin-User"
-	ceemsClusterIDHeader = "X-Ceems-Cluster-Id"
-)
-
 // Allowed resources.
 // No need to check caps as Prometheus do not allow
 // capitalised query names.
@@ -147,20 +138,16 @@ func (c *ceems) adminUsers(ctx context.Context) ([]string, error) {
 		req.URL.RawQuery = urlVals.Encode()
 
 		// Add necessary headers. Use CEEMS service account as user
-		req.Header.Add(grafanaUserHeader, ceems_api_base.CEEMSServiceAccount)
+		req.Header.Add(ceems_api_base.GrafanaUserHeader, ceems_api_base.CEEMSServiceAccount)
 
 		// Make request
-		admins, err := ceemsAPIRequest[models.AdminUsers](req, c.client)
+		admins, err := ceemsAPIRequest[models.User](req, c.client)
 		if err != nil {
 			return nil, err
 		}
 
-		for _, admin := range admins {
-			for _, user := range admin.Users {
-				if userString, ok := user.(string); ok {
-					adminUsers = append(adminUsers, userString)
-				}
-			}
+		for _, user := range admins {
+			adminUsers = append(adminUsers, user.Name)
 		}
 	}
 
@@ -291,7 +278,7 @@ func (amw *authenticationMiddleware) isUserUnit(
 	req.URL.RawQuery = urlVals.Encode()
 
 	// Add necessary headers
-	req.Header.Add(grafanaUserHeader, user)
+	req.Header.Add(ceems_api_base.GrafanaUserHeader, user)
 
 	// Make request
 	// If request failed, forbid the query. It can happen when CEEMS API server
@@ -326,7 +313,7 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 		// Get cluster id from X-Ceems-Cluster-Id header
 		// This is most important and request parameter that we need
 		// to proxy request. Rest of them are optional
-		reqParams.clusterID = r.Header.Get(ceemsClusterIDHeader)
+		reqParams.clusterID = r.Header.Get(ceems_api_base.ClusterIDHeader)
 
 		// Verify clusterID is in list of valid cluster IDs
 		if !slices.Contains(amw.clusterIDs, reqParams.clusterID) {
@@ -356,11 +343,11 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 
 		// Check if user header exists
 		// Remove any X-Admin-User header or X-Logged-User if passed
-		r.Header.Del(adminUserHeader)
-		r.Header.Del(loggedUserHeader)
+		r.Header.Del(ceems_api_base.AdminUserHeader)
+		r.Header.Del(ceems_api_base.LoggedUserHeader)
 
 		// Check if username header is available
-		loggedUser = r.Header.Get(grafanaUserHeader)
+		loggedUser = r.Header.Get(ceems_api_base.GrafanaUserHeader)
 		if loggedUser == "" {
 			amw.logger.Error("Grafana user Header not found. Denying authentication", "url", r.URL)
 
@@ -383,7 +370,7 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 		amw.logger.Debug("middleware", "logged_user", loggedUser, "url", r.URL)
 
 		// Set logged user header
-		r.Header.Set(loggedUserHeader, loggedUser)
+		r.Header.Set(ceems_api_base.LoggedUserHeader, loggedUser)
 
 		// Check if user is admin
 		isAdmin = amw.isAdminUser(r.Context(), loggedUser)

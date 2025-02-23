@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"os/user"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"sync"
 	"syscall"
@@ -25,9 +26,11 @@ import (
 	ceems_http "github.com/mahendrapaipuri/ceems/pkg/api/http"
 	"github.com/mahendrapaipuri/ceems/pkg/api/resource"
 	"github.com/mahendrapaipuri/ceems/pkg/api/updater"
+	"github.com/prometheus/common/model"
 	"github.com/prometheus/common/promslog"
 	"github.com/prometheus/common/promslog/flag"
 	"github.com/prometheus/common/version"
+	"github.com/prometheus/exporter-toolkit/web"
 	"kernel.org/pub/linux/libs/security/libcap/cap"
 )
 
@@ -80,6 +83,10 @@ func NewCEEMSServer() (*CEEMSServer, error) {
 // Main is the entry point of the `ceems_server` command.
 func (b *CEEMSServer) Main() error {
 	var (
+		configFile = b.App.Flag(
+			"config.file",
+			"Path to CEEMS API server configuration file.",
+		).Envar("CEEMS_API_SERVER_CONFIG_FILE").Default("").String()
 		webListenAddresses = b.App.Flag(
 			"web.listen-address",
 			"Addresses on which to expose API server and web interface.",
@@ -88,14 +95,38 @@ func (b *CEEMSServer) Main() error {
 			"web.config.file",
 			"Path to configuration file that can enable TLS or authentication. See: https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md",
 		).Envar("CEEMS_API_SERVER_WEB_CONFIG_FILE").Default("").String()
-		configFile = b.App.Flag(
-			"config.file",
-			"Path to CEEMS API server configuration file.",
-		).Envar("CEEMS_API_SERVER_CONFIG_FILE").Default("").String()
+		routePrefix = b.App.Flag(
+			"web.route-prefix",
+			"Prefix for the internal routes of web endpoints.",
+		).Default("/").String()
+		requestsLimit = b.App.Flag(
+			"web.max-requests",
+			"Maximum number of requests allowed in 1 minute period per client identified by Real IP address. "+
+				"Request headers True-Client-IP, X-Real-IP and X-Forwarded-For are looked up to get the real client IP address."+
+				"By default no limit is applied.",
+		).Default("0").Int()
+		corsOrigin = b.App.Flag(
+			"web.cors.origin",
+			"Regex for CORS origin. It is fully anchored. Example: 'https?://(domain1|domain2)\\.com'.",
+		).Default(".*").String()
 		enableDebugServer = b.App.Flag(
 			"web.debug-server",
 			"Enable /debug/pprof profiling endpoints. (default: disabled).",
 		).Default("false").Bool()
+		maxQueryPeriod = b.App.Flag(
+			"query.max-period",
+			"Maximum allowable query range. Units Supported: y, w, d, h, m, s, ms. By default no limit is applied.",
+		).Default("0s").String()
+
+		// Hidden args that we can expose to users if found useful
+		externalURL = b.App.Flag(
+			"web.external-url",
+			"External URL at which CEEMS API server is reachable.",
+		).Hidden().Default("").URL()
+		userHeaders = b.App.Flag(
+			"web.user-header-name",
+			"Username will be fetched from these headers. (default: X-Grafana-User).",
+		).Hidden().Default(base.GrafanaUserHeader).Strings()
 
 		// Testing related hidden CLI args
 		skipDeleteOldUnits = b.App.Flag(
@@ -133,6 +164,18 @@ func (b *CEEMSServer) Main() error {
 	_, err := b.App.Parse(os.Args[1:])
 	if err != nil {
 		return fmt.Errorf("failed to parse CLI flags: %w", err)
+	}
+
+	// Parse max query period
+	period, err := model.ParseDuration(*maxQueryPeriod)
+	if err != nil {
+		return fmt.Errorf("failed to parse option for --query.max-period: %w", err)
+	}
+
+	// Compile CORS regex
+	corsRegex, err := regexp.Compile("^(?s:" + *corsOrigin + ")$")
+	if err != nil {
+		return fmt.Errorf("failed to compile option for --web.cors.origin: %w", err)
 	}
 
 	// Get absolute path for web config file if provided
@@ -252,9 +295,28 @@ func (b *CEEMSServer) Main() error {
 			WebSystemdSocket:  *systemdSocket,
 			WebConfigFile:     webConfigFilePath,
 			EnableDebugServer: *enableDebugServer,
-			RoutePrefix:       config.Server.Web.RoutePrefix,
-			RequestsLimit:     config.Server.Web.RequestsLimit,
-			MaxQueryPeriod:    config.Server.Web.MaxQueryPeriod,
+			UserHeaderNames:   *userHeaders,
+			ExternalURL:       *externalURL,
+			RoutePrefix:       *routePrefix,
+			CORSOrigin:        corsRegex,
+			RequestsLimit:     *requestsLimit,
+			MaxQueryPeriod:    period,
+			LandingConfig: &web.LandingConfig{
+				Name:        b.App.Name,
+				Description: b.App.Help,
+				Version:     version.Info(),
+				HeaderColor: "#3cc9beff",
+				Links: []web.LandingLinks{
+					{
+						Address: "swagger/index.html",
+						Text:    "Swagger API",
+					},
+					{
+						Address: "health",
+						Text:    "Health Status",
+					},
+				},
+			},
 		},
 		DB: *dbConfig,
 	}
@@ -343,7 +405,7 @@ func (b *CEEMSServer) Main() error {
 	// Initializing the server in a goroutine so that
 	// it won't block the graceful shutdown handling below.
 	go func() {
-		if err := apiServer.Start(); err != nil {
+		if err := apiServer.Start(ctx); err != nil {
 			logger.Error("Failed to start server", "err", err)
 		}
 	}()

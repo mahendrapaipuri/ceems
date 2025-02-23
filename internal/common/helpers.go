@@ -27,9 +27,19 @@ func GenerateKey(url string) uint64 {
 	return hash.Sum64()
 }
 
-// Round returns a value less than or equal to value that is multiple of nearest.
-func Round(value int64, nearest int64) int64 {
-	return (value / nearest) * nearest
+// Round returns a closest value that is multiple of nearest based on side.
+// If side is `left`, it returns value less or equal to nearest and if the
+// side is `right`, it returns value more or equal to nearest. For every
+// other value of `side`, it returns a value based on `math.Round()`.
+func Round(value int64, nearest int64, side string) int64 {
+	switch side {
+	case "right":
+		return int64(math.Ceil(float64(value)/float64(nearest))) * nearest
+	case "left":
+		return int64(math.Floor(float64(value)/float64(nearest))) * nearest
+	default:
+		return int64(math.Round((float64(value) / float64(nearest)))) * nearest
+	}
 }
 
 // TimeTrack tracks execution time of each function.

@@ -10,132 +10,176 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"regexp"
 	"testing"
 
+	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func mockAdminUsers(_ context.Context, _ *sql.DB) ([]string, error) {
 	return []string{"adm1"}, nil
 }
 
-func setupMiddleware() http.Handler {
-	// Create an instance of middleware
-	amw := authenticationMiddleware{
-		logger:          slog.New(slog.NewTextHandler(io.Discard, nil)),
-		whitelistedURLs: regexp.MustCompile("/api/v1/(swagger|debug|health|demo)(.*)"),
-		adminUsers:      mockAdminUsers,
+func setupMiddleware() (http.Handler, error) {
+	amw, err := newAuthenticationMiddleware("/api/v1", []string{base.GrafanaUserHeader}, nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	if err != nil {
+		return nil, err
 	}
+
+	// Set mock instance of admin users
+	amw.adminUsers = mockAdminUsers
 
 	// create a handler to use as "next" which will verify the request
 	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
 
 	// create the handler to test, using our custom "next" handler
-	return amw.Middleware(nextHandler)
+	return amw.Middleware(nextHandler), nil
 }
 
-func TestMiddlewareSuccess(t *testing.T) {
-	// Setup middleware handler
-	handlerToTest := setupMiddleware()
+func TestNewMiddleware(t *testing.T) {
+	// Valid route prefix
+	_, err := newAuthenticationMiddleware("/api/v1", []string{base.GrafanaUserHeader}, nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	require.NoError(t, err)
 
-	// create a mock request to use
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/units", nil)
-	req.Header.Set(grafanaUserHeader, "usr1")
+	// Invald route prefix
+	_, err = newAuthenticationMiddleware("/(?!\\/)", []string{base.GrafanaUserHeader}, nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	require.Error(t, err)
 
-	// call the handler using a mock response recorder (we'll not use that anyway)
-	w := httptest.NewRecorder()
-	handlerToTest.ServeHTTP(w, req)
-
-	res := w.Result()
-	defer res.Body.Close()
-
-	// Should pass test
-	assert.Equal(t, 200, res.StatusCode)
-
-	// Check headers added to req
-	assert.Equal(t, "usr1", req.Header.Get(loggedUserHeader))
-	assert.Equal(t, "usr1", req.Header.Get(dashboardUserHeader))
+	// No user headers
+	_, err = newAuthenticationMiddleware("/api/v1", nil, nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	require.Error(t, err)
 }
 
-func TestMiddlewareFailure(t *testing.T) {
-	// Setup middleware handler
-	handlerToTest := setupMiddleware()
+func TestMiddleware(t *testing.T) {
+	// Define tests
+	tests := []struct {
+		name     string
+		method   string
+		endpoint string
+		code     int
+		header   bool
+		admin    bool
+	}{
+		{
+			name:     "user accessing normal resource",
+			method:   http.MethodGet,
+			endpoint: "/api/v1/units",
+			code:     200,
+			header:   true,
+			admin:    false,
+		},
+		{
+			name:     "user accessing normal resource without header",
+			method:   http.MethodGet,
+			endpoint: "/api/v1/units",
+			code:     401,
+			header:   false,
+			admin:    false,
+		},
+		{
+			name:     "user accessing admin resource",
+			method:   http.MethodGet,
+			endpoint: "/api/v1/units/admin",
+			code:     http.StatusForbidden,
+			header:   true,
+			admin:    false,
+		},
+		{
+			name:     "user accessing swagger resource",
+			method:   http.MethodGet,
+			endpoint: "/swagger/index.html",
+			code:     200,
+			header:   false,
+			admin:    false,
+		},
+		{
+			name:     "user accessing debug resource",
+			method:   http.MethodGet,
+			endpoint: "/debug/pprof",
+			code:     200,
+			header:   false,
+			admin:    false,
+		},
+		{
+			name:     "user accessing health resource",
+			method:   http.MethodGet,
+			endpoint: "/health",
+			code:     200,
+			header:   false,
+			admin:    false,
+		},
+		{
+			name:     "user making preflight request",
+			method:   http.MethodOptions,
+			endpoint: "/api/v1/units",
+			code:     200,
+			header:   false,
+			admin:    false,
+		},
+		{
+			name:     "admin user accessing normal resource",
+			method:   http.MethodGet,
+			endpoint: "/api/v1/units",
+			code:     200,
+			header:   true,
+			admin:    true,
+		},
+		{
+			name:     "admin user accessing normal resource without user header",
+			method:   http.MethodGet,
+			endpoint: "/api/v1/units",
+			code:     401,
+			header:   false,
+			admin:    true,
+		},
+		{
+			name:     "admin user accessing admin resource",
+			method:   http.MethodGet,
+			endpoint: "/api/v1/units/admin",
+			code:     200,
+			header:   true,
+			admin:    true,
+		},
+		{
+			name:     "admin user making preflight request",
+			method:   http.MethodOptions,
+			endpoint: "/api/v1/units",
+			code:     200,
+			header:   false,
+			admin:    true,
+		},
+	}
 
-	// create a mock request to use
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/units", nil)
+	// Setup middleware
+	handlerToTest, err := setupMiddleware()
+	require.NoError(t, err)
 
-	// call the handler using a mock response recorder (we'll not use that anyway)
-	w := httptest.NewRecorder()
-	handlerToTest.ServeHTTP(w, req)
+	for _, test := range tests {
+		// create a mock request to use
+		req := httptest.NewRequest(test.method, test.endpoint, nil)
 
-	res := w.Result()
-	defer res.Body.Close()
+		userName := "usr1"
+		if test.admin {
+			userName = "adm1"
+		}
 
-	// Should pass test
-	assert.Equal(t, 401, res.StatusCode)
-}
+		if test.header {
+			req.Header.Set(base.GrafanaUserHeader, userName)
+		}
 
-func TestMiddlewareAdminSuccess(t *testing.T) {
-	// Setup middleware handler
-	handlerToTest := setupMiddleware()
+		// call the handler using a mock response recorder (we'll not use that anyway)
+		w := httptest.NewRecorder()
+		handlerToTest.ServeHTTP(w, req)
 
-	// create a mock request to use
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/units/admin", nil)
-	req.Header.Set(grafanaUserHeader, "adm1")
+		res := w.Result()
+		defer res.Body.Close()
 
-	// call the handler using a mock response recorder (we'll not use that anyway)
-	w := httptest.NewRecorder()
-	handlerToTest.ServeHTTP(w, req)
+		// Check status
+		assert.Equal(t, test.code, res.StatusCode, test.name)
 
-	res := w.Result()
-	defer res.Body.Close()
-
-	// Should pass test
-	assert.Equal(t, 200, res.StatusCode)
-
-	// Check headers added to req
-	assert.Equal(t, "adm1", req.Header.Get(adminUserHeader))
-}
-
-func TestMiddlewareAdminFailure(t *testing.T) {
-	// Setup middleware handler
-	handlerToTest := setupMiddleware()
-
-	// create a mock request to use
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/units/admin", nil)
-	req.Header.Set(grafanaUserHeader, "usr1")
-
-	// call the handler using a mock response recorder (we'll not use that anyway)
-	w := httptest.NewRecorder()
-	handlerToTest.ServeHTTP(w, req)
-
-	res := w.Result()
-	defer res.Body.Close()
-
-	// Should pass test
-	assert.Equal(t, 403, res.StatusCode)
-}
-
-func TestMiddlewareAdminFailurePresetHeader(t *testing.T) {
-	// Setup middleware handler
-	handlerToTest := setupMiddleware()
-
-	// create a mock request to use
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/units/admin", nil)
-	req.Header.Set(grafanaUserHeader, "usr1")
-	req.Header.Set(adminUserHeader, "usr1")
-
-	// call the handler using a mock response recorder (we'll not use that anyway)
-	w := httptest.NewRecorder()
-	handlerToTest.ServeHTTP(w, req)
-
-	res := w.Result()
-	defer res.Body.Close()
-
-	// Should pass test
-	assert.Equal(t, 403, res.StatusCode)
-
-	// Should not contain adminHeader
-	assert.Equal(t, "", req.Header.Get(adminUserHeader))
+		if test.header {
+			assert.Equal(t, userName, req.Header.Get(base.LoggedUserHeader))
+		}
+	}
 }

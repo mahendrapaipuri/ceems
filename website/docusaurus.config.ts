@@ -1,7 +1,13 @@
 import { themes as prismThemes } from "prism-react-renderer";
 import type { Config } from "@docusaurus/types";
 import type * as Preset from "@docusaurus/preset-classic";
-import type * as Redocusaurus from "redocusaurus";
+import type * as OpenApiPlugin from "docusaurus-plugin-openapi-docs";
+import { myCustomApiMdGenerator } from "./customMdGenerators";
+
+// Remove API sidebar items
+function removeApiSidebarItems(items) {
+  return items.filter(item => !(item.label === 'api'));
+}
 
 // Constants
 const organizationName = "mahendrapaipuri";
@@ -45,6 +51,11 @@ const config: Config = {
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
           editUrl: `https://github.com/${organizationName}/${projectName}/tree/main/`,
+          docItemComponent: "@theme/ApiItem", // Derived from docusaurus-theme-openapi
+          async sidebarItemsGenerator({defaultSidebarItemsGenerator, ...args}) {
+            const sidebarItems = await defaultSidebarItemsGenerator(args);
+            return removeApiSidebarItems(sidebarItems);
+          },
         },
         blog: {
           showReadingTime: true,
@@ -57,26 +68,32 @@ const config: Config = {
         },
       } satisfies Preset.Options,
     ],
-    // Redocusaurus config
-    [
-      "redocusaurus",
-      {
-        // Plugin Options for loading OpenAPI files
-        specs: [
-          {
-            // Redocusaurus will automatically bundle your spec into a single file during the build
-            spec: "../pkg/api/http/docs/swagger.yaml",
-            route: "/api/",
-          },
-        ],
-        // Theme Options for modifying how redoc renders them
-        theme: {
-          // Change with your site colors
-          primaryColor: "#3cc9beff",
-        },
-      },
-    ] satisfies Redocusaurus.PresetEntry,
   ],
+
+  plugins: [
+    [
+      'docusaurus-plugin-openapi-docs',
+      {
+        id: "api", // plugin id
+        docsPluginId: "classic", // configured for preset-classic
+        config: {
+          ceems: {
+            specPath: "../pkg/api/http/docs/swagger.yaml",
+            outputDir: "docs/api",
+            sidebarOptions: {
+              groupPathsBy: "tag",
+              categoryLinkSource: "tag",
+            },
+            template: "api.mustache", // Customize API MDX with mustache template
+            // showSchemas: true,
+            markdownGenerators: { createApiPageMD: myCustomApiMdGenerator }, // customize MDX with markdown generator
+          } satisfies OpenApiPlugin.Options,
+        }
+      },
+    ]
+  ],
+
+  themes: ["docusaurus-theme-openapi-docs"], // export theme components
 
   themeConfig: {
     // Replace with your project's social card
@@ -97,12 +114,17 @@ const config: Config = {
       },
       items: [
         {
-          type: "docSidebar",
-          sidebarId: "ceemsSidebar",
+          type: "doc",
+          docId: "intro",
           position: "left",
           label: "Documentation",
         },
-        { to: "/api", label: "API", position: "left" },
+        {
+          type: "docSidebar",
+          sidebarId: "ceemsApiSidebar",
+          position: "left",
+          label: "API",
+        },
         {
           href: `https://ceems-demo.myaddr.tools`,
           label: "Demo",
@@ -172,7 +194,112 @@ const config: Config = {
     prism: {
       theme: prismThemes.github,
       darkTheme: prismThemes.dracula,
+      additionalLanguages: [
+        "ruby",
+        "csharp",
+        "php",
+        "java",
+        "powershell",
+        "json",
+        "bash",
+        "dart",
+        "objectivec",
+        "r",
+      ],
     },
+    languageTabs: [
+      {
+        highlight: "python",
+        language: "python",
+        logoClass: "python",
+      },
+      {
+        highlight: "bash",
+        language: "curl",
+        logoClass: "curl",
+      },
+      {
+        highlight: "csharp",
+        language: "csharp",
+        logoClass: "csharp",
+      },
+      {
+        highlight: "go",
+        language: "go",
+        logoClass: "go",
+      },
+      {
+        highlight: "javascript",
+        language: "nodejs",
+        logoClass: "nodejs",
+      },
+      {
+        highlight: "ruby",
+        language: "ruby",
+        logoClass: "ruby",
+      },
+      {
+        highlight: "php",
+        language: "php",
+        logoClass: "php",
+      },
+      {
+        highlight: "java",
+        language: "java",
+        logoClass: "java",
+        variant: "unirest",
+      },
+      {
+        highlight: "powershell",
+        language: "powershell",
+        logoClass: "powershell",
+      },
+      {
+        highlight: "dart",
+        language: "dart",
+        logoClass: "dart",
+      },
+      {
+        highlight: "javascript",
+        language: "javascript",
+        logoClass: "javascript",
+      },
+      {
+        highlight: "c",
+        language: "c",
+        logoClass: "c",
+      },
+      {
+        highlight: "objective-c",
+        language: "objective-c",
+        logoClass: "objective-c",
+      },
+      {
+        highlight: "ocaml",
+        language: "ocaml",
+        logoClass: "ocaml",
+      },
+      {
+        highlight: "r",
+        language: "r",
+        logoClass: "r",
+      },
+      {
+        highlight: "swift",
+        language: "swift",
+        logoClass: "swift",
+      },
+      {
+        highlight: "kotlin",
+        language: "kotlin",
+        logoClass: "kotlin",
+      },
+      {
+        highlight: "rust",
+        language: "rust",
+        logoClass: "rust",
+      },
+    ],
     algolia: {
       // The application ID provided by Algolia
       appId: 'KQ58EXUULN',

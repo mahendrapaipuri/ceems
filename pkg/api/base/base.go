@@ -30,7 +30,7 @@ var (
 	DailyUsageDBTableName = models.DailyUsage{}.TableName()
 	ProjectsDBTableName   = models.Project{}.TableName()
 	UsersDBTableName      = models.User{}.TableName()
-	AdminUsersDBTableName = models.AdminUsers{}.TableName()
+	AdminUsersDBTableName = models.AdminUser{}.TableName()
 )
 
 // Slice of field names of all tables
@@ -40,7 +40,7 @@ var (
 	UsageDBTableColNames      = models.Usage{}.TagNames("json")
 	ProjectsDBTableColNames   = models.Project{}.TagNames("json")
 	UsersDBTableColNames      = models.User{}.TagNames("json")
-	AdminUsersDBTableColNames = models.AdminUsers{}.TagNames("json")
+	AdminUsersDBTableColNames = models.User{}.TagNames("json")
 )
 
 // Map of struct field name to DB column name.
@@ -49,7 +49,7 @@ var (
 	UsageDBTableStructFieldColNameMap      = models.Usage{}.TagMap("", "sql")
 	ProjectsDBTableStructFieldColNameMap   = models.Project{}.TagMap("", "sql")
 	UsersDBTableStructFieldColNameMap      = models.User{}.TagMap("", "sql")
-	AdminUsersDBTableStructFieldColNameMap = models.AdminUsers{}.TagMap("", "sql")
+	AdminUsersDBTableStructFieldColNameMap = models.User{}.TagMap("", "sql")
 )
 
 // DatetimeLayout to be used in the package.
@@ -71,5 +71,15 @@ var (
 	InvalidIDRegex = regexp.MustCompile("[^a-zA-Z0-9-_]")
 )
 
-// CEEMS service account that has admin status.
-const CEEMSServiceAccount = "__ceems_srv_user"
+// CEEMSServiceAccount is the internal service account that has admin status.
+const CEEMSServiceAccount = "ceems-int-svc"
+
+// Headers.
+const (
+	GrafanaUserHeader       = "X-Grafana-User"
+	OAuth2ProxyUserHeader   = "X-Auth-Request-User"
+	AuthenticatedUserHeader = "X-Authenticated-User"
+	LoggedUserHeader        = "X-Ceems-Logged-User"
+	AdminUserHeader         = "X-Ceems-Admin-User"
+	ClusterIDHeader         = "X-Ceems-Cluster-Id"
+)

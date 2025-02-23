@@ -336,7 +336,6 @@ ceems_api_server:
   
   web:
     url: http://localhost:9020
-    requests_limit: 30
 
 clusters:
   - id: slurm-0

@@ -1,0 +1,8 @@
+HTTP/1.1 200 OK
+Access-Control-Allow-Headers: Accept, Authorization, Content-Type, Origin, X-Grafana-User
+Access-Control-Allow-Methods: GET
+Access-Control-Allow-Origin: https://reqbin.com
+Access-Control-Expose-Headers: Date
+Vary: Origin
+Content-Length: 0
+

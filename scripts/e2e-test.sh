@@ -240,6 +240,10 @@ then
   then
     desc="/demo/usage end point test"
     fixture='pkg/api/testdata/output/e2e-test-api-demo-usage-query.txt'
+  elif [ "${scenario}" = "api-cors-preflight" ]
+  then
+    desc="/api/units preflight end point test"
+    fixture='pkg/api/testdata/output/e2e-test-api-preflight-query.txt'
   fi
 
   logfile="${tmpdir}/ceems_api_server.log"
@@ -721,7 +725,7 @@ then
     get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/users/admin" > "${fixture_output}"
   elif [ "${scenario}" = "api-cluster-admin-query" ]
   then
-    get -H "X-Grafana-User: __ceems_srv_user" "127.0.0.1:${port}/api/${api_version}/clusters/admin" > "${fixture_output}"
+    get -H "X-Grafana-User: ceems-int-svc" "127.0.0.1:${port}/api/${api_version}/clusters/admin" > "${fixture_output}"
   elif [ "${scenario}" = "api-uuid-query" ]
   then
     get -H "X-Grafana-User: usr2" "127.0.0.1:${port}/api/${api_version}/units?uuid=1481508&project=acc2&cluster_id=slurm-0" > "${fixture_output}"
@@ -733,7 +737,7 @@ then
     get -H "X-Grafana-User: test-user-1" "127.0.0.1:${port}/api/${api_version}/units?running&cluster_id=os-1&field=uuid&field=state&field=started_at&field=allocation&field=tags&timezone=${timezone}" > "${fixture_output}"
   elif [ "${scenario}" = "api-admin-query" ]
   then
-    get -H "X-Grafana-User: grafana" -H "X-Dashboard-User: usr3" "127.0.0.1:${port}/api/${api_version}/units?cluster_id=slurm-0&project=acc3&from=1676934000&to=1677538800" > "${fixture_output}"
+    get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/units/admin?user=usr3&cluster_id=slurm-0&project=acc3&from=1676934000&to=1677538800" > "${fixture_output}"
   elif [ "${scenario}" = "api-admin-query-all" ]
   then
     get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/units/admin?cluster_id=slurm-1&from=1676934000&to=1677538800" > "${fixture_output}"
@@ -782,6 +786,11 @@ then
   elif [ "${scenario}" = "api-demo-usage-query" ]
   then
     get -s -o /dev/null -w "%{http_code}" "127.0.0.1:${port}/api/${api_version}/demo/usage" > "${fixture_output}"
+  elif [ "${scenario}" = "api-cors-preflight" ]
+  then
+    get -I -X OPTIONS -H "Access-Control-Request-Method: GET" -H "Access-Control-Request-Headers: x-grafana-user" -H "Origin: https://reqbin.com" "127.0.0.1:${port}/api/${api_version}/units" > "${fixture_output}"
+    # Remove Date line from output
+    sed -i '/^Date/d' "${fixture_output}"
   fi
 
 elif [[ "${scenario}" =~ ^"lb" ]] 
