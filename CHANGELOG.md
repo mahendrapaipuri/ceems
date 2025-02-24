@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.0 / 2025-02-24
+
+- [FEAT] Enhancements for CEEMS API server [#304](https://github.com/mahendrapaipuri/ceems/pull/304) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEAT] Support label filtering in CEEMS LB responses [#303](https://github.com/mahendrapaipuri/ceems/pull/303) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [DOCS] Add CLI section in docs [#296](https://github.com/mahendrapaipuri/ceems/pull/296) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [DOCS] Deployment guide and minor improvements [#294](https://github.com/mahendrapaipuri/ceems/pull/294) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEAT] Support SLURM multiple daemons [#289](https://github.com/mahendrapaipuri/ceems/pull/289) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEAT] Ceems Tooling support [#288](https://github.com/mahendrapaipuri/ceems/pull/288) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [MAINT] Bump dependencies [#283](https://github.com/mahendrapaipuri/ceems/pull/283), [#285](https://github.com/mahendrapaipuri/ceems/pull/285), [#286](https://github.com/mahendrapaipuri/ceems/pull/286), [#287](https://github.com/mahendrapaipuri/ceems/pull/287), [#290](https://github.com/mahendrapaipuri/ceems/pull/290), [#291](https://github.com/mahendrapaipuri/ceems/pull/291), [#292](https://github.com/mahendrapaipuri/ceems/pull/292), [#300](https://github.com/mahendrapaipuri/ceems/pull/300), [#301](https://github.com/mahendrapaipuri/ceems/pull/301), [#305](https://github.com/mahendrapaipuri/ceems/pull/305), [#306](https://github.com/mahendrapaipuri/ceems/pull/306), [#307](https://github.com/mahendrapaipuri/ceems/pull/307), [#308](https://github.com/mahendrapaipuri/ceems/pull/308) ([@dependabot](https://github.com/dependabot))
+
 ## 0.5.3 / 2025-01-24
 
 - [BUGFIX] Minor corrections in SLURM fetcher and TSDB updater [#280](https://github.com/mahendrapaipuri/ceems/pull/280) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
