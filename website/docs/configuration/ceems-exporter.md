@@ -545,19 +545,20 @@ default the discovery component is disabled and it can be enabled using the foll
 component:
 
 ```bash
-ceems_exporter --discoverer.alloy-targets.resource-manager=slurm
+ceems_exporter --collector.slurm --discoverer.alloy-targets
 ```
 
-which will collect targets from SLURM jobs on the current node.
+which will collect targets from SLURM jobs on the current node. The discoverer will return
+the targets based on the current active resource manager. In the above case, as SLURM collector
+is activated, discoverer will return SLURM targets.
 
 :::tip[TIP]
 
 The discovery component runs at a dedicated endpoint which can be configured
-using `--web.targets-path`. Thus, it is possible to run both discovery
-components and Prometheus collectors at the same time as follows:
+using `--web.targets-path` as follows:
 
 ```bash
-ceems_exporter --collector.slurm --discoverer.alloy-targets.resource-manager=slurm
+ceems_exporter --collector.slurm --discoverer.alloy-targets --web.targets-path=targets
 ```
 
 :::
@@ -567,7 +568,7 @@ to discover the targets only when certain environment variable is set in the pro
 example if we use the following CLI arguments to the exporter
 
 ```bash
-ceems_exporter --discoverer.alloy-targets.resource-manager=slurm --discoverer.alloy-targets.env-var=ENABLE_CONTINUOUS_PROFILING
+ceems_exporter --collector.slurm --discoverer.alloy-targets --discoverer.alloy-targets.env-var=ENABLE_CONTINUOUS_PROFILING
 ```
 
 only SLURM jobs that have a environment variable `ENABLE_CONTINUOUS_PROFILING` set
@@ -578,6 +579,13 @@ the value set to it.
 
 Once the discovery component is enabled, Grafana Alloy can be configured to get
 the targets from this component using following config:
+
+:::note[NOTE]
+
+More production ready configuration files for Grafana Alloy and Grafana Pyroscope
+are available in the [repository](https://github.com/mahendrapaipuri/ceems/tree/main/etc).
+
+:::
 
 ```river
 discovery.http "processes" {

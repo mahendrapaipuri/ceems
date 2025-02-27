@@ -261,6 +261,14 @@ func NewEbpfCollector(logger *slog.Logger, cgManager *cgroupManager) (*ebpfColle
 	} else {
 		var cgrpSubSysIdx uint64
 
+		activeController := strings.TrimSpace(cgManager.activeController)
+
+		// If activeController is cpu,cpuacct, set it to cpu. `parseCgroupSubSysIds`
+		// will not return any cgroup sub system that is called `cpu,cpuacct`
+		if activeController == "cpu,cpuacct" {
+			activeController = "cpu"
+		}
+
 		// Get all cgroup subsystems
 		cgroupControllers, err := parseCgroupSubSysIds()
 		if err != nil {
@@ -268,7 +276,7 @@ func NewEbpfCollector(logger *slog.Logger, cgManager *cgroupManager) (*ebpfColle
 		}
 
 		for _, cgroupController := range cgroupControllers {
-			if cgroupController.name == strings.TrimSpace(cgManager.activeController) {
+			if cgroupController.name == activeController {
 				cgrpSubSysIdx = cgroupController.idx
 			}
 		}
