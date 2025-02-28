@@ -473,6 +473,8 @@ then
         --collector.ipmi_dcmi.test-mode \
         --collector.redfish \
         --collector.redfish.web-config="pkg/collector/testdata/redfish/config.yml" \
+        --collector.netdev \
+        --collector.netdev.device-include="eth0" \
         --web.listen-address "127.0.0.1:${port}" \
         --web.disable-exporter-metrics \
         --log.level="debug" > "${logfile}" 2>&1 &
@@ -529,6 +531,7 @@ then
         --collector.empty-hostname-label \
         --collector.ipmi_dcmi \
         --collector.ipmi_dcmi.test-mode \
+        --collector.infiniband \
         --web.listen-address "127.0.0.1:${port}" \
         --web.disable-exporter-metrics \
         --log.level="debug" > "${logfile}" 2>&1 &

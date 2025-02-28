@@ -779,6 +779,8 @@ func (c *cgroupCollector) Update(ch chan<- prometheus.Metric, cgroups []cgroup) 
 
 // Stop releases any system resources held by collector.
 func (c *cgroupCollector) Stop(_ context.Context) error {
+	c.logger.Debug("Stopping", "sub_collector", "cgroup")
+
 	return nil
 }
 

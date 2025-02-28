@@ -162,6 +162,54 @@ ceems_meminfo_MemFree_bytes{hostname=""} 4.50891776e+08
 # HELP ceems_meminfo_MemTotal_bytes Memory information field MemTotal_bytes.
 # TYPE ceems_meminfo_MemTotal_bytes gauge
 ceems_meminfo_MemTotal_bytes{hostname=""} 1.6042172416e+10
+# HELP ceems_netdev_receive_bytes_total Total received bytes by the network device
+# TYPE ceems_netdev_receive_bytes_total counter
+ceems_netdev_receive_bytes_total{device="eth0",hostname=""} 8.74354587e+08
+# HELP ceems_netdev_receive_compressed_total Total received compressed packets by the network device
+# TYPE ceems_netdev_receive_compressed_total counter
+ceems_netdev_receive_compressed_total{device="eth0",hostname=""} 0
+# HELP ceems_netdev_receive_dropped_total Total received dropped packets by the network device
+# TYPE ceems_netdev_receive_dropped_total counter
+ceems_netdev_receive_dropped_total{device="eth0",hostname=""} 0
+# HELP ceems_netdev_receive_errors_total Total received errors by the network device
+# TYPE ceems_netdev_receive_errors_total counter
+ceems_netdev_receive_errors_total{device="eth0",hostname=""} 0
+# HELP ceems_netdev_receive_fifo_total Total received FIFO errors by the network device
+# TYPE ceems_netdev_receive_fifo_total counter
+ceems_netdev_receive_fifo_total{device="eth0",hostname=""} 0
+# HELP ceems_netdev_receive_frame_total Total received frames by the network device
+# TYPE ceems_netdev_receive_frame_total counter
+ceems_netdev_receive_frame_total{device="eth0",hostname=""} 0
+# HELP ceems_netdev_receive_multicast_total Total received multicast packets by the network device
+# TYPE ceems_netdev_receive_multicast_total counter
+ceems_netdev_receive_multicast_total{device="eth0",hostname=""} 0
+# HELP ceems_netdev_receive_packets_total Total received packets by the network device
+# TYPE ceems_netdev_receive_packets_total counter
+ceems_netdev_receive_packets_total{device="eth0",hostname=""} 1.036395e+06
+# HELP ceems_netdev_transmit_bytes_total Total transmitted bytes by the network device
+# TYPE ceems_netdev_transmit_bytes_total counter
+ceems_netdev_transmit_bytes_total{device="eth0",hostname=""} 5.63352563e+08
+# HELP ceems_netdev_transmit_carrier_total Total frame transmission errors errors due to loss of carrier by the network device
+# TYPE ceems_netdev_transmit_carrier_total counter
+ceems_netdev_transmit_carrier_total{device="eth0",hostname=""} 0
+# HELP ceems_netdev_transmit_colls_total Total transmitted collisions by the network device
+# TYPE ceems_netdev_transmit_colls_total counter
+ceems_netdev_transmit_colls_total{device="eth0",hostname=""} 0
+# HELP ceems_netdev_transmit_compressed_total Total transmitted compressed packets by the network device
+# TYPE ceems_netdev_transmit_compressed_total counter
+ceems_netdev_transmit_compressed_total{device="eth0",hostname=""} 0
+# HELP ceems_netdev_transmit_dropped_total Total transmitted dropped packets by the network device
+# TYPE ceems_netdev_transmit_dropped_total counter
+ceems_netdev_transmit_dropped_total{device="eth0",hostname=""} 0
+# HELP ceems_netdev_transmit_errors_total Total transmitted bytes by the network device
+# TYPE ceems_netdev_transmit_errors_total counter
+ceems_netdev_transmit_errors_total{device="eth0",hostname=""} 0
+# HELP ceems_netdev_transmit_fifo_total Total frame transmission errors FIFO by the network device
+# TYPE ceems_netdev_transmit_fifo_total counter
+ceems_netdev_transmit_fifo_total{device="eth0",hostname=""} 0
+# HELP ceems_netdev_transmit_packets_total Total transmitted packets by the network device
+# TYPE ceems_netdev_transmit_packets_total counter
+ceems_netdev_transmit_packets_total{device="eth0",hostname=""} 732147
 # HELP ceems_rapl_dram_joules_total Current RAPL dram value in joules
 # TYPE ceems_rapl_dram_joules_total counter
 ceems_rapl_dram_joules_total{hostname="",index="0",path="pkg/collector/testdata/sys/class/powercap/intel-rapl:0:0"} 24468.409791
@@ -251,6 +299,7 @@ ceems_redfish_min_watts{chassis="Chassis_2",hostname=""} 588
 ceems_scrape_collector_success{collector="cpu"} 1
 ceems_scrape_collector_success{collector="ipmi_dcmi"} 1
 ceems_scrape_collector_success{collector="meminfo"} 1
+ceems_scrape_collector_success{collector="netdev"} 1
 ceems_scrape_collector_success{collector="rapl"} 1
 ceems_scrape_collector_success{collector="redfish"} 1
 ceems_scrape_collector_success{collector="slurm"} 1

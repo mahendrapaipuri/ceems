@@ -461,11 +461,13 @@ emission factors for different countries based on historical data.
 The exporter will export the emission factors of all available countries from different
 sources.
 
-### CPU and meminfo collectors
+### CPU, meminfo, netdev and infiniband collectors
 
-Both collectors export node level metrics. CPU collector export CPU time in different
+These collectors export node level metrics. CPU collector export CPU time in different
 modes by parsing `/proc/stat` file. Similarly, meminfo collector exports memory usage
-statistics by parsing `/proc/meminfo` file. These collectors are heavily inspired from
+statistics by parsing `/proc/meminfo` file. netdev collector exports network metrics
+from different network devices. Finally, infiniband collector exports Infiniband metrics
+from different Ib devices. These collectors are heavily inspired from
 [`node_exporter`](https://github.com/prometheus/node_exporter).
 
 These metrics are mainly used to estimate the proportion of CPU and memory usage by the
