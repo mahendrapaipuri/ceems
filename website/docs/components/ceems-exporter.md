@@ -29,6 +29,7 @@ sources on compute node.
 - IPMI collector: Exports power usage reported by `ipmi` tools
 - Redfish collector: Exports power usage reported by [Redfish API](https://www.dmtf.org/standards/redfish)
 - Cray PM counter collector: Exports power usage reported by [Cray's PM counters](https://cray-hpe.github.io/docs-csm/en-10/operations/power_management/user_access_to_compute_node_power_data/)
+- HWMon collector: Exports power and energy values reported by [HWMON](https://www.kernel.org/doc/Documentation/hwmon/sysfs-interface)
 - RAPL collector: Exports RAPL energy metrics
 
 ### Emissions related collectors
@@ -402,6 +403,20 @@ chassis the metrics exposed by Redfish collector are:
 - Minimum power consumption in the sampling period
 - Maximum power consumption in the sampling period
 - Average power consumption in the sampling period
+
+### HWMon collector
+
+The HWMon collector reports the power and energy consumption of hardware components,
+when available. They will be read from `/sys/class/hwmon` folder. Each metric will have
+a chip name to indicate what component is being monitored and a sensor name if there are
+multiple sensors that are monitoring the component. List of supported metrics presenetd by HWMon
+collector are:
+
+- Current power consumption
+- Minimum power consumption in the sampling period
+- Maximum power consumption in the sampling period
+- Average power consumption in the sampling period
+- Current energy usage
 
 ### Cray's PM counters collector
 

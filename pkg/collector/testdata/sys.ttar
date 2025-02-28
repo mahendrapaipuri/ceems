@@ -5,6 +5,225 @@ Mode: 775
 Directory: sys/class
 Mode: 775
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/class/hwmon
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon0
+SymlinkTo: ../../devices/platform/coretemp.0/hwmon/hwmon0
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon1
+SymlinkTo: ../../devices/platform/coretemp.1/hwmon/hwmon1
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon2
+SymlinkTo: ../../devices/platform/applesmc.768/hwmon/hwmon2
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon3
+SymlinkTo: ../../devices/platform/nct6775.656/hwmon/hwmon3
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/class/hwmon/hwmon4
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon4/energy1_input
+Lines: 1
+22323000000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon4/energy2_input
+Lines: 1
+9509000000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon4/freq1_input
+Lines: 1
+214000000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon4/freq1_label
+Lines: 1
+sclk
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon4/freq2_input
+Lines: 1
+300000000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon4/freq2_label
+Lines: 1
+mclk
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon4/name
+Lines: 1
+socket 
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon4/power1_average
+Lines: 1
+234000000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon4/power1_input
+Lines: 1
+270000000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon4/power1_input_highest
+Lines: 1
+328000000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon4/power1_input_lowest
+Lines: 1
+65000000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon4/power2_average
+Lines: 1
+120000000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon4/power2_input
+Lines: 1
+156000000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon4/power2_input_highest
+Lines: 1
+190000000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon4/power2_input_lowest
+Lines: 1
+46000000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon4/temp1_crit
+Lines: 1
+100000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon4/temp1_crit_alarm
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon4/temp1_input
+Lines: 1
+55000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon4/temp1_label
+Lines: 1
+foosensor
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon4/temp1_max
+Lines: 1
+100000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon4/temp2_crit
+Lines: 1
+100000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon4/temp2_crit_alarm
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon4/temp2_input
+Lines: 1
+54000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon4/temp2_label
+Lines: 1
+foosensor
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon4/temp2_max
+Lines: 1
+100000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon5
+SymlinkTo: ../../devices/platform/bogus.0/hwmon/hwmon5/
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/class/hwmon/hwmon6
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon6/freq1_input
+Lines: 1
+214000000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon6/freq1_label
+Lines: 1
+sclk
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon6/freq2_input
+Lines: 1
+300000000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon6/freq2_label
+Lines: 1
+mclk
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon6/temp1_crit
+Lines: 1
+100000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon6/temp1_crit_alarm
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon6/temp1_input
+Lines: 1
+55000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon6/temp1_label
+Lines: 1
+foosensor
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon6/temp1_max
+Lines: 1
+100000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon6/temp2_crit
+Lines: 1
+100000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon6/temp2_crit_alarm
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon6/temp2_input
+Lines: 1
+54000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon6/temp2_label
+Lines: 1
+foosensor
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/class/hwmon/hwmon6/temp2_max
+Lines: 1
+100000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Directory: sys/class/infiniband
 Mode: 775
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1330,6 +1549,2166 @@ Path: sys/cray/pm_counters/version
 Lines: 1
 3
 Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:00.0
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:00.0/host0
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0/stats
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0/stats/in_flight
+Lines: 1
+1EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0/stats/io_ns
+Lines: 1
+9247011087720EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0/stats/other_cnt
+Lines: 1
+1409EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0/stats/read_byte_cnt
+Lines: 1
+979383912EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0/stats/read_cnt
+Lines: 1
+3741EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0/stats/read_ns
+Lines: 1
+33788355744EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0/stats/resid_cnt
+Lines: 1
+19EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0/stats/write_byte_cnt
+Lines: 1
+1496246784000EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0/stats/write_cnt
+Lines: 1
+53772916EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0/stats/write_ns
+Lines: 1
+5233597394395EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0a
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0a/stats
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0a/stats/in_flight
+Lines: 1
+1EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0a/stats/io_ns
+Lines: 1
+9247011087720EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0a/stats/other_cnt
+Lines: 1
+1409EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0a/stats/read_byte_cnt
+Lines: 1
+979383912EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0a/stats/read_cnt
+Lines: 1
+3741EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0a/stats/read_ns
+Lines: 1
+33788355744EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0a/stats/resid_cnt
+Lines: 1
+19EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0a/stats/write_byte_cnt
+Lines: 1
+1496246784000EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0a/stats/write_cnt
+Lines: 1
+53772916EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0a/stats/write_ns
+Lines: 1
+5233597394395EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0l
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0l/stats
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0l/stats/in_flight
+Lines: 1
+1EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0l/stats/io_ns
+Lines: 1
+9247011087720EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0l/stats/other_cnt
+Lines: 1
+1409EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0l/stats/read_byte_cnt
+Lines: 1
+979383912EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0l/stats/read_cnt
+Lines: 1
+3741EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0l/stats/read_ns
+Lines: 1
+33788355744EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0l/stats/resid_cnt
+Lines: 1
+19EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0l/stats/write_byte_cnt
+Lines: 1
+1496246784000EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0l/stats/write_cnt
+Lines: 1
+53772916EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0l/stats/write_ns
+Lines: 1
+5233597394395EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0m
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0m/stats
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0m/stats/in_flight
+Lines: 1
+1EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0m/stats/io_ns
+Lines: 1
+9247011087720EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0m/stats/other_cnt
+Lines: 1
+1409EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0m/stats/read_byte_cnt
+Lines: 1
+979383912EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0m/stats/read_cnt
+Lines: 1
+3741EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0m/stats/read_ns
+Lines: 1
+33788355744EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0m/stats/resid_cnt
+Lines: 1
+19EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0m/stats/write_byte_cnt
+Lines: 1
+1496246784000EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0m/stats/write_cnt
+Lines: 1
+53772916EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/nst0m/stats/write_ns
+Lines: 1
+5233597394395EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0/stats
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0/stats/in_flight
+Lines: 1
+1EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0/stats/io_ns
+Lines: 1
+9247011087720EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0/stats/other_cnt
+Lines: 1
+1409EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0/stats/read_byte_cnt
+Lines: 1
+979383912EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0/stats/read_cnt
+Lines: 1
+3741EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0/stats/read_ns
+Lines: 1
+33788355744EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0/stats/resid_cnt
+Lines: 1
+19EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0/stats/write_byte_cnt
+Lines: 1
+1496246784000EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0/stats/write_cnt
+Lines: 1
+53772916EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0/stats/write_ns
+Lines: 1
+5233597394395EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0a
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0a/stats
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0a/stats/in_flight
+Lines: 1
+1EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0a/stats/io_ns
+Lines: 1
+9247011087720EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0a/stats/other_cnt
+Lines: 1
+1409EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0a/stats/read_byte_cnt
+Lines: 1
+979383912EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0a/stats/read_cnt
+Lines: 1
+3741EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0a/stats/read_ns
+Lines: 1
+33788355744EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0a/stats/resid_cnt
+Lines: 1
+19EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0a/stats/write_byte_cnt
+Lines: 1
+1496246784000EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0a/stats/write_cnt
+Lines: 1
+53772916EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0a/stats/write_ns
+Lines: 1
+5233597394395EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0l
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0l/stats
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0l/stats/in_flight
+Lines: 1
+1EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0l/stats/io_ns
+Lines: 1
+9247011087720EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0l/stats/other_cnt
+Lines: 1
+1409EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0l/stats/read_byte_cnt
+Lines: 1
+979383912EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0l/stats/read_cnt
+Lines: 1
+3741EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0l/stats/read_ns
+Lines: 1
+33788355744EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0l/stats/resid_cnt
+Lines: 1
+19EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0l/stats/write_byte_cnt
+Lines: 1
+1496246784000EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0l/stats/write_cnt
+Lines: 1
+53772916EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0l/stats/write_ns
+Lines: 1
+5233597394395EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0m
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0m/stats
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0m/stats/in_flight
+Lines: 1
+1EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0m/stats/io_ns
+Lines: 1
+9247011087720EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0m/stats/other_cnt
+Lines: 1
+1409EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0m/stats/read_byte_cnt
+Lines: 1
+979383912EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0m/stats/read_cnt
+Lines: 1
+3741EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0m/stats/read_ns
+Lines: 1
+33788355744EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0m/stats/resid_cnt
+Lines: 1
+19EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0m/stats/write_byte_cnt
+Lines: 1
+1496246784000EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0m/stats/write_cnt
+Lines: 1
+53772916EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_tape/st0m/stats/write_ns
+Lines: 1
+5233597394395EOF
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:03.0
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:03.0/0000:03:00.0
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:03.0/0000:03:00.0/net
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:03.0/0000:03:00.0/net/eth0
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:03.0/0000:03:00.0/net/eth0/addr_assign_type
+Lines: 1
+3
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:03.0/0000:03:00.0/net/eth0/addr_len
+Lines: 1
+6
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:03.0/0000:03:00.0/net/eth0/address
+Lines: 1
+01:01:01:01:01:01
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:03.0/0000:03:00.0/net/eth0/broadcast
+Lines: 1
+ff:ff:ff:ff:ff:ff
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:03.0/0000:03:00.0/net/eth0/carrier
+Lines: 1
+1
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:03.0/0000:03:00.0/net/eth0/carrier_changes
+Lines: 1
+2
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:03.0/0000:03:00.0/net/eth0/carrier_down_count
+Lines: 1
+1
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:03.0/0000:03:00.0/net/eth0/carrier_up_count
+Lines: 1
+1
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:03.0/0000:03:00.0/net/eth0/dev_id
+Lines: 1
+0x20
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:03.0/0000:03:00.0/net/eth0/dormant
+Lines: 1
+1
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:03.0/0000:03:00.0/net/eth0/duplex
+Lines: 1
+full
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:03.0/0000:03:00.0/net/eth0/flags
+Lines: 1
+0x1303
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:03.0/0000:03:00.0/net/eth0/ifalias
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:03.0/0000:03:00.0/net/eth0/ifindex
+Lines: 1
+2
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:03.0/0000:03:00.0/net/eth0/iflink
+Lines: 1
+2
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:03.0/0000:03:00.0/net/eth0/link_mode
+Lines: 1
+1
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:03.0/0000:03:00.0/net/eth0/mtu
+Lines: 1
+1500
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:03.0/0000:03:00.0/net/eth0/name_assign_type
+Lines: 1
+2
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:03.0/0000:03:00.0/net/eth0/netdev_group
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:03.0/0000:03:00.0/net/eth0/operstate
+Lines: 1
+up
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:03.0/0000:03:00.0/net/eth0/phys_port_id
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:03.0/0000:03:00.0/net/eth0/phys_port_name
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:03.0/0000:03:00.0/net/eth0/phys_switch_id
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:03.0/0000:03:00.0/net/eth0/speed
+Lines: 1
+1000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:03.0/0000:03:00.0/net/eth0/tx_queue_len
+Lines: 1
+1000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:03.0/0000:03:00.0/net/eth0/type
+Lines: 1
+1
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:0d.0
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:0d.0/ata4
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/dirty_data
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/stats_day
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/stats_day/bypassed
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/stats_day/cache_bypass_hits
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/stats_day/cache_bypass_misses
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/stats_day/cache_hit_ratio
+Lines: 1
+100
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/stats_day/cache_hits
+Lines: 1
+289
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/stats_day/cache_miss_collisions
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/stats_day/cache_misses
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/stats_day/cache_readaheads
+Lines: 1
+13
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/stats_five_minute
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/stats_five_minute/bypassed
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/stats_five_minute/cache_bypass_hits
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/stats_five_minute/cache_bypass_misses
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/stats_five_minute/cache_hit_ratio
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/stats_five_minute/cache_hits
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/stats_five_minute/cache_miss_collisions
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/stats_five_minute/cache_misses
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/stats_five_minute/cache_readaheads
+Lines: 1
+13
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/stats_hour
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/stats_hour/bypassed
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/stats_hour/cache_bypass_hits
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/stats_hour/cache_bypass_misses
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/stats_hour/cache_hit_ratio
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/stats_hour/cache_hits
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/stats_hour/cache_miss_collisions
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/stats_hour/cache_misses
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/stats_hour/cache_readaheads
+Lines: 1
+13
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/stats_total
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/stats_total/bypassed
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/stats_total/cache_bypass_hits
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/stats_total/cache_bypass_misses
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/stats_total/cache_hit_ratio
+Lines: 1
+100
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/stats_total/cache_hits
+Lines: 1
+546
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/stats_total/cache_miss_collisions
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/stats_total/cache_misses
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/stats_total/cache_readaheads
+Lines: 1
+13
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/bcache/writeback_rate_debug
+Lines: 7
+rate:           1.1M/sec
+dirty:          20.4G
+target:         20.4G
+proportional:   427.5k
+integral:       790.0k
+change:         321.5k/sec
+next io:        17ms
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:0d.0/ata5
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:0d.0/ata5/host4
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:0d.0/ata5/host4/target4:0:0
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:0d.0/ata5/host4/target4:0:0/4:0:0:0
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:0d.0/ata5/host4/target4:0:0/4:0:0:0/block
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:0d.0/ata5/host4/target4:0:0/4:0:0:0/block/sdc
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/pci0000:00/0000:00:0d.0/ata5/host4/target4:0:0/4:0:0:0/block/sdc/bcache
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata5/host4/target4:0:0/4:0:0:0/block/sdc/bcache/io_errors
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata5/host4/target4:0:0/4:0:0:0/block/sdc/bcache/metadata_written
+Lines: 1
+512
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata5/host4/target4:0:0/4:0:0:0/block/sdc/bcache/priority_stats
+Lines: 5
+Unused:		99%
+Metadata:	0%
+Average:	10473
+Sectors per Q:	64
+Quantiles:	[0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 20946 20946 20946 20946 20946 20946 20946 20946 20946 20946 20946 20946 20946 20946 20946 20946]
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/pci0000:00/0000:00:0d.0/ata5/host4/target4:0:0/4:0:0:0/block/sdc/bcache/written
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/platform
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/platform/applesmc.768
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/applesmc.768/fan1_input
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/applesmc.768/fan1_label
+Lines: 1
+Left side
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/applesmc.768/fan1_manual
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/applesmc.768/fan1_max
+Lines: 1
+6156
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/applesmc.768/fan1_min
+Lines: 1
+2160
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/applesmc.768/fan1_output
+Lines: 1
+2160
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/applesmc.768/fan1_safe
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/applesmc.768/fan2_input
+Lines: 1
+1998
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/applesmc.768/fan2_label
+Lines: 1
+Right side
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/applesmc.768/fan2_manual
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/applesmc.768/fan2_max
+Lines: 1
+5700
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/applesmc.768/fan2_min
+Lines: 1
+2000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/applesmc.768/fan2_output
+Lines: 1
+2000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/applesmc.768/fan2_safe
+Lines: 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/platform/applesmc.768/hwmon
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/platform/applesmc.768/hwmon/hwmon2
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/applesmc.768/hwmon/hwmon2/device
+SymlinkTo: ../../../applesmc.768
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/applesmc.768/name
+Lines: 1
+applesmc
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/platform/bogus.0
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/platform/bogus.0/hwmon
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/platform/bogus.0/hwmon/hwmon5
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/bogus.0/hwmon/hwmon5/bogus1_crit
+Lines: 1
+100000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/bogus.0/hwmon/hwmon5/bogus1_crit_alarm
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/bogus.0/hwmon/hwmon5/bogus1_input
+Lines: 1
+55000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/bogus.0/hwmon/hwmon5/bogus1_label
+Lines: 1
+Physical id 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/bogus.0/hwmon/hwmon5/bogus1_max
+Lines: 1
+84000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/bogus.0/hwmon/hwmon5/name
+Lines: 1
+bogus
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/platform/coretemp.0
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/platform/coretemp.0/hwmon
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/platform/coretemp.0/hwmon/hwmon0
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.0/hwmon/hwmon0/device
+SymlinkTo: ../../../coretemp.0
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.0/hwmon/hwmon0/name
+Lines: 1
+coretemp
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.0/hwmon/hwmon0/temp1_crit
+Lines: 1
+100000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.0/hwmon/hwmon0/temp1_crit_alarm
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.0/hwmon/hwmon0/temp1_input
+Lines: 1
+55000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.0/hwmon/hwmon0/temp1_label
+Lines: 1
+Physical id 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.0/hwmon/hwmon0/temp1_max
+Lines: 1
+84000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.0/hwmon/hwmon0/temp2_crit
+Lines: 1
+100000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.0/hwmon/hwmon0/temp2_crit_alarm
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.0/hwmon/hwmon0/temp2_input
+Lines: 1
+54000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.0/hwmon/hwmon0/temp2_label
+Lines: 1
+Core 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.0/hwmon/hwmon0/temp2_max
+Lines: 1
+84000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.0/hwmon/hwmon0/temp3_crit
+Lines: 1
+100000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.0/hwmon/hwmon0/temp3_crit_alarm
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.0/hwmon/hwmon0/temp3_input
+Lines: 1
+52000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.0/hwmon/hwmon0/temp3_label
+Lines: 1
+Core 1
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.0/hwmon/hwmon0/temp3_max
+Lines: 1
+84000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.0/hwmon/hwmon0/temp4_crit
+Lines: 1
+100000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.0/hwmon/hwmon0/temp4_crit_alarm
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.0/hwmon/hwmon0/temp4_input
+Lines: 1
+53000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.0/hwmon/hwmon0/temp4_label
+Lines: 1
+Core 2
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.0/hwmon/hwmon0/temp4_max
+Lines: 1
+84000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.0/hwmon/hwmon0/temp5_crit
+Lines: 1
+100000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.0/hwmon/hwmon0/temp5_crit_alarm
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.0/hwmon/hwmon0/temp5_input
+Lines: 1
+50000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.0/hwmon/hwmon0/temp5_label
+Lines: 1
+Core 3
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.0/hwmon/hwmon0/temp5_max
+Lines: 1
+84000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/platform/coretemp.1
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/platform/coretemp.1/hwmon
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/platform/coretemp.1/hwmon/hwmon1
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.1/hwmon/hwmon1/device
+SymlinkTo: ../../../coretemp.1
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.1/hwmon/hwmon1/name
+Lines: 1
+coretemp
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.1/hwmon/hwmon1/temp1_crit
+Lines: 1
+100000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.1/hwmon/hwmon1/temp1_crit_alarm
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.1/hwmon/hwmon1/temp1_input
+Lines: 1
+55000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.1/hwmon/hwmon1/temp1_label
+Lines: 1
+Physical id 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.1/hwmon/hwmon1/temp1_max
+Lines: 1
+84000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.1/hwmon/hwmon1/temp2_crit
+Lines: 1
+100000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.1/hwmon/hwmon1/temp2_crit_alarm
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.1/hwmon/hwmon1/temp2_input
+Lines: 1
+54000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.1/hwmon/hwmon1/temp2_label
+Lines: 1
+Core 0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.1/hwmon/hwmon1/temp2_max
+Lines: 1
+84000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.1/hwmon/hwmon1/temp3_crit
+Lines: 1
+100000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.1/hwmon/hwmon1/temp3_crit_alarm
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.1/hwmon/hwmon1/temp3_input
+Lines: 1
+52000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.1/hwmon/hwmon1/temp3_label
+Lines: 1
+Core 1
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.1/hwmon/hwmon1/temp3_max
+Lines: 1
+84000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.1/hwmon/hwmon1/temp4_crit
+Lines: 1
+100000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.1/hwmon/hwmon1/temp4_crit_alarm
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.1/hwmon/hwmon1/temp4_input
+Lines: 1
+53000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.1/hwmon/hwmon1/temp4_label
+Lines: 1
+Core 2
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.1/hwmon/hwmon1/temp4_max
+Lines: 1
+84000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.1/hwmon/hwmon1/temp5_crit
+Lines: 1
+100000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.1/hwmon/hwmon1/temp5_crit_alarm
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.1/hwmon/hwmon1/temp5_input
+Lines: 1
+50000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.1/hwmon/hwmon1/temp5_label
+Lines: 1
+Core 3
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/coretemp.1/hwmon/hwmon1/temp5_max
+Lines: 1
+84000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/platform/nct6775.656
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/platform/nct6775.656/hwmon
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/platform/nct6775.656/hwmon/hwmon3
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/fan2_alarm
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/fan2_beep
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/fan2_input
+Lines: 1
+1098
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/fan2_min
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/fan2_pulses
+Lines: 1
+2
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/fan2_target
+Lines: 1
+27000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/fan2_tolerance
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/in0_alarm
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/in0_beep
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/in0_input
+Lines: 1
+792
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/in0_max
+Lines: 1
+1744
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/in0_min
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/in1_alarm
+Lines: 1
+1
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/in1_beep
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/in1_input
+Lines: 1
+1024
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/in1_max
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/in1_min
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/intrusion0_alarm
+Lines: 1
+1
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/intrusion0_beep
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/intrusion1_alarm
+Lines: 1
+1
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/intrusion1_beep
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/name
+Lines: 1
+nct6779
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/pwm1_auto_point1_pwm
+Lines: 1
+153
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/pwm1_auto_point1_temp
+Lines: 1
+30000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/pwm1_auto_point2_pwm
+Lines: 1
+255
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/pwm1_auto_point2_temp
+Lines: 1
+70000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/pwm1_auto_point3_pwm
+Lines: 1
+255
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/pwm1_auto_point3_temp
+Lines: 1
+70000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/pwm1_auto_point4_pwm
+Lines: 1
+255
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/pwm1_auto_point4_temp
+Lines: 1
+70000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/pwm1_auto_point5_pwm
+Lines: 1
+255
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/pwm1_auto_point5_temp
+Lines: 1
+75000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/pwm1_crit_temp_tolerance
+Lines: 1
+2000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/pwm1_enable
+Lines: 1
+5
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/pwm1_floor
+Lines: 1
+1
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/pwm1_mode
+Lines: 1
+1
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/pwm1_start
+Lines: 1
+1
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/pwm1_step_down_time
+Lines: 1
+100
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/pwm1_step_up_time
+Lines: 1
+100
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/pwm1_stop_time
+Lines: 1
+6000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/pwm1_target_temp
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/pwm1_temp_sel
+Lines: 1
+7
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/pwm1_temp_tolerance
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/pwm1_weight_duty_base
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/pwm1_weight_duty_step
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/pwm1_weight_temp_sel
+Lines: 1
+1
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/pwm1_weight_temp_step
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/pwm1_weight_temp_step_base
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/platform/nct6775.656/hwmon/hwmon3/pwm1_weight_temp_step_tol
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/system
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/system/clocksource
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/system/clocksource/clocksource0
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/clocksource/clocksource0/available_clocksource
+Lines: 1
+tsc hpet acpi_pm
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/clocksource/clocksource0/current_clocksource
+Lines: 1
+tsc
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/system/cpu
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/system/cpu/cpu0
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/system/cpu/cpu0/cpufreq
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_transition_latency
+Lines: 1
+0
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu0/cpufreq/related_cpus
+Lines: 1
+0
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors
+Lines: 1
+performance powersave
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq
+Lines: 1
+1699981
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu0/cpufreq/scaling_driver
+Lines: 1
+intel_pstate
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+Lines: 1
+powersave
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq
+Lines: 1
+3700000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
+Lines: 1
+800000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu0/cpufreq/scaling_setspeed
+Lines: 1
+<unsupported>
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/system/cpu/cpu0/thermal_throttle
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu0/thermal_throttle/core_throttle_count
+Lines: 1
+5
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu0/thermal_throttle/package_throttle_count
+Lines: 1
+30
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/system/cpu/cpu0/topology
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu0/topology/core_id
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu0/topology/physical_package_id
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/system/cpu/cpu1
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/system/cpu/cpu1/cpufreq
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu1/cpufreq/cpuinfo_transition_latency
+Lines: 1
+0
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu1/cpufreq/related_cpus
+Lines: 1
+0
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu1/cpufreq/scaling_available_governors
+Lines: 1
+performance powersave
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu1/cpufreq/scaling_cur_freq
+Lines: 1
+1699981
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu1/cpufreq/scaling_driver
+Lines: 1
+intel_pstate
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu1/cpufreq/scaling_governor
+Lines: 1
+powersave
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu1/cpufreq/scaling_max_freq
+Lines: 1
+3700000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu1/cpufreq/scaling_min_freq
+Lines: 1
+800000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu1/cpufreq/scaling_setspeed
+Lines: 1
+<unsupported>
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/system/cpu/cpu1/thermal_throttle
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu1/thermal_throttle/core_throttle_count
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu1/thermal_throttle/package_throttle_count
+Lines: 1
+30
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/system/cpu/cpu1/topology
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu1/topology/core_id
+Lines: 1
+1
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu1/topology/physical_package_id
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/system/cpu/cpu2
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/system/cpu/cpu2/cpufreq
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu2/cpufreq/cpuinfo_transition_latency
+Lines: 1
+0
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu2/cpufreq/related_cpus
+Lines: 1
+0
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu2/cpufreq/scaling_available_governors
+Lines: 1
+performance powersave
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu2/cpufreq/scaling_cur_freq
+Lines: 1
+8000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu2/cpufreq/scaling_driver
+Lines: 1
+intel_pstate
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu2/cpufreq/scaling_governor
+Lines: 1
+powersave
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu2/cpufreq/scaling_max_freq
+Lines: 1
+4200000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu2/cpufreq/scaling_min_freq
+Lines: 1
+1000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu2/cpufreq/scaling_setspeed
+Lines: 1
+<unsupported>
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/system/cpu/cpu2/thermal_throttle
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu2/thermal_throttle/core_throttle_count
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu2/thermal_throttle/package_throttle_count
+Lines: 1
+6
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/system/cpu/cpu2/topology
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu2/topology/core_id
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu2/topology/physical_package_id
+Lines: 1
+1
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/system/cpu/cpu3
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/system/cpu/cpu3/cpufreq
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu3/cpufreq/cpuinfo_transition_latency
+Lines: 1
+0
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu3/cpufreq/related_cpus
+Lines: 1
+0
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu3/cpufreq/scaling_available_governors
+Lines: 1
+performance powersave
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu3/cpufreq/scaling_cur_freq
+Lines: 1
+8000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu3/cpufreq/scaling_driver
+Lines: 1
+intel_pstate
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu3/cpufreq/scaling_governor
+Lines: 1
+powersave
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu3/cpufreq/scaling_max_freq
+Lines: 1
+4200000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu3/cpufreq/scaling_min_freq
+Lines: 1
+1000
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu3/cpufreq/scaling_setspeed
+Lines: 1
+<unsupported>
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/system/cpu/cpu3/thermal_throttle
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu3/thermal_throttle/core_throttle_count
+Lines: 1
+9
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu3/thermal_throttle/package_throttle_count
+Lines: 1
+6
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/system/cpu/cpu3/topology
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu3/topology/core_id
+Lines: 1
+1
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/cpu3/topology/physical_package_id
+Lines: 1
+1
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/isolated
+Lines: 1
+1,3-5,9
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/offline
+Lines: 1
+
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/online
+Lines: 1
+0-3
+Mode: 664
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/system/cpu/vulnerabilities
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/vulnerabilities/itlb_multihit
+Lines: 1
+Not affected
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/vulnerabilities/mds
+Lines: 1
+Vulnerable
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/vulnerabilities/retbleed
+Lines: 1
+Mitigation: untrained return thunk; SMT enabled with STIBP protection
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/vulnerabilities/spectre_v1
+Lines: 1
+Mitigation: usercopy/swapgs barriers and __user pointer sanitization
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/cpu/vulnerabilities/spectre_v2
+Lines: 1
+Mitigation: Retpolines, IBPB: conditional, STIBP: always-on, RSB filling, PBRSB-eIBRS: Not affected
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/system/edac
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/system/edac/mc
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/system/edac/mc/mc0
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/edac/mc/mc0/ce_count
+Lines: 1
+1
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/edac/mc/mc0/ce_noinfo_count
+Lines: 1
+2
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/system/edac/mc/mc0/csrow0
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/edac/mc/mc0/csrow0/ce_count
+Lines: 1
+3
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/edac/mc/mc0/csrow0/ue_count
+Lines: 1
+4
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/edac/mc/mc0/ue_count
+Lines: 1
+5
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/edac/mc/mc0/ue_noinfo_count
+Lines: 1
+6
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/system/node
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/system/node/node0
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/node/node0/cpu0
+SymlinkTo: ../../cpu/cpu0
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/node/node0/cpu1
+SymlinkTo: ../../cpu/cpu1
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/node/node0/cpulist
+Lines: 1
+0-1
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/node/node0/meminfo
+Lines: 29
+Node 0 MemTotal:       134182340 kB
+Node 0 MemFree:        53030372 kB
+Node 0 MemUsed:        81151968 kB
+Node 0 Active:          5456380 kB
+Node 0 Inactive:       59150184 kB
+Node 0 Active(anon):     691324 kB
+Node 0 Inactive(anon):   340456 kB
+Node 0 Active(file):    4765056 kB
+Node 0 Inactive(file): 58809728 kB
+Node 0 Unevictable:           0 kB
+Node 0 Mlocked:               0 kB
+Node 0 Dirty:                20 kB
+Node 0 Writeback:             0 kB
+Node 0 FilePages:      70170916 kB
+Node 0 Mapped:           894240 kB
+Node 0 AnonPages:        788196 kB
+Node 0 Shmem:             47860 kB
+Node 0 KernelStack:       34016 kB
+Node 0 PageTables:       143304 kB
+Node 0 NFS_Unstable:          0 kB
+Node 0 Bounce:                0 kB
+Node 0 WritebackTmp:          0 kB
+Node 0 Slab:            6654304 kB
+Node 0 SReclaimable:    4473124 kB
+Node 0 SUnreclaim:      2181180 kB
+Node 0 AnonHugePages:    147456 kB
+Node 0 HugePages_Total:     0
+Node 0 HugePages_Free:      0
+Node 0 HugePages_Surp:      0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/node/node0/numastat
+Lines: 6
+numa_hit 193460335812
+numa_miss 12624528
+numa_foreign 59858623300
+interleave_hit 57146
+local_node 193454780853
+other_node 18179487
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/system/node/node1
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/node/node1/cpu2
+SymlinkTo: ../../cpu/cpu2
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/node/node1/cpu3
+SymlinkTo: ../../cpu/cpu3
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/node/node1/cpulist
+Lines: 1
+2-3
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/node/node1/meminfo
+Lines: 29
+Node 1 MemTotal:       134217728 kB
+Node 1 MemFree:        39634788 kB
+Node 1 MemUsed:        94582940 kB
+Node 1 Active:          5604496 kB
+Node 1 Inactive:       71450592 kB
+Node 1 Active(anon):     590464 kB
+Node 1 Inactive(anon):   285088 kB
+Node 1 Active(file):    5014032 kB
+Node 1 Inactive(file): 71165504 kB
+Node 1 Unevictable:           0 kB
+Node 1 Mlocked:               0 kB
+Node 1 Dirty:               120 kB
+Node 1 Writeback:             0 kB
+Node 1 FilePages:      83579188 kB
+Node 1 Mapped:           864112 kB
+Node 1 AnonPages:        671932 kB
+Node 1 Shmem:             87580 kB
+Node 1 KernelStack:       31104 kB
+Node 1 PageTables:       124272 kB
+Node 1 NFS_Unstable:          0 kB
+Node 1 Bounce:                0 kB
+Node 1 WritebackTmp:          0 kB
+Node 1 Slab:            7020716 kB
+Node 1 SReclaimable:    4614084 kB
+Node 1 SUnreclaim:      2406632 kB
+Node 1 AnonHugePages:     90112 kB
+Node 1 HugePages_Total:     0
+Node 1 HugePages_Free:      0
+Node 1 HugePages_Surp:      0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/node/node1/numastat
+Lines: 6
+numa_hit 326720946761
+numa_miss 59858626709
+numa_foreign 12624528
+interleave_hit 57286
+local_node 326719046550
+other_node 59860526920
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/system/node/node2
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/node/node2/cpulist
+Lines: 1
+
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/node/node2/meminfo
+Lines: 29
+Node 2 MemTotal:       134217728 kB
+Node 2 MemFree:        39634788 kB
+Node 2 MemUsed:        94582940 kB
+Node 2 Active:          5604496 kB
+Node 2 Inactive:       71450592 kB
+Node 2 Active(anon):     590464 kB
+Node 2 Inactive(anon):   285088 kB
+Node 2 Active(file):    5014032 kB
+Node 2 Inactive(file): 71165504 kB
+Node 2 Unevictable:           0 kB
+Node 2 Mlocked:               0 kB
+Node 2 Dirty:               120 kB
+Node 2 Writeback:             0 kB
+Node 2 FilePages:      83579188 kB
+Node 2 Mapped:           864112 kB
+Node 2 AnonPages:        671932 kB
+Node 2 Shmem:             87580 kB
+Node 2 KernelStack:       31104 kB
+Node 2 PageTables:       124272 kB
+Node 2 NFS_Unstable:          0 kB
+Node 2 Bounce:                0 kB
+Node 2 WritebackTmp:          0 kB
+Node 2 Slab:            7020716 kB
+Node 2 SReclaimable:    4614084 kB
+Node 2 SUnreclaim:      2406632 kB
+Node 2 AnonHugePages:     90112 kB
+Node 2 HugePages_Total:     0
+Node 2 HugePages_Free:      0
+Node 2 HugePages_Surp:      0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/system/node/node2/numastat
+Lines: 6
+numa_hit 26720946761
+numa_miss 9858626709
+numa_foreign 2624528
+interleave_hit 7286
+local_node 26719046550
+other_node 9860526920
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/virtual
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/virtual/thermal
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/virtual/thermal/cooling_device0
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/virtual/thermal/cooling_device0/cur_state
+Lines: 1
+0
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/virtual/thermal/cooling_device0/max_state
+Lines: 1
+3
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/virtual/thermal/cooling_device0/type
+Lines: 1
+Processor
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: sys/devices/virtual/thermal/thermal_zone0
+Mode: 775
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/virtual/thermal/thermal_zone0/policy
+Lines: 1
+step_wise
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/virtual/thermal/thermal_zone0/temp
+Lines: 1
+12376
+Mode: 644
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Path: sys/devices/virtual/thermal/thermal_zone0/type
+Lines: 1
+cpu-thermal
+Mode: 644
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Directory: sys/fs
 Mode: 775
