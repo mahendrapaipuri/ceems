@@ -141,6 +141,26 @@ ceems_cpu_seconds_total{hostname="",mode="system"} 1119.22
 ceems_cpu_seconds_total{hostname="",mode="user"} 3018.54
 # HELP ceems_exporter_build_info A metric with a constant '1' value labeled by version, revision, branch, goversion from which ceems_exporter was built, and the goos and goarch for the build.
 # TYPE ceems_exporter_build_info gauge
+# HELP ceems_hwmon_energy_current_joules Current Energy consumption in joules
+# TYPE ceems_hwmon_energy_current_joules gauge
+ceems_hwmon_energy_current_joules{chip="socket",chip_name="socket",hostname="",sensor="energy1"} 22323
+ceems_hwmon_energy_current_joules{chip="socket",chip_name="socket",hostname="",sensor="energy2"} 9509
+# HELP ceems_hwmon_power_avg_watts Average Power consumption in watts
+# TYPE ceems_hwmon_power_avg_watts gauge
+ceems_hwmon_power_avg_watts{chip="socket",chip_name="socket",hostname="",sensor="power1"} 234
+ceems_hwmon_power_avg_watts{chip="socket",chip_name="socket",hostname="",sensor="power2"} 120
+# HELP ceems_hwmon_power_current_watts Current Power consumption in watts
+# TYPE ceems_hwmon_power_current_watts gauge
+ceems_hwmon_power_current_watts{chip="socket",chip_name="socket",hostname="",sensor="power1"} 270
+ceems_hwmon_power_current_watts{chip="socket",chip_name="socket",hostname="",sensor="power2"} 156
+# HELP ceems_hwmon_power_max_watts Maximum Power consumption in watts
+# TYPE ceems_hwmon_power_max_watts gauge
+ceems_hwmon_power_max_watts{chip="socket",chip_name="socket",hostname="",sensor="power1"} 328
+ceems_hwmon_power_max_watts{chip="socket",chip_name="socket",hostname="",sensor="power2"} 190
+# HELP ceems_hwmon_power_min_watts Minimum Power consumption in watts
+# TYPE ceems_hwmon_power_min_watts gauge
+ceems_hwmon_power_min_watts{chip="socket",chip_name="socket",hostname="",sensor="power1"} 65
+ceems_hwmon_power_min_watts{chip="socket",chip_name="socket",hostname="",sensor="power2"} 46
 # HELP ceems_ipmi_dcmi_avg_watts Average Power consumption in watts
 # TYPE ceems_ipmi_dcmi_avg_watts gauge
 ceems_ipmi_dcmi_avg_watts{hostname=""} 2567
@@ -199,6 +219,7 @@ ceems_redfish_min_watts{chassis="Chassis_2",hostname=""} 588
 # HELP ceems_scrape_collector_success ceems_exporter: Whether a collector succeeded.
 # TYPE ceems_scrape_collector_success gauge
 ceems_scrape_collector_success{collector="cpu"} 1
+ceems_scrape_collector_success{collector="hwmon"} 1
 ceems_scrape_collector_success{collector="ipmi_dcmi"} 1
 ceems_scrape_collector_success{collector="meminfo"} 1
 ceems_scrape_collector_success{collector="rapl"} 1

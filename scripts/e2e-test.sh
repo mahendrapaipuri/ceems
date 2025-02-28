@@ -509,6 +509,7 @@ then
         --collector.gpu.type="amd" \
         --collector.gpu.rocm-smi-path="pkg/collector/testdata/rocm-smi" \
         --collector.empty-hostname-label \
+        --collector.hwmon \
         --collector.ipmi_dcmi \
         --collector.ipmi_dcmi.test-mode \
         --collector.redfish \

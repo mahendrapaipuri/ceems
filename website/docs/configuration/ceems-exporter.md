@@ -502,6 +502,14 @@ There is no special configuration required for Cray's PM counters collector. It 
 disabled by default and it can be enabled using `--collector.cray_pm_counters` CLI
 flag to the `ceems_exporter`.
 
+### HWMon collector
+
+There is no special configuration required for HWMon collector as well. It is
+disabled by default and it can be enabled using `--collector.hwmon` CLI
+flag to the `ceems_exporter`. If there are no sensors that monitors neither power
+or energy of hardware components, the collector cannot be initialized and will return
+an error. In that case, do not enable the collector.
+
 ### RAPL collector
 
 For the kernels that are `<5.3`, there is no special configuration to be done. If the
