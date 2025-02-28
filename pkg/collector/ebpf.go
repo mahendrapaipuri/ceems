@@ -606,7 +606,7 @@ func (c *ebpfCollector) Update(ch chan<- prometheus.Metric, cgroups []cgroup) er
 
 // Stop releases system resources used by the collector.
 func (c *ebpfCollector) Stop(_ context.Context) error {
-	c.logger.Debug("Stopping", "collector", ebpfCollectorSubsystem)
+	c.logger.Debug("Stopping", "sub_collector", ebpfCollectorSubsystem)
 
 	// Close all probes
 	for name, link := range c.links {

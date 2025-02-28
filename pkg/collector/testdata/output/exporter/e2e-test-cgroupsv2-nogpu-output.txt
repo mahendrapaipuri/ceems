@@ -135,6 +135,143 @@ ceems_cpu_seconds_total{hostname="",mode="system"} 1119.22
 ceems_cpu_seconds_total{hostname="",mode="user"} 3018.54
 # HELP ceems_exporter_build_info A metric with a constant '1' value labeled by version, revision, branch, goversion from which ceems_exporter was built, and the goos and goarch for the build.
 # TYPE ceems_exporter_build_info gauge
+# HELP ceems_infiniband_excessive_buffer_overrun_errors_total Number of times that OverrunErrors consecutive flow control update periods occurred, each having at least one overrun error.
+# TYPE ceems_infiniband_excessive_buffer_overrun_errors_total counter
+ceems_infiniband_excessive_buffer_overrun_errors_total{device="hfi1_0",port="1"} 0
+ceems_infiniband_excessive_buffer_overrun_errors_total{device="mlx4_0",port="1"} 0
+ceems_infiniband_excessive_buffer_overrun_errors_total{device="mlx4_0",port="2"} 0
+ceems_infiniband_excessive_buffer_overrun_errors_total{device="mlx5_0",port="1"} 0
+# HELP ceems_infiniband_info Non-numeric data from /sys/class/infiniband/<device>, value is always 1.
+# TYPE ceems_infiniband_info gauge
+ceems_infiniband_info{board_id="HPE 100Gb 1-port OP101 QSFP28 x16 PCIe Gen3 with Intel Omni-Path Adapter",device="hfi1_0",firmware_version="1.27.0",hca_type=""} 1
+ceems_infiniband_info{board_id="SM_1141000001000",device="mlx4_0",firmware_version="2.31.5050",hca_type="MT4099"} 1
+ceems_infiniband_info{board_id="SM_2001000001034",device="mlx5_0",firmware_version="14.28.2006",hca_type="MT4118"} 1
+# HELP ceems_infiniband_link_downed_total Number of times the link failed to recover from an error state and went down
+# TYPE ceems_infiniband_link_downed_total counter
+ceems_infiniband_link_downed_total{device="hfi1_0",port="1"} 0
+ceems_infiniband_link_downed_total{device="mlx4_0",port="1"} 0
+ceems_infiniband_link_downed_total{device="mlx4_0",port="2"} 0
+ceems_infiniband_link_downed_total{device="mlx5_0",port="1"} 0
+# HELP ceems_infiniband_link_error_recovery_total Number of times the link successfully recovered from an error state
+# TYPE ceems_infiniband_link_error_recovery_total counter
+ceems_infiniband_link_error_recovery_total{device="hfi1_0",port="1"} 0
+ceems_infiniband_link_error_recovery_total{device="mlx4_0",port="1"} 0
+ceems_infiniband_link_error_recovery_total{device="mlx4_0",port="2"} 0
+ceems_infiniband_link_error_recovery_total{device="mlx5_0",port="1"} 0
+# HELP ceems_infiniband_local_link_integrity_errors_total Number of times that the count of local physical errors exceeded the threshold specified by LocalPhyErrors.
+# TYPE ceems_infiniband_local_link_integrity_errors_total counter
+ceems_infiniband_local_link_integrity_errors_total{device="hfi1_0",port="1"} 0
+ceems_infiniband_local_link_integrity_errors_total{device="mlx4_0",port="1"} 0
+ceems_infiniband_local_link_integrity_errors_total{device="mlx4_0",port="2"} 0
+ceems_infiniband_local_link_integrity_errors_total{device="mlx5_0",port="1"} 0
+# HELP ceems_infiniband_multicast_packets_received_total Number of multicast packets received (including errors)
+# TYPE ceems_infiniband_multicast_packets_received_total counter
+ceems_infiniband_multicast_packets_received_total{device="mlx5_0",port="1"} 0
+# HELP ceems_infiniband_multicast_packets_transmitted_total Number of multicast packets transmitted (including errors)
+# TYPE ceems_infiniband_multicast_packets_transmitted_total counter
+ceems_infiniband_multicast_packets_transmitted_total{device="mlx5_0",port="1"} 0
+# HELP ceems_infiniband_physical_state_id Physical state of the InfiniBand port (0: no change, 1: sleep, 2: polling, 3: disable, 4: shift, 5: link up, 6: link error recover, 7: phytest)
+# TYPE ceems_infiniband_physical_state_id gauge
+ceems_infiniband_physical_state_id{device="hfi1_0",port="1"} 5
+ceems_infiniband_physical_state_id{device="mlx4_0",port="1"} 5
+ceems_infiniband_physical_state_id{device="mlx4_0",port="2"} 5
+ceems_infiniband_physical_state_id{device="mlx5_0",port="1"} 4
+# HELP ceems_infiniband_port_constraint_errors_received_total Number of packets received on the switch physical port that are discarded
+# TYPE ceems_infiniband_port_constraint_errors_received_total counter
+ceems_infiniband_port_constraint_errors_received_total{device="hfi1_0",port="1"} 0
+ceems_infiniband_port_constraint_errors_received_total{device="mlx4_0",port="1"} 0
+ceems_infiniband_port_constraint_errors_received_total{device="mlx4_0",port="2"} 0
+ceems_infiniband_port_constraint_errors_received_total{device="mlx5_0",port="1"} 0
+# HELP ceems_infiniband_port_constraint_errors_transmitted_total Number of packets not transmitted from the switch physical port
+# TYPE ceems_infiniband_port_constraint_errors_transmitted_total counter
+ceems_infiniband_port_constraint_errors_transmitted_total{device="hfi1_0",port="1"} 0
+ceems_infiniband_port_constraint_errors_transmitted_total{device="mlx4_0",port="1"} 0
+ceems_infiniband_port_constraint_errors_transmitted_total{device="mlx4_0",port="2"} 0
+ceems_infiniband_port_constraint_errors_transmitted_total{device="mlx5_0",port="1"} 0
+# HELP ceems_infiniband_port_data_received_bytes_total Number of data octets received on all links
+# TYPE ceems_infiniband_port_data_received_bytes_total counter
+ceems_infiniband_port_data_received_bytes_total{device="hfi1_0",port="1"} 1.380366808104e+12
+ceems_infiniband_port_data_received_bytes_total{device="mlx4_0",port="1"} 8.884894436e+09
+ceems_infiniband_port_data_received_bytes_total{device="mlx4_0",port="2"} 9.841747136e+09
+ceems_infiniband_port_data_received_bytes_total{device="mlx5_0",port="1"} 7.2505381512e+10
+# HELP ceems_infiniband_port_data_transmitted_bytes_total Number of data octets transmitted on all links
+# TYPE ceems_infiniband_port_data_transmitted_bytes_total counter
+ceems_infiniband_port_data_transmitted_bytes_total{device="hfi1_0",port="1"} 1.094233306172e+12
+ceems_infiniband_port_data_transmitted_bytes_total{device="mlx4_0",port="1"} 1.0603645318e+11
+ceems_infiniband_port_data_transmitted_bytes_total{device="mlx4_0",port="2"} 1.0616142756e+11
+ceems_infiniband_port_data_transmitted_bytes_total{device="mlx5_0",port="1"} 1.1523046035392e+13
+# HELP ceems_infiniband_port_discards_transmitted_total Number of outbound packets discarded by the port because the port is down or congested
+# TYPE ceems_infiniband_port_discards_transmitted_total counter
+ceems_infiniband_port_discards_transmitted_total{device="hfi1_0",port="1"} 0
+ceems_infiniband_port_discards_transmitted_total{device="mlx4_0",port="1"} 0
+ceems_infiniband_port_discards_transmitted_total{device="mlx4_0",port="2"} 0
+ceems_infiniband_port_discards_transmitted_total{device="mlx5_0",port="1"} 0
+# HELP ceems_infiniband_port_errors_received_total Number of packets containing an error that were received on this port
+# TYPE ceems_infiniband_port_errors_received_total counter
+ceems_infiniband_port_errors_received_total{device="hfi1_0",port="1"} 0
+ceems_infiniband_port_errors_received_total{device="mlx4_0",port="1"} 0
+ceems_infiniband_port_errors_received_total{device="mlx4_0",port="2"} 0
+ceems_infiniband_port_errors_received_total{device="mlx5_0",port="1"} 0
+# HELP ceems_infiniband_port_packets_received_total Number of packets received on all VLs by this port (including errors)
+# TYPE ceems_infiniband_port_packets_received_total counter
+ceems_infiniband_port_packets_received_total{device="hfi1_0",port="1"} 6.38036947e+08
+ceems_infiniband_port_packets_received_total{device="mlx4_0",port="1"} 8.7169372e+07
+ceems_infiniband_port_packets_received_total{device="mlx4_0",port="2"} 8.9332064e+07
+ceems_infiniband_port_packets_received_total{device="mlx5_0",port="1"} 5.41889824e+08
+# HELP ceems_infiniband_port_packets_transmitted_total Number of packets transmitted on all VLs from this port (including errors)
+# TYPE ceems_infiniband_port_packets_transmitted_total counter
+ceems_infiniband_port_packets_transmitted_total{device="hfi1_0",port="1"} 5.68318856e+08
+ceems_infiniband_port_packets_transmitted_total{device="mlx4_0",port="1"} 8.5734114e+07
+ceems_infiniband_port_packets_transmitted_total{device="mlx4_0",port="2"} 8.862285e+07
+ceems_infiniband_port_packets_transmitted_total{device="mlx5_0",port="1"} 1.0907922116e+10
+# HELP ceems_infiniband_port_receive_remote_physical_errors_total Number of packets marked with the EBP (End of Bad Packet) delimiter received on the port.
+# TYPE ceems_infiniband_port_receive_remote_physical_errors_total counter
+ceems_infiniband_port_receive_remote_physical_errors_total{device="hfi1_0",port="1"} 0
+ceems_infiniband_port_receive_remote_physical_errors_total{device="mlx4_0",port="1"} 0
+ceems_infiniband_port_receive_remote_physical_errors_total{device="mlx4_0",port="2"} 0
+ceems_infiniband_port_receive_remote_physical_errors_total{device="mlx5_0",port="1"} 0
+# HELP ceems_infiniband_port_receive_switch_relay_errors_total Number of packets that could not be forwarded by the switch.
+# TYPE ceems_infiniband_port_receive_switch_relay_errors_total counter
+ceems_infiniband_port_receive_switch_relay_errors_total{device="hfi1_0",port="1"} 0
+ceems_infiniband_port_receive_switch_relay_errors_total{device="mlx4_0",port="1"} 0
+ceems_infiniband_port_receive_switch_relay_errors_total{device="mlx4_0",port="2"} 0
+ceems_infiniband_port_receive_switch_relay_errors_total{device="mlx5_0",port="1"} 0
+# HELP ceems_infiniband_port_transmit_wait_total Number of ticks during which the port had data to transmit but no data was sent during the entire tick
+# TYPE ceems_infiniband_port_transmit_wait_total counter
+ceems_infiniband_port_transmit_wait_total{device="hfi1_0",port="1"} 0
+ceems_infiniband_port_transmit_wait_total{device="mlx4_0",port="1"} 3599
+ceems_infiniband_port_transmit_wait_total{device="mlx4_0",port="2"} 3846
+ceems_infiniband_port_transmit_wait_total{device="mlx5_0",port="1"} 0
+# HELP ceems_infiniband_rate_bytes_per_second Maximum signal transfer rate
+# TYPE ceems_infiniband_rate_bytes_per_second gauge
+ceems_infiniband_rate_bytes_per_second{device="hfi1_0",port="1"} 1.25e+10
+ceems_infiniband_rate_bytes_per_second{device="mlx4_0",port="1"} 5e+09
+ceems_infiniband_rate_bytes_per_second{device="mlx4_0",port="2"} 5e+09
+ceems_infiniband_rate_bytes_per_second{device="mlx5_0",port="1"} 3.125e+09
+# HELP ceems_infiniband_state_id State of the InfiniBand port (0: no change, 1: down, 2: init, 3: armed, 4: active, 5: act defer)
+# TYPE ceems_infiniband_state_id gauge
+ceems_infiniband_state_id{device="hfi1_0",port="1"} 4
+ceems_infiniband_state_id{device="mlx4_0",port="1"} 4
+ceems_infiniband_state_id{device="mlx4_0",port="2"} 4
+ceems_infiniband_state_id{device="mlx5_0",port="1"} 4
+# HELP ceems_infiniband_symbol_error_total Number of minor link errors detected on one or more physical lanes.
+# TYPE ceems_infiniband_symbol_error_total counter
+ceems_infiniband_symbol_error_total{device="hfi1_0",port="1"} 0
+ceems_infiniband_symbol_error_total{device="mlx4_0",port="1"} 0
+ceems_infiniband_symbol_error_total{device="mlx4_0",port="2"} 0
+ceems_infiniband_symbol_error_total{device="mlx5_0",port="1"} 0
+# HELP ceems_infiniband_unicast_packets_received_total Number of unicast packets received (including errors)
+# TYPE ceems_infiniband_unicast_packets_received_total counter
+ceems_infiniband_unicast_packets_received_total{device="mlx5_0",port="1"} 5.41889824e+08
+# HELP ceems_infiniband_unicast_packets_transmitted_total Number of unicast packets transmitted (including errors)
+# TYPE ceems_infiniband_unicast_packets_transmitted_total counter
+ceems_infiniband_unicast_packets_transmitted_total{device="mlx5_0",port="1"} 1.0907922116e+10
+# HELP ceems_infiniband_vl15_dropped_total Number of incoming VL15 packets dropped due to resource limitations.
+# TYPE ceems_infiniband_vl15_dropped_total counter
+ceems_infiniband_vl15_dropped_total{device="hfi1_0",port="1"} 0
+ceems_infiniband_vl15_dropped_total{device="mlx4_0",port="1"} 0
+ceems_infiniband_vl15_dropped_total{device="mlx4_0",port="2"} 0
+ceems_infiniband_vl15_dropped_total{device="mlx5_0",port="1"} 0
 # HELP ceems_ipmi_dcmi_avg_watts Average Power consumption in watts
 # TYPE ceems_ipmi_dcmi_avg_watts gauge
 ceems_ipmi_dcmi_avg_watts{hostname=""} 5942
@@ -177,6 +314,7 @@ ceems_rapl_package_power_limit_watts_total{hostname="",index="1",path="pkg/colle
 # HELP ceems_scrape_collector_success ceems_exporter: Whether a collector succeeded.
 # TYPE ceems_scrape_collector_success gauge
 ceems_scrape_collector_success{collector="cpu"} 1
+ceems_scrape_collector_success{collector="infiniband"} 1
 ceems_scrape_collector_success{collector="ipmi_dcmi"} 1
 ceems_scrape_collector_success{collector="meminfo"} 1
 ceems_scrape_collector_success{collector="rapl"} 1

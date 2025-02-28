@@ -97,7 +97,7 @@ func (c *meminfoCollector) Update(ch chan<- prometheus.Metric) error {
 
 // Stop releases system resources used by the collector.
 func (c *meminfoCollector) Stop(_ context.Context) error {
-	c.logger.Warn("Stopping", "collector", memInfoSubsystem)
+	c.logger.Debug("Stopping", "collector", memInfoSubsystem)
 
 	return nil
 }
