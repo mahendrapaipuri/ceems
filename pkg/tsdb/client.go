@@ -352,10 +352,8 @@ func (t *Client) RangeQuery(
 	}
 
 	// Get current max samples
-	var maxSamples int64
-	if t.Settings(ctx).QueryMaxSamples > math.MaxInt64 {
-		maxSamples = math.MaxInt64
-	} else {
+	var maxSamples int64 = defaultQueryMaxSamples
+	if t.Settings(ctx).QueryMaxSamples > 0 && t.Settings(ctx).QueryMaxSamples <= math.MaxInt64 {
 		maxSamples = int64(t.Settings(ctx).QueryMaxSamples) //nolint:gosec
 	}
 

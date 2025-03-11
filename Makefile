@@ -92,7 +92,8 @@ else
 endif
 
 PROMU := $(FIRST_GOPATH)/bin/promu --config $(PROMU_CONF)
-PROMU_TEST := $(FIRST_GOPATH)/bin/promu --config $(PROMU_TEST_CONF)
+PROMU_GO_TEST := $(FIRST_GOPATH)/bin/promu --config .promu/.promu-go-test.yml
+PROMU_CGO_TEST := $(FIRST_GOPATH)/bin/promu --config .promu/.promu-cgo-test.yml
 
 e2e-out = pkg/collector/testdata/output
 

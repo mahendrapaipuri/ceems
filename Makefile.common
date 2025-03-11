@@ -199,10 +199,23 @@ ifeq ($(CGO_BUILD), 1)
 	$(SWAG) fmt -d $(SWAGGER_DIR) -g $(SWAGGER_MAIN)
 endif
 	@echo ">> building test binaries"
-	$(PROMU_TEST) build --prefix $(PREFIX) $(PROMU_BINARIES)
+	$(PROMU_GO_TEST) build --prefix $(PREFIX) $(PROMU_BINARIES)
+ifeq ($(CGO_BUILD), 0)
+	$(PROMU_CGO_TEST) build --prefix $(PREFIX) $(PROMU_BINARIES)
+endif
 endif
 	@echo ">> building binaries"
 	$(PROMU) build --prefix $(PREFIX) $(PROMU_BINARIES)
+
+.PHONY: common-crossbuild
+common-crossbuild: promu updatevars
+	@echo ">> building release binaries"
+	$(PROMU) crossbuild -v --parallelism=4
+
+.PHONY: common-crossbuild-test
+common-crossbuild-test: promu updatevars
+	@echo ">> building release binaries"
+	$(PROMU) crossbuild -v --parallelism=2 -p linux/amd64 -p linux/arm64
 
 .PHONY: common-tarball
 common-tarball: promu
@@ -243,6 +256,13 @@ $(PULL_DOCKER_ARCHS): common-docker-pull-%:
 common-docker-manifest:
 	DOCKER_CLI_EXPERIMENTAL=enabled docker manifest create -a "$(DOCKER_REPO)/$(DOCKER_IMAGE_NAME):$(SANITIZED_DOCKER_IMAGE_TAG)" $(foreach ARCH,$(DOCKER_ARCHS),$(DOCKER_REPO)/$(DOCKER_IMAGE_NAME)-linux-$(ARCH):$(SANITIZED_DOCKER_IMAGE_TAG))
 	DOCKER_CLI_EXPERIMENTAL=enabled docker manifest push "$(DOCKER_REPO)/$(DOCKER_IMAGE_NAME):$(SANITIZED_DOCKER_IMAGE_TAG)"
+
+.PHONY: updatevars
+updatevars:
+	@echo ">> updating makefile vars in-place"
+	sed -i -e 's/RELEASE_BUILD           ?= 0/RELEASE_BUILD           ?= 1/g' Makefile
+	sed -i -e 's/osusergo, netgo, static_build, test/osusergo, netgo, static_build/g' .promu/.promu-go.yml
+	sed -i -e 's/CGO_BUILD               ?= 0/CGO_BUILD               ?= $(CGO_BUILD)/g' Makefile
 
 .PHONY: promu
 promu: $(PROMU)

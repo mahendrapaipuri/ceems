@@ -31,6 +31,7 @@ tarball:
         - build/config/ceems_lb/ceems_lb.yml
         - build/config/ceems_api_server/ceems_api_server.yml
         - build/config/redfish_proxy/redfish_proxy.yml
+        - build/config/cacct/cacct.yml
         - build/config/common/web-config.yml
         - LICENSE
         - README.md
