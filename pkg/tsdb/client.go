@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"net"
 	"net/url"
 	"strconv"
@@ -33,7 +34,7 @@ var settingsLock = sync.RWMutex{}
 type Metric map[string]float64
 
 // RangeMetric defines Client range metrics.
-type RangeMetric map[string][]model.SamplePair
+// type RangeMetric map[string][]model.SamplePair
 
 // Config is Prometheus config representation.
 type Config struct {
@@ -340,7 +341,7 @@ func (t *Client) RangeQuery(
 	startTime time.Time,
 	endTime time.Time,
 	step time.Duration,
-) (RangeMetric, error) {
+) (model.Matrix, error) {
 	// Get current scrape interval to use as lookback_delta
 	// This query parameter is undocumented on Prometheus. If we use
 	// default value of 5m, we tend to have metrics 5m **after** compute
@@ -350,14 +351,30 @@ func (t *Client) RangeQuery(
 		period = scrapeInterval
 	}
 
+	// Get current max samples
+	var maxSamples int64
+	if t.Settings(ctx).QueryMaxSamples > math.MaxInt64 {
+		maxSamples = math.MaxInt64
+	} else {
+		maxSamples = int64(t.Settings(ctx).QueryMaxSamples) //nolint:gosec
+	}
+
+	// Check if step size respect max samples
+	if int64(endTime.Sub(startTime)/step) > maxSamples {
+		step = endTime.Sub(startTime) / time.Duration(maxSamples)
+	}
+
 	// Make query range
 	queryRange := v1.Range{
 		Start: startTime,
 		End:   endTime,
+		Step:  step,
 	}
 
-	if step > 0 {
-		queryRange.Step = step
+	// If no step provided, use scrape interval. It is mandatory
+	// to pass step
+	if queryRange.Step == 0 {
+		queryRange.Step = period
 	}
 
 	// Make API request to execute query
@@ -371,7 +388,7 @@ func (t *Client) RangeQuery(
 	}
 
 	// Parse data
-	queriedRangeValues := make(RangeMetric)
+	// queriedRangeValues := make(RangeMetric)
 
 	var values model.Matrix
 
@@ -382,14 +399,7 @@ func (t *Client) RangeQuery(
 		return nil, fmt.Errorf("%w on data: %v", ErrFailedTypeAssertion, result)
 	}
 
-	// Iterate over each value and make UUID to value map
-	for _, value := range values {
-		if n, ok := value.Metric["__name__"]; ok {
-			queriedRangeValues[string(n)] = value.Values
-		}
-	}
-
-	return queriedRangeValues, nil
+	return values, nil
 }
 
 // Delete time series with given labels.

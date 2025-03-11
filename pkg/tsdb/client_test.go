@@ -383,16 +383,20 @@ func TestTSDBQueryRangeSuccess(t *testing.T) {
 	m, err := tsdb.RangeQuery(context.Background(), "", time.Now(), time.Now(), time.Minute)
 	require.NoError(t, err)
 
-	assert.Equal(
-		t,
-		RangeMetric{
-			"up": []model.SamplePair{
+	expected := model.Matrix{
+		{
+			Metric: model.Metric{
+				"__name__": "up",
+				"instance": "localhost:9090",
+			},
+			Values: []model.SamplePair{
 				{Timestamp: model.Time(1727367964929), Value: model.SampleValue(1)},
 				{Timestamp: model.Time(1727368964929), Value: model.SampleValue(1)},
 			},
 		},
-		m,
-	)
+	}
+
+	assert.Equal(t, expected, m)
 	assert.Equal(t, 15*time.Second, time.Duration(expectedQueryRangeLookback))
 }
 

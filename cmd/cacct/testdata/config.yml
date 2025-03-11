@@ -1,0 +1,17 @@
+---
+
+ceems_api_server:
+  cluster_id: slurm-0
+  web:
+    url: http://localhost:9020
+
+    # Basic auth config
+    basic_auth:
+      username: ceems
+      password: password
+
+tsdb:
+  web:
+    url: http://localhost:9090
+  queries:
+    cpu_usage: avg_cpu_usage{uuid=~"%s"}

@@ -214,15 +214,15 @@ func (b *tsdbServer) fetchRetentionPeriod() (time.Duration, error) {
 
 	// Make a range query
 	query := fmt.Sprintf(`up{instance="%s:%s"}`, b.url.Hostname(), b.url.Port())
-	if result, err := b.client.RangeQuery(
+	if results, err := b.client.RangeQuery(
 		ctx,
 		query,
 		time.Now().Add(-queryPeriod).UTC(),
 		time.Now().UTC(),
 		queryPeriod/5000,
 	); err == nil {
-		for metric, values := range result {
-			if metric == "up" {
+		for _, result := range results {
+			if n, ok := result.Metric["__name__"]; ok && n == "up" {
 				// We are updating retention period only at a frequency set by
 				// updateInterval. This means there is no guarantee that the
 				// data until next update is present in the current TSDB.
@@ -230,7 +230,7 @@ func (b *tsdbServer) fetchRetentionPeriod() (time.Duration, error) {
 				// interval.
 				// Here we reduce twice the update interval just to be
 				// in a safe land
-				t := int64(values[0].Timestamp)
+				t := int64(result.Values[0].Timestamp)
 				actualRetentionPeriod := (time.Since(time.UnixMilli(t)) - 2*b.updateInterval).Truncate(time.Hour)
 
 				if actualRetentionPeriod < 0 {

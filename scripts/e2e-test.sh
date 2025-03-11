@@ -325,7 +325,42 @@ then
   logfile="${tmpdir}/redfish_proxy.log"
   fixture_output="${tmpdir}/e2e-test-redfish-proxy-output.txt"
   pidfile="${tmpdir}/redfish_proxy.pid"
+elif [[ "${scenario}" =~ ^"cacct" ]] 
+then
 
+  if [ "${scenario}" = "cacct-default-format" ]
+  then
+    desc="cacct with default format"
+    fixture='cmd/cacct/testdata/output/e2e-test-cacct-default-format.txt'
+  elif [ "${scenario}" = "cacct-long-format" ]
+  then
+    desc="cacct with long format"
+    fixture='cmd/cacct/testdata/output/e2e-test-cacct-long-format.txt'
+  elif [ "${scenario}" = "cacct-custom-format" ]
+  then
+    desc="cacct with custom format"
+    fixture='cmd/cacct/testdata/output/e2e-test-cacct-custom-format.txt'
+  elif [ "${scenario}" = "cacct-admin-user" ]
+  then
+    desc="cacct by admin user"
+    fixture='cmd/cacct/testdata/output/e2e-test-cacct-admin-user.txt'
+  elif [ "${scenario}" = "cacct-forbid-query" ]
+  then
+    desc="cacct by normal user attempt to admin query"
+    fixture='cmd/cacct/testdata/output/e2e-test-cacct-forbid-query.txt'
+  elif [ "${scenario}" = "cacct-tsdata" ]
+  then
+    desc="cacct to dump time series data"
+    fixture='cmd/cacct/testdata/output/e2e-test-cacct-tsdata.txt'
+  elif [ "${scenario}" = "cacct-tsdata-fail" ]
+  then
+    desc="cacct to dump time series data failed"
+    fixture='cmd/cacct/testdata/output/e2e-test-cacct-tsdata-fail.txt'
+  fi
+
+  logfile="${tmpdir}/cacct.log"
+  fixture_output="${tmpdir}/e2e-test-cacct-output.txt"
+  pidfile="${tmpdir}/cacct.pid"
 elif [[ "${scenario}" =~ ^"tool" ]]
 then
 
@@ -1182,6 +1217,66 @@ then
     sleep 5
     waitport "${port}"
     get -H "X-Redfish-Url: http://localhost:5000" "http://127.0.0.1:${port}" >> "${fixture_output}"
+  fi
+
+elif [[ "${scenario}" =~ ^"cacct" ]]
+then
+  if [ ! -x ./bin/cacct ]
+  then
+        echo './bin/cacct not found. Consider running `go build` first.' >&2
+        exit 1
+  fi
+
+  ./bin/mock_servers prom os-compute os-identity >> "${logfile}" 2>&1 &
+  MOCK_SERVERS_PID=$!
+
+  waitport "9090"
+  waitport "8080"
+  waitport "7070"
+
+  # Copy config file to tmpdir
+  cp pkg/api/testdata/config.yml "${tmpdir}/config.yml"
+
+  # Replace strings in the config file
+  sed -i -e "s,TO_REPLACE,${tmpdir},g" "${tmpdir}/config.yml"
+
+  ./bin/ceems_api_server \
+    --storage.data.skip.delete.old.units \
+    --test.disable.checks \
+    --config.file="${tmpdir}/config.yml" \
+    --web.config.file="cmd/cacct/testdata/web-config.yml" \
+    --log.level="debug" >> "${logfile}" 2>&1 &
+  CEEMS_API_PID=$!
+
+  waitport "9020"
+
+  echo "${CEEMS_API_PID} ${MOCK_SERVERS_PID}" > "${pidfile}"
+
+  if [ "${scenario}" = "cacct-default-format" ]
+  then
+    ./bin/cacct --current-user=usr1 --config-path="cmd/cacct/testdata" --starttime="2022-02-20" --endtime="2022-03-20" > "${fixture_output}" 2>&1
+  elif [ "${scenario}" = "cacct-long-format" ]
+  then
+    ./bin/cacct --current-user=usr1 --config-path="cmd/cacct/testdata" --starttime="2022-02-20" --endtime="2022-03-20" --long > "${fixture_output}" 2>&1
+  elif [ "${scenario}" = "cacct-custom-format" ]
+  then
+    ./bin/cacct --current-user=usr1 --config-path="cmd/cacct/testdata" --starttime="2022-02-20" --endtime="2022-03-20" --format="jobid,account,cpuusage" > "${fixture_output}" 2>&1
+  elif [ "${scenario}" = "cacct-admin-user" ]
+  then
+    ./bin/cacct --current-user=grafana --config-path="cmd/cacct/testdata" --starttime="2022-02-20" --endtime="2022-03-20" --user=usr1,usr2 > "${fixture_output}" 2>&1
+  elif [ "${scenario}" = "cacct-forbid-query" ]
+  then
+    ./bin/cacct --current-user=usr3 --config-path="cmd/cacct/testdata" --starttime="2022-02-20" --endtime="2022-03-20" --user=usr1,usr2 > "${fixture_output}" 2>&1 || true
+  elif [ "${scenario}" = "cacct-tsdata" ]
+  then
+    ./bin/cacct --current-user=usr1 --config-path="cmd/cacct/testdata" --job="147973" --ts --ts.out-dir="${tmpdir}/ts" > "${fixture_output}" 2>&1
+    cat "${tmpdir}/ts/metadata.json" >> "${fixture_output}"
+    cat "${tmpdir}/ts/554b56cadf9dea4b.csv" >> "${fixture_output}"
+    # Remove line that says time series data has been saved in the output file as it will contain directory name which changes on every run
+    sed -i '/^time series data saved to directory/d' "${fixture_output}"
+  elif [ "${scenario}" = "cacct-tsdata-fail" ]
+  then
+    ./bin/cacct --current-user=usr1 --config-path="cmd/cacct/testdata" --starttime="2022-02-20" --endtime="2022-03-20" --ts --ts.out-dir="${tmpdir}/ts" > "${fixture_output}" 2>&1 || true
   fi
 
 elif [[ "${scenario}" =~ ^"tool" ]]
