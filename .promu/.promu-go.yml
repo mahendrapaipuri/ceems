@@ -10,10 +10,16 @@ build:
           path: ./cmd/ceems_exporter
         - name: ceems_tool
           path: ./cmd/ceems_tool
+        - name: cacct
+          path: ./cmd/cacct
         - name: redfish_proxy
           path: ./cmd/redfish_proxy
     tags:
-      all: [osusergo, netgo, static_build]
+      # The tag `test` is used in cacct binary to compile
+      # e2e test related code for testing in CI. This file
+      # MUST NOT BE COMPILED for production builds and so,
+      # we remove it in CI for release builds
+      all: [osusergo, netgo, static_build, test]
     flags: -a
     ldflags: |
         -X github.com/prometheus/common/version.Version={{.Version}}

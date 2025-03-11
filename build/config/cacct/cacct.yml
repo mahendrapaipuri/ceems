@@ -1,0 +1,302 @@
+# Configuration file to configure cacct
+#
+# This config file has following sections:
+#  - `ceems_api_server`: Client configuration of CEEMS API server
+#  - `tsdb`: Client configuration of TSDB
+#
+# On multi tenant systems like HPC platforms, this configuration file
+# must be protected as it contains the secrets of CEEMS API server and
+# Prometheus.
+# We recommend to use either `setuid` or `setgid` sticky bits to protect
+# the config file. Use a system user as owner/group of `cacct` binary
+# and the same user must own the config file. And add sticky bit to
+# `cacct` binary so that it can read the configuration file. However,
+# the regular user that is executing the `cacct` binary will not be able
+# to read the config file.
+#
+---
+# # Configuration of CEEMS API server
+# #
+# ceems_api_server:
+#   # The same cluster ID used in CEEMS API server's configuration.
+#   # If not configured, results from all available clusters in the
+#   # DB will be returned for a given user.
+#   #
+#   cluster_id: ''
+
+#   # Header name that is used to identify current user. This
+#   # can be configured using CEEMS API server's CLI flags.
+#   # 
+#   # Default: `X-Grafana-User`
+#   #
+#   user_header_name: ''
+
+#   web:
+#     # External URL at which CEEMS API server is available
+#     #
+#     url: http://localhost:9020
+
+#     # Sets the `Authorization` header on every API request with the
+#     # configured username and password.
+#     # password and password_file are mutually exclusive.
+#     #
+#     basic_auth:
+#       username: ''
+#       password: ''
+#       password_file: ''
+
+#     # Sets the `Authorization` header on every API request with
+#     # the configured credentials.
+#     #
+#     authorization:
+#       # Sets the authentication type of the request. Default is `Bearer`.
+#       type: Bearer
+#       # Sets the credentials of the request. It is mutually exclusive with
+#       # `credentials_file`.
+#       credentials: ''
+#       # Sets the credentials of the request with the credentials read from the
+#       # configured file. It is mutually exclusive with `credentials`.
+#       credentials_file: ''
+
+#     # Optional OAuth 2.0 configuration.
+#     # Cannot be used at the same time as basic_auth or authorization.
+#     #
+#     oauth2:
+#       client_id: ''
+#       client_secret: ''
+#       # Read the client secret from a file.
+#       # It is mutually exclusive with `client_secret`.
+#       client_secret_file: ''
+#       # Scopes for the token request.
+#       scopes: []
+#       # The URL to fetch the token from.
+#       token_url: ''
+#       # Optional parameters to append to the token URL.
+#       endpoint_params: {}
+#       # Configures the token request's TLS settings.
+#       tls_config: {}
+
+#     # Configure whether API requests follow HTTP 3xx redirects.
+#     # Default is true
+#     #
+#     follow_redirects: true
+
+#     # Whether to enable HTTP2.
+#     # Default is true
+#     #
+#     enable_http2: true
+
+#     # Configures the API request's TLS settings.
+#     #
+#     tls_config:
+#       # CA certificate to validate API server certificate with. 
+#       # At most one of ca and ca_file is allowed.
+#       #
+#       ca: ''
+#       ca_file: ''
+
+#       # Certificate and key for client cert authentication to the server.
+#       # At most one of cert and cert_file is allowed.
+#       # At most one of key and key_file is allowed.
+#       #
+#       cert: ''
+#       cert_file: ''
+#       key: ''
+#       key_file: ''
+
+#       # Disable validation of the server certificate.
+#       #
+#       insecure_skip_verify: false
+
+#       # Minimum acceptable TLS version. Accepted values: TLS10 (TLS 1.0), TLS11 (TLS
+#       # 1.1), TLS12 (TLS 1.2), TLS13 (TLS 1.3).
+#       # If unset, Prometheus will use Go default minimum version, which is TLS 1.2.
+#       # See MinVersion in https://pkg.go.dev/crypto/tls#Config.
+#       #
+#       min_version: ''
+#       # Maximum acceptable TLS version. Accepted values: TLS10 (TLS 1.0), TLS11 (TLS
+#       # 1.1), TLS12 (TLS 1.2), TLS13 (TLS 1.3).
+#       # If unset, Prometheus will use Go default maximum version, which is TLS 1.3.
+#       # See MaxVersion in https://pkg.go.dev/crypto/tls#Config.
+#       #
+#       max_version: ''
+    
+#     # List of headers that will be passed in the API requests to the server.
+#     # Authentication related headers may be configured in this section. Header name
+#     # must be configured as key and header value supports three different types of 
+#     # headers: values, secrets and files.
+#     #
+#     # The difference between values and secrets is that secret will be redacted
+#     # in server logs where as values will be emitted in the logs.
+#     #
+#     # Values are regular headers with values, secrets are headers that pass secret
+#     # information like tokens and files pass the file content in the headers.
+#     #
+#     # Example:
+#     # http_headers:
+#     #   one:
+#     #     values: [value1a, value1b, value1c]
+#     #   two:
+#     #     values: [value2a]
+#     #     secrets: [value2b, value2c]
+#     #   three:
+#     #     files: [testdata/headers-file-a, testdata/headers-file-b, testdata/headers-file-c]
+#     #
+#     http_headers: {}
+
+# # Configuration of TSDB server
+# #
+# tsdb:
+#   # HTTP client configuration of TSDB
+#   #
+#   web:
+#     # External URL at which TSDB server is available
+#     #
+#     url: http://localhost:9090
+
+#     # Sets the `Authorization` header on every API request with the
+#     # configured username and password.
+#     # password and password_file are mutually exclusive.
+#     #
+#     basic_auth:
+#       username: ''
+#       password: ''
+#       password_file: ''
+
+#     # Sets the `Authorization` header on every API request with
+#     # the configured credentials.
+#     #
+#     authorization:
+#       # Sets the authentication type of the request. Default is `Bearer`.
+#       type: Bearer
+#       # Sets the credentials of the request. It is mutually exclusive with
+#       # `credentials_file`.
+#       credentials: ''
+#       # Sets the credentials of the request with the credentials read from the
+#       # configured file. It is mutually exclusive with `credentials`.
+#       credentials_file: ''
+
+#     # Optional OAuth 2.0 configuration.
+#     # Cannot be used at the same time as basic_auth or authorization.
+#     #
+#     oauth2:
+#       client_id: ''
+#       client_secret: ''
+#       # Read the client secret from a file.
+#       # It is mutually exclusive with `client_secret`.
+#       client_secret_file: ''
+#       # Scopes for the token request.
+#       scopes: []
+#       # The URL to fetch the token from.
+#       token_url: ''
+#       # Optional parameters to append to the token URL.
+#       endpoint_params: {}
+#       # Configures the token request's TLS settings.
+#       tls_config: {}
+
+#     # Configure whether API requests follow HTTP 3xx redirects.
+#     # Default is true
+#     #
+#     follow_redirects: true
+
+#     # Whether to enable HTTP2.
+#     # Default is true
+#     #
+#     enable_http2: true
+
+#     # Configures the API request's TLS settings.
+#     #
+#     tls_config:
+#       # CA certificate to validate API server certificate with. 
+#       # At most one of ca and ca_file is allowed.
+#       #
+#       ca: ''
+#       ca_file: ''
+
+#       # Certificate and key for client cert authentication to the server.
+#       # At most one of cert and cert_file is allowed.
+#       # At most one of key and key_file is allowed.
+#       #
+#       cert: ''
+#       cert_file: ''
+#       key: ''
+#       key_file: ''
+
+#       # Disable validation of the server certificate.
+#       #
+#       insecure_skip_verify: false
+
+#       # Minimum acceptable TLS version. Accepted values: TLS10 (TLS 1.0), TLS11 (TLS
+#       # 1.1), TLS12 (TLS 1.2), TLS13 (TLS 1.3).
+#       # If unset, Prometheus will use Go default minimum version, which is TLS 1.2.
+#       # See MinVersion in https://pkg.go.dev/crypto/tls#Config.
+#       #
+#       min_version: ''
+#       # Maximum acceptable TLS version. Accepted values: TLS10 (TLS 1.0), TLS11 (TLS
+#       # 1.1), TLS12 (TLS 1.2), TLS13 (TLS 1.3).
+#       # If unset, Prometheus will use Go default maximum version, which is TLS 1.3.
+#       # See MaxVersion in https://pkg.go.dev/crypto/tls#Config.
+#       #
+#       max_version: ''
+    
+#     # List of headers that will be passed in the API requests to the server.
+#     # Authentication related headers may be configured in this section. Header name
+#     # must be configured as key and header value supports three different types of 
+#     # headers: values, secrets and files.
+#     #
+#     # The difference between values and secrets is that secret will be redacted
+#     # in server logs where as values will be emitted in the logs.
+#     #
+#     # Values are regular headers with values, secrets are headers that pass secret
+#     # information like tokens and files pass the file content in the headers.
+#     #
+#     # Example:
+#     # http_headers:
+#     #   one:
+#     #     values: [value1a, value1b, value1c]
+#     #   two:
+#     #     values: [value2a]
+#     #     secrets: [value2b, value2c]
+#     #   three:
+#     #     files: [testdata/headers-file-a, testdata/headers-file-b, testdata/headers-file-c]
+#     #
+#     http_headers: {}
+
+#   # To dump the time series data for each metric, this section must be configured.
+#   # The key name is the name of the metric and value is the PromQL query to get
+#   # time series data. The placeholder `%s` will be replaced by list of job IDs delimited
+#   # by `|` which is the syntax expected by TSDB server.
+#   #
+#   # If the TSDB server has been configured with the recording rules generated by `ceems_tool`
+#   # the following queries should work out-of-the-box.
+#   #
+#   queries:
+#     # CPU utilisation
+#     cpu_usage: uuid:ceems_cpu_usage:ratio_irate{uuid=~"%s"}
+
+#     # CPU Memory utilisation
+#     cpu_mem_usage: uuid:ceems_cpu_memory_usage:ratio{uuid=~"%s"}
+      
+#     # Host power usage in Watts
+#     host_power_usage: uuid:ceems_host_power_watts:pue{uuid=~"%s"}
+
+#     # Host emissions in g/s
+#     host_emissions: uuid:ceems_host_emissions_g_s:pue{uuid=~"%s"}
+
+#     # GPU utilization
+#     avg_gpu_usage: uuid:ceems_gpu_usage:ratio{uuid=~"%s"}
+
+#     # GPU memory utilization
+#     avg_gpu_mem_usage: uuid:ceems_gpu_memory_usage:ratio{uuid=~"%s"}
+
+#     # GPU power usage in Watts
+#     gpu_power_usage: uuid:ceems_gpu_power_watts:pue{uuid=~"%s"}
+
+#     # GPU emissions in g/s
+#     gpu_emissions: uuid:ceems_gpu_emissions_g_s:pue{uuid=~"%s"}
+
+#     # Read IO bytes
+#     io_read_bytes: irate(ceems_ebpf_read_bytes_total{uuid=~"%s"}[1m])
+
+#     # Write IO bytes
+#     io_write_bytes: irate(ceems_ebpf_write_bytes_total{uuid=~"%s"}[1m])

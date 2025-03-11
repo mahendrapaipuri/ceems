@@ -14,6 +14,8 @@ build:
           path: ./cmd/ceems_lb
         - name: ceems_tool
           path: ./cmd/ceems_tool
+        - name: cacct
+          path: ./cmd/cacct
         - name: redfish_proxy
           path: ./cmd/redfish_proxy
     flags: -a -tags 'netgo osusergo static_build'

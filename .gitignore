@@ -76,3 +76,10 @@ pkg/lb/testdata/lastupdatetime
 /rules
 /config
 test-config.yml
+/out
+
+# Ignore GH releases
+.gh-releases
+scripts/download_gh_releases.js
+website/static/repos
+resp.json

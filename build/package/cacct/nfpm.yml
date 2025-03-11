@@ -1,0 +1,88 @@
+# Name. (required)
+name: cacct
+
+# Architecture. (required)
+# This will expand any env var you set in the field, e.g. version: ${GOARCH}
+# The architecture is specified using Go nomenclature (GOARCH) and translated
+# to the platform specific equivalent. In order to manually set the architecture
+# to a platform specific value, use deb_arch, rpm_arch and apk_arch.
+# Examples: `all`, `amd64`, `386`, `arm5`, `arm6`, `arm7`, `arm64`, `mips`,
+# `mipsle`, `mips64le`, `ppc64le`, `s390`
+arch: "${GOARCH}"
+
+# Platform.
+# This will expand any env var you set in the field, e.g. version: ${GOOS}
+# This is only used by the rpm and deb packagers.
+# Examples: `linux` (default), `darwin`
+platform: linux
+
+# Version. (required)
+# This will expand any env var you set in the field, e.g. version: ${SEMVER}
+# Some package managers, like deb, require the version to start with a digit.
+# Hence, you should not prefix the version with 'v'.
+version: "${CEEMS_VERSION}"
+
+# Maintainer. (required)
+# This will expand any env var you set in the field, e.g. maintainer: ${GIT_COMMITTER_NAME} <${GIT_COMMITTER_EMAIL}>
+# Defaults to empty on rpm and apk
+# Leaving the 'maintainer' field unset will not be allowed in a future version
+maintainer: Mahendra PAIPURI <mahendra.paipuri@gmail.com>
+
+# Description.
+# Defaults to `no description given`.
+# Most packagers call for a one-line synopsis of the package. Some (like deb)
+# also call for a multi-line description starting on the second line.
+description: A CLI tool for displaying accounting information fetched from CEEMS API server
+
+# Vendor.
+# This will expand any env var you set in the field, e.g. vendor: ${VENDOR}
+# This is only used by the rpm packager.
+vendor: GoReleaser
+
+# Package's homepage.
+# This will expand any env var you set in the field, e.g. homepage: ${CI_PROJECT_URL}
+homepage: https://github.com/mahendrapaipuri/ceems
+
+# License.
+license: GPL-3.0
+
+# Contents to add to the package
+# This can be binaries or any other files.
+contents:
+  # cacct binary
+  - src: .build/linux-${GOARCH}/cacct
+    dst: /usr/local/bin/cacct
+    expand: true
+    file_info:
+      # Using sticky bit setgid to be able to read config.yml file
+      mode: 2755
+      owner: ceems
+      group: ceems
+
+  # cacct config file
+  - src: build/config/cacct/cacct_config.yml
+    dst: /etc/ceems/config.yml
+    type: config
+    file_info:
+      # Make sure that the mode is specified in octal, e.g. 0644 instead of 644.
+      mode: 0660
+      owner: ceems
+      group: ceems
+
+# Umask to be used on files without explicit mode set.
+#
+# By default, nFPM will inherit the mode of the original file that's being
+# added.
+# This may lead to issues if these files are checkout out in Git, for example,
+# as it won't keep all the permissions on fresh checkouts, or if the local
+# system has a problematic umask setting.
+#
+# This setting allows to set the umask for all files that are added to the
+# package without a specific file_info.mode set.
+umask: 0o007
+
+# Scripts to run at specific stages. (overridable)
+scripts:
+  preinstall: build/package/cacct/preinstall.sh
+  postinstall: build/package/cacct/postinstall.sh
+  postremove: build/package/cacct/postremove.sh
