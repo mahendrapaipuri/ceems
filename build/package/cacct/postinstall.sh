@@ -1,20 +1,18 @@
 #!/bin/sh
 
 # Step 1, get systemd version
-systemd_version=$(systemctl --version | sed -nE "s/systemd ([0-9]+).*/\1/p")
+# systemd_version=$(systemctl --version | sed -nE "s/systemd ([0-9]+).*/\1/p")
 
 cleanInstall() {
     printf "\033[32m Post Install of an clean install\033[0m\n"
-    # Step 3 (clean install), enable the service in the proper way for this platform
-    # rhel/centos7 cannot use ExecStartPre=+ to specify the pre start should be run as root
-    # even if you want your service to run as non root.
-    # noop
+    # Step 3 (clean install), setup setgid bit on cacct
+    chmod g+s /usr/local/bin/cacct
 }
 
 upgrade() {
     printf "\033[32m Post Install of an upgrade\033[0m\n"
-    # Step 3(upgrade), do what you need
-    # noop
+    # Step 3(upgrade), setup setgid bit on cacct
+    chmod g+s /usr/local/bin/cacct
 }
 
 # Step 2, check if this is a clean install or an upgrade

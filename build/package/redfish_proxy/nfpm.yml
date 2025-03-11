@@ -61,7 +61,7 @@ contents:
   # Redfish proxy web config file
   - src: build/config/common/web-config.yml
     dst: /etc/redfish_proxy/web-config.yml
-    type: config
+    type: config|noreplace
     file_info:
       # Make sure that the mode is specified in octal, e.g. 0644 instead of 644.
       mode: 0660
@@ -71,7 +71,7 @@ contents:
   # Redfish proxy config file
   - src: build/config/redfish_proxy/redfish_proxy.yml
     dst: /etc/redfish_proxy/config.yml
-    type: config
+    type: config|noreplace
     file_info:
       # Make sure that the mode is specified in octal, e.g. 0644 instead of 644.
       mode: 0660
@@ -81,7 +81,7 @@ contents:
   # systemd unit file
   - src: build/package/redfish_proxy/redfish_proxy.service
     dst: /usr/lib/systemd/system/redfish_proxy.service
-    type: config
+    type: config|noreplace
     file_info:
       # Make sure that the mode is specified in octal, e.g. 0644 instead of 644.
       mode: 0640

@@ -55,14 +55,14 @@ contents:
     expand: true
     file_info:
       # Using sticky bit setgid to be able to read config.yml file
-      mode: 2755
+      mode: 0755
       owner: ceems
       group: ceems
 
   # cacct config file
   - src: build/config/cacct/cacct.yml
     dst: /etc/ceems/config.yml
-    type: config
+    type: config|noreplace
     file_info:
       # Make sure that the mode is specified in octal, e.g. 0644 instead of 644.
       mode: 0660
