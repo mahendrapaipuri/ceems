@@ -239,7 +239,13 @@ func (t *tsdbUpdater) update(
 	// We compute aggregate metrics only for this interval duration and
 	// while updating DB we either sum or calculate cumulative average based
 	// metric type
-	duration := endTime.Sub(startTime).Truncate(time.Minute)
+	// This will not be strictly equal to update interval as there is non-negligible
+	// time spent in executing timer code which consumes few milli seconds.
+	// So, it is important to truncate the range as Prometheus does not like decimals in range.
+	// Truncating to minute range is not recommended as that can have impact on
+	// the estimation of aggregated metrics. This is due to the fact that a 15m interval
+	// can be truncated to 14m which results in loss of aggregated metrics.
+	duration := endTime.Sub(startTime).Truncate(time.Second)
 
 	// Initialize ignored units slice
 	var ignoredUnits []string
