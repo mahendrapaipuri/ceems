@@ -200,7 +200,8 @@ func QueryHandler(w http.ResponseWriter, r *http.Request) {
 	case slices.Contains(
 		[]string{
 			"avg_cpu_usage", "avg_cpu_mem_usage", "avg_gpu_usage",
-			"avg_gpu_mem_usage", "total_cpu_energy_usage_kwh", "total_gpu_energy_usage_kwh",
+			"avg_gpu_mem_usage", "total_cpu_energy_usage_kwh",
+			"total_gpu_energy_usage_kwh",
 			"total_cpu_emissions_gms", "total_gpu_emissions_gms",
 		}, query):
 		// Convert uuid into hash and transform that hash number into float64 between 0 and 100
@@ -255,7 +256,7 @@ func QueryHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	case slices.Contains(
 		[]string{
-			"total_ingress_stats_bytes", "total_outgress_stats_bytes",
+			"total_ingress_stats_bytes", "total_egress_stats_bytes",
 		}, query):
 		for _, uuid := range uuids {
 			h := hash(uuid)
@@ -272,7 +273,7 @@ func QueryHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	case slices.Contains(
 		[]string{
-			"total_ingress_stats_packets", "total_outgress_stats_packets",
+			"total_ingress_stats_packets", "total_egress_stats_packets",
 		}, query):
 		for _, uuid := range uuids {
 			h := hash(uuid)
@@ -294,6 +295,178 @@ func QueryHandler(w http.ResponseWriter, r *http.Request) {
 		Status: "success",
 		Data: map[string]interface{}{
 			"resultType": "vector",
+			"result":     results,
+		},
+	}
+	if err := json.NewEncoder(w).Encode(&response); err != nil {
+		w.Write([]byte("KO"))
+	}
+}
+
+func QueryRangeHandler(w http.ResponseWriter, r *http.Request) {
+	var response tsdb.Response[any]
+
+	var query string
+
+	switch r.Method {
+	case http.MethodGet:
+		query = r.URL.Query()["query"][0]
+	case http.MethodPost:
+		// Call ParseForm() to parse the raw query and update r.PostForm and r.Form.
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "ParseForm error", http.StatusInternalServerError)
+
+			return
+		}
+
+		query = r.FormValue("query")
+	default:
+		http.Error(w, "Only GET and POST are allowed", http.StatusForbidden)
+
+		return
+	}
+
+	// Extract UUIDs from query
+	var uuids []string
+
+	uuidMatches := regexpUUID.FindAllStringSubmatch(query, -1)
+	for _, match := range uuidMatches {
+		if len(match) > 1 {
+			for _, uuid := range strings.Split(match[1], "|") {
+				// Ignore empty strings
+				if strings.TrimSpace(uuid) != "" && !slices.Contains(uuids, uuid) {
+					uuids = append(uuids, uuid)
+				}
+			}
+		}
+	}
+
+	// Extract only query without any labels
+	matches := queryRegex.FindStringSubmatch(query)
+	if len(matches) == 2 {
+		query = matches[1]
+	}
+
+	// log.Println("Query", query, "UUIDs", uuids)
+
+	var results []interface{}
+
+	status := "success"
+
+	switch {
+	case slices.Contains(
+		[]string{
+			"avg_cpu_usage", "avg_cpu_mem_usage", "avg_gpu_usage",
+			"avg_gpu_mem_usage", "total_cpu_energy_usage_kwh", "total_gpu_energy_usage_kwh",
+			"total_cpu_emissions_gms", "total_gpu_emissions_gms",
+		}, query):
+		// Convert uuid into hash and transform that hash number into float64 between 0 and 100
+		for _, uuid := range uuids {
+			h := hash(uuid)
+			numDigits := lenLoop(h)
+			value := float64(h) / math.Pow(10, float64(numDigits)-2)
+			results = append(results,
+				map[string]interface{}{
+					"metric": map[string]string{
+						"uuid":     uuid,
+						"instance": "localhost:9090",
+					},
+					"values": []interface{}{
+						[]interface{}{12345, strconv.FormatFloat(value, 'f', -1, 64)},
+						[]interface{}{12355, strconv.FormatFloat(value, 'f', -1, 64)},
+						[]interface{}{12365, strconv.FormatFloat(value, 'f', -1, 64)},
+						[]interface{}{12375, strconv.FormatFloat(value, 'f', -1, 64)},
+					},
+				})
+		}
+	case slices.Contains(
+		[]string{
+			"total_io_read_stats_bytes", "total_io_write_stats_bytes",
+		}, query):
+		for _, uuid := range uuids {
+			h := hash(uuid)
+			results = append(results,
+				map[string]interface{}{
+					"metric": map[string]string{
+						"uuid":     uuid,
+						"instance": "localhost:9090",
+					},
+					"values": []interface{}{
+						[]interface{}{12345, strconv.FormatUint(uint64(h), 10)},
+						[]interface{}{12355, strconv.FormatUint(uint64(h), 10)},
+						[]interface{}{12365, strconv.FormatUint(uint64(h), 10)},
+						[]interface{}{12375, strconv.FormatUint(uint64(h), 10)},
+					},
+				})
+		}
+	case slices.Contains(
+		[]string{
+			"total_io_read_stats_requests", "total_io_write_stats_requests",
+		}, query):
+		for _, uuid := range uuids {
+			h := hash(uuid)
+			results = append(results,
+				map[string]interface{}{
+					"metric": map[string]string{
+						"uuid":     uuid,
+						"instance": "localhost:9090",
+					},
+					"values": []interface{}{
+						[]interface{}{12345, strconv.FormatUint(uint64(h)*10, 10)},
+						[]interface{}{12355, strconv.FormatUint(uint64(h)*10, 10)},
+						[]interface{}{12365, strconv.FormatUint(uint64(h)*10, 10)},
+						[]interface{}{12375, strconv.FormatUint(uint64(h)*10, 10)},
+					},
+				})
+		}
+	case slices.Contains(
+		[]string{
+			"total_ingress_stats_bytes", "total_egress_stats_bytes",
+		}, query):
+		for _, uuid := range uuids {
+			h := hash(uuid)
+			results = append(results,
+				map[string]interface{}{
+					"metric": map[string]string{
+						"uuid":     uuid,
+						"instance": "localhost:9090",
+					},
+					"values": []interface{}{
+						[]interface{}{12345, strconv.FormatUint(uint64(h)*100, 10)},
+						[]interface{}{12355, strconv.FormatUint(uint64(h)*100, 10)},
+						[]interface{}{12365, strconv.FormatUint(uint64(h)*100, 10)},
+						[]interface{}{12375, strconv.FormatUint(uint64(h)*100, 10)},
+					},
+				})
+		}
+	case slices.Contains(
+		[]string{
+			"total_ingress_stats_packets", "total_egress_stats_packets",
+		}, query):
+		for _, uuid := range uuids {
+			h := hash(uuid)
+			results = append(results,
+				map[string]interface{}{
+					"metric": map[string]string{
+						"uuid":     uuid,
+						"instance": "localhost:9090",
+					},
+					"values": []interface{}{
+						[]interface{}{12345, strconv.FormatUint(uint64(h)*1000, 10)},
+						[]interface{}{12355, strconv.FormatUint(uint64(h)*1000, 10)},
+						[]interface{}{12365, strconv.FormatUint(uint64(h)*1000, 10)},
+						[]interface{}{12375, strconv.FormatUint(uint64(h)*1000, 10)},
+					},
+				})
+		}
+	default:
+		status = "fail"
+	}
+	// responseResults := filterResults(uuids, esults)
+	response = tsdb.Response[any]{
+		Status: status,
+		Data: map[string]interface{}{
+			"resultType": "matrix",
 			"result":     results,
 		},
 	}
@@ -529,6 +702,7 @@ func promServer(ctx context.Context) {
 	// Registering our handler functions, and creating paths.
 	promMux := http.NewServeMux()
 	promMux.HandleFunc("/api/v1/query", QueryHandler)
+	promMux.HandleFunc("/api/v1/query_range", QueryRangeHandler)
 	promMux.HandleFunc("/api/v1/labels", LabelNamesHandler)
 	promMux.HandleFunc("/api/v1/status/config", ConfigHandler)
 	promMux.HandleFunc("/api/v1/status/flags", FlagsHandler)

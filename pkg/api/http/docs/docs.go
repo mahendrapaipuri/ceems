@@ -1541,6 +1541,17 @@ const docTemplate = `{
                         "total": 0.73
                     }
                 },
+                "total_egress_stats": {
+                    "description": "Total Outgress statistics of unit",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number"
+                    },
+                    "example": {
+                        "bytes_total": 454342323,
+                        "packets_total": 23232323
+                    }
+                },
                 "total_gpu_emissions_gms": {
                     "description": "Total GPU emissions from source(s) in grams during lifetime of unit",
                     "type": "object",
@@ -1569,17 +1580,19 @@ const docTemplate = `{
                         "type": "number"
                     },
                     "example": {
-                        "total": 0.5
+                        "bytes_total": 8503405,
+                        "packets_total": 43423
                     }
                 },
                 "total_io_read_stats": {
-                    "description": "Total IO read statistics GB during lifetime of unit",
+                    "description": "Total IO read statistics during lifetime of unit",
                     "type": "object",
                     "additionalProperties": {
                         "type": "number"
                     },
                     "example": {
-                        "total": 4.6
+                        "bytes_total": 245000000,
+                        "requests_total": 49423
                     }
                 },
                 "total_io_write_stats": {
@@ -1589,17 +1602,8 @@ const docTemplate = `{
                         "type": "number"
                     },
                     "example": {
-                        "total": 1.2
-                    }
-                },
-                "total_outgress_stats": {
-                    "description": "Total Outgress statistics of unit",
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "number"
-                    },
-                    "example": {
-                        "total": 0.1
+                        "bytes_total": 12000000,
+                        "requests_total": 13923
                     }
                 },
                 "total_time_seconds": {
@@ -1717,6 +1721,17 @@ const docTemplate = `{
                         "total": 0.73
                     }
                 },
+                "total_egress_stats": {
+                    "description": "Total Egress statistics of unit",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number"
+                    },
+                    "example": {
+                        "bytes_total": 454342323,
+                        "packets_total": 23232323
+                    }
+                },
                 "total_gpu_emissions_gms": {
                     "description": "Total GPU emissions from source(s) in grams during lifetime of project",
                     "type": "object",
@@ -1745,17 +1760,19 @@ const docTemplate = `{
                         "type": "number"
                     },
                     "example": {
-                        "total": 0.5
+                        "bytes_total": 8503405,
+                        "packets_total": 43423
                     }
                 },
                 "total_io_read_stats": {
-                    "description": "Total IO read statistics GB during lifetime of unit",
+                    "description": "Total IO read statistics during lifetime of unit",
                     "type": "object",
                     "additionalProperties": {
                         "type": "number"
                     },
                     "example": {
-                        "total": 4.6
+                        "bytes_total": 245000000,
+                        "requests_total": 49423
                     }
                 },
                 "total_io_write_stats": {
@@ -1765,17 +1782,8 @@ const docTemplate = `{
                         "type": "number"
                     },
                     "example": {
-                        "total": 1.2
-                    }
-                },
-                "total_outgress_stats": {
-                    "description": "Total Outgress statistics of unit",
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "number"
-                    },
-                    "example": {
-                        "total": 0.1
+                        "bytes_total": 12000000,
+                        "requests_total": 13923
                     }
                 },
                 "total_time_seconds": {

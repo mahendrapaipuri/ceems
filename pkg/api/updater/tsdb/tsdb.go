@@ -452,12 +452,12 @@ func (t *tsdbUpdater) update(
 			}
 		}
 
-		if metrics, mExists := aggMetrics["total_outgress_stats"]; mExists {
-			units[i].TotalOutgressStats = make(models.MetricMap)
+		if metrics, mExists := aggMetrics["total_egress_stats"]; mExists {
+			units[i].TotalEgressStats = make(models.MetricMap)
 
 			for name, metric := range metrics {
 				if value, exists := metric[uuid]; exists {
-					units[i].TotalOutgressStats[name] = sanitizeValue(value)
+					units[i].TotalEgressStats[name] = sanitizeValue(value)
 				}
 			}
 		}

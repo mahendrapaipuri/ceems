@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/mahendrapaipuri/ceems/internal/common"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 )
@@ -31,24 +32,6 @@ var (
 	projectLock = sync.RWMutex{}
 	errsLock    = sync.RWMutex{}
 )
-
-// Timespan is a custom type to format time.Duration.
-type Timespan time.Duration
-
-// Format formats the time.Duration.
-func (t Timespan) Format(format string) string {
-	z := time.Unix(0, 0).UTC()
-	duration := time.Duration(t)
-	day := 24 * time.Hour
-
-	if duration > day {
-		days := duration / day
-
-		return fmt.Sprintf("%d-%s", days, z.Add(duration).Format(format))
-	}
-
-	return z.Add(duration).Format(format)
-}
 
 func (o *openstackManager) activeInstances(ctx context.Context, start time.Time, end time.Time) ([]models.Unit, error) {
 	// Check if service is online
@@ -142,7 +125,7 @@ func (o *openstackManager) activeInstances(ctx context.Context, start time.Time,
 		server.TerminatedAt = server.TerminatedAt.In(loc)
 
 		// Get elapsed time of instance including shutdowns, suspended states
-		elapsedTime := Timespan(end.Sub(server.LaunchedAt)).Format("15:04:05")
+		elapsedTime := common.Timespan(end.Sub(server.LaunchedAt)).Format("15:04:05")
 
 		// Initialise endedAt, endedAtTS
 		endedAt := "N/A"
@@ -155,7 +138,7 @@ func (o *openstackManager) activeInstances(ctx context.Context, start time.Time,
 
 		if slices.Contains(deletedStatus, server.Status) {
 			// Override elapsed time for deleted instances
-			elapsedTime = Timespan(server.TerminatedAt.Sub(server.LaunchedAt)).Format("15:04:05")
+			elapsedTime = common.Timespan(server.TerminatedAt.Sub(server.LaunchedAt)).Format("15:04:05")
 
 			// Get instance termination time
 			endedAt = server.TerminatedAt.Format(base.DatetimezoneLayout)

@@ -11,6 +11,7 @@ ceems_api_server:
   admin:
     users:
       - grafana
+      - __test_admin
   web:
     requests_limit: 30
 clusters:
@@ -140,6 +141,6 @@ updaters:
           packets: total_ingress_stats_packets{uuid=~"{{.UUIDs}}"}
 
         # Total Outgress stats
-        total_outgress_stats: 
-          bytes: total_outgress_stats_bytes{uuid=~"{{.UUIDs}}"}
-          packets: total_outgress_stats_packets{uuid=~"{{.UUIDs}}"}
+        total_egress_stats: 
+          bytes: total_egress_stats_bytes{uuid=~"{{.UUIDs}}"}
+          packets: total_egress_stats_packets{uuid=~"{{.UUIDs}}"}

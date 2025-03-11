@@ -80,8 +80,9 @@ type DateTime struct {
 func (t *DateTime) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var tmp string
 
-	err := unmarshal(&tmp)
-	if err != nil {
+	var err error
+
+	if err = unmarshal(&tmp); err != nil {
 		return err
 	}
 
@@ -93,11 +94,26 @@ func (t *DateTime) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if tmp == "" || tmp == "today" {
 		tt, _ = time.Parse("2006-01-02", time.Now().Format("2006-01-02"))
 	} else {
-		tt, err = time.Parse("2006-01-02", tmp)
-		if err != nil {
-			return err
+		// First attempt to parse as YYYY-MM-DD
+		if tt, err = time.Parse("2006-01-02", tmp); err == nil {
+			goto outside
 		}
+
+		// Second attempt to parse as YYYY-MM-DDTHH:MM
+		if tt, err = time.Parse("2006-01-02T15:04", tmp); err == nil {
+			goto outside
+		}
+
+		// Final attempt to parse as YYYY-MM-DDTHH:MM:SS
+		if tt, err = time.Parse("2006-01-02T15:04:05", tmp); err == nil {
+			goto outside
+		}
+
+		// If everything fails return error
+		return fmt.Errorf("failed to parse time string: %s", tmp)
 	}
+
+outside:
 
 	*t = DateTime{tt}
 
@@ -651,7 +667,7 @@ func (s *stats) execStatements(
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalIOWriteStats"], unit.TotalIOWriteStats),
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalIOReadStats"], unit.TotalIOReadStats),
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalIngressStats"], unit.TotalIngressStats),
-				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalOutgressStats"], unit.TotalOutgressStats),
+				sql.Named(base.UnitsDBTableStructFieldColNameMap["TotalEgressStats"], unit.TotalEgressStats),
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["Tags"], unit.Tags),
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["Ignore"], unit.Ignore),
 				sql.Named(base.UnitsDBTableStructFieldColNameMap["NumUpdates"], 1),
@@ -690,7 +706,7 @@ func (s *stats) execStatements(
 				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalIOWriteStats"], unit.TotalIOWriteStats),
 				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalIOReadStats"], unit.TotalIOReadStats),
 				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalIngressStats"], unit.TotalIngressStats),
-				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalOutgressStats"], unit.TotalOutgressStats),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalEgressStats"], unit.TotalEgressStats),
 				sql.Named(base.UsageDBTableStructFieldColNameMap["NumUpdates"], 1),
 			); err != nil {
 				s.logger.Error("Failed to update usage table in DB", "cluster_id", cluster.Cluster.ID, "uuid", unit.UUID, "err", err)
@@ -719,7 +735,7 @@ func (s *stats) execStatements(
 				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalIOWriteStats"], unit.TotalIOWriteStats),
 				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalIOReadStats"], unit.TotalIOReadStats),
 				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalIngressStats"], unit.TotalIngressStats),
-				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalOutgressStats"], unit.TotalOutgressStats),
+				sql.Named(base.UsageDBTableStructFieldColNameMap["TotalEgressStats"], unit.TotalEgressStats),
 				sql.Named(base.UsageDBTableStructFieldColNameMap["NumUpdates"], 1),
 			); err != nil {
 				s.logger.Error("Failed to update daily_usage table in DB", "cluster_id", cluster.Cluster.ID, "uuid", unit.UUID, "err", err)

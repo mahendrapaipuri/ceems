@@ -19,6 +19,24 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Timespan is a custom type to format time.Duration.
+type Timespan time.Duration
+
+// Format formats the time.Duration.
+func (t Timespan) Format(format string) string {
+	z := time.Unix(0, 0).UTC()
+	duration := time.Duration(t)
+	day := 24 * time.Hour
+
+	if duration > day {
+		days := duration / day
+
+		return fmt.Sprintf("%d-%s", days, z.Add(duration).Format(format))
+	}
+
+	return z.Add(duration).Format(format)
+}
+
 // GenerateKey generates a reproducible key from a given URL string.
 func GenerateKey(url string) uint64 {
 	hash := fnv.New64a()

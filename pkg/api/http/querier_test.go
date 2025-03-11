@@ -94,7 +94,7 @@ func TestUnitsQuerier(t *testing.T) {
 			TotalIOWriteStats:   models.MetricMap{},
 			TotalIOReadStats:    models.MetricMap{},
 			TotalIngressStats:   models.MetricMap{},
-			TotalOutgressStats:  models.MetricMap{},
+			TotalEgressStats:    models.MetricMap{},
 			Tags: models.Generic{
 				"exit_code":   "0:0",
 				"gid":         int64(1002),
@@ -153,7 +153,7 @@ func TestUnitsQuerier(t *testing.T) {
 			TotalIOWriteStats:   models.MetricMap{"bytes": 1.479763e+06, "requests": 1.479763e+07},
 			TotalIOReadStats:    models.MetricMap{"bytes": 1.479763e+06, "requests": 1.479763e+07},
 			TotalIngressStats:   models.MetricMap{"bytes": 1.479763e+08, "packets": 1.479763e+09},
-			TotalOutgressStats:  models.MetricMap{"bytes": 1.479763e+08, "packets": 1.479763e+09},
+			TotalEgressStats:    models.MetricMap{"bytes": 1.479763e+08, "packets": 1.479763e+09},
 			Tags: models.Generic{
 				"exit_code":   "0:0",
 				"gid":         int64(1001),
@@ -218,7 +218,7 @@ func TestUsageQuerier(t *testing.T) {
 			TotalIOWriteStats:   models.MetricMap{"bytes": 93018, "requests": 930180},
 			TotalIOReadStats:    models.MetricMap{"bytes": 93018, "requests": 930180},
 			TotalIngressStats:   models.MetricMap{"bytes": 9.3018e+06, "packets": 9.3018e+07},
-			TotalOutgressStats:  models.MetricMap{"bytes": 9.3018e+06, "packets": 9.3018e+07},
+			TotalEgressStats:    models.MetricMap{"bytes": 9.3018e+06, "packets": 9.3018e+07},
 			NumUpdates:          2,
 		},
 	}
