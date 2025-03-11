@@ -405,6 +405,14 @@ definitions:
         example:
           total: 0.73
         type: object
+      total_egress_stats:
+        additionalProperties:
+          type: number
+        description: Total Outgress statistics of unit
+        example:
+          bytes_total: 454342323
+          packets_total: 23232323
+        type: object
       total_gpu_emissions_gms:
         additionalProperties:
           type: number
@@ -426,28 +434,24 @@ definitions:
           type: number
         description: Total Ingress statistics of unit
         example:
-          total: 0.5
+          bytes_total: 8503405
+          packets_total: 43423
         type: object
       total_io_read_stats:
         additionalProperties:
           type: number
-        description: Total IO read statistics GB during lifetime of unit
+        description: Total IO read statistics during lifetime of unit
         example:
-          total: 4.6
+          bytes_total: 245000000
+          requests_total: 49423
         type: object
       total_io_write_stats:
         additionalProperties:
           type: number
         description: Total IO write statistics during lifetime of unit
         example:
-          total: 1.2
-        type: object
-      total_outgress_stats:
-        additionalProperties:
-          type: number
-        description: Total Outgress statistics of unit
-        example:
-          total: 0.1
+          bytes_total: 12000000
+          requests_total: 13923
         type: object
       total_time_seconds:
         additionalProperties:
@@ -540,6 +544,14 @@ definitions:
         example:
           total: 0.73
         type: object
+      total_egress_stats:
+        additionalProperties:
+          type: number
+        description: Total Egress statistics of unit
+        example:
+          bytes_total: 454342323
+          packets_total: 23232323
+        type: object
       total_gpu_emissions_gms:
         additionalProperties:
           type: number
@@ -561,28 +573,24 @@ definitions:
           type: number
         description: Total Ingress statistics of unit
         example:
-          total: 0.5
+          bytes_total: 8503405
+          packets_total: 43423
         type: object
       total_io_read_stats:
         additionalProperties:
           type: number
-        description: Total IO read statistics GB during lifetime of unit
+        description: Total IO read statistics during lifetime of unit
         example:
-          total: 4.6
+          bytes_total: 245000000
+          requests_total: 49423
         type: object
       total_io_write_stats:
         additionalProperties:
           type: number
         description: Total IO write statistics during lifetime of unit
         example:
-          total: 1.2
-        type: object
-      total_outgress_stats:
-        additionalProperties:
-          type: number
-        description: Total Outgress statistics of unit
-        example:
-          total: 0.1
+          bytes_total: 12000000
+          requests_total: 13923
         type: object
       total_time_seconds:
         additionalProperties:

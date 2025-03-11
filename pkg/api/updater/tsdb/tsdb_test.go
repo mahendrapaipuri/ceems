@@ -86,7 +86,7 @@ queries:
       packets: bar
       drops: foo
       errors: bar
-    total_outgress_stats:
+    total_egress_stats:
       bytes: foo
       packets: bar
       drops: foo
@@ -227,7 +227,7 @@ func TestTSDBUpdateSuccessSingleInstance(t *testing.T) {
 				"drops":   models.JSONFloat(1.1),
 				"errors":  models.JSONFloat(1.1),
 			},
-			TotalOutgressStats: models.MetricMap{
+			TotalEgressStats: models.MetricMap{
 				"bytes":   models.JSONFloat(1.1),
 				"packets": models.JSONFloat(1.1),
 				"drops":   models.JSONFloat(1.1),
@@ -261,7 +261,7 @@ func TestTSDBUpdateSuccessSingleInstance(t *testing.T) {
 				"drops":   models.JSONFloat(2.2),
 				"errors":  models.JSONFloat(2.2),
 			},
-			TotalOutgressStats: models.MetricMap{
+			TotalEgressStats: models.MetricMap{
 				"bytes":   models.JSONFloat(2.2),
 				"packets": models.JSONFloat(2.2),
 				"drops":   models.JSONFloat(2.2),
@@ -291,7 +291,7 @@ func TestTSDBUpdateSuccessSingleInstance(t *testing.T) {
 			TotalIOWriteStats:   models.MetricMap{},
 			TotalIOReadStats:    models.MetricMap{},
 			TotalIngressStats:   models.MetricMap{},
-			TotalOutgressStats:  models.MetricMap{},
+			TotalEgressStats:    models.MetricMap{},
 		},
 	}
 

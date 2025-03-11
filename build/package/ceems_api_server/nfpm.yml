@@ -66,7 +66,7 @@ contents:
   # CEEMS API server web config file
   - src: build/config/common/web-config.yml
     dst: /etc/ceems_api_server/web-config.yml
-    type: config
+    type: config|noreplace
     file_info:
       # Make sure that the mode is specified in octal, e.g. 0644 instead of 644.
       mode: 0660
@@ -76,7 +76,7 @@ contents:
   # CEEMS API server config file
   - src: build/config/ceems_api_server/ceems_api_server.yml
     dst: /etc/ceems_api_server/config.yml
-    type: config
+    type: config|noreplace
     file_info:
       # Make sure that the mode is specified in octal, e.g. 0644 instead of 644.
       mode: 0660
@@ -86,7 +86,7 @@ contents:
   # systemd unit file
   - src: build/package/ceems_api_server/ceems_api_server.service
     dst: /usr/lib/systemd/system/ceems_api_server.service
-    type: config
+    type: config|noreplace
     file_info:
       # Make sure that the mode is specified in octal, e.g. 0644 instead of 644.
       mode: 0640

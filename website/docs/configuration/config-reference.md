@@ -1,5 +1,5 @@
 ---
-sidebar_position: 9
+sidebar_position: 10
 ---
 
 # Configuration Reference
@@ -520,7 +520,7 @@ A `queries_config` allows configuring PromQL queries for TSDB updater of CEEMS A
 # Example of valid query:
 #
 # global:
-#   avg_over_time(avg by (uuid) (unit:ceems_compute_unit_cpu_usage:ratio_rate1m{uuid=~"{{.UUIDs}}"} > 0 < inf)[{{.Range}}:])
+#   avg_over_time(avg by (uuid) (uuid:ceems_cpu_usage:ratio_irate{uuid=~"{{.UUIDs}}"} >= 0 < inf)[{{.Range}}:])
 avg_cpu_usage:
   [ <string>: <promql_query> ... ]
   
@@ -530,7 +530,7 @@ avg_cpu_usage:
 # Example of valid query:
 #
 # global:
-#   avg_over_time(avg by (uuid) (unit:ceems_compute_unit_memory_usage:ratio{uuid=~"{{.UUIDs}}"} > 0 < inf)[{{.Range}}:])
+#   avg_over_time(avg by (uuid) (uuid:ceems_cpu_memory_usage:ratio{uuid=~"{{.UUIDs}}"} >= 0 < inf)[{{.Range}}:])
 avg_cpu_mem_usage:
   [ <string>: <promql_query> ... ]
   
@@ -540,7 +540,7 @@ avg_cpu_mem_usage:
 # Example of valid query:
 #
 # total:
-#   sum_over_time(sum by (uuid) (unit:ceems_compute_unit_cpu_energy_usage:sum{uuid=~"{{.UUIDs}}"} > 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 3.6e9
+#   sum_over_time(sum by (uuid) (uuid:ceems_host_power_watts:pue{uuid=~"{{.UUIDs}}"} >= 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 3.6e9
 total_cpu_energy_usage_kwh:
   [ <string>: <promql_query> ... ]
   
@@ -549,11 +549,11 @@ total_cpu_energy_usage_kwh:
 #
 # Example of valid query:
 # rte_total: |
-#   sum_over_time(sum by (uuid) (unit:ceems_compute_unit_cpu_emissions:sum{uuid=~"{{.UUIDs}}",provider="rte"} > 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 1e3
+#   sum_over_time(sum by (uuid) (uuid:ceems_host_emissions_g_s:pue{uuid=~"{{.UUIDs}}",provider="rte"} >= 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 1e3
 # emaps_total: |
-#   sum_over_time(sum by (uuid) (unit:ceems_compute_unit_cpu_emissions:sum{uuid=~"{{.UUIDs}}",provider="emaps"} > 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 1e3
+#   sum_over_time(sum by (uuid) (uuid:ceems_host_emissions_g_s:pue{uuid=~"{{.UUIDs}}",provider="emaps"} >= 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 1e3
 # owid_total: |
-#   sum_over_time(sum by (uuid) (unit:ceems_compute_unit_cpu_emissions:sum{uuid=~"{{.UUIDs}}",provider="owid"} > 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 1e3
+#   sum_over_time(sum by (uuid) (uuid:ceems_host_emissions_g_s:pue{uuid=~"{{.UUIDs}}",provider="owid"} >= 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 1e3
 total_cpu_emissions_gms:
   [ <string>: <promql_query> ... ]
   
@@ -563,7 +563,7 @@ total_cpu_emissions_gms:
 # Example of valid query:
 #
 # global:
-#   avg_over_time(avg by (uuid) (unit:ceems_compute_unit_gpu_usage:ratio{uuid=~"{{.UUIDs}}"} > 0 < inf)[{{.Range}}:])
+#   avg_over_time(avg by (uuid) (uuid:ceems_gpu_usage:ratio{uuid=~"{{.UUIDs}}"} >= 0 < inf)[{{.Range}}:])
 avg_gpu_usage:
   [ <string>: <promql_query> ... ]
   
@@ -573,7 +573,7 @@ avg_gpu_usage:
 # Example of valid query:
 #
 # global:
-#   avg_over_time(avg by (uuid) (unit:ceems_compute_unit_gpu_memory_usage:ratio{uuid=~"{{.UUIDs}}"} > 0 < inf)[{{.Range}}:])
+#   avg_over_time(avg by (uuid) (uuid:ceems_gpu_memory_usage:ratio{uuid=~"{{.UUIDs}}"} >= 0 < inf)[{{.Range}}:])
 avg_gpu_mem_usage:
   [ <string>: <promql_query> ... ]
   
@@ -583,7 +583,7 @@ avg_gpu_mem_usage:
 # Example of valid query:
 #
 # total:
-#   sum_over_time(sum by (uuid) (unit:ceems_compute_unit_gpu_energy_usage:sum{uuid=~"{{.UUIDs}}"} > 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 3.6e9
+#   sum_over_time(sum by (uuid) (uuid:ceems_gpu_power_watts:pue{uuid=~"{{.UUIDs}}"} >= 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 3.6e9
 total_gpu_energy_usage_kwh:
   [ <string>: <promql_query> ... ]
   
@@ -593,11 +593,11 @@ total_gpu_energy_usage_kwh:
 # Example of valid query:
 #
 # rte_total: |
-#   sum_over_time(sum by (uuid) (unit:ceems_compute_unit_gpu_emissions:sum{uuid=~"{{.UUIDs}}",provider="rte"} > 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 1e3
+#   sum_over_time(sum by (uuid) (uuid:ceems_gpu_emissions_g_s:pue{uuid=~"{{.UUIDs}}",provider="rte"} >= 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 1e3
 # emaps_total: |
-#   sum_over_time(sum by (uuid) (unit:ceems_compute_unit_gpu_emissions:sum{uuid=~"{{.UUIDs}}",provider="emaps"} > 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 1e3
+#   sum_over_time(sum by (uuid) (uuid:ceems_gpu_emissions_g_s:pue{uuid=~"{{.UUIDs}}",provider="emaps"} >= 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 1e3
 # owid_total: |
-#   sum_over_time(sum by (uuid) (unit:ceems_compute_unit_gpu_emissions:sum{uuid=~"{{.UUIDs}}",provider="owid"} > 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 1e3
+#   sum_over_time(sum by (uuid) (uuid:ceems_gpu_emissions_g_s:pue{uuid=~"{{.UUIDs}}",provider="owid"} >= 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 1e3
 total_gpu_emissions_gms:
   [ <string>: <promql_query> ... ]
   
@@ -606,8 +606,8 @@ total_gpu_emissions_gms:
 #
 # Example of valid query:
 #
-# total: |
-#   sum by (uuid) (increase(ceems_ebpf_write_bytes_total{uuid=~"{{.UUIDs}}"}[{{.Range}}]) > 0 < inf) / 1e+09
+# bytes_total: |
+#   sum by (uuid) (increase(ceems_ebpf_write_bytes_total{uuid=~"{{.UUIDs}}"}[{{.Range}}]) >= 0 < inf)
 total_io_write_stats:
   [ <string>: <promql_query> ... ]
 
@@ -615,8 +615,8 @@ total_io_write_stats:
 #
 # Example of valid query:
 #
-# total: |
-#   sum by (uuid) (increase(ceems_ebpf_read_bytes_total{uuid=~"{{.UUIDs}}"}[{{.Range}}]) > 0 < inf) / 1e+09
+# bytes_total: |
+#   sum by (uuid) (increase(ceems_ebpf_read_bytes_total{uuid=~"{{.UUIDs}}"}[{{.Range}}]) >= 0 < inf)
 total_io_read_stats:
   [ <string>: <promql_query> ... ]
 
@@ -624,16 +624,16 @@ total_io_read_stats:
 #
 # Example of valid query:
 #
-# total: |
-#   sum by (uuid) (increase(ceems_ebpf_ingress_bytes_total{uuid=~"{{.UUIDs}}"}[{{.Range}}]) > 0 < inf) / 1e+09
+# bytes_total: |
+#   sum by (uuid) (increase(ceems_ebpf_ingress_bytes_total{uuid=~"{{.UUIDs}}"}[{{.Range}}]) >= 0 < inf)
 total_ingress_stats:
   [ <string>: <promql_query> ... ]
 
-# Total outgress traffic stats
+# Total egress traffic stats
 #
-# total: |
-#   sum by (uuid) (increase(ceems_ebpf_egress_bytes_total{uuid=~"{{.UUIDs}}"}[{{.Range}}]) > 0 < inf) / 1e+09
-total_outgress_stats:
+# bytes_total: |
+#   sum by (uuid) (increase(ceems_ebpf_egress_bytes_total{uuid=~"{{.UUIDs}}"}[{{.Range}}]) >= 0 < inf)
+total_egress_stats:
   [ <string>: <promql_query> ... ]
 ```
 
@@ -780,12 +780,105 @@ filter_labels:
   [ - <string> ]
 ```
 
+## `<cacct>`
+
+The following shows the reference for CEEMS `cacct` client tool.
+A valid sample configuration file can be found in the
+[repo](https://github.com/mahendrapaipuri/ceems/blob/main/build/config/cacct/cacct.yml).
+
+```yaml
+# Configuration file to configure cacct
+#
+# This config file has following sections:
+#  - `ceems_api_server`: Client configuration of CEEMS API server
+#  - `tsdb`: Client configuration of TSDB
+#
+# On multi tenant systems like HPC platforms, this configuration file
+# must be protected as it contains the secrets of CEEMS API server and
+# Prometheus.
+# We recommend to use either `setuid` or `setgid` sticky bits to protect
+# the config file. Use a system user as owner/group of `cacct` binary
+# and the same user must own the config file. And add sticky bit to
+# `cacct` binary so that it can read the configuration file. However,
+# the regular user that is executing the `cacct` binary will not be able
+# to read the config file.
+#
+---
+# Configuration of CEEMS API server
+#
+ceems_api_server:
+  # The same cluster ID used in CEEMS API server's configuration.
+  # If not configured, results from all available clusters in the
+  # DB will be returned for a given user.
+  #
+  [ cluster_id: <idname> ]
+
+  # Header name that is used to identify current user. This
+  # can be configured using CEEMS API server's CLI flags.
+  # 
+  # Default: `X-Grafana-User`
+  #
+  [ user_header_name: <string> | default = X-Grafana-User ]
+
+  # HTTP client configuration of CEEMS API server
+  #
+  web: <web_client_config>
+
+# Configuration of TSDB server
+#
+tsdb:
+  # HTTP client configuration of TSDB
+  #
+  web: <web_client_config>
+
+  # To dump the time series data for each metric, this section must be configured.
+  # The key name is the name of the metric and value is the PromQL query to get
+  # time series data. The placeholder `%s` will be replaced by list of job IDs delimited
+  # by `|` which is the syntax expected by TSDB server.
+  #
+  # If the TSDB server has been configured with the recording rules generated by `ceems_tool`
+  # the following queries should work out-of-the-box.
+  #
+  # # CPU utilisation
+  # cpu_usage: uuid:ceems_cpu_usage:ratio_irate{uuid=~"%s"}
+
+  # # CPU Memory utilisation
+  # cpu_mem_usage: uuid:ceems_cpu_memory_usage:ratio{uuid=~"%s"}
+    
+  # # Host power usage in Watts
+  # host_power_usage: uuid:ceems_host_power_watts:pue{uuid=~"%s"}
+
+  # # Host emissions in g/s
+  # host_emissions: uuid:ceems_host_emissions_g_s:pue{uuid=~"%s"}
+
+  # # GPU utilization
+  # avg_gpu_usage: uuid:ceems_gpu_usage:ratio{uuid=~"%s"}
+
+  # # GPU memory utilization
+  # avg_gpu_mem_usage: uuid:ceems_gpu_memory_usage:ratio{uuid=~"%s"}
+
+  # # GPU power usage in Watts
+  # gpu_power_usage: uuid:ceems_gpu_power_watts:pue{uuid=~"%s"}
+
+  # # GPU emissions in g/s
+  # gpu_emissions: uuid:ceems_gpu_emissions_g_s:pue{uuid=~"%s"}
+
+  # # Read IO bytes
+  # io_read_bytes: irate(ceems_ebpf_read_bytes_total{uuid=~"%s"}[1m])
+
+  # # Write IO bytes
+  # io_write_bytes: irate(ceems_ebpf_write_bytes_total{uuid=~"%s"}[1m])
+  #
+  queries:
+    [ <string>: <promql_query> ... ]
+```
+
 ## `<web_client_config>`
 
 A `web_client_config` allows configuring HTTP clients.
 
 ```yaml
-# Web URL of the Grafana instance
+# Web URL of the server
 #
 url: <host>
 

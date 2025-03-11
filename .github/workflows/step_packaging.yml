@@ -35,43 +35,13 @@ jobs:
           else
             echo "version=$(cat VERSION)" >> $GITHUB_OUTPUT
           fi
-          echo "goos=linux" >> $GITHUB_OUTPUT
 
       # Build RPM and DEB packages
       - name: Build deb and rpm packages
-        run: |
-          # # Replace any '/' with '-' for non tag workflows
-          # export REF_NAME=$(echo "${GITHUB_REF_NAME//\//-}")
-          # # Strip v from tag name, eg v0.1.0 -> 0.1.0
-          # export CEEMS_VERSION=$(echo "${REF_NAME//v}")
-          # export GOOS=linux
-
-          # Ensure target directory exists
-          mkdir -p .tarballs
-
-          # Build packages
-          # Use a simple for loop instead of matrix strategy as building packages
-          # is a very rapid process and we pay more price by repeating all the steps
-          # if using a matrix strategy
-          for arch in amd64 arm64; do
-            for packager in rpm deb; do
-              for app in ceems_exporter ceems_api_server ceems_lb redfish_proxy; do
-                  GOARCH=${arch} CEEMS_VERSION=${{ steps.vars.outputs.version }} nfpm pkg --config build/package/${app}/nfpm.yml --packager ${packager} --target .tarballs/${app}-${{ steps.vars.outputs.version }}-${{ steps.vars.outputs.goos }}-${arch}.${packager}
-              done 
-            done 
-          done
+        run: ./scripts/packaging.sh -v ${{ steps.vars.outputs.version }} -b
 
       - name: Test deb packages
-        run: |
-          # Install all CEEMS components
-          for app in ceems_exporter ceems_api_server ceems_lb redfish_proxy; do
-              GOARCH=amd64 sudo apt-get install ./.tarballs/${app}-${{ steps.vars.outputs.version }}-${{ steps.vars.outputs.goos }}-amd64.deb
-          done 
-
-          # Test systemd service of each CEEMS component
-          for app in ceems_exporter ceems_api_server ceems_lb redfish_proxy; do
-              systemctl is-active --quiet "${app}.service" && echo "${app}" is running
-          done 
+        run: ./scripts/packaging.sh -v ${{ steps.vars.outputs.version }} -t
 
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4

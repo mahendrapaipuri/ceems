@@ -25,14 +25,10 @@ jobs:
       # Cross compile for only AMD and ARM archs in CI to reduce CI time and artifacts size
       # We will compile for all supported archs in release workflow
       - name: Cross compile Go packages
-        run: |
-          sed -i -e 's/RELEASE_BUILD           ?= 0/RELEASE_BUILD           ?= 1/g' Makefile
-          promu --config .promu-go.yml crossbuild -v -p linux/amd64 -p linux/arm64
+        run: make crossbuild-test
 
       - name: Cross compile CGo packages
-        run: |
-          sed -i -e 's/CGO_BUILD               ?= 0/CGO_BUILD               ?= 1/g' Makefile
-          promu --config .promu-cgo.yml crossbuild -v -p linux/amd64 -p linux/arm64
+        run: CGO_BUILD=1 make crossbuild-test
 
       - name: Upload go build artifacts
         uses: actions/upload-artifact@v4

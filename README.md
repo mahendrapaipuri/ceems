@@ -39,7 +39,7 @@ managers (SLURM, Openstack, k8s)
 - Supports NVIDIA (MIG and vGPU) and AMD GPUs
 - Provides targets using [HTTP Discovery Component](https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.http/)
 to [Grafana Alloy](https://grafana.com/docs/alloy/latest) to continuously profile compute units
-- Realtime access to metrics *via* Grafana dashboards
+- Realtime access to metrics *via* Grafana dashboards or a simple CLI tool
 - Access control to Prometheus and Pyroscope datasources in Grafana
 - Stores aggregated metrics in a separate DB that can be retained for long time
 - CEEMS apps are [capability aware](https://tbhaxor.com/understanding-linux-capabilities/)

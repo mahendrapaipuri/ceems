@@ -33,7 +33,7 @@ var settingsLock = sync.RWMutex{}
 type Metric map[string]float64
 
 // RangeMetric defines Client range metrics.
-type RangeMetric map[string][]model.SamplePair
+// type RangeMetric map[string][]model.SamplePair
 
 // Config is Prometheus config representation.
 type Config struct {
@@ -69,7 +69,7 @@ type Settings struct {
 	RateInterval       time.Duration
 	QueryLookbackDelta time.Duration
 	QueryTimeout       time.Duration
-	QueryMaxSamples    uint64
+	QueryMaxSamples    int64
 	RetentionPeriod    time.Duration
 }
 
@@ -99,7 +99,7 @@ var defaultSettings = Settings{
 	RateInterval:       4 * defaultScrapeInterval,
 	QueryLookbackDelta: defaultLookbackDelta,
 	QueryTimeout:       defaultQueryTimeout,
-	QueryMaxSamples:    uint64(defaultQueryMaxSamples),
+	QueryMaxSamples:    defaultQueryMaxSamples,
 }
 
 // New returns a new instance of Client.
@@ -223,7 +223,7 @@ func (t *Client) fetchSettings(ctx context.Context) (*Settings, error) {
 	settings.EvaluationInterval = time.Duration(config.Global.EvaluationInterval)
 
 	// Get query timeout and max samples from flags
-	if v, err := strconv.ParseUint(flags["query.max-samples"], 10, 64); err != nil {
+	if v, err := strconv.ParseInt(flags["query.max-samples"], 10, 64); err != nil {
 		settings.QueryMaxSamples = v
 	}
 
@@ -340,7 +340,7 @@ func (t *Client) RangeQuery(
 	startTime time.Time,
 	endTime time.Time,
 	step time.Duration,
-) (RangeMetric, error) {
+) (model.Matrix, error) {
 	// Get current scrape interval to use as lookback_delta
 	// This query parameter is undocumented on Prometheus. If we use
 	// default value of 5m, we tend to have metrics 5m **after** compute
@@ -350,14 +350,25 @@ func (t *Client) RangeQuery(
 		period = scrapeInterval
 	}
 
+	// Get current max samples
+	maxSamples := t.Settings(ctx).QueryMaxSamples
+
+	// Check if step size respect max samples
+	if int64(endTime.Sub(startTime)/step) > maxSamples {
+		step = endTime.Sub(startTime) / time.Duration(maxSamples)
+	}
+
 	// Make query range
 	queryRange := v1.Range{
 		Start: startTime,
 		End:   endTime,
+		Step:  step,
 	}
 
-	if step > 0 {
-		queryRange.Step = step
+	// If no step provided, use scrape interval. It is mandatory
+	// to pass step
+	if queryRange.Step == 0 {
+		queryRange.Step = period
 	}
 
 	// Make API request to execute query
@@ -371,7 +382,7 @@ func (t *Client) RangeQuery(
 	}
 
 	// Parse data
-	queriedRangeValues := make(RangeMetric)
+	// queriedRangeValues := make(RangeMetric)
 
 	var values model.Matrix
 
@@ -382,14 +393,7 @@ func (t *Client) RangeQuery(
 		return nil, fmt.Errorf("%w on data: %v", ErrFailedTypeAssertion, result)
 	}
 
-	// Iterate over each value and make UUID to value map
-	for _, value := range values {
-		if n, ok := value.Metric["__name__"]; ok {
-			queriedRangeValues[string(n)] = value.Values
-		}
-	}
-
-	return queriedRangeValues, nil
+	return values, nil
 }
 
 // Delete time series with given labels.

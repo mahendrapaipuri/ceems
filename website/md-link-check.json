@@ -21,6 +21,9 @@
     },
     {
       "pattern": "https://cuterwrite.top/en/p/rdma-element/"
+    },
+    {
+      "pattern": "https://github.com/mahendrapaipuri/ceems/blob/main/build/config/cacct/cacct.yml"
     }
   ],
   "replacementPatterns": [

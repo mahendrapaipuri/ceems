@@ -14,6 +14,8 @@ build:
           path: ./cmd/ceems_lb
         - name: ceems_tool
           path: ./cmd/ceems_tool
+        - name: cacct
+          path: ./cmd/cacct
         - name: redfish_proxy
           path: ./cmd/redfish_proxy
     flags: -a -tags 'netgo osusergo static_build'
@@ -29,6 +31,7 @@ tarball:
         - build/config/ceems_lb/ceems_lb.yml
         - build/config/ceems_api_server/ceems_api_server.yml
         - build/config/redfish_proxy/redfish_proxy.yml
+        - build/config/cacct/cacct.yml
         - build/config/common/web-config.yml
         - LICENSE
         - README.md

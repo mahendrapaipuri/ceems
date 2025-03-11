@@ -59,7 +59,7 @@ contents:
   # CEEMS load balancer config file
   - src: build/config/ceems_lb/ceems_lb.yml
     dst: /etc/ceems_lb/config.yml
-    type: config
+    type: config|noreplace
     file_info:
       # Make sure that the mode is specified in octal, e.g. 0644 instead of 644.
       mode: 0660
@@ -69,7 +69,7 @@ contents:
   # CEEMS load balancer web config file
   - src: build/config/common/web-config.yml
     dst: /etc/ceems_lb/web-config.yml
-    type: config
+    type: config|noreplace
     file_info:
       # Make sure that the mode is specified in octal, e.g. 0644 instead of 644.
       mode: 0660
@@ -79,7 +79,7 @@ contents:
   # systemd unit file
   - src: build/package/ceems_lb/ceems_lb.service
     dst: /usr/lib/systemd/system/ceems_lb.service
-    type: config
+    type: config|noreplace
     file_info:
       # Make sure that the mode is specified in octal, e.g. 0644 instead of 644.
       mode: 0640

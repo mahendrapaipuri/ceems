@@ -48,9 +48,9 @@ endif
 test-flags := -covermode=atomic -race
 
 # Use CGO for api and GO for ceems_exporter.
-PROMU_TEST_CONF ?= .promu-go-test.yml
+PROMU_TEST_CONF ?= .promu/.promu-go-test.yml
 ifeq ($(CGO_BUILD), 1)
-	PROMU_CONF ?= .promu-cgo.yml
+	PROMU_CONF ?= .promu/.promu-cgo.yml
 	pkgs := ./pkg/sqlite3 ./pkg/api/cli \
 			./pkg/api/db ./pkg/api/helper \
 			./pkg/api/resource ./pkg/api/resource/slurm ./pkg/api/resource/openstack \
@@ -66,11 +66,11 @@ ifeq ($(CGO_BUILD), 1)
 	# go test flags
 	coverage-file := coverage-cgo.out
 else
-	PROMU_CONF ?= .promu-go.yml
+	PROMU_CONF ?= .promu/.promu-go.yml
 	pkgs := ./pkg/collector ./pkg/emissions ./pkg/tsdb ./pkg/grafana \
 			./internal/common ./internal/osexec ./internal/structset \
 			./internal/security ./cmd/ceems_exporter ./cmd/redfish_proxy \
-			./cmd/ceems_tool
+			./cmd/ceems_tool ./cmd/cacct
 	checkmetrics := checkmetrics
 	checkrules := checkrules
 	checkbpf := checkbpf
@@ -92,7 +92,8 @@ else
 endif
 
 PROMU := $(FIRST_GOPATH)/bin/promu --config $(PROMU_CONF)
-PROMU_TEST := $(FIRST_GOPATH)/bin/promu --config $(PROMU_TEST_CONF)
+PROMU_GO_TEST := $(FIRST_GOPATH)/bin/promu --config .promu/.promu-go-test.yml
+PROMU_CGO_TEST := $(FIRST_GOPATH)/bin/promu --config .promu/.promu-cgo-test.yml
 
 e2e-out = pkg/collector/testdata/output
 
@@ -173,6 +174,13 @@ test-e2e: $(PROMTOOL) build pkg/collector/testdata/sys/.unpacked pkg/collector/t
 	./scripts/e2e-test.sh -s tool-recording-rules
 	./scripts/e2e-test.sh -s tool-relabel-configs
 	./scripts/e2e-test.sh -s tool-web-config
+	./scripts/e2e-test.sh -s cacct-default-format
+	./scripts/e2e-test.sh -s cacct-long-format
+	./scripts/e2e-test.sh -s cacct-custom-format
+	./scripts/e2e-test.sh -s cacct-admin-user
+	./scripts/e2e-test.sh -s cacct-forbid-query
+	./scripts/e2e-test.sh -s cacct-tsdata
+	./scripts/e2e-test.sh -s cacct-tsdata-fail
 else
 .PHONY: test-e2e
 test-e2e: $(PROMTOOL) build pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked
@@ -239,6 +247,13 @@ test-e2e-update: build pkg/collector/testdata/sys/.unpacked pkg/collector/testda
 	./scripts/e2e-test.sh -s tool-recording-rules -u || true
 	./scripts/e2e-test.sh -s tool-relabel-configs -u || true
 	./scripts/e2e-test.sh -s tool-web-config -u || true
+	./scripts/e2e-test.sh -s cacct-default-format -u || true
+	./scripts/e2e-test.sh -s cacct-long-format -u || true 
+	./scripts/e2e-test.sh -s cacct-custom-format -u || true
+	./scripts/e2e-test.sh -s cacct-admin-user -u || true
+	./scripts/e2e-test.sh -s cacct-forbid-query -u || true
+	./scripts/e2e-test.sh -s cacct-tsdata -u || true
+	./scripts/e2e-test.sh -s cacct-tsdata-fail -u || true
 else
 .PHONY: test-e2e-update
 test-e2e-update: $(PROMTOOL) build pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked

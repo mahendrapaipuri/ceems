@@ -202,7 +202,7 @@ func mockUnits() []models.Unit {
 				"bytes":   models.JSONFloat(random(1000000, 1000000000)),
 				"packets": models.JSONFloat(random(1000000, 1000000000)),
 			},
-			TotalOutgressStats: models.MetricMap{
+			TotalEgressStats: models.MetricMap{
 				"bytes":   models.JSONFloat(random(1000000, 1000000000)),
 				"packets": models.JSONFloat(random(1000000, 1000000000)),
 			},
@@ -278,7 +278,7 @@ func mockUsage() []models.Usage {
 					"bytes":   models.JSONFloat(random(1000000, 1000000000)),
 					"packets": models.JSONFloat(random(1000000, 1000000000)),
 				},
-				TotalOutgressStats: models.MetricMap{
+				TotalEgressStats: models.MetricMap{
 					"bytes":   models.JSONFloat(random(1000000, 1000000000)),
 					"packets": models.JSONFloat(random(1000000, 1000000000)),
 				},

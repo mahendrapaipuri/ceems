@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/mahendrapaipuri/ceems/pkg/grafana"
 	"github.com/prometheus/common/config"
@@ -22,6 +23,30 @@ import (
 type mockConfig struct {
 	Field1 string `yaml:"field1"`
 	Field2 string `yaml:"field2"`
+}
+
+func TestTimeSpan(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    time.Duration
+		expected string
+	}{
+		{
+			name:     "Less than day",
+			input:    23 * time.Hour,
+			expected: "23:00:00",
+		},
+		{
+			name:     "More than day",
+			input:    25 * time.Hour,
+			expected: "1-01:00:00",
+		},
+	}
+
+	for _, test := range tests {
+		got := Timespan(test.input).Format("15:04:05")
+		assert.Equal(t, test.expected, got, test.name)
+	}
 }
 
 func TestSanitizeFloat(t *testing.T) {

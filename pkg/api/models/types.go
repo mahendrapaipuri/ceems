@@ -8,6 +8,7 @@ import (
 	"math"
 	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/prometheus/common/config"
 	"gopkg.in/yaml.v3"
@@ -93,7 +94,63 @@ type Tag = Generic
 type Allocation = Generic
 
 // MetricMap is a type alias to Generic that stores arbritrary metrics as a map.
-type MetricMap map[string]JSONFloat
+type MetricMap map[string]JSONFloat //nolint:recvcheck
+
+// String implements stringer interface.
+func (m MetricMap) String() string {
+	switch {
+	case len(m) == 0:
+		return ""
+	case len(m) == 1:
+		for _, v := range m {
+			return fmt.Sprintf("%f", v)
+		}
+	default:
+		var s []string
+		for k, v := range m {
+			s = append(s, fmt.Sprintf("%s: %f", k, v))
+		}
+
+		return strings.Join(s, "\n")
+	}
+
+	return ""
+}
+
+// Keys returns a slice of map keys.
+func (m MetricMap) Keys() []string {
+	s := make([]string, len(m))
+
+	i := 0
+
+	for k := range m {
+		s[i] = k
+		i++
+	}
+
+	// Sort keys
+	slices.Sort(s)
+
+	return s
+}
+
+// Values returns a slice of string representation of map values.
+func (m MetricMap) Values(format string) []interface{} {
+	// Return empty string when map is nil
+	// Useful in table generation for cacct app
+	if len(m) == 0 {
+		return []interface{}{""}
+	}
+
+	s := make([]interface{}, len(m))
+
+	// Iterate over sorted keys to get predictable order
+	for ik, k := range m.Keys() {
+		s[ik] = fmt.Sprintf(format, m[k])
+	}
+
+	return s
+}
 
 // Value implements Valuer interface.
 func (m MetricMap) Value() (driver.Value, error) {
