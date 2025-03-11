@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"math"
 	"net"
 	"net/url"
 	"strconv"
@@ -70,7 +69,7 @@ type Settings struct {
 	RateInterval       time.Duration
 	QueryLookbackDelta time.Duration
 	QueryTimeout       time.Duration
-	QueryMaxSamples    uint64
+	QueryMaxSamples    int64
 	RetentionPeriod    time.Duration
 }
 
@@ -100,7 +99,7 @@ var defaultSettings = Settings{
 	RateInterval:       4 * defaultScrapeInterval,
 	QueryLookbackDelta: defaultLookbackDelta,
 	QueryTimeout:       defaultQueryTimeout,
-	QueryMaxSamples:    uint64(defaultQueryMaxSamples),
+	QueryMaxSamples:    defaultQueryMaxSamples,
 }
 
 // New returns a new instance of Client.
@@ -224,7 +223,7 @@ func (t *Client) fetchSettings(ctx context.Context) (*Settings, error) {
 	settings.EvaluationInterval = time.Duration(config.Global.EvaluationInterval)
 
 	// Get query timeout and max samples from flags
-	if v, err := strconv.ParseUint(flags["query.max-samples"], 10, 64); err != nil {
+	if v, err := strconv.ParseInt(flags["query.max-samples"], 10, 64); err != nil {
 		settings.QueryMaxSamples = v
 	}
 
@@ -352,10 +351,7 @@ func (t *Client) RangeQuery(
 	}
 
 	// Get current max samples
-	var maxSamples int64 = defaultQueryMaxSamples
-	if t.Settings(ctx).QueryMaxSamples > 0 && t.Settings(ctx).QueryMaxSamples <= math.MaxInt64 {
-		maxSamples = int64(t.Settings(ctx).QueryMaxSamples) //nolint:gosec
-	}
+	maxSamples := t.Settings(ctx).QueryMaxSamples
 
 	// Check if step size respect max samples
 	if int64(endTime.Sub(startTime)/step) > maxSamples {

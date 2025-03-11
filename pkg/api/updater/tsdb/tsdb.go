@@ -33,7 +33,7 @@ const (
 
 // config is the container for the configuration of a given TSDB instance.
 type tsdbConfig struct {
-	QueryMaxSeries  uint64                       `yaml:"query_max_series"`
+	QueryMaxSeries  int64                        `yaml:"query_max_series"`
 	QueryMinSamples float64                      `yaml:"query_min_samples"`
 	CutoffDuration  model.Duration               `yaml:"cutoff_duration"`
 	DeleteIgnore    bool                         `yaml:"delete_ignored"`
@@ -283,7 +283,7 @@ func (t *tsdbUpdater) update(
 	settings := t.Settings(ctx)
 
 	// Estimate a batch size based on scrape interval, duration, query max samples and total time series
-	samplesPerSeries := max(uint64(duration.Seconds()/settings.ScrapeInterval.Seconds()), 1)
+	samplesPerSeries := max(int64(duration.Seconds()/settings.ScrapeInterval.Seconds()), 1)
 	maxLabels := settings.QueryMaxSamples / (t.config.QueryMaxSeries * samplesPerSeries)
 	batchSize := min(max(int(t.config.QueryMinSamples*float64(maxLabels)), 10), len(allUnitUUIDs[:j]))
 

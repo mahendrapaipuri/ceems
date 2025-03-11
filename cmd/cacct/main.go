@@ -639,9 +639,9 @@ func updateField(structKeys []string, f *field) {
 func readConfig() (*Config, error) {
 	var config Config
 
-	// Look for config.yml and config.yaml files
+	// Look for config.yml or config.yaml or cacct.yml or cacct.yaml files
 	for _, configPath := range configPaths {
-		for _, file := range []string{"config.yml", "config.yaml"} {
+		for _, file := range []string{"config.yml", "config.yaml", "cacct.yml", "cacct.yaml"} {
 			configFile := filepath.Join(configPath, file)
 			if _, err := os.Stat(configFile); err == nil {
 				// Read config file

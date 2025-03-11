@@ -60,7 +60,7 @@ contents:
       group: ceems
 
   # cacct config file
-  - src: build/config/cacct/cacct_config.yml
+  - src: build/config/cacct/cacct.yml
     dst: /etc/ceems/config.yml
     type: config
     file_info:
