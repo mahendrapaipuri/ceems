@@ -1,14 +1,27 @@
 #!/bin/bash
 set -exo pipefail
 
-# This script only works for Ubuntu derivates and it is meant to be
+# This script only works for Ubuntu derivatives and it is meant to be
 # used in CI to install clang in golang builder containers.
 # Works on Ubuntu 24
+LLVM_DIR=''
+
+find_llvm() {
+    for dir in /usr/lib/*/  # Location where llvm will be installation
+		do
+				dir=${dir%*/}  # remove the trailing "/"
+				if [[ "$dir" == *"llvm"* ]]; then
+					LLVM_DIR="${dir}"
+					break
+				fi
+		done
+}
 
 create_symlinks() {
     echo "Creating symlinks"
-    $SUDO ln -vsnf /usr/lib/llvm-19/bin/clang /usr/bin/clang
-    $SUDO ln -vsnf /usr/lib/llvm-19/bin/llc /usr/bin/llc
+		find_llvm
+    $SUDO ln -vsnf "${LLVM_DIR}/bin/clang" /usr/bin/clang
+    $SUDO ln -vsnf "${LLVM_DIR}/bin/llc" /usr/bin/llc
 }
 
 # Setup sudo prefix
