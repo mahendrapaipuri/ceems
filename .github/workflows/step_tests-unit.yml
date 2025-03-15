@@ -65,7 +65,7 @@ jobs:
         id: verify-changed-files
         run: |
           # If there are no changes exit code will be 0 and 1 if there are changes
-          if git diff --exit-code README.md website/docs/00-introduction.md; then
+          if git diff --exit-code README.md website/docs/00-introduction.md > /dev/null; then
               echo "files_changed=false" >> $GITHUB_OUTPUT
           else
               echo "files_changed=true" >> $GITHUB_OUTPUT
