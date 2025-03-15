@@ -2,7 +2,7 @@ module github.com/mahendrapaipuri/ceems
 
 go 1.23.0
 
-toolchain go1.23.2
+toolchain go1.24.1
 
 require (
 	github.com/alecthomas/kingpin/v2 v2.4.0
@@ -17,8 +17,8 @@ require (
 	github.com/jellydator/ttlcache/v3 v3.3.0
 	github.com/mahendrapaipuri/perf-utils v0.0.0-20241102115757-6c72709e1c07
 	github.com/mattn/go-sqlite3 v1.14.24
-	github.com/prometheus/client_golang v1.21.1-0.20250221111557-6b820eb1ff36
-	github.com/prometheus/common v0.62.0
+	github.com/prometheus/client_golang v1.22.0-rc.0
+	github.com/prometheus/common v0.63.0
 	github.com/prometheus/exporter-toolkit v0.14.0
 	github.com/prometheus/procfs v0.15.1
 	github.com/stmcginnis/gofish v0.20.0
@@ -26,13 +26,13 @@ require (
 	github.com/swaggo/http-swagger/v2 v2.0.2
 	github.com/swaggo/swag v1.16.4
 	github.com/zeebo/xxh3 v1.0.2
-	golang.org/x/crypto v0.35.0
+	golang.org/x/crypto v0.36.0
 	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8
-	golang.org/x/sys v0.30.0
+	golang.org/x/sys v0.31.0
 	google.golang.org/protobuf v1.36.5
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
-	kernel.org/pub/linux/libs/security/libcap/cap v1.2.73
+	kernel.org/pub/linux/libs/security/libcap/cap v1.2.75
 )
 
 require (
@@ -54,7 +54,6 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/jpillora/backoff v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/klauspost/compress v1.17.11 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
@@ -76,11 +75,11 @@ require (
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	golang.org/x/net v0.36.0 // indirect
-	golang.org/x/oauth2 v0.24.0 // indirect
-	golang.org/x/sync v0.11.0 // indirect
-	golang.org/x/text v0.22.0 // indirect
+	golang.org/x/oauth2 v0.25.0 // indirect
+	golang.org/x/sync v0.12.0 // indirect
+	golang.org/x/text v0.23.0 // indirect
 	golang.org/x/tools v0.29.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240528184218-531527333157 // indirect
 	google.golang.org/grpc v1.65.0 // indirect
-	kernel.org/pub/linux/libs/security/libcap/psx v1.2.73 // indirect
+	kernel.org/pub/linux/libs/security/libcap/psx v1.2.75 // indirect
 )
