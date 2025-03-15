@@ -13,6 +13,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
@@ -512,7 +513,10 @@ func NewEbpfCollector(logger *slog.Logger, cgManager *cgroupManager) (*ebpfColle
 // Update implements Collector and update job metrics.
 // cgroupIDUUIDMap provides a map to cgroupID to compute unit UUID. If the map is empty, it means
 // cgroup ID and compute unit UUID is identical.
-func (c *ebpfCollector) Update(ch chan<- prometheus.Metric, cgroups []cgroup) error {
+func (c *ebpfCollector) Update(ch chan<- prometheus.Metric, cgroups []cgroup, mainCollectorSubsystem string) error {
+	// Update metrics channel with sub collector duration
+	defer subCollectorDuration(mainCollectorSubsystem, ebpfCollectorSubsystem, time.Now(), ch)
+
 	// Update active cgroups
 	c.discoverCgroups(cgroups)
 

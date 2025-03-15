@@ -3,11 +3,12 @@ set -exo pipefail
 
 # This script only works for Ubuntu derivates and it is meant to be
 # used in CI to install clang in golang builder containers.
+# Works on Ubuntu 24
 
 create_symlinks() {
     echo "Creating symlinks"
-    $SUDO ln -vsnf /usr/lib/llvm-18/bin/clang /usr/bin/clang
-    $SUDO ln -vsnf /usr/lib/llvm-18/bin/llc /usr/bin/llc
+    $SUDO ln -vsnf /usr/lib/llvm-19/bin/clang /usr/bin/clang
+    $SUDO ln -vsnf /usr/lib/llvm-19/bin/llc /usr/bin/llc
 }
 
 # Setup sudo prefix
@@ -32,7 +33,7 @@ $SUDO apt-get update && $SUDO apt-get install -y --no-install-recommends  \
     wget lsb-release wget software-properties-common gnupg    \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install clang 18
+# Install clang 19
 $SUDO bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
 
 # Create necessary symlinks

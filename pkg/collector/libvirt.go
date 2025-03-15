@@ -300,18 +300,18 @@ func (c *libvirtCollector) Update(ch chan<- prometheus.Metric) error {
 		}
 	}()
 
-	if perfCollectorEnabled() {
-		wg.Add(1)
+	// if perfCollectorEnabled() {
+	// 	wg.Add(1)
 
-		go func() {
-			defer wg.Done()
+	// 	go func() {
+	// 		defer wg.Done()
 
-			// Update perf metrics
-			if err := c.perfCollector.Update(ch, metrics.cgroups); err != nil {
-				c.logger.Error("Failed to update perf stats", "err", err)
-			}
-		}()
-	}
+	// 		// Update perf metrics
+	// 		if err := c.perfCollector.Update(ch, metrics.cgroups); err != nil {
+	// 			c.logger.Error("Failed to update perf stats", "err", err)
+	// 		}
+	// 	}()
+	// }
 
 	if ebpfCollectorEnabled() {
 		wg.Add(1)
@@ -320,7 +320,7 @@ func (c *libvirtCollector) Update(ch chan<- prometheus.Metric) error {
 			defer wg.Done()
 
 			// Update ebpf metrics
-			if err := c.ebpfCollector.Update(ch, metrics.cgroups); err != nil {
+			if err := c.ebpfCollector.Update(ch, metrics.cgroups, libvirtCollectorSubsystem); err != nil {
 				c.logger.Error("Failed to update IO and/or network stats", "err", err)
 			}
 		}()
@@ -333,7 +333,7 @@ func (c *libvirtCollector) Update(ch chan<- prometheus.Metric) error {
 			defer wg.Done()
 
 			// Update RDMA metrics
-			if err := c.rdmaCollector.Update(ch, metrics.cgroups); err != nil {
+			if err := c.rdmaCollector.Update(ch, metrics.cgroups, libvirtCollectorSubsystem); err != nil {
 				c.logger.Error("Failed to update RDMA stats", "err", err)
 			}
 		}()

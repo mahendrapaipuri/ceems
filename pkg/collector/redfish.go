@@ -160,6 +160,12 @@ func NewRedfishCollector(logger *slog.Logger) (Collector, error) {
 		return nil, fmt.Errorf("failed to create a HTTP client for Redfish: %w", err)
 	}
 
+	// Ensure to set a timeout here to not to block redfish collector whole
+	// exporter. We set 4 seconds as usually 5 seconds is used as scrape
+	// timeout
+	// Good ref: https://stackoverflow.com/a/72358623
+	httpClient.Timeout = 4 * time.Second
+
 	// Create a redfish client
 	config := gofish.ClientConfig{
 		Endpoint:         endpoint,
