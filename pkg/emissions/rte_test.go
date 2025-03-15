@@ -24,7 +24,7 @@ var (
 	rteIdx = 0
 )
 
-func mockRTEAPIRequest(url string, logger *slog.Logger) (EmissionFactors, error) {
+func mockRTEAPIRequest(url string) (EmissionFactors, error) {
 	rteIdx++
 	if rteIdx > 2 {
 		return nil, errors.New("some random while fetching stuff")
@@ -33,17 +33,23 @@ func mockRTEAPIRequest(url string, logger *slog.Logger) (EmissionFactors, error)
 	return expectedRTEFactors[rteIdx-1], nil
 }
 
-func mockRTEAPIFailRequest(url string, logger *slog.Logger) (EmissionFactors, error) {
+func mockRTEAPIFailRequest(url string) (EmissionFactors, error) {
 	return nil, errors.New("Failed API request")
 }
 
 func TestRTEDataSource(t *testing.T) {
 	s := rteProvider{
-		logger:          slog.New(slog.NewTextHandler(io.Discard, nil)),
-		cacheDuration:   10,
-		lastRequestTime: time.Now().Unix(),
-		fetch:           mockRTEAPIRequest,
+		logger:       slog.New(slog.NewTextHandler(io.Discard, nil)),
+		updatePeriod: 10 * time.Millisecond,
+		fetch:        mockRTEAPIRequest,
 	}
+	defer s.Stop()
+
+	// Start a ticker to update factors in a go routine
+	s.update()
+
+	// Just wait a small time for ticker to update
+	time.Sleep(5 * time.Millisecond)
 
 	// Get current emission factor
 	factor, err := s.Update()
@@ -54,29 +60,32 @@ func TestRTEDataSource(t *testing.T) {
 	nextFactor, _ := s.Update()
 	assert.Equal(t, expectedRTEFactors[0], nextFactor)
 
-	// Sleep for 2 seconds and make a request again and it should change
+	// Sleep for 20ms and make a request again and it should change
 	time.Sleep(20 * time.Millisecond)
 
 	lastFactor, _ := s.Update()
 	assert.Equal(t, expectedRTEFactors[1], lastFactor)
 
-	lastUpdateTime := s.lastRequestTime
-
-	// Sleep for 1 more second and make a request again and we should get last non null value
+	// Sleep for 20ms and make a request again and we should get last non null value
 	time.Sleep(20 * time.Millisecond)
 
 	lastFactor, _ = s.Update()
 	assert.Equal(t, expectedRTEFactors[1], lastFactor)
-	assert.Equal(t, s.lastRequestTime, lastUpdateTime)
 }
 
 func TestRTEDataSourceError(t *testing.T) {
 	s := rteProvider{
-		logger:          slog.New(slog.NewTextHandler(io.Discard, nil)),
-		cacheDuration:   2,
-		lastRequestTime: time.Now().Unix(),
-		fetch:           mockRTEAPIFailRequest,
+		logger:       slog.New(slog.NewTextHandler(io.Discard, nil)),
+		updatePeriod: 2 * time.Millisecond,
+		fetch:        mockRTEAPIFailRequest,
 	}
+	defer s.Stop()
+
+	// Start a ticker to update factors in a go routine
+	s.update()
+
+	// Just wait a small time for ticker to update
+	time.Sleep(5 * time.Millisecond)
 
 	// Get current emission factor
 	_, err := s.Update()
@@ -84,7 +93,9 @@ func TestRTEDataSourceError(t *testing.T) {
 }
 
 func TestNewRTEProvider(t *testing.T) {
-	_, err := NewRTEProvider(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	s, err := NewRTEProvider(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	defer s.Stop()
+
 	require.NoError(t, err)
 }
 
@@ -110,7 +121,7 @@ func TestRTEAPIRequest(t *testing.T) {
 	defer server.Close()
 
 	// Make request to test server
-	factor, err := makeRTEAPIRequest(server.URL, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	factor, err := makeRTEAPIRequest(server.URL)
 	require.NoError(t, err)
 	assert.InEpsilon(t, float64(expectedFactor), factor["FR"].Factor, 0)
 }
@@ -127,6 +138,6 @@ func TestRTEAPIRequestFail(t *testing.T) {
 	defer server.Close()
 
 	// Make request to test server
-	_, err := makeRTEAPIRequest(server.URL, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	_, err := makeRTEAPIRequest(server.URL)
 	assert.Error(t, err)
 }

@@ -102,3 +102,8 @@ func NewOWIDProvider(logger *slog.Logger) (Provider, error) {
 func (s *owidProvider) Update() (EmissionFactors, error) {
 	return s.emissionData, nil
 }
+
+// Stop updaters and release all resources.
+func (s *owidProvider) Stop() error {
+	return nil
+}

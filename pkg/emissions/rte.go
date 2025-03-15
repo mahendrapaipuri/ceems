@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 )
 
@@ -19,12 +20,15 @@ const (
 	rteEmissionsProvider   = "rte"
 )
 
+// Mutex to update emission factor from go routine.
+var rteFactorMu = sync.RWMutex{}
+
 type rteProvider struct {
 	logger             *slog.Logger
-	cacheDuration      int64
-	lastRequestTime    int64
+	updatePeriod       time.Duration
+	stopTicker         chan bool
 	lastEmissionFactor EmissionFactors
-	fetch              func(url string, logger *slog.Logger) (EmissionFactors, error)
+	fetch              func(url string) (EmissionFactors, error)
 }
 
 func init() {
@@ -36,48 +40,73 @@ func init() {
 func NewRTEProvider(logger *slog.Logger) (Provider, error) {
 	logger.Info("Emission factor from RTE eCO2 mix will be reported.")
 
-	return &rteProvider{
-		logger:          logger,
-		cacheDuration:   1800000,
-		lastRequestTime: time.Now().UnixMilli(),
-		fetch:           makeRTEAPIRequest,
-	}, nil
+	// Create an instance of rteProvider
+	r := &rteProvider{
+		logger:       logger,
+		updatePeriod: 30 * time.Minute,
+		fetch:        makeRTEAPIRequest,
+	}
+
+	// Start a ticker to update factors in a go routine
+	r.update()
+
+	return r, nil
 }
 
-// Cache realtime emission factor and return cached value
-// RTE data updates data only for every hour. We make requests
-// only once every 30 min and cache data for rest of the scrapes
-// This is useful when exporter is used along with other collectors need shorter
-// scrape intervals.
+// Update returns the last fetched emission factor.
 func (s *rteProvider) Update() (EmissionFactors, error) {
-	// Make RTE URL
-	url := makeRTEURL(opendatasoftAPIBaseURL)
-	if time.Now().UnixMilli()-s.lastRequestTime > s.cacheDuration || s.lastEmissionFactor == nil {
-		currentEmissionFactor, err := s.fetch(url, s.logger)
-		if err != nil {
-			s.logger.Warn("Failed to retrieve emission factor from RTE provider", "err", err)
-
-			// Check if last emission factor is valid and if it is use the same for current
-			if s.lastEmissionFactor != nil {
-				s.logger.Debug("Using cached emission factor for RTE provider", "factor", s.lastEmissionFactor["FR"].Factor)
-
-				return s.lastEmissionFactor, nil
-			} else {
-				return nil, err
-			}
-		}
-
-		// Update last request time and factor
-		s.lastRequestTime = time.Now().UnixMilli()
-		s.lastEmissionFactor = currentEmissionFactor
-		s.logger.Debug("Using real time emission factor from RTE provider", "factor", currentEmissionFactor["FR"].Factor)
-
-		return currentEmissionFactor, err
-	} else {
-		s.logger.Debug("Using cached emission factor for RTE provider", "factor", s.lastEmissionFactor["FR"].Factor)
-
+	// If data is present, return it
+	if len(s.lastEmissionFactor) > 0 {
 		return s.lastEmissionFactor, nil
 	}
+
+	return nil, fmt.Errorf("failed to fetch emission factor from %s", rteEmissionsProvider)
+}
+
+// Stop updaters and release all resources.
+func (s *rteProvider) Stop() error {
+	// Stop ticker
+	close(s.stopTicker)
+
+	return nil
+}
+
+// update fetches the emission factors from RTE in a ticker.
+func (s *rteProvider) update() {
+	// Channel to signal closing ticker
+	s.stopTicker = make(chan bool, 1)
+
+	// Run ticker in a go routine
+	go func() {
+		ticker := time.NewTicker(s.updatePeriod)
+		defer ticker.Stop()
+
+		for {
+			s.logger.Debug("Updating RTE emission factor")
+
+			// Make RTE URL
+			url := makeRTEURL(opendatasoftAPIBaseURL)
+
+			// Fetch factor
+			currentEmissionFactor, err := s.fetch(url)
+			if err != nil {
+				s.logger.Error("Failed to retrieve emission factor from RTE provider", "err", err)
+			} else {
+				rteFactorMu.Lock()
+				s.lastEmissionFactor = currentEmissionFactor
+				rteFactorMu.Unlock()
+			}
+
+			select {
+			case <-ticker.C:
+				continue
+			case <-s.stopTicker:
+				s.logger.Info("Stopping RTE emission factor update")
+
+				return
+			}
+		}
+	}()
 }
 
 // Make URL.
@@ -105,42 +134,33 @@ func makeRTEURL(baseURL string) string {
 }
 
 // Make request to Opendatasoft API.
-func makeRTEAPIRequest(url string, logger *slog.Logger) (EmissionFactors, error) {
-	// Create a context with timeout to ensure we dont have deadlocks
-	// Dont use a long timeout. If one provider takes too long, whole scrape will be
-	// marked as fail when there is a timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+func makeRTEAPIRequest(url string) (EmissionFactors, error) {
+	// Create a context with timeout. As we are updating in a separate ticker
+	// we can use longer timeouts to wait for the response
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		logger.Error("Failed to create HTTP request for RTE provider", "err", err)
-
-		return nil, err
+		return nil, fmt.Errorf("failed to create request for RTE provider: %w", err)
 	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		logger.Error("Failed to make HTTP request for RTE provider", "err", err)
-
-		return nil, err
+		return nil, fmt.Errorf("failed to make request for RTE provider: %w", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		logger.Error("Failed to read HTTP response body for RTE provider", "err", err)
-
-		return nil, err
+		return nil, fmt.Errorf("failed to read response body for RTE provider: %w", err)
 	}
 
 	var data nationalRealTimeResponseV2
 
 	err = json.Unmarshal(body, &data)
 	if err != nil {
-		logger.Error("Failed to unmarshal HTTP response body for RTE provider", "err", err)
-
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal response body for RTE provider: %w", err)
 	}
 
 	var fields []nationalRealTimeFieldsV2

@@ -52,11 +52,17 @@ func mockEMapsAPIFailRequest(
 
 func TestEMapsDataProvider(t *testing.T) {
 	s := emapsProvider{
-		logger:          slog.New(slog.NewTextHandler(io.Discard, nil)),
-		cacheDuration:   10,
-		lastRequestTime: time.Now().Unix(),
-		fetch:           mockEMapsAPIRequest,
+		logger:       slog.New(slog.NewTextHandler(io.Discard, nil)),
+		updatePeriod: 10 * time.Millisecond,
+		fetch:        mockEMapsAPIRequest,
 	}
+	defer s.Stop()
+
+	// Start a ticker to update factors in a go routine
+	s.update()
+
+	// Just wait a small time for ticker to update
+	time.Sleep(5 * time.Millisecond)
 
 	// Get current emission factor
 	factor, err := s.Update()
@@ -73,23 +79,26 @@ func TestEMapsDataProvider(t *testing.T) {
 	lastFactor, _ := s.Update()
 	assert.Equal(t, lastFactor, expectedEMapsFactor[1])
 
-	lastUpdateTime := s.lastRequestTime
-
 	// Sleep for 1 more second and make a request again and we should get last non null value
 	time.Sleep(20 * time.Millisecond)
 
 	lastFactor, _ = s.Update()
 	assert.Equal(t, lastFactor, expectedEMapsFactor[1])
-	assert.Equal(t, lastUpdateTime, s.lastRequestTime)
 }
 
 func TestEMapsDataProviderError(t *testing.T) {
 	s := emapsProvider{
-		logger:          slog.New(slog.NewTextHandler(io.Discard, nil)),
-		cacheDuration:   2,
-		lastRequestTime: time.Now().Unix(),
-		fetch:           mockEMapsAPIFailRequest,
+		logger:       slog.New(slog.NewTextHandler(io.Discard, nil)),
+		updatePeriod: 2 * time.Millisecond,
+		fetch:        mockEMapsAPIFailRequest,
 	}
+	defer s.Stop()
+
+	// Start a ticker to update factors in a go routine
+	s.update()
+
+	// Just wait a small time for ticker to update
+	time.Sleep(5 * time.Millisecond)
 
 	// Get current emission factor
 	_, err := s.Update()
@@ -97,11 +106,6 @@ func TestEMapsDataProviderError(t *testing.T) {
 }
 
 func TestNewEMapsProvider(t *testing.T) {
-	// // First attempt to create new instance without token env var. Should return error
-	// _, err := NewEMapsProvider(slog.New(slog.NewTextHandler(io.Discard, nil)))
-	// if err == nil {
-	// 	t.Errorf("expected error to create a new instance of EMaps provider due to missing token env var")
-	// }
 	// Start test server
 	expected := eMapsZonesResponse{"FR": map[string]string{"zoneName": "France"}}
 
@@ -116,7 +120,9 @@ func TestNewEMapsProvider(t *testing.T) {
 	t.Setenv("EMAPS_API_TOKEN", "secret")
 	t.Setenv("__EMAPS_BASE_URL", server.URL)
 
-	_, err := NewEMapsProvider(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	s, err := NewEMapsProvider(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	defer s.Stop()
+
 	assert.NoError(t, err)
 }
 
