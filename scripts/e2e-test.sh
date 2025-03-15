@@ -479,7 +479,7 @@ then
         --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
         --path.procfs="pkg/collector/testdata/proc" \
         --collector.cgroups.force-version="v1" \
-        --collector.cgroup.active-subsystem="memory" \
+        --collector.cgroups.active-subsystem="memory" \
         --collector.slurm \
         --collector.gpu.type="nvidia" \
         --collector.gpu.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \

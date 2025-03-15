@@ -230,9 +230,9 @@ func TestNewCgroupManagerV1(t *testing.T) {
 	require.NoError(t, err)
 
 	expectedMountPoints := []string{
-		"testdata/sys/fs/cgroup/cpuacct/slurm",
-		"testdata/sys/fs/cgroup/cpuacct/slurm_host0",
-		"testdata/sys/fs/cgroup/cpuacct/slurm_host1",
+		"testdata/sys/fs/cgroup/cpu,cpuacct/slurm",
+		"testdata/sys/fs/cgroup/cpu,cpuacct/slurm_host0",
+		"testdata/sys/fs/cgroup/cpu,cpuacct/slurm_host1",
 	}
 
 	assert.Equal(t, expectedMountPoints, manager.mountPoints)
@@ -247,7 +247,7 @@ func TestNewCgroupManagerV1(t *testing.T) {
 	manager, err = NewCgroupManager("libvirt", slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
-	assert.Equal(t, []string{"testdata/sys/fs/cgroup/cpuacct/machine.slice"}, manager.mountPoints)
+	assert.Equal(t, []string{"testdata/sys/fs/cgroup/cpu,cpuacct/machine.slice"}, manager.mountPoints)
 	assert.NotNil(t, manager.isChild)
 	assert.NotNil(t, manager.ignoreProc)
 

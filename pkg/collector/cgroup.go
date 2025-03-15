@@ -44,6 +44,11 @@ const (
 	writeOp = "Write"
 )
 
+const (
+	cpuSubsystem = "cpu,cpuacct"
+	netSubsystem = "net_cls,net_prio"
+)
+
 // Regular expressions of cgroup paths for different resource managers.
 // ^.*/(?:(.*?)_)?slurm(?:_(.*?)/)?(?:.*?)/job_([0-9]+)(?:.*$)
 // ^.*/slurm(?:_(.*?))?/(?:.*?)/job_([0-9]+)(?:.*$)
@@ -77,8 +82,8 @@ var (
 // CLI options.
 var (
 	activeController = CEEMSExporterApp.Flag(
-		"collector.cgroup.active-subsystem",
-		"Active cgroup subsystem for cgroups v1.",
+		"collector.cgroups.active-subsystem",
+		"Active subsystem for cgroups v1.",
 	).Default("cpuacct").String()
 
 	// Hidden opts for e2e and unit tests.
@@ -87,6 +92,22 @@ var (
 		"Set cgroups version manually. Used only for testing.",
 	).Hidden().Enum("v1", "v2")
 )
+
+// resolveSubsystem returns the resolved cgroups v1 subsystem.
+func resolveSubsystem(subsystem string) string {
+	switch subsystem {
+	case "cpuacct":
+		return cpuSubsystem
+	case "cpu": //nolint:goconst
+		return cpuSubsystem
+	case "net_cls":
+		return netSubsystem
+	case "net_prio":
+		return netSubsystem
+	default:
+		return subsystem
+	}
+}
 
 type cgroupPath struct {
 	abs, rel string
@@ -373,8 +394,11 @@ func NewCgroupManager(name string, logger *slog.Logger) (*cgroupManager, error) 
 				mode = cgroups.Mode()
 			}
 
+			// Resolve subsystem
+			activeSubsystem := resolveSubsystem(*activeController)
+
 			// Discover all cgroup roots
-			slices, err := lookupCgroupRoots(filepath.Join(*cgroupfsPath, *activeController), "slurm")
+			slices, err := lookupCgroupRoots(filepath.Join(*cgroupfsPath, activeSubsystem), "slurm")
 			if err != nil {
 				logger.Error("Failed to discover cgroup roots", "err", err)
 
@@ -387,7 +411,7 @@ func NewCgroupManager(name string, logger *slog.Logger) (*cgroupManager, error) 
 				mode:             mode,
 				root:             *cgroupfsPath,
 				idRegex:          slurmCgroupV1PathRegex,
-				activeController: *activeController,
+				activeController: activeSubsystem,
 				slices:           slices,
 			}
 		}
@@ -425,12 +449,15 @@ func NewCgroupManager(name string, logger *slog.Logger) (*cgroupManager, error) 
 				mode = cgroups.Mode()
 			}
 
+			// Resolve subsystem
+			activeSubsystem := resolveSubsystem(*activeController)
+
 			manager = &cgroupManager{
 				logger:           logger,
 				fs:               fs,
 				mode:             mode,
 				root:             *cgroupfsPath,
-				activeController: *activeController,
+				activeController: activeSubsystem,
 				slices:           []string{"machine.slice"},
 			}
 		}
