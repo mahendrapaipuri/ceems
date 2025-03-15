@@ -3,6 +3,7 @@ package emissions
 import (
 	"log/slog"
 	"net/http"
+	"time"
 )
 
 //nolint:misspell
@@ -149,6 +150,27 @@ type eMapsCarbonIntensityResponse struct {
 	EstimationMethod   string `json:"estimationMethod"`
 }
 
+// Watt time API token response.
+type wtTokenResponse struct {
+	Token string `json:"token"`
+}
+
+// Watt time emission factor response.
+type wtSignalDataResponse struct {
+	Data []struct {
+		PointTime   time.Time `json:"point_time"`
+		Value       float64   `json:"value"`
+		LastUpdated time.Time `json:"last_updated"`
+	} `json:"data"`
+	Meta struct {
+		Region   string `json:"region"`
+		Units    string `json:"units"`
+		Warnings []struct {
+			Message string `json:"message"`
+		} `json:"warnings"`
+	} `json:"meta"`
+}
+
 // ContextKey is the struct key to set values in context.
 type ContextKey struct{}
 
@@ -177,6 +199,9 @@ type EmissionFactors map[string]EmissionFactor
 type Provider interface {
 	// Update current emission factor
 	Update() (EmissionFactors, error)
+
+	// Stop updaters and release resources
+	Stop() error
 }
 
 // FactorProviders implements the interface to collect

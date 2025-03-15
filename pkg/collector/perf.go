@@ -11,6 +11,7 @@ import (
 	"math"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/mahendrapaipuri/ceems/internal/security"
 	"github.com/mahendrapaipuri/perf-utils"
@@ -545,7 +546,10 @@ func NewPerfCollector(logger *slog.Logger, cgManager *cgroupManager) (*perfColle
 // Update implements the Collector interface and will collect metrics per compute unit.
 // cgroupIDUUIDMap provides a map to cgroupID to compute unit UUID. If the map is empty, it means
 // cgroup ID and compute unit UUID is identical.
-func (c *perfCollector) Update(ch chan<- prometheus.Metric, cgroups []cgroup) error {
+func (c *perfCollector) Update(ch chan<- prometheus.Metric, cgroups []cgroup, mainCollectorSubsystem string) error {
+	// Update metrics channel with sub collector duration
+	defer subCollectorDuration(mainCollectorSubsystem, perfCollectorSubsystem, time.Now(), ch)
+
 	var err error
 
 	// Filter processes in cgroups based on target env vars

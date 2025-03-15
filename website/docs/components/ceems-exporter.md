@@ -452,6 +452,7 @@ different sources supported by the exporter are:
 
 - [Electricity Maps](https://app.electricitymaps.com/map) which is capable of providing
 real time emission factors for different countries.
+- [Watt Time](https://watttime.org/) provides real time emission factors for different regions.
 - [RTE eCO2 Mix](https://www.rte-france.com/en/eco2mix/co2-emissions) provides real time
 emission factor for **only France**.
 - [OWID](https://ourworldindata.org/co2-and-greenhouse-gas-emissions) provides a static

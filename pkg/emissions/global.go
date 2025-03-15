@@ -34,3 +34,8 @@ func (s *globalProvider) Update() (EmissionFactors, error) {
 	// dashboards properly
 	return EmissionFactors{"ZZ": EmissionFactor{"World", float64(globalEmissionFactor)}}, nil
 }
+
+// Stop updaters and release all resources.
+func (s *globalProvider) Stop() error {
+	return nil
+}

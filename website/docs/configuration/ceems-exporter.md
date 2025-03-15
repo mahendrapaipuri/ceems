@@ -526,11 +526,21 @@ We recommend the capabilities approach as it requires minimum configuration.
 
 ### Emissions collector
 
-The only configuration needed for emissions collector is an API token for
-[Electricity Maps](https://app.electricitymaps.com/map). For non commercial uses,
+Emission collector needs to be configured when factors from
+[Electricity Maps](https://app.electricitymaps.com/map) or
+[Watt time](https://watttime.org/) are used. For Electricity Maps, an API
+token must be provided using environment variable `EMAPS_API_TOKEN` in the
+systemd service file of the collector. For non commercial uses,
 a [free tier token](https://www.electricitymaps.com/free-tier-api) can be requested.
-This token must be passed using an environment variable `EMAPS_API_TOKEN` in the
-systemd service file of the collector.
+
+For the case of Watt Time, three different environment variables needs to be set.
+
+- `WT_USERNAME`: Watt Time account username
+- `WT_PASSWORD`: Watt Time account password
+- `WT_REGION`: The emission factors from this Watt Time region will be fetched
+
+The collector will user username and password to request an API token and use that
+token to make requests for emission factors.
 
 :::tip[TIP]
 

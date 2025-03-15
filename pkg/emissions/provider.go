@@ -14,13 +14,17 @@ var dataDir embed.FS
 
 // Custom errors.
 var (
-	ErrMissingAPIToken = errors.New("api token missing for Electricity Maps")
+	ErrMissingAPIToken  = errors.New("api token missing for Electricity Maps")
+	ErrMissingInput     = errors.New("missing username/password/region for Watt Time")
+	ErrMissingData      = errors.New("missing data in Watt Time response")
+	ErrNoValidProviders = errors.New("no valid emission data providers found")
 )
 
 var (
-	emissionsLock = sync.RWMutex{}
-	factories     = make(map[string]func(logger *slog.Logger) (Provider, error))
-	factoryNames  = make(map[string]string)
+	emissionsMu  = sync.RWMutex{}
+	errorsMu     = sync.RWMutex{}
+	factories    = make(map[string]func(logger *slog.Logger) (Provider, error))
+	factoryNames = make(map[string]string)
 )
 
 // Register registers a emission factor provider.
@@ -55,6 +59,11 @@ func NewFactorProviders(logger *slog.Logger, enabled []string) (*FactorProviders
 		providerNames[key] = factoryNames[key]
 	}
 
+	// Ensure if there is at least one provider available
+	if len(providers) == 0 {
+		return nil, ErrNoValidProviders
+	}
+
 	return &FactorProviders{Providers: providers, ProviderNames: providerNames, logger: logger}, nil
 }
 
@@ -75,9 +84,9 @@ func (e FactorProviders) Collect() map[string]PayLoad {
 				return
 			}
 
-			emissionsLock.Lock()
+			emissionsMu.Lock()
 			emissionFactors[name] = PayLoad{Factor: factor, Name: e.ProviderNames[name]}
-			emissionsLock.Unlock()
+			emissionsMu.Unlock()
 			wg.Done()
 		}(name, s)
 	}
@@ -85,4 +94,32 @@ func (e FactorProviders) Collect() map[string]PayLoad {
 	wg.Wait()
 
 	return emissionFactors
+}
+
+// Stop terminates tickers (when present) from different providers.
+func (e FactorProviders) Stop() error {
+	var errs error
+
+	wg := sync.WaitGroup{}
+	wg.Add(len(e.Providers))
+
+	for name, s := range e.Providers {
+		go func(name string, s Provider) {
+			defer wg.Done()
+
+			if err := s.Stop(); err != nil {
+				e.logger.Error("Failed to stop emission factor updater", "provider", name, "err", err)
+
+				errorsMu.Lock()
+				errs = errors.Join(errs, err)
+				errorsMu.Unlock()
+
+				return
+			}
+		}(name, s)
+	}
+
+	wg.Wait()
+
+	return errs
 }

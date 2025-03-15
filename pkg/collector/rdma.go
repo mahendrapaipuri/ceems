@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/mahendrapaipuri/ceems/internal/osexec"
 	"github.com/mahendrapaipuri/ceems/internal/security"
@@ -224,7 +225,10 @@ func NewRDMACollector(logger *slog.Logger, cgManager *cgroupManager) (*rdmaColle
 }
 
 // Update implements Collector and exposes RDMA related metrics.
-func (c *rdmaCollector) Update(ch chan<- prometheus.Metric, cgroups []cgroup) error {
+func (c *rdmaCollector) Update(ch chan<- prometheus.Metric, cgroups []cgroup, mainCollectorSubsystem string) error {
+	// Update metrics channel with sub collector duration
+	defer subCollectorDuration(mainCollectorSubsystem, rdmaCollectorSubsystem, time.Now(), ch)
+
 	if !c.isAvailable {
 		return ErrNoData
 	}
@@ -234,7 +238,10 @@ func (c *rdmaCollector) Update(ch chan<- prometheus.Metric, cgroups []cgroup) er
 		c.logger.Error("Failed to enable Per-PID QP stats", "err", err)
 	}
 
-	return c.update(ch, cgroups)
+	// Update metrics
+	c.update(ch, cgroups)
+
+	return nil
 }
 
 // Stop releases system resources used by the collector.
@@ -294,7 +301,7 @@ func (c *rdmaCollector) perPIDCounters(enable bool) error {
 }
 
 // update fetches different RDMA stats.
-func (c *rdmaCollector) update(ch chan<- prometheus.Metric, cgroups []cgroup) error {
+func (c *rdmaCollector) update(ch chan<- prometheus.Metric, cgroups []cgroup) {
 	// Make invert mapping of cgroups
 	procCgroup := c.procCgroupMapper(cgroups)
 
@@ -398,8 +405,6 @@ func (c *rdmaCollector) update(ch chan<- prometheus.Metric, cgroups []cgroup) er
 
 	// Wait for all go routines
 	wg.Wait()
-
-	return nil
 }
 
 // procCgroupMapper returns cgroup ID of all relevant processes map.

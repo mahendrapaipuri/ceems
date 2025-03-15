@@ -288,7 +288,7 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 			defer wg.Done()
 
 			// Update perf metrics
-			if err := c.perfCollector.Update(ch, metrics.cgroups); err != nil {
+			if err := c.perfCollector.Update(ch, metrics.cgroups, slurmCollectorSubsystem); err != nil {
 				c.logger.Error("Failed to update perf stats", "err", err)
 			}
 		}()
@@ -301,7 +301,7 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 			defer wg.Done()
 
 			// Update ebpf metrics
-			if err := c.ebpfCollector.Update(ch, metrics.cgroups); err != nil {
+			if err := c.ebpfCollector.Update(ch, metrics.cgroups, slurmCollectorSubsystem); err != nil {
 				c.logger.Error("Failed to update IO and/or network stats", "err", err)
 			}
 		}()
@@ -314,7 +314,7 @@ func (c *slurmCollector) Update(ch chan<- prometheus.Metric) error {
 			defer wg.Done()
 
 			// Update RDMA metrics
-			if err := c.rdmaCollector.Update(ch, metrics.cgroups); err != nil {
+			if err := c.rdmaCollector.Update(ch, metrics.cgroups, slurmCollectorSubsystem); err != nil {
 				c.logger.Error("Failed to update RDMA stats", "err", err)
 			}
 		}()

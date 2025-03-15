@@ -24,7 +24,7 @@ var (
 	scrapeDurationDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(Namespace, "scrape", "collector_duration_seconds"),
 		CEEMSExporterAppName+": Duration of a collector scrape.",
-		[]string{"collector"},
+		[]string{"collector", "subcollector"},
 		nil,
 	)
 	scrapeSuccessDesc = prometheus.NewDesc(
@@ -235,6 +235,13 @@ func execute(name string, c Collector, ch chan<- prometheus.Metric, logger *slog
 
 		success = 1
 	}
-	ch <- prometheus.MustNewConstMetric(scrapeDurationDesc, prometheus.GaugeValue, duration.Seconds(), name)
+	ch <- prometheus.MustNewConstMetric(scrapeDurationDesc, prometheus.GaugeValue, duration.Seconds(), name, "")
 	ch <- prometheus.MustNewConstMetric(scrapeSuccessDesc, prometheus.GaugeValue, success, name)
+}
+
+// subCollectorDuration updates the metrics channel with duration of each sub collector.
+func subCollectorDuration(mainColl string, subColl string, start time.Time, ch chan<- prometheus.Metric) {
+	duration := time.Since(start)
+
+	ch <- prometheus.MustNewConstMetric(scrapeDurationDesc, prometheus.GaugeValue, duration.Seconds(), mainColl, subColl)
 }

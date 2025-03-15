@@ -22,8 +22,9 @@ var (
 Supported providers:
 	- "owid": Our World In Data (https://ourworldindata.org/grapher/carbon-intensity-electricity?tab=table)
 	- "emaps": Electricity Maps (https://app.electricitymaps.com/)
-	- "rte": RTE eCO2 Mix (Only for France) (https://www.rte-france.com/en/eco2mix/co2-emissions)`,
-	).Enums("owid", "emaps", "rte")
+	- "rte": RTE eCO2 Mix (Only for France) (https://www.rte-france.com/en/eco2mix/co2-emissions)
+	- "wt": Watt Time (https://docs.watttime.org/#tag/Introduction)`,
+	).Enums("owid", "emaps", "rte", "wt")
 )
 
 type emissionsCollector struct {
@@ -84,6 +85,13 @@ func (c *emissionsCollector) Update(ch chan<- prometheus.Metric) error {
 // Stops collector and releases system resources.
 func (c *emissionsCollector) Stop(_ context.Context) error {
 	c.logger.Debug("Stopping", "collector", emissionsCollectorSubsystem)
+
+	// Stop all providers to release any system resources that are being used
+	if err := c.emissionFactorProviders.Stop(); err != nil {
+		c.logger.Error("Failed to stop emission factor providers", "err", err)
+
+		return err
+	}
 
 	return nil
 }

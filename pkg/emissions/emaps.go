@@ -22,14 +22,19 @@ const (
 	eMapsEmissionsProvider = "emaps"
 )
 
-var emissionLock = sync.RWMutex{}
+var (
+	// Mutex to update emission factor from go routine.
+	emapsFactorMu = sync.RWMutex{}
+	// Mutex to update emission factor of zone.
+	emapsZoneFactorMu = sync.RWMutex{}
+)
 
 type emapsProvider struct {
 	logger             *slog.Logger
 	apiToken           string
 	zones              map[string]string
-	cacheDuration      int64
-	lastRequestTime    int64
+	stopTicker         chan bool
+	updatePeriod       time.Duration
 	lastEmissionFactor EmissionFactors
 	fetch              func(baseURL string, apiToken string, zones map[string]string, logger *slog.Logger) (EmissionFactors, error)
 }
@@ -93,48 +98,82 @@ func NewEMapsProvider(logger *slog.Logger) (Provider, error) {
 		zones[zone] = compoundName
 	}
 
-	return &emapsProvider{
-		logger:          logger,
-		apiToken:        eMapsAPIToken,
-		zones:           zones,
-		cacheDuration:   1800000,
-		lastRequestTime: time.Now().UnixMilli(),
-		fetch:           makeEMapsAPIRequest,
-	}, nil
+	e := &emapsProvider{
+		logger:       logger,
+		apiToken:     eMapsAPIToken,
+		zones:        zones,
+		updatePeriod: 30 * time.Minute,
+		fetch:        makeEMapsAPIRequest,
+	}
+
+	// Start update ticker
+	e.update()
+
+	return e, nil
 }
 
-// Cache realtime emission factor and return cached value
-// Electricity Maps updates data only for every hour. We make requests
-// only once every 30 min and cache data for rest of the scrapes
-// This is useful when exporter is used along with other collectors need shorter
-// scrape intervals.
+// Update returns the last fetched emission factor.
 func (s *emapsProvider) Update() (EmissionFactors, error) {
-	if time.Now().UnixMilli()-s.lastRequestTime > s.cacheDuration || s.lastEmissionFactor == nil {
-		currentEmissionFactor, err := s.fetch(eMapAPIBaseURL, s.apiToken, s.zones, s.logger)
-		if err != nil {
-			s.logger.Error("Failed to fetch emission factor from Electricity maps provider", "err", err)
+	// Current emission factor
+	factors := s.emissionFactors()
 
-			// Check if last emission factor is valid and if it is use the same for current
-			if s.lastEmissionFactor != nil {
-				s.logger.Debug("Using cached emission factor for Electricity maps provider")
+	// If data is present, return it
+	if len(factors) > 0 {
+		return factors, nil
+	}
 
-				return s.lastEmissionFactor, nil
+	return nil, fmt.Errorf("failed to fetch emission factor from %s", eMapsEmissionsProvider)
+}
+
+// Stop updaters and release all resources.
+func (s *emapsProvider) Stop() error {
+	// Stop ticker
+	close(s.stopTicker)
+
+	return nil
+}
+
+// update fetches the emission factors from Electricity maps in a ticker.
+func (s *emapsProvider) update() {
+	// Channel to signal closing ticker
+	s.stopTicker = make(chan bool, 1)
+
+	// Run ticker in a go routine
+	go func() {
+		ticker := time.NewTicker(s.updatePeriod)
+		defer ticker.Stop()
+
+		for {
+			s.logger.Debug("Updating Electricity maps emission factor")
+
+			// Fetch factor
+			currentEmissionFactor, err := s.fetch(eMapAPIBaseURL, s.apiToken, s.zones, s.logger)
+			if err != nil {
+				s.logger.Error("Failed to retrieve emission factor from Electricity maps provider", "err", err)
 			} else {
-				return nil, err
+				emapsFactorMu.Lock()
+				s.lastEmissionFactor = currentEmissionFactor
+				emapsFactorMu.Unlock()
+			}
+
+			select {
+			case <-ticker.C:
+				continue
+			case <-s.stopTicker:
+				s.logger.Info("Stopping Electricity maps emission factor update")
+
+				return
 			}
 		}
+	}()
+}
 
-		// Update last request time and factor
-		s.lastRequestTime = time.Now().UnixMilli()
-		s.lastEmissionFactor = currentEmissionFactor
-		s.logger.Debug("Using real time emission factor from Electricity maps provider")
+func (s *emapsProvider) emissionFactors() EmissionFactors {
+	emapsFactorMu.RLock()
+	emissionFactors := s.lastEmissionFactor
+	emapsFactorMu.RUnlock()
 
-		return currentEmissionFactor, err
-	} else {
-		s.logger.Debug("Using cached emission factor for Electricity maps provider")
-
-		return s.lastEmissionFactor, nil
-	}
+	return emissionFactors
 }
 
 // Make requests to Electricity maps API to fetch factors for all countries.
@@ -170,9 +209,9 @@ func makeEMapsAPIRequest(
 
 			// Set emission factor only when returned value is non zero
 			if response.CarbonIntensity > 0 {
-				emissionLock.Lock()
+				emapsZoneFactorMu.Lock()
 				emissionFactors[z] = EmissionFactor{n, float64(response.CarbonIntensity)}
-				emissionLock.Unlock()
+				emapsZoneFactorMu.Unlock()
 			}
 
 			// Mark routine as done
@@ -189,10 +228,9 @@ func makeEMapsAPIRequest(
 // Make a single request to Electricity maps API
 // Returning nil for generics: https://stackoverflow.com/questions/70585852/return-default-value-for-generic-type
 func eMapsAPIRequest[T any](url string, apiToken string) (T, error) {
-	// Create a context with timeout to ensure we dont have deadlocks
-	// Dont use a long timeout. If one provider takes too long, whole scrape will be
-	// marked as fail when there is a timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	// Create a context with timeout. As we are updating in a separate ticker
+	// we can use longer timeouts to wait for the response
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)

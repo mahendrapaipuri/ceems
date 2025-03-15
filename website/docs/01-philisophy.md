@@ -66,7 +66,8 @@ France, a _real_ time emission factor will be used that is based on
 [RTE eCO2 mix data](https://www.rte-france.com/en/eco2mix/co2-emissions). Besides,
 retrieving emission factors from [Electricity Maps](https://app.electricitymaps.com/map)
 is also supported provided that API token is provided. Electricity Maps provide
-emission factor data for most of the countries. A static emission factor from historic
+emission factor data for most of the countries. Similarly, factors from [Watt Time](https://watttime.org/)
+can also be used when account credentials are available. A static emission factor from historic
 data is also provided from [OWID data](https://github.com/owid/co2-data). Finally, a
 constant global average emission factor can also be used.
 

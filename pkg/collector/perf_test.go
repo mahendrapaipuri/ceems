@@ -53,7 +53,7 @@ func TestPerfCollector(t *testing.T) {
 		}
 	}()
 
-	err = collector.Update(metrics, nil)
+	err = collector.Update(metrics, nil, "")
 	require.NoError(t, err)
 
 	err = collector.Stop(context.Background())
