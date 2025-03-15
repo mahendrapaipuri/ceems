@@ -114,9 +114,12 @@ func NewEMapsProvider(logger *slog.Logger) (Provider, error) {
 
 // Update returns the last fetched emission factor.
 func (s *emapsProvider) Update() (EmissionFactors, error) {
+	// Current emission factor
+	factors := s.emissionFactors()
+
 	// If data is present, return it
-	if len(s.lastEmissionFactor) > 0 {
-		return s.lastEmissionFactor, nil
+	if len(factors) > 0 {
+		return factors, nil
 	}
 
 	return nil, fmt.Errorf("failed to fetch emission factor from %s", eMapsEmissionsProvider)
@@ -163,6 +166,14 @@ func (s *emapsProvider) update() {
 			}
 		}
 	}()
+}
+
+func (s *emapsProvider) emissionFactors() EmissionFactors {
+	emapsFactorMu.RLock()
+	emissionFactors := s.lastEmissionFactor
+	emapsFactorMu.RUnlock()
+
+	return emissionFactors
 }
 
 // Make requests to Electricity maps API to fetch factors for all countries.

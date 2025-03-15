@@ -55,9 +55,12 @@ func NewRTEProvider(logger *slog.Logger) (Provider, error) {
 
 // Update returns the last fetched emission factor.
 func (s *rteProvider) Update() (EmissionFactors, error) {
+	// Current emission factor
+	factors := s.emissionFactors()
+
 	// If data is present, return it
-	if len(s.lastEmissionFactor) > 0 {
-		return s.lastEmissionFactor, nil
+	if len(factors) > 0 {
+		return factors, nil
 	}
 
 	return nil, fmt.Errorf("failed to fetch emission factor from %s", rteEmissionsProvider)
@@ -107,6 +110,14 @@ func (s *rteProvider) update() {
 			}
 		}
 	}()
+}
+
+func (s *rteProvider) emissionFactors() EmissionFactors {
+	rteFactorMu.RLock()
+	emissionFactors := s.lastEmissionFactor
+	rteFactorMu.RUnlock()
+
+	return emissionFactors
 }
 
 // Make URL.

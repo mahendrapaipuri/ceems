@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -26,6 +27,9 @@ const (
 
 // like this.
 var tokenLifeDuration = 25 * time.Minute
+
+// Mutex to update emission factor from go routine.
+var wtFactorMu = sync.RWMutex{}
 
 type auth struct {
 	username        string
@@ -112,9 +116,12 @@ func NewWattTimeProvider(logger *slog.Logger) (Provider, error) {
 
 // Update updates the emission factor.
 func (s *wtProvider) Update() (EmissionFactors, error) {
+	// Current emission factor
+	factors := s.emissionFactors()
+
 	// If data is present, return it
-	if len(s.lastEmissionFactor) > 0 {
-		return s.lastEmissionFactor, nil
+	if len(factors) > 0 {
+		return factors, nil
 	}
 
 	return nil, fmt.Errorf("failed to fetch emission factor from %s", wtEmissionsProvider)
@@ -146,9 +153,9 @@ func (s *wtProvider) update() {
 			if err != nil {
 				s.logger.Error("Failed to retrieve emission factor from Watt Time provider", "err", err)
 			} else {
-				rteFactorMu.Lock()
+				wtFactorMu.Lock()
 				s.lastEmissionFactor = currentEmissionFactor
-				rteFactorMu.Unlock()
+				wtFactorMu.Unlock()
 			}
 
 			select {
@@ -161,6 +168,14 @@ func (s *wtProvider) update() {
 			}
 		}
 	}()
+}
+
+func (s *wtProvider) emissionFactors() EmissionFactors {
+	wtFactorMu.RLock()
+	emissionFactors := s.lastEmissionFactor
+	wtFactorMu.RUnlock()
+
+	return emissionFactors
 }
 
 // fetchWTEmissionFactor makes request to Watt time API to fetch factor for the given region.

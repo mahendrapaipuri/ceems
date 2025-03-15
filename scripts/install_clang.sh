@@ -8,18 +8,21 @@ LLVM_DIR=''
 
 find_llvm() {
     for dir in /usr/lib/*/  # Location where llvm will be installation
-		do
-				dir=${dir%*/}  # remove the trailing "/"
-				if [[ "$dir" == *"llvm"* ]]; then
-					LLVM_DIR="${dir}"
-					break
-				fi
-		done
+    do
+        dir=${dir%*/}  # remove the trailing "/"
+        if [[ "$dir" == *"llvm"* ]]; then
+            llvm_ver=$(echo "${dir}" | grep -o "llvm-[0-9]\+" | cut -d "-" -f2)
+            if (( ${llvm_ver} >= 18 )); then
+                LLVM_DIR="${dir}"
+                break
+            fi
+        fi
+    done
 }
 
 create_symlinks() {
     echo "Creating symlinks"
-		find_llvm
+	find_llvm
     $SUDO ln -vsnf "${LLVM_DIR}/bin/clang" /usr/bin/clang
     $SUDO ln -vsnf "${LLVM_DIR}/bin/llc" /usr/bin/llc
 }
