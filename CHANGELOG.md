@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.0 / 2025-03-16
+
+- [FEAT] Add Watttime emission factor [#327](https://github.com/mahendrapaipuri/ceems/pull/327) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEAT] `cacct` client tool  [#321](https://github.com/mahendrapaipuri/ceems/pull/321) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEAT] feat: Add netdev and IB collectors [#310](https://github.com/mahendrapaipuri/ceems/pull/310) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEAT] Add hwmon collector [#309](https://github.com/mahendrapaipuri/ceems/pull/309) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [MAINT] Bump dependencies [#320](https://github.com/mahendrapaipuri/ceems/pull/320), [#322](https://github.com/mahendrapaipuri/ceems/pull/322), [#323](https://github.com/mahendrapaipuri/ceems/pull/323), [#324](https://github.com/mahendrapaipuri/ceems/pull/324), [#325](https://github.com/mahendrapaipuri/ceems/pull/325), [#326](https://github.com/mahendrapaipuri/ceems/pull/326) ([@dependabot](https://github.com/dependabot))
+
 ## 0.6.0 / 2025-02-24
 
 - [FEAT] Enhancements for CEEMS API server [#304](https://github.com/mahendrapaipuri/ceems/pull/304) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
