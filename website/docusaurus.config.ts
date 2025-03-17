@@ -50,7 +50,7 @@ const config: Config = {
           sidebarPath: "./sidebars.ts",
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
-          editUrl: `https://github.com/${organizationName}/${projectName}/tree/main/`,
+          editUrl: `https://github.com/${organizationName}/${projectName}/tree/main/website`,
           docItemComponent: "@theme/ApiItem", // Derived from docusaurus-theme-openapi
           async sidebarItemsGenerator({defaultSidebarItemsGenerator, ...args}) {
             const sidebarItems = await defaultSidebarItemsGenerator(args);
@@ -61,7 +61,7 @@ const config: Config = {
           showReadingTime: true,
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
-          editUrl: `https://github.com/${organizationName}/${projectName}/tree/main/`,
+          editUrl: `https://github.com/${organizationName}/${projectName}/tree/main/website`,
         },
         theme: {
           customCss: "./src/css/custom.css",
