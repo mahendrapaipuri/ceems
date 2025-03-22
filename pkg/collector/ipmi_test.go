@@ -246,11 +246,11 @@ DCMI Secondary LAN Channel:     Supported
   Correction Time:   62914560 ms
   Sampling period:   1472 sec
 ipmiutil dcmi, completed successfully"""`)
-	err := os.WriteFile(tmpIPMIPath, d1, 0700)
+	err := os.WriteFile(tmpIPMIPath, d1, 0o700) //nolint:gosec
 	require.NoError(t, err)
 
 	// Expected values
-	var expected = map[string]float64{"avg":49, "current":304, "max":304, "min":6}
+	expected := map[string]float64{"avg": 49, "current": 304, "max": 304, "min": 6}
 
 	_, err = CEEMSExporterApp.Parse([]string{
 		"--collector.ipmi_dcmi.cmd", tmpIPMIPath,
@@ -261,7 +261,7 @@ ipmiutil dcmi, completed successfully"""`)
 	collector, err := NewIPMICollector(slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 
-	c := collector.(*impiCollector)
+	c := collector.(*impiCollector) //nolint:forcetypeassert
 
 	// Setup background goroutine to capture metrics.
 	metrics := make(chan prometheus.Metric)
@@ -303,7 +303,7 @@ DCMI Secondary LAN Channel:     Supported
   Correction Time:   62914560 ms
   Sampling period:   1472 sec
 ipmiutil dcmi, completed successfully"""`)
-	err = os.WriteFile(tmpIPMIPath, d1, 0700)
+	err = os.WriteFile(tmpIPMIPath, d1, 0o700) //nolint:gosec
 	require.NoError(t, err)
 
 	// Get readings again and we should get last cached values
