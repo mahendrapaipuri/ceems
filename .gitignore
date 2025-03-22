@@ -82,4 +82,4 @@ test-config.yml
 .gh-releases
 scripts/download_gh_releases.js
 website/static/repos
-resp.json
+*.json

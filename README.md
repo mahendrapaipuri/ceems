@@ -65,10 +65,10 @@ consumption is estimated by assuming a Thermal Design Power (TDP) value and curr
 usage of the instance. Several dashboards have been created in Grafana for visualizing
 metrics which are listed below.
 
-- [Overall usage of cluster](https://ceems-demo.myaddr.tools/d/adrenju36n2tcb/cluster-status?orgId=1&from=now-24h&to=now&var-job=openstack&var-host=$__all&var-provider=rte&var-country_code=FR&refresh=15m)
-- [Usage of different Projects/Accounts by SLURM and Openstack](https://ceems-demo.myaddr.tools/d/cdreu45pp9erkd/user-and-project-stats?orgId=1&from=now-90d&to=now&refresh=15m)
-- [Usage of Openstack resources by a given user and project](https://ceems-demo.myaddr.tools/d/be5x3it7gpx4wf/openstack-instance-summary?orgId=1&from=now-90d&to=now&var-user=gazoo&var-account=cornerstone&refresh=15m)
-- [Usage of SLURM resources by a given user and project](https://ceems-demo.myaddr.tools/d/fdsm8aom8hqf4fewfwe3123dascdsc/slurm-job-summary?orgId=1&from=now-90d&to=now&var-user=wilma&var-account=bedrock&refresh=15m)
+- [Overall usage of cluster](https://ceems-demo.myaddr.tools/d/adrenju36n2tcb/cluster-status?orgId=1&from=now-24h&to=now&var-job=openstack&var-host=$__all&var-provider=rte&var-country_code=FR&refresh=15m){:target="_blank"}
+- [Usage of different Projects/Accounts by SLURM and Openstack](https://ceems-demo.myaddr.tools/d/cdreu45pp9erkd/user-and-project-stats?orgId=1&from=now-90d&to=now&refresh=15m){:target="_blank"}
+- [Usage of Openstack resources by a given user and project](https://ceems-demo.myaddr.tools/d/be5x3it7gpx4wf/openstack-instance-summary?orgId=1&from=now-90d&to=now&var-user=gazoo&var-account=cornerstone&refresh=15m){:target="_blank"}
+- [Usage of SLURM resources by a given user and project](https://ceems-demo.myaddr.tools/d/fdsm8aom8hqf4fewfwe3123dascdsc/slurm-job-summary?orgId=1&from=now-90d&to=now&var-user=wilma&var-account=bedrock&refresh=15m){:target="_blank"}
 
 > [!WARNING]
 > All the dashboards provided in the demo instance are only meant to be for demonstrative
@@ -76,7 +76,7 @@ purposes. They should not be used in production without properly protecting data
 
 ## Visualizing metrics with Grafana
 
-CEEMS is meant to be used with Grafana for visualization and below are some of the
+Grafana can be used for visualization of metrics and below are some of the
 screenshots of dashboards.
 
 ### Time series compute unit CPU metrics
@@ -102,6 +102,56 @@ screenshots of dashboards.
 <p align="center">
   <img src="https://raw.githubusercontent.com/mahendrapaipuri/ceems/main/website/static/img/dashboards/agg.png" width="1200">
 </p>
+
+### Aggregate usage metrics of a project
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/mahendrapaipuri/ceems/main/website/static/img/dashboards/agg_proj.png" width="1200">
+</p>
+
+### Energy usage breakdown between project members
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/mahendrapaipuri/ceems/main/website/static/img/dashboards/breakdown.png" width="1200">
+</p>
+
+## Usage metrics via CLI tool
+
+CEEMS ships a CLI tool for presenting usage metrics to end users for the deployments where Grafana usage is not
+possible or prohibitive.
+
+```bash
+cacct  --starttime="2025-01-01" --endtime="2025-03-22"
+┌─────────┬─────────┬──────────┬────────┬────────┬──────────┬──────────────────────────────────────┬────────┬────────┬──────────┬──────────────────────────────────────┐
+│ JOB ID  │ ACCOUNT │ ELAPSED  │ CPU US │ CPU ME │ HOST ENE │             HOST EMISSIO             │ GPU US │ GPU ME │ GPU ENER │             GPU EMISSION             │
+│         │         │          │ AGE(%) │ M. USA │ RGY(KWH) │                NS(GMS)               │ AGE(%) │ M. USA │ GY(KWH)  │                S(GMS)                │
+│         │         │          │        │ GE(%)  │          │                                      │        │ GE(%)  │          │                                      │
+│         │         │          │        │        │          │ EMAPS_TOTAL │ OWID_TOTAL │ RTE_TOTAL │        │        │          │ EMAPS_TOTAL │ OWID_TOTAL │ RTE_TOTAL │
+├─────────┼─────────┼──────────┼────────┼────────┼──────────┼─────────────┼────────────┼───────────┼────────┼────────┼──────────┼─────────────┼────────────┼───────────┤
+│ 106     │ bedrock │ 00:10:05 │ 99.32  │ 3.39   │ 0.053818 │ 4.725182    │ 5.648855   │ 3.860008  │        │        │          │             │            │           │
+│ 108     │ bedrock │ 00:10:04 │ 99.60  │ 2.51   │ 0.055842 │ 5.091815    │ 5.840380   │ 4.197307  │        │        │          │             │            │           │
+│ 118     │ bedrock │ 00:10:03 │ 99.65  │ 1.17   │ 0.061474 │ 4.450334    │ 6.512757   │ 3.683035  │        │        │          │             │            │           │
+│ 131     │ bedrock │ 00:10:04 │ 99.71  │ 2.15   │ 0.055742 │ 1.835111    │ 5.562944   │ 1.245254  │        │        │          │             │            │           │
+│ 134     │ bedrock │ 00:20:12 │ 0.53   │ 0.73   │ 0.004463 │ 0.030868    │ 0.100538   │ 0.021321  │        │        │          │             │            │           │
+│ 138     │ bedrock │ 00:10:00 │ 99.61  │ 1.17   │ 0.056302 │ 2.595522    │ 5.570695   │ 1.837668  │        │        │          │             │            │           │
+│ 150     │ bedrock │ 00:20:11 │ 0.54   │ 0.74   │ 0.003862 │ 0.076767    │ 0.086878   │ 0.058934  │        │        │          │             │            │           │
+│ 154     │ bedrock │ 00:10:19 │ 99.48  │ 2.86   │ 0.055671 │ 4.906742    │ 6.610783   │ 4.127894  │        │        │          │             │            │           │
+│ 162     │ bedrock │ 00:10:22 │ 96.51  │ 3.66   │ 0.055507 │ 3.274911    │ 4.711376   │ 2.497813  │        │        │          │             │            │           │
+│ 163     │ bedrock │ 00:10:28 │ 99.71  │ 3.03   │ 0.051746 │ 3.673949    │ 4.392128   │ 2.780309  │        │        │          │             │            │           │
+│ 169     │ bedrock │ 00:10:19 │ 99.71  │ 1.17   │          │             │            │           │        │        │          │             │            │           │
+│ 181     │ bedrock │ 00:20:14 │ 0.56   │ 0.74   │ 0.001518 │ 0.115373    │ 0.085070   │ 0.081976  │ 36.31  │ 38.11  │ 0.184776 │ 14.042940   │ 10.354560  │ 9.977878  │
+│ 183     │ bedrock │ 00:10:09 │ 99.68  │ 1.17   │ 0.049606 │ 3.676648    │ 2.779826   │ 2.926728  │ 37.87  │ 37.97  │ 0.187746 │ 13.919683   │ 10.521023  │ 11.077016 │
+│ 229     │ bedrock │ 00:10:21 │ 99.57  │ 1.99   │ 0.048258 │ 1.930318    │ 2.704308   │ 1.109933  │ 38.71  │ 37.36  │ 0.197287 │ 7.891462    │ 11.055660  │ 4.537591  │
+│ 232     │ bedrock │ 00:10:24 │ 99.63  │ 1.17   │ 0.050244 │ 1.385482    │ 2.815615   │ 0.954640  │ 31.90  │ 35.88  │ 0.131236 │ 3.618456    │ 7.354267   │ 2.493479  │
+│ 269     │ bedrock │ 00:10:01 │ 99.69  │ 1.17   │ 0.048866 │ 2.738386    │ 2.123290   │ 22.18     │ 24.35  │ 0.0263 │ 1.477547 │ 1.141505    │            │           │
+│         │         │          │        │        │          │             │            │           │        │ 67     │          │             │            │           │
+│ 274     │ bedrock │ 00:10:16 │ 97.72  │ 3.49   │ 0.054060 │ 3.029430    │ 2.324568   │           │        │        │          │             │            │           │
+├─────────┼─────────┴──────────┴────────┴────────┴──────────┴─────────────┴────────────┴───────────┴────────┴────────┴──────────┴─────────────┴────────────┴───────────┤
+│ Summary │                                                                                                                                                            │
+├─────────┼─────────┬──────────┬────────┬────────┬──────────┬─────────────┬────────────┬───────────┬────────┬────────┬──────────┬─────────────┬────────────┬───────────┤
+│ 20      │ bedrock │ 03:23:27 │ 69.84  │ 1.73   │ 0.706980 │ 37.769023   │ 59.189969  │ 33.830679 │ 35.74  │ 35.32  │ 0.727410 │ 39.472541   │ 40.763058  │ 29.227470 │
+└─────────┴─────────┴──────────┴────────┴────────┴──────────┴─────────────┴────────────┴───────────┴────────┴────────┴──────────┴─────────────┴────────────┴───────────┘
+```
 
 ## ⚡️ Talks and Demos
 
