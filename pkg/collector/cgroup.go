@@ -730,7 +730,7 @@ func NewCgroupCollector(logger *slog.Logger, cgManager *cgroupManager, opts cgro
 // Update updates cgroup metrics on given channel.
 func (c *cgroupCollector) Update(ch chan<- prometheus.Metric, cgroups []cgroup) error {
 	// Fetch metrics
-	metrics := c.doUpdate(cgroups)
+	metrics := c.update(cgroups)
 
 	// First send num jobs on the current host
 	ch <- prometheus.MustNewConstMetric(c.numCgs, prometheus.GaugeValue, float64(len(metrics)), c.cgroupManager.manager, c.hostname)
@@ -811,8 +811,8 @@ func (c *cgroupCollector) Stop(_ context.Context) error {
 	return nil
 }
 
-// doUpdate gets metrics of current active cgroups.
-func (c *cgroupCollector) doUpdate(cgroups []cgroup) []cgMetric {
+// update gets metrics of current active cgroups.
+func (c *cgroupCollector) update(cgroups []cgroup) []cgMetric {
 	// Start wait group for go routines
 	wg := &sync.WaitGroup{}
 	wg.Add(len(cgroups))
@@ -826,7 +826,7 @@ func (c *cgroupCollector) doUpdate(cgroups []cgroup) []cgMetric {
 		go func(idx int) {
 			defer wg.Done()
 
-			metrics[idx] = c.update(cgroup)
+			metrics[idx] = c.stats(cgroup)
 		}(i)
 	}
 
@@ -836,8 +836,8 @@ func (c *cgroupCollector) doUpdate(cgroups []cgroup) []cgMetric {
 	return metrics
 }
 
-// update get metrics of a given cgroup path.
-func (c *cgroupCollector) update(cgrp cgroup) cgMetric {
+// stats get metrics of a given cgroup path.
+func (c *cgroupCollector) stats(cgrp cgroup) cgMetric {
 	if c.cgroupManager.mode == cgroups.Unified {
 		return c.statsV2(cgrp)
 	} else {

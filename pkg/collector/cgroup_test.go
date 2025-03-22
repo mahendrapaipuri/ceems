@@ -115,7 +115,7 @@ func TestCgroupsV2Metrics(t *testing.T) {
 		err:             false,
 	}
 
-	metric := c.doUpdate(cgroups)
+	metric := c.update(cgroups)
 	assert.Equal(t, expectedMetrics, metric[0])
 }
 
@@ -172,7 +172,7 @@ func TestCgroupsV1Metrics(t *testing.T) {
 		err:             false,
 	}
 
-	metric := c.doUpdate(cgroups)
+	metric := c.update(cgroups)
 	assert.Equal(t, expectedMetrics, metric[0])
 }
 

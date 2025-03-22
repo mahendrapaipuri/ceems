@@ -2010,7 +2010,7 @@
     "computed_columns": [],
     "datasource": {
       "type": "yesoreyeram-infinity-datasource",
-      "uid": "PC24651FE7605D2C7"
+      "uid": "${DS_CEEMS-API}"
     },
     "filters": [],
     "format": "table",
@@ -2057,7 +2057,7 @@
 ],
 "datasource": {
   "type": "yesoreyeram-infinity-datasource",
-  "uid": "PC24651FE7605D2C7"
+  "uid": "${DS_CEEMS-API}"
 },
 "options": {
   "showHeader": true,

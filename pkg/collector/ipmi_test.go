@@ -216,3 +216,99 @@ func TestIpmiUtilFinder(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "ipmiutil", ipmiCmdSlice[0])
 }
+
+func TestCachedPowerReadings(t *testing.T) {
+	tmpDir := t.TempDir()
+	tmpIPMIPath := tmpDir + "/ipmiutil"
+
+	// Set path
+	t.Setenv("PATH", fmt.Sprintf("%s:%s", tmpDir, os.Getenv("PATH")))
+
+	d1 := []byte(`#!/bin/bash
+
+echo """ipmiutil dcmi ver 3.17
+-- BMC version 6.10, IPMI version 2.0 
+DCMI Version:                   1.5
+DCMI Power Management:          Supported
+DCMI System Interface Access:   Supported
+DCMI Serial TMode Access:       Supported
+DCMI Secondary LAN Channel:     Supported
+  Current Power:                   304 Watts
+  Min Power over sample duration:  6 Watts
+  Max Power over sample duration:  304 Watts
+  Avg Power over sample duration:  49 Watts
+  Timestamp:                       Thu Feb 15 09:37:32 2024
+
+  Sampling period:                 1000 ms
+  Power reading state is:          active
+  Exception Action:  OEM defined
+  Power Limit:       896 Watts (inactive)
+  Correction Time:   62914560 ms
+  Sampling period:   1472 sec
+ipmiutil dcmi, completed successfully"""`)
+	err := os.WriteFile(tmpIPMIPath, d1, 0o700) //nolint:gosec
+	require.NoError(t, err)
+
+	// Expected values
+	expected := map[string]float64{"avg": 49, "current": 304, "max": 304, "min": 6}
+
+	_, err = CEEMSExporterApp.Parse([]string{
+		"--collector.ipmi_dcmi.cmd", tmpIPMIPath,
+		"--collector.ipmi_dcmi.test-mode",
+	})
+	require.NoError(t, err)
+
+	collector, err := NewIPMICollector(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	require.NoError(t, err)
+
+	c := collector.(*impiCollector) //nolint:forcetypeassert
+
+	// Setup background goroutine to capture metrics.
+	metrics := make(chan prometheus.Metric)
+	defer close(metrics)
+
+	go func() {
+		i := 0
+		for range metrics {
+			i++
+		}
+	}()
+
+	// Get readings
+	err = collector.Update(metrics)
+	require.NoError(t, err)
+
+	assert.Equal(t, expected, c.cachedMetric)
+
+	// Modify IPMI command to give 0 current usage
+	d1 = []byte(`#!/bin/bash
+
+echo """ipmiutil dcmi ver 3.17
+-- BMC version 6.10, IPMI version 2.0 
+DCMI Version:                   1.5
+DCMI Power Management:          Supported
+DCMI System Interface Access:   Supported
+DCMI Serial TMode Access:       Supported
+DCMI Secondary LAN Channel:     Supported
+  Current Power:                   0 Watts
+  Min Power over sample duration:  6 Watts
+  Max Power over sample duration:  304 Watts
+  Avg Power over sample duration:  49 Watts
+  Timestamp:                       Thu Feb 15 09:37:32 2024
+
+  Sampling period:                 1000 ms
+  Power reading state is:          active
+  Exception Action:  OEM defined
+  Power Limit:       896 Watts (inactive)
+  Correction Time:   62914560 ms
+  Sampling period:   1472 sec
+ipmiutil dcmi, completed successfully"""`)
+	err = os.WriteFile(tmpIPMIPath, d1, 0o700) //nolint:gosec
+	require.NoError(t, err)
+
+	// Get readings again and we should get last cached values
+	got, err := c.update()
+	require.NoError(t, err)
+
+	assert.Equal(t, expected, got)
+}

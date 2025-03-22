@@ -5,10 +5,6 @@ package collector
 
 // Taken from prometheus-community/ipmi_exporter/blob/master/collector_ipmi.go
 // DCMI spec (old) https://www.intel.com/content/dam/www/public/us/en/documents/technical-specifications/dcmi-v1-5-rev-spec.pdf
-//
-// NOTE: Move Cray specific stuff into a separate collector that reads values from
-// /sys/cray/pm_counters.
-// Relevant documentation: https://cray-hpe.github.io/docs-csm/en-10/operations/power_management/user_access_to_compute_node_power_data/
 
 import (
 	"context"
@@ -313,7 +309,7 @@ func NewIPMICollector(logger *slog.Logger) (Collector, error) {
 
 outside:
 
-	logger.Debug("IPMI DCMI command", "execution_mode", execMode)
+	logger.Debug("IPMI DCMI collector", "execution_mode", execMode)
 
 	collector := impiCollector{
 		logger:           logger,
@@ -370,20 +366,9 @@ outside:
 // Update implements Collector and exposes IPMI DCMI power related metrics.
 func (c *impiCollector) Update(ch chan<- prometheus.Metric) error {
 	// Get power consumption from IPMI
-	// IPMI commands tend to fail frequently. If that happens we use last cached metric
-	powerReadings, err := c.getPowerReadings()
+	powerReadings, err := c.update()
 	if err != nil {
-		// If there is no cached metric return
-		if len(c.cachedMetric) == 0 {
-			return ErrNoData
-		}
-
-		c.logger.Error(
-			"Failed to get power statistics from IPMI. Using last cached values",
-			"err", err, "cached_metrics", fmt.Sprintf("%#v", c.cachedMetric),
-		)
-
-		powerReadings = c.cachedMetric
+		return ErrNoData
 	}
 
 	// Returned value 0 means Power Measurement is not avail
@@ -412,6 +397,39 @@ func (c *impiCollector) Stop(_ context.Context) error {
 	}
 
 	return nil
+}
+
+// update returns current power readings or cached ones.
+func (c *impiCollector) update() (map[string]float64, error) {
+	// Get power consumption from IPMI
+	// IPMI commands tend to fail frequently. If that happens we use last cached metric
+	powerReadings, err := c.getPowerReadings()
+	if err != nil {
+		// If there is no cached metric return
+		if len(c.cachedMetric) == 0 {
+			return nil, ErrNoData
+		}
+
+		c.logger.Error(
+			"Failed to get power statistics from IPMI. Using last cached values",
+			"err", err, "cached_metrics", fmt.Sprintf("%#v", c.cachedMetric),
+		)
+
+		powerReadings = c.cachedMetric
+	} else {
+		// Ensure powerReadings are non nil
+		// Check only current usage which is more important
+		if currentUsage, ok := powerReadings["current"]; !ok || currentUsage == 0 {
+			c.logger.Error(
+				"IPMI returned null values. Using last cached values",
+				"err", err, "cached_metrics", fmt.Sprintf("%#v", c.cachedMetric),
+			)
+
+			powerReadings = c.cachedMetric
+		}
+	}
+
+	return powerReadings, nil
 }
 
 // Get current, min and max power readings.
