@@ -263,7 +263,7 @@ func (c *redfishCollector) powerReadings() map[string]map[string]float64 {
 		chassisID := SanitizeMetricName(chass.ID)
 
 		power, err := chass.Power()
-		if err != nil {
+		if err != nil || power == nil {
 			c.logger.Error(
 				"Failed to get power statistics from Redfish. Using last cached values",
 				"err", err,
@@ -271,17 +271,22 @@ func (c *redfishCollector) powerReadings() map[string]map[string]float64 {
 
 			power = c.cachedPower[chassisID]
 
-			// Attempt to log out and create new client
-			c.logout()
+			// If there is an error, reset client
+			if err != nil {
+				// Attempt to log out and create new client
+				c.logout()
 
-			if err := c.connect(); err != nil {
-				c.logger.Error("Failed to create new redfish client", "err", err)
+				// When this happens this scrape is lost and it will return cached values
+				// but the next scrape should be good as we created new client
+				if err := c.connect(); err != nil {
+					c.logger.Error("Failed to create new redfish client", "err", err)
+				}
 			}
 		} else {
 			c.cachedPower[chassisID] = power
 		}
 
-		// Ensure power is not nil
+		// Even if cached Power is nil bail
 		if power == nil {
 			continue
 		}

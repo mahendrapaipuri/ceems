@@ -398,10 +398,5 @@ func (t *Client) RangeQuery(
 
 // Delete time series with given labels.
 func (t *Client) Delete(ctx context.Context, startTime time.Time, endTime time.Time, matchers []string) error {
-	// Make API request to execute delete query
-	if err := t.API.DeleteSeries(ctx, matchers, startTime, endTime); err != nil {
-		return err
-	}
-
-	return nil
+	return t.API.DeleteSeries(ctx, matchers, startTime, endTime)
 }
