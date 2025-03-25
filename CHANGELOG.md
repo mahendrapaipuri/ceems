@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.1 / 2025-03-25
+
+- [MAINT] Minor improvements in power usage collectors [#330](https://github.com/mahendrapaipuri/ceems/pull/330) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [DOCS] Update docusaurus.config.ts [#329](https://github.com/mahendrapaipuri/ceems/pull/329) ([@ncreddine](https://github.com/ncreddine))
+- [MAINT] Bump dependencies [#328](https://github.com/mahendrapaipuri/ceems/pull/328), [#331](https://github.com/mahendrapaipuri/ceems/pull/331) ([@dependabot](https://github.com/dependabot))
+
 ## 0.7.0 / 2025-03-16
 
 - [FEAT] Add Watttime emission factor [#327](https://github.com/mahendrapaipuri/ceems/pull/327) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
