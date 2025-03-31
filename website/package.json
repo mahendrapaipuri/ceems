@@ -28,14 +28,14 @@
     "docusaurus-plugin-openapi-docs": "^4.3.7",
     "docusaurus-theme-openapi-docs": "^4.3.7",
     "prism-react-renderer": "^2.4.1",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
   },
   "devDependencies": {
     "@docusaurus/module-type-aliases": "3.7.0",
     "@docusaurus/tsconfig": "3.7.0",
     "@docusaurus/types": "3.7.0",
-    "cspell": "^8.17.5",
+    "cspell": "^8.18.1",
     "markdown-link-check": "3.13.7",
     "typescript": "~5.8.2"
   },
