@@ -17,6 +17,11 @@ enum net_mode {
 	MODE_EGRESS
 };
 
+/* 
+ * DO NOT USE BPF_F_NO_COMMON_LRU flag while creating maps.
+ * See vfs/bpf_vfs.h file for explanations.
+*/
+
 /* network related event struct */
 struct net_event {
 	__u32 cid; /* cgroup ID */
@@ -36,7 +41,6 @@ struct {
 	__uint(max_entries, MAX_MAP_ENTRIES);
 	__type(key, struct net_event); /* Key is the net_event struct */
 	__type(value, struct net_stats);
-	__uint(map_flags, BPF_F_NO_COMMON_LRU);
 } ingress_accumulator SEC(".maps");
 
 /* Map to track ingress events */
@@ -45,7 +49,6 @@ struct {
 	__uint(max_entries, MAX_MAP_ENTRIES);
 	__type(key, struct net_event); /* Key is the net_event struct */
 	__type(value, struct net_stats);
-	__uint(map_flags, BPF_F_NO_COMMON_LRU);
 } egress_accumulator SEC(".maps");
 
 /* Map to track retransmission events */
@@ -54,7 +57,6 @@ struct {
 	__uint(max_entries, MAX_MAP_ENTRIES);
 	__type(key, struct net_event); /* Key is the net_event struct */
 	__type(value, struct net_stats);
-	__uint(map_flags, BPF_F_NO_COMMON_LRU);
 } retrans_accumulator SEC(".maps");
 
 /**

@@ -11,7 +11,11 @@
  * 
 */
 #ifndef MAX_MAP_ENTRIES
-#define MAX_MAP_ENTRIES 4096
+#define MAX_MAP_ENTRIES 16384
+#endif
+
+#ifndef MAX_MOUNT_SIZE
+#define MAX_MOUNT_SIZE 64
 #endif
 
 #define FUNC_INLINE static inline __attribute__((always_inline))
