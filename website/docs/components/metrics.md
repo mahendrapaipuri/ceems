@@ -4,12 +4,12 @@ sidebar_position: 4
 
 # CEEMS Exporter Metrics
 
-CEEMS exporter ships multiple collectors of which some are enabled by
+The CEEMS exporter ships multiple collectors, some of which are enabled by
 default.
 
 ## Enabled by default
 
-The following collectors are enabled by default
+The following collectors are enabled by default:
 
 - cpu
 - meminfo
@@ -36,9 +36,9 @@ Sub-collectors disabled by default are:
 
 ## Metrics list
 
-The following are the list of metrics exposed by CEEMS exporter along
+The following is a list of metrics exposed by the CEEMS exporter along
 with the labels for each metric and its description. The first column
-shows the collector that metric belongs to.
+shows the collector that the metric belongs to.
 
 | Collector |                     Name                     |            Labels            |                                                                                              Description                                                                                              |
 |:---------:|:--------------------------------------------:|:----------------------------:|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|

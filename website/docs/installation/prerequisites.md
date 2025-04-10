@@ -4,10 +4,10 @@ sidebar_position: 1
 
 # Prerequisites
 
-There are no direct dependencies that are needed to install CEEMS stack. However, CEEMS
-is designed to work with a TSDB and hence, [Prometheus](https://prometheus.io/) or
+There are no direct dependencies needed to install the CEEMS stack. However, CEEMS
+is designed to work with a TSDB, and hence, [Prometheus](https://prometheus.io/) or
 [Victoria Metrics](https://victoriametrics.com/)
-must be available to store the scrapped metrics.
+must be available to store the scraped metrics.
 
-Installation of Prometheus can be found in its [docs](https://prometheus.io/download/)
-and it is out of current scope.
+The installation of Prometheus can be found in its [documentation](https://prometheus.io/download/),
+and it is outside the current scope.
