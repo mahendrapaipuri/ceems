@@ -4,62 +4,56 @@ sidebar_position: 1
 
 # Guide
 
-This section presents a guide to the operators to deploy CEEMS stack. There are two
-principal components in the CEEMS stack:
+This guide provides step-by-step instructions for deploying the CEEMS stack. The stack consists of two main components:
 
-- [CEEMS Exporter](../components/ceems-exporter.md) that must be installed on all
-the compute nodes.
-- [CEEMS API Server](../components/ceems-api-server.md) that must be installed on a
-service node.
+- [CEEMS Exporter](../components/ceems-exporter.md): Installed on all compute nodes to collect metrics
+- [CEEMS API Server](../components/ceems-api-server.md): Installed on a service node to store and manage job/VM data
 
-Optionally, a third component [CEEMS LB](../components/ceems-lb.md) can be installed on the
-same service node as CEEMS API server to enforce access control on metrics.
+Optionally, you can install [CEEMS LB](../components/ceems-lb.md) on the service node to enforce access control on metrics.
 
 ## Prerequisites
 
-Before starting installation, ensure that the resource managers (SLURM/Openstack) have necessary
-[configuration](../configuration/resource-managers.md) to work along with CEEMS exporter and
-API server.
+Before installation, ensure your resource managers (SLURM/OpenStack) are properly [configured](../configuration/resource-managers.md) to work with CEEMS components.
 
-### Compute nodes
+### Compute Nodes Requirements
 
-There are no special requirements for CEEMS exporter to work on compute nodes. Although the
-exporter is not extensively tested on different OS distros/architectures, it should work on
-all the major distros supported by SLURM/Openstack. The exporter is very light and when all the
+There are no special requirements for the CEEMS exporter to work on compute nodes. Although the
+exporter is not extensively tested on different OS distributions/architectures, it should work on
+all major distributions supported by SLURM/OpenStack. The exporter is very lightweight, and when all the
 [available collectors](../configuration/ceems-exporter.md#collectors) are
-enabled on the exporter, it will have a maximum consumption of memory around 150 MB and takes
+enabled, it will have a maximum memory consumption of around 150 MB and take
 a CPU time of around 0.05 seconds per scrape request.
 
 If the compute nodes have NVIDIA GPUs, [NVIDIA DCGM](https://docs.nvidia.com/datacenter/dcgm/latest/index.html)
 and [NVIDIA DCGM Exporter](https://github.com/NVIDIA/dcgm-exporter/)
-must be installed on the compute nodes. Installation instructions of those packages
-can be found in their corresponding docs.
+must be installed on the compute nodes. Installation instructions for these packages
+can be found in their corresponding documentation.
 
-Similarly, if the compute nodes have AMD GPUs, [AMD SMI Exporter](https://www.amd.com/en/developer/e-sms/amdsmi-library.html)
+Similarly, if the compute nodes have AMD GPUs, the [AMD SMI Exporter](https://www.amd.com/en/developer/e-sms/amdsmi-library.html)
 must be installed on the compute nodes to get power consumption and performance
 metrics of GPUs.
 
-Finally, for the SLURM or k8s clusters, if the continuous profiling of the jobs/pods is required,
+Finally, for SLURM or k8s clusters, if continuous profiling of the jobs/pods is required,
 [Grafana Alloy](https://grafana.com/docs/alloy/latest/) must be installed on the compute nodes.
 
-### Service node
+### Service Node
 
-Different services must be deployed for the CEEMS. They can all be deployed on the
-same service node or different nodes. Installing them on a same machine will help
-to manage the services easily and reduce the attack surface as all services can be
-bound to localhost. The list of required services are:
+Different services must be deployed for CEEMS. They can all be deployed on the
+same service node or on different nodes. Installing them on the same machine will help
+to manage the services easily and reduce the attack surface, as all services can be
+bound to localhost. The list of required services is:
 
-- Prometheus (compulsory): To scrape metrics from exporters running on compute nodes
-- CEEMS API server (compulsory): To store the jobs/VMs data in a standardized DB
-- Grafana (compulsory): To construct dashboards to expose metrics for operators and endusers.
+- Prometheus (required): To scrape metrics from exporters running on compute nodes
+- CEEMS API server (required): To store the jobs/VMs data in a standardized database
+- Grafana (required): To construct dashboards to expose metrics for operators and end users
 - CEEMS LB (optional): To enforce access control to the Prometheus metrics
 - Pyroscope (optional): When continuous profiling of SLURM jobs/k8s pods is needed
 
 :::note[NOTE]
 
-The present guide assumes that Prometheus, Pyroscope (if needed) and Grafana are
+The present guide assumes that Prometheus, Pyroscope (if needed), and Grafana are
 already installed and configured on the service node. Installation instructions
-of each component can be consulted from their respective documentation and hence,
+for each component can be found in their respective documentation and hence,
 they are omitted here.
 
 :::
@@ -67,22 +61,22 @@ they are omitted here.
 Installation instructions for [Prometheus](https://prometheus.io/docs/prometheus/latest/installation/),
 [Grafana](https://grafana.com/docs/grafana/latest/setup-grafana/installation/)
 and [Pyroscope](https://grafana.com/docs/pyroscope/latest/get-started/) can be found in
-their docs. CEEMS API server and CEEMS LB requires very modest system resources
+their documentation. The CEEMS API server and CEEMS LB require very modest system resources
 and hence, they can be run alongside Prometheus and Pyroscope on the same service node.
-The scaling of this service node must take into account the size of cluster, number
-of Prometheus targets, Prometheus data retention period, _etc_. A good recommendation
-is to have at least 32 GiB of memory and 8 CPUs which should be enough to host all
+The scaling of this service node must take into account the size of the cluster, number
+of Prometheus targets, Prometheus data retention period, etc. A good recommendation
+is to have at least 32 GiB of memory and 8 CPUs, which should be enough to host all
 the necessary services.
 
-When it comes to the storage, Prometheus works best on local disk storage. Thus,
+When it comes to storage, Prometheus works best on local disk storage. Thus,
 depending on the required retention period, local SSD/NVMe disks with RAID to achieve
 fault tolerance can be a good starting point. There are other options like
 [Thanos](https://thanos.io/) and [Cortex](https://cortexmetrics.io/) to
-achieve long term storage and fault tolerance for Prometheus data.
+achieve long-term storage and fault tolerance for Prometheus data.
 
 ## Installation Steps
 
-The installation steps in this section make following assumptions:
+The installation steps in this section make the following assumptions:
 
 - There are two sets of compute nodes: 1 Compute node without GPUs `compute-0` and
 1 Compute node with NVIDIA GPUs `compute-gpu-0`.
@@ -106,7 +100,7 @@ must be added.
 Once all the necessary packages are downloaded and/or added to the repositories, they
 can be installed on the compute nodes.
 
-On the compute nodes, following packages must be installed:
+On the compute nodes, the following packages must be installed:
 
 <details>
   <summary>RHEL/CentOS/Rockylinux/Alma</summary>
@@ -125,8 +119,8 @@ On the compute nodes, following packages must be installed:
 
   :::note[NOTE]
 
-  Current guide assumes that NVIDIA driver `>=550` and CUDA `>=12` is available on
-  compute nodes
+  Current guide assumes that NVIDIA driver `>=550` and CUDA `>=12` are available on
+  compute nodes.
 
   :::
 
@@ -157,8 +151,8 @@ On the compute nodes, following packages must be installed:
 
   :::note[NOTE]
 
-  Current guide assumes that NVIDIA driver `>=550` and CUDA `>=12` is available on
-  compute nodes
+  Current guide assumes that NVIDIA driver `>=550` and CUDA `>=12` are available on
+  compute nodes.
 
   :::
 
@@ -173,7 +167,7 @@ On the compute nodes, following packages must be installed:
   ```
 </details>
 
-We install `ceems_exporter` on service node `service-0` to export real time and static
+We install `ceems_exporter` on service node `service-0` to export real-time and static
 emission factor data.
 
 ### Configuring Exporter(s)
@@ -181,9 +175,9 @@ emission factor data.
 #### CEEMS Exporter
 
 At minimum, CEEMS exporter must be configured with the CLI arguments that enable the relevant collectors.
-This can be done using environment variables which can be provided to systemd service file installed
-by the package. For instance, to enable SLURM collector and to disable collector metrics, following must
-be added to systemd service file
+This can be done using environment variables which can be provided to the systemd service file installed
+by the package. For instance, to enable the SLURM collector and to disable collector metrics, the following must
+be added to the systemd service file:
 
 ```bash
 whoami
@@ -198,7 +192,7 @@ Environment=CEEMS_EXPORTER_OPTIONS="--collector.slurm --web.disable-exporter-met
 EOF
 ```
 
-Similarly for Openstack compute nodes, a basic runtime configuration would be as follows:
+Similarly for OpenStack compute nodes, a basic runtime configuration would be as follows:
 
 ```bash
 whoami
@@ -213,9 +207,9 @@ Environment=CEEMS_EXPORTER_OPTIONS="--collector.libvirt --web.disable-exporter-m
 EOF
 ```
 
-Optionally, if emissions must be estimated using real time emission factors, we need to
+Optionally, if emissions must be estimated using real-time emission factors, we need to
 deploy another instance of CEEMS exporter on the service node, `service-0`, to pull the
-emission factors and export them to Prometheus. To enable real time emission factors from
+emission factors and export them to Prometheus. To enable real-time emission factors from
 [Electricity Maps](https://www.electricitymaps.com/pricing)
 and [RTE eCO2 Mix](https://www.rte-france.com/en/eco2mix/co2-emissions), the CLI options
 for this exporter must be:
@@ -236,20 +230,20 @@ EOF
 :::warning[WARNING]
 
 Operators need to verify the usage policy of [Electricity Maps](https://www.electricitymaps.com/pricing)
-API before using it in their production.
+API before using it in their production environment.
 
 :::
 
 CEEMS package supports static emission factors from historical data provided by
 [OWID](https://ourworldindata.org/co2-and-greenhouse-gas-emissions). To estimate emissions using
-this static factor, there is no need to deploy the above of CEEMS exporter and emissions will
+this static factor, there is no need to deploy the above instance of CEEMS exporter and emissions will
 be estimated directly using the static factor value for a given country.
 
 More details on runtime configuration of CEEMS exporter can be consulted from the
 [docs](../configuration/ceems-exporter.md).
 
 By default, no authentication is enabled on CEEMS exporter and it is **strongly recommended** to add
-at least the basic authentication. This is done using a web configuration file which is installed by
+at least basic authentication. This is done using a web configuration file which is installed by
 packages. More details on all the available options for web configuration can be found in its
 [dedicated section](../configuration/basic-auth.md).
 
@@ -261,14 +255,14 @@ can be generated as follows:
 ceems_tool config create-web-config
 ```
 
-This command will generate a web config file with basic auth configuration in `config` folder in current
+This command will generate a web config file with basic auth configuration in `config` folder in the current
 directory named as `web-config.yml`. The config file will only
 contain hashed password and the output of the command shows the password in plain text. For example, the
 output of above command would be:
 
 ```bash
 web config file created at config/web-config.yml
-plain text password for basic auth is <PASSWORD_WILL_BE DISPLAYED_HERE>
+plain text password for basic auth is <PASSWORD_WILL_BE_DISPLAYED_HERE>
 store the plain text password securely as you will need it to configure Prometheus
 ```
 
@@ -310,8 +304,8 @@ the contents of `default-counters.csv` file with the one
 [provided in the CEEMS repo](https://github.com/mahendrapaipuri/ceems/blob/main/etc/nvidia-dcgm-exporter/counters.csv),
 which enables more profiling metrics than the default one.
 
-By default DCGM exporter runs without any authentication and it is desirable to run it behind basic auth. DCGM exporter
-supports same web configuration file as CEEMS exporter and hence, same web configuration can be used for the both
+By default, DCGM exporter runs without any authentication and it is desirable to run it behind basic auth. DCGM exporter
+supports the same web configuration file as CEEMS exporter and hence, the same web configuration can be used for both
 exporters. Assuming the web configuration file is installed as `/etc/dcgm-exporter/web-config.yml`, it can be passed
 to the DCGM exporter using environment variable `DCGM_EXPORTER_WEB_CONFIG_FILE`.
 
@@ -375,7 +369,7 @@ Prometheus. Remember that in the current deployment scenario, we have two sets o
 We define three different scrape jobs: `cpu-nodes`, `gpu-nodes` and `service-nodes`
 to set up CEEMS exporter targets. We can either add DCGM exporter targets in `gpu-nodes`
 job or define a separate scrape job for DCGM exporter. In the current scenario,
-we setup DCGM exporters in the same job.
+we set up DCGM exporters in the same job.
 
 :::note[NOTE]
 
@@ -395,8 +389,8 @@ scrape_configs:
     basic_auth:
       username: ceems
       password: <BASIC_AUTH_PLAIN_TEXT_PASSWORD>
-    static_config:
-      targets:
+    static_configs:
+      - targets:
         - compute-0:9010
 
   - job_name: gpu-nodes
@@ -408,7 +402,7 @@ scrape_configs:
     # This relabel_config must be added to all
     # scrape jobs that have DCGM targets
     metric_relabel_configs:
-       source_labels:
+      - source_labels:
           - modelName
           - UUID
         target_label: gpuuuid
@@ -426,13 +420,13 @@ scrape_configs:
         action: labeldrop
       - regex: GPU_I_ID
         action: labeldrop
-    static_config:
-      targets:
+    static_configs:
+      - targets:
         - compute-gpu-0:9010
         - compute-gpu-0:9400
 
   # This job is needed only when exporter is deployed
-  # on service node to pull real time emission factors
+  # on service node to pull real-time emission factors
   # from RTE eCo2 mix and/or Electricity Maps
   - job_name: service-nodes
     scheme: http
@@ -440,8 +434,8 @@ scrape_configs:
     basic_auth:
       username: ceems
       password: <BASIC_AUTH_PLAIN_TEXT_PASSWORD>
-    static_config:
-      targets:
+    static_configs:
+      - targets:
         - service-0:9010
 ```
 
@@ -481,9 +475,9 @@ configuration docs. Once this configuration has been added,
 check if it is able to scrape the targets. This can be verified using Prometheus
 Web UI.
 
-Once the Prometheus is able to scrape targets and ingest metrics, we will need to add
+Once Prometheus is able to scrape targets and ingest metrics, we will need to add
 [recording rules](https://prometheus.io/docs/practices/rules/) to create new derived metrics
-from the raw metrics exported by the CEEMS and DCGM exporters. The advantage of using
+from the raw metrics exported by CEEMS and DCGM exporters. The advantage of using
 recording rules is that Prometheus will calculate these metrics at ingest time once and
 there is no need to make calculation each time we want to make queries.
 
@@ -505,7 +499,7 @@ power consumption of host.
 
 The `--url` must be URL at which Prometheus server is running and `--country-code` must be
 ISO2 country code to get the emission factor. This command will generate recording rules
-files in current directory inside a folder named `rules`. Copy these rules files to
+files in the current directory inside a folder named `rules`. Copy these rules files to
 `/etc/prometheus/rules` directory and ensure to set following configuration for Prometheus:
 
 ```yml
@@ -513,15 +507,15 @@ rule_files:
   - /etc/prometheus/rules/*.rules
 ```
 
-Reload Prometheus and verify the rules are being evaluted and recorded correctly.
+Reload Prometheus and verify the rules are being evaluated and recorded correctly.
 
 ### Installing and Configuring CEEMS API Server
 
-Before going to this step, ensure that Prometheus is able to scrape the targets well
+Before going to this step, ensure that Prometheus is able to scrape the targets
 and all the metrics are being monitored.
 
 CEEMS API server can be installed on the same host as Prometheus or a different one.
-In the current example, we use the same host as Prometheus for simplicity. Assuming
+In this example, we use the same host as Prometheus for simplicity. Assuming
 Prometheus has been installed on service node `service-0`, CEEMS API server can
 be installed as follows:
 
@@ -567,7 +561,7 @@ add configuration for `clusters` and `updaters` sections in the file.
 
 First, we will start with `updaters` section. `updaters` are list of servers that
 will be used to estimate aggregate metrics of each compute unit and store them in
-a SQL DB. For example in the current scenario, Prometheus server is an updater from
+a SQL DB. For example in this scenario, Prometheus server is an updater from
 which we can estimate the aggregate metrics of compute units. The advantage of using
 updaters is that we do not need to make expensive repeated queries to Prometheus to
 get aggregate values of the metrics.
@@ -601,14 +595,14 @@ updaters:
 ```
 
 Finally, we need to configure `clusters` section in the configuration file. `clusters`
-section defines the list of clusters from where we fetch computt units data. It can be
+section defines the list of clusters from where we fetch compute units data. It can be
 multiple clusters of same kind or multiple clusters of different kind. Each cluster
 must be identified by a unique identifier like in the case of `updater`.
 
-We assume that the resource manager of the current scenario is SLURM. In this case,
+We assume that the resource manager of this scenario is SLURM. In this case,
 the host where CEEMS API server will be deployed must be configured as a SLURM client
 to be able to execute `sacct` command to get list of jobs. Assuming that it has been
-done, the `clusters` section in file `/etc/ceems_api_server/config.yml` must have following
+done, the `clusters` section in file `/etc/ceems_api_server/config.yml` must have the following
 configuration:
 
 ```yml
@@ -644,8 +638,8 @@ to use these servers as data sources for building dashboards.
 ### Configuring Grafana
 
 The final step of the deployment guide is to configure Grafana to use Prometheus and
-CEEMS API server has datasources to build dashboards. Assuming Grafana server is also
-installed on the same service node `service-0`, firstly, we need to ensure that
+CEEMS API server as datasources to build dashboards. Assuming Grafana server is also
+installed on the same service node `service-0`, first, we need to ensure that
 Grafana server is configured to send the user header to datasources. This can be done
 using the following configuration in `grafana.ini` file:
 
@@ -656,7 +650,7 @@ send_user_header = true
 
 or setting `GF_DATAPROXY_SEND_USER_HEADER=true` environment variable on Grafana server.
 
-Following we need to install [Grafana Infinity Datasource](https://grafana.com/docs/plugins/yesoreyeram-infinity-datasource/latest/)
+Following this, we need to install [Grafana Infinity Datasource](https://grafana.com/docs/plugins/yesoreyeram-infinity-datasource/latest/)
 plugin using following command:
 
 ```bash
@@ -721,17 +715,17 @@ datasources:
 ```
 
 Replace the placeholders with values and install the file at `/etc/grafana/provisioning/datasources`.
-Now restarting the Grafana must include all the newly provisioned datasources.
+Now restarting Grafana must include all the newly provisioned datasources.
 
 The next step is to setup dashboards to visualize the metrics of compute units.
 This can be done using Grafana provisioning as well. A reference set of dashboards
-are provided in the [repository](https://github.com/mahendrapaipuri/ceems/tree/main/thirdparty/grafana).
+is provided in the [repository](https://github.com/mahendrapaipuri/ceems/tree/main/thirdparty/grafana).
 More details on the dashboards are provided in the
 [README](https://github.com/mahendrapaipuri/ceems/blob/main/thirdparty/grafana/README.md).
 
 ## Optional Steps
 
-Note that with above installation steps, a functional CEEMS deployment can be assured. However,
+Note that with the above installation steps, a functional CEEMS deployment can be assured. However,
 if access control to Prometheus data must be enforced, an additional component
 [CEEMS LB](../components/ceems-lb.md) must be also deployed. In a nutshell this component sits
 between Grafana and Prometheus to introspect the queries coming from Grafana to verify if the
@@ -743,7 +737,7 @@ must be installed on service node.
 
 ### Deploying Grafana Alloy and Pyroscope
 
-Firstly, ensure that [Grafana Alloy](https://grafana.com/docs/alloy/latest/set-up/install/linux/)
+First, ensure that [Grafana Alloy](https://grafana.com/docs/alloy/latest/set-up/install/linux/)
 and [Pyroscope](https://github.com/grafana/pyroscope/releases) packages must be added and enabled.
 
 First we must install Pyroscope server so that Grafana Alloy running on compute nodes
@@ -786,14 +780,14 @@ found in the [documentation](https://grafana.com/docs/pyroscope/latest/configure
 
 It is highly recommended to configure [TLS auth](https://grafana.com/docs/pyroscope/latest/configure-server/reference-configuration-parameters/#server)
 for Pyroscope to enforce authentication. If managing TLS certificates is not desired, we
-recommended to use basic auth by exposing Pyroscope behind a reverse proxy like nginx and
+recommend to use basic auth by exposing Pyroscope behind a reverse proxy like nginx and
 configuring the nginx server block with basic auth credentials. In the absence of any form
 of authentication, end users in a typical HPC environment will be able to query Pyroscope
 server directly which is not desired.
 
 :::
 
-On the compute nodes, following packages must be installed:
+On the compute nodes, the following packages must be installed:
 
 <details>
   <summary>RHEL/CentOS/Rockylinux/Alma</summary>
@@ -824,7 +818,7 @@ On the compute nodes, following packages must be installed:
 
 A sample configuration file is provided in the
 [repository](https://github.com/mahendrapaipuri/ceems/blob/main/etc/alloy/config.alloy).
-Necessary placeholders on the sample config file must be replaced and file
+Necessary placeholders on the sample config file must be replaced and the file
 must be installed at `/etc/alloy/config.alloy`.
 
 We need to enable Grafana Alloy targets discoverer component on CEEMS exporter
@@ -878,7 +872,7 @@ SLURM job on the compute node.
 Before going to this step, ensure that CEEMS API server, Prometheus and Grafana are
 installed, configured and working as expected.
 
-CEEMS LB can be installed on the same host as Prometheus. It is more practical ans secure
+CEEMS LB can be installed on the same host as Prometheus. It is more practical and secure
 to deploy it on the same node where Prometheus is running. It is a simple proxy/load balancer
 that does not need a lot of resources.
 
@@ -940,7 +934,7 @@ requests to CEEMS API server to verify the ownership of compute units. It should
 preferred to gives direct access to DB files to CEEMS LB to maximize performance and
 minimize latencies.
 
-In the current scenario, as both CEEMS API server and CEEMS LB are deployed on the
+In this scenario, as both CEEMS API server and CEEMS LB are deployed on the
 same physical host, we use `ceems_api_server.data.path` method for DB access. The
 configuration file would be as follows:
 
@@ -986,8 +980,8 @@ systemctl start ceems_lb.service
 
 This should ensure that CEEMS LB running at `localhost:9030`. When Pyroscope server has also been
 deployed and configured in `ceems_lb.backends`, we will notice another HTTP server running at
-`localhost:9040`. Normally, server running at `localhost:9030` is load balancer for Prometheus
-backends where server running at `localhost:9040` is load balancer for Pyroscope backends. This
+`localhost:9040`. Normally, the server running at `localhost:9030` is load balancer for Prometheus
+backends while the server running at `localhost:9040` is load balancer for Pyroscope backends. This
 can be confirmed by looking at the logs of the `ceems_lb`.
 
 ```bash
@@ -1004,7 +998,7 @@ time=2025-02-13T16:43:51.776Z level=INFO source=helpers.go:55 msg="Starting heal
 ### Adding CEEMS LB and Pyroscope Datasources on Grafana
 
 When CEEMS LB and Pyroscope have been deployed, in addition to the datasources configured for Grafana
-in the [above section](#configuring-grafana), we need to add three new datasources: two for CEEMS LB (Prometheus
+in the [section above](#configuring-grafana), we need to add three new datasources: two for CEEMS LB (Prometheus
 and Pyroscope backends) and one for vanilla Pyroscope (without any access control). A sample provisioned config
 file for these datasources is shown below:
 
@@ -1062,7 +1056,7 @@ datasources:
 ```
 
 After replacing the placeholders, this file must be installed at `/etc/grafana/provisioning/datasources`
-folder and restart Grafana server.
+folder and restart the Grafana server.
 
 Finally, while importing [dashboards](https://github.com/mahendrapaipuri/ceems/tree/main/thirdparty/grafana),
 the datasources for [SLURM Single Job Metrics](https://github.com/mahendrapaipuri/ceems/blob/main/thirdparty/grafana/dashboards/slurm/slurm-single-job-metrics.json)
@@ -1074,6 +1068,6 @@ request to backend or not.
 ## Conclusion
 
 This guide provides an overall view of all necessary steps needed to configure CEEMS, Prometheus
-and Grafana. This should be only used as a guide and it must be adopted to the needs and constraints
+and Grafana. This should be only used as a guide and it must be adapted to the needs and constraints
 of individual data center. Any suggestions to improve this guide are always welcome and please do not
 hesitate to open a bug report, if any errors are found here.

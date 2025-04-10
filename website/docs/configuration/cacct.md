@@ -4,29 +4,15 @@ sidebar_position: 8
 
 # cacct
 
-`cacct` is a CLI client that can be used in the place of Grafana when the
-operators cannot/do not wish to maintain a Grafana instance. This CLI client
-talks to both CEEMS API server and TSDB server to fetch the energy, usage and
-performance metrics of a given compute unit and/or project and/or user. This
-has been largely inspired from SLURM's [`sacct`](https://slurm.schedmd.com/sacct.html)
-tool and the API resembles that of `sacct`.
+`cacct` is a CLI client that can be used instead of Grafana when operators cannot or do not wish to maintain a Grafana instance. This CLI client communicates with both the CEEMS API server and the TSDB server to fetch energy, usage, and performance metrics for a given compute unit, project, and/or user. It has been largely inspired by SLURM's [`sacct`](https://slurm.schedmd.com/sacct.html) tool, and the API resembles that of `sacct`.
 
 :::important[IMPORTANT]
 
-`cacct` identifies the current username from their Linux's UID. Thus, for `cacct`
-to work correctly, the user's UID must be the same on the machine where `cacct`
-is being executed and in the CEEMS API server DB.
+`cacct` identifies the current username from their Linux UID. Thus, for `cacct` to work correctly, the user's UID must be the same on the machine where `cacct` is executed and in the CEEMS API server database.
 
 :::
 
-This tool has been specifically designed for HPC platforms where there a common
-login node that users can access _via_ SSH. Th tool must be installed on such
-login nodes along with its configuration file. The `cacct`'s configuration file
-contains the HTTP client configuration details to connect to CEEMS API and
-TSB servers. Thus, this configuration file would potentially contains secrets to
-talk to these servers and it is very important to protect this file on a multi-tenant
-system like HPC login nodes. This will be discussed more in the following sections. First,
-let's take a look at the available configuration sections for `cacct`:
+This tool has been specifically designed for HPC platforms where there is a common login node that users can access via SSH. The tool must be installed on such login nodes along with its configuration file. The `cacct` configuration file contains the HTTP client configuration details needed to connect to the CEEMS API and TSDB servers. Consequently, this configuration file might contain secrets for communicating with these servers, making it crucial to protect this file on a multi-tenant system like HPC login nodes. This will be discussed further in the following sections. First, let's examine the available configuration sections for `cacct`:
 
 ```yaml
 # cacct configuration skeleton
@@ -38,13 +24,11 @@ tsdb: <TSDB CONFIG>
 
 :::important[IMPORTANT]
 
-`cacct` always looks for the configuration file at `/etc/ceems/config.yml` or
-`/etc/ceems/config.yaml`. Thus, configuration file must be installed in one
-of these locations.
+`cacct` always looks for its configuration file at `/etc/ceems/config.yml` or `/etc/ceems/config.yaml`. Therefore, the configuration file must be installed in one of these locations.
 
 :::
 
-A sample configuration file with only CEEMS API Server config is presented below:
+A sample configuration file with only the CEEMS API Server configuration is presented below:
 
 ```yaml
 ceems_api_server:
@@ -57,16 +41,9 @@ ceems_api_server:
       password: supersecretpassword
 ```
 
-The above configuration assumes that the target cluster has `slurm-0` as cluster ID configured
-in the configuration of [CEEMS API server](./ceems-api-server.md#clusters-configuration). By default,
-CEEMS API server expects the username in the header `X-Grafana-User` so that `cacct` sets the value for
-this header with the username that is making the request. Finally, section `web` contains the HTTP client
-configuration of the CEEMS API server. In the above example, CEEMS API server is reachable at host
-`ceems-api-server` and on port `9020` and basic auth is configured to the CEEMS API server.
+The above configuration assumes that the target cluster has `slurm-0` as its cluster ID, as configured in the [CEEMS API server configuration](./ceems-api-server.md#clusters-configuration). By default, the CEEMS API server expects the username in the `X-Grafana-User` header, so `cacct` sets the value for this header with the username making the request. Finally, the `web` section contains the HTTP client configuration for the CEEMS API server. In this example, the CEEMS API server is reachable at host `ceems-api-server` on port `9020`, and basic authentication is configured.
 
-`cacct` is capable of pulling the time series data from TSDB server of the requested compute units and
-it is possible to do so only when `tsdb` section has been configured. A sample configuration file
-with CEEMS API server and TSDB server configs is:
+`cacct` can pull time series data from the TSDB server for the requested compute units. This is possible only when the `tsdb` section is configured. A sample configuration file including both CEEMS API server and TSDB server configurations is shown below:
 
 ```yaml
 ceems_api_server:
@@ -85,10 +62,10 @@ tsdb:
       username: prometheus
       password: anothersupersecretpassword
   queries:
-    # CPU utilisation
+    # CPU utilization
     cpu_usage: uuid:ceems_cpu_usage:ratio_irate{uuid=~"%s"}
     
-    # CPU Memory utilisation
+    # CPU Memory utilization
     cpu_mem_usage: uuid:ceems_cpu_memory_usage:ratio{uuid=~"%s"}
       
     # Host power usage in Watts
@@ -109,48 +86,28 @@ tsdb:
     # GPU emissions in g/s
     gpu_emissions: uuid:ceems_gpu_emissions_g_s:pue{uuid=~"%s"}
 
-    # Read IO bytes
+    # Read IO bytes/s
     io_read_bytes: irate(ceems_ebpf_read_bytes_total{uuid=~"%s"}[1m])
 
-    # Write IO bytes
+    # Write IO bytes/s
     io_write_bytes: irate(ceems_ebpf_write_bytes_total{uuid=~"%s"}[1m])
 ```
 
-Just like in the case of CEEMS API server, the above configuration assumes
-that TSDB server is reachable at `tsdb:9090` and basic auth has been configured
-on the HTTP server. The section `tsdb.queries` is where the operators need
-to configure the queries to pull the time series data of each metric. If
-the operators have used [`ceems_tool`](../usage/ceems-tool.md) to generate
-recording rules for TSDB, the queries used in the above configuration sample
-file will work out-of-the-box. The key of `queries` object can be chosen
-freely and it is provided for the maintainability of the configuration file.
-The placeholder `%s` will be replaced by the compute unit UUIDs at runtime
-before executing queries on TSDB server.
+Similar to the CEEMS API server configuration, this example assumes the TSDB server is reachable at `tsdb:9090` and basic authentication is configured on the HTTP server. The `tsdb.queries` section is where operators configure the queries to pull time series data for each metric. If operators used [`ceems_tool`](../usage/ceems-tool.md) to generate recording rules for the TSDB, the queries in the sample configuration above will work out-of-the-box. The keys in the `queries` object can be chosen freely; they are provided for configuration file maintainability. The placeholder `%s` will be replaced by the compute unit UUIDs at runtime before executing the queries on the TSDB server.
 
 :::note[NOTE]
 
-There is no risk of injection here as the UUID values provided by the end-user
-are first sanitized and then verified with CEEMS API server to check if the user
-is owner of the compute unit before passing them to TSDB server.
+There is no risk of injection here, as the UUID values provided by the end-user are first sanitized and then verified with the CEEMS API server to check if the user is the owner of the compute unit before passing them to the TSDB server.
 
 :::
 
-A complete reference can be found in [Reference](./config-reference.md)
-section. A valid sample configuration
-file can be found in the [repo](https://github.com/mahendrapaipuri/ceems/blob/main/build/config/cacct/cacct.yml)
+A complete reference can be found in the [Reference](./config-reference.md) section. A valid sample configuration file can be found in the [repository](https://github.com/mahendrapaipuri/ceems/blob/main/build/config/cacct/cacct.yml).
 
 ## Securing configuration file
 
-As evident from the previous section, the configuration file of `cacct` will contain
-secrets that should be accessible to the end users. At the same time, the executable
-`cacct` must be accessible to the end-users to be able to fetch their usage statistics.
-This means, `cacct` must be able to read the configuration file at the runtime but not
-the user who is executing it. This can be done using [Sticky bit](https://www.redhat.com/en/blog/suid-sgid-sticky-bit).
+As evident from the previous section, the `cacct` configuration file contains secrets that should not be accessible to end-users. At the same time, the `cacct` executable must be accessible to end-users so they can fetch their usage statistics. This means `cacct` must be able to read the configuration file at runtime, but the user executing it should not. This can be achieved using the [Sticky bit](https://www.redhat.com/en/blog/suid-sgid-sticky-bit).
 
-By using SETUID or SETGID bit on the executable, the binary will execute as the user or
-group that owns the file and not the user who invokes the execution. For instance, imagine
-a case where a system user/group `ceems` is created on a HPC login node. The sticky bit SETGID
-can be set on the `cacct` as follows:
+By using the SETUID or SETGID bit on the executable, the binary executes as the user or group that owns the file, not the user who invokes the execution. For instance, imagine a case where a system user/group `ceems` is created on an HPC login node. The SETGID sticky bit can be set on `cacct` as follows:
 
 ```bash
 chown ceems:ceems /usr/local/bin/cacct
@@ -158,18 +115,12 @@ chmod g+s /usr/local/bin/cacct
 # Ensure others can execute cacct
 chmod o+x /usr/local/bin/cacct
 
-# Use the same user/group as owner:group to cacct configuration file
+# Use the same user/group as owner:group for the cacct configuration file
 chown ceems:ceems /etc/ceems/config.yml
-# Revoke all the permissions for others
+# Revoke all permissions for others
 chmod o-rwx /etc/ceems/config.yml
 ```
 
-Now everytime `cacct` has been invoked, it runs as `ceems` user instead of user who invoked
-it. As the same user/group is the owner to the file `/etc/ceems/config.yml`, `cacct` will be
-able to read the file. At the same time, the user who invoked the `cacct` binary will not be
-able to access `/etc/ceems/config.yml` as the permission have been revoked.
+Now, every time `cacct` is invoked, it runs as the `ceems` user/group instead of the user who invoked it. Since the same user/group owns `/etc/ceems/config.yml`, `cacct` can read the file. Simultaneously, the user who invoked the `cacct` binary cannot access `/etc/ceems/config.yml` because their permissions have been revoked.
 
-When `cacct` has been installed using the RPM/DEB file provided by the
-[CEEMS Releases](https://github.com/mahendrapaipuri/ceems/releases), `cacct` will be already
-installed with sticky bit and the operators only need to populate configuration file at
-`/etc/ceems/config.yml`.
+When `cacct` is installed using the RPM/DEB file provided by the [CEEMS Releases](https://github.com/mahendrapaipuri/ceems/releases), `cacct` is already installed with the sticky bit set. Operators only need to populate the configuration file at `/etc/ceems/config.yml`.

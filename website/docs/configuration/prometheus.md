@@ -4,18 +4,17 @@ sidebar_position: 6
 
 # Prometheus
 
-In order to use the dashboards provided in the repository, a minor
+In order to use the dashboards provided in the repository, minor
 [`metric_relabel_configs`](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs)
-must be provided for all the target groups that have NVIDIA GPUs where
-`dcgm-exporter` is exporting metrics of the GPUs to Prometheus.
+configuration must be provided for all target groups that have NVIDIA GPUs where
+the `dcgm-exporter` exports GPU metrics to Prometheus.
 
-The following shows an example scrape configs where the target nodes
-contains NVIDIA GPUs:
+The following example shows scrape configurations where the target nodes contain NVIDIA GPUs:
 
 ```yaml
 scrape_configs:
   # Scrape job containing NVIDIA DCGM exporter targets
-  - job: <job-name>
+  - job_name: <job-name>
     metric_relabel_configs:
       - source_labels:
           - modelName
@@ -37,7 +36,7 @@ scrape_configs:
         action: labeldrop
 
   # Scrape job containing AMD SMI exporter targets
-  - job: <job-name>
+  - job_name: <job-name>
     metric_relabel_configs:
       - source_labels:
           - gpu_power
@@ -67,11 +66,13 @@ scrape_configs:
         action: labeldrop
 ```
 
-The `metric_relabel_configs` renames `UUID` and `GPU_I_ID` which are
-the UUID and MIG instance ID of NVIDIA GPU, respectively and sets it to `gpuuuid` and
-`gpuiid` which are compatible with CEEMS exporter. Moreover the config also drops unused
-`UUID` and `GPU_I_ID` labels to reduce storage.
+The `metric_relabel_configs` section renames the `UUID` and `GPU_I_ID` labels
+(which represent the UUID and MIG instance ID of the NVIDIA GPU, respectively) to
+`gpuuuid` and `gpuiid`, making them compatible with the CEEMS exporter. Moreover,
+the configuration also drops the unused `UUID` and `GPU_I_ID` labels to reduce
+storage usage.
 
-Similarly, for AMD SMI exporter targets, `metric_relabel_configs` `gpu_power`,
-`gpu_use_percent` and `gpu_memory_use_percent` labels, which provides GPU index,
-to `index` that is compatible with CEEMS exporter.
+Similarly, for AMD SMI exporter targets, the `metric_relabel_configs` section
+extracts the GPU index from the `gpu_power`, `gpu_use_percent`, and
+`gpu_memory_use_percent` labels and maps it to the `index` label, which is
+compatible with the CEEMS exporter.
