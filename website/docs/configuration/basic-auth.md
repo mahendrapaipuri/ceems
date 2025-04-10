@@ -2,27 +2,27 @@
 sidebar_position: 1
 ---
 
-# Web security
+# Web Security
 
 ## Authentication
 
-All the CEEMS components support basic authentication and it is the only authentication
-method supported. The rationale is that the none of the CEEMS components are meant to
-be exposed to the end users directly. They are all system level services that are
-consumed by other services like Grafana to expose the data to the users. Thus, to
+All CEEMS components support basic authentication, and it is the only authentication
+method supported. The rationale is that none of the CEEMS components are meant to
+be exposed to end users directly. They are all system-level services that are
+consumed by other services like Grafana to expose the data to users. Thus, to
 keep the components simple and maintainable, only basic authentication is supported.
 
-CEEMS uses [Prometheus exporter toolkit](https://github.com/prometheus/exporter-toolkit)
+CEEMS uses the [Prometheus exporter toolkit](https://github.com/prometheus/exporter-toolkit)
 for basic authentication and TLS support. Basic auth can be configured using a configuration
-file that can be passed to each component using CLI argument. A
+file that can be passed to each component using CLI arguments. A
 [sample configuration file](https://github.com/mahendrapaipuri/ceems/blob/main/build/config/common/web-config.yml)
-is provided in the repository for the reference.
+is provided in the repository for reference.
 
 :::tip[TIP]
 
 CEEMS provides a tooling application that can generate web configuration files with basic
-auth and TLS with self signed certificates. It can be used to generate a basic web
-configuration file for different CEEMS components. More details can be found in CEEMS Tool
+auth and TLS with self-signed certificates. It can be used to generate a basic web
+configuration file for different CEEMS components. More details can be found in the CEEMS Tool
 [Usage Docs](../usage/ceems-tool.md) and [CLI Docs](../cli/ceems-tool.md).
 
 :::
@@ -34,7 +34,7 @@ basic_auth_users:
   <username>: <hashed_password>
 ```
 
-where `<username>` is the username of basic auth user and `<hashed_password>` is
+where `<username>` is the username of the basic auth user and `<hashed_password>` is
 the basic auth password that must be hashed with `bcrypt`. An example to generate
 such hashed passwords is:
 
@@ -42,8 +42,8 @@ such hashed passwords is:
 htpasswd -nBC 10 "" | tr -d ':\n'
 ```
 
-This command will prompt the user to input the password and outputs the hashed password.
-Multiple basic auth users can be configured using username, hashed password pair for
+This command will prompt the user to input the password and output the hashed password.
+Multiple basic auth users can be configured using a username and hashed password pair for
 each line.
 
 ## TLS
@@ -62,12 +62,12 @@ tls_server_config:
 ```
 
 The files `server.crt` and `server.key` must exist in the same folder as the configuration
-file. Besides, there are more advanced options available for TLS and they are explained
-in [comments in the sample file](https://github.com/mahendrapaipuri/ceems/blob/main/build/config/common/web-config.yml).
+file. Additionally, there are more advanced options available for TLS, which are explained
+in the [comments in the sample file](https://github.com/mahendrapaipuri/ceems/blob/main/build/config/common/web-config.yml).
 
 ## Reference
 
-The following shows the reference of web configuration file:
+The following shows the reference for the web configuration file:
 
 ```yaml
 tls_server_config:
@@ -119,7 +119,7 @@ tls_server_config:
 
   # List of supported cipher suites for TLS versions up to TLS 1.2. If empty,
   # Go default cipher suites are used. Available cipher suites are documented
-  # in the go documentation:
+  # in the Go documentation:
   # https://golang.org/pkg/crypto/tls/#pkg-constants
   #
   # Note that only the cipher returned by the following function are supported:
@@ -134,14 +134,14 @@ tls_server_config:
   [ prefer_server_cipher_suites: <bool> | default = true ]
 
   # Elliptic curves that will be used in an ECDHE handshake, in preference
-  # order. Available curves are documented in the go documentation:
+  # order. Available curves are documented in the Go documentation:
   # https://golang.org/pkg/crypto/tls/#CurveID
   [ curve_preferences:
     [ - <string> ] ]
 
 http_server_config:
   # Enable HTTP/2 support. Note that HTTP/2 is only supported with TLS.
-  # This can not be changed on the fly.
+  # This cannot be changed on the fly.
   [ http2: <boolean> | default = true ]
   # List of headers that can be added to HTTP responses.
   [ headers:

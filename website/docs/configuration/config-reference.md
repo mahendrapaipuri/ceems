@@ -4,22 +4,15 @@ sidebar_position: 10
 
 # Configuration Reference
 
-The following reference applies to configuration files of CEEMS API server, CEEMS LB and
-web configuration. CEEMS uses Prometheus' [client config](https://github.com/prometheus/common/tree/main/config)
-to configure HTTP clients. Thus, most of the configuration that is used to configure
-HTTP clients resemble that of Prometheus'. The configuration reference has also been
-inspired from Prometheus docs.
+The following reference applies to the configuration files of the CEEMS API server, CEEMS LB, and web configuration. CEEMS uses Prometheus' [client config](https://github.com/prometheus/common/tree/main/config) to configure HTTP clients. Thus, most of the configuration used to configure HTTP clients resembles that of Prometheus'. The configuration reference has also been inspired by Prometheus documentation.
 
-The file is written in [YAML format](https://en.wikipedia.org/wiki/YAML),
-defined by the scheme described below.
-Brackets indicate that a parameter is optional. For non-list parameters the
-value is set to the specified default.
+The file is written in [YAML format](https://en.wikipedia.org/wiki/YAML), defined by the scheme described below. Brackets indicate that a parameter is optional. For non-list parameters, the value is set to the specified default.
 
 Generic placeholders are defined as follows:
 
 * `<boolean>`: a boolean that can take the values `true` or `false`
-* `<duration>`: a duration matching the regular expression `((([0-9]+)y)?(([0-9]+)w)?(([0-9]+)d)?(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?(([0-9]+)ms)?|0)`, e.g. `1d`, `1h30m`, `5m`, `10s`
-* `<date>`: a date of format `YYYY-MM-DD`
+* `<duration>`: a duration matching the regular expression `((([0-9]+)y)?(([0-9]+)w)?(([0-9]+)d)?(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?(([0-9]+)ms)?|0)`, e.g., `1d`, `1h30m`, `5m`, `10s`
+* `<date>`: a date in the format `YYYY-MM-DD`
 * `<filename>`: a valid path in the current working directory
 * `<float>`: a floating-point number
 * `<host>`: a valid string consisting of a hostname or IP followed by an optional port number
@@ -28,22 +21,19 @@ Generic placeholders are defined as follows:
 * `<scheme>`: a string that can take the values `http` or `https`
 * `<secret>`: a regular string that is a secret, such as a password
 * `<string>`: a regular string
-* `<size>`: a size in bytes, e.g. `512MB`. A unit is required. Supported units: B, KB, MB, GB, TB, PB, EB.
-* `<idname>`: a string matching the regular expression `[a-zA-Z_-][a-zA-Z0-9_-]*`. Any other unsupported
-character in the source label should be converted to an underscore
-* `<managername>`: a string that identifies resource manager. Currently accepted values are `slurm`.
-* `<updatername>`: a string that identifies updater type. Currently accepted values are `tsdb`.
+* `<size>`: a size in bytes, e.g., `512MB`. A unit is required. Supported units: B, KB, MB, GB, TB, PB, EB.
+* `<idname>`: a string matching the regular expression `[a-zA-Z_-][a-zA-Z0-9_-]*`. Any other unsupported character in the source label should be converted to an underscore
+* `<managername>`: a string that identifies the resource manager. Currently accepted values are `slurm`.
+* `<updatername>`: a string that identifies the updater type. Currently accepted values are `tsdb`.
 * `<promql_query>`: a valid PromQL query string.
-* `<lbstrategy>`: a valid load balancing strategy. Currently accepted values are `round-robin`, and `least-connection`.
+* `<lbstrategy>`: a valid load balancing strategy. Currently accepted values are `round-robin` and `least-connection`.
 * `<object>`: a generic object
 
 The other placeholders are specified separately.
 
 ## `<ceems_api_server>`
 
-The following shows the reference for CEEMS API server config.
-A valid sample configuration file can be found in the
-[repo](https://github.com/mahendrapaipuri/ceems/blob/main/build/config/ceems_api_server/ceems_api_server.yml).
+The following shows the reference for the CEEMS API server configuration. A valid sample configuration file can be found in the [repository](https://github.com/mahendrapaipuri/ceems/blob/main/build/config/ceems_api_server/ceems_api_server.yml).
 
 ```yaml
 # Configuration file to configure CEEMS API server
@@ -56,33 +46,33 @@ A valid sample configuration file can be found in the
 ---
 # CEEMS API Server and data config
 ceems_api_server:
-  # Data related configuration of the CEEMS API server. This config concerns with the 
-  # locations where data will be saved, frequency of data updates, etc.
+  # Data-related configuration of the CEEMS API server. This configuration concerns
+  # the locations where data will be saved, frequency of data updates, etc.
   #
   data:
     [ <data_config> ]
 
-  # HTTP web admin related config for CEEMS API server
+  # HTTP web admin-related config for CEEMS API server
   #
   admin:
     [ <admin_config> ]
 
-# A list of clusters from which CEEMS API server will fetch the compute units.
+# A list of clusters from which the CEEMS API server will fetch the compute units.
 # 
-# Each cluster must provide an unique `id`. The `id` will enable CEEMS to identify 
-# different clusters in multi-cluster setup. This `id` must be consistent throughout 
-# all the CEEMS components.
+# Each cluster must provide a unique `id`. The `id` will enable CEEMS to identify 
+# different clusters in a multi-cluster setup. This `id` must be consistent throughout 
+# all CEEMS components.
 # 
 clusters:
   [ - <cluster_config> ... ]
   
     
-# A list of Updaters that will be used to update the compute unit metrics. This update 
+# A list of updaters that will be used to update the compute unit metrics. This update 
 # step can be used to update the aggregate metrics of each compute unit in real time
-# or to add complementary information to the compute units from on-premise third 
-# party services.
+# or to add complementary information to the compute units from on-premise third-party 
+# services.
 #
-# Currently only TSDB updater is supported. The compute unit aggregate metrics can be
+# Currently, only the TSDB updater is supported. The compute unit aggregate metrics can be
 # updated from TSDB (Prometheus/VM) instances.
 #
 updaters:
@@ -92,33 +82,33 @@ updaters:
 
 ### `<data_config>`
 
-A `data_config` allows configuring the DB settings of CEEMS API server.
+A `data_config` allows configuring the database settings of the CEEMS API server.
 
 ```yaml
-# Path at which CEEMS API server data will be stored.
-# If relative path is used, it will be resolved based on the current working directory.
+# Path at which the CEEMS API server data will be stored.
+# If a relative path is used, it will be resolved based on the current working directory.
 #
 [ path: <filename> | default = data ]
 
-# The duration to retain the data in the DB. Units older than this duration will be
-# purged from the DB. 
+# The duration to retain the data in the database. Units older than this duration will be
+# purged from the database. 
 #
 # In the case of global usage stats, if the last activity on a given project/user 
-# combination is older than this period, those stats will be purged from the DB.
+# combination is older than this period, those stats will be purged from the database.
 #
 # Units Supported: y, w, d, h, m, s, ms.
 #
 [ retention_period: <duration> | default = 30d ]
 
 # Units data will be fetched at this interval. CEEMS will pull the units from the 
-# underlying resource manager at this frequency into its own DB.
+# underlying resource manager at this frequency into its own database.
 #
 # Units Supported: y, w, d, h, m, s, ms.
 #
 [ update_interval: <duration> | default = 15m ]
 
 # Units data will be fetched from this date. If left empty, units will be fetched
-# from current day midnight.
+# from the current day's midnight.
 #
 # Format Supported: 2025-01-01.
 #
@@ -126,7 +116,7 @@ A `data_config` allows configuring the DB settings of CEEMS API server.
 
 # Units data will be fetched at this interval when fetching historical data. For
 # example, if `update_from` is set to a date in the past, units will be fetched
-# for every `max_update_interval` period until we reach to current time and then
+# for every `max_update_interval` period until we reach the current time, and then
 # they will be fetched every `update_interval` time.
 #
 # Units Supported: y, w, d, h, m, s, ms.
@@ -137,12 +127,12 @@ A `data_config` allows configuring the DB settings of CEEMS API server.
 # It takes a value defined in IANA (https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
 # like `Europe/Paris`
 # 
-# A special value `Local` can be used to use server local time zone.
+# A special value `Local` can be used to use the server's local time zone.
 #
 [ time_zone: <string> | default = Local ]
 
-# CEEMS API server is capable of creating DB backups using SQLite backup API. Created
-# DB backups will be saved to this path. NOTE that for huge DBs, this backup can take 
+# The CEEMS API server is capable of creating database backups using the SQLite backup API. Created
+# database backups will be saved to this path. NOTE that for huge databases, this backup can take 
 # a considerable amount of time. 
 #
 # Use a different disk device than `ceems_api_server.data.path` to achieve 
@@ -152,9 +142,9 @@ A `data_config` allows configuring the DB settings of CEEMS API server.
 #
 [ backup_path: <filename> ]
 
-# The interval at which DB back ups will be created. 
+# The interval at which database backups will be created. 
 #
-# Minimum allowable interval is `1d`, ie, 1 day.
+# The minimum allowable interval is `1d`, i.e., 1 day.
 #
 # Units Supported: y, w, d, h, m, s, ms.
 #
@@ -164,29 +154,29 @@ A `data_config` allows configuring the DB settings of CEEMS API server.
 
 ### `<admin_config>`
 
-A `admin_config` allows configuring the admin users of CEEMS API server.
+The `admin_config` allows configuring the admin users of the CEEMS API server.
 
 ```yaml
-# List of users that will have admin privileges for accessing CEEMS API server
+# List of users that will have admin privileges for accessing the CEEMS API server
 #
-# These users will have full access to DB and can query stats of any user/project.
+# These users will have full access to the database and can query stats of any user/project.
 #
 # In addition, it is possible to pull users from Grafana teams and add them to 
-# admin users. Check `grafana` configuration on how to fetch users from Grafana.
+# admin users. Check the `grafana` configuration on how to fetch users from Grafana.
 #
 users:
     [ - <string> ... ]
 
 # Besides setting a static list of admin users using `ceems_api_server.web.admin_users`,
 # it is possible to pull the users from a given Grafana instance and update the admin users
-# list of CEEMS API server. This allows operators to add new admins to CEEMS API server
+# list of the CEEMS API server. This allows operators to add new admins to the CEEMS API server
 # without having to restart `ceems_api_server`. 
 #
-# Typically, one or several Grafana team(s) can be created dedicated to CEEMS admins and 
-# CEEMS API server will fetch the Grafana team members at the same frequency as compute 
+# Typically, one or several Grafana team(s) can be created dedicated to CEEMS admins, and 
+# the CEEMS API server will fetch the Grafana team members at the same frequency as compute 
 # units.
 #
-# The web config of Grafana can be set in the following section:
+# The web configuration of Grafana can be set in the following section:
 #
 grafana:
   [ <grafana_config> ]
@@ -194,8 +184,7 @@ grafana:
 
 ### `<grafana_config>`
 
-A `grafana_config` allows configuring the Grafana client config to fetch members of
-Grafana teams to be added to admin users of CEEMS API server.
+A `grafana_config` allows configuring the Grafana client configuration to fetch members of Grafana teams to be added to admin users of the CEEMS API server.
 
 ```yaml
 # Web URL of the Grafana instance
@@ -248,15 +237,15 @@ tls_config:
   [ <tls_config> ]
 
 # List of headers that will be passed in the API requests to the server.
-# Authentication related headers may be configured in this section. Header name
-# must be configured as key and header value supports three different types of 
-# headers: values, secrets and files.
+# Authentication-related headers may be configured in this section. The header name
+# must be configured as a key, and the header value supports three different types of 
+# headers: values, secrets, and files.
 #
-# The difference between values and secrets is that secret will be redacted
-# in server logs where as values will be emitted in the logs.
+# The difference between values and secrets is that secrets will be redacted
+# in server logs, whereas values will be emitted in the logs.
 #
 # Values are regular headers with values, secrets are headers that pass secret
-# information like tokens and files pass the file content in the headers.
+# information like tokens, and files pass the file content in the headers.
 #
 http_headers:
   [ <http_headers_config> ]
@@ -264,24 +253,24 @@ http_headers:
 
 ## `<cluster_config>`
 
-A `cluster_config` allows configuring the cluster of CEEMS API server.
+A `cluster_config` allows configuring the cluster of the CEEMS API server.
 
 ```yaml
 # Identifier of the cluster. Must be unique for each cluster
 #
-# Use an id that end users can identify, for instance, name of the cluster.
+# Use an ID that end users can identify, for instance, the name of the cluster.
 #
 id: <idname>
 
-# Resource manager of the cluster. Currently only `slurm` is supported. In future,
-# `openstack` will be supported
+# Resource manager of the cluster. Currently, only `slurm` is supported. In the future,
+# `openstack` will be supported.
 #
 manager: <managername>
 
-# List of updater IDs to run on the compute units of current cluster. The updaters
+# List of updater IDs to run on the compute units of the current cluster. The updaters
 # will be run in the same order as provided in the list.
 #
-# ID of each updater is set in the `updaters` section of the config. If an unknown
+# The ID of each updater is set in the `updaters` section of the config. If an unknown
 # ID is provided here, it will be ignored during the update step.
 #
 updaters:
@@ -293,27 +282,27 @@ updaters:
 # this section can be used to configure the tool. This can be mainly used to configure
 # SLURM CLI utility tools that can be used to fetch job data.
 #
-# When SLURM resource manager is configured to fetch job data using `sacct` command,
-# execution mode of the command will be decided as follows:
+# When the SLURM resource manager is configured to fetch job data using the `sacct` command,
+# the execution mode of the command will be decided as follows:
 #
-#  - If the current user running `ceems_api_server` is `root`, `sacct`
+#  - If the current user running `ceems_api_server` is `root`, the `sacct`
 #    command will be executed as that user in a security context.
 # 
-#  - If the `ceems_api_server` process has `CAP_SETUID` and `CAP_SETGID` capabilities, `sacct` 
-#    command will be executed as `root` user in a security context.
+#  - If the `ceems_api_server` process has `CAP_SETUID` and `CAP_SETGID` capabilities, the `sacct` 
+#    command will be executed as the `root` user in a security context.
 # 
-#  - As a last attempt, we attempt to execute `sacct` with `sudo` prefix. If
+#  - As a last attempt, we attempt to execute `sacct` with the `sudo` prefix. If
 #    the current user running `ceems_api_server` is in the list of sudoers, this check
-#    will pass and `sacct` will be always executed as `sudo sacct <args>` to fetch jobs.
+#    will pass and `sacct` will always be executed as `sudo sacct <args>` to fetch jobs.
 #
-# If none of the above conditions are true, `sacct` will be executed as the current user 
+# If none of the above conditions are true, `sacct` will be executed as the current user, 
 # which might not give job data of _all_ users in the cluster.
 #
 # If the operators are unsure which method to use, there is a default systemd
-# unit file provided in the repo that uses Linux capabilities. Use that file as 
-# starting point and modify the CLI args accordingly
+# unit file provided in the repository that uses Linux capabilities. Use that file as 
+# a starting point and modify the CLI args accordingly.
 #
-# If no `cli` and no `web` config is found, `ceems_api_server` will check
+# If no `cli` and no `web` configuration is found, `ceems_api_server` will check
 # if CLI utilities like `sacct` exist on `PATH` and if found, will use them.
 #
 # Systemd Unit File:
@@ -327,39 +316,39 @@ cli:
   # An object of environment variables that will be injected while executing the 
   # CLI utilities to fetch compute unit data. 
   #
-  # This is handy when executing CLI tools like `keystone` for openstack or `kubectl` 
+  # This is handy when executing CLI tools like `keystone` for OpenStack or `kubectl` 
   # for k8s needs to source admin credentials. Those credentials can be set manually
   # here in this section. 
   #
   environment_variables: 
     [ <string>: <string> ... ]
 
-# If the resource manager supports API server, configure the REST API
+# If the resource manager supports an API server, configure the REST API
 # server details here.
 #
-# When configured, REST API server is always preferred over CLI utilities for 
-# fetching compute units
+# When configured, the REST API server is always preferred over CLI utilities for 
+# fetching compute units.
 #
 # Most of the web configuration has been inspired from Prometheus `scrape_config`
-# and its utility functions are used to create HTTP client using the configuration
+# and its utility functions are used to create an HTTP client using the configuration
 # set below.
 # 
 web:
-  # Web client config of resource manager's cluster
+  # Web client configuration of the resource manager's cluster
   #
   [ <web_client_config> ]
 
-# Any other configuration needed to reach API server of the resource manager
+# Any other configuration needed to reach the API server of the resource manager
 # can be configured in this section.
 #
-# Currently this section is used for Openstack resource manager
-# to configure API versions
+# Currently, this section is used for the OpenStack resource manager
+# to configure API versions.
 #
-# In the case of Openstack, this section must have two keys `api_service_endpoints`
+# In the case of OpenStack, this section must have two keys: `api_service_endpoints`
 # and `auth`. Both of these are compulsory.
 # `api_service_endpoints` must provide API endpoints for compute and identity
-# services as provided in service catalog of Openstack cluster. `auth` must be the
-# same `auth` object that must be sent in POST request to keystone to get a API token.
+# services as provided in the service catalog of the OpenStack cluster. `auth` must be the
+# same `auth` object that must be sent in the POST request to keystone to get an API token.
 #
 # Example:
 #
@@ -382,7 +371,7 @@ extra_config:
 
 ## `<updater_config>`
 
-A `updater_config` allows configuring updaters of CEEMS API server.
+An `updater_config` allows configuring updaters of the CEEMS API server.
 
 ```yaml
 # Identifier of the updater. Must be unique for each updater
@@ -393,44 +382,44 @@ A `updater_config` allows configuring updaters of CEEMS API server.
 #
 id: <idname>
 
-# Updater kind. Currently only `tsdb` is supported.
+# Updater kind. Currently, only `tsdb` is supported.
 #
 updater: <updatername>
 
-# Web Config of the updater.
+# Web configuration of the updater.
 #
 web:
-  # Web client config of updater instance
+  # Web client configuration of the updater instance
   #
   [ <web_client_config> ]
 
 # Any other configuration needed for the updater instance can be configured 
 # in this section.
-# Currently this section is used for `tsdb` updater to configure the queries that
+# Currently, this section is used for the `tsdb` updater to configure the queries that
 # will be used to aggregate the compute unit metrics.
 #
 extra_config:
   # 
-  # CEEMS `tsdb` updater makes queries in batches in order to avoid OOM errors on TSDB.
+  # The CEEMS `tsdb` updater makes queries in batches to avoid OOM errors on TSDB.
   # The parameters `query_max_series` and `query_min_samples` can be used to
   # control the batch size. 
   #
-  # Number of queries that can be loaded into memory depends on `--query.max-samples` 
-  # parameter. For a given batch size, all the queries in `queries` section will be
+  # The number of queries that can be loaded into memory depends on the `--query.max-samples` 
+  # parameter. For a given batch size, all the queries in the `queries` section will be
   # executed concurrently. For instance, at a given time, if the batch size is 100 and
-  # if there are 40 different series used in `queries` section, the total number of
-  # series that will be loaded into the memory will be 100 * 40 = 4000. If the scrape
+  # if there are 40 different series used in the `queries` section, the total number of
+  # series that will be loaded into memory will be 100 * 40 = 4000. If the scrape
   # interval is 10s and we are updating for a duration of 60 min, the total number of
   # samples that need to be loaded will be 4000 * (60 * 60) / 10 = 1440000. The default value 
-  # used by Prometheus for `--query.max-samples` is 50000000 which is more than
+  # used by Prometheus for `--query.max-samples` is 50000000, which is more than
   # what we got in the calculation in the example. However, we need to account for other
-  # queries made to the TSDB as well and hence, must leave a good tolerance for all queries
+  # queries made to the TSDB as well and hence must leave a good tolerance for all queries
   # to be able to get executed correctly. The updater will fetch the current value of
   # `--query.max-samples` and depending on the provided `query_max_series` and
-  # `query_min_samples` config parameters, it estimates a batch size and executes
+  # `query_min_samples` configuration parameters, it estimates a batch size and executes
   # queries in the estimated batch size.
   #
-  # Maximum number of series used in `queries` section. If there are 15 different series
+  # Maximum number of series used in the `queries` section. If there are 15 different series
   # used in queries, we need to set it to 15. This will be used to
   # estimate batch size when executing queries concurrently.
   #
@@ -438,16 +427,16 @@ extra_config:
   #
   [ query_max_series: <int>  | default: 50 ]
 
-  # Minimum number of samples that are guaranteed to available for executing the queries
-  # of the updater. It is expressed as proportion of `--query.max-samples` and takes a value
+  # Minimum number of samples that are guaranteed to be available for executing the queries
+  # of the updater. It is expressed as a proportion of `--query.max-samples` and takes a value
   # between 0 to 1. A smaller value means smaller batch sizes.
   #
   # Default value is 0.5
   #
   [ query_min_samples: <float>  | default: 0.5 ]
 
-  # Compute units that have total life time less than this value will be deleted from 
-  # TSDB to reduce number of labels and cardinality
+  # Compute units that have a total lifetime less than this value will be deleted from 
+  # TSDB to reduce the number of labels and cardinality.
   #
   # Default value `0s` means no compute units will be purged.
   #
@@ -456,28 +445,28 @@ extra_config:
   [ cutoff_duration: <duration> | default: 0s ]
 
   # The ignored units' (based on `cutoff_duration`) metrics will be dropped from the TSDB
-  # when set it to `true`. This can be used to reduce number of labels and cardinality of TSDB
+  # when set to `true`. This can be used to reduce the number of labels and cardinality of TSDB.
   #
-  # TSDB must be started with `--web.enable-admin-api` flag for this to work
+  # TSDB must be started with the `--web.enable-admin-api` flag for this to work.
   #
   [ delete_ignored: <boolean> | default: false ]
 
-  # List of labels to delete from TSDB. These labels should be valid matchers for TSDB
-  # More information of delete API of Prometheus https://prometheus.io/docs/prometheus/latest/querying/api/#delete-series
+  # List of labels to delete from TSDB. These labels should be valid matchers for TSDB.
+  # More information on the delete API of Prometheus: https://prometheus.io/docs/prometheus/latest/querying/api/#delete-series
   #
-  # TSDB must be started with --web.enable-admin-api flag for this to work
+  # TSDB must be started with --web.enable-admin-api flag for this to work.
   #
   labels_to_drop:
     [ - <string> ... ]
 
-  # Define queries that are used to estimate aggregate metrics of each compute unit
-  # These queries will be passed to golang's text/template package to build them
-  # Available template variables
-  # - UUIDs -> UUIDs string delimited by "|", eg, 123|345|567
-  # - ScrapeInterval -> Scrape interval of TSDB in time.Duration format eg 15s, 1m
-  # - ScrapeIntervalMilli -> Scrape interval of TSDB in milli seconds eg 15000, 60000
-  # - EvaluationInterval -> Evaluation interval of TSDB in time.Duration format eg 15s, 1m
-  # - EvaluationIntervalMilli -> Evaluation interval of TSDB in milli seconds eg 15s, 1m
+  # Define queries that are used to estimate aggregate metrics of each compute unit.
+  # These queries will be passed to golang's text/template package to build them.
+  # Available template variables:
+  # - UUIDs -> UUIDs string delimited by "|", e.g., 123|345|567
+  # - ScrapeInterval -> Scrape interval of TSDB in time.Duration format, e.g., 15s, 1m
+  # - ScrapeIntervalMilli -> Scrape interval of TSDB in milliseconds, e.g., 15000, 60000
+  # - EvaluationInterval -> Evaluation interval of TSDB in time.Duration format, e.g., 15s, 1m
+  # - EvaluationIntervalMilli -> Evaluation interval of TSDB in milliseconds, e.g., 15s, 1m
   # - RateInterval -> Rate interval in time.Duration format. It is estimated based on Scrape interval as 4*scrape_interval
   # - Range -> Duration of interval where aggregation is being made in time.Duration format
   #
@@ -487,7 +476,7 @@ extra_config:
 
 ### `<queries_config>`
 
-A `queries_config` allows configuring PromQL queries for TSDB updater of CEEMS API server.
+A `queries_config` allows configuring PromQL queries for the TSDB updater of the CEEMS API server.
 
 ```yaml
 #
@@ -502,22 +491,22 @@ A `queries_config` allows configuring PromQL queries for TSDB updater of CEEMS A
 #
 # With the above configuration, the server response from API server will contain
 # energy usage from both RAPL and IPMI using the same keys as we used in the 
-# sub query. For instance, an example response can be:
+# sub-query. For instance, an example response can be:
 #
 # `{"total_cpu_energy_usage_kwh": {"rapl_total": 100, "ipmi_total": 120}}`
 #
-# This approach will let the operators to define the metrics freely according to
-# their deployments. This will also allow to fetch metrics from third party 
-# DBs outside of CEEMS components without hassle.
+# This approach will let the operators define the metrics freely according to
+# their deployments. This will also allow fetching metrics from third-party 
+# databases outside of CEEMS components without hassle.
 #
-# The placeholder queries shown below should work out-of-the-box with CEEMS 
-# exporter when the recording rules to the Prometheus have been configured
-# using `ceems_tool`. If operators deploy more exporters of their own queries
+# The placeholder queries shown below should work out-of-the-box with the CEEMS 
+# exporter when the recording rules to Prometheus have been configured
+# using `ceems_tool`. If operators deploy more exporters of their own, queries
 # must be modified accordingly.
 #
-# Average CPU utilisation
+# Average CPU utilization
 #
-# Example of valid query:
+# Example of a valid query:
 #
 # global:
 #   avg_over_time(avg by (uuid) (uuid:ceems_cpu_usage:ratio_irate{uuid=~"{{.UUIDs}}"} >= 0 < inf)[{{.Range}}:])
@@ -525,9 +514,9 @@ avg_cpu_usage:
   [ <string>: <promql_query> ... ]
   
 
-# Average CPU Memory utilisation
+# Average CPU Memory utilization
 #
-# Example of valid query:
+# Example of a valid query:
 #
 # global:
 #   avg_over_time(avg by (uuid) (uuid:ceems_cpu_memory_usage:ratio{uuid=~"{{.UUIDs}}"} >= 0 < inf)[{{.Range}}:])
@@ -537,7 +526,7 @@ avg_cpu_mem_usage:
 
 # Total CPU energy usage in kWh
 #
-# Example of valid query:
+# Example of a valid query:
 #
 # total:
 #   sum_over_time(sum by (uuid) (uuid:ceems_host_power_watts:pue{uuid=~"{{.UUIDs}}"} >= 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 3.6e9
@@ -547,7 +536,7 @@ total_cpu_energy_usage_kwh:
 
 # Total CPU emissions in gms
 #
-# Example of valid query:
+# Example of a valid query:
 # rte_total: |
 #   sum_over_time(sum by (uuid) (uuid:ceems_host_emissions_g_s:pue{uuid=~"{{.UUIDs}}",provider="rte"} >= 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 1e3
 # emaps_total: |
@@ -560,7 +549,7 @@ total_cpu_emissions_gms:
 
 # Average GPU utilization
 #
-# Example of valid query:
+# Example of a valid query:
 #
 # global:
 #   avg_over_time(avg by (uuid) (uuid:ceems_gpu_usage:ratio{uuid=~"{{.UUIDs}}"} >= 0 < inf)[{{.Range}}:])
@@ -570,7 +559,7 @@ avg_gpu_usage:
 
 # Average GPU memory utilization
 #
-# Example of valid query:
+# Example of a valid query:
 #
 # global:
 #   avg_over_time(avg by (uuid) (uuid:ceems_gpu_memory_usage:ratio{uuid=~"{{.UUIDs}}"} >= 0 < inf)[{{.Range}}:])
@@ -580,7 +569,7 @@ avg_gpu_mem_usage:
 
 # Total GPU energy usage in kWh
 #
-# Example of valid query:
+# Example of a valid query:
 #
 # total:
 #   sum_over_time(sum by (uuid) (uuid:ceems_gpu_power_watts:pue{uuid=~"{{.UUIDs}}"} >= 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 3.6e9
@@ -590,7 +579,7 @@ total_gpu_energy_usage_kwh:
 
 # Total GPU emissions in gms
 #
-# Example of valid query:
+# Example of a valid query:
 #
 # rte_total: |
 #   sum_over_time(sum by (uuid) (uuid:ceems_gpu_emissions_g_s:pue{uuid=~"{{.UUIDs}}",provider="rte"} >= 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 1e3
@@ -604,7 +593,7 @@ total_gpu_emissions_gms:
 
 # Total IO write in GB stats
 #
-# Example of valid query:
+# Example of a valid query:
 #
 # bytes_total: |
 #   sum by (uuid) (increase(ceems_ebpf_write_bytes_total{uuid=~"{{.UUIDs}}"}[{{.Range}}]) >= 0 < inf)
@@ -613,7 +602,7 @@ total_io_write_stats:
 
 # Total IO read in GB stats
 #
-# Example of valid query:
+# Example of a valid query:
 #
 # bytes_total: |
 #   sum by (uuid) (increase(ceems_ebpf_read_bytes_total{uuid=~"{{.UUIDs}}"}[{{.Range}}]) >= 0 < inf)
@@ -622,7 +611,7 @@ total_io_read_stats:
 
 # Total ingress traffic stats
 #
-# Example of valid query:
+# Example of a valid query:
 #
 # bytes_total: |
 #   sum by (uuid) (increase(ceems_ebpf_ingress_bytes_total{uuid=~"{{.UUIDs}}"}[{{.Range}}]) >= 0 < inf)
@@ -641,10 +630,10 @@ total_egress_stats:
 
 The following shows the reference for CEEMS load balancer config. A valid sample
 configuration file can be found in the
-[repo](https://github.com/mahendrapaipuri/ceems/blob/main/build/config/ceems_lb/ceems_lb.yml).
+[repository](https://github.com/mahendrapaipuri/ceems/blob/main/build/config/ceems_lb/ceems_lb.yml).
 
 ```yaml
-# Configuration file to configure CEEMS Load Balancer
+# Configuration file to configure the CEEMS Load Balancer
 #
 # This config file has following sections:
 #  - `ceems_lb`: Core configuration of CEEMS LB
@@ -653,14 +642,14 @@ configuration file can be found in the
 #
 ---
 ceems_lb:
-  # Load balancing strategy. Three possibilites
+  # Load balancing strategy. Three possibilities:
   #
   # - round-robin
   # - least-connection
   #
   # Round robin and least connection are classic strategies.
-  # Resource based works based on the query range in the TSDB query. The 
-  # query will be proxied to the backend that covers the query_range
+  # Resource-based works based on the query range in the TSDB query. The 
+  # query will be proxied to the backend that covers the query_range.
   #
   [ strategy: <lbstrategy> | default = round-robin ]
 
@@ -670,46 +659,46 @@ ceems_lb:
     [ - <backend_config> ] 
       
 
-# CEEMS API server config.
-# This config is essential to enable access control on the TSDB. By excluding 
-# this config, no access control is imposed on the TSDB and a basic load balancing
+# CEEMS API server configuration.
+# This configuration is essential to enable access control on the TSDB. By excluding 
+# this configuration, no access control is imposed on the TSDB, and a basic load balancing
 # based on the chosen strategy will be made.
 #
 # Essentially, basic access control is implemented by checking the ownership of the
-# queried unit. Users that belong to the same project can query the units belong
+# queried unit. Users that belong to the same project can query the units belonging
 # to that project. 
 # 
 # For example, if there is a unit U that belongs to User A and 
-# Project P. Any user that belongs to same project P can query for the metrics of unit U
+# Project P, any user that belongs to the same project P can query for the metrics of unit U,
 # but not users from other projects.
 #
 ceems_api_server:
-  # The DB contains the information of user and projet units and LB will verify
-  # if user/project is the owner of the uuid under request to decide whether to
-  # proxy request to backend or not.
+  # The database contains the information of user and project units, and the LB will verify
+  # if the user/project is the owner of the UUID under request to decide whether to
+  # proxy the request to the backend or not.
   #
-  # To identify the current user, X-Grafana-User header will be used that Grafana
-  # is capable of sending to the datasource. Grafana essenatially adds this header
-  # on the backend server and hence it is not possible for the users to spoof this 
+  # To identify the current user, the X-Grafana-User header will be used that Grafana
+  # is capable of sending to the datasource. Grafana essentially adds this header
+  # on the backend server, and hence it is not possible for the users to spoof this 
   # header from the browser. 
   # In order to enable this feature, it is essential to set `send_user_header = true`
-  # in Grafana config file.
+  # in the Grafana configuration file.
   #
-  # If both CEEMS API and CEEMS LB is running on the same host, it is preferable to
-  # use the DB directly using `data.path` as DB query is way faster than a API request
+  # If both the CEEMS API and CEEMS LB are running on the same host, it is preferable to
+  # use the database directly using `data.path` as a database query is way faster than an API request.
   # If both apps are deployed on the same host, ensure that the user running `ceems_lb`
   # has permissions to open CEEMS API data files
   #
   data:
     [ <data_config> ]
 
-  # In the case where CEEMS API and ceems LB are deployed on different hosts, we can
-  # still perform access control using CEEMS API server by making a API request to
+  # In the case where the CEEMS API and CEEMS LB are deployed on different hosts, we can
+  # still perform access control using the CEEMS API server by making an API request to
   # check the ownership of the queried unit. This method should be only preferred when
-  # DB cannot be access directly as API request has additional latency than querying DB
+  # the database cannot be accessed directly as an API request has additional latency than querying the database
   # directly.
   #
-  # If both `data.path` and `web.url` are provided, DB will be preferred as it has lower
+  # If both `data.path` and `web.url` are provided, the database will be preferred as it has lower
   # latencies.
   #
   web:
@@ -718,27 +707,27 @@ ceems_api_server:
 
 ### `<backend_config>`
 
-A `backend_config` allows configuring backend TSDB servers for load balancer.
+A `backend_config` allows configuring backend TSDB servers for the load balancer.
 
 ```yaml
 # Identifier of the cluster
 #
-# This ID must match with the ones defined in `clusters` config. CEEMS API server
-# will tag each compute unit from that cluster with this ID and when verifying
-# for compute unit ownership, CEEMS LB will use the ID to query for the compute 
+# This ID must match with the ones defined in the `clusters` configuration. The CEEMS API server
+# will tag each compute unit from that cluster with this ID, and when verifying
+# for compute unit ownership, the CEEMS LB will use the ID to query for the compute 
 # units of that cluster.
 #
-# This identifier needs to be set as header value for `X-Ceems-Cluster-Id` for 
-# requests to CEEMS LB to target correct cluster. For instance there are two different 
-# clusters, say cluster-0 and cluster-1, that have different TSDBs configured. Using CEEMS 
+# This identifier needs to be set as the header value for `X-Ceems-Cluster-Id` for 
+# requests to the CEEMS LB to target the correct cluster. For instance, if there are two different 
+# clusters, say cluster-0 and cluster-1, that have different TSDBs configured, using the CEEMS 
 # LB we can load balance the traffic for these two clusters using a single CEEMS LB 
-# deployement. However, we need to tell CEEMS LB which cluster to target for the 
-# incoming traffic. This is done via header. 
+# deployment. However, we need to tell the CEEMS LB which cluster to target for the 
+# incoming traffic. This is done via the header. 
 #
 # The TSDBs running in `cluster-0` must be configured on Grafana to send a header
-# value `X-Ceems-Cluster-Id` to `cluster-0` in each request. CEEMS LB will inspect
-# this header value and proxies the request to correct TSDB in `cluster-0` based
-# on chosen LB strategy.
+# value `X-Ceems-Cluster-Id` to `cluster-0` in each request. The CEEMS LB will inspect
+# this header value and proxy the request to the correct TSDB in `cluster-0` based
+# on the chosen LB strategy.
 #
 id: <idname>
 
@@ -765,16 +754,16 @@ A `server_config` contains TSDB/Pyroscope server configuration.
 web: <web_client_config>
 
 # A list of labels that must be filtered before proxying
-# response back to the client.
+# the response back to the client.
 #
-# This is useful for Openstack and/or k8s case when clients should not
-# be able to retrieve compute node or hypervisor related information like
+# This is useful for OpenStack and/or k8s cases when clients should not
+# be able to retrieve compute node or hypervisor-related information like
 # node address, node name, etc.
 #
 # All the labels listed here will be filtered from the response before sending
 # it to the clients.
 #
-# IMPORTANT: Currently `filter_labels` is only supported for TSDB backend type.
+# IMPORTANT: Currently, `filter_labels` is only supported for the TSDB backend type.
 #
 filter_labels: 
   [ - <string> ]
@@ -782,67 +771,67 @@ filter_labels:
 
 ## `<cacct>`
 
-The following shows the reference for CEEMS `cacct` client tool.
+The following shows the reference for the CEEMS `cacct` client tool.
 A valid sample configuration file can be found in the
-[repo](https://github.com/mahendrapaipuri/ceems/blob/main/build/config/cacct/cacct.yml).
+[repository](https://github.com/mahendrapaipuri/ceems/blob/main/build/config/cacct/cacct.yml).
 
 ```yaml
 # Configuration file to configure cacct
 #
-# This config file has following sections:
-#  - `ceems_api_server`: Client configuration of CEEMS API server
-#  - `tsdb`: Client configuration of TSDB
+# This config file has the following sections:
+#  - `ceems_api_server`: Client configuration of the CEEMS API server
+#  - `tsdb`: Client configuration of the TSDB
 #
-# On multi tenant systems like HPC platforms, this configuration file
-# must be protected as it contains the secrets of CEEMS API server and
+# On multi-tenant systems like HPC platforms, this configuration file
+# must be protected as it contains the secrets of the CEEMS API server and
 # Prometheus.
-# We recommend to use either `setuid` or `setgid` sticky bits to protect
-# the config file. Use a system user as owner/group of `cacct` binary
-# and the same user must own the config file. And add sticky bit to
-# `cacct` binary so that it can read the configuration file. However,
+# We recommend using either `setuid` or `setgid` sticky bits to protect
+# the config file. Use a system user as the owner/group of the `cacct` binary
+# and the same user must own the config file. And add a sticky bit to
+# the `cacct` binary so that it can read the configuration file. However,
 # the regular user that is executing the `cacct` binary will not be able
 # to read the config file.
 #
 ---
-# Configuration of CEEMS API server
+# Configuration of the CEEMS API server
 #
 ceems_api_server:
-  # The same cluster ID used in CEEMS API server's configuration.
+  # The same cluster ID used in the CEEMS API server's configuration.
   # If not configured, results from all available clusters in the
-  # DB will be returned for a given user.
+  # database will be returned for a given user.
   #
   [ cluster_id: <idname> ]
 
-  # Header name that is used to identify current user. This
-  # can be configured using CEEMS API server's CLI flags.
+  # Header name that is used to identify the current user. This
+  # can be configured using the CEEMS API server's CLI flags.
   # 
   # Default: `X-Grafana-User`
   #
   [ user_header_name: <string> | default = X-Grafana-User ]
 
-  # HTTP client configuration of CEEMS API server
+  # HTTP client configuration of the CEEMS API server
   #
   web: <web_client_config>
 
-# Configuration of TSDB server
+# Configuration of the TSDB server
 #
 tsdb:
-  # HTTP client configuration of TSDB
+  # HTTP client configuration of the TSDB
   #
   web: <web_client_config>
 
   # To dump the time series data for each metric, this section must be configured.
-  # The key name is the name of the metric and value is the PromQL query to get
-  # time series data. The placeholder `%s` will be replaced by list of job IDs delimited
-  # by `|` which is the syntax expected by TSDB server.
+  # The key name is the name of the metric, and the value is the PromQL query to get
+  # time series data. The placeholder `%s` will be replaced by a list of job IDs delimited
+  # by `|`, which is the syntax expected by the TSDB server.
   #
-  # If the TSDB server has been configured with the recording rules generated by `ceems_tool`
+  # If the TSDB server has been configured with the recording rules generated by `ceems_tool`,
   # the following queries should work out-of-the-box.
   #
-  # # CPU utilisation
+  # # CPU utilization
   # cpu_usage: uuid:ceems_cpu_usage:ratio_irate{uuid=~"%s"}
 
-  # # CPU Memory utilisation
+  # # CPU Memory utilization
   # cpu_mem_usage: uuid:ceems_cpu_memory_usage:ratio{uuid=~"%s"}
     
   # # Host power usage in Watts
@@ -1006,18 +995,18 @@ A `tls_config` allows configuring TLS connections.
 
 ## `<http_headers_config>`
 
-A `http_headers_config` allows configuring HTTP headers in requests.
+An `http_headers_config` allows configuring HTTP headers in requests.
 
 ```yaml
-# Authentication related headers may be configured in this section. Header name
-# must be configured as key and header value supports three different types of 
-# headers: values, secrets and files.
+# Authentication-related headers may be configured in this section. The header name
+# must be configured as a key, and the header value supports three different types of 
+# headers: values, secrets, and files.
 #
-# The difference between values and secrets is that secret will be redacted
-# in server logs where as values will be emitted in the logs.
+# The difference between values and secrets is that secrets will be redacted
+# in server logs, whereas values will be emitted in the logs.
 #
 # Values are regular headers with values, secrets are headers that pass secret
-# information like tokens and files pass the file content in the headers.
+# information like tokens, and files pass the file content in the headers.
 #
 # Example:
 # http_headers:
@@ -1036,4 +1025,5 @@ A `http_headers_config` allows configuring HTTP headers in requests.
       [- <secret> ... ]
     files:
       [- <filename> ... ] ... ]
+
 ```

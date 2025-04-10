@@ -4,44 +4,44 @@ sidebar_position: 1
 
 # CEEMS Exporter
 
-## Basic usage
+## Basic Usage
 
 :::important[IMPORTANT]
 
-Currently CEEMS exporter supports exporting SLURM job and Openstack VM metrics.
-Adding support for k8s is in next milestone.
+Currently, the CEEMS exporter supports exporting SLURM job and OpenStack VM metrics.
+Support for Kubernetes is planned for the next milestone.
 
 :::
 
-To run exporter with default enabled collectors, use the following command:
+To run the exporter with the default enabled collectors, use the following command:
 
 ```bash
 ceems_exporter 
 ```
 
-List of collectors that are enabled by default are:
+The following collectors are enabled by default:
 
-- `cpu`: Node level CPU stats
-- `memory`: Node level memory stats
+- `cpu`: Node-level CPU statistics
+- `memory`: Node-level memory statistics
 - `rapl`: RAPL energy counters
 
-By default CEEMS exporter exposes metrics on all interfaces, port `9010` and
-at `/metrics` endpoint. This can be changed by setting `--web.listen-address` CLI flag
+By default, the CEEMS exporter exposes metrics on all interfaces, port `9010`, and
+at the `/metrics` endpoint. This can be changed by setting the `--web.listen-address` CLI flag:
 
 ```bash
 ceems_exporter --web.listen-address="localhost:8010"
 ```
 
-Above command will run exporter only on `localhost` and on port `8010`.
+The above command will run the exporter only on `localhost` and port `8010`.
 
 :::tip[TIP]
 
-All the available command line options are listed in
-[CEEMS Exporter CLI docs](../cli/ceems-exporter.md).
+All available command-line options are listed in the
+[CEEMS Exporter CLI documentation](../cli/ceems-exporter.md).
 
 :::
 
-In order to enable SLURM collector, we need to add the following CLI flag
+To enable the SLURM collector, add the following CLI flag:
 
 ```bash
 ceems_exporter --collector.slurm
@@ -50,42 +50,39 @@ ceems_exporter --collector.slurm
 :::important[IMPORTANT]
 
 Starting from `v0.3.0`, there is no need to configure the GPU type. The exporter will
-automatically detect the supported GPU types: NVIDIA and AMD.
+automatically detect supported GPU types: NVIDIA and AMD.
 
 :::
 
-In order to disable default collectors, we need to add `no` prefix to the collector flag.
-The following command will disable IPMI and RAPL collectors:
+To disable default collectors, add the `no` prefix to the collector flag.
+The following command will disable the IPMI and RAPL collectors:
 
 ```bash
 ceems_exporter --no-collector.rapl
 ```
 
-By default no authentication is imposed on the exporter web server. In production this
-is no advisable and it is possible to add basic auth and TLS to the exporter using
-a web configuration file. More details on how to setup web configuration is discussed
-in [Web configuration](../configuration/basic-auth.md) section. This file can be
-passed to exporter as a CLI argument as follows:
+By default, no authentication is imposed on the exporter web server. In production, this
+is not advisable, and it is possible to add basic authentication and TLS to the exporter using a web configuration file. More details on how to set up web configuration are discussed in the [Web Configuration](../configuration/basic-auth.md) section. This file can be passed to the exporter as a CLI argument as follows:
 
 ```bash
 ceems_exporter --web.config.file=/path/to/web/config/file
 ```
 
-The basic auth password is hashed inside the web configuration file just like in
-`/etc/passwd` file and hence, the chances of password leaks are minimal.
+The basic authentication password is hashed inside the web configuration file, similar to
+the `/etc/passwd` file, and therefore, the chances of password leaks are minimal.
 
 :::important[IMPORTANT]
 
-In all the cases, it is important that either exporter binary or exporter process must
-have enough privileges to be able to export all the metrics. More info on the privileges
-necessary for the exporter are discussed in [Configuration](../configuration/ceems-exporter.md)
-section where as how to set privileges are briefed in [Security](../configuration/security.md)
+In all cases, it is important that either the exporter binary or the exporter process must
+have sufficient privileges to export all metrics. More information about the privileges
+required for the exporter is discussed in the [Configuration](../configuration/ceems-exporter.md)
+section, while how to set privileges is briefed in the [Security](../configuration/security.md)
 section.
 
 :::
 
-Once the exporter is running, by making a request to `/metrics` endpoint will give
-following output:
+Once the exporter is running, making a request to the `/metrics` endpoint will provide
+the following output:
 
 ```bash
 # HELP ceems_compute_unit_cpu_psi_seconds Total CPU PSI in seconds

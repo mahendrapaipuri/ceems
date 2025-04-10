@@ -13,11 +13,11 @@ TODO
 CEEMS leverages [dcgm-exporter](https://github.com/NVIDIA/dcgm-exporter) and
 [amd-smi-exporter](https://github.com/amd/amd_smi_exporter) to get power
 consumption of GPUs. When the resource manager uses full physical GPU, estimating
-the power consumption of each compute unit is straight-forward as CEEMS exporter
+the power consumption of each compute unit is straightforward as CEEMS exporter
 already exports a metric that maps the compute unit ID to GPU ordinal. However,
-NVIDIA GPUs support sharing of one physical GPU amongst different compute units
+NVIDIA GPUs support sharing of one physical GPU among different compute units
 using Multi Instance GPU (MIG) and GRID vGPU strategies. Currently, `dcgm-exporter`
-does not estimate power consumption of each MIG instance or vGPU. Thus, CEEMS uses
+does not estimate power consumption of each MIG instance or vGPU. Thus, CEEMS uses the
 following approximation to estimate power consumption of shared GPU instances.
 
 ### MIG
@@ -50,7 +50,7 @@ follows:
 
 - `1g.5gb`: 140 * (1/7) = 20 W
 - `2g.10gb`: 140 * (2/7) = 40 W
-- `4g.20gb`: 140 * (4/7) = 40 W
+- `4g.20gb`: 140 * (4/7) = 80 W
 
 The exporter will export the coefficient for each MIG instance which can be used along with
 power consumption metric of `dcgm-exporter` to estimate power consumption of individual MIG
@@ -58,7 +58,7 @@ instances.
 
 ### vGPU
 
-In the case of Libvirt, besides MIG it supports GRID vGPU time sharing. Following scenarios
+In the case of Libvirt, besides MIG it supports GRID vGPU time sharing. The following scenarios
 are possible when GPUs are present on the compute node:
 
 - PCI pass through of NVIDIA and AMD GPUs to the guest VMs
