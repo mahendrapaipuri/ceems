@@ -41,6 +41,7 @@ type redfishConfig struct {
 		Password     string `yaml:"password"`
 		InSecure     bool   `yaml:"insecure_skip_verify"`
 		SessionToken bool   `yaml:"use_session_token"`
+		Timeout      int64  `yaml:"timeout"`
 	} `yaml:"redfish_web_config"`
 }
 
@@ -160,11 +161,14 @@ func NewRedfishCollector(logger *slog.Logger) (Collector, error) {
 		return nil, fmt.Errorf("failed to create a HTTP client for Redfish: %w", err)
 	}
 
-	// Ensure to set a timeout here to not to block redfish collector whole
-	// exporter. We set 4 seconds as usually 5 seconds is used as scrape
-	// timeout
+	// Set a timeout here to not to block redfish collector whole
+	// exporter. If no timeout is provided use default value of 5 seconds
 	// Good ref: https://stackoverflow.com/a/72358623
-	httpClient.Timeout = 4 * time.Second
+	if cfg.Web.Timeout <= 0 {
+		cfg.Web.Timeout = 5000
+	}
+
+	httpClient.Timeout = time.Duration(cfg.Web.Timeout * int64(time.Millisecond))
 
 	// Create a redfish client
 	config := gofish.ClientConfig{

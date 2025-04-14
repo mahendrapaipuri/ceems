@@ -388,6 +388,17 @@ redfish_web_config:
   # is more performant than making requests with username/password
   #
   use_session_token: true
+
+  # HTTP timeout for Redfish API server in milliseconds.
+  #
+  # Use a timeout based on the responsiveness of your Redfish clients. ALWAYS use a 
+  # timeout that is smaller than the scrape request timeout. This ensures that the
+  # whole scrapped will not be timed out when the redfish collector takes too long
+  # respond.
+  #
+  # If no timeout has been explicitly configured, a value of 5000 milliseconds is used.
+  #
+  timeout: 5000
 ```
 
 :::important[IMPORTANT]
