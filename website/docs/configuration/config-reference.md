@@ -33,7 +33,7 @@ The other placeholders are specified separately.
 
 ## `<ceems_api_server>`
 
-The following shows the reference for the CEEMS API server configuration. A valid sample configuration file can be found in the [repository](https://github.com/mahendrapaipuri/ceems/blob/main/build/config/ceems_api_server/ceems_api_server.yml).
+The following shows the reference for the CEEMS API server configuration. A valid sample configuration file can be found in the [repository](https://github.com/@ceemsOrg@/@ceemsRepo@/blob/main/build/config/ceems_api_server/ceems_api_server.yml).
 
 ```yaml
 # Configuration file to configure CEEMS API server
@@ -306,7 +306,7 @@ updaters:
 # if CLI utilities like `sacct` exist on `PATH` and if found, will use them.
 #
 # Systemd Unit File:
-# https://github.com/mahendrapaipuri/ceems/blob/main/build/package/ceems_api_server/ceems_api_server.service
+# https://github.com/@ceemsOrg@/@ceemsRepo@/blob/main/build/package/ceems_api_server/ceems_api_server.service
 #
 cli:
   # Path to the binaries of the CLI utilities.
@@ -630,7 +630,7 @@ total_egress_stats:
 
 The following shows the reference for CEEMS load balancer config. A valid sample
 configuration file can be found in the
-[repository](https://github.com/mahendrapaipuri/ceems/blob/main/build/config/ceems_lb/ceems_lb.yml).
+[repository](https://github.com/@ceemsOrg@/@ceemsRepo@/blob/main/build/config/ceems_lb/ceems_lb.yml).
 
 ```yaml
 # Configuration file to configure the CEEMS Load Balancer
@@ -773,7 +773,7 @@ filter_labels:
 
 The following shows the reference for the CEEMS `cacct` client tool.
 A valid sample configuration file can be found in the
-[repository](https://github.com/mahendrapaipuri/ceems/blob/main/build/config/cacct/cacct.yml).
+[repository](https://github.com/@ceemsOrg@/@ceemsRepo@/blob/main/build/config/cacct/cacct.yml).
 
 ```yaml
 # Configuration file to configure cacct

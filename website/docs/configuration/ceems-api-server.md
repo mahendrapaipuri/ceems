@@ -22,7 +22,7 @@ updaters: <UPDATERS CONFIG>
 
 A complete reference for the CEEMS API server configuration can be found in the [Reference](./config-reference.md)
 section. A valid sample configuration
-file can be found in the [repository](https://github.com/mahendrapaipuri/ceems/blob/main/build/config/ceems_api_server/ceems_api_server.yml)
+file can be found in the [repository](https://github.com/@ceemsOrg@/@ceemsRepo@/blob/main/build/config/ceems_api_server/ceems_api_server.yml)
 
 ## CEEMS API Server Configuration
 
@@ -329,7 +329,7 @@ section.
 - `updater`: Name of the updater. Currently, only `tsdb` is allowed.
 - `web`: Web client configuration of the updater server.
 - `extra_config`: The `extra_config` allows to further configure the TSDB.
-  - `extra_config.cutoff_duration`: The time series data of compute units that have 
+  - `extra_config.cutoff_duration`: The time series data of compute units that have
     a total elapsed time less than this period will be marked as ignored in the CEEMS API server database.
   - `extra_config.delete_ignored`: The compute units' labels that are marked as ignored
     based on `extra_config.cutoff_duration` will be purged from the TSDB to decrease

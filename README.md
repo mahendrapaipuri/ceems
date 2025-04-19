@@ -172,7 +172,7 @@ improvement.
 ## 🙏 Acknowledgements
 
 The demo instance has been deployed on the [CROCC](https://drocc.fr/crocc/)
-which was kindly sponsored by [ISDM MESO](https://isdm.umontpellier.fr/mesolr/)
+which was kindly sponsored by [ISDM MESO](https://isdm.umontpellier.fr/mesolr)
 in Montpellier, France.
 
 ## ⭐️ Project assistance

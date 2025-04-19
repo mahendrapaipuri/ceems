@@ -24,7 +24,7 @@ clusters: <CLUSTERS CONFIG>
 
 The CEEMS LB uses the same configuration sections for `ceems_api_server` and `clusters`, so it is **possible to merge config files** of the CEEMS API server and CEEMS LB. Each component will read the necessary configuration from the same file.
 
-A valid sample configuration file can be found in the [repository](https://github.com/mahendrapaipuri/ceems/blob/main/build/config/ceems_lb/ceems_lb.yml).
+A valid sample configuration file can be found in the [repository](https://github.com/@ceemsOrg@/@ceemsRepo@/blob/main/build/config/ceems_lb/ceems_lb.yml).
 
 A sample CEEMS LB config file is shown below:
 

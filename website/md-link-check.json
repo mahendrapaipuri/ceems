@@ -8,9 +8,6 @@
       "pattern": "https://www.intel.com/content/dam/www/public/us/en/documents/technical-specifications/dcmi-v1-5-rev-spec.pdf"
     },
     {
-      "pattern": "https://github.com/mahendrapaipuri/ceems/tree/main/build/package"
-    },
-    {
       "pattern": "https://www.rte-france.com/en/eco2mix/co2-emissions"
     },
     {
@@ -23,7 +20,7 @@
       "pattern": "https://cuterwrite.top/en/p/rdma-element/"
     },
     {
-      "pattern": "https://github.com/mahendrapaipuri/ceems/blob/main/build/config/cacct/cacct.yml"
+      "pattern": "https://isdm.umontpellier.fr/mesolr"
     }
   ],
   "replacementPatterns": [
@@ -34,6 +31,16 @@
     {
       "pattern": "%20",
       "replacement": "-",
+      "global": true
+    },
+    {
+      "pattern": "@ceemsOrg@",
+      "replacement": "mahendrapaipuri",
+      "global": true
+    },
+    {
+      "pattern": "@ceemsRepo@",
+      "replacement": "ceems",
       "global": true
     }
   ],

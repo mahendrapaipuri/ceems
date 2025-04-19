@@ -63,7 +63,7 @@ exit 0
 
 At the end of each job, we must remove these files from `/run` file system to avoid
 accumulation of these files. This can be configured using epilog scrips and sample
-scripts can be found in the [repo](https://github.com/mahendrapaipuri/ceems/tree/main/etc/slurm/epilog.d).
+scripts can be found in the [repo](https://github.com/@ceemsOrg@/@ceemsRepo@/tree/main/etc/slurm/epilog.d).
 These prolog and epilog scripts must be configured to run at the start and end of each
 job and operators can consult [SLURM docs](https://slurm.schedmd.com/prolog_epilog.html)
 on more details configuring epilog and prolog scripts.
@@ -611,7 +611,7 @@ the targets from this component using the following config:
 :::note[NOTE]
 
 More production-ready configuration files for Grafana Alloy and Grafana Pyroscope
-are available in the [repository](https://github.com/mahendrapaipuri/ceems/tree/main/etc).
+are available in the [repository](https://github.com/@ceemsOrg@/@ceemsRepo@/tree/main/etc).
 
 :::
 

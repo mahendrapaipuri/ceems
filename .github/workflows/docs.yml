@@ -10,6 +10,10 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Once the release has been published trigger the workflow
+  # to update version numbers in docs
+  release:
+    types: [published]
 
 permissions:
   # All nested workflows will inherit these permissions and so no need to declare

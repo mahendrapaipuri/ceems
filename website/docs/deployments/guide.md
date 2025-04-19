@@ -93,7 +93,7 @@ If local repositories are not maintained, it is possible to download the package
 install from the package files. The following packages and/or repositories must be added:
 
 - CEEMS Exporter, API Server and Load Balancer RPM and DEB files can be
-downloaded from [GH Releases](https://github.com/mahendrapaipuri/ceems/releases/latest).
+downloaded from [GH Releases](https://github.com/@ceemsOrg@/@ceemsRepo@/releases/latest).
 - When NVIDIA GPUs are present on the cluster [CUDA Repos](https://developer.download.nvidia.com/compute/cuda/repos/)
 must be added.
 
@@ -283,15 +283,15 @@ systemctl start ceems_exporter.service
 ```
 
 For the case of containerized deployments using Podman Quadlets, sample
-[systemd Quadlet files](https://github.com/mahendrapaipuri/ceems/tree/main/etc/containers/systemd) are provided
+[systemd Quadlet files](https://github.com/@ceemsOrg@/@ceemsRepo@/tree/main/etc/containers/systemd) are provided
 in the repository. Steps to follow to deploy Quadlets:
 
-- Copy [`ceems_exporter.network`](https://github.com/mahendrapaipuri/ceems/blob/main/etc/containers/systemd/ceems_exporter.network)
-and [`ceems_exporter.container`](https://github.com/mahendrapaipuri/ceems/blob/main/etc/containers/systemd/ceems_exporter.container) files
+- Copy [`ceems_exporter.network`](https://github.com/@ceemsOrg@/@ceemsRepo@/blob/main/etc/containers/systemd/ceems_exporter.network)
+and [`ceems_exporter.container`](https://github.com/@ceemsOrg@/@ceemsRepo@/blob/main/etc/containers/systemd/ceems_exporter.container) files
 to `/etc/containers/systemd` folder.
 - Create `/etc/ceems_exporter` folder on the host and copy the generated web configuration file
 to `/etc/ceems_exporter/web-config.yml`.
-- Modify the `Exec` directive in [`ceems_exporter.container`](https://github.com/mahendrapaipuri/ceems/blob/main/etc/containers/systemd/ceems_exporter.container)
+- Modify the `Exec` directive in [`ceems_exporter.container`](https://github.com/@ceemsOrg@/@ceemsRepo@/blob/main/etc/containers/systemd/ceems_exporter.container)
 file to add relevant CLI options.
 - Execute `systemctl daemon-reload` which should generate necessary service files.
 - Finally launch the service using `systemctl start ceems_exporter.service`.
@@ -301,7 +301,7 @@ file to add relevant CLI options.
 DCGM exporter needs a CSV file that lists all the metrics that will be monitored. `datacenter-gpu-manager-exporter`
 package installs a default file at `/etc/dcgm-exporter/default-counters.csv` which enables important metrics. Replace
 the contents of `default-counters.csv` file with the one
-[provided in the CEEMS repo](https://github.com/mahendrapaipuri/ceems/blob/main/etc/nvidia-dcgm-exporter/counters.csv),
+[provided in the CEEMS repo](https://github.com/@ceemsOrg@/@ceemsRepo@/blob/main/etc/nvidia-dcgm-exporter/counters.csv),
 which enables more profiling metrics than the default one.
 
 By default, DCGM exporter runs without any authentication and it is desirable to run it behind basic auth. DCGM exporter
@@ -346,13 +346,13 @@ must be configured and more details can be found in the
 :::
 
 For the case of containerized deployments using Podman Quadlets, sample
-[systemd Quadlet files](https://github.com/mahendrapaipuri/ceems/tree/main/etc/containers/systemd) are provided
+[systemd Quadlet files](https://github.com/@ceemsOrg@/@ceemsRepo@/tree/main/etc/containers/systemd) are provided
 in the repository. Steps to follow to deploy Quadlets:
 
-- Copy [`nvidia-dcgm-exporter.container`](https://github.com/mahendrapaipuri/ceems/blob/main/etc/containers/systemd/nvidia-dcgm-exporter.container)
+- Copy [`nvidia-dcgm-exporter.container`](https://github.com/@ceemsOrg@/@ceemsRepo@/blob/main/etc/containers/systemd/nvidia-dcgm-exporter.container)
 file to `/etc/containers/systemd` folder.
 - Create `/etc/dcgm-exporter` folder on the host and copy the generated web configuration file
-to `/etc/dcgm-exporter/web-config.yml` and [counters.csv](https://github.com/mahendrapaipuri/ceems/blob/main/etc/nvidia-dcgm-exporter/counters.csv)
+to `/etc/dcgm-exporter/web-config.yml` and [counters.csv](https://github.com/@ceemsOrg@/@ceemsRepo@/blob/main/etc/nvidia-dcgm-exporter/counters.csv)
 to `/etc/dcgm-exporter/default-counters.csv`.
 - Execute `systemctl daemon-reload` which should generate necessary service files.
 - Finally launch the service using `systemctl start nvidia-dcgm-exporter.service`.
@@ -669,7 +669,7 @@ it is recommended to use version `>= 3.x`.
 
 We use Grafana [provisioning](https://grafana.com/docs/grafana/latest/administration/provisioning/)
 to define the datasources. A sample
-[provisioned datasources](https://github.com/mahendrapaipuri/ceems/blob/main/etc/grafana/provisioning/datasources/ceems.yml)
+[provisioned datasources](https://github.com/@ceemsOrg@/@ceemsRepo@/blob/main/etc/grafana/provisioning/datasources/ceems.yml)
 file is provided in the repository. For the current scenario, the provisioning file would be as follows:
 
 ```yml
@@ -719,9 +719,9 @@ Now restarting Grafana must include all the newly provisioned datasources.
 
 The next step is to setup dashboards to visualize the metrics of compute units.
 This can be done using Grafana provisioning as well. A reference set of dashboards
-is provided in the [repository](https://github.com/mahendrapaipuri/ceems/tree/main/thirdparty/grafana).
+is provided in the [repository](https://github.com/@ceemsOrg@/@ceemsRepo@/tree/main/thirdparty/grafana).
 More details on the dashboards are provided in the
-[README](https://github.com/mahendrapaipuri/ceems/blob/main/thirdparty/grafana/README.md).
+[README](https://github.com/@ceemsOrg@/@ceemsRepo@/blob/main/thirdparty/grafana/README.md).
 
 ## Optional Steps
 
@@ -771,7 +771,7 @@ can send profile data to Pyroscope. We deploy Pyroscope on the service node `ser
 </details>
 
 A basic configuration file is provided
-in the [repository](https://github.com/mahendrapaipuri/ceems/tree/main/etc/pyroscope)
+in the [repository](https://github.com/@ceemsOrg@/@ceemsRepo@/tree/main/etc/pyroscope)
 and it can be used as a good starting point. It must be installed at `/etc/pyroscope/config.yml`.
 More details on Pyroscope configuration can be
 found in the [documentation](https://grafana.com/docs/pyroscope/latest/configure-server/).
@@ -817,7 +817,7 @@ On the compute nodes, the following packages must be installed:
 </details>
 
 A sample configuration file is provided in the
-[repository](https://github.com/mahendrapaipuri/ceems/blob/main/etc/alloy/config.alloy).
+[repository](https://github.com/@ceemsOrg@/@ceemsRepo@/blob/main/etc/alloy/config.alloy).
 Necessary placeholders on the sample config file must be replaced and the file
 must be installed at `/etc/alloy/config.alloy`.
 
@@ -1058,9 +1058,9 @@ datasources:
 After replacing the placeholders, this file must be installed at `/etc/grafana/provisioning/datasources`
 folder and restart the Grafana server.
 
-Finally, while importing [dashboards](https://github.com/mahendrapaipuri/ceems/tree/main/thirdparty/grafana),
-the datasources for [SLURM Single Job Metrics](https://github.com/mahendrapaipuri/ceems/blob/main/thirdparty/grafana/dashboards/slurm/slurm-single-job-metrics.json)
-and for [Openstack Single VM Metrics](https://github.com/mahendrapaipuri/ceems/blob/main/thirdparty/grafana/dashboards/openstack/os-single-vm-metrics.json)
+Finally, while importing [dashboards](https://github.com/@ceemsOrg@/@ceemsRepo@/tree/main/thirdparty/grafana),
+the datasources for [SLURM Single Job Metrics](https://github.com/@ceemsOrg@/@ceemsRepo@/blob/main/thirdparty/grafana/dashboards/slurm/slurm-single-job-metrics.json)
+and for [Openstack Single VM Metrics](https://github.com/@ceemsOrg@/@ceemsRepo@/blob/main/thirdparty/grafana/dashboards/openstack/os-single-vm-metrics.json)
 must be configured as `ceems-lb-tsdb` and `ceems-lb-pyro` (only for SLURM). This ensures that the queries
 made by Grafana will be intercepted by CEEMS LB, enforce the access control and then decide whether to proxy
 request to backend or not.

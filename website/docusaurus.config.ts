@@ -1,17 +1,37 @@
+import { exec } from  "child_process";
 import { themes as prismThemes } from "prism-react-renderer";
 import type { Config } from "@docusaurus/types";
 import type * as Preset from "@docusaurus/preset-classic";
 import type * as OpenApiPlugin from "docusaurus-plugin-openapi-docs";
 import { myCustomApiMdGenerator } from "./customMdGenerators";
 
+// Constants
+const organizationName = "mahendrapaipuri";
+const projectName = "ceems";
+
+// Global variables that will be replaced
+// in markdown files
+let globalVars = {
+  goVersion: "1.23.x", // Everytime Go version is updated, this needs to be updated as well
+  ceemsVersion: "",
+  ceemsOrg: organizationName,
+  ceemsRepo: projectName,
+}
+
 // Remove API sidebar items
 function removeApiSidebarItems(items) {
   return items.filter(item => !(item.label === 'api'));
 }
 
-// Constants
-const organizationName = "mahendrapaipuri";
-const projectName = "ceems";
+// Setup versions
+exec('git tag --sort=committerdate | tail -1', (error, stdout) => {
+  if (error) {
+    console.error(`git tag exec error: ${error}`);
+    return;
+  }
+
+  globalVars.ceemsVersion = stdout.trim().split("v")[1];
+});
 
 const config: Config = {
   title: "Compute Energy & Emissions Monitoring Stack (CEEMS)",
@@ -92,6 +112,22 @@ const config: Config = {
       },
     ]
   ],
+
+  markdown: {
+    preprocessor: ({ filePath, fileContent }) => {
+      let content = fileContent;
+
+      // Replace globalVars in files
+      for (const [key, value] of Object.entries(globalVars)) {
+        content = content.replaceAll(
+          "@" + key + "@",
+          value
+        );
+      }
+
+      return content;
+    },
+  },
 
   themes: ["docusaurus-theme-openapi-docs"], // export theme components
 

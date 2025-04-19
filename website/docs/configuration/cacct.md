@@ -101,7 +101,7 @@ There is no risk of injection here, as the UUID values provided by the end-user 
 
 :::
 
-A complete reference can be found in the [Reference](./config-reference.md) section. A valid sample configuration file can be found in the [repository](https://github.com/mahendrapaipuri/ceems/blob/main/build/config/cacct/cacct.yml).
+A complete reference can be found in the [Reference](./config-reference.md) section. A valid sample configuration file can be found in the [repository](https://github.com/@ceemsOrg@/@ceemsRepo@/blob/main/build/config/cacct/cacct.yml).
 
 ## Securing configuration file
 
@@ -123,4 +123,4 @@ chmod o-rwx /etc/ceems/config.yml
 
 Now, every time `cacct` is invoked, it runs as the `ceems` user/group instead of the user who invoked it. Since the same user/group owns `/etc/ceems/config.yml`, `cacct` can read the file. Simultaneously, the user who invoked the `cacct` binary cannot access `/etc/ceems/config.yml` because their permissions have been revoked.
 
-When `cacct` is installed using the RPM/DEB file provided by the [CEEMS Releases](https://github.com/mahendrapaipuri/ceems/releases), `cacct` is already installed with the sticky bit set. Operators only need to populate the configuration file at `/etc/ceems/config.yml`.
+When `cacct` is installed using the RPM/DEB file provided by the [CEEMS Releases](https://github.com/@ceemsOrg@/@ceemsRepo@/releases), `cacct` is already installed with the sticky bit set. Operators only need to populate the configuration file at `/etc/ceems/config.yml`.

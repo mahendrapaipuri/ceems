@@ -5,14 +5,14 @@ sidebar_position: 2
 # Installing from Pre-compiled Binaries
 
 Pre-compiled binaries for various architectures are distributed on the
-[GitHub releases page](https://github.com/mahendrapaipuri/ceems/releases).
+[GitHub releases page](https://github.com/@ceemsOrg@/@ceemsRepo@/releases).
 
 ## Bash Script
 
 A bash script is provided to install the CEEMS components using a single command:
 
 ```bash
-curl -sfL https://raw.githubusercontent.com/mahendrapaipuri/ceems/refs/heads/main/scripts/install.sh | PREFIX=/usr/local bash -s
+curl -sfL https://raw.githubusercontent.com/@ceemsOrg@/@ceemsRepo@/refs/heads/main/scripts/install.sh | PREFIX=/usr/local bash -s
 ```
 
 The above command will install the latest version of all CEEMS components in
@@ -23,19 +23,26 @@ The above command will install the latest version of all CEEMS components in
 components delimited by spaces. For instance, if `ceems_api_server` and `ceems_lb` are
 needed, set `APPS="ceems_api_server ceems_lb"` in the installation command.
 
+For example, to install latest version of only `ceems_exporter`, the command will be:
+
+```bash
+curl -sfL https://raw.githubusercontent.com/@ceemsOrg@/@ceemsRepo@/refs/heads/main/scripts/install.sh | VERSION=@ceemsVersion@ APPS=ceems_exporter PREFIX=/usr/local bash -s
+```
+
 ## Go Install
 
-The CEEMS components can be installed using the `go install` command if Go version `1.21.x` or later is available on the host. For instance, the latest version of `ceems_exporter` can
+The CEEMS components can be installed using the `go install` command if Go version `@goVersion@` or later is available on the host. For instance, the latest version of `ceems_exporter` can
 be installed as follows:
 
 ```bash
-go install github.com/mahendrapaipuri/ceems/cmd/ceems_exporter@latest
+go install github.com/@ceemsOrg@/@ceemsRepo@/cmd/ceems_exporter@v@ceemsVersion@
 ```
 
 Similarly, to install `ceems_api_server` or `ceems_lb`, the command will be:
 
 ```bash
-go install github.com/mahendrapaipuri/ceems/cmd/{ceems_api_server,ceems_lb}@latest
+go install github.com/@ceemsOrg@/@ceemsRepo@/cmd/ceems_api_server@v@ceemsVersion@
+go install github.com/@ceemsOrg@/@ceemsRepo@/cmd/ceems_lb@v@ceemsVersion@
 ```
 
 ## Manual Install
@@ -43,8 +50,8 @@ go install github.com/mahendrapaipuri/ceems/cmd/{ceems_api_server,ceems_lb}@late
 The binaries can be manually downloaded and installed to the desired location.
 
 ```bash
-wget https://github.com/mahendrapaipuri/ceems/releases/download/v0.1.0/ceems-0.1.0.linux-amd64.tar.gz
+wget https://github.com/@ceemsOrg@/@ceemsRepo@/releases/download/v@ceemsVersion@/ceems-@ceemsVersion@.linux-amd64.tar.gz
 ```
 
-The above command will download version `0.1.0` of the CEEMS components, which can
+The above command will download version `@ceemsVersion@` of the CEEMS components, which can
 be extracted and installed to the desired location.

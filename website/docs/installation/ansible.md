@@ -4,8 +4,8 @@ sidebar_position: 5
 
 # Ansible
 
-CEEMS components can be installed and configured using Ansible. The roles are 
-published to [Ansible Galaxy](https://galaxy.ansible.com/ui/) under the collection 
+CEEMS components can be installed and configured using Ansible. The roles are
+published to [Ansible Galaxy](https://galaxy.ansible.com/ui/) under the collection
 [mahendrapaipuri/ansible](https://galaxy.ansible.com/ui/repo/published/mahendrapaipuri/ansible/).
 The collection can be installed using:
 
@@ -13,8 +13,8 @@ The collection can be installed using:
 ansible-galaxy collection install mahendrapaipuri.ansible
 ```
 
-Once the collection is installed, the roles can be used in the playbooks using 
-`mahendrapaipuri.ansible.ceems_<component>`. For instance, to install `ceems_api_server`, 
+Once the collection is installed, the roles can be used in the playbooks using
+`mahendrapaipuri.ansible.ceems_<component>`. For instance, to install `ceems_api_server`,
 use the role `mahendrapaipuri.ansible.ceems_api_server`.
 
 The documentation for each role can be found at the following links:

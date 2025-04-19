@@ -30,11 +30,15 @@ process.
 Effectively, it acts as an abstraction layer for different
 resource managers and is capable of storing data from different resource managers.
 The advantage of this approach is that it acts as a single point of data collection for
-different resource managers of a data center, and users will be able to consult their compute unit usage in a unified way.
+different resource managers of a data center, and users will be able to consult their
+compute unit usage in a unified way.
 
 :::note[NOTE]
 
-If usernames are identical across different resource managers (_i.e.,_ if a data center has SLURM and OpenStack clusters with user identities provided by the same Identity Provider (IDP)), operators can use a single CEEMS deployment with the same IDP. This allows exposing compute unit metrics from both SLURM and OpenStack clusters through the same Grafana instance with different dashboards.
+If usernames are identical across different resource managers (_i.e.,_ if a data center
+has SLURM and OpenStack clusters with user identities provided by the same Identity Provider (IDP)),
+operators can use a single CEEMS deployment with the same IDP. This allows exposing compute unit metrics
+from both SLURM and OpenStack clusters through the same Grafana instance with different dashboards.
 
 :::
 
@@ -53,7 +57,7 @@ energy, emissions, _etc_.
 When coupled with the
 [JSON API DataSource](https://grafana.github.io/grafana-json-datasource/installation/) or
 [Infinity DataSource](https://grafana.com/grafana/plugins/yesoreyeram-infinity-datasource/)
-of Grafana, we can list a user's compute units 
+of Grafana, we can list a user's compute units
 along with the metadata and aggregated metrics of each unit. The stored metadata in the
 CEEMS API server's DB will allow us to dynamically construct the URLs for the Grafana dashboards for
 each compute unit based on its start and end time.
@@ -68,7 +72,8 @@ Now that it is clear that CEEMS _can_ support different resource managers, it is
 to explain how CEEMS actually supports them. CEEMS has its own DB schema that stores
 compute unit metrics and metadata. Let's take metadata of each compute unit as an
 example. For example, SLURM exposes metadata of jobs using either the `sacct` command or
-SLURM REST API. OpenStack also provides this through Keystone and Nova API servers, as does Kubernetes through its API server. However, all these managers expose these metadata
+SLURM REST API. OpenStack also provides this through Keystone and Nova API servers, as does
+Kubernetes through its API server. However, all these managers expose these metadata
 in different ways, each having their own API spec.
 
 The CEEMS API server must take into account each resource manager to fetch compute unit
@@ -90,7 +95,8 @@ estimate aggregated metrics. As CEEMS ships an exporter that is capable of expor
 metrics to a Prometheus TSDB, a straightforward approach is to deploy the CEEMS exporter
 on compute nodes and query Prometheus to estimate aggregated metrics.
 
-This is done using a sub-component of the CEEMS API server called the updater. The updater's role is to update the compute units fetched by a given resource manager with their
+This is done using a sub-component of the CEEMS API server called the updater. The updater's role
+is to update the compute units fetched by a given resource manager with their
 aggregated metrics. Like in the case of the resource manager, the updater
 uses the factory design pattern and it is extensible. It is possible to use custom
 third-party tools to update the compute units with aggregated metrics.
@@ -101,7 +107,8 @@ metrics using the Prometheus TSDB server.
 ## Multi-Cluster Support
 
 A single CEEMS API server deployment must be able to fetch and serve aggregated metrics
-from multiple clusters, whether they use the same or different resource manager. This means a single CEEMS API server can store and serve metrics data
+from multiple clusters, whether they use the same or different resource manager. This means a single
+CEEMS API server can store and serve metrics data
 of multiple SLURM, OpenStack, and Kubernetes clusters.
 
 Similarly, whether each cluster uses its own dedicated TSDB or a shared

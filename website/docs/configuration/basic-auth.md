@@ -15,7 +15,7 @@ keep the components simple and maintainable, only basic authentication is suppor
 CEEMS uses the [Prometheus exporter toolkit](https://github.com/prometheus/exporter-toolkit)
 for basic authentication and TLS support. Basic auth can be configured using a configuration
 file that can be passed to each component using CLI arguments. A
-[sample configuration file](https://github.com/mahendrapaipuri/ceems/blob/main/build/config/common/web-config.yml)
+[sample configuration file](https://github.com/@ceemsOrg@/@ceemsRepo@/blob/main/build/config/common/web-config.yml)
 is provided in the repository for reference.
 
 :::tip[TIP]
@@ -63,7 +63,7 @@ tls_server_config:
 
 The files `server.crt` and `server.key` must exist in the same folder as the configuration
 file. Additionally, there are more advanced options available for TLS, which are explained
-in the [comments in the sample file](https://github.com/mahendrapaipuri/ceems/blob/main/build/config/common/web-config.yml).
+in the [comments in the sample file](https://github.com/@ceemsOrg@/@ceemsRepo@/blob/main/build/config/common/web-config.yml).
 
 ## Reference
 

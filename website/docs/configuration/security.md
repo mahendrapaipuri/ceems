@@ -62,7 +62,7 @@ ExecStart=/usr/local/bin/ceems_exporter --collector.slurm --collector.perf.hardw
 AmbientCapabilities=CAP_SYS_PTRACE CAP_DAC_READ_SEARCH CAP_DAC_OVERRIDE CAP_PERFMON CAP_BPF CAP_SYS_RESOURCE
 ```
 
-Note that this is a bare minimum service file and is only meant to demonstrate how to use `AmbientCapabilities`. Production-ready [service file examples](https://github.com/mahendrapaipuri/ceems/tree/main/build/package) are provided in the repository.
+Note that this is a bare minimum service file and is only meant to demonstrate how to use `AmbientCapabilities`. Production-ready [service file examples](https://github.com/@ceemsOrg@/@ceemsRepo@/tree/main/build/package) are provided in the repository.
 
 ## Containers
 
