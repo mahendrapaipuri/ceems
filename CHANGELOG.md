@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.2 / 2025-04-19
+
+- [FEAT] Make redfish timeout a configurable value [#342](https://github.com/mahendrapaipuri/ceems/pull/342) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [DOCS] docs: fix typos and improve consistency [#339](https://github.com/mahendrapaipuri/ceems/pull/339) ([@ncreddine](https://github.com/ncreddine))
+- [MAINT] Better usage of bpf LRU hash maps [#335](https://github.com/mahendrapaipuri/ceems/pull/335) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [MAINT] Bump dependencies [#331](https://github.com/mahendrapaipuri/ceems/pull/331), [#332](https://github.com/mahendrapaipuri/ceems/pull/332), [#334](https://github.com/mahendrapaipuri/ceems/pull/334), [#336](https://github.com/mahendrapaipuri/ceems/pull/336), [#337](https://github.com/mahendrapaipuri/ceems/pull/337), [#338](https://github.com/mahendrapaipuri/ceems/pull/338), [#340](https://github.com/mahendrapaipuri/ceems/pull/340), [#343](https://github.com/mahendrapaipuri/ceems/pull/343), [#344](https://github.com/mahendrapaipuri/ceems/pull/344) ([@dependabot](https://github.com/dependabot))
+
 ## 0.7.1 / 2025-03-25
 
 - [MAINT] Minor improvements in power usage collectors [#330](https://github.com/mahendrapaipuri/ceems/pull/330) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
