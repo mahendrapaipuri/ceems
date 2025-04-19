@@ -12,6 +12,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # We need to fetch tags to be able to update
+      # the templated version strings in docs
+      - name: Get tags
+        run: git fetch --tags origin
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
