@@ -1,6 +1,10 @@
 ---
 # Recording rules for AMD GPUs scrape job {{.GPUJob}}.
 #
+# These recording rules are used when AMD device metrics exporter is found
+# in Prometheus targets
+# https://instinct.docs.amd.com/projects/device-metrics-exporter
+#
 # These rules map the GPU usage to the compute unit `uuid` which gives
 # GPU metrics for each compute unit.
 #
@@ -14,25 +18,34 @@ groups:
       # GPU Usage (%) by compute unit
       - record: uuid:ceems_gpu_usage:ratio
         expr: |2
-            amd_gpu_use_percent{job="{{.GPUJob}}"}
+            gpu_gfx_activity{job="{{.GPUJob}}"}
             * on (index) group_right ()
             ceems_compute_unit_gpu_index_flag{job="{{.Job}}"}
 
       # GPU Memory Usage (%) by compute unit
       - record: uuid:ceems_gpu_memory_usage:ratio
         expr: |2
-          amd_gpu_memory_use_percent{job="{{.GPUJob}}"}
+          (
+              gpu_used_vram{job="{{.GPUJob}}"} * 100
+            /
+              gpu_total_vram{job="{{.GPUJob}}"}
+          )
           * on (index) group_right ()
           ceems_compute_unit_gpu_index_flag{job="{{.Job}}"}
       
       # Total power (Watts) consumed by the GPU by accounting Power Usage Effectiveness (PUE) value.
-      # AMD GPU power is in micro Watts and we need to convert it to Watts here
-      - record: dev:amd_gpu_power_watts:pue
-        expr: {{.PUE}} * amd_gpu_power{job="{{.GPUJob}}"} / 1e6
+      - record: dev:gpu_power_usage_watts:pue
+        expr: {{.PUE}} * gpu_power_usage{job="{{.GPUJob}}"}
 
       - record: uuid:ceems_gpu_power_watts:pue
         expr: |2
-          dev:amd_gpu_power_watts:pue{job="{{.GPUJob}}"}
+          (
+              ceems_compute_unit_gpu_sm_count{job="{{.Job}}"}
+            / on (index) group_left ()
+              (sum by (index) (ceems_compute_unit_gpu_sm_count{job="{{.Job}}"}) > 0)
+          )
+            * on (index) group_right()
+              dev:gpu_power_usage_watts:pue{job="{{.GPUJob}}"}
           * on (index) group_right()
           ceems_compute_unit_gpu_index_flag{job="{{.Job}}"}
           
@@ -45,7 +58,7 @@ groups:
       - record: uuid:ceems_gpu_emissions_g_s:pue
         expr: |2
           label_replace(
-              dev:amd_gpu_power_watts:pue{job="{{$.GPUJob}}"} / 3.6e+06
+              dev:gpu_power_usage_watts:pue{job="{{$.GPUJob}}"} / 3.6e+06
             * on (index) group_right ()
               ceems_compute_unit_gpu_index_flag{job="{{$.Job}}"},
               "provider",
@@ -71,7 +84,7 @@ groups:
       - record: uuid:ceems_gpu_emissions_g_s:pue
         expr: |2
           label_replace(
-              dev:amd_gpu_power_watts:pue{job="{{$.GPUJob}}"} / 3.6e+06
+              dev:gpu_power_usage_watts:pue{job="{{$.GPUJob}}"} / 3.6e+06
             * on (index) group_right ()
               ceems_compute_unit_gpu_index_flag{job="{{$.Job}}"},
               "provider",
@@ -92,16 +105,23 @@ groups:
     rules:
       # Average GPU Usage (%) for all hosts aggregated per Prometheus job
       - record: job:ceems_gpu_usage:avg
-        expr: avg by (job) (amd_gpu_use_percent{job="{{.GPUJob}}"})
+        expr: avg by (job) (gpu_gfx_activity{job="{{.GPUJob}}"})
 
       # Average GPU memory usage (%) for all hosts aggregated per Prometheus job
       - record: job:ceems_gpu_memory_usage:avg_ratio
-        expr: avg by (job) (amd_gpu_memory_use_percent{job="{{.GPUJob}}"})
+        expr: |2
+          avg by (job) (
+            (
+                gpu_used_vram{job="{{.GPUJob}}"} * 100
+              /
+                gpu_total_vram{job="{{.GPUJob}}"}
+            )
+          )
 
       # Total power usage (Watts) by GPUs on all hosts aggregated per Prometheus job
       # AMD GPU power is in micro Watts and we need to convert it to Watts here
       - record: job:ceems_gpu_power_watts:pue
-        expr: sum by (job)({{.PUE}} * amd_gpu_power{job="{{.GPUJob}}"} / 1e6)
+        expr: sum by (job)({{.PUE}} * gpu_power_usage{job="{{.GPUJob}}"} / 1e6)
 
 {{- $numproviders := len .Providers -}}
 {{- if gt $numproviders 0 }}

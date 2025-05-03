@@ -16,6 +16,7 @@ import (
 var gpuSeries = []string{
 	"DCGM_FI_DEV_POWER_USAGE_INSTANT",
 	"amd_gpu_power",
+	"gpu_power_usage",
 }
 
 // MetricRelabelConfig contains the Prometheus metric relabel config.
@@ -147,6 +148,35 @@ func CreatePromRelabelConfig(
 				},
 				{
 					Regex:  "gpu_memory_use_percent",
+					Action: "labeldrop",
+				},
+			}
+		case slices.Contains(jobSeries[job], model.LabelValue(gpuSeries[2])):
+			// Just like DCGM exporter, AMD device metrics exporter
+			// exports GPU index as gpu_id and GPU partition ID as
+			// gpu_partition_id. We will relabel them to match the
+			// CEEMS exporter
+			relabelConfigs = []MetricRelabelConfig{
+				{
+					SourceLabels: []string{"gpu_id"},
+					TargetLabel:  "index",
+					Regex:        "(.*)",
+					Replacement:  "$1",
+					Action:       "replace",
+				},
+				{
+					SourceLabels: []string{"gpu_partition_id"},
+					TargetLabel:  "gpuiid",
+					Regex:        "(.*)",
+					Replacement:  "$1",
+					Action:       "replace",
+				},
+				{
+					Regex:  "gpu_id",
+					Action: "labeldrop",
+				},
+				{
+					Regex:  "gpu_partition_id",
 					Action: "labeldrop",
 				},
 			}

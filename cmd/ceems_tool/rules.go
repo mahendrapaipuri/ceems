@@ -40,7 +40,9 @@ var (
 		"ceems_emissions_gCo2_kWh",
 		"DCGM_FI_DEV_POWER_USAGE_INSTANT",
 		"amd_gpu_power",
+		"gpu_power_usage", // AMD metrics device exporter
 		"ceems_compute_unit_gpu_index_flag",
+		"ceems_compute_unit_gpu_sm_count",
 	}
 
 	nvidiaProfSeriesNames = []string{
@@ -455,8 +457,16 @@ func jobSeriesMetaData(ctx context.Context, api v1.API, start time.Time, end tim
 			}
 		}
 
-		// Look for AMD GPU associations
+		// Look for AMD GPU associations with AMD SMI exporter
 		for _, gpuJob := range seriesJobs["amd_gpu_power"] {
+			// If job instances between CEEMS job and GPU job matches, we mark it as an association
+			if foundInstances := intersection(jobInstances[gpuJob], jobInstances[cpuJob]); len(foundInstances) > 0 {
+				gpuJobsMap[cpuJob] = gpuJob
+			}
+		}
+
+		// Look for AMD GPU associations with AMD device metrics exporter
+		for _, gpuJob := range seriesJobs["gpu_power_usage"] {
 			// If job instances between CEEMS job and GPU job matches, we mark it as an association
 			if foundInstances := intersection(jobInstances[gpuJob], jobInstances[cpuJob]); len(foundInstances) > 0 {
 				gpuJobsMap[cpuJob] = gpuJob
@@ -475,6 +485,9 @@ func newTemplate(outDir string) (*template.Template, error) {
 		"ToLower": strings.ToLower,
 		"Split": func(s, sep string) []string {
 			return strings.Split(s, sep)
+		},
+		"Contains": func(s model.LabelValues, e string) bool {
+			return slices.Contains(s, model.LabelValue(e))
 		},
 	}
 
@@ -529,10 +542,14 @@ func gpuData(
 
 		// For NVIDIA GPUs check if prof metrics are available
 		gpu.nvProfSeries = intersection(jobSeries[gpu.job], nvProfSeries)
+	case slices.Contains(jobSeries[gpu.job], "gpu_power_usage"):
+		gpu.powerSeries = "gpu_power_usage"
+		gpu.powerScaler = 1
+		gpu.templateFile = "gpu-amd-device-metrics.rules"
 	default:
 		gpu.powerSeries = "amd_gpu_power"
 		gpu.powerScaler = 1e6
-		gpu.templateFile = "gpu-amd.rules"
+		gpu.templateFile = "gpu-amd-smi.rules"
 	}
 
 	// If host power series is cray, we dont need to check if GPU power is in host power

@@ -1,5 +1,9 @@
 ---
-# Recording rules for NVIDIA GPUs scrape job {{.GPUJob}}.
+# Recording rules for AMD GPUs scrape job {{.GPUJob}}.
+#
+# These recording rules are used when AMD SMI exporter is found
+# in Prometheus targets
+# https://www.amd.com/en/developer/e-sms/amdsmi-library.html
 #
 # These rules map the GPU usage to the compute unit `uuid` which gives
 # GPU metrics for each compute unit.
@@ -12,84 +16,35 @@ groups:
     interval: {{.EvaluationInterval}}
     rules:
       # GPU Usage (%) by compute unit
-      # Prefer DCGM_FI_PROF_GR_ENGINE_ACTIVE to DCGM_FI_DEV_GPU_UTIL
-      # when available
-      # Ref: https://github.com/NVIDIA/DCGM/issues/64#issuecomment-1400811885
-      # Ref: https://github.com/NVIDIA/DCGM/issues/80#issuecomment-1537603016
-{{- $gpuusagemetric := "DCGM_FI_DEV_GPU_UTIL" -}}
-{{- if Contains .NVProfSeries "DCGM_FI_PROF_GR_ENGINE_ACTIVE" }}
-{{- $gpuusagemetric = "DCGM_FI_PROF_GR_ENGINE_ACTIVE" -}}
-{{- end }}
       - record: uuid:ceems_gpu_usage:ratio
         expr: |2
-            {{$gpuusagemetric}}{job="{{.GPUJob}}"}
-            * on (gpuuuid,gpuiid) group_right ()
+            amd_gpu_use_percent{job="{{.GPUJob}}"}
+            * on (index) group_right ()
             ceems_compute_unit_gpu_index_flag{job="{{.Job}}"}
 
       # GPU Memory Usage (%) by compute unit
       - record: uuid:ceems_gpu_memory_usage:ratio
         expr: |2
-          (
-              DCGM_FI_DEV_FB_USED{job="{{.GPUJob}}"} * 100
-            /
-              (DCGM_FI_DEV_FB_USED{job="{{.GPUJob}}"} + DCGM_FI_DEV_FB_FREE{job="{{.GPUJob}}"})
-          )
-          * on (gpuuuid,gpuiid) group_right ()
+          amd_gpu_memory_use_percent{job="{{.GPUJob}}"}
+          * on (index) group_right ()
           ceems_compute_unit_gpu_index_flag{job="{{.Job}}"}
       
       # Total power (Watts) consumed by the GPU by accounting Power Usage Effectiveness (PUE) value.
-      - record: dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue
-        expr: {{.PUE}} * DCGM_FI_DEV_POWER_USAGE_INSTANT{job="{{.GPUJob}}"}
+      # AMD GPU power is in micro Watts and we need to convert it to Watts here
+      - record: dev:amd_gpu_power_watts:pue
+        expr: {{.PUE}} * amd_gpu_power{job="{{.GPUJob}}"} / 1e6
 
-      # When profiling metrics are available, we split the total power consumed by physical
-      # GPU among all MIG instances based on "effective" SM usage on each MIG instance. This
-      # is estimated as TotalPower * number of SMs * Mean SM usage * SM Occupancy / sum(number of SMs * Mean SM usage * SM Occupancy)
-      #
-      # When profiling metrics are not available, we split the total power based on number of SMs
-      # available in that instance compared to total number of SMs being used in the physical GPU
       - record: uuid:ceems_gpu_power_watts:pue
         expr: |2
-{{- if and (Contains .NVProfSeries "DCGM_FI_PROF_SM_ACTIVE") (Contains .NVProfSeries "DCGM_FI_PROF_SM_OCCUPANCY") }}
-            (
-              (
-                (
-                      DCGM_FI_PROF_SM_ACTIVE{job="{{.GPUJob}}"}
-                    * on (gpuuuid, gpuiid)
-                      DCGM_FI_PROF_SM_OCCUPANCY{job="{{.GPUJob}}"}
-                  * on (gpuuuid, gpuiid)
-                    ceems_compute_unit_gpu_sm_count{job="{{.Job}}"}
-                )
-              )
-            / on (gpuuuid) group_left ()
-              (
-                sum by (gpuuuid) (
-                    (
-                          DCGM_FI_PROF_SM_ACTIVE{job="{{.GPUJob}}"}
-                        * on (gpuuuid, gpuiid)
-                          DCGM_FI_PROF_SM_OCCUPANCY{job="{{.GPUJob}}"}
-                      * on (gpuuuid, gpuiid)
-                        ceems_compute_unit_gpu_sm_count{job="{{.Job}}"}
-                    )
-                  >
-                    0
-                )
-              )
-            )
-              * on (gpuuuid) group_right ()
-                dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue{job="{{.GPUJob}}"}
-            * on (gpuuuid, gpuiid) group_right ()
-              ceems_compute_unit_gpu_index_flag{job="{{.Job}}"}
-{{- else }}
           (
               ceems_compute_unit_gpu_sm_count{job="{{.Job}}"}
-            / on (gpuuuid) group_left ()
-              (sum by (gpuuuid) (ceems_compute_unit_gpu_sm_count{job="{{.Job}}"}) > 0)
+            / on (index) group_left ()
+              (sum by (index) (ceems_compute_unit_gpu_sm_count{job="{{.Job}}"}) > 0)
           )
-          * on (gpuuuid) group_right ()
-            dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue{job="{{.GPUJob}}"}
-        * on (gpuuuid, gpuiid) group_right ()
+            * on (index) group_right()
+              dev:amd_gpu_power_watts:pue{job="{{.GPUJob}}"}
+          * on (index) group_right()
           ceems_compute_unit_gpu_index_flag{job="{{.Job}}"}
-{{- end }}
           
 {{- $numproviders := len .Providers -}}
 {{- if gt $numproviders 0 }}
@@ -100,8 +55,8 @@ groups:
       - record: uuid:ceems_gpu_emissions_g_s:pue
         expr: |2
           label_replace(
-              dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue{job="{{$.GPUJob}}"} / 3.6e+06
-            * on (gpuuuid,gpuiid) group_right ()
+              dev:amd_gpu_power_watts:pue{job="{{$.GPUJob}}"} / 3.6e+06
+            * on (index) group_right ()
               ceems_compute_unit_gpu_index_flag{job="{{$.Job}}"},
               "provider",
               "{{$v}}",
@@ -126,8 +81,8 @@ groups:
       - record: uuid:ceems_gpu_emissions_g_s:pue
         expr: |2
           label_replace(
-              dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue{job="{{$.GPUJob}}"} / 3.6e+06
-            * on (gpuuuid,gpuiid) group_right ()
+              dev:amd_gpu_power_watts:pue{job="{{$.GPUJob}}"} / 3.6e+06
+            * on (index) group_right ()
               ceems_compute_unit_gpu_index_flag{job="{{$.Job}}"},
               "provider",
               "{{$.EmissionFactor.Provider}}",
@@ -138,20 +93,6 @@ groups:
 {{- end }}
 {{- end }}
 
-      # Profiling metrics
-{{ range $i, $v := .NVProfSeries }}
-{{- $stringname := printf "%s" $v -}}
-{{- $splitname := Split $stringname "DCGM_FI_PROF_" -}}
-{{- $name := index $splitname 1 -}}
-{{- $namelower := $name | ToLower }}
-{{- $label := printf "uuid:ceems_gpu_%s:ratio" $namelower }}
-      - record: {{ $label }}
-        expr: |2
-          {{$v}}{job="{{$.GPUJob}}"} * 100
-          * on (gpuuuid,gpuiid) group_right ()
-          ceems_compute_unit_gpu_index_flag{job="{{$.Job}}"}
-{{ end }}
-
   # The following recording rules estimate the average GPU, GPU memory usages and
   # total GPU power and its equivalent emissions aggregared for all hosts 
   # per Prometheus job.
@@ -161,22 +102,16 @@ groups:
     rules:
       # Average GPU Usage (%) for all hosts aggregated per Prometheus job
       - record: job:ceems_gpu_usage:avg
-        expr: avg by (job) (DCGM_FI_DEV_GPU_UTIL{job="{{.GPUJob}}"})
+        expr: avg by (job) (amd_gpu_use_percent{job="{{.GPUJob}}"})
 
       # Average GPU memory usage (%) for all hosts aggregated per Prometheus job
       - record: job:ceems_gpu_memory_usage:avg_ratio
-        expr: |2
-          avg by (job) (
-            (
-                DCGM_FI_DEV_FB_USED{job="{{.GPUJob}}"} * 100
-              /
-                (DCGM_FI_DEV_FB_USED{job="{{.GPUJob}}"} + DCGM_FI_DEV_FB_FREE{job="{{.GPUJob}}"})
-            )
-          )
+        expr: avg by (job) (amd_gpu_memory_use_percent{job="{{.GPUJob}}"})
 
       # Total power usage (Watts) by GPUs on all hosts aggregated per Prometheus job
+      # AMD GPU power is in micro Watts and we need to convert it to Watts here
       - record: job:ceems_gpu_power_watts:pue
-        expr: sum by (job)({{.PUE}} * DCGM_FI_DEV_POWER_USAGE_INSTANT{job="{{.GPUJob}}"})
+        expr: sum by (job)({{.PUE}} * amd_gpu_power{job="{{.GPUJob}}"} / 1e6)
 
 {{- $numproviders := len .Providers -}}
 {{- if gt $numproviders 0 }}
