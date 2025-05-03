@@ -53,5 +53,5 @@ func TestNewSecurityLauncher(t *testing.T) {
 	d := &testData{targetUser: "nobody"}
 	err = s.Exec(d)
 	require.NoError(t, err)
-	assert.EqualValues(t, "uid=65534(nobody) gid=65534(nogroup) groups=65534(nogroup)\n", d.gotID)
+	assert.Equal(t, "uid=65534(nobody) gid=65534(nogroup) groups=65534(nogroup)\n", d.gotID)
 }

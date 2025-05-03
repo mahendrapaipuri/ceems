@@ -93,6 +93,11 @@ func (b *CEEMSExporter) Main() error {
 			"Enable /debug/pprof profiling endpoints. (default: disabled).",
 		).Default("false").Bool()
 
+		runAsUser = b.App.Flag(
+			"security.run-as-user",
+			"User to run as when exporter is started as root. Accepts either a username or uid.",
+		).Default("nobody").String()
+
 		// test CLI flags hidden
 		dropPrivs = b.App.Flag(
 			"security.drop-privileges",
@@ -180,15 +185,26 @@ func (b *CEEMSExporter) Main() error {
 	// we do not/should not create users as it can have unwanted side-effects.
 	// We should be minimally intrusive but at the same time should provide maximum
 	// security
-	if *dropPrivs {
-		securityCfg := &security.Config{
-			RunAsUser: "nobody",
-			Caps:      allCollectorCaps,
-			ReadPaths: []string{webConfigFilePath},
-		}
+	securityCfg := &security.Config{
+		RunAsUser:      *runAsUser,
+		Caps:           collectorCaps,
+		ReadPaths:      append([]string{webConfigFilePath}, collectorReadPaths...),
+		ReadWritePaths: collectorReadWritePaths,
+	}
 
-		// Drop all unnecessary privileges
-		if err := security.DropPrivileges(securityCfg); err != nil {
+	// Start a new manager
+	securityManager, err := security.NewManager(securityCfg)
+	if err != nil {
+		logger.Error("Failed to create a new security manager", "err", err)
+
+		return err
+	}
+
+	// Drop all unnecessary privileges
+	if *dropPrivs {
+		if err := securityManager.DropPrivileges(); err != nil {
+			logger.Error("Failed to drop privileges", "err", err)
+
 			return err
 		}
 	}
@@ -254,6 +270,11 @@ func (b *CEEMSExporter) Main() error {
 
 	if err := server.Shutdown(ctx); err != nil {
 		logger.Error("Failed to gracefully shutdown server", "err", err)
+	}
+
+	// Restore file permissions by removing any ACLs added
+	if err := securityManager.DeleteACLEntries(); err != nil {
+		logger.Error("Failed to remove ACL entries", "err", err)
 	}
 
 	logger.Info("Server exiting")
