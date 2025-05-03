@@ -301,13 +301,13 @@ func TestParsePyroQueryParams(t *testing.T) {
 
 		var err error
 		// Query params
-		switch {
-		case test.resource == "SelectMergeStacktraces":
-			data, err = proto.Marshal(test.message.(*querierv1.SelectMergeStacktracesRequest))
-		case test.resource == "LabelNames":
-			data, err = proto.Marshal(test.message.(*typesv1.LabelNamesRequest))
-		case test.resource == "LabelValues":
-			data, err = proto.Marshal(test.message.(*typesv1.LabelValuesRequest))
+		switch test.resource {
+		case "SelectMergeStacktraces":
+			data, err = proto.Marshal(test.message.(*querierv1.SelectMergeStacktracesRequest)) //nolint:forcetypeassert
+		case "LabelNames":
+			data, err = proto.Marshal(test.message.(*typesv1.LabelNamesRequest)) //nolint:forcetypeassert
+		case "LabelValues":
+			data, err = proto.Marshal(test.message.(*typesv1.LabelValuesRequest)) //nolint:forcetypeassert
 		}
 
 		require.NoError(t, err)

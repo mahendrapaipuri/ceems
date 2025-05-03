@@ -191,75 +191,6 @@ func (t *Client) Settings(ctx context.Context) *Settings {
 	return t.settingsCache
 }
 
-// fetchSettings returns selected Client config parameters.
-func (t *Client) fetchSettings(ctx context.Context) (*Settings, error) {
-	// Get global config
-	c, err := t.API.Config(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	// Unmarhsall config into struct
-	var config Config
-	if err := yaml.Unmarshal([]byte(c.YAML), &config); err != nil {
-		return nil, err
-	}
-
-	// Get flags
-	flags, err := t.API.Flags(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	// Get runtime info
-	info, err := t.API.Runtimeinfo(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	// Make a default settings struct
-	settings := defaultSettings
-	settings.ScrapeInterval = time.Duration(config.Global.ScrapeInterval)
-	settings.EvaluationInterval = time.Duration(config.Global.EvaluationInterval)
-
-	// Get query timeout and max samples from flags
-	if v, err := strconv.ParseInt(flags["query.max-samples"], 10, 64); err != nil {
-		settings.QueryMaxSamples = v
-	}
-
-	if queryTimeout, err := model.ParseDuration(flags["query.timeout"]); err == nil {
-		settings.QueryTimeout = time.Duration(queryTimeout)
-	}
-
-	if queryTimeout, err := model.ParseDuration(flags["query.lookback-delta"]); err == nil {
-		settings.QueryLookbackDelta = time.Duration(queryTimeout)
-	}
-
-	var retentionPeriod model.Duration
-
-	// If storageRetention is set to duration ONLY, we can consider it as
-	// retention period
-	if retentionPeriod, err = model.ParseDuration(info.StorageRetention); err != nil {
-		// If storageRetention is set to size or time and size, we need to get
-		// "actual" retention period
-		for _, retentionString := range strings.Split(info.StorageRetention, "or") {
-			retentionPeriod, err = model.ParseDuration(strings.TrimSpace(retentionString))
-			if err != nil {
-				continue
-			}
-
-			break
-		}
-	}
-
-	settings.RetentionPeriod = time.Duration(retentionPeriod)
-
-	// Set rate interval as 4 times scrape interval (Grafana recommendation)
-	settings.RateInterval = 4 * settings.ScrapeInterval
-
-	return &settings, nil
-}
-
 // Series makes a Client query to get series.
 func (t *Client) Series(ctx context.Context, matchers []string, start time.Time, end time.Time) ([]model.LabelSet, error) {
 	// Make API request to get series
@@ -399,4 +330,73 @@ func (t *Client) RangeQuery(
 // Delete time series with given labels.
 func (t *Client) Delete(ctx context.Context, startTime time.Time, endTime time.Time, matchers []string) error {
 	return t.API.DeleteSeries(ctx, matchers, startTime, endTime)
+}
+
+// fetchSettings returns selected Client config parameters.
+func (t *Client) fetchSettings(ctx context.Context) (*Settings, error) {
+	// Get global config
+	c, err := t.API.Config(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Unmarhsall config into struct
+	var config Config
+	if err := yaml.Unmarshal([]byte(c.YAML), &config); err != nil {
+		return nil, err
+	}
+
+	// Get flags
+	flags, err := t.API.Flags(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get runtime info
+	info, err := t.API.Runtimeinfo(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Make a default settings struct
+	settings := defaultSettings
+	settings.ScrapeInterval = time.Duration(config.Global.ScrapeInterval)
+	settings.EvaluationInterval = time.Duration(config.Global.EvaluationInterval)
+
+	// Get query timeout and max samples from flags
+	if v, err := strconv.ParseInt(flags["query.max-samples"], 10, 64); err != nil {
+		settings.QueryMaxSamples = v
+	}
+
+	if queryTimeout, err := model.ParseDuration(flags["query.timeout"]); err == nil {
+		settings.QueryTimeout = time.Duration(queryTimeout)
+	}
+
+	if queryTimeout, err := model.ParseDuration(flags["query.lookback-delta"]); err == nil {
+		settings.QueryLookbackDelta = time.Duration(queryTimeout)
+	}
+
+	var retentionPeriod model.Duration
+
+	// If storageRetention is set to duration ONLY, we can consider it as
+	// retention period
+	if retentionPeriod, err = model.ParseDuration(info.StorageRetention); err != nil {
+		// If storageRetention is set to size or time and size, we need to get
+		// "actual" retention period
+		for _, retentionString := range strings.Split(info.StorageRetention, "or") {
+			retentionPeriod, err = model.ParseDuration(strings.TrimSpace(retentionString))
+			if err != nil {
+				continue
+			}
+
+			break
+		}
+	}
+
+	settings.RetentionPeriod = time.Duration(retentionPeriod)
+
+	// Set rate interval as 4 times scrape interval (Grafana recommendation)
+	settings.RateInterval = 4 * settings.ScrapeInterval
+
+	return &settings, nil
 }

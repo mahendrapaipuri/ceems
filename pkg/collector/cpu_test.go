@@ -5,8 +5,6 @@ package collector
 
 import (
 	"context"
-	"io"
-	"log/slog"
 	"testing"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -19,7 +17,7 @@ func makeTestCPUCollector(s procfs.CPUStat) *cpuCollector {
 	dupStat := s
 
 	return &cpuCollector{
-		logger:   slog.New(slog.NewTextHandler(io.Discard, nil)),
+		logger:   noOpLogger,
 		cpuStats: dupStat,
 	}
 }
@@ -30,7 +28,7 @@ func TestCPUCollector(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	collector, err := NewCPUCollector(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	collector, err := NewCPUCollector(noOpLogger)
 	require.NoError(t, err)
 
 	// Setup background goroutine to capture metrics.

@@ -5,8 +5,6 @@ package collector
 
 import (
 	"context"
-	"io"
-	"log/slog"
 	"testing"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -51,7 +49,7 @@ func TestRaplCollector(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	collector, err := NewRaplCollector(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	collector, err := NewRaplCollector(noOpLogger)
 	require.NoError(t, err)
 
 	// Setup background goroutine to capture metrics.

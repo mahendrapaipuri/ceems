@@ -230,75 +230,6 @@ func newAuthMiddleware(c *Config) (*authenticationMiddleware, error) {
 	return amw, nil
 }
 
-// isAdminUser returns true if user is in admin users list.
-func (amw *authenticationMiddleware) isAdminUser(ctx context.Context, user string) bool {
-	// Get current admin users
-	adminUsers, err := amw.ceems.adminUsers(ctx)
-	if err != nil {
-		amw.logger.Error("Failed to fetch admin users", "err", err)
-
-		return false
-	}
-
-	return slices.Contains(adminUsers, user)
-}
-
-// Check UUIDs in query belong to user or not.
-func (amw *authenticationMiddleware) isUserUnit(
-	ctx context.Context,
-	user string,
-	clusterIDs []string,
-	uuids []string,
-	starts []int64,
-) bool {
-	// Always prefer checking with DB connection directly if it is available
-	// As DB query is way more faster than HTTP API request
-	if amw.ceems.db != nil {
-		return ceems_api.VerifyOwnership(ctx, user, clusterIDs, uuids, starts, amw.ceems.db, amw.logger)
-	}
-
-	// If CEEMS URL is available make a API request
-	// Any errors in making HTTP request will fail the query. This can happen due
-	// to deployment issues and by failing queries we make operators to look into
-	// what is happening
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, amw.ceems.verifyEndpoint().String(), nil)
-	if err != nil {
-		amw.logger.Error("Failed to create new request for unit ownership verification",
-			"user", user, "queried_uuids", strings.Join(uuids, ","), "err", err)
-
-		return false
-	}
-
-	// Add uuids to request
-	urlVals := url.Values{"uuid": uuids, "cluster_id": clusterIDs}
-	for _, s := range starts {
-		urlVals.Add("time", strconv.FormatInt(s, 10))
-	}
-
-	req.URL.RawQuery = urlVals.Encode()
-
-	// Add necessary headers
-	req.Header.Add(ceems_api_base.GrafanaUserHeader, user)
-
-	// Make request
-	// If request failed, forbid the query. It can happen when CEEMS API server
-	// goes offline and we should wait for it to come back online
-	if resp, err := amw.ceems.client.Do(req); err != nil {
-		amw.logger.Error("Failed to make request for unit ownership verification",
-			"user", user, "queried_uuids", strings.Join(uuids, ","), "err", err)
-
-		return false
-	} else if resp.StatusCode != http.StatusOK {
-		defer resp.Body.Close()
-		amw.logger.Error("Unauthorised query", "user", user,
-			"queried_uuids", strings.Join(uuids, ","), "status_code", resp.StatusCode)
-
-		return false
-	}
-
-	return true
-}
-
 // Middleware function, which will be called for each request.
 func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -440,4 +371,73 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 		// Pass down the request to the next middleware (or final handler)
 		next.ServeHTTP(w, r)
 	})
+}
+
+// isAdminUser returns true if user is in admin users list.
+func (amw *authenticationMiddleware) isAdminUser(ctx context.Context, user string) bool {
+	// Get current admin users
+	adminUsers, err := amw.ceems.adminUsers(ctx)
+	if err != nil {
+		amw.logger.Error("Failed to fetch admin users", "err", err)
+
+		return false
+	}
+
+	return slices.Contains(adminUsers, user)
+}
+
+// Check UUIDs in query belong to user or not.
+func (amw *authenticationMiddleware) isUserUnit(
+	ctx context.Context,
+	user string,
+	clusterIDs []string,
+	uuids []string,
+	starts []int64,
+) bool {
+	// Always prefer checking with DB connection directly if it is available
+	// As DB query is way more faster than HTTP API request
+	if amw.ceems.db != nil {
+		return ceems_api.VerifyOwnership(ctx, user, clusterIDs, uuids, starts, amw.ceems.db, amw.logger)
+	}
+
+	// If CEEMS URL is available make a API request
+	// Any errors in making HTTP request will fail the query. This can happen due
+	// to deployment issues and by failing queries we make operators to look into
+	// what is happening
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, amw.ceems.verifyEndpoint().String(), nil)
+	if err != nil {
+		amw.logger.Error("Failed to create new request for unit ownership verification",
+			"user", user, "queried_uuids", strings.Join(uuids, ","), "err", err)
+
+		return false
+	}
+
+	// Add uuids to request
+	urlVals := url.Values{"uuid": uuids, "cluster_id": clusterIDs}
+	for _, s := range starts {
+		urlVals.Add("time", strconv.FormatInt(s, 10))
+	}
+
+	req.URL.RawQuery = urlVals.Encode()
+
+	// Add necessary headers
+	req.Header.Add(ceems_api_base.GrafanaUserHeader, user)
+
+	// Make request
+	// If request failed, forbid the query. It can happen when CEEMS API server
+	// goes offline and we should wait for it to come back online
+	if resp, err := amw.ceems.client.Do(req); err != nil {
+		amw.logger.Error("Failed to make request for unit ownership verification",
+			"user", user, "queried_uuids", strings.Join(uuids, ","), "err", err)
+
+		return false
+	} else if resp.StatusCode != http.StatusOK {
+		defer resp.Body.Close()
+		amw.logger.Error("Unauthorised query", "user", user,
+			"queried_uuids", strings.Join(uuids, ","), "status_code", resp.StatusCode)
+
+		return false
+	}
+
+	return true
 }

@@ -118,7 +118,7 @@ func NewRedfishCollector(logger *slog.Logger) (Collector, error) {
 	}
 
 	// If cfg.Web.Hostname has {hostname} placeholder, replace it with current host name
-	cfg.Web.Hostname = strings.Replace(cfg.Web.Hostname, hostnamePlaceholder, hostname, -1)
+	cfg.Web.Hostname = strings.ReplaceAll(cfg.Web.Hostname, hostnamePlaceholder, hostname)
 
 	// Build Redfish URL
 	cfg.Web.URL, err = url.Parse(fmt.Sprintf("%s://%s:%d", cfg.Web.Proto, cfg.Web.Hostname, cfg.Web.Port))

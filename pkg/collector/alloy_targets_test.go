@@ -1,8 +1,6 @@
 package collector
 
 import (
-	"io"
-	"log/slog"
 	"os"
 	"strconv"
 	"testing"
@@ -102,7 +100,7 @@ func TestAlloyDiscovererSlurmCgroupsV2(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	discoverer, err := NewAlloyTargetDiscoverer(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	discoverer, err := NewAlloyTargetDiscoverer(noOpLogger)
 	require.NoError(t, err)
 
 	targets, err := discoverer.Discover()
@@ -120,7 +118,7 @@ func TestAlloyDiscovererSlurmCgroupsV1(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	discoverer, err := NewAlloyTargetDiscoverer(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	discoverer, err := NewAlloyTargetDiscoverer(noOpLogger)
 	require.NoError(t, err)
 
 	targets, err := discoverer.Discover()
@@ -140,7 +138,7 @@ func TestAlloyDiscovererSlurmCgroupsV2WithEnviron(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	discoverer, err := NewAlloyTargetDiscoverer(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	discoverer, err := NewAlloyTargetDiscoverer(noOpLogger)
 	require.NoError(t, err)
 
 	targets, err := discoverer.Discover()

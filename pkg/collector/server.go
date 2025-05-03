@@ -137,6 +137,13 @@ func NewCEEMSExporterServer(c *Config) (*CEEMSExporterServer, error) {
 	// Handle targets path
 	router.Handle(c.Web.TargetsPath, server.newTargetsHandler())
 
+	// Health endpoint
+	router.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("CEEMS Exporter is healthy"))
+	})
+
 	// If EnableDebugServer is true add debug endpoints
 	if c.Web.EnableDebugServer {
 		// pprof debug end points. Expose them only on localhost

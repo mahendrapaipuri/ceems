@@ -344,13 +344,13 @@ func New(c *Config) (*stats, error) {
 
 	// Now make an instance of time.Date with proper format and zone
 	c.Data.LastUpdate.Time = time.Date(
-		c.Data.LastUpdate.Time.Year(),
-		c.Data.LastUpdate.Time.Month(),
-		c.Data.LastUpdate.Time.Day(),
-		c.Data.LastUpdate.Time.Hour(),
-		c.Data.LastUpdate.Time.Minute(),
-		c.Data.LastUpdate.Time.Second(),
-		c.Data.LastUpdate.Time.Nanosecond(),
+		c.Data.LastUpdate.Year(),
+		c.Data.LastUpdate.Month(),
+		c.Data.LastUpdate.Day(),
+		c.Data.LastUpdate.Hour(),
+		c.Data.LastUpdate.Minute(),
+		c.Data.LastUpdate.Second(),
+		c.Data.LastUpdate.Nanosecond(),
 		c.Data.Timezone.Location,
 	)
 	c.Logger.Info("DB will be updated from", "last_update", c.Data.LastUpdate.Time)

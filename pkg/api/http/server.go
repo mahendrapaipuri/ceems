@@ -642,7 +642,7 @@ func (s *CEEMSServer) inTargetTimeLocation(tz string, units []models.Unit) []mod
 	targetLoc := s.timeLocation(tz)
 
 	// If target location is same as source, return
-	if s.dbConfig.Data.Timezone.Location.String() == targetLoc.String() {
+	if s.dbConfig.Data.Timezone.String() == targetLoc.String() {
 		return units
 	}
 

@@ -2,8 +2,6 @@ package collector
 
 import (
 	"context"
-	"io"
-	"log/slog"
 	"os"
 	"os/user"
 	"slices"
@@ -169,10 +167,10 @@ func TestNewEbpfCollector(t *testing.T) {
 	require.NoError(t, err)
 
 	// cgroup manager
-	cgManager, err := NewCgroupManager("slurm", slog.New(slog.NewTextHandler(io.Discard, nil)))
+	cgManager, err := NewCgroupManager(slurm, noOpLogger)
 	require.NoError(t, err)
 
-	collector, err := NewEbpfCollector(slog.New(slog.NewTextHandler(io.Discard, nil)), cgManager)
+	collector, err := NewEbpfCollector(noOpLogger, cgManager)
 	require.NoError(t, err)
 
 	// Setup background goroutine to capture metrics.
@@ -204,7 +202,7 @@ func TestActiveCgroupsV2(t *testing.T) {
 	require.NoError(t, err)
 
 	// cgroup manager
-	cgManager, err := NewCgroupManager("slurm", slog.New(slog.NewTextHandler(io.Discard, nil)))
+	cgManager, err := NewCgroupManager(slurm, noOpLogger)
 	require.NoError(t, err)
 
 	// ebpf opts
@@ -214,7 +212,7 @@ func TestActiveCgroupsV2(t *testing.T) {
 	}
 
 	c := ebpfCollector{
-		logger:        slog.New(slog.NewTextHandler(io.Discard, nil)),
+		logger:        noOpLogger,
 		cgroupManager: cgManager,
 
 		opts:              opts,
@@ -261,7 +259,7 @@ func TestActiveCgroupsV1(t *testing.T) {
 	require.NoError(t, err)
 
 	// cgroup manager
-	cgManager, err := NewCgroupManager("slurm", slog.New(slog.NewTextHandler(io.Discard, nil)))
+	cgManager, err := NewCgroupManager(slurm, noOpLogger)
 	require.NoError(t, err)
 
 	// ebpf opts
@@ -271,7 +269,7 @@ func TestActiveCgroupsV1(t *testing.T) {
 	}
 
 	c := ebpfCollector{
-		logger:        slog.New(slog.NewTextHandler(io.Discard, nil)),
+		logger:        noOpLogger,
 		cgroupManager: cgManager,
 
 		opts:              opts,

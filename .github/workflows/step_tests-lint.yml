@@ -24,7 +24,7 @@ jobs:
           touch pkg/collector/bpf/objs/sample.o
 
       - name: Lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v7
         with:
-          version: v1.63.4
+          version: v2.1.1
           args: --timeout=5m

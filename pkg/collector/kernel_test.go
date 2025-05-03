@@ -104,5 +104,5 @@ func TestGetKernelVersion(t *testing.T) {
 
 	ver, err := KernelVersion()
 	require.NoError(t, err)
-	assert.EqualValues(t, int64(394509), ver)
+	assert.Equal(t, int64(394509), ver)
 }

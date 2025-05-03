@@ -6,8 +6,6 @@ package collector
 import (
 	"context"
 	"fmt"
-	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -189,7 +187,7 @@ redfish_web_config:
 	)
 	require.NoError(t, err)
 
-	collector, err := NewRedfishCollector(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	collector, err := NewRedfishCollector(noOpLogger)
 	require.NoError(t, err)
 
 	// Setup background goroutine to capture metrics.
@@ -240,7 +238,7 @@ redfish_web_config:
 	)
 	require.NoError(t, err)
 
-	collector, err := NewRedfishCollector(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	collector, err := NewRedfishCollector(noOpLogger)
 	require.NoError(t, err)
 
 	// Setup background goroutine to capture metrics.
@@ -278,7 +276,7 @@ func TestPowerReadings(t *testing.T) {
 	require.NoError(t, err)
 
 	collector := &redfishCollector{
-		logger:      slog.New(slog.NewTextHandler(io.Discard, nil)),
+		logger:      noOpLogger,
 		config:      &config,
 		chassis:     chassis,
 		client:      redfishClient,
@@ -295,7 +293,7 @@ func TestPowerReadings(t *testing.T) {
 
 	// Get power readings
 	got := collector.powerReadings()
-	assert.EqualValues(t, expected, got)
+	assert.Equal(t, expected, got)
 
 	// Simulate token invalidation
 	collector.client.Logout()
@@ -317,17 +315,17 @@ func TestPowerReadings(t *testing.T) {
 		"avg":     make(map[string]float64),
 	}
 	got = collector.powerReadings()
-	assert.EqualValues(t, zeroExpected, got)
+	assert.Equal(t, zeroExpected, got)
 
 	// The next request should give us correct values as client
 	// will be reinitialised in the last request
 	got = collector.powerReadings()
-	assert.EqualValues(t, expected, got)
+	assert.Equal(t, expected, got)
 
 	// Stop test redfish server
 	server.Close()
 
 	// Make request again and we should get value from cached value
 	got = collector.powerReadings()
-	assert.EqualValues(t, expected, got)
+	assert.Equal(t, expected, got)
 }

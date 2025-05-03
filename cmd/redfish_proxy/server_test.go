@@ -102,7 +102,7 @@ func TestNewRedfishProxyServerWithTargets(t *testing.T) {
 		require.NoError(t, err)
 
 		// Check the body if it has same IP set
-		assert.EqualValues(t, strings.Join([]string{ip}, ","), string(bodyBytes))
+		assert.Equal(t, strings.Join([]string{ip}, ","), string(bodyBytes))
 	}
 }
 
@@ -183,6 +183,6 @@ func TestNewRedfishProxyServerWithWebConfig(t *testing.T) {
 		require.NoError(t, err)
 
 		// Check the body if it has same IP set
-		assert.EqualValues(t, strings.Join([]string{remoteIPs[0]}, ","), string(bodyBytes))
+		assert.Equal(t, strings.Join([]string{remoteIPs[0]}, ","), string(bodyBytes))
 	}
 }

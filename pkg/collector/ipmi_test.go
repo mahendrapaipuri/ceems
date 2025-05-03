@@ -6,8 +6,6 @@ package collector
 import (
 	"context"
 	"fmt"
-	"io"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
@@ -103,7 +101,7 @@ func TestIPMICollector(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	collector, err := NewIPMICollector(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	collector, err := NewIPMICollector(noOpLogger)
 	require.NoError(t, err)
 
 	// Setup background goroutine to capture metrics.
@@ -125,7 +123,7 @@ func TestIPMICollector(t *testing.T) {
 }
 
 func TestIpmiMetrics(t *testing.T) {
-	c := impiCollector{logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	c := impiCollector{logger: noOpLogger}
 
 	for testName, testString := range ipmidcmiStdout {
 		var value map[string]float64
@@ -146,7 +144,7 @@ func TestIpmiMetrics(t *testing.T) {
 }
 
 func TestIpmiMetricsDisactive(t *testing.T) {
-	c := impiCollector{logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	c := impiCollector{logger: noOpLogger}
 
 	for testName, testString := range ipmidcmiStdoutDisactive {
 		var value map[string]float64
@@ -258,7 +256,7 @@ ipmiutil dcmi, completed successfully"""`)
 	})
 	require.NoError(t, err)
 
-	collector, err := NewIPMICollector(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	collector, err := NewIPMICollector(noOpLogger)
 	require.NoError(t, err)
 
 	c := collector.(*impiCollector) //nolint:forcetypeassert

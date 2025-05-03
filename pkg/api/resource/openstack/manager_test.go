@@ -344,8 +344,8 @@ func TestOpenstackFetcher(t *testing.T) {
 			projects[0].Projects[i].LastUpdatedAt = expectedProjects[0].LastUpdatedAt
 		}
 
-		assert.EqualValues(t, expectedUsers, users[0].Users)
-		assert.EqualValues(t, expectedProjects, projects[0].Projects)
+		assert.Equal(t, expectedUsers, users[0].Users)
+		assert.Equal(t, expectedProjects, projects[0].Projects)
 	}
 }
 

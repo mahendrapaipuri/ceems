@@ -5,8 +5,6 @@ package collector
 
 import (
 	"context"
-	"io"
-	"log/slog"
 	"testing"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -21,7 +19,7 @@ func TestCrayPMCCollector(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	collector, err := NewCrayPMCCollector(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	collector, err := NewCrayPMCCollector(noOpLogger)
 	require.NoError(t, err)
 
 	// Setup background goroutine to capture metrics.
@@ -126,7 +124,7 @@ func TestGetCrayPMCDomains(t *testing.T) {
 		assert.Equal(t, expectedCounterValues["power"][domain.Name], val, domain.Name)
 
 		val, err = domain.GetPowerLimitWatts()
-		if domain.Name == tempDomain || domain.Name == "cpu" || domain.Name == "memory" {
+		if domain.Name == tempDomain || domain.Name == "cpu" || domain.Name == "memory" { //nolint:goconst
 			require.Error(t, err, domain.Name)
 		} else {
 			require.NoError(t, err, domain.Name)

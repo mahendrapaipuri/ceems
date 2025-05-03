@@ -324,11 +324,15 @@ outside:
 	// For capabilityMode we need cap_setuid and cap_setgid.
 	// For sudoMode we wont need any more extra capabilities.
 	// For nativeMode we need cap_dac_override capability to talk to device.
-	if execMode == capabilityMode {
+	switch execMode {
+	case capabilityMode:
 		// Setup command
 		collector.ipmiCmd = cmdSlice
 
-		caps := setupCollectorCaps(logger, ipmiCollectorSubsystem, []string{"cap_setuid", "cap_setgid"})
+		caps, err := setupCollectorCaps([]string{"cap_setuid", "cap_setgid"})
+		if err != nil {
+			logger.Warn("Failed to parse capability name(s)", "err", err)
+		}
 
 		// Setup new security context(s)
 		collector.securityContexts[ipmiExecCmdCtx], err = security.NewSecurityContext(ipmiExecCmdCtx, caps, security.ExecAsUser, logger)
@@ -337,9 +341,12 @@ outside:
 
 			return nil, err
 		}
-	} else if execMode == nativeMode {
+	case nativeMode:
 		// Capability to be able to talk to /dev/ipmi0
-		caps := setupCollectorCaps(logger, ipmiCollectorSubsystem, []string{"cap_dac_override"})
+		caps, err := setupCollectorCaps([]string{"cap_dac_override"})
+		if err != nil {
+			logger.Warn("Failed to parse capability name(s)", "err", err)
+		}
 
 		// Setup IPMI client
 		collector.client, err = ipmi.NewIPMIClient(*ipmiDevNum, logger.With("subsystem", "ipmi_client"))
@@ -356,7 +363,7 @@ outside:
 
 			return nil, err
 		}
-	} else if execMode == testMode {
+	case testMode:
 		collector.ipmiCmd = cmdSlice
 	}
 

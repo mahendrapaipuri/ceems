@@ -129,7 +129,10 @@ func NewRDMACollector(logger *slog.Logger, cgManager *cgroupManager) (*rdmaColle
 	if len(qpModes) > 0 {
 		logger.Info("Per-PID QP stats available")
 
-		caps := setupCollectorCaps(logger, rdmaCollectorSubsystem, []string{"cap_setuid", "cap_setgid"})
+		caps, err := setupCollectorCaps([]string{"cap_setuid", "cap_setgid"})
+		if err != nil {
+			logger.Warn("Failed to parse capability name(s)", "err", err)
+		}
 
 		// Setup new security context(s)
 		securityContexts[rdmaExecCmdCtx], err = security.NewSecurityContext(rdmaExecCmdCtx, caps, security.ExecAsUser, logger)
@@ -322,8 +325,8 @@ func (c *rdmaCollector) update(ch chan<- prometheus.Metric, cgroups []cgroup) {
 		}
 
 		for uuid, mr := range mrs {
-			ch <- prometheus.MustNewConstMetric(c.metricDescs["mrs_active"], prometheus.GaugeValue, float64(mr.num), c.cgroupManager.manager, c.hostname, mr.dev, "", uuid)
-			ch <- prometheus.MustNewConstMetric(c.metricDescs["mrs_len_active"], prometheus.GaugeValue, float64(mr.len), c.cgroupManager.manager, c.hostname, mr.dev, "", uuid)
+			ch <- prometheus.MustNewConstMetric(c.metricDescs["mrs_active"], prometheus.GaugeValue, float64(mr.num), c.cgroupManager.name, c.hostname, mr.dev, "", uuid)
+			ch <- prometheus.MustNewConstMetric(c.metricDescs["mrs_len_active"], prometheus.GaugeValue, float64(mr.len), c.cgroupManager.name, c.hostname, mr.dev, "", uuid)
 		}
 	}(procCgroup)
 
@@ -341,8 +344,8 @@ func (c *rdmaCollector) update(ch chan<- prometheus.Metric, cgroups []cgroup) {
 		}
 
 		for uuid, cq := range cqs {
-			ch <- prometheus.MustNewConstMetric(c.metricDescs["cqs_active"], prometheus.GaugeValue, float64(cq.num), c.cgroupManager.manager, c.hostname, cq.dev, "", uuid)
-			ch <- prometheus.MustNewConstMetric(c.metricDescs["cqe_len_active"], prometheus.GaugeValue, float64(cq.len), c.cgroupManager.manager, c.hostname, cq.dev, "", uuid)
+			ch <- prometheus.MustNewConstMetric(c.metricDescs["cqs_active"], prometheus.GaugeValue, float64(cq.num), c.cgroupManager.name, c.hostname, cq.dev, "", uuid)
+			ch <- prometheus.MustNewConstMetric(c.metricDescs["cqe_len_active"], prometheus.GaugeValue, float64(cq.len), c.cgroupManager.name, c.hostname, cq.dev, "", uuid)
 		}
 	}(procCgroup)
 
@@ -360,11 +363,11 @@ func (c *rdmaCollector) update(ch chan<- prometheus.Metric, cgroups []cgroup) {
 		}
 
 		for uuid, qp := range qps {
-			ch <- prometheus.MustNewConstMetric(c.metricDescs["qps_active"], prometheus.GaugeValue, float64(qp.num), c.cgroupManager.manager, c.hostname, qp.dev, qp.port, uuid)
+			ch <- prometheus.MustNewConstMetric(c.metricDescs["qps_active"], prometheus.GaugeValue, float64(qp.num), c.cgroupManager.name, c.hostname, qp.dev, qp.port, uuid)
 
 			for _, hwCounter := range c.hwCounters {
 				if qp.hwCounters[hwCounter] > 0 {
-					ch <- prometheus.MustNewConstMetric(c.metricDescs[hwCounter], prometheus.CounterValue, float64(qp.hwCounters[hwCounter]), c.cgroupManager.manager, c.hostname, qp.dev, qp.port, uuid)
+					ch <- prometheus.MustNewConstMetric(c.metricDescs[hwCounter], prometheus.CounterValue, float64(qp.hwCounters[hwCounter]), c.cgroupManager.name, c.hostname, qp.dev, qp.port, uuid)
 				}
 			}
 		}
@@ -397,7 +400,7 @@ func (c *rdmaCollector) update(ch chan<- prometheus.Metric, cgroups []cgroup) {
 					} else {
 						vType = prometheus.CounterValue
 					}
-					ch <- prometheus.MustNewConstMetric(c.metricDescs[n], vType, float64(v), c.cgroupManager.manager, c.hostname, device, port)
+					ch <- prometheus.MustNewConstMetric(c.metricDescs[n], vType, float64(v), c.cgroupManager.name, c.hostname, device, port)
 				}
 			}
 		}

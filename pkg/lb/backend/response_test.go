@@ -120,17 +120,17 @@ func TestPromReverseProxyModifyResponse(t *testing.T) {
 
 		for _, label := range labelsToFilter {
 			if strings.Contains(string(b), label) {
-				assert.Fail(t, "response for %s contains filtered label %s", tt, label)
+				assert.Fail(t, "failed", "response for %s contains filtered label %s", tt, label)
 			}
 		}
 
 		if strings.Contains(tt, "/instance/values") {
 			if strings.Contains(string(b), "value1") || strings.Contains(string(b), "value2") {
-				assert.Fail(t, "response for %s contains filtered label value", tt)
+				assert.Fail(t, "failed", "response for %s contains filtered label value", tt)
 			}
 		} else if strings.Contains(tt, "/job/values") {
 			if !strings.Contains(string(b), "value1") || !strings.Contains(string(b), "value2") {
-				assert.Fail(t, "response for %s wrongly removed label values", tt)
+				assert.Fail(t, "failed", "response for %s wrongly removed label values", tt)
 			}
 		}
 	}

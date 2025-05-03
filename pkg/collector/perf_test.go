@@ -5,8 +5,6 @@ package collector
 
 import (
 	"context"
-	"io"
-	"log/slog"
 	"os"
 	"slices"
 	"testing"
@@ -39,7 +37,7 @@ func TestPerfCollector(t *testing.T) {
 		},
 	}
 
-	collector, err := NewPerfCollector(slog.New(slog.NewTextHandler(io.Discard, nil)), cgManager)
+	collector, err := NewPerfCollector(noOpLogger, cgManager)
 	require.NoError(t, err)
 
 	// Setup background goroutine to capture metrics.
@@ -69,7 +67,7 @@ func TestDiscoverProcess(t *testing.T) {
 	require.NoError(t, err)
 
 	// cgroup manager
-	cgManager, err := NewCgroupManager("slurm", slog.New(slog.NewTextHandler(io.Discard, nil)))
+	cgManager, err := NewCgroupManager(slurm, noOpLogger)
 	require.NoError(t, err)
 
 	// perf opts
@@ -81,7 +79,7 @@ func TestDiscoverProcess(t *testing.T) {
 	}
 
 	collector := perfCollector{
-		logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
+		logger:           noOpLogger,
 		cgroupManager:    cgManager,
 		opts:             opts,
 		securityContexts: make(map[string]*security.SecurityContext),
@@ -160,10 +158,10 @@ func TestNewProfilers(t *testing.T) {
 	require.NoError(t, err)
 
 	// cgroup manager
-	cgManager, err := NewCgroupManager("slurm", slog.New(slog.NewTextHandler(io.Discard, nil)))
+	cgManager, err := NewCgroupManager(slurm, noOpLogger)
 	require.NoError(t, err)
 
-	collector, err := NewPerfCollector(slog.New(slog.NewTextHandler(io.Discard, nil)), cgManager)
+	collector, err := NewPerfCollector(noOpLogger, cgManager)
 	require.NoError(t, err)
 
 	// Use fake cgroupID for current process
@@ -231,10 +229,10 @@ func TestAggProfiles(t *testing.T) {
 	require.NoError(t, err)
 
 	// cgroup manager
-	cgManager, err := NewCgroupManager("slurm", slog.New(slog.NewTextHandler(io.Discard, nil)))
+	cgManager, err := NewCgroupManager(slurm, noOpLogger)
 	require.NoError(t, err)
 
-	collector, err := NewPerfCollector(slog.New(slog.NewTextHandler(io.Discard, nil)), cgManager)
+	collector, err := NewPerfCollector(noOpLogger, cgManager)
 	require.NoError(t, err)
 
 	// Initialise state counters
@@ -408,8 +406,8 @@ func TestAggProfiles(t *testing.T) {
 	}
 
 	cgroupCounters := collector.aggHardwareCounters(hwProfiles, make(map[string]float64))
-	assert.EqualValues(t, expectedRawLastValues, collector.lastRawHwCounters)
-	assert.EqualValues(t, expectedAggHwValues, cgroupCounters)
+	assert.Equal(t, expectedRawLastValues, collector.lastRawHwCounters)
+	assert.Equal(t, expectedAggHwValues, cgroupCounters)
 
 	cacheProfiles := map[int]*perf.CacheProfile{
 		46231: {
@@ -532,8 +530,8 @@ func TestAggProfiles(t *testing.T) {
 	}
 
 	cgroupCounters = collector.aggCacheCounters(cacheProfiles, make(map[string]float64))
-	assert.EqualValues(t, expectedRawLastValues, collector.lastRawCacheCounters)
-	assert.EqualValues(t, expectedAggCacheValues, cgroupCounters)
+	assert.Equal(t, expectedRawLastValues, collector.lastRawCacheCounters)
+	assert.Equal(t, expectedAggCacheValues, cgroupCounters)
 
 	// Second update
 	hwProfiles = map[int]*perf.HardwareProfile{
@@ -585,10 +583,10 @@ func TestPIDEviction(t *testing.T) {
 	require.NoError(t, err)
 
 	// cgroup manager
-	cgManager, err := NewCgroupManager("slurm", slog.New(slog.NewTextHandler(io.Discard, nil)))
+	cgManager, err := NewCgroupManager(slurm, noOpLogger)
 	require.NoError(t, err)
 
-	collector, err := NewPerfCollector(slog.New(slog.NewTextHandler(io.Discard, nil)), cgManager)
+	collector, err := NewPerfCollector(noOpLogger, cgManager)
 	require.NoError(t, err)
 
 	// Use fake processes

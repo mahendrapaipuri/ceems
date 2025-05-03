@@ -7,11 +7,14 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
+	"unique"
 
 	"github.com/prometheus/procfs"
+	"kernel.org/pub/linux/libs/security/libcap/cap"
 )
 
 var (
@@ -32,6 +35,59 @@ var (
 // metricName does not begin with a digit.
 func SanitizeMetricName(metricName string) string {
 	return metricNameRegex.ReplaceAllString(metricName, "_")
+}
+
+// setupCollectorCaps sets up the required capabilities for collector.
+func setupCollectorCaps(capabilities []string) ([]cap.Value, error) {
+	// If there is nothing to setup, return
+	if len(capabilities) == 0 {
+		return nil, nil
+	}
+
+	var caps []cap.Value
+
+	var errs error
+
+	for _, name := range capabilities {
+		value, err := cap.FromName(name)
+		if err != nil {
+			errs = errors.Join(errs, err)
+		}
+
+		caps = append(caps, value)
+	}
+
+	// Add to global caps
+	for _, cap := range caps {
+		if !slices.Contains(collectorCaps, cap) {
+			collectorCaps = append(collectorCaps, cap)
+		}
+	}
+
+	return caps, errs
+}
+
+// setupCollectorPathPerms sets up the required permissions on read and/or read write paths on file system
+// for collector.
+func setupCollectorPathPerms(readPaths []string, readWritePaths []string) {
+	// If there is nothing to setup, return
+	if len(readPaths) == 0 && len(readWritePaths) == 0 {
+		return
+	}
+
+	// Add read paths to global slice
+	for _, path := range readPaths {
+		if !slices.Contains(collectorReadPaths, path) {
+			collectorReadPaths = append(collectorReadPaths, path)
+		}
+	}
+
+	// Add write path to global slice
+	for _, path := range readWritePaths {
+		if !slices.Contains(collectorReadWritePaths, path) {
+			collectorReadWritePaths = append(collectorReadWritePaths, path)
+		}
+	}
 }
 
 // cgroupProcFilterer returns a slice of filtered cgroups based on the presence of targetEnvVars
@@ -154,6 +210,96 @@ func readUintFromFile(path string) (uint64, error) {
 	}
 
 	return strconv.ParseUint(strings.TrimSpace(string(data)), 10, 64)
+}
+
+// areEqual verifies if two slices have same elements ignoring order.
+func areEqual[T comparable](as, bs []T) bool {
+	if len(as) != len(bs) {
+		return false
+	}
+
+	if len(as) == 0 {
+		return true
+	}
+
+	diff := make(map[T]int, len(as))
+	for _, a := range as {
+		diff[a]++
+	}
+
+	for _, b := range bs {
+		current, ok := diff[b]
+		if !ok {
+			return false
+		}
+
+		if current == 1 {
+			delete(diff, b)
+
+			continue
+		}
+
+		diff[b] = current - 1
+	}
+
+	return len(diff) == 0
+}
+
+// elementCounts returns unique elements and their counts in the slice.
+func elementCounts[T comparable](s []T) map[unique.Handle[T]]uint64 {
+	// Map to store counts of unique elements
+	counts := make(map[unique.Handle[T]]uint64)
+
+	// Deduplicate and count occurrences
+	for _, val := range s {
+		handle := unique.Make(val)
+		counts[handle]++
+	}
+
+	return counts
+}
+
+// parseRange parses ranges like 0-10,2 and return a slice.
+func parseRange(r string) ([]string, error) {
+	var s []string
+
+	var start, end int
+
+	var err error
+
+	if r == "" {
+		return nil, errors.New("empty range string")
+	}
+
+	ranges := strings.Split(r, ",")
+	for _, r := range ranges {
+		boundaries := strings.Split(r, "-")
+		if len(boundaries) == 1 {
+			start, err = strconv.Atoi(boundaries[0])
+			if err != nil {
+				return nil, err
+			}
+
+			end = start
+		} else if len(boundaries) == 2 {
+			start, err = strconv.Atoi(boundaries[0])
+			if err != nil {
+				return nil, err
+			}
+
+			end, err = strconv.Atoi(boundaries[1])
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		for i := start; i <= end; i++ {
+			e := strconv.Itoa(i)
+			s = append(s, e)
+		}
+	}
+
+	return s, nil
 }
 
 // lookupCgroupRoots walks over the cgroup `rootDir` to check if `name` exists in any

@@ -2,6 +2,8 @@ package collector
 
 import (
 	"fmt"
+	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -10,6 +12,11 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+)
+
+// Logger to be used in uni tests.
+var (
+	noOpLogger = slog.New(slog.NewTextHandler(io.Discard, nil))
 )
 
 func queryExporter(address string) error {

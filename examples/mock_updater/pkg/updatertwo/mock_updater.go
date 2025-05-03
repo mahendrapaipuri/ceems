@@ -17,19 +17,17 @@ type mockUpdater struct {
 
 const mockUpdaterHookName = "mock-two"
 
-var (
-	mockUpdaterHookCLI = base.CEEMSServerApp.Flag(
-		"updater.mock-two.arg",
-		"Mock updater CLI arg.",
-	).Default("").String()
-)
+var mockUpdaterHookCLI = base.CEEMSServerApp.Flag(
+	"updater.mock-two.arg",
+	"Mock updater CLI arg.",
+).Default("").String()
 
 func init() {
 	// Register mock updater
 	updater.Register(mockUpdaterHookName, NewMockUpdaterHook)
 }
 
-// NewMockUpdaterHook returns a new NewMockUpdaterHook to update units
+// NewMockUpdaterHook returns a new NewMockUpdaterHook to update units.
 func NewMockUpdaterHook(instance updater.Instance, logger *slog.Logger) (updater.Updater, error) {
 	logger.Info("CLI args", "arg1", mockUpdaterHookCLI)
 
@@ -38,7 +36,7 @@ func NewMockUpdaterHook(instance updater.Instance, logger *slog.Logger) (updater
 	}, nil
 }
 
-// Add the logic here to update the units retrieved from batch scheduler
+// Add the logic here to update the units retrieved from batch scheduler.
 func (u *mockUpdater) Update(
 	_ context.Context,
 	_ time.Time,
