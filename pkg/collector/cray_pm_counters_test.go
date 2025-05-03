@@ -124,7 +124,7 @@ func TestGetCrayPMCDomains(t *testing.T) {
 		assert.Equal(t, expectedCounterValues["power"][domain.Name], val, domain.Name)
 
 		val, err = domain.GetPowerLimitWatts()
-		if domain.Name == tempDomain || domain.Name == "cpu" || domain.Name == "memory" { //nolint:goconst
+		if domain.Name == tempDomain || domain.Name == "cpu" || domain.Name == "memory" {
 			require.Error(t, err, domain.Name)
 		} else {
 			require.NoError(t, err, domain.Name)

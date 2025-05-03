@@ -45,6 +45,9 @@ linters:
         - name: unused-parameter
           severity: warning
           disabled: true
+    goconst:
+      ignore-string-values: 
+        - cpu
   exclusions:
     generated: lax
     presets:
