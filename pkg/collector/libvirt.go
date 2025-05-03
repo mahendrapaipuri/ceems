@@ -6,6 +6,7 @@ package collector
 import (
 	"context"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -17,7 +18,9 @@ import (
 	"time"
 
 	"github.com/mahendrapaipuri/ceems/internal/security"
+	ceems_k8s "github.com/mahendrapaipuri/ceems/pkg/k8s"
 	"github.com/prometheus/client_golang/prometheus"
+	"k8s.io/client-go/rest"
 )
 
 const (
@@ -89,42 +92,37 @@ type Address struct {
 	Function string   `xml:"function,attr"`
 }
 
+type instanceProperties struct {
+	deviceIDs []string
+	uuid      string
+}
+
 // libvirtReadXMLSecurityCtxData contains the input/output data for
 // reading XML files inside a security context.
 type libvirtReadXMLSecurityCtxData struct {
-	xmlPath       string
-	instanceID    string
-	devices       []Device
-	instanceProps instanceProps
-}
-
-// instanceProps contains VM properties.
-type instanceProps struct {
-	uuid        string   // This is Openstack's specific UUID
-	gpuOrdinals []string // GPU ordinals bound to instance
-}
-
-type libvirtMetrics struct {
-	instanceProps []instanceProps
-	cgroups       []cgroup
+	xmlPath    string
+	instanceID string
+	devices    []Device
+	properties *instanceProperties
 }
 
 type libvirtCollector struct {
-	logger                      *slog.Logger
-	cgroupManager               *cgroupManager
-	cgroupCollector             *cgroupCollector
-	perfCollector               *perfCollector
-	ebpfCollector               *ebpfCollector
-	rdmaCollector               *rdmaCollector
-	hostname                    string
-	gpuDevs                     []Device
-	vGPUActivated               bool
-	instanceGpuFlag             *prometheus.Desc
-	collectError                *prometheus.Desc
-	instancePropsCache          map[string]instanceProps
-	instancePropsCacheTTL       time.Duration
-	instancePropslastUpdateTime time.Time
-	securityContexts            map[string]*security.SecurityContext
+	logger                        *slog.Logger
+	cgroupManager                 *cgroupManager
+	cgroupCollector               *cgroupCollector
+	perfCollector                 *perfCollector
+	ebpfCollector                 *ebpfCollector
+	rdmaCollector                 *rdmaCollector
+	hostname                      string
+	gpuSMI                        *GPUSMI
+	vGPUActivated                 bool
+	instanceGpuFlag               *prometheus.Desc
+	instanceGpuNumSMs             *prometheus.Desc
+	collectError                  *prometheus.Desc
+	previousInstanceIDs           []string
+	instanceDevicesCacheTTL       time.Duration
+	instanceDeviceslastUpdateTime time.Time
+	securityContexts              map[string]*security.SecurityContext
 }
 
 func init() {
@@ -134,7 +132,7 @@ func init() {
 // NewLibvirtCollector returns a new libvirt collector exposing a summary of cgroups.
 func NewLibvirtCollector(logger *slog.Logger) (Collector, error) {
 	// Get libvirt's cgroup details
-	cgroupManager, err := NewCgroupManager("libvirt", logger)
+	cgroupManager, err := NewCgroupManager(libvirt, logger)
 	if err != nil {
 		logger.Info("Failed to create cgroup manager", "err", err)
 
@@ -194,31 +192,30 @@ func NewLibvirtCollector(logger *slog.Logger) (Collector, error) {
 		}
 	}
 
-	// Attempt to get GPU devices
-	var gpuTypes []string
+	// Create a new k8s client
+	client, err := ceems_k8s.New("", "", logger)
+	if err != nil && !errors.Is(err, rest.ErrNotInCluster) {
+		logger.Error("Failed to create k8s client", "err", err)
 
-	var gpuDevs []Device
-
-	if *gpuType != "" {
-		gpuTypes = []string{*gpuType}
-	} else {
-		gpuTypes = []string{"nvidia", "amd"}
+		return nil, err
 	}
 
-	for _, gpuType := range gpuTypes {
-		gpuDevs, err = GetGPUDevices(gpuType, logger)
-		if err == nil {
-			logger.Info("GPU devices found", "type", gpuType, "num_devs", len(gpuDevs))
+	// Instantiate a new instance of gpuSMI struct
+	gpuSMI, err := NewGPUSMI(client, logger)
+	if err != nil {
+		logger.Error("Error creating GPU SMI instance", "err", err)
+	}
 
-			break
-		}
+	// Attempt to get GPU devices
+	if err := gpuSMI.Discover(); err != nil {
+		logger.Error("Error fetching GPU devices", "err", err)
 	}
 
 	// Check if vGPU is activated on atleast one GPU
 	vGPUActivated := false
 
-	for _, gpu := range gpuDevs {
-		if gpu.vgpuEnabled {
+	for _, gpu := range gpuSMI.Devices {
+		if gpu.VGPUEnabled {
 			vGPUActivated = true
 
 			break
@@ -227,7 +224,10 @@ func NewLibvirtCollector(logger *slog.Logger) (Collector, error) {
 
 	// Setup necessary capabilities. These are the caps we need to read
 	// XML files in /etc/libvirt/qemu folder that contains GPU devs used by guests.
-	caps := setupCollectorCaps(logger, libvirtCollectorSubsystem, []string{"cap_dac_read_search"})
+	caps, err := setupCollectorCaps([]string{"cap_dac_read_search"})
+	if err != nil {
+		logger.Warn("Failed to parse capability name(s)", "err", err)
+	}
 
 	// Setup new security context(s)
 	securityCtx, err := security.NewSecurityContext(libvirtReadXMLCtx, caps, readLibvirtXMLFile, logger)
@@ -238,21 +238,35 @@ func NewLibvirtCollector(logger *slog.Logger) (Collector, error) {
 	}
 
 	return &libvirtCollector{
-		cgroupManager:               cgroupManager,
-		cgroupCollector:             cgCollector,
-		perfCollector:               perfCollector,
-		ebpfCollector:               ebpfCollector,
-		rdmaCollector:               rdmaCollector,
-		hostname:                    hostname,
-		gpuDevs:                     gpuDevs,
-		vGPUActivated:               vGPUActivated,
-		instancePropsCache:          make(map[string]instanceProps),
-		instancePropsCacheTTL:       3 * time.Hour,
-		instancePropslastUpdateTime: time.Now(),
-		securityContexts:            map[string]*security.SecurityContext{libvirtReadXMLCtx: securityCtx},
+		cgroupManager:                 cgroupManager,
+		cgroupCollector:               cgCollector,
+		perfCollector:                 perfCollector,
+		ebpfCollector:                 ebpfCollector,
+		rdmaCollector:                 rdmaCollector,
+		hostname:                      hostname,
+		gpuSMI:                        gpuSMI,
+		vGPUActivated:                 vGPUActivated,
+		instanceDevicesCacheTTL:       3 * time.Hour,
+		instanceDeviceslastUpdateTime: time.Now(),
+		securityContexts:              map[string]*security.SecurityContext{libvirtReadXMLCtx: securityCtx},
 		instanceGpuFlag: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_gpu_index_flag"),
 			"A value > 0 indicates running instance using current GPU",
+			[]string{
+				"manager",
+				"hostname",
+				"cgrouphostname",
+				"uuid",
+				"index",
+				"hindex",
+				"gpuuuid",
+				"gpuiid",
+			},
+			nil,
+		),
+		instanceGpuNumSMs: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_gpu_sm_count"),
+			"Number of SMs/CUs in the GPU instance",
 			[]string{
 				"manager",
 				"hostname",
@@ -277,7 +291,7 @@ func NewLibvirtCollector(logger *slog.Logger) (Collector, error) {
 
 // Update implements Collector and update instance metrics.
 func (c *libvirtCollector) Update(ch chan<- prometheus.Metric) error {
-	metrics, err := c.instanceMetrics()
+	cgroups, err := c.instanceCgroups()
 	if err != nil {
 		return err
 	}
@@ -290,28 +304,15 @@ func (c *libvirtCollector) Update(ch chan<- prometheus.Metric) error {
 		defer wg.Done()
 
 		// Update cgroup metrics
-		if err := c.cgroupCollector.Update(ch, metrics.cgroups); err != nil {
+		if err := c.cgroupCollector.Update(ch, cgroups); err != nil {
 			c.logger.Error("Failed to update cgroup stats", "err", err)
 		}
 
 		// Update instance GPU ordinals
-		if len(c.gpuDevs) > 0 {
-			c.updateGPUOrdinals(ch, metrics.instanceProps)
+		if len(c.gpuSMI.Devices) > 0 {
+			c.updateDeviceMappers(ch)
 		}
 	}()
-
-	// if perfCollectorEnabled() {
-	// 	wg.Add(1)
-
-	// 	go func() {
-	// 		defer wg.Done()
-
-	// 		// Update perf metrics
-	// 		if err := c.perfCollector.Update(ch, metrics.cgroups); err != nil {
-	// 			c.logger.Error("Failed to update perf stats", "err", err)
-	// 		}
-	// 	}()
-	// }
 
 	if ebpfCollectorEnabled() {
 		wg.Add(1)
@@ -320,7 +321,7 @@ func (c *libvirtCollector) Update(ch chan<- prometheus.Metric) error {
 			defer wg.Done()
 
 			// Update ebpf metrics
-			if err := c.ebpfCollector.Update(ch, metrics.cgroups, libvirtCollectorSubsystem); err != nil {
+			if err := c.ebpfCollector.Update(ch, cgroups, libvirtCollectorSubsystem); err != nil {
 				c.logger.Error("Failed to update IO and/or network stats", "err", err)
 			}
 		}()
@@ -333,7 +334,7 @@ func (c *libvirtCollector) Update(ch chan<- prometheus.Metric) error {
 			defer wg.Done()
 
 			// Update RDMA metrics
-			if err := c.rdmaCollector.Update(ch, metrics.cgroups, libvirtCollectorSubsystem); err != nil {
+			if err := c.rdmaCollector.Update(ch, cgroups, libvirtCollectorSubsystem); err != nil {
 				c.logger.Error("Failed to update RDMA stats", "err", err)
 			}
 		}()
@@ -379,127 +380,101 @@ func (c *libvirtCollector) Stop(ctx context.Context) error {
 	return nil
 }
 
-// updateGPUOrdinals updates the metrics channel with GPU ordinals for instance.
-func (c *libvirtCollector) updateGPUOrdinals(ch chan<- prometheus.Metric, instanceProps []instanceProps) {
-	// Update instance properties
-	for _, p := range instanceProps {
-		// GPU instance mapping
-		for _, gpuOrdinal := range p.gpuOrdinals {
-			var gpuuuid, miggid string
-
-			flagValue := float64(1)
-			// Check the int index of devices where gpuOrdinal == dev.index
-			for _, dev := range c.gpuDevs {
-				// If the device has MIG enabled loop over them as well
-				for _, mig := range dev.migInstances {
-					if gpuOrdinal == mig.globalIndex {
-						gpuuuid = dev.uuid
-						miggid = strconv.FormatUint(mig.gpuInstID, 10)
-
-						// For MIG, we export SM fraction as flag value
-						// For vGPU enabled GPUs this fraction must be
-						// further divided by number of active vGPU instances
-						if dev.vgpuEnabled && len(mig.mdevUUIDs) > 1 {
-							flagValue = mig.smFraction / float64(len(mig.mdevUUIDs))
-						} else {
-							flagValue = mig.smFraction
-						}
-
-						goto update_chan
-					}
-				}
-
-				if gpuOrdinal == dev.globalIndex {
-					gpuuuid = dev.uuid
-
-					if dev.vgpuEnabled && len(dev.mdevUUIDs) > 1 {
-						flagValue = 1.0 / float64(len(dev.mdevUUIDs))
-					}
-
-					goto update_chan
-				}
+// updateDeviceMappers updates the device mapper metrics.
+func (c *libvirtCollector) updateDeviceMappers(ch chan<- prometheus.Metric) {
+	for _, gpu := range c.gpuSMI.Devices {
+		// Update mappers for physical GPUs
+		for _, unit := range gpu.ComputeUnits {
+			// If sharing is available, estimate coefficient
+			value := 1.0
+			if gpu.CurrentShares > 0 && unit.NumShares > 0 {
+				value = float64(unit.NumShares) / float64(gpu.CurrentShares)
 			}
 
-		update_chan:
-			// On the DCGM side, we need to use relabel magic to rename UUID
-			// and GPU_I_ID labels to gpuuuid and gpuiid and make operations
-			// on(gpuuuid,gpuiid)
 			ch <- prometheus.MustNewConstMetric(
 				c.instanceGpuFlag,
 				prometheus.GaugeValue,
-				flagValue,
-				c.cgroupManager.manager,
+				value,
+				c.cgroupManager.name,
 				c.hostname,
-				"", // This empty label will be dropped by Prom anyways. Just for consistency!
-				p.uuid,
-				gpuOrdinal,
-				fmt.Sprintf("%s/gpu-%s", c.hostname, gpuOrdinal),
-				gpuuuid,
-				miggid,
+				"",
+				unit.UUID,
+				gpu.Index,
+				fmt.Sprintf("%s/gpu-%s", c.hostname, gpu.Index),
+				gpu.UUID,
+				"",
 			)
+
+			// Export number of SMs/CUs as well
+			// Currently we are not using them for AMD GPUs, so they
+			// will be zero.
+			if gpu.NumSMs > 0 {
+				ch <- prometheus.MustNewConstMetric(
+					c.instanceGpuNumSMs,
+					prometheus.GaugeValue,
+					float64(gpu.NumSMs),
+					c.cgroupManager.name,
+					c.hostname,
+					unit.Hostname,
+					unit.UUID,
+					gpu.Index,
+					fmt.Sprintf("%s/gpu-%s", c.hostname, gpu.Index),
+					gpu.UUID,
+					"",
+				)
+			}
+		}
+
+		// Update mappers for instance GPUs
+		for _, inst := range gpu.Instances {
+			for _, unit := range inst.ComputeUnits {
+				// If sharing is available, estimate coefficient
+				value := 1.0
+				if inst.CurrentShares > 0 && unit.NumShares > 0 {
+					value = float64(unit.NumShares) / float64(inst.CurrentShares)
+				}
+
+				ch <- prometheus.MustNewConstMetric(
+					c.instanceGpuFlag,
+					prometheus.GaugeValue,
+					value,
+					c.cgroupManager.name,
+					c.hostname,
+					"",
+					unit.UUID,
+					inst.Index,
+					fmt.Sprintf("%s/gpu-%s", c.hostname, inst.Index),
+					gpu.UUID,
+					strconv.FormatUint(inst.GPUInstID, 10),
+				)
+
+				// For GPU instances, export number of SMs/CUs as well
+				if inst.NumSMs > 0 {
+					ch <- prometheus.MustNewConstMetric(
+						c.instanceGpuNumSMs,
+						prometheus.GaugeValue,
+						float64(inst.NumSMs),
+						c.cgroupManager.name,
+						c.hostname,
+						"",
+						unit.UUID,
+						inst.Index,
+						fmt.Sprintf("%s/gpu-%s", c.hostname, inst.Index),
+						gpu.UUID,
+						strconv.FormatUint(inst.GPUInstID, 10),
+					)
+				}
+			}
 		}
 	}
 }
 
-// instanceProperties finds properties for each cgroup and returns initialised metric structs.
-func (c *libvirtCollector) instanceProperties(cgroups []cgroup) libvirtMetrics {
-	// Get currently active instances and set them in activeInstanceIDs state variable
-	var activeInstanceIDs []string
-
-	var instnProps []instanceProps
-
-	// It is possible from Openstack to resize instances by changing flavour. It means
-	// it is possible to add GPUs to non-GPU instances, so we need to invalidate
-	// instancePropsCache once in a while to ensure we capture any changes in instance
-	// flavours
-	if time.Since(c.instancePropslastUpdateTime) > c.instancePropsCacheTTL {
-		c.instancePropsCache = make(map[string]instanceProps)
-		c.instancePropslastUpdateTime = time.Now()
-	}
-
-	for icgrp := range cgroups {
-		instanceID := cgroups[icgrp].id
-
-		// Get instance details
-		if iProps, ok := c.instancePropsCache[instanceID]; !ok {
-			c.instancePropsCache[instanceID] = c.getInstanceProperties(instanceID)
-			instnProps = append(instnProps, c.instancePropsCache[instanceID])
-			cgroups[icgrp].uuid = c.instancePropsCache[instanceID].uuid
-		} else {
-			instnProps = append(instnProps, iProps)
-			cgroups[icgrp].uuid = iProps.uuid
-		}
-
-		// Check if we already passed through this instance
-		if !slices.Contains(activeInstanceIDs, instanceID) {
-			activeInstanceIDs = append(activeInstanceIDs, instanceID)
-		}
-	}
-
-	// Remove terminated instances from instancePropsCache
-	for uuid := range c.instancePropsCache {
-		if !slices.Contains(activeInstanceIDs, uuid) {
-			delete(c.instancePropsCache, uuid)
-		}
-	}
-
-	return libvirtMetrics{instanceProps: instnProps, cgroups: cgroups}
-}
-
-// getInstanceProperties returns instance properties parsed from XML file.
-func (c *libvirtCollector) getInstanceProperties(instanceID string) instanceProps {
-	// If vGPU is activated on atleast one GPU, update mdevs
-	if c.vGPUActivated {
-		if updatedGPUDevs, err := updateGPUMdevs(c.gpuDevs); err == nil {
-			c.gpuDevs = updatedGPUDevs
-			c.logger.Debug("GPU mdevs updated")
-		}
-	}
-
+// instanceDevices returns devices attached to instance by parsing libvirt XML file.
+func (c *libvirtCollector) instanceProperties(instanceID string) *instanceProperties {
 	// Read XML file in a security context that raises necessary capabilities
 	dataPtr := &libvirtReadXMLSecurityCtxData{
 		xmlPath:    *libvirtXMLDir,
-		devices:    c.gpuDevs,
+		devices:    c.gpuSMI.Devices,
 		instanceID: instanceID,
 	}
 
@@ -509,29 +484,110 @@ func (c *libvirtCollector) getInstanceProperties(instanceID string) instanceProp
 				"Failed to run inside security contxt", "instance_id", instanceID, "err", err,
 			)
 
-			return instanceProps{}
+			return nil
 		}
 	} else {
 		c.logger.Error(
 			"Security context not found", "name", libvirtReadXMLCtx, "instance_id", instanceID,
 		)
 
-		return instanceProps{}
+		return nil
 	}
 
-	return dataPtr.instanceProps
+	if len(dataPtr.properties.deviceIDs) > 0 {
+		c.logger.Debug("GPU ordinals", "instanceID", instanceID, "ordinals", strings.Join(dataPtr.properties.deviceIDs, ","))
+	}
+
+	return dataPtr.properties
 }
 
-// instanceMetrics returns initialised instance metrics structs.
-func (c *libvirtCollector) instanceMetrics() (libvirtMetrics, error) {
+// updateDeviceInstances updates devices with instance UUIDs.
+func (c *libvirtCollector) updateDeviceInstances(cgroups []cgroup) {
+	// Get current instance UUIDs on the node
+	currentInstanceIDs := make([]string, len(cgroups))
+	for icgroup, cgroup := range cgroups {
+		currentInstanceIDs[icgroup] = cgroup.uuid
+	}
+
+	// Check if there are any new/deleted instance between current and previous
+	// scrapes.
+	// It is possible from Openstack to resize instances by changing flavour. It means
+	// it is possible to add GPUs to non-GPU instances, so we need to invalidate
+	// instancePropsCache once in a while to ensure we capture any changes in instance
+	// flavours
+	if areEqual(currentInstanceIDs, c.previousInstanceIDs) && time.Since(c.instanceDeviceslastUpdateTime) < c.instanceDevicesCacheTTL {
+		return
+	}
+
+	// Reset instance IDs in devices
+	for igpu := range c.gpuSMI.Devices {
+		c.gpuSMI.Devices[igpu].ResetUnits()
+	}
+
+	// If vGPU is activated on atleast one GPU, update mdevs
+	if c.vGPUActivated {
+		if err := c.gpuSMI.UpdateGPUMdevs(); err != nil {
+			c.logger.Error("Failed to update GPU mdevs", "err", err)
+		}
+	}
+
+	// Make a map from instance UUID to devices
+	instanceDeviceMapper := make(map[string][]string)
+
+	// Iterate over all active cgroups and get instance devices
+	for icgrp, cgrp := range cgroups {
+		properties := c.instanceProperties(cgrp.id)
+		if properties == nil {
+			continue
+		}
+
+		cgroups[icgrp].uuid = properties.uuid
+
+		for _, id := range properties.deviceIDs {
+			instanceDeviceMapper[id] = append(instanceDeviceMapper[id], properties.uuid)
+		}
+	}
+
+	// Iterate over devices to find which device corresponds to this id
+	for igpu, gpu := range c.gpuSMI.Devices {
+		// If device is physical GPU
+		if uids, ok := instanceDeviceMapper[gpu.Index]; ok {
+			for handle, count := range elementCounts(uids) {
+				c.gpuSMI.Devices[igpu].ComputeUnits = append(c.gpuSMI.Devices[igpu].ComputeUnits, ComputeUnit{UUID: handle.Value(), NumShares: count})
+			}
+
+			c.gpuSMI.Devices[igpu].CurrentShares += uint64(len(uids))
+		}
+
+		// If device is instance GPU
+		for iinst, inst := range gpu.Instances {
+			if uids, ok := instanceDeviceMapper[inst.Index]; ok {
+				for handle, count := range elementCounts(uids) {
+					c.gpuSMI.Devices[igpu].Instances[iinst].ComputeUnits = append(c.gpuSMI.Devices[igpu].Instances[iinst].ComputeUnits, ComputeUnit{UUID: handle.Value(), NumShares: count})
+				}
+
+				c.gpuSMI.Devices[igpu].Instances[iinst].CurrentShares += uint64(len(uids))
+			}
+		}
+	}
+
+	// Update instance IDs state variable
+	c.previousInstanceIDs = currentInstanceIDs
+	c.instanceDeviceslastUpdateTime = time.Now()
+}
+
+// instanceCgroups returns cgroups of active instances.
+func (c *libvirtCollector) instanceCgroups() ([]cgroup, error) {
 	// Get active cgroups
 	cgroups, err := c.cgroupManager.discover()
 	if err != nil {
-		return libvirtMetrics{}, fmt.Errorf("failed to discover cgroups: %w", err)
+		return nil, fmt.Errorf("failed to discover cgroups: %w", err)
 	}
 
-	// Get all instance properties and initialise metric structs
-	return c.instanceProperties(cgroups), nil
+	// Update instance devices
+	c.updateDeviceInstances(cgroups)
+
+	return cgroups, nil
 }
 
 // readLibvirtXMLFile reads the libvirt's XML file inside a security context.
@@ -564,6 +620,9 @@ func readLibvirtXMLFile(data interface{}) error {
 		return err
 	}
 
+	// Initialise resources pointer
+	d.properties = &instanceProperties{}
+
 	// Loop over hostdevs to get GPU IDs
 	var gpuOrdinals []string
 
@@ -581,7 +640,7 @@ func readLibvirtXMLFile(data interface{}) error {
 			// Check if the current Bus ID matches with any existing GPUs
 			for _, dev := range d.devices {
 				if dev.CompareBusID(gpuBusID) {
-					gpuOrdinals = append(gpuOrdinals, dev.globalIndex)
+					gpuOrdinals = append(gpuOrdinals, dev.Index)
 
 					break
 				}
@@ -591,30 +650,29 @@ func readLibvirtXMLFile(data interface{}) error {
 
 			// Check which GPU has this mdev UUID
 			for _, dev := range d.devices {
-				if dev.migEnabled {
-					for _, mig := range dev.migInstances {
-						if slices.Contains(mig.mdevUUIDs, mdevUUID) {
-							gpuOrdinals = append(gpuOrdinals, mig.globalIndex)
+				if len(dev.Instances) > 0 {
+					for _, mig := range dev.Instances {
+						if slices.Contains(mig.MdevUUIDs, mdevUUID) {
+							gpuOrdinals = append(gpuOrdinals, mig.Index)
 
-							break
+							goto outer_loop
 						}
 					}
 				} else {
-					if slices.Contains(dev.mdevUUIDs, mdevUUID) {
-						gpuOrdinals = append(gpuOrdinals, dev.globalIndex)
+					if slices.Contains(dev.MdevUUIDs, mdevUUID) {
+						gpuOrdinals = append(gpuOrdinals, dev.Index)
 
-						break
+						goto outer_loop
 					}
 				}
 			}
 		}
+	outer_loop:
 	}
 
 	// Read instance properties into dataPointer
-	d.instanceProps = instanceProps{
-		uuid:        domain.UUID,
-		gpuOrdinals: gpuOrdinals,
-	}
+	d.properties.deviceIDs = gpuOrdinals
+	d.properties.uuid = domain.UUID
 
 	return nil
 }
