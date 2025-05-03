@@ -44,13 +44,16 @@ $ nvidia-smi mig -lgi
 
 It means MIG instance `4g.20gb` has 4/7 of SMs, `2g.10gb` has 2/7 of SMs and `1g.5gb` has
 1/7 of SMs. Consequently, the power consumed by entire GPU is divided amongst the different
-MIG instances in the ratio of their SMs respectively. For example, if the physical GPU's
-power consumption is 140 W, the power consumption of each MIG profile will be estimated as
-follows:
+MIG instances in the ratio of their SMs and their usage respectively. For example, if the physical GPU's
+power consumption is `P` Watts, and if there are two other compute units using instance `1g.5gb` and `4g.20gb`,
+the power consumption of each MIG profile will be estimated as follows:
 
-- `1g.5gb`: 140 * (1/7) = 20 W
-- `2g.10gb`: 140 * (2/7) = 40 W
-- `4g.20gb`: 140 * (4/7) = 80 W
+- `1g.5gb`: P * (1 * SM_USAGE(`1g.5gb`) * SM_OCC(`1g.5gb`))/((1 * SM_USAGE(`1g.5gb`) * SM_OCC(`1g.5gb`) + (7 * SM_USAGE(`4g.20gb`) * SM_OCC(`4g.20gb`))))
+- `4g.20gb`: P * (7 * SM_USAGE(`4g.20gb`) * SM_OCC(`4g.20gb`))/((1 * SM_USAGE(`1g.5gb`) * SM_OCC(`1g.5gb`) + (7 * SM_USAGE(`4g.20gb`) * SM_OCC(`4g.20gb`))))
+
+where `SM_USAGE` and `SM_OCC` are SMs usage and occupancy, respectively. The above formula
+saying that the total power usage of each instance is the effective usage of SMs by one instance
+relative to all the instances that are being used at a given time.
 
 The exporter will export the coefficient for each MIG instance which can be used along with
 power consumption metric of `dcgm-exporter` to estimate power consumption of individual MIG
@@ -89,5 +92,5 @@ already divides the physical GPU into different profiles by assigning a given
 number of SMs for each profile as discussed in SLURM collector above. When
 multiple vGPUs are running on the top of MIG instance, this coefficient is
 further divided by number of active vGPUs. For instance, if there are 4 vGPUs
-scheduled on a MIG profile `4g.20gb` where the physical GPU is consuming
-140 W, the power consumption of each vGPU would be 140*(4/7)*(1/4) = 20 W.
+scheduled on a MIG profile `4g.20gb`, the power estimated by the above formula
+will be further divided by 4 to attribute the power usage by each VM.

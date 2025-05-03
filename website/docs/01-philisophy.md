@@ -76,10 +76,10 @@ and users can choose the factor that suits their needs.
 
 ### GPU metrics
 
-Currently, only NVIDIA and AMD GPUs are supported. This exporter leverages
-[DCGM exporter](https://github.com/NVIDIA/dcgm-exporter/tree/main) for NVIDIA GPUs and
-[AMD SMI exporter](https://github.com/amd/amd_smi_exporter) for AMD GPUs to get GPU metrics of
-each compute unit. DCGM/AMD SMI exporters expose the GPU metrics of each GPU, and the
+Currently, only nVIDIA and AMD GPUs are supported. This exporter leverages
+[DCGM exporter](https://github.com/NVIDIA/dcgm-exporter/tree/main) for nVIDIA GPUs and
+[ROCM device metrics exporter](https://github.com/ROCm/device-metrics-exporter) for AMD GPUs to get GPU metrics of
+each compute unit. DCGM/Device metric exporters exposes the GPU metrics of each GPU and the
 current exporter takes care of the GPU index to compute unit mapping. These two metrics
 can be used together using PromQL to show the metrics of GPU metrics of a given compute
 unit.
@@ -88,7 +88,9 @@ In the case of vGPUs supported by NVIDIA Grid, the energy consumed by each vGPU 
 estimated using the total energy consumption of the physical GPU and the number of active
 vGPUs scheduled on that physical GPU. Similarly, in the case of Multi-Instance GPU (MIG),
 the energy consumption of each MIG instance is estimated based on the relative number
-of Streaming Multiprocessors (SM) and total energy consumption of the physical GPU.
+of Streaming Multiprocessors (SM) and total energy consumption of the physical GPU. Similar
+to the vGPU, for time slicing of GPUs, the energy consumed by each slice is estimated
+based on the number of slices of the GPU and total energy consumption.
 
 ### Performance metrics
 
