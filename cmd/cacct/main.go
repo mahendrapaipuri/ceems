@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"os"
@@ -18,7 +19,6 @@ import (
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	http_config "github.com/prometheus/common/config"
 	"github.com/prometheus/common/version"
-	"golang.org/x/exp/constraints"
 	"gopkg.in/yaml.v3"
 )
 
@@ -717,7 +717,7 @@ func parseTime(s string) (time.Time, error) {
 	return time.Time{}, errors.New("invalid time format")
 }
 
-func sortedKeys[K constraints.Ordered, V any](m map[K]V) []K {
+func sortedKeys[K cmp.Ordered, V any](m map[K]V) []K {
 	keys := make([]K, len(m))
 	i := 0
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -19,8 +20,7 @@ import (
 	promconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/version"
 	"github.com/prometheus/exporter-toolkit/web"
-	"golang.org/x/exp/constraints"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -338,7 +338,7 @@ func config(ctx context.Context, api v1.API) (*Config, error) {
 }
 
 // intersection returns intersection of elements between slices.
-func intersection[T constraints.Ordered](pS ...[]T) []T {
+func intersection[T cmp.Ordered](pS ...[]T) []T {
 	hash := make(map[T]*int) // value, counter
 	result := make([]T, 0)
 
