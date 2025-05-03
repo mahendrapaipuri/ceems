@@ -19,33 +19,33 @@ type mockManager struct {
 
 const mockResourceManager = "mock"
 
-var (
-	macctPath = base.CEEMSServerApp.Flag(
-		"mock.acct.path",
-		"Absolute path to mock scheduler's accounting executable.",
-	).Default("/usr/local/bin/macct").String()
-)
+var macctPath = base.CEEMSServerApp.Flag(
+	"mock.acct.path",
+	"Absolute path to mock scheduler's accounting executable.",
+).Default("/usr/local/bin/macct").String()
 
 func init() {
 	// Register manager
 	resource.Register(mockResourceManager, NewMockManager)
 }
 
-// Do all basic checks here
+// Do all basic checks here.
 func preflightChecks(logger *slog.Logger) error {
 	if _, err := os.Stat(*macctPath); err != nil {
 		logger.Error("Failed to open executable", "path", *macctPath, "err", err)
+
 		return err
 	}
 
 	return nil
 }
 
-// NewMockManager returns a new MockManager that returns compute units
+// NewMockManager returns a new MockManager that returns compute units.
 func NewMockManager(cluster models.Cluster, logger *slog.Logger) (resource.Fetcher, error) {
 	err := preflightChecks(logger)
 	if err != nil {
 		logger.Error("Failed to create mock manager.", "err", err)
+
 		return nil, err
 	}
 
@@ -56,11 +56,7 @@ func NewMockManager(cluster models.Cluster, logger *slog.Logger) (resource.Fetch
 	}, nil
 }
 
-// Add the logic here to get compute units from resource manager and return slice of
-// ClusterUnits structs
-//
-// When making Unit stucts, ensure to format the datetime using base.DatetimeLayout
-// Also ensure to set StartTS and EndTS fields to start and end times in unix milliseconds epoch
+// Also ensure to set StartTS and EndTS fields to start and end times in unix milliseconds epoch.
 func (s *mockManager) FetchUnits(_ context.Context, _ time.Time, _ time.Time) ([]models.ClusterUnits, error) {
 	return []models.ClusterUnits{
 		{
@@ -79,8 +75,7 @@ func (s *mockManager) FetchUnits(_ context.Context, _ time.Time, _ time.Time) ([
 	}, nil
 }
 
-// Add the logic here to get users and projects/accounts/tenants/namespaces from
-// resource manager
+// resource manager.
 func (s *mockManager) FetchUsersProjects(
 	_ context.Context,
 	_ time.Time,

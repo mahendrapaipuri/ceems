@@ -9,16 +9,16 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// A mock collector that exports a random value between 0 and configurable maximum value
+// A mock collector that exports a random value between 0 and configurable maximum value.
 const mockCollectorSubsystem = "mock"
 
-// Define mock collector struct
+// Define mock collector struct.
 type mockCollector struct {
 	logger         *slog.Logger
 	mockMetricDesc *prometheus.Desc
 }
 
-// Define vars and flags necessary to configure collector
+// Define vars and flags necessary to configure collector.
 var (
 	maxRandInt = collector.CEEMSExporterApp.Flag(
 		"collector.mock.max",
@@ -26,7 +26,7 @@ var (
 	).Default("100").Int()
 )
 
-// Register mock collector
+// Register mock collector.
 func init() {
 	collector.RegisterCollector(mockCollectorSubsystem, true, NewMockCollector)
 }
@@ -51,7 +51,8 @@ func NewMockCollector(logger *slog.Logger) (collector.Collector, error) {
 // Update implements Collector and exposes mock metrics.
 func (c *mockCollector) Update(ch chan<- prometheus.Metric) error {
 	// Return a random value
-	ch <- prometheus.MustNewConstMetric(c.mockMetricDesc, prometheus.CounterValue, float64(rand.Intn(*maxRandInt)))
+	ch <- prometheus.MustNewConstMetric(c.mockMetricDesc, prometheus.CounterValue, float64(rand.Intn(*maxRandInt))) //nolint:gosec
+
 	return nil
 }
 

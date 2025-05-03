@@ -490,7 +490,11 @@ func NewPerfCollector(logger *slog.Logger, cgManager *cgroupManager) (*perfColle
 
 	// Setup necessary capabilities. cap_perfmon is necessary to open perf events.
 	capabilities := []string{"cap_perfmon"}
-	reqCaps := setupCollectorCaps(logger, perfCollectorSubsystem, capabilities)
+
+	reqCaps, err := setupCollectorCaps(capabilities)
+	if err != nil {
+		logger.Warn("Failed to parse capability name(s)", "err", err)
+	}
 
 	// Setup new security context(s)
 	// Security context for openining profilers
@@ -525,7 +529,11 @@ func NewPerfCollector(logger *slog.Logger, cgManager *cgroupManager) (*perfColle
 	// cap_dac_read_search caps
 	if len(collector.opts.targetEnvVars) > 0 {
 		capabilities = []string{"cap_sys_ptrace", "cap_dac_read_search"}
-		auxCaps := setupCollectorCaps(logger, perfCollectorSubsystem, capabilities)
+
+		auxCaps, err := setupCollectorCaps(capabilities)
+		if err != nil {
+			logger.Warn("Failed to parse capability name(s)", "err", err)
+		}
 
 		collector.securityContexts[perfProcFilterCtx], err = security.NewSecurityContext(
 			perfProcFilterCtx,
@@ -767,7 +775,7 @@ func (c *perfCollector) updateHardwareCounters(
 			ch <- prometheus.MustNewConstMetric(
 				c.desc[counter],
 				prometheus.CounterValue, value,
-				c.cgroupManager.manager, c.hostname, cgroupID,
+				c.cgroupManager.name, c.hostname, cgroupID,
 			)
 		}
 	}
@@ -857,7 +865,7 @@ func (c *perfCollector) updateSoftwareCounters(
 			ch <- prometheus.MustNewConstMetric(
 				c.desc[counter],
 				prometheus.CounterValue, value,
-				c.cgroupManager.manager, c.hostname, cgroupID,
+				c.cgroupManager.name, c.hostname, cgroupID,
 			)
 		}
 	}
@@ -974,7 +982,7 @@ func (c *perfCollector) updateCacheCounters(cgroupID string, procs []procfs.Proc
 			ch <- prometheus.MustNewConstMetric(
 				c.desc[counter],
 				prometheus.CounterValue, value,
-				c.cgroupManager.manager, c.hostname, cgroupID,
+				c.cgroupManager.name, c.hostname, cgroupID,
 			)
 		}
 	}

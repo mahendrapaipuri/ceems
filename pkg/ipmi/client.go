@@ -62,7 +62,7 @@ func NewIPMIClient(devNum int, logger *slog.Logger) (*IPMIClient, error) {
 	}
 
 	// Setup event receiver
-	var recvEvents int = 1
+	recvEvents := 1
 	if _, _, errno := syscall.Syscall(syscall.SYS_IOCTL, devFile.Fd(), IPMICTL_SET_GETS_EVENTS_CMD, uintptr(unsafe.Pointer(&recvEvents))); errno != 0 {
 		return nil, fmt.Errorf("failed to enable IPMI event receiver: %w", errno)
 	}

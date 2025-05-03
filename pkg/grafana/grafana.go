@@ -77,11 +77,6 @@ func New(webURL string, config config_util.HTTPClientConfig, logger *slog.Logger
 	}, nil
 }
 
-// teamMembersEndpoint returns the URL for fetching team members.
-func (g *Grafana) teamMembersEndpoint(teamID string) string {
-	return g.URL.JoinPath(fmt.Sprintf("/api/teams/%s/members", teamID)).String()
-}
-
 // String receiver for Grafana struct.
 func (g *Grafana) String() string {
 	return fmt.Sprintf("Grafana URL: %s, Is Grafana Online: %t", g.URL.Redacted(), g.available)
@@ -126,6 +121,11 @@ func (g *Grafana) TeamMembers(ctx context.Context, teamsIDs []string) ([]string,
 	}
 
 	return allMembers, nil
+}
+
+// teamMembersEndpoint returns the URL for fetching team members.
+func (g *Grafana) teamMembersEndpoint(teamID string) string {
+	return g.URL.JoinPath(fmt.Sprintf("/api/teams/%s/members", teamID)).String()
 }
 
 // teamMembers fetches team members from a given Grafana team.

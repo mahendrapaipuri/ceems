@@ -110,6 +110,88 @@ func New(c *Config) (LoadBalancer, error) {
 	return lb, nil
 }
 
+// Start server.
+func (lb *loadBalancer) Start(_ context.Context) error {
+	// Apply middleware
+	lb.server.Handler = lb.amw.Middleware(http.HandlerFunc(lb.Serve))
+	lb.logger.Info("Starting "+base.CEEMSLoadBalancerAppName, "listening", lb.server.Addr)
+
+	// Listen for requests
+	if err := web.ListenAndServe(lb.server, lb.webConfig, lb.logger); err != nil &&
+		!errors.Is(err, http.ErrServerClosed) {
+		lb.logger.Error("Failed to Listen and Serve HTTP server", "err", err)
+
+		return err
+	}
+
+	return nil
+}
+
+// Shutdown server.
+func (lb *loadBalancer) Shutdown(ctx context.Context) error {
+	// Close DB connection only if DB file is provided
+	if lb.amw.ceems.db != nil {
+		if err := lb.amw.ceems.db.Close(); err != nil {
+			lb.logger.Error("Failed to close DB connection", "err", err)
+
+			return err
+		}
+	}
+
+	// Shutdown the server
+	if err := lb.server.Shutdown(ctx); err != nil {
+		lb.logger.Error("Failed to shutdown HTTP server", "err", err)
+
+		return err
+	}
+
+	return nil
+}
+
+// Serve serves the request using a backend TSDB server from the pool.
+func (lb *loadBalancer) Serve(w http.ResponseWriter, r *http.Request) {
+	// Health check
+	if r.URL.Path == "/health" {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("CEEMS LB Server is healthy"))
+
+		return
+	}
+
+	// Retrieve query params from context
+	queryParams := r.Context().Value(ReqParamsContextKey{})
+
+	// Check if queryParams is nil which could happen in edge cases
+	if queryParams == nil {
+		http.Error(w, "Query parameters not found", http.StatusBadRequest)
+
+		return
+	}
+
+	// Middleware ensures that query parameters are always set in request's context
+	var queryPeriod time.Duration
+
+	var id string
+
+	if v, ok := queryParams.(*ReqParams); ok {
+		queryPeriod = v.queryPeriod
+		id = v.clusterID
+	} else {
+		http.Error(w, "Invalid query parameters", http.StatusBadRequest)
+
+		return
+	}
+
+	// Choose target based on query Period
+	if target := lb.manager.Target(id, queryPeriod); target != nil {
+		target.Serve(w, r)
+
+		return
+	}
+
+	http.Error(w, "Service not available", http.StatusServiceUnavailable)
+}
+
 // errorHandlers sets up error handlers for backend servers.
 func (lb *loadBalancer) errorHandlers() {
 	// Iterate over all backend servers
@@ -221,86 +303,4 @@ validate:
 	}
 
 	return nil
-}
-
-// Start server.
-func (lb *loadBalancer) Start(_ context.Context) error {
-	// Apply middleware
-	lb.server.Handler = lb.amw.Middleware(http.HandlerFunc(lb.Serve))
-	lb.logger.Info("Starting "+base.CEEMSLoadBalancerAppName, "listening", lb.server.Addr)
-
-	// Listen for requests
-	if err := web.ListenAndServe(lb.server, lb.webConfig, lb.logger); err != nil &&
-		!errors.Is(err, http.ErrServerClosed) {
-		lb.logger.Error("Failed to Listen and Serve HTTP server", "err", err)
-
-		return err
-	}
-
-	return nil
-}
-
-// Shutdown server.
-func (lb *loadBalancer) Shutdown(ctx context.Context) error {
-	// Close DB connection only if DB file is provided
-	if lb.amw.ceems.db != nil {
-		if err := lb.amw.ceems.db.Close(); err != nil {
-			lb.logger.Error("Failed to close DB connection", "err", err)
-
-			return err
-		}
-	}
-
-	// Shutdown the server
-	if err := lb.server.Shutdown(ctx); err != nil {
-		lb.logger.Error("Failed to shutdown HTTP server", "err", err)
-
-		return err
-	}
-
-	return nil
-}
-
-// Serve serves the request using a backend TSDB server from the pool.
-func (lb *loadBalancer) Serve(w http.ResponseWriter, r *http.Request) {
-	// Health check
-	if r.URL.Path == "/health" {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("CEEMS LB Server is healthy"))
-
-		return
-	}
-
-	// Retrieve query params from context
-	queryParams := r.Context().Value(ReqParamsContextKey{})
-
-	// Check if queryParams is nil which could happen in edge cases
-	if queryParams == nil {
-		http.Error(w, "Query parameters not found", http.StatusBadRequest)
-
-		return
-	}
-
-	// Middleware ensures that query parameters are always set in request's context
-	var queryPeriod time.Duration
-
-	var id string
-
-	if v, ok := queryParams.(*ReqParams); ok {
-		queryPeriod = v.queryPeriod
-		id = v.clusterID
-	} else {
-		http.Error(w, "Invalid query parameters", http.StatusBadRequest)
-
-		return
-	}
-
-	// Choose target based on query Period
-	if target := lb.manager.Target(id, queryPeriod); target != nil {
-		target.Serve(w, r)
-
-		return
-	}
-
-	http.Error(w, "Service not available", http.StatusServiceUnavailable)
 }

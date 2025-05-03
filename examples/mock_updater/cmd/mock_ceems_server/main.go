@@ -4,7 +4,7 @@
 // Boiler plate code to create a new instance of usageStatsServerApp entrypoint
 package main
 
-// Ensure to import the current mock updater hook
+// Ensure to import the current mock updater hook.
 import (
 	"fmt"
 	"os"
@@ -16,7 +16,7 @@ import (
 	"github.com/mahendrapaipuri/ceems/pkg/api/cli"
 )
 
-// Main entry point for `usagestats` app
+// Main entry point for `usagestats` app.
 func main() {
 	// Create a new app
 	usageStatsServerApp, err := cli.NewCEEMSServer()
@@ -26,7 +26,7 @@ func main() {
 
 	// Main entrypoint of the app
 	if err := usageStatsServerApp.Main(); err != nil {
-		fmt.Println(err)
+		fmt.Fprintf(os.Stderr, "error: %s\n", err)
 		os.Exit(1)
 	}
 }

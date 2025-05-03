@@ -5,8 +5,6 @@ package collector
 
 import (
 	"context"
-	"io"
-	"log/slog"
 	"os"
 	"testing"
 
@@ -21,7 +19,7 @@ func TestMeminfoCollector(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	collector, err := NewMeminfoCollector(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	collector, err := NewMeminfoCollector(noOpLogger)
 	require.NoError(t, err)
 
 	// Setup background goroutine to capture metrics.

@@ -5,8 +5,6 @@ package collector
 
 import (
 	"context"
-	"io"
-	"log/slog"
 	"testing"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -21,7 +19,7 @@ func TestNetdevCollector(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	collector, err := NewNetdevCollector(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	collector, err := NewNetdevCollector(noOpLogger)
 	require.NoError(t, err)
 
 	// Setup background goroutine to capture metrics.
@@ -53,7 +51,7 @@ func TestProcNetDevStats(t *testing.T) {
 	require.NoError(t, err)
 
 	c := &netdevCollector{
-		logger:       slog.New(slog.NewTextHandler(io.Discard, nil)),
+		logger:       noOpLogger,
 		fs:           fs,
 		deviceFilter: newDeviceFilter("docker0|lo|vethf345468", ""),
 		hostname:     hostname,
@@ -84,5 +82,5 @@ func TestProcNetDevStats(t *testing.T) {
 	netDevStats, err := c.procNetDevStats()
 	require.NoError(t, err)
 
-	assert.EqualValues(t, expectedStats, netDevStats)
+	assert.Equal(t, expectedStats, netDevStats)
 }

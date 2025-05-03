@@ -6,8 +6,6 @@ package collector
 import (
 	"context"
 	"fmt"
-	"io"
-	"log/slog"
 	"testing"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -44,7 +42,7 @@ func TestHwmonCollector(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	collector, err := NewHwmonCollector(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	collector, err := NewHwmonCollector(noOpLogger)
 	require.NoError(t, err)
 
 	// Setup background goroutine to capture metrics.
@@ -72,7 +70,7 @@ func TestHwmonMetrics(t *testing.T) {
 	require.NoError(t, err)
 
 	c := &hwmonCollector{
-		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		logger: noOpLogger,
 	}
 
 	err = c.discoverMonitors()
@@ -96,5 +94,5 @@ func TestHwmonMetrics(t *testing.T) {
 		}
 	}
 
-	assert.EqualValues(t, expectedHwmonValues, gotValues)
+	assert.Equal(t, expectedHwmonValues, gotValues)
 }

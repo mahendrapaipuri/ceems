@@ -66,7 +66,11 @@ func NewRaplCollector(logger *slog.Logger) (Collector, error) {
 		if currentKernelVer >= KernelStringToNumeric("5.10") {
 			// Setup necessary capabilities. cap_perfmon is necessary to open perf events.
 			capabilities := []string{"cap_dac_read_search"}
-			reqCaps := setupCollectorCaps(logger, raplCollectorSubsystem, capabilities)
+
+			reqCaps, err := setupCollectorCaps(capabilities)
+			if err != nil {
+				logger.Warn("Failed to parse capability name(s)", "err", err)
+			}
 
 			securityContexts[raplReadEnergyCounter], err = security.NewSecurityContext(
 				raplReadEnergyCounter,

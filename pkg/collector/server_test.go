@@ -2,8 +2,6 @@ package collector
 
 import (
 	"fmt"
-	"io"
-	"log/slog"
 	"net/http"
 	"strconv"
 	"testing"
@@ -29,7 +27,7 @@ func TestCEEMSExporterServer(t *testing.T) {
 		{
 			name: "separate metrics and landing page",
 			config: &Config{
-				Logger:    slog.New(slog.NewTextHandler(io.Discard, nil)),
+				Logger:    noOpLogger,
 				Collector: &CEEMSCollector{},
 				Web: WebConfig{
 					MetricsPath: "/metrics",
@@ -57,7 +55,7 @@ func TestCEEMSExporterServer(t *testing.T) {
 		{
 			name: "only metrics without landing page",
 			config: &Config{
-				Logger:    slog.New(slog.NewTextHandler(io.Discard, nil)),
+				Logger:    noOpLogger,
 				Collector: &CEEMSCollector{},
 				Web: WebConfig{
 					MetricsPath: "/",
@@ -81,7 +79,7 @@ func TestCEEMSExporterServer(t *testing.T) {
 		{
 			name: "separate metrics and landing page and with debug server",
 			config: &Config{
-				Logger:    slog.New(slog.NewTextHandler(io.Discard, nil)),
+				Logger:    noOpLogger,
 				Collector: &CEEMSCollector{},
 				Web: WebConfig{
 					MetricsPath:       "/metrics",

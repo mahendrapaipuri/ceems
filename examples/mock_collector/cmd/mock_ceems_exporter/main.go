@@ -1,7 +1,7 @@
 // Boiler plate code to create a new instance of ComputeResourceExporterApp entrypoint
 package main
 
-// Ensure to import the current mock collector
+// Ensure to import the current mock collector.
 import (
 	"fmt"
 	"os"
@@ -10,7 +10,7 @@ import (
 	"github.com/mahendrapaipuri/ceems/pkg/collector"
 )
 
-// Main entry point for `ceems_exporter` app
+// Main entry point for `ceems_exporter` app.
 func main() {
 	// Create a new app
 	ceemsExporterApp, err := collector.NewCEEMSExporter()
@@ -20,7 +20,7 @@ func main() {
 
 	// Main entrypoint of the app
 	if err := ceemsExporterApp.Main(); err != nil {
-		fmt.Println(err)
+		fmt.Fprintf(os.Stderr, "error: %s\n", err)
 		os.Exit(1)
 	}
 }

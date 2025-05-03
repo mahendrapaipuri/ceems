@@ -375,7 +375,10 @@ func NewEbpfCollector(logger *slog.Logger, cgManager *cgroupManager) (*ebpfColle
 		capabilities = []string{"cap_bpf", "cap_perfmon"}
 	}
 
-	caps := setupCollectorCaps(logger, ebpfCollectorSubsystem, capabilities)
+	caps, err := setupCollectorCaps(capabilities)
+	if err != nil {
+		logger.Warn("Failed to parse capability name(s)", "err", err)
+	}
 
 	// Setup new security context(s)
 	// Security context for reading eBPF VFS maps
@@ -648,9 +651,9 @@ func (c *ebpfCollector) updateVFSWrite(ch chan<- prometheus.Metric, aggMetrics *
 
 	// Update metrics to the channel
 	for key, value := range aggMetric {
-		ch <- prometheus.MustNewConstMetric(c.vfsWriteRequests, prometheus.CounterValue, float64(value.Calls), c.cgroupManager.manager, c.hostname, key.UUID, key.Mount)
-		ch <- prometheus.MustNewConstMetric(c.vfsWriteBytes, prometheus.CounterValue, float64(value.Bytes), c.cgroupManager.manager, c.hostname, key.UUID, key.Mount)
-		ch <- prometheus.MustNewConstMetric(c.vfsWriteErrors, prometheus.CounterValue, float64(value.Errors), c.cgroupManager.manager, c.hostname, key.UUID, key.Mount)
+		ch <- prometheus.MustNewConstMetric(c.vfsWriteRequests, prometheus.CounterValue, float64(value.Calls), c.cgroupManager.name, c.hostname, key.UUID, key.Mount)
+		ch <- prometheus.MustNewConstMetric(c.vfsWriteBytes, prometheus.CounterValue, float64(value.Bytes), c.cgroupManager.name, c.hostname, key.UUID, key.Mount)
+		ch <- prometheus.MustNewConstMetric(c.vfsWriteErrors, prometheus.CounterValue, float64(value.Errors), c.cgroupManager.name, c.hostname, key.UUID, key.Mount)
 	}
 
 	return nil
@@ -672,9 +675,9 @@ func (c *ebpfCollector) updateVFSRead(ch chan<- prometheus.Metric, aggMetrics *a
 
 	// Update metrics to the channel
 	for key, value := range aggMetric {
-		ch <- prometheus.MustNewConstMetric(c.vfsReadRequests, prometheus.CounterValue, float64(value.Calls), c.cgroupManager.manager, c.hostname, key.UUID, key.Mount)
-		ch <- prometheus.MustNewConstMetric(c.vfsReadBytes, prometheus.CounterValue, float64(value.Bytes), c.cgroupManager.manager, c.hostname, key.UUID, key.Mount)
-		ch <- prometheus.MustNewConstMetric(c.vfsReadErrors, prometheus.CounterValue, float64(value.Errors), c.cgroupManager.manager, c.hostname, key.UUID, key.Mount)
+		ch <- prometheus.MustNewConstMetric(c.vfsReadRequests, prometheus.CounterValue, float64(value.Calls), c.cgroupManager.name, c.hostname, key.UUID, key.Mount)
+		ch <- prometheus.MustNewConstMetric(c.vfsReadBytes, prometheus.CounterValue, float64(value.Bytes), c.cgroupManager.name, c.hostname, key.UUID, key.Mount)
+		ch <- prometheus.MustNewConstMetric(c.vfsReadErrors, prometheus.CounterValue, float64(value.Errors), c.cgroupManager.name, c.hostname, key.UUID, key.Mount)
 	}
 
 	return nil
@@ -696,8 +699,8 @@ func (c *ebpfCollector) updateVFSOpen(ch chan<- prometheus.Metric, aggMetrics *a
 
 	// Update metrics to the channel
 	for uuid, value := range aggMetric {
-		ch <- prometheus.MustNewConstMetric(c.vfsOpenRequests, prometheus.CounterValue, float64(value.Calls), c.cgroupManager.manager, c.hostname, uuid)
-		ch <- prometheus.MustNewConstMetric(c.vfsOpenErrors, prometheus.CounterValue, float64(value.Errors), c.cgroupManager.manager, c.hostname, uuid)
+		ch <- prometheus.MustNewConstMetric(c.vfsOpenRequests, prometheus.CounterValue, float64(value.Calls), c.cgroupManager.name, c.hostname, uuid)
+		ch <- prometheus.MustNewConstMetric(c.vfsOpenErrors, prometheus.CounterValue, float64(value.Errors), c.cgroupManager.name, c.hostname, uuid)
 	}
 
 	return nil
@@ -719,8 +722,8 @@ func (c *ebpfCollector) updateVFSCreate(ch chan<- prometheus.Metric, aggMetrics 
 
 	// Update metrics to the channel
 	for uuid, value := range aggMetric {
-		ch <- prometheus.MustNewConstMetric(c.vfsCreateRequests, prometheus.CounterValue, float64(value.Calls), c.cgroupManager.manager, c.hostname, uuid)
-		ch <- prometheus.MustNewConstMetric(c.vfsCreateErrors, prometheus.CounterValue, float64(value.Errors), c.cgroupManager.manager, c.hostname, uuid)
+		ch <- prometheus.MustNewConstMetric(c.vfsCreateRequests, prometheus.CounterValue, float64(value.Calls), c.cgroupManager.name, c.hostname, uuid)
+		ch <- prometheus.MustNewConstMetric(c.vfsCreateErrors, prometheus.CounterValue, float64(value.Errors), c.cgroupManager.name, c.hostname, uuid)
 	}
 
 	return nil
@@ -742,8 +745,8 @@ func (c *ebpfCollector) updateVFSUnlink(ch chan<- prometheus.Metric, aggMetrics 
 
 	// Update metrics to the channel
 	for uuid, value := range aggMetric {
-		ch <- prometheus.MustNewConstMetric(c.vfsUnlinkRequests, prometheus.CounterValue, float64(value.Calls), c.cgroupManager.manager, c.hostname, uuid)
-		ch <- prometheus.MustNewConstMetric(c.vfsUnlinkErrors, prometheus.CounterValue, float64(value.Errors), c.cgroupManager.manager, c.hostname, uuid)
+		ch <- prometheus.MustNewConstMetric(c.vfsUnlinkRequests, prometheus.CounterValue, float64(value.Calls), c.cgroupManager.name, c.hostname, uuid)
+		ch <- prometheus.MustNewConstMetric(c.vfsUnlinkErrors, prometheus.CounterValue, float64(value.Errors), c.cgroupManager.name, c.hostname, uuid)
 	}
 
 	return nil
@@ -765,8 +768,8 @@ func (c *ebpfCollector) updateNetIngress(ch chan<- prometheus.Metric, aggMetrics
 
 	// Update metrics to the channel
 	for key, value := range aggMetric {
-		ch <- prometheus.MustNewConstMetric(c.netIngressPackets, prometheus.CounterValue, float64(value.Packets), c.cgroupManager.manager, c.hostname, key.UUID, key.Proto, key.Family)
-		ch <- prometheus.MustNewConstMetric(c.netIngressBytes, prometheus.CounterValue, float64(value.Bytes), c.cgroupManager.manager, c.hostname, key.UUID, key.Proto, key.Family)
+		ch <- prometheus.MustNewConstMetric(c.netIngressPackets, prometheus.CounterValue, float64(value.Packets), c.cgroupManager.name, c.hostname, key.UUID, key.Proto, key.Family)
+		ch <- prometheus.MustNewConstMetric(c.netIngressBytes, prometheus.CounterValue, float64(value.Bytes), c.cgroupManager.name, c.hostname, key.UUID, key.Proto, key.Family)
 	}
 
 	return nil
@@ -788,8 +791,8 @@ func (c *ebpfCollector) updateNetEgress(ch chan<- prometheus.Metric, aggMetrics 
 
 	// Update metrics to the channel
 	for key, value := range aggMetric {
-		ch <- prometheus.MustNewConstMetric(c.netEgressPackets, prometheus.CounterValue, float64(value.Packets), c.cgroupManager.manager, c.hostname, key.UUID, key.Proto, key.Family)
-		ch <- prometheus.MustNewConstMetric(c.netEgressBytes, prometheus.CounterValue, float64(value.Bytes), c.cgroupManager.manager, c.hostname, key.UUID, key.Proto, key.Family)
+		ch <- prometheus.MustNewConstMetric(c.netEgressPackets, prometheus.CounterValue, float64(value.Packets), c.cgroupManager.name, c.hostname, key.UUID, key.Proto, key.Family)
+		ch <- prometheus.MustNewConstMetric(c.netEgressBytes, prometheus.CounterValue, float64(value.Bytes), c.cgroupManager.name, c.hostname, key.UUID, key.Proto, key.Family)
 	}
 
 	return nil
@@ -811,8 +814,8 @@ func (c *ebpfCollector) updateNetRetrans(ch chan<- prometheus.Metric, aggMetrics
 
 	// Update metrics to the channel
 	for key, value := range aggMetric {
-		ch <- prometheus.MustNewConstMetric(c.netRetransPackets, prometheus.CounterValue, float64(value.Packets), c.cgroupManager.manager, c.hostname, key.UUID, key.Proto, key.Family)
-		ch <- prometheus.MustNewConstMetric(c.netRetransBytes, prometheus.CounterValue, float64(value.Bytes), c.cgroupManager.manager, c.hostname, key.UUID, key.Proto, key.Family)
+		ch <- prometheus.MustNewConstMetric(c.netRetransPackets, prometheus.CounterValue, float64(value.Packets), c.cgroupManager.name, c.hostname, key.UUID, key.Proto, key.Family)
+		ch <- prometheus.MustNewConstMetric(c.netRetransBytes, prometheus.CounterValue, float64(value.Bytes), c.cgroupManager.name, c.hostname, key.UUID, key.Proto, key.Family)
 	}
 
 	return nil
