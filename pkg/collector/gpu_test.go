@@ -2,97 +2,118 @@ package collector
 
 import (
 	"fmt"
-	"io"
-	"log/slog"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
+	"time"
 
+	ceems_k8s "github.com/mahendrapaipuri/ceems/pkg/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes/fake"
 )
 
 func getExpectedNvidiaDevs() []Device {
 	return []Device{
 		{
-			localIndex:  "0",
-			globalIndex: "0",
-			name:        "NVIDIA A100-PCIE-40GB NVIDIA Ampere",
-			uuid:        "GPU-f124aa59-d406-d45b-9481-8fcd694e6c9e",
-			busID:       BusID{domain: 0x0, bus: 0x10, device: 0x0, function: 0x0},
-			migEnabled:  false,
-			vgpuEnabled: true,
+			Minor:            "0",
+			Index:            "0",
+			vendorID:         nvidia,
+			Name:             "NVIDIA A100-PCIE-40GB NVIDIA Ampere",
+			UUID:             "GPU-f124aa59-d406-d45b-9481-8fcd694e6c9e",
+			BusID:            BusID{domain: 0x0, bus: 0x10, device: 0x0, function: 0x0, pathName: "00000000:10:00.0"},
+			NumSMs:           108,
+			InstancesEnabled: false,
+			VGPUEnabled:      true,
 		},
 		{
-			localIndex:  "1",
-			globalIndex: "1",
-			name:        "NVIDIA A100-PCIE-40GB NVIDIA Ampere",
-			uuid:        "GPU-61a65011-6571-a6d2-5ab8-66cbb6f7f9c3",
-			busID:       BusID{domain: 0x0, bus: 0x15, device: 0x0, function: 0x0},
-			migEnabled:  false,
-			vgpuEnabled: false,
+			Minor:            "1",
+			Index:            "1",
+			vendorID:         nvidia,
+			Name:             "NVIDIA A100-PCIE-40GB NVIDIA Ampere",
+			UUID:             "GPU-61a65011-6571-a6d2-5ab8-66cbb6f7f9c3",
+			BusID:            BusID{domain: 0x0, bus: 0x15, device: 0x0, function: 0x0, pathName: "00000000:15:00.0"},
+			NumSMs:           108,
+			InstancesEnabled: false,
+			VGPUEnabled:      false,
 		},
 		{
-			localIndex: "2",
-			name:       "NVIDIA A100-PCIE-40GB NVIDIA Ampere",
-			uuid:       "GPU-956348bc-d43d-23ed-53d4-857749fa2b67",
-			busID:      BusID{domain: 0x0, bus: 0x21, device: 0x0, function: 0x0},
-			migInstances: []MIGInstance{
-				{localIndex: 0x0, globalIndex: "2", computeInstID: 0x0, gpuInstID: 0x1, smFraction: 0.6},
-				{localIndex: 0x1, globalIndex: "3", computeInstID: 0x0, gpuInstID: 0x5, smFraction: 0.2},
-				{localIndex: 0x2, globalIndex: "4", computeInstID: 0x0, gpuInstID: 0xd, smFraction: 0.2},
+			Minor:    "2",
+			vendorID: 1,
+			Name:     "NVIDIA A100-PCIE-40GB NVIDIA Ampere",
+			UUID:     "GPU-956348bc-d43d-23ed-53d4-857749fa2b67",
+			BusID:    BusID{domain: 0x0, bus: 0x21, device: 0x0, function: 0x0, pathName: "00000000:21:00.0"},
+			Instances: []GPUInstance{
+				{InstanceIndex: 0x0, Index: "2", ComputeInstID: 0x0, GPUInstID: 0x1, UUID: "MIG-ce2e805f-ce8e-5cf7-8132-176167d87d24", SMFraction: 0.3888888888888889, NumSMs: 42},
+				{InstanceIndex: 0x1, Index: "3", ComputeInstID: 0x0, GPUInstID: 0x5, UUID: "MIG-2cc993d7-588c-5c28-b454-b3851897e3d7", SMFraction: 0.12962962962962962, NumSMs: 14},
+				{InstanceIndex: 0x2, Index: "4", ComputeInstID: 0x0, GPUInstID: 0xd, UUID: "MIG-4bd078f2-f9bb-5bfb-8695-774674f75e96", SMFraction: 0.12962962962962962, NumSMs: 14},
 			},
-			migEnabled:  true,
-			vgpuEnabled: true,
+			NumSMs:           108,
+			InstancesEnabled: true,
+			VGPUEnabled:      true,
 		},
 		{
-			localIndex: "3",
-			name:       "NVIDIA A100-PCIE-40GB NVIDIA Ampere",
-			uuid:       "GPU-feba7e40-d724-01ff-b00f-3a439a28a6c7",
-			busID:      BusID{domain: 0x0, bus: 0x81, device: 0x0, function: 0x0},
-			migInstances: []MIGInstance{
-				{localIndex: 0x0, globalIndex: "5", computeInstID: 0x0, gpuInstID: 0x1, smFraction: 0.5714285714285714},
-				{localIndex: 0x1, globalIndex: "6", computeInstID: 0x0, gpuInstID: 0x5, smFraction: 0.2857142857142857},
-				{localIndex: 0x2, globalIndex: "7", computeInstID: 0x0, gpuInstID: 0x6, smFraction: 0.14285714285714285},
+			Minor:    "3",
+			vendorID: 1,
+			Name:     "NVIDIA A100-PCIE-40GB NVIDIA Ampere",
+			UUID:     "GPU-feba7e40-d724-01ff-b00f-3a439a28a6c7",
+			BusID:    BusID{domain: 0x0, bus: 0x81, device: 0x0, function: 0x0, pathName: "00000000:81:00.0"},
+			Instances: []GPUInstance{
+				{InstanceIndex: 0x0, Index: "5", ComputeInstID: 0x0, GPUInstID: 0x1, UUID: "MIG-4894e267-46d0-557e-b826-500e978d88d1", SMFraction: 0.5185185185185185, NumSMs: 56},
+				{InstanceIndex: 0x1, Index: "6", ComputeInstID: 0x0, GPUInstID: 0x5, UUID: "MIG-ed3d4e0a-516b-5cdf-a202-6239aa536031", SMFraction: 0.25925925925925924, NumSMs: 28},
+				{InstanceIndex: 0x2, Index: "7", ComputeInstID: 0x0, GPUInstID: 0x6, UUID: "MIG-017c61e4-656c-5059-b7b1-276506580e3c", SMFraction: 0.12962962962962962, NumSMs: 14},
 			},
-			migEnabled:  true,
-			vgpuEnabled: true,
+			NumSMs:           108,
+			InstancesEnabled: true,
+			VGPUEnabled:      true,
 		},
 		{
-			localIndex:  "4",
-			globalIndex: "8",
-			name:        "NVIDIA A100-PCIE-40GB NVIDIA Ampere",
-			uuid:        "GPU-61a65011-6571-a6d2-5th8-66cbb6f7f9c3",
-			busID:       BusID{domain: 0x0, bus: 0x83, device: 0x0, function: 0x0},
-			migEnabled:  false,
-			vgpuEnabled: false,
+			Minor:            "4",
+			Index:            "8",
+			vendorID:         nvidia,
+			Name:             "NVIDIA A100-PCIE-40GB NVIDIA Ampere",
+			UUID:             "GPU-61a65011-6571-a6d2-5th8-66cbb6f7f9c3",
+			BusID:            BusID{domain: 0x0, bus: 0x83, device: 0x0, function: 0x0, pathName: "00000000:83:00.0"},
+			NumSMs:           108,
+			InstancesEnabled: false,
+			VGPUEnabled:      false,
 		},
 		{
-			localIndex:  "5",
-			globalIndex: "9",
-			name:        "NVIDIA A100-PCIE-40GB NVIDIA Ampere",
-			uuid:        "GPU-61a65011-6571-a64n-5ab8-66cbb6f7f9c3",
-			busID:       BusID{domain: 0x0, bus: 0x85, device: 0x0, function: 0x0},
-			migEnabled:  false,
-			vgpuEnabled: true,
+			Minor:            "5",
+			Index:            "9",
+			vendorID:         nvidia,
+			Name:             "NVIDIA A100-PCIE-40GB NVIDIA Ampere",
+			UUID:             "GPU-61a65011-6571-a64n-5ab8-66cbb6f7f9c3",
+			BusID:            BusID{domain: 0x0, bus: 0x85, device: 0x0, function: 0x0, pathName: "00000000:85:00.0"},
+			NumSMs:           108,
+			InstancesEnabled: false,
+			VGPUEnabled:      true,
 		},
 		{
-			localIndex:  "6",
-			globalIndex: "10",
-			name:        "NVIDIA A100-PCIE-40GB NVIDIA Ampere",
-			uuid:        "GPU-1d4d0f3e-b51a-4040-96e3-bf380f7c5728",
-			busID:       BusID{domain: 0x0, bus: 0x87, device: 0x0, function: 0x0},
-			migEnabled:  false,
-			vgpuEnabled: false,
+			Minor:            "6",
+			Index:            "10",
+			vendorID:         nvidia,
+			Name:             "NVIDIA A100-PCIE-40GB NVIDIA Ampere",
+			UUID:             "GPU-1d4d0f3e-b51a-4040-96e3-bf380f7c5728",
+			BusID:            BusID{domain: 0x0, bus: 0x87, device: 0x0, function: 0x0, pathName: "00000000:87:00.0"},
+			NumSMs:           108,
+			InstancesEnabled: false,
+			VGPUEnabled:      false,
 		},
 		{
-			localIndex:  "7",
-			globalIndex: "11",
-			name:        "NVIDIA A100-PCIE-40GB NVIDIA Ampere",
-			uuid:        "GPU-6cc98505-fdde-461e-a93c-6935fba45a27",
-			busID:       BusID{domain: 0x0, bus: 0x89, device: 0x0, function: 0x0},
-			migEnabled:  false,
-			vgpuEnabled: false,
+			Minor:            "7",
+			Index:            "11",
+			vendorID:         nvidia,
+			Name:             "NVIDIA A100-PCIE-40GB NVIDIA Ampere",
+			UUID:             "GPU-6cc98505-fdde-461e-a93c-6935fba45a27",
+			BusID:            BusID{domain: 0x0, bus: 0x89, device: 0x0, function: 0x0, pathName: "00000000:89:00.0"},
+			NumSMs:           108,
+			InstancesEnabled: false,
+			VGPUEnabled:      false,
 		},
 	}
 }
@@ -100,55 +121,222 @@ func getExpectedNvidiaDevs() []Device {
 func getExpectedAmdDevs() []Device {
 	return []Device{
 		{
-			localIndex:  "0",
-			globalIndex: "0",
-			name:        "deon Instinct MI50 32GB",
-			uuid:        "20170000800c",
-			busID:       BusID{domain: 0x0, bus: 0xc5, device: 0x0, function: 0x0},
-			migEnabled:  false,
-			vgpuEnabled: false,
+			Minor:            "0",
+			Index:            "0",
+			vendorID:         amd,
+			Name:             "Advanced Micro Devices, Inc. [AMD/ATI]",
+			UUID:             "20170000800c",
+			NumSMs:           304,
+			BusID:            BusID{domain: 0x0, bus: 0xc5, device: 0x0, function: 0x0, pathName: "0000:c5:00.0"},
+			InstancesEnabled: false,
+			VGPUEnabled:      false,
 		},
 		{
-			localIndex:  "1",
-			globalIndex: "1",
-			name:        "deon Instinct MI50 32GB",
-			uuid:        "20170003580c",
-			busID:       BusID{domain: 0x0, bus: 0xc8, device: 0x0, function: 0x0},
-			migEnabled:  false,
-			vgpuEnabled: false,
+			Minor:            "1",
+			vendorID:         amd,
+			Name:             "Advanced Micro Devices, Inc. [AMD/ATI]",
+			UUID:             "20170003580c",
+			BusID:            BusID{domain: 0x0, bus: 0xc8, device: 0x0, function: 0x0, pathName: "0000:c8:00.0"},
+			InstancesEnabled: true,
+			Instances: []GPUInstance{
+				{InstanceIndex: 0x0, Index: "1", GPUInstID: 0x0, NumSMs: 38, SMFraction: 0.125, UUID: "0000:c8:00.0"},
+				{InstanceIndex: 0x1, Index: "2", GPUInstID: 0x1, NumSMs: 38, SMFraction: 0.125, UUID: "amdgpu_xcp_1"},
+				{InstanceIndex: 0x2, Index: "3", GPUInstID: 0x2, NumSMs: 38, SMFraction: 0.125, UUID: "amdgpu_xcp_2"},
+				{InstanceIndex: 0x3, Index: "4", GPUInstID: 0x3, NumSMs: 38, SMFraction: 0.125, UUID: "amdgpu_xcp_3"},
+				{InstanceIndex: 0x4, Index: "5", GPUInstID: 0x4, NumSMs: 38, SMFraction: 0.125, UUID: "amdgpu_xcp_4"},
+				{InstanceIndex: 0x5, Index: "6", GPUInstID: 0x5, NumSMs: 38, SMFraction: 0.125, UUID: "amdgpu_xcp_5"},
+				{InstanceIndex: 0x6, Index: "7", GPUInstID: 0x6, NumSMs: 38, SMFraction: 0.125, UUID: "amdgpu_xcp_6"},
+				{InstanceIndex: 0x7, Index: "8", GPUInstID: 0x7, NumSMs: 38, SMFraction: 0.125, UUID: "amdgpu_xcp_7"},
+			},
+			VGPUEnabled: false,
 		},
 		{
-			localIndex:  "2",
-			globalIndex: "2",
-			name:        "deon Instinct MI50 32GB",
-			uuid:        "20180003050c",
-			busID:       BusID{domain: 0x0, bus: 0x8a, device: 0x0, function: 0x0},
-			migEnabled:  false,
-			vgpuEnabled: false,
+			Minor:            "2",
+			vendorID:         amd,
+			Name:             "Advanced Micro Devices, Inc. [AMD/ATI]",
+			UUID:             "20180003050c",
+			BusID:            BusID{domain: 0x0, bus: 0x8a, device: 0x0, function: 0x0, pathName: "0000:8a:00.0"},
+			InstancesEnabled: true,
+			Instances: []GPUInstance{
+				{InstanceIndex: 0x0, Index: "9", GPUInstID: 0x0, NumSMs: 152, SMFraction: 0.5, UUID: "0000:8a:00.0"},
+				{InstanceIndex: 0x1, Index: "10", GPUInstID: 0x1, NumSMs: 152, SMFraction: 0.5, UUID: "amdgpu_xcp_9"},
+			},
+			VGPUEnabled: false,
 		},
 		{
-			localIndex:  "3",
-			globalIndex: "3",
-			name:        "deon Instinct MI50 32GB",
-			uuid:        "20170005280c",
-			busID:       BusID{domain: 0x0, bus: 0x8d, device: 0x0, function: 0x0},
-			migEnabled:  false,
-			vgpuEnabled: false,
+			Minor:            "3",
+			Index:            "11",
+			vendorID:         amd,
+			Name:             "Advanced Micro Devices, Inc. [AMD/ATI]",
+			UUID:             "20170005280c",
+			NumSMs:           304,
+			BusID:            BusID{domain: 0x0, bus: 0x8d, device: 0x0, function: 0x0, pathName: "0000:8d:00.0"},
+			InstancesEnabled: false,
+			VGPUEnabled:      false,
 		},
 	}
+}
+
+func TestNewGPUSMI(t *testing.T) {
+	_, err := CEEMSExporterApp.Parse(
+		[]string{
+			"--collector.gpu.nvidia-smi-path", "testdata/nvidia-smi",
+			"--collector.gpu.rocm-smi-path", "testdata/rocm-smi",
+			"--path.sysfs", "testdata/sys",
+		},
+	)
+	require.NoError(t, err)
+
+	g, err := NewGPUSMI(nil, noOpLogger)
+	require.NoError(t, err)
+
+	// Expected vendors
+	assert.Len(t, g.vendors, 2)
+
+	// Check smi commands are correctly populated
+	for _, v := range g.vendors {
+		var smiCmd string
+		if v.id == nvidia {
+			smiCmd = "nvidia-smi"
+		} else {
+			smiCmd = "rocm-smi"
+		}
+
+		assert.Contains(t, v.smiCmd, smiCmd)
+	}
+}
+
+func TestNewGPUSMIWithK8s(t *testing.T) {
+	_, err := CEEMSExporterApp.Parse(
+		[]string{
+			"--collector.gpu.nvidia-smi-path", "testdata/nvidia-smi",
+			"--collector.gpu.rocm-smi-path", "testdata/rocm-smi",
+			"--path.sysfs", "testdata/sys",
+		},
+	)
+	require.NoError(t, err)
+
+	gpuPods := []runtime.Object{
+		&v1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pod11",
+				UID:       "uid11",
+				Namespace: "nvidia-gpu-operator",
+				Labels: map[string]string{
+					"app": "gpu-feature-discovery",
+				},
+			},
+		},
+		&v1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pod12",
+				UID:       "uid12",
+				Namespace: "amd-gpu-operator",
+				Labels: map[string]string{
+					"app.kubernetes.io/name": "metrics-exporter",
+				},
+			},
+		},
+	}
+
+	// Make fake client
+	fakeClientset := fake.NewSimpleClientset(gpuPods...)
+
+	// Make k8s client
+	client := &ceems_k8s.Client{
+		Logger:    noOpLogger,
+		Clientset: fakeClientset,
+	}
+
+	g, err := NewGPUSMI(client, noOpLogger)
+	require.NoError(t, err)
+
+	// Expected vendors
+	assert.Len(t, g.vendors, 2)
+
+	// Check smi commands are correctly populated
+	for _, v := range g.vendors {
+		var smiCmd, ns, pod string
+		if v.id == nvidia {
+			smiCmd = "nvidia-smi"
+			ns = "nvidia-gpu-operator"
+			pod = "pod11"
+		} else {
+			smiCmd = "rocm-smi"
+			ns = "amd-gpu-operator"
+			pod = "pod12"
+		}
+
+		assert.Contains(t, v.smiCmd, smiCmd)
+		assert.Equal(t, ns, v.k8sNS)
+		assert.Equal(t, pod, v.k8sPod)
+	}
+}
+
+func TestDiscoverGPUs(t *testing.T) {
+	tempDir := t.TempDir()
+	nvidiaSMIPath := filepath.Join(tempDir, "nvidia-smi")
+	content := `#!/bin/bash
+exit 1`
+	os.WriteFile(nvidiaSMIPath, []byte(content), 0o700) // #nosec
+
+	_, err := CEEMSExporterApp.Parse(
+		[]string{
+			"--collector.gpu.nvidia-smi-path", nvidiaSMIPath,
+			"--collector.gpu.type", "nvidia",
+		},
+	)
+	require.NoError(t, err)
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+
+	var gpuErr error
+
+	g, err := NewGPUSMI(nil, noOpLogger)
+	require.NoError(t, err)
+
+	// First attempt should be error as there is nvidia-smi command exits with 1
+	go func() {
+		defer wg.Done()
+
+		gpuErr = g.Discover()
+	}()
+
+	time.Sleep(time.Second)
+
+	// Read testdata/nvidia-smi content and write to test nvidia-smi file
+	nvidiaSMIContent, err := os.ReadFile("testdata/nvidia-smi")
+	require.NoError(t, err)
+
+	os.WriteFile(nvidiaSMIPath, nvidiaSMIContent, 0o700) //nolint:gosec
+
+	wg.Wait()
+
+	require.NoError(t, gpuErr)
+	assert.Equal(t, getExpectedNvidiaDevs(), g.Devices)
 }
 
 func TestParseNvidiaSmiOutput(t *testing.T) {
 	_, err := CEEMSExporterApp.Parse(
 		[]string{
 			"--collector.gpu.nvidia-smi-path", "testdata/nvidia-smi",
+			"--collector.gpu.type", "nvidia",
 		},
 	)
 	require.NoError(t, err)
 
-	gpuDevices, err := GetNvidiaGPUDevices(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	g, err := NewGPUSMI(nil, noOpLogger)
 	require.NoError(t, err)
-	assert.Equal(t, getExpectedNvidiaDevs(), gpuDevices)
+
+	// Select nvidia vendor
+	for _, vendor := range g.vendors {
+		if vendor.id == nvidia {
+			gpuDevices, err := g.nvidiaGPUDevices(vendor)
+			require.NoError(t, err)
+			assert.Equal(t, getExpectedNvidiaDevs(), gpuDevices)
+		}
+	}
 }
 
 func TestNvidiaMIGAtLowerAddr(t *testing.T) {
@@ -202,16 +390,25 @@ echo """%s"""
 	_, err := CEEMSExporterApp.Parse(
 		[]string{
 			"--collector.gpu.nvidia-smi-path", nvidiaSMIPath,
+			"--collector.gpu.type", "nvidia",
 		},
 	)
 	require.NoError(t, err)
 
-	gpuDevices, err := GetNvidiaGPUDevices(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	g, err := NewGPUSMI(nil, noOpLogger)
 	require.NoError(t, err)
 
-	// Check if globalIndex for GPU 0 is empty and GPU 1 is 3
-	assert.Empty(t, gpuDevices[0].globalIndex)
-	assert.Equal(t, "3", gpuDevices[1].globalIndex)
+	// Select nvidia vendor
+	for _, vendor := range g.vendors {
+		if vendor.id == nvidia {
+			gpuDevices, err := g.nvidiaGPUDevices(vendor)
+			require.NoError(t, err)
+
+			// Check if Index for GPU 0 is empty and GPU 1 is 3
+			assert.Empty(t, gpuDevices[0].Index)
+			assert.Equal(t, "3", gpuDevices[1].Index)
+		}
+	}
 }
 
 func TestNvidiaMIGAtHigherAddr(t *testing.T) {
@@ -265,33 +462,97 @@ echo """%s"""
 	_, err := CEEMSExporterApp.Parse(
 		[]string{
 			"--collector.gpu.nvidia-smi-path", nvidiaSMIPath,
+			"--collector.gpu.type", "nvidia",
 		},
 	)
 	require.NoError(t, err)
 
-	gpuDevices, err := GetNvidiaGPUDevices(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	g, err := NewGPUSMI(nil, noOpLogger)
 	require.NoError(t, err)
 
-	// Check if globalIndex for GPU 1 is empty and GPU 0 is 0
-	assert.Empty(t, gpuDevices[1].globalIndex)
-	assert.Equal(t, "0", gpuDevices[0].globalIndex)
+	// Select nvidia vendor
+	for _, vendor := range g.vendors {
+		if vendor.id == nvidia {
+			gpuDevices, err := g.nvidiaGPUDevices(vendor)
+			require.NoError(t, err)
+
+			// Check if Index for GPU 1 is empty and GPU 0 is 0
+			assert.Empty(t, gpuDevices[1].Index)
+			assert.Equal(t, "0", gpuDevices[0].Index)
+		}
+	}
+}
+
+func TestParseRocmSmiOutput(t *testing.T) {
+	_, err := CEEMSExporterApp.Parse(
+		[]string{
+			"--collector.gpu.rocm-smi-path", "testdata/rocm-smi",
+			"--collector.gpu.type", "amd",
+			"--path.sysfs", "testdata/sys",
+		},
+	)
+	require.NoError(t, err)
+
+	g, err := NewGPUSMI(nil, noOpLogger)
+	require.NoError(t, err)
+
+	// Select amd vendor
+	for _, vendor := range g.vendors {
+		if vendor.id == amd {
+			gpuDevices, err := g.amdGPUDevices(vendor)
+			require.NoError(t, err)
+
+			assert.Equal(t, getExpectedAmdDevs(), gpuDevices)
+		}
+	}
 }
 
 func TestParseAmdSmiOutput(t *testing.T) {
 	_, err := CEEMSExporterApp.Parse(
 		[]string{
-			"--collector.gpu.rocm-smi-path", "testdata/rocm-smi",
+			"--collector.gpu.amd-smi-path", "testdata/amd-smi",
+			"--collector.gpu.type", "amd",
+			"--path.sysfs", "testdata/sys",
 		},
 	)
 	require.NoError(t, err)
-	gpuDevices, err := GetAMDGPUDevices(slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	g, err := NewGPUSMI(nil, noOpLogger)
 	require.NoError(t, err)
-	assert.Equal(t, getExpectedAmdDevs(), gpuDevices)
+
+	// Select amd vendor
+	for _, vendor := range g.vendors {
+		if vendor.id == amd {
+			gpuDevices, err := g.amdGPUDevices(vendor)
+			require.NoError(t, err)
+
+			assert.Equal(t, getExpectedAmdDevs(), gpuDevices)
+		}
+	}
+}
+
+func TestDetectDevices(t *testing.T) {
+	_, err := CEEMSExporterApp.Parse(
+		[]string{
+			"--path.sysfs", "testdata/sys",
+		},
+	)
+	require.NoError(t, err)
+
+	gpuVendors, err := detectVendors()
+	require.NoError(t, err)
+
+	var vendorNames []string
+	for _, vendor := range gpuVendors {
+		vendorNames = append(vendorNames, vendor.name)
+	}
+
+	assert.ElementsMatch(t, []string{"amd", "nvidia"}, vendorNames)
 }
 
 func TestReindexGPUs(t *testing.T) {
 	testCases := []struct {
-		name         string
+		Name         string
 		devs         []Device
 		expectedDevs []Device
 		orderMap     string
@@ -299,52 +560,52 @@ func TestReindexGPUs(t *testing.T) {
 		{
 			devs: []Device{
 				{
-					globalIndex: "",
-					localIndex:  "0",
-					migInstances: []MIGInstance{
+					Index: "",
+					Minor: "0",
+					Instances: []GPUInstance{
 						{
-							globalIndex: "0",
-							gpuInstID:   3,
+							Index:     "0",
+							GPUInstID: 3,
 						},
 						{
-							globalIndex: "1",
-							gpuInstID:   5,
+							Index:     "1",
+							GPUInstID: 5,
 						},
 						{
-							globalIndex: "2",
-							gpuInstID:   9,
+							Index:     "2",
+							GPUInstID: 9,
 						},
 					},
-					migEnabled: true,
+					InstancesEnabled: true,
 				},
 				{
-					globalIndex: "1",
-					localIndex:  "1",
+					Index: "1",
+					Minor: "1",
 				},
 			},
 			expectedDevs: []Device{
 				{
-					globalIndex: "",
-					localIndex:  "0",
-					migInstances: []MIGInstance{
+					Index: "",
+					Minor: "0",
+					Instances: []GPUInstance{
 						{
-							globalIndex: "1",
-							gpuInstID:   3,
+							Index:     "1",
+							GPUInstID: 3,
 						},
 						{
-							globalIndex: "2",
-							gpuInstID:   5,
+							Index:     "2",
+							GPUInstID: 5,
 						},
 						{
-							globalIndex: "3",
-							gpuInstID:   9,
+							Index:     "3",
+							GPUInstID: 9,
 						},
 					},
-					migEnabled: true,
+					InstancesEnabled: true,
 				},
 				{
-					globalIndex: "0",
-					localIndex:  "1",
+					Index: "0",
+					Minor: "1",
 				},
 			},
 			orderMap: "0:1,1:0.3,2:0.5,3:0.9",
@@ -352,52 +613,52 @@ func TestReindexGPUs(t *testing.T) {
 		{
 			devs: []Device{
 				{
-					globalIndex: "0",
-					localIndex:  "0",
+					Index: "0",
+					Minor: "0",
 				},
 				{
-					globalIndex: "",
-					localIndex:  "1",
-					migInstances: []MIGInstance{
+					Index: "",
+					Minor: "1",
+					Instances: []GPUInstance{
 						{
-							globalIndex: "1",
-							gpuInstID:   3,
+							Index:     "1",
+							GPUInstID: 3,
 						},
 						{
-							globalIndex: "2",
-							gpuInstID:   5,
+							Index:     "2",
+							GPUInstID: 5,
 						},
 						{
-							globalIndex: "3",
-							gpuInstID:   9,
+							Index:     "3",
+							GPUInstID: 9,
 						},
 					},
-					migEnabled: true,
+					InstancesEnabled: true,
 				},
 			},
 			expectedDevs: []Device{
 				{
-					globalIndex: "",
-					localIndex:  "1",
-					migInstances: []MIGInstance{
+					Index: "",
+					Minor: "1",
+					Instances: []GPUInstance{
 						{
-							globalIndex: "0",
-							gpuInstID:   3,
+							Index:     "0",
+							GPUInstID: 3,
 						},
 						{
-							globalIndex: "1",
-							gpuInstID:   5,
+							Index:     "1",
+							GPUInstID: 5,
 						},
 						{
-							globalIndex: "2",
-							gpuInstID:   9,
+							Index:     "2",
+							GPUInstID: 9,
 						},
 					},
-					migEnabled: true,
+					InstancesEnabled: true,
 				},
 				{
-					globalIndex: "3",
-					localIndex:  "0",
+					Index: "3",
+					Minor: "0",
 				},
 			},
 			orderMap: "0:1.3,1:1.5,2:1.9,3:0",
@@ -405,60 +666,60 @@ func TestReindexGPUs(t *testing.T) {
 		{
 			devs: []Device{
 				{
-					globalIndex: "0",
-					localIndex:  "0",
+					Index: "0",
+					Minor: "0",
 				},
 				{
-					globalIndex: "",
-					localIndex:  "1",
-					migInstances: []MIGInstance{
+					Index: "",
+					Minor: "1",
+					Instances: []GPUInstance{
 						{
-							globalIndex: "1",
-							gpuInstID:   3,
+							Index:     "1",
+							GPUInstID: 3,
 						},
 						{
-							globalIndex: "2",
-							gpuInstID:   5,
+							Index:     "2",
+							GPUInstID: 5,
 						},
 						{
-							globalIndex: "3",
-							gpuInstID:   9,
+							Index:     "3",
+							GPUInstID: 9,
 						},
 					},
-					migEnabled: true,
+					InstancesEnabled: true,
 				},
 				{
-					globalIndex: "4",
-					localIndex:  "2",
+					Index: "4",
+					Minor: "2",
 				},
 			},
 			expectedDevs: []Device{
 				{
-					globalIndex: "0",
-					localIndex:  "0",
+					Index: "0",
+					Minor: "0",
 				},
 				{
-					globalIndex: "1",
-					localIndex:  "2",
+					Index: "1",
+					Minor: "2",
 				},
 				{
-					globalIndex: "",
-					localIndex:  "1",
-					migInstances: []MIGInstance{
+					Index: "",
+					Minor: "1",
+					Instances: []GPUInstance{
 						{
-							globalIndex: "2",
-							gpuInstID:   3,
+							Index:     "2",
+							GPUInstID: 3,
 						},
 						{
-							globalIndex: "3",
-							gpuInstID:   5,
+							Index:     "3",
+							GPUInstID: 5,
 						},
 						{
-							globalIndex: "4",
-							gpuInstID:   9,
+							Index:     "4",
+							GPUInstID: 9,
 						},
 					},
-					migEnabled: true,
+					InstancesEnabled: true,
 				},
 			},
 			orderMap: "0:0,1:2,2:1.3,3:1.5,4:1.9",
@@ -466,69 +727,75 @@ func TestReindexGPUs(t *testing.T) {
 		{
 			devs: []Device{
 				{
-					globalIndex: "0",
-					localIndex:  "0",
+					Index: "0",
+					Minor: "0",
 				},
 				{
-					globalIndex: "",
-					localIndex:  "1",
-					migInstances: []MIGInstance{
+					Index: "",
+					Minor: "1",
+					Instances: []GPUInstance{
 						{
-							globalIndex: "1",
-							gpuInstID:   3,
+							Index:     "1",
+							GPUInstID: 3,
 						},
 						{
-							globalIndex: "2",
-							gpuInstID:   5,
+							Index:     "2",
+							GPUInstID: 5,
 						},
 						{
-							globalIndex: "3",
-							gpuInstID:   9,
+							Index:     "3",
+							GPUInstID: 9,
 						},
 					},
-					migEnabled: true,
+					InstancesEnabled: true,
 				},
 				{
-					globalIndex: "4",
-					localIndex:  "2",
+					Index: "4",
+					Minor: "2",
 				},
 			},
 			expectedDevs: []Device{
 				{
-					globalIndex: "0",
-					localIndex:  "0",
+					Index: "0",
+					Minor: "0",
 				},
 				{
-					globalIndex: "1",
-					localIndex:  "2",
+					Index: "1",
+					Minor: "2",
 				},
 				{
-					globalIndex: "",
-					localIndex:  "1",
-					migInstances: []MIGInstance{
+					Index: "",
+					Minor: "1",
+					Instances: []GPUInstance{
 						{
-							globalIndex: "2",
-							gpuInstID:   3,
+							Index:     "2",
+							GPUInstID: 3,
 						},
 						{
-							globalIndex: "3",
-							gpuInstID:   5,
+							Index:     "3",
+							GPUInstID: 5,
 						},
 						{
-							globalIndex: "4",
-							gpuInstID:   9,
+							Index:     "4",
+							GPUInstID: 9,
 						},
 					},
-					migEnabled: true,
+					InstancesEnabled: true,
 				},
 			},
 			orderMap: "0:0,1:2,2:1.3,3:1.5,4:1.9,5:3,6:3.3",
 		},
 	}
 
+	noOpLogger := noOpLogger
+
 	for itc, tc := range testCases {
-		newDevs := reindexGPUs(tc.orderMap, tc.devs)
-		assert.ElementsMatch(t, tc.expectedDevs, newDevs, "Case %d", itc)
+		g := GPUSMI{
+			logger:  noOpLogger,
+			Devices: tc.devs,
+		}
+		g.ReindexGPUs(tc.orderMap)
+		assert.ElementsMatch(t, tc.expectedDevs, g.Devices, "Case %d", itc)
 	}
 }
 
@@ -536,72 +803,60 @@ func TestUpdateMdevs(t *testing.T) {
 	_, err := CEEMSExporterApp.Parse(
 		[]string{
 			"--collector.gpu.nvidia-smi-path", "testdata/nvidia-smi",
+			"--collector.gpu.type", "nvidia",
 		},
 	)
 	require.NoError(t, err)
 
-	gpuDevices, err := GetNvidiaGPUDevices(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	g, err := NewGPUSMI(nil, noOpLogger)
 	require.NoError(t, err)
 
-	expectedDevs := []Device{
-		{
-			localIndex: "0", globalIndex: "0", name: "NVIDIA A100-PCIE-40GB NVIDIA Ampere", uuid: "GPU-f124aa59-d406-d45b-9481-8fcd694e6c9e",
-			busID:      BusID{domain: 0x0, bus: 0x10, device: 0x0, function: 0x0},
-			mdevUUIDs:  []string{"c73f1fa6-489e-4834-9476-d70dabd98c40", "f9702ffa-fa28-414e-a52f-e7831fd5ce41"},
-			migEnabled: false, vgpuEnabled: true,
-		},
-		{
-			localIndex: "1", globalIndex: "1", name: "NVIDIA A100-PCIE-40GB NVIDIA Ampere", uuid: "GPU-61a65011-6571-a6d2-5ab8-66cbb6f7f9c3",
-			busID:      BusID{domain: 0x0, bus: 0x15, device: 0x0, function: 0x0},
-			migEnabled: false, vgpuEnabled: false,
-		},
-		{
-			localIndex: "2", globalIndex: "", name: "NVIDIA A100-PCIE-40GB NVIDIA Ampere", uuid: "GPU-956348bc-d43d-23ed-53d4-857749fa2b67",
-			busID: BusID{domain: 0x0, bus: 0x21, device: 0x0, function: 0x0},
-			migInstances: []MIGInstance{
-				{localIndex: 0x0, globalIndex: "2", computeInstID: 0x0, gpuInstID: 0x1, smFraction: 0.6, mdevUUIDs: []string{"f0f4b97c-6580-48a6-ae1b-a807d6dfe08f"}},
-				{localIndex: 0x1, globalIndex: "3", computeInstID: 0x0, gpuInstID: 0x5, smFraction: 0.2, mdevUUIDs: []string{"3b356d38-854e-48be-b376-00c72c7d119c", "5bb3bad7-ce3b-4aa5-84d7-b5b33cf9d45e"}},
-				{localIndex: 0x2, globalIndex: "4", computeInstID: 0x0, gpuInstID: 0xd, smFraction: 0.2, mdevUUIDs: []string{}},
-			},
-			migEnabled: true, vgpuEnabled: true,
-		},
-		{
-			localIndex: "3", globalIndex: "", name: "NVIDIA A100-PCIE-40GB NVIDIA Ampere", uuid: "GPU-feba7e40-d724-01ff-b00f-3a439a28a6c7",
-			busID: BusID{domain: 0x0, bus: 0x81, device: 0x0, function: 0x0},
-			migInstances: []MIGInstance{
-				{localIndex: 0x0, globalIndex: "5", computeInstID: 0x0, gpuInstID: 0x1, smFraction: 0.5714285714285714, mdevUUIDs: []string{"4f84d324-5897-48f3-a4ef-94c9ddf23d78"}},
-				{localIndex: 0x1, globalIndex: "6", computeInstID: 0x0, gpuInstID: 0x5, smFraction: 0.2857142857142857, mdevUUIDs: []string{"3058eb95-0899-4c3d-90e9-e20b6c14789f"}},
-				{localIndex: 0x2, globalIndex: "7", computeInstID: 0x0, gpuInstID: 0x6, smFraction: 0.14285714285714285, mdevUUIDs: []string{"9f0d5993-9778-40c7-a721-3fec93d6b3a9"}},
-			},
-			migEnabled: true, vgpuEnabled: true,
-		},
-		{
-			localIndex: "4", globalIndex: "8", name: "NVIDIA A100-PCIE-40GB NVIDIA Ampere", uuid: "GPU-61a65011-6571-a6d2-5th8-66cbb6f7f9c3",
-			busID:      BusID{domain: 0x0, bus: 0x83, device: 0x0, function: 0x0},
-			migEnabled: false, vgpuEnabled: false,
-		},
-		{
-			localIndex: "5", globalIndex: "9", name: "NVIDIA A100-PCIE-40GB NVIDIA Ampere", uuid: "GPU-61a65011-6571-a64n-5ab8-66cbb6f7f9c3",
-			busID:      BusID{domain: 0x0, bus: 0x85, device: 0x0, function: 0x0},
-			mdevUUIDs:  []string{"64c3c4ae-44e1-45b8-8d46-5f76a1fa9824"},
-			migEnabled: false, vgpuEnabled: true,
-		},
-		{
-			localIndex: "6", globalIndex: "10", name: "NVIDIA A100-PCIE-40GB NVIDIA Ampere", uuid: "GPU-1d4d0f3e-b51a-4040-96e3-bf380f7c5728",
-			busID:      BusID{domain: 0x0, bus: 0x87, device: 0x0, function: 0x0},
-			migEnabled: false, vgpuEnabled: false,
-		},
-		{
-			localIndex: "7", globalIndex: "11", name: "NVIDIA A100-PCIE-40GB NVIDIA Ampere", uuid: "GPU-6cc98505-fdde-461e-a93c-6935fba45a27",
-			busID:      BusID{domain: 0x0, bus: 0x89, device: 0x0, function: 0x0},
-			migEnabled: false, vgpuEnabled: false,
-		},
+	var gpuDevices []Device
+
+	// Select amd vendor
+	for _, vendor := range g.vendors {
+		if vendor.id == nvidia {
+			gpuDevices, err = g.nvidiaGPUDevices(vendor)
+			require.NoError(t, err)
+
+			assert.Equal(t, getExpectedNvidiaDevs(), gpuDevices)
+		}
+	}
+
+	g.Devices = gpuDevices
+
+	expectedMdevs := map[string][]string{
+		"0": {"c73f1fa6-489e-4834-9476-d70dabd98c40", "f9702ffa-fa28-414e-a52f-e7831fd5ce41"},
+		"2": {"f0f4b97c-6580-48a6-ae1b-a807d6dfe08f"},
+		"3": {"3b356d38-854e-48be-b376-00c72c7d119c", "5bb3bad7-ce3b-4aa5-84d7-b5b33cf9d45e"},
+		"5": {"4f84d324-5897-48f3-a4ef-94c9ddf23d78"},
+		"6": {"3058eb95-0899-4c3d-90e9-e20b6c14789f"},
+		"7": {"9f0d5993-9778-40c7-a721-3fec93d6b3a9"},
+		"9": {"64c3c4ae-44e1-45b8-8d46-5f76a1fa9824"},
 	}
 
 	// Now updates gpuDevices with mdevs
-	updatedGPUDevs, err := updateGPUMdevs(gpuDevices)
+	err = g.UpdateGPUMdevs()
 	require.NoError(t, err)
-	assert.EqualValues(t, expectedDevs, updatedGPUDevs)
+
+	// Make a map of Index to mdevs
+	gotMdevs := make(map[string][]string)
+
+	for _, gpu := range g.Devices {
+		if gpu.Index != "" {
+			if len(gpu.MdevUUIDs) > 0 {
+				gotMdevs[gpu.Index] = gpu.MdevUUIDs
+			}
+		} else {
+			for _, inst := range gpu.Instances {
+				if len(inst.MdevUUIDs) > 0 {
+					gotMdevs[inst.Index] = inst.MdevUUIDs
+				}
+			}
+		}
+	}
+
+	assert.Equal(t, expectedMdevs, gotMdevs)
 }
 
 func TestUpdateMdevsEviction(t *testing.T) {
@@ -622,6 +877,7 @@ echo """%s"""
 	_, err := CEEMSExporterApp.Parse(
 		[]string{
 			"--collector.gpu.nvidia-smi-path", nvidiaSMIPath,
+			"--collector.gpu.type", "nvidia",
 		},
 	)
 	require.NoError(t, err)
@@ -629,15 +885,20 @@ echo """%s"""
 	// Set devices
 	devs := []Device{
 		{
-			busID:       BusID{0x0, 0x10, 0x0, 0x0},
-			vgpuEnabled: true,
+			BusID:       BusID{0x0, 0x10, 0x0, 0x0, ""},
+			VGPUEnabled: true,
 		},
 	}
 
-	// Now updates gpuDevices with mdevs
-	updatedGPUDevs, err := updateGPUMdevs(devs)
+	g, err := NewGPUSMI(nil, noOpLogger)
 	require.NoError(t, err)
-	assert.EqualValues(t, []string{"c73f1fa6-489e-4834-9476-d70dabd98c40"}, updatedGPUDevs[0].mdevUUIDs)
+
+	g.Devices = devs
+
+	// Now updates gpuDevices with mdevs
+	err = g.UpdateGPUMdevs()
+	require.NoError(t, err)
+	assert.Equal(t, []string{"c73f1fa6-489e-4834-9476-d70dabd98c40"}, g.Devices[0].MdevUUIDs)
 
 	// Update nvidia-smi output to simulate a new mdev addition
 	nvidiaVGPULog = `GPU 00000000:10:00.0
@@ -657,9 +918,9 @@ echo """%s"""
 	os.WriteFile(nvidiaSMIPath, []byte(content), 0o700) // #nosec
 
 	// Now update gpuDevices again with mdevs
-	updatedGPUDevs, err = updateGPUMdevs(devs)
+	err = g.UpdateGPUMdevs()
 	require.NoError(t, err)
-	assert.EqualValues(t, []string{"c73f1fa6-489e-4834-9476-d70dabd98c40", "741ac383-27e9-49a9-9955-b513ad2e2e16"}, updatedGPUDevs[0].mdevUUIDs)
+	assert.Equal(t, []string{"c73f1fa6-489e-4834-9476-d70dabd98c40", "741ac383-27e9-49a9-9955-b513ad2e2e16"}, g.Devices[0].MdevUUIDs)
 
 	// Update nvidia-smi output to simulate removal of an existing mdev
 	nvidiaVGPULog = `GPU 00000000:10:00.0
@@ -675,17 +936,31 @@ echo """%s"""
 	os.WriteFile(nvidiaSMIPath, []byte(content), 0o700) // #nosec
 
 	// Now update gpuDevices again with mdevs
-	updatedGPUDevs, err = updateGPUMdevs(devs)
+	err = g.UpdateGPUMdevs()
 	require.NoError(t, err)
-	assert.EqualValues(t, []string{"741ac383-27e9-49a9-9955-b513ad2e2e16"}, updatedGPUDevs[0].mdevUUIDs)
+	assert.Equal(t, []string{"741ac383-27e9-49a9-9955-b513ad2e2e16"}, g.Devices[0].MdevUUIDs)
 }
+
+// func TestParseAMDDevPropertiesFromPCIDevices(t *testing.T) {
+// 	_, err := CEEMSExporterApp.Parse(
+// 		[]string{
+// 			"--path.sysfs", "testdata/sys",
+// 		},
+// 	)
+// 	require.NoError(t, err)
+
+// 	_, err = parseAMDDevPropertiesFromPCIDevices()
+// 	require.NoError(t, err)
+
+// 	assert.Fail(t, "QQQ")
+// }
 
 func TestParseBusIDPass(t *testing.T) {
 	id := "00000000:AD:00.0"
 	busID, err := parseBusID(id)
 	require.NoError(t, err)
 
-	expectedID := BusID{domain: 0x0, bus: 0xad, device: 0x0, function: 0x0}
+	expectedID := BusID{domain: 0x0, bus: 0xad, device: 0x0, function: 0x0, pathName: "00000000:ad:00.0"}
 
 	assert.Equal(t, expectedID, busID)
 }
@@ -709,7 +984,7 @@ func TestParseBusIDFail(t *testing.T) {
 
 func TestCompareBusIDs(t *testing.T) {
 	// Sample Device
-	d := Device{busID: BusID{domain: 0x0, bus: 0xad, device: 0x0, function: 0x0}}
+	d := Device{BusID: BusID{domain: 0x0, bus: 0xad, device: 0x0, function: 0x0}}
 
 	// Test ID - pass
 	id := "00000000:AD:00.0"
