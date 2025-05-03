@@ -36,7 +36,7 @@ in a resource manager agnostic way.
 - Monitors energy, performance, IO and network metrics for different types of resource
 managers (SLURM, Openstack, k8s)
 - Supports different energy sources like RAPL, HWMON, Cray's PM Counters and BMC _via_ IPMI or Redfish
-- Supports NVIDIA (MIG and vGPU) and AMD GPUs
+- Supports NVIDIA (MIG, time sharing, MPS and vGPU) and AMD GPUs ([Partition](https://rocm.blogs.amd.com/software-tools-optimization/compute-memory-modes/README.html) like CPX, QPX, TPX, DPX)
 - Provides targets using [HTTP Discovery Component](https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.http/)
 to [Grafana Alloy](https://grafana.com/docs/alloy/latest) to continuously profile compute units
 - Realtime access to metrics *via* Grafana dashboards or a simple CLI tool
@@ -171,7 +171,12 @@ improvement.
 
 ## 🙏 Acknowledgements
 
-The demo instance has been deployed on the [CROCC](https://drocc.fr/crocc/)
+- [Grid5000](https://www.grid5000.fr/w/Grid5000:Home) platform, supported by a scientific
+interest group hosted by [Inria](https://www.inria.fr/) and including [CNRS](https://www.cnrs.fr/en),
+[RENATER](https://www.renater.fr/en/accueil-english/) and several Universities as
+well as other organizations, has been extensively used in the development of CEEMS.
+
+- The demo instance has been deployed on the [CROCC](https://drocc.fr/crocc/)
 which was kindly sponsored by [ISDM MESO](https://isdm.umontpellier.fr/mesolr)
 in Montpellier, France.
 

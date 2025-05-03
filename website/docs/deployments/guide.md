@@ -29,7 +29,8 @@ and [NVIDIA DCGM Exporter](https://github.com/NVIDIA/dcgm-exporter/)
 must be installed on the compute nodes. Installation instructions for these packages
 can be found in their corresponding documentation.
 
-Similarly, if the compute nodes have AMD GPUs, the [AMD SMI Exporter](https://www.amd.com/en/developer/e-sms/amdsmi-library.html)
+Similarly, if the compute nodes have AMD GPUs, [AMD SMI Exporter](https://www.amd.com/en/developer/e-sms/amdsmi-library.html)
+or [AMD Device Metrice Exporter](https://instinct.docs.amd.com/projects/device-metrics-exporter/en/latest/)
 must be installed on the compute nodes to get power consumption and performance
 metrics of GPUs.
 
@@ -465,6 +466,9 @@ metric_relabel_configs:
   - regex: GPU_I_ID
     action: labeldrop
 ```
+
+For the case of AMD exporters, a similar relabel config must be applied and it
+can be consulted from [Prometheus config section](../configuration/prometheus.md).
 
 :::
 

@@ -67,7 +67,7 @@ ifeq ($(CGO_BUILD), 1)
 	coverage-file := coverage-cgo.out
 else
 	PROMU_CONF ?= .promu/.promu-go.yml
-	pkgs := ./pkg/collector ./pkg/emissions ./pkg/tsdb ./pkg/grafana \
+	pkgs := ./pkg/collector ./pkg/emissions ./pkg/tsdb ./pkg/grafana ./pkg/k8s \
 			./internal/common ./internal/osexec ./internal/structset \
 			./internal/security ./cmd/ceems_exporter ./cmd/redfish_proxy \
 			./cmd/ceems_tool ./cmd/cacct
@@ -164,8 +164,13 @@ test-e2e: $(PROMTOOL) build pkg/collector/testdata/sys/.unpacked pkg/collector/t
 	./scripts/e2e-test.sh -s exporter-cgroups-v2-all-metrics
 	./scripts/e2e-test.sh -s exporter-cgroups-v1-libvirt
 	./scripts/e2e-test.sh -s exporter-cgroups-v2-libvirt
+	./scripts/e2e-test.sh -s exporter-cgroups-v1-k8s
+	./scripts/e2e-test.sh -s exporter-cgroups-v2-k8s
+	./scripts/e2e-test.sh -s exporter-cgroups-v2-k8s-nogpu
 	./scripts/e2e-test.sh -s discoverer-cgroups-v2-slurm
 	./scripts/e2e-test.sh -s discoverer-cgroups-v1-slurm
+	./scripts/e2e-test.sh -s discoverer-cgroups-v2-k8s
+	./scripts/e2e-test.sh -s discoverer-cgroups-v1-k8s
 	./scripts/e2e-test.sh -s redfish-proxy-frontend-plain-backend-plain
 	./scripts/e2e-test.sh -s redfish-proxy-frontend-tls-backend-plain
 	./scripts/e2e-test.sh -s redfish-proxy-frontend-plain-backend-tls
@@ -237,8 +242,13 @@ test-e2e-update: build pkg/collector/testdata/sys/.unpacked pkg/collector/testda
 	./scripts/e2e-test.sh -s exporter-cgroups-v2-all-metrics -u || true
 	./scripts/e2e-test.sh -s exporter-cgroups-v1-libvirt -u || true
 	./scripts/e2e-test.sh -s exporter-cgroups-v2-libvirt -u || true
+	./scripts/e2e-test.sh -s exporter-cgroups-v1-k8s -u || true
+	./scripts/e2e-test.sh -s exporter-cgroups-v2-k8s -u || true
+	./scripts/e2e-test.sh -s exporter-cgroups-v2-k8s-nogpu -u || true
 	./scripts/e2e-test.sh -s discoverer-cgroups-v2-slurm -u || true
 	./scripts/e2e-test.sh -s discoverer-cgroups-v1-slurm -u || true
+	./scripts/e2e-test.sh -s discoverer-cgroups-v2-k8s -u || true
+	./scripts/e2e-test.sh -s discoverer-cgroups-v1-k8s -u || true
 	./scripts/e2e-test.sh -s redfish-proxy-frontend-plain-backend-plain -u || true
 	./scripts/e2e-test.sh -s redfish-proxy-frontend-tls-backend-plain -u || true
 	./scripts/e2e-test.sh -s redfish-proxy-frontend-plain-backend-tls -u || true

@@ -256,6 +256,46 @@ processes inside the guest.
 Both perf and eBPF sub-collectors need extra privileges to work and the necessary privileges
 are discussed in the [Security](./security.md) section.
 
+### k8s collector
+
+k8s collector is meant to be used on Kubernetes cluster where pods are managed by
+Kubelet. The exporter can be launched as follows to enable k8s
+collector:
+
+```bash
+ceems_exporter --collector.k8s
+```
+
+If exporter has been installed using Helm chart, there is no need to do any
+configuration for the collector to work. If it is deployed as a systemd
+service, the operator needs to create a service account that has permissions
+to list all the pods in all the namespaces and create a kube config file for
+this service account. Then this kube config file can be provided to the collector
+using:
+
+```bash
+ceems_exporter --collector.k8s --collector.k8s.kube-config-file=/etc/ceems_exporter/kubeconfig.yml
+```
+
+:::tip[TIP]
+
+We strongly advise to use Helm chart to install exporter on k8s clusters as it
+takes care of creation of service accounts with proper permissions and use in-cluster
+config to list all the pods.
+
+:::
+
+Both ebpf and perf sub-collectors are supported by k8s collector and they can
+be enabled as follows:
+
+```bash
+ceems_exporter --collector.k8s --collector.perf.hardware-events --collector.perf.software-events --collector.perf.hardware-cache-events --collector.ebpf.io-metrics --collector.ebpf.network-metrics
+```
+
+When compute nodes have GPUs exporter needs to make gRPC requests to Kubelet's socket
+for getting deviceIDs attached to each pod. This is discussed more in detail in
+[Security](./security.md) section.
+
 ### IPMI collector
 
 :::important[IMPORTANT]

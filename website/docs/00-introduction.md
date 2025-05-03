@@ -28,7 +28,7 @@ of backward compatibility.
 - Monitors energy, performance, IO and network metrics for different types of resource
 managers (SLURM, Openstack, k8s)
 - Supports different energy sources like RAPL, HWMON, Cray's PM Counters and BMC _via_ IPMI or Redfish
-- Supports NVIDIA (MIG and vGPU) and AMD GPUs
+- Supports NVIDIA (MIG, time sharing, MPS and vGPU) and AMD GPUs ([Partition](https://rocm.blogs.amd.com/software-tools-optimization/compute-memory-modes/README.html) like CPX, QPX, TPX, DPX)
 - Provides targets using [HTTP Discovery Component](https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.http/)
 to [Grafana Alloy](https://grafana.com/docs/alloy/latest) to continuously profile compute units
 - Realtime access to metrics _via_ Grafana dashboards or a simple CLI tool
@@ -56,14 +56,7 @@ originating from different resource managers.
 from different projects/tenants/namespaces are isolated.
 
 "Compute Unit" in the current context has a wider scope. It can be a batch job in HPC,
-a VM in cloud, a pod in k8s, *etc*. The main objective of the stack is to quantify
+a VM in cloud, a pod in k8s, _etc_. The main objective of the stack is to quantify
 the energy consumed and estimate emissions by each "compute unit". The repository itself
 does not provide any frontend apps to show dashboards and it is meant to use along
 with Grafana and Prometheus to show statistics to users.
-
-:::important[Note]
-
-Currently, only SLURM and Openstack are supported as resource managers. A future support
-for Kubernetes will be added.
-
-:::

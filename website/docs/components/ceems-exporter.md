@@ -19,7 +19,8 @@ that can provide a list of targets to [Grafana Alloy](https://grafana.com/docs/a
 These collectors export metrics from different resource managers.
 
 - Slurm collector: Exports SLURM job metrics like CPU, memory and GPU indices to job ID maps
-- Libvirt collector: Exports-libvirt managed VMs metrics like CPU, memory, IO, _etc_.
+- Libvirt collector: Exports libvirt managed VMs metrics like CPU, memory, IO, _etc_.
+- k8s collector: Exports k8s managed pods metrics like CPU, memory, IO, _etc_.
 
 ### Energy-Related Collectors
 
@@ -363,6 +364,40 @@ it is not possible to have more fine grained control on which processes
 inside the guest can be profiled.
 
 :::
+
+### k8s collector
+
+[Kubelet](https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/)
+manages the creation and deletion of k8s pods and the current
+exporter is capable of exporting metrics of each pod. Currently Kubelet supports
+two different types of cgroup drivers: `cgroupfs` and `systemd` and the collector
+supports both of them for cgroups v1 and v2.
+
+When GPUs are present on the compute node, the collector finds the devices that are
+attached to pods by querying Kubelet using
+[Pod Resources API](https://kubernetes.io/blog/2023/08/23/kubelet-podresources-api-ga/).
+
+Currently, the list of metrics exported by Libvirt exporter are as follows:
+
+- Pod current CPU time in user and system mode
+- Pod CPUs limit (Number of CPUs allocated to the job)
+- Pod current total memory usage
+- Pod total memory limit (Memory allocated to the job)
+- Pod current RSS memory usage
+- Pod current cache memory usage
+- Pod current number of memory usage hits limits
+- Pod current memory and swap usage
+- Pod current memory and swap usage hits limits
+- Pod total memory and swap limit
+- Pod block IO read and write bytes
+- Pod block IO read and write requests
+- Pod CPU, memory and IO pressures
+- Pod to GPU ordinal mapping (when GPUs found on the compute node)
+- Current number of pods on the compute node
+
+Similar to Slurm and libvirt collectors, k8s collector supports
+[perf](./ceems-exporter.md#perf-sub-collector)
+and [eBPF](./ceems-exporter.md#ebpf-sub-collector) sub-collectors.
 
 ### IPMI collector
 
