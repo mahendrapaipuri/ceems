@@ -1,6 +1,7 @@
 package structset
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -37,4 +38,28 @@ func TestGetStructFieldTagMap(t *testing.T) {
 		"field4": "f4",
 	}
 	assert.Equal(t, expectedTagMap, tagMap)
+}
+
+func TestCachedFiledIndexes(t *testing.T) {
+	var value testStruct
+
+	indexes := CachedFieldIndexes(reflect.TypeOf(&value).Elem())
+
+	expected := map[string]int{"f1": 1, "f2": 2, "f3": 3, "f4": 4, "id": 0}
+	assert.Equal(t, expected, indexes)
+
+	// Get length of sync map
+	var i int
+
+	fieldIndexesCache.Range(func(k, v interface{}) bool {
+		i++
+
+		return true
+	})
+
+	assert.Equal(t, 1, i)
+
+	// Now making second request should get value from cache
+	indexes = CachedFieldIndexes(reflect.TypeOf(&value).Elem())
+	assert.Equal(t, expected, indexes)
 }

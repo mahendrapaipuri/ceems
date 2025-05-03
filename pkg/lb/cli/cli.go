@@ -166,6 +166,11 @@ func (lb *CEEMSLoadBalancer) Main() error {
 			"runtime.gomaxprocs", "The target number of CPUs Go will run on (GOMAXPROCS)",
 		).Envar("GOMAXPROCS").Default("1").Int()
 
+		runAsUser = lb.App.Flag(
+			"security.run-as-user",
+			"User to run as when LB server is started as root. Accepts either a username or uid.",
+		).Default("nobody").String()
+
 		// Hidden test flags
 		dropPrivs = lb.App.Flag(
 			"security.drop-privileges",
@@ -227,18 +232,26 @@ func (lb *CEEMSLoadBalancer) Main() error {
 	runtime.GOMAXPROCS(*maxProcs)
 	logger.Debug("Go MAXPROCS", "procs", runtime.GOMAXPROCS(0))
 
-	// We should STRONGLY advise in docs that CEEMS API server should not be started as root
-	// as that will end up dropping the privileges and running it as nobody user which can
-	// be strange as CEEMS API server writes data to DB.
-	if *dropPrivs {
-		securityCfg := &security.Config{
-			RunAsUser: "nobody",
-			Caps:      nil,
-			ReadPaths: []string{webConfigFilePath, configFilePath},
-		}
+	// We should STRONGLY advise in docs that CEEMS LB should not be started as root.
+	securityCfg := &security.Config{
+		RunAsUser: *runAsUser,
+		Caps:      nil,
+		ReadPaths: []string{webConfigFilePath, configFilePath},
+	}
 
-		// Drop all unnecessary privileges
-		if err := security.DropPrivileges(securityCfg); err != nil {
+	// Start a new manager
+	securityManager, err := security.NewManager(securityCfg)
+	if err != nil {
+		logger.Error("Failed to create a new security manager", "err", err)
+
+		return err
+	}
+
+	// Drop all unnecessary privileges
+	if *dropPrivs {
+		if err := securityManager.DropPrivileges(); err != nil {
+			logger.Error("Failed to drop privileges", "err", err)
+
 			return err
 		}
 	}
@@ -356,6 +369,11 @@ func (lb *CEEMSLoadBalancer) Main() error {
 		if err := lbs[lbType].Shutdown(shutDownCtx); err != nil {
 			logger.Error("Failed to gracefully shutdown LB server", "backend_type", lbType, "err", err)
 		}
+	}
+
+	// Restore file permissions by removing any ACLs added
+	if err := securityManager.DeleteACLEntries(); err != nil {
+		logger.Error("Failed to remove ACL entries", "err", err)
 	}
 
 	logger.Info("Load balancer(s) exiting")

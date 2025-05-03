@@ -118,6 +118,11 @@ func (b *CEEMSServer) Main() error {
 			"Maximum allowable query range. Units Supported: y, w, d, h, m, s, ms. By default no limit is applied.",
 		).Default("0s").String()
 
+		runAsUser = b.App.Flag(
+			"security.run-as-user",
+			"User to run as when API server is started as root. Accepts either a username or uid.",
+		).Default("nobody").String()
+
 		// Hidden args that we can expose to users if found useful
 		externalURL = b.App.Flag(
 			"web.external-url",
@@ -257,19 +262,29 @@ func (b *CEEMSServer) Main() error {
 		allCaps = append(allCaps, value)
 	}
 
-	if *dropPrivs {
-		// We should STRONGLY advise in docs that CEEMS API server should not be started as root
-		// as that will end up dropping the privileges and running it as nobody user which can
-		// be strange as CEEMS API server writes data to DB.
-		securityCfg := &security.Config{
-			RunAsUser:      "nobody",
-			Caps:           allCaps,
-			ReadPaths:      []string{webConfigFilePath, base.ConfigFilePath},
-			ReadWritePaths: []string{config.Server.Data.Path, config.Server.Data.BackupPath},
-		}
+	// We should STRONGLY advise in docs that CEEMS API server should not be started as root
+	// as that will end up dropping the privileges and running it as nobody user which can
+	// be strange as CEEMS API server writes data to DB.
+	securityCfg := &security.Config{
+		RunAsUser:      *runAsUser,
+		Caps:           allCaps,
+		ReadPaths:      []string{webConfigFilePath, base.ConfigFilePath},
+		ReadWritePaths: []string{config.Server.Data.Path, config.Server.Data.BackupPath},
+	}
 
-		// Drop all unnecessary privileges
-		if err := security.DropPrivileges(securityCfg); err != nil {
+	// Start a new manager
+	securityManager, err := security.NewManager(securityCfg)
+	if err != nil {
+		logger.Error("Failed to create a new security manager", "err", err)
+
+		return err
+	}
+
+	// Drop all unnecessary privileges
+	if *dropPrivs {
+		if err := securityManager.DropPrivileges(); err != nil {
+			logger.Error("Failed to drop privileges", "err", err)
+
 			return err
 		}
 	}
@@ -439,6 +454,11 @@ func (b *CEEMSServer) Main() error {
 
 	if err := apiServer.Shutdown(ctx); err != nil {
 		logger.Error("Failed to gracefully shutdown server", "err", err)
+	}
+
+	// Restore file permissions by removing any ACLs added
+	if err := securityManager.DeleteACLEntries(); err != nil {
+		logger.Error("Failed to remove ACL entries", "err", err)
 	}
 
 	logger.Info("Server exiting")
