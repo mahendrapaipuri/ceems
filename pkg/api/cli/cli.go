@@ -272,6 +272,12 @@ func (b *CEEMSServer) Main() error {
 		ReadWritePaths: []string{config.Server.Data.Path, config.Server.Data.BackupPath},
 	}
 
+	// If there is already a DB file, we should add it to ReadWritePaths
+	dbFile := filepath.Join(config.Server.Data.Path, base.CEEMSDBName)
+	if _, err := os.Stat(dbFile); err == nil {
+		securityCfg.ReadWritePaths = append(securityCfg.ReadWritePaths, dbFile)
+	}
+
 	// Start a new manager
 	securityManager, err := security.NewManager(securityCfg)
 	if err != nil {

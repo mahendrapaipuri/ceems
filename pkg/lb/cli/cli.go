@@ -25,6 +25,7 @@ import (
 	"github.com/mahendrapaipuri/ceems/internal/common"
 	internal_runtime "github.com/mahendrapaipuri/ceems/internal/runtime"
 	"github.com/mahendrapaipuri/ceems/internal/security"
+	ceems_api_base "github.com/mahendrapaipuri/ceems/pkg/api/base"
 	ceems_api "github.com/mahendrapaipuri/ceems/pkg/api/cli"
 	ceems_http "github.com/mahendrapaipuri/ceems/pkg/api/http"
 	ceems_api_models "github.com/mahendrapaipuri/ceems/pkg/api/models"
@@ -237,6 +238,17 @@ func (lb *CEEMSLoadBalancer) Main() error {
 		RunAsUser: *runAsUser,
 		Caps:      nil,
 		ReadPaths: []string{webConfigFilePath, configFilePath},
+	}
+
+	// Check if DB path and file exists in config and add them to ReadPaths
+	if _, err := os.Stat(config.Server.Data.Path); err == nil {
+		securityCfg.ReadPaths = append(securityCfg.ReadPaths, config.Server.Data.Path)
+
+		// Now check if DB file exists
+		dbFile := filepath.Join(config.Server.Data.Path, ceems_api_base.CEEMSDBName)
+		if _, err := os.Stat(dbFile); err == nil {
+			securityCfg.ReadPaths = append(securityCfg.ReadPaths, dbFile)
+		}
 	}
 
 	// Start a new manager

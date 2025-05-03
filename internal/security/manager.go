@@ -133,12 +133,28 @@ func NewManager(c *Config) (*Manager, error) {
 			return nil, fmt.Errorf("failed to path permissions: %w", err)
 		}
 
-		// If the path has read and write perms for runAsUser, continue
-		if hasWriteReadable(fperms, currentUser, manager.runAsUser) {
+		var perms uint16
+
+		var hasPerms bool
+
+		// Based on file type set permission bit
+		// For directories add rwx and for regular files
+		// add only rw
+		switch mode := fperms.Stat.Mode(); {
+		case mode.IsDir():
+			perms = 7
+			hasPerms = hasReadWriteExecutable(fperms, currentUser, manager.runAsUser)
+		case mode.IsRegular():
+			perms = 6
+			hasPerms = hasReadWrite(fperms, currentUser, manager.runAsUser)
+		}
+
+		// If the path is readable/executable by runAsUser, nothing to do here. Continue
+		if hasPerms {
 			continue
 		}
 
-		entry := acls.NewEntry(acls.TAG_ACL_USER, runAsUserUID, 6)
+		entry := acls.NewEntry(acls.TAG_ACL_USER, runAsUserUID, perms)
 		manager.acls = append(manager.acls, acl{path: path, entry: entry})
 	}
 
@@ -367,8 +383,8 @@ func hasReadExecutable(p fileperm.PermUser, currentUser *user.User, runAsUser *u
 	return false
 }
 
-// hasWriteReadable returns true if runAsUser has rw permissions on path.
-func hasWriteReadable(p fileperm.PermUser, currentUser *user.User, runAsUser *user.User) bool {
+// hasReadWrite returns true if runAsUser has rw permissions on path.
+func hasReadWrite(p fileperm.PermUser, currentUser *user.User, runAsUser *user.User) bool {
 	// If current user is runAsUser, check for user permissions
 	if currentUser.Uid == runAsUser.Uid {
 		return p.UserWriteReadable()
@@ -376,6 +392,22 @@ func hasWriteReadable(p fileperm.PermUser, currentUser *user.User, runAsUser *us
 
 	// If not check, check for other permissions
 	if p.Stat.Mode().Perm()&fileperm.OsOthR != 0 && p.Stat.Mode().Perm()&fileperm.OsOthW != 0 {
+		return true
+	}
+
+	return false
+}
+
+// hasReadWriteExecutable returns true if runAsUser has rwx permissions on path.
+func hasReadWriteExecutable(p fileperm.PermUser, currentUser *user.User, runAsUser *user.User) bool {
+	// If current user is runAsUser, check for user permissions
+	if currentUser.Uid == runAsUser.Uid {
+		return p.UserWriteReadExecutable()
+	}
+
+	// If not check, check for other permissions
+	if p.Stat.Mode().Perm()&fileperm.OsOthR != 0 && p.Stat.Mode().Perm()&fileperm.OsOthW != 0 &&
+		p.Stat.Mode().Perm()&fileperm.OsOthX != 0 {
 		return true
 	}
 
