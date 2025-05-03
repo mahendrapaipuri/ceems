@@ -5,8 +5,6 @@ package collector
 
 import (
 	"context"
-	"io"
-	"log/slog"
 	"testing"
 
 	"github.com/containerd/cgroups/v3"
@@ -28,7 +26,7 @@ func TestRDMACollector(t *testing.T) {
 
 	// cgroup manager
 	cgManager := &cgroupManager{
-		logger:      slog.New(slog.NewTextHandler(io.Discard, nil)),
+		logger:      noOpLogger,
 		mode:        cgroups.Unified,
 		mountPoints: []string{"testdata/sys/fs/cgroup/system.slice/slurmstepd.scope"},
 		idRegex:     slurmCgroupV2PathRegex,
@@ -37,7 +35,7 @@ func TestRDMACollector(t *testing.T) {
 		},
 	}
 
-	collector, err := NewRDMACollector(slog.New(slog.NewTextHandler(io.Discard, nil)), cgManager)
+	collector, err := NewRDMACollector(noOpLogger, cgManager)
 	require.NoError(t, err)
 
 	// Setup background goroutine to capture metrics.
@@ -67,7 +65,7 @@ func TestDevMR(t *testing.T) {
 	require.NoError(t, err)
 
 	// cgroup manager
-	cgManager, err := NewCgroupManager("slurm", slog.New(slog.NewTextHandler(io.Discard, nil)))
+	cgManager, err := NewCgroupManager(slurm, noOpLogger)
 	require.NoError(t, err)
 
 	// Instantiate a new Proc FS
@@ -75,7 +73,7 @@ func TestDevMR(t *testing.T) {
 	require.NoError(t, err)
 
 	c := rdmaCollector{
-		logger:        slog.New(slog.NewTextHandler(io.Discard, nil)),
+		logger:        noOpLogger,
 		rdmaCmd:       "testdata/rdma",
 		procfs:        procfs,
 		cgroupManager: cgManager,
@@ -107,7 +105,7 @@ func TestDevCQ(t *testing.T) {
 	require.NoError(t, err)
 
 	// cgroup manager
-	cgManager, err := NewCgroupManager("slurm", slog.New(slog.NewTextHandler(io.Discard, nil)))
+	cgManager, err := NewCgroupManager(slurm, noOpLogger)
 	require.NoError(t, err)
 
 	// Instantiate a new Proc FS
@@ -115,7 +113,7 @@ func TestDevCQ(t *testing.T) {
 	require.NoError(t, err)
 
 	c := rdmaCollector{
-		logger:        slog.New(slog.NewTextHandler(io.Discard, nil)),
+		logger:        noOpLogger,
 		rdmaCmd:       "testdata/rdma",
 		procfs:        procfs,
 		cgroupManager: cgManager,
@@ -147,7 +145,7 @@ func TestLinkQP(t *testing.T) {
 	require.NoError(t, err)
 
 	// cgroup manager
-	cgManager, err := NewCgroupManager("slurm", slog.New(slog.NewTextHandler(io.Discard, nil)))
+	cgManager, err := NewCgroupManager(slurm, noOpLogger)
 	require.NoError(t, err)
 
 	// Instantiate a new Proc FS
@@ -155,7 +153,7 @@ func TestLinkQP(t *testing.T) {
 	require.NoError(t, err)
 
 	c := rdmaCollector{
-		logger:        slog.New(slog.NewTextHandler(io.Discard, nil)),
+		logger:        noOpLogger,
 		rdmaCmd:       "testdata/rdma",
 		procfs:        procfs,
 		cgroupManager: cgManager,
@@ -188,7 +186,7 @@ func TestLinkCountersSysWide(t *testing.T) {
 
 	// cgroup manager
 	cgManager := &cgroupManager{
-		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		logger:  noOpLogger,
 		mode:    cgroups.Unified,
 		idRegex: slurmCgroupV2PathRegex,
 		ignoreProc: func(p string) bool {
@@ -201,7 +199,7 @@ func TestLinkCountersSysWide(t *testing.T) {
 	require.NoError(t, err)
 
 	c := rdmaCollector{
-		logger:        slog.New(slog.NewTextHandler(io.Discard, nil)),
+		logger:        noOpLogger,
 		sysfs:         sysfs,
 		cgroupManager: cgManager,
 		hwCounters:    []string{"rx_write_requests", "rx_read_requests"},
