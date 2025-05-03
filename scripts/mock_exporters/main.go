@@ -20,6 +20,7 @@ import (
 var minNvGPUPower, maxNvGPUPower, minAMDGPUPower, maxAMDGPUPower float64
 
 type Device struct {
+	ID      string
 	UUID    string
 	IID     string
 	PCIAddr string
@@ -44,11 +45,11 @@ func randFloat(minVal, maxVal float64) float64 {
 
 func newDCGMCollector() *dcgmCollector {
 	devices := []Device{
-		{"GPU-956348bc-d43d-23ed-53d4-857749fa2b67", "0", "00000000:15:00.0"},
-		{"GPU-956348bc-d43d-23ed-53d4-857749fa2b67", "1", "00000000:15:00.0"},
-		{"GPU-feba7e40-d724-01ff-b00f-3a439a28a6c7", "", "00000000:16:00.0"},
-		{"GPU-61a65011-6571-a6d2-5th8-66cbb6f7f9c3", "", "00000000:17:00.0"},
-		{"GPU-1d4d0f3e-b51a-4040-96e3-bf380f7c5728", "", "00000000:18:00.0"},
+		{"0", "GPU-956348bc-d43d-23ed-53d4-857749fa2b67", "0", "00000000:15:00.0"},
+		{"1", "GPU-956348bc-d43d-23ed-53d4-857749fa2b67", "1", "00000000:15:00.0"},
+		{"2", "GPU-feba7e40-d724-01ff-b00f-3a439a28a6c7", "", "00000000:16:00.0"},
+		{"3", "GPU-61a65011-6571-a6d2-5th8-66cbb6f7f9c3", "", "00000000:17:00.0"},
+		{"4", "GPU-1d4d0f3e-b51a-4040-96e3-bf380f7c5728", "", "00000000:18:00.0"},
 	}
 
 	return &dcgmCollector{
@@ -149,10 +150,10 @@ type amdSMICollector struct {
 
 func newAMDSMICollector() *amdSMICollector {
 	devices := []Device{
-		{"20170000800c", "", "00000000:15:00.0"},
-		{"20170003580c", "", "00000000:16:00.0"},
-		{"20180003050c", "", "00000000:17:00.0"},
-		{"20170005280c", "", "00000000:18:00.0"},
+		{"0", "20170000800c", "", "00000000:15:00.0"},
+		{"1", "20170003580c", "", "00000000:16:00.0"},
+		{"2", "20180003050c", "", "00000000:17:00.0"},
+		{"3", "20170005280c", "", "00000000:18:00.0"},
 	}
 
 	return &amdSMICollector{
@@ -198,6 +199,75 @@ func (collector *amdSMICollector) Collect(ch chan<- prometheus.Metric) {
 	}
 }
 
+// AMD Device Metrics collector.
+type amdDeviceMetricsCollector struct {
+	devices     []Device
+	gpuUtil     *prometheus.Desc
+	gpuMemTotal *prometheus.Desc
+	gpuMemUsed  *prometheus.Desc
+	gpuPower    *prometheus.Desc
+}
+
+func newAMDDeviceMetricsCollector() *amdDeviceMetricsCollector {
+	devices := []Device{
+		{"0", "20170000800c", "", "00000000:15:00.0"},
+		{"1", "20170003580c", "", "00000000:16:00.0"},
+		{"2", "20180003050c", "", "00000000:17:00.0"},
+		{"3", "20170005280c", "", "00000000:18:00.0"},
+	}
+
+	return &amdDeviceMetricsCollector{
+		devices: devices,
+		gpuUtil: prometheus.NewDesc("gpu_gfx_activity",
+			"GPU utilization",
+			[]string{"gpu_id", "gpu_partition_id", "serial_number"}, nil,
+		),
+		gpuMemTotal: prometheus.NewDesc("gpu_total_vram",
+			"GPU memory total",
+			[]string{"gpu_id", "gpu_partition_id", "serial_number"}, nil,
+		),
+		gpuMemUsed: prometheus.NewDesc("gpu_used_vram",
+			"GPU memory used",
+			[]string{"gpu_id", "gpu_partition_id", "serial_number"}, nil,
+		),
+		gpuPower: prometheus.NewDesc("gpu_power_usage",
+			"GPU power",
+			[]string{"gpu_id", "gpu_partition_id", "serial_number"}, nil,
+		),
+	}
+}
+
+// Describe writes all descriptors to the prometheus desc channel.
+func (collector *amdDeviceMetricsCollector) Describe(ch chan<- *prometheus.Desc) {
+	ch <- collector.gpuUtil
+	ch <- collector.gpuMemTotal
+	ch <- collector.gpuMemUsed
+	ch <- collector.gpuPower
+}
+
+// Collect implements required collect function for all promehteus collectors.
+func (collector *amdDeviceMetricsCollector) Collect(ch chan<- prometheus.Metric) {
+	for idev := range collector.devices {
+		ch <- prometheus.MustNewConstMetric(
+			collector.gpuUtil, prometheus.GaugeValue, 100*rand.Float64(), strconv.Itoa(idev), //nolint:gosec
+			"0", "Advanced Micro Devices Inc",
+		)
+		ch <- prometheus.MustNewConstMetric(
+			collector.gpuMemTotal, prometheus.GaugeValue, 1024*1024*1024*24, strconv.Itoa(idev),
+			"0", "Advanced Micro Devices Inc",
+		)
+		ch <- prometheus.MustNewConstMetric(
+			collector.gpuMemUsed, prometheus.GaugeValue, 1024*1024*1024*24*rand.Float64(), strconv.Itoa(idev), //nolint:gosec
+			"0", "Advanced Micro Devices Inc",
+		)
+		// GPU power reported in micro Watts
+		ch <- prometheus.MustNewConstMetric(
+			collector.gpuPower, prometheus.GaugeValue, randFloat(minAMDGPUPower, maxAMDGPUPower), strconv.Itoa(idev),
+			"0", "Advanced Micro Devices Inc",
+		)
+	}
+}
+
 func dcgmExporter(ctx context.Context) {
 	dcgm := newDCGMCollector()
 	dcgmRegistry := prometheus.NewRegistry()
@@ -214,7 +284,7 @@ func dcgmExporter(ctx context.Context) {
 	}
 	defer func() {
 		if err := server.Shutdown(ctx); err != nil {
-			log.Println("Failed to shutdown fake Pyroscope server", err)
+			log.Println("Failed to shutdown fake NVIDIA DCGM exporter server", err)
 		}
 	}()
 
@@ -241,7 +311,34 @@ func amdSMIExporter(ctx context.Context) {
 	}
 	defer func() {
 		if err := server.Shutdown(ctx); err != nil {
-			log.Println("Failed to shutdown fake Pyroscope server", err)
+			log.Println("Failed to shutdown fake AMD SMI exporter server", err)
+		}
+	}()
+
+	// Spinning up the server.
+	err := server.ListenAndServe()
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func amdDeviceMetricsExporter(ctx context.Context) {
+	amdDeviceMetrics := newAMDDeviceMetricsCollector()
+	amdDeviceMetricsRegistry := prometheus.NewRegistry()
+	amdDeviceMetricsRegistry.MustRegister(amdDeviceMetrics)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/metrics", promhttp.HandlerFor(amdDeviceMetricsRegistry, promhttp.HandlerOpts{}).ServeHTTP)
+
+	// Start server
+	server := &http.Server{
+		Addr:              ":9600",
+		ReadHeaderTimeout: 3 * time.Second,
+		Handler:           mux,
+	}
+	defer func() {
+		if err := server.Shutdown(ctx); err != nil {
+			log.Println("Failed to shutdown fake AMD device metrics exporter server", err)
 		}
 	}()
 
@@ -284,6 +381,12 @@ func main() {
 	if slices.Contains(args, "amd-smi") {
 		go func() {
 			amdSMIExporter(ctx)
+		}()
+	}
+
+	if slices.Contains(args, "amd-device-metrics") {
+		go func() {
+			amdDeviceMetricsExporter(ctx)
 		}()
 	}
 

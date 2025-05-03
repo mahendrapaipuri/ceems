@@ -32,11 +32,35 @@ const (
 	genericSubsystem  = "compute"
 )
 
+// Shares.
+const (
+	milliCPUtoCPU = 1000
+	sharesPerCPU  = 1024
+	minShares     = 2
+	maxShares     = 262144
+)
+
+// Custom errors.
+var (
+	errUnknownManager = errors.New("unknown resource manager")
+)
+
+type manager int
+
 // Resource Managers.
 const (
-	slurm   = "slurm"
-	libvirt = "libvirt"
+	_ manager = iota
+	slurm
+	libvirt
+	k8s
 )
+
+// Resource manager names.
+var rmNames = map[manager]string{
+	slurm:   "slurm",
+	libvirt: "libvirt",
+	k8s:     "k8s",
+}
 
 // Block IO Op names.
 const (
@@ -79,6 +103,28 @@ var (
 	libvirtCgroupPathRegex = regexp.MustCompile("^.*/(?:.+?)-qemu-(?:[0-9]+)-(?P<id>instance-[0-9a-f]+)(?:.*$)")
 )
 
+// Ref: https://linuxera.org/cpu-memory-management-kubernetes-cgroupsv2/
+// https://regex101.com/r/2RksNL/1
+/*
+	For v1 possibilities are /cpuacct/kubepods/pod5ba385ca-b6e6-4246-bd66-d48d429dbc12
+							 /cpuacct/kubepods/besteffort/pod5ba385ca-b6e6-4246-bd66-d48d429dbc12
+							 /cpuacct/kubepods/burstable/pod5ba385ca-b6e6-4246-bd66-d48d429dbc12
+							 /memory/kubepods/pod5ba385ca-b6e6-4246-bd66-d48d429dbc12
+							 /memory/kubepods/besteffort/pod5ba385ca-b6e6-4246-bd66-d48d429dbc12
+							 /memory/kubepods/burstable/pod5ba385ca-b6e6-4246-bd66-d48d429dbc12
+
+	For v2 possibilities are /kubepods/pod5ba385ca-b6e6-4246-bd66-d48d429dbc12
+							 /kubepods/besteffort/pod5ba385ca-b6e6-4246-bd66-d48d429dbc12
+							 /kubepods/burstable/pod5ba385ca-b6e6-4246-bd66-d48d429dbc12
+
+	For systemd driver
+	For v1 possibilities are /cpuacct/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod2fc932ce_fdcc_454b_97bd_aadfdeb4c340.slice/cri-containerd-aaefb9d8feed2d453b543f6d928cede7a4dbefa6a0ae7c9b990dd234c56e93b9.scope
+	For v2 possibilities are /kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod2fc932ce_fdcc_454b_97bd_aadfdeb4c340.slice/cri-containerd-aaefb9d8feed2d453b543f6d928cede7a4dbefa6a0ae7c9b990dd234c56e93b9.scope
+*/
+var (
+	k8sCgroupPathRegex = regexp.MustCompile("^.*/kubepods(?:.*)pod(?P<id>[0-9a-z-_]+)(?:.*$)")
+)
+
 // CLI options.
 var (
 	activeController = CEEMSExporterApp.Flag(
@@ -98,7 +144,7 @@ func resolveSubsystem(subsystem string) string {
 	switch subsystem {
 	case "cpuacct":
 		return cpuSubsystem
-	case "cpu": //nolint:goconst
+	case "cpu":
 		return cpuSubsystem
 	case "net_cls":
 		return netSubsystem
@@ -142,196 +188,21 @@ func (c *cgroup) String() string {
 type cgroupManager struct {
 	logger           *slog.Logger
 	fs               procfs.FS
+	id               manager           // cgroup manager ID
 	mode             cgroups.CGMode    // cgroups mode: unified, legacy, hybrid
 	root             string            // cgroups root
 	slices           []string          // Slice(s) under which cgroups are managed eg system.slice, machine.slice
 	scopes           []string          // Scope(s) under which cgroups are managed eg slurmstepd.scope, machine-qemu\x2d1\x2dvm1.scope
 	activeController string            // Active controller for cgroups v1
 	mountPoints      []string          // Path(s) under which resource manager creates cgroups
-	manager          string            // cgroup manager
+	name             string            // cgroup manager name
 	idRegex          *regexp.Regexp    // Regular expression to capture cgroup ID set by resource manager
 	isChild          func(string) bool // Function to identify child cgroup paths. Function must return true if cgroup is a child to root cgroup
 	ignoreProc       func(string) bool // Function to filter processes in cgroup based on cmdline. Function must return true if process must be ignored
 }
 
-// String implements stringer interface of the struct.
-func (c *cgroupManager) String() string {
-	return fmt.Sprintf(
-		"mode: %d manager: %s  root: %s slice(s): %s scope(s): %s mount(s): %s",
-		c.mode,
-		c.manager,
-		c.root,
-		strings.Join(c.slices, ","),
-		strings.Join(c.scopes, ","),
-		strings.Join(c.mountPoints, ","),
-	)
-}
-
-// setMountPoints discover mount points for the current manager.
-func (c *cgroupManager) setMountPoints() {
-	switch c.manager {
-	case slurm:
-		switch c.mode { //nolint:exhaustive
-		case cgroups.Unified:
-			// /sys/fs/cgroup/system.slice/slurmstepd.scope
-			// /sys/fs/cgroup/system.slice/node0_slurmstepd.scope
-			for _, slice := range c.slices {
-				for _, scope := range c.scopes {
-					c.mountPoints = append(c.mountPoints, filepath.Join(c.root, slice, scope))
-				}
-			}
-		default:
-			// /sys/fs/cgroup/cpuacct/slurm
-			for _, slice := range c.slices {
-				c.mountPoints = append(c.mountPoints, filepath.Join(c.root, c.activeController, slice))
-			}
-
-			// For cgroups v1 we need to shift root to /sys/fs/cgroup/cpuacct
-			c.root = filepath.Join(c.root, c.activeController)
-		}
-	case libvirt:
-		switch c.mode { //nolint:exhaustive
-		case cgroups.Unified:
-			// /sys/fs/cgroup/machine.slice
-			for _, slice := range c.slices {
-				c.mountPoints = append(c.mountPoints, filepath.Join(c.root, slice))
-			}
-		default:
-			// /sys/fs/cgroup/cpuacct/machine.slice
-			for _, slice := range c.slices {
-				c.mountPoints = append(c.mountPoints, filepath.Join(c.root, c.activeController, slice))
-			}
-
-			// For cgroups v1 we need to shift root to /sys/fs/cgroup/cpuacct
-			c.root = filepath.Join(c.root, c.activeController)
-		}
-	default:
-		c.mountPoints = []string{c.root}
-	}
-}
-
-// discover finds all the active cgroups in the given mountpoint.
-func (c *cgroupManager) discover() ([]cgroup, error) {
-	var cgroups []cgroup
-
-	cgroupProcs := make(map[string][]procfs.Proc)
-
-	cgroupChildren := make(map[string][]cgroupPath)
-
-	// Walk through all cgroups and get cgroup paths
-	// https://goplay.tools/snippet/coVDkIozuhg
-	for _, mountPoint := range c.mountPoints {
-		if err := filepath.WalkDir(mountPoint, func(p string, info fs.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-
-			// Ignore paths that are not directories
-			if !info.IsDir() {
-				return nil
-			}
-
-			// Get relative path of cgroup
-			rel, err := filepath.Rel(c.root, p)
-			if err != nil {
-				c.logger.Error("Failed to resolve relative path for cgroup", "path", p, "err", err)
-
-				return nil
-			}
-
-			// Add leading slash to relative path
-			rel = "/" + rel
-
-			// Unescape UTF-8 characters in cgroup path
-			sanitizedPath, err := unescapeString(p)
-			if err != nil {
-				c.logger.Error("Failed to sanitize cgroup path", "path", p, "err", err)
-
-				return nil
-			}
-
-			// Find all matches of regex
-			matches := c.idRegex.FindStringSubmatch(sanitizedPath)
-			if len(matches) < 2 {
-				return nil
-			}
-
-			// Get capture group maps and map values to names
-			captureGrps := make(map[string]string)
-			for i, name := range c.idRegex.SubexpNames() {
-				if i != 0 && name != "" {
-					captureGrps[name] = matches[i]
-				}
-			}
-
-			// Get cgroup ID which is instance ID
-			id := strings.TrimSpace(captureGrps["id"])
-			if id == "" {
-				c.logger.Error("Empty cgroup ID", "path", p)
-
-				return nil
-			}
-
-			// Optionally we get "virtual" hostname as well if it is in
-			// cgroup path (for SLURM only)
-			vhost := strings.TrimSpace(captureGrps["host"])
-
-			// Find procs in this cgroup
-			if data, err := os.ReadFile(filepath.Join(p, "cgroup.procs")); err == nil {
-				scanner := bufio.NewScanner(bytes.NewReader(data))
-				for scanner.Scan() {
-					if pid, err := strconv.ParseInt(scanner.Text(), 10, 0); err == nil {
-						if proc, err := c.fs.Proc(int(pid)); err == nil {
-							cgroupProcs[id] = append(cgroupProcs[id], proc)
-						}
-					}
-				}
-			}
-
-			// Ignore child cgroups. We are only interested in root cgroup
-			if c.isChild(p) {
-				cgroupChildren[id] = append(cgroupChildren[id], cgroupPath{abs: sanitizedPath, rel: rel})
-
-				return nil
-			}
-
-			// By default set id and uuid to same cgroup ID and if the resource
-			// manager has two representations, override it in corresponding
-			// collector. For instance, it applies only to libvirt
-			cgrp := cgroup{
-				id:       id,
-				uuid:     id,
-				path:     cgroupPath{abs: sanitizedPath, rel: rel},
-				hostname: vhost,
-			}
-
-			cgroups = append(cgroups, cgrp)
-			cgroupChildren[id] = append(cgroupChildren[id], cgroupPath{abs: sanitizedPath, rel: rel})
-
-			return nil
-		}); err != nil {
-			c.logger.Error("Error walking cgroup subsystem", "path", mountPoint, "err", err)
-
-			return nil, err
-		}
-	}
-
-	// Merge cgroupProcs and cgroupChildren with cgroups slice
-	for icgrp := range cgroups {
-		if procs, ok := cgroupProcs[cgroups[icgrp].id]; ok {
-			cgroups[icgrp].procs = procs
-		}
-
-		if children, ok := cgroupChildren[cgroups[icgrp].id]; ok {
-			cgroups[icgrp].children = children
-		}
-	}
-
-	return cgroups, nil
-}
-
 // NewCgroupManager returns an instance of cgroupManager based on resource manager.
-func NewCgroupManager(name string, logger *slog.Logger) (*cgroupManager, error) {
+func NewCgroupManager(name manager, logger *slog.Logger) (*cgroupManager, error) {
 	// Instantiate a new Proc FS
 	fs, err := procfs.NewFS(*procfsPath)
 	if err != nil {
@@ -417,7 +288,8 @@ func NewCgroupManager(name string, logger *slog.Logger) (*cgroupManager, error) 
 		}
 
 		// Add manager field
-		manager.manager = slurm
+		manager.id = name
+		manager.name = rmNames[name]
 
 		// Identify child cgroup
 		manager.isChild = func(p string) bool {
@@ -463,7 +335,8 @@ func NewCgroupManager(name string, logger *slog.Logger) (*cgroupManager, error) 
 		}
 
 		// Add manager field
-		manager.manager = libvirt
+		manager.id = name
+		manager.name = rmNames[name]
 
 		// Add path regex
 		manager.idRegex = libvirtCgroupPathRegex
@@ -483,9 +356,328 @@ func NewCgroupManager(name string, logger *slog.Logger) (*cgroupManager, error) 
 
 		return manager, nil
 
+	/*
+		For k8s, there are two different cgroup drivers possible: systemd and cgroupfs
+
+		Depending on the driver used, the cgroup paths will be different. For
+		cgroupfs drivers, cgroups will be created at
+
+		/kubepods/pod5ba385ca-b6e6-4246-bd66-d48d429dbc12
+
+		where as for systemd driver, cgroups will be created at
+
+		/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod2fc932ce_fdcc_454b_97bd_aadfdeb4c340.slice
+
+		As of 2025, k8s advise to use systemd driver for the distros supporting
+		cgroups v2. However, the default for kubelet and containerd is still cgroupfs
+
+		If we configure kubelet to use systemd driver and containerd with cgroupfs driver,
+		containerd starts to create container cgroups in `/system.slice` outside of `/kubelet.slice`
+		and this can have all sorts of issues. If we find the current host is in this situation,
+		we should warn the users. Moreover, if we end up in this situtation, we will not be able
+		to get cgroup metrics of pods as pod cgroups will be empty!!
+
+		References:
+		https://github.com/kubernetes/kubernetes/blob/f007012f5fe49e40ae0596cf463a8e7b247b3357/pkg/kubelet/stats/cri_stats_provider.go#L952-L967
+		https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/configure-cgroup-driver/
+		https://gjhenrique.com/cgroups-k8s/
+	*/
+	case k8s:
+		var activeSubsystem string
+
+		if (*forceCgroupsVersion == "" && cgroups.Mode() == cgroups.Unified) || *forceCgroupsVersion == "v2" {
+			manager = &cgroupManager{
+				logger: logger,
+				fs:     fs,
+				mode:   cgroups.Unified,
+				root:   *cgroupfsPath,
+			}
+		} else {
+			var mode cgroups.CGMode
+			if *forceCgroupsVersion == "v1" {
+				mode = cgroups.Legacy
+			} else {
+				mode = cgroups.Mode()
+			}
+
+			// Resolve subsystem
+			activeSubsystem = resolveSubsystem(*activeController)
+
+			manager = &cgroupManager{
+				logger:           logger,
+				fs:               fs,
+				mode:             mode,
+				root:             *cgroupfsPath,
+				activeController: activeSubsystem,
+			}
+		}
+
+		// Discover all cgroup slices depending on the driver used
+		for _, slice := range []string{"kubepods", "kubepods.slice"} {
+			if _, err := os.Stat(filepath.Join(*cgroupfsPath, activeSubsystem, slice)); err == nil {
+				manager.slices = append(manager.slices, slice)
+			}
+		}
+
+		// If both kubepods and kubepods.slice are found, it means the node
+		// has changed from one cgroup driver to another and there has not been
+		// a reboot after the modification. This isnt a good idea and warn about it
+		if len(manager.slices) == 2 {
+			logger.Warn(
+				"Both kubepods and kubepods.slice found in cgroup FS. This happens when cgroup driver of " +
+					"kubelet has been modified. To remove obselete cgroup folder, consider rebooting the node",
+			)
+
+			// In this scenario, verify if there are cgroups formed under `/system.slice`. This
+			// happens when cgroup driver on containerd does not match with the one of kubelet.
+			if matches, err := filepath.Glob(filepath.Join(*cgroupfsPath, activeSubsystem, "/system.slice/kubepods*")); err == nil && len(matches) > 0 {
+				logger.Warn(
+					"Containerd creating container cgroups in /system.slice instead of /kubepods.slice. " +
+						"This happens when cgroup driver of containerd does not match with that of kubelet and this can have " +
+						"undesirable effects. Consider using same cgroup driver for both kubelet and containerd",
+				)
+			}
+		}
+
+		// Add manager field
+		manager.id = name
+		manager.name = rmNames[name]
+
+		// Add path regex
+		manager.idRegex = k8sCgroupPathRegex
+
+		// Identify child cgroup
+		manager.isChild = func(p string) bool {
+			// With systemd driver, every path with cri-containerd is a child
+			if strings.Contains(p, "/cri-containerd") {
+				return true
+			}
+
+			// With cgroupfs driver, we check the base name of path and if it does not
+			// contain pod, it is a child
+			return !strings.Contains(filepath.Base(p), "pod")
+		}
+		manager.ignoreProc = func(p string) bool {
+			return false
+		}
+
+		// Set mountpoint
+		manager.setMountPoints()
+
+		return manager, nil
+
 	default:
-		return nil, errors.New("unknown resource manager")
+		return nil, errUnknownManager
 	}
+}
+
+// String implements stringer interface of the struct.
+func (c *cgroupManager) String() string {
+	var mode string
+	switch c.mode { //nolint:exhaustive
+	case cgroups.Legacy:
+		mode = "v1/legacy"
+	case cgroups.Hybrid:
+		mode = "hybrid"
+	case cgroups.Unified:
+		mode = "v2/unified"
+	default:
+		mode = "unknown"
+	}
+
+	return fmt.Sprintf(
+		"mode: %s manager: %s  root: %s slice(s): %s scope(s): %s mount(s): %s",
+		mode,
+		c.name,
+		c.root,
+		strings.Join(c.slices, ","),
+		strings.Join(c.scopes, ","),
+		strings.Join(c.mountPoints, ","),
+	)
+}
+
+// setMountPoints discover mount points for the current manager.
+func (c *cgroupManager) setMountPoints() {
+	switch c.id {
+	case slurm:
+		switch c.mode { //nolint:exhaustive
+		case cgroups.Unified:
+			// /sys/fs/cgroup/system.slice/slurmstepd.scope
+			// /sys/fs/cgroup/system.slice/node0_slurmstepd.scope
+			for _, slice := range c.slices {
+				for _, scope := range c.scopes {
+					c.mountPoints = append(c.mountPoints, filepath.Join(c.root, slice, scope))
+				}
+			}
+		default:
+			// /sys/fs/cgroup/cpuacct/slurm
+			for _, slice := range c.slices {
+				c.mountPoints = append(c.mountPoints, filepath.Join(c.root, c.activeController, slice))
+			}
+
+			// For cgroups v1 we need to shift root to /sys/fs/cgroup/cpuacct
+			c.root = filepath.Join(c.root, c.activeController)
+		}
+	case libvirt:
+		switch c.mode { //nolint:exhaustive
+		case cgroups.Unified:
+			// /sys/fs/cgroup/machine.slice
+			for _, slice := range c.slices {
+				c.mountPoints = append(c.mountPoints, filepath.Join(c.root, slice))
+			}
+		default:
+			// /sys/fs/cgroup/cpuacct/machine.slice
+			for _, slice := range c.slices {
+				c.mountPoints = append(c.mountPoints, filepath.Join(c.root, c.activeController, slice))
+			}
+
+			// For cgroups v1 we need to shift root to /sys/fs/cgroup/cpuacct
+			c.root = filepath.Join(c.root, c.activeController)
+		}
+	case k8s:
+		switch c.mode { //nolint:exhaustive
+		case cgroups.Unified:
+			// /sys/fs/cgroup/kubepods
+			for _, slice := range c.slices {
+				c.mountPoints = append(c.mountPoints, filepath.Join(c.root, slice))
+			}
+		default:
+			// /sys/fs/cgroup/cpuacct/kubepods
+			for _, slice := range c.slices {
+				c.mountPoints = append(c.mountPoints, filepath.Join(c.root, c.activeController, slice))
+			}
+
+			// For cgroups v1 we need to shift root to /sys/fs/cgroup/cpuacct
+			c.root = filepath.Join(c.root, c.activeController)
+		}
+	default:
+		c.mountPoints = []string{c.root}
+	}
+}
+
+// discover finds all the active cgroups in the given mountpoint.
+func (c *cgroupManager) discover() ([]cgroup, error) {
+	var cgroups []cgroup
+
+	cgroupProcs := make(map[string][]procfs.Proc)
+
+	cgroupChildren := make(map[string][]cgroupPath)
+
+	// Walk through all cgroups and get cgroup paths
+	// https://goplay.tools/snippet/coVDkIozuhg
+	for _, mountPoint := range c.mountPoints {
+		if err := filepath.WalkDir(mountPoint, func(p string, info fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+
+			// Ignore paths that are not directories
+			if !info.IsDir() {
+				return nil
+			}
+
+			// Get relative path of cgroup
+			rel, err := filepath.Rel(c.root, p)
+			if err != nil {
+				c.logger.Error("Failed to resolve relative path for cgroup", "path", p, "err", err)
+
+				return nil
+			}
+
+			// Add leading slash to relative path
+			rel = "/" + rel
+
+			// Unescape UTF-8 characters in cgroup path
+			sanitizedPath, err := unescapeString(p)
+			if err != nil {
+				c.logger.Error("Failed to sanitize cgroup path", "path", p, "err", err)
+
+				return nil
+			}
+
+			// Find all matches of regex
+			matches := c.idRegex.FindStringSubmatch(sanitizedPath)
+			if len(matches) < 2 {
+				return nil
+			}
+
+			// Get capture group maps and map values to names
+			captureGrps := make(map[string]string)
+			for i, name := range c.idRegex.SubexpNames() {
+				if i != 0 && name != "" {
+					captureGrps[name] = matches[i]
+				}
+			}
+
+			// Get cgroup ID which is instance ID
+			id := strings.TrimSpace(captureGrps["id"])
+			if id == "" {
+				c.logger.Error("Empty cgroup ID", "path", p)
+
+				return nil
+			}
+
+			// For k8s when systemd is used, there will be "_" in the
+			// id. We need to replace them with "-"
+			// Ref: https://github.com/kubernetes/kubernetes/blob/f007012f5fe49e40ae0596cf463a8e7b247b3357/pkg/kubelet/stats/cri_stats_provider.go#L952-L967
+			id = strings.ReplaceAll(id, "_", "-")
+
+			// Optionally we get "virtual" hostname as well if it is in
+			// cgroup path (for SLURM only)
+			vhost := strings.TrimSpace(captureGrps["host"])
+
+			// Find procs in this cgroup
+			if data, err := os.ReadFile(filepath.Join(p, "cgroup.procs")); err == nil {
+				scanner := bufio.NewScanner(bytes.NewReader(data))
+				for scanner.Scan() {
+					if pid, err := strconv.ParseInt(scanner.Text(), 10, 0); err == nil {
+						if proc, err := c.fs.Proc(int(pid)); err == nil {
+							cgroupProcs[id] = append(cgroupProcs[id], proc)
+						}
+					}
+				}
+			}
+
+			// Ignore child cgroups. We are only interested in root cgroup
+			if c.isChild(p) {
+				cgroupChildren[id] = append(cgroupChildren[id], cgroupPath{abs: sanitizedPath, rel: rel})
+
+				return nil
+			}
+
+			// By default set id and uuid to same cgroup ID and if the resource
+			// manager has two representations, override it in corresponding
+			// collector. For instance, it applies only to libvirt
+			cgrp := cgroup{
+				id:       id,
+				uuid:     id,
+				path:     cgroupPath{abs: sanitizedPath, rel: rel},
+				hostname: vhost,
+			}
+
+			cgroups = append(cgroups, cgrp)
+			cgroupChildren[id] = append(cgroupChildren[id], cgroupPath{abs: sanitizedPath, rel: rel})
+
+			return nil
+		}); err != nil {
+			c.logger.Error("Error walking cgroup subsystem", "path", mountPoint, "err", err)
+
+			return nil, err
+		}
+	}
+
+	// Merge cgroupProcs and cgroupChildren with cgroups slice
+	for icgrp := range cgroups {
+		if procs, ok := cgroupProcs[cgroups[icgrp].id]; ok {
+			cgroups[icgrp].procs = procs
+		}
+
+		if children, ok := cgroupChildren[cgroups[icgrp].id]; ok {
+			cgroups[icgrp].children = children
+		}
+	}
+
+	return cgroups, nil
 }
 
 // cgMetric contains metrics returned by cgroup.
@@ -576,7 +768,7 @@ func NewCgroupCollector(logger *slog.Logger, cgManager *cgroupManager, opts cgro
 	if blockdevice, err := blockdevice.NewFS(*procfsPath, *sysPath); err == nil {
 		if stats, err := blockdevice.ProcDiskstats(); err == nil {
 			for _, s := range stats {
-				blockDevices[fmt.Sprintf("%d:%d", s.Info.MajorNumber, s.Info.MinorNumber)] = s.Info.DeviceName
+				blockDevices[fmt.Sprintf("%d:%d", s.MajorNumber, s.MinorNumber)] = s.DeviceName
 			}
 		} else {
 			logger.Error("Failed to get stats of block devices on the host", "err", err)
@@ -733,70 +925,70 @@ func (c *cgroupCollector) Update(ch chan<- prometheus.Metric, cgroups []cgroup) 
 	metrics := c.update(cgroups)
 
 	// First send num jobs on the current host
-	ch <- prometheus.MustNewConstMetric(c.numCgs, prometheus.GaugeValue, float64(len(metrics)), c.cgroupManager.manager, c.hostname)
+	ch <- prometheus.MustNewConstMetric(c.numCgs, prometheus.GaugeValue, float64(len(metrics)), c.cgroupManager.name, c.hostname)
 
 	// Send metrics of each cgroup
 	for _, m := range metrics {
 		if m.err {
-			ch <- prometheus.MustNewConstMetric(c.collectError, prometheus.GaugeValue, float64(1), c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
+			ch <- prometheus.MustNewConstMetric(c.collectError, prometheus.GaugeValue, float64(1), c.cgroupManager.name, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
 		}
 
 		// CPU stats
-		ch <- prometheus.MustNewConstMetric(c.cgCPUUser, prometheus.CounterValue, m.cpuUser, c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
-		ch <- prometheus.MustNewConstMetric(c.cgCPUSystem, prometheus.CounterValue, m.cpuSystem, c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
-		ch <- prometheus.MustNewConstMetric(c.cgCPUs, prometheus.GaugeValue, float64(m.cpus), c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
+		ch <- prometheus.MustNewConstMetric(c.cgCPUUser, prometheus.CounterValue, m.cpuUser, c.cgroupManager.name, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
+		ch <- prometheus.MustNewConstMetric(c.cgCPUSystem, prometheus.CounterValue, m.cpuSystem, c.cgroupManager.name, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
+		ch <- prometheus.MustNewConstMetric(c.cgCPUs, prometheus.GaugeValue, float64(m.cpus)/milliCPUtoCPU, c.cgroupManager.name, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
 
 		// Memory stats
-		ch <- prometheus.MustNewConstMetric(c.cgMemoryRSS, prometheus.GaugeValue, m.memoryRSS, c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
-		ch <- prometheus.MustNewConstMetric(c.cgMemoryCache, prometheus.GaugeValue, m.memoryCache, c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
-		ch <- prometheus.MustNewConstMetric(c.cgMemoryUsed, prometheus.GaugeValue, m.memoryUsed, c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
-		ch <- prometheus.MustNewConstMetric(c.cgMemoryTotal, prometheus.GaugeValue, m.memoryTotal, c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
-		ch <- prometheus.MustNewConstMetric(c.cgMemoryFailCount, prometheus.GaugeValue, m.memoryFailCount, c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
+		ch <- prometheus.MustNewConstMetric(c.cgMemoryRSS, prometheus.GaugeValue, m.memoryRSS, c.cgroupManager.name, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
+		ch <- prometheus.MustNewConstMetric(c.cgMemoryCache, prometheus.GaugeValue, m.memoryCache, c.cgroupManager.name, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
+		ch <- prometheus.MustNewConstMetric(c.cgMemoryUsed, prometheus.GaugeValue, m.memoryUsed, c.cgroupManager.name, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
+		ch <- prometheus.MustNewConstMetric(c.cgMemoryTotal, prometheus.GaugeValue, m.memoryTotal, c.cgroupManager.name, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
+		ch <- prometheus.MustNewConstMetric(c.cgMemoryFailCount, prometheus.GaugeValue, m.memoryFailCount, c.cgroupManager.name, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
 
 		// Memory swap stats
 		if c.opts.collectSwapMemStats {
-			ch <- prometheus.MustNewConstMetric(c.cgMemswUsed, prometheus.GaugeValue, m.memswUsed, c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
-			ch <- prometheus.MustNewConstMetric(c.cgMemswTotal, prometheus.GaugeValue, m.memswTotal, c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
-			ch <- prometheus.MustNewConstMetric(c.cgMemswFailCount, prometheus.GaugeValue, m.memswFailCount, c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
+			ch <- prometheus.MustNewConstMetric(c.cgMemswUsed, prometheus.GaugeValue, m.memswUsed, c.cgroupManager.name, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
+			ch <- prometheus.MustNewConstMetric(c.cgMemswTotal, prometheus.GaugeValue, m.memswTotal, c.cgroupManager.name, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
+			ch <- prometheus.MustNewConstMetric(c.cgMemswFailCount, prometheus.GaugeValue, m.memswFailCount, c.cgroupManager.name, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
 		}
 
 		// Block IO stats
 		if c.opts.collectBlockIOStats {
 			for device := range m.blkioReadBytes {
 				if v, ok := m.blkioReadBytes[device]; ok && v > 0 {
-					ch <- prometheus.MustNewConstMetric(c.cgBlkioReadBytes, prometheus.GaugeValue, v, c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid, device)
+					ch <- prometheus.MustNewConstMetric(c.cgBlkioReadBytes, prometheus.GaugeValue, v, c.cgroupManager.name, c.hostname, m.cgroup.hostname, m.cgroup.uuid, device)
 				}
 
 				if v, ok := m.blkioWriteBytes[device]; ok && v > 0 {
-					ch <- prometheus.MustNewConstMetric(c.cgBlkioWriteBytes, prometheus.GaugeValue, v, c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid, device)
+					ch <- prometheus.MustNewConstMetric(c.cgBlkioWriteBytes, prometheus.GaugeValue, v, c.cgroupManager.name, c.hostname, m.cgroup.hostname, m.cgroup.uuid, device)
 				}
 
 				if v, ok := m.blkioReadReqs[device]; ok && v > 0 {
-					ch <- prometheus.MustNewConstMetric(c.cgBlkioReadReqs, prometheus.GaugeValue, v, c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid, device)
+					ch <- prometheus.MustNewConstMetric(c.cgBlkioReadReqs, prometheus.GaugeValue, v, c.cgroupManager.name, c.hostname, m.cgroup.hostname, m.cgroup.uuid, device)
 				}
 
 				if v, ok := m.blkioWriteReqs[device]; ok && v > 0 {
-					ch <- prometheus.MustNewConstMetric(c.cgBlkioWriteReqs, prometheus.GaugeValue, v, c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid, device)
+					ch <- prometheus.MustNewConstMetric(c.cgBlkioWriteReqs, prometheus.GaugeValue, v, c.cgroupManager.name, c.hostname, m.cgroup.hostname, m.cgroup.uuid, device)
 				}
 			}
 		}
 
 		// PSI stats
 		if c.opts.collectPSIStats {
-			ch <- prometheus.MustNewConstMetric(c.cgCPUPressure, prometheus.GaugeValue, m.cpuPressure, c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
-			ch <- prometheus.MustNewConstMetric(c.cgMemoryPressure, prometheus.GaugeValue, m.memoryPressure, c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
+			ch <- prometheus.MustNewConstMetric(c.cgCPUPressure, prometheus.GaugeValue, m.cpuPressure, c.cgroupManager.name, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
+			ch <- prometheus.MustNewConstMetric(c.cgMemoryPressure, prometheus.GaugeValue, m.memoryPressure, c.cgroupManager.name, c.hostname, m.cgroup.hostname, m.cgroup.uuid)
 		}
 
 		// RDMA stats
 		for device, handles := range m.rdmaHCAHandles {
 			if handles > 0 {
-				ch <- prometheus.MustNewConstMetric(c.cgRDMAHCAHandles, prometheus.GaugeValue, handles, c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid, device)
+				ch <- prometheus.MustNewConstMetric(c.cgRDMAHCAHandles, prometheus.GaugeValue, handles, c.cgroupManager.name, c.hostname, m.cgroup.hostname, m.cgroup.uuid, device)
 			}
 		}
 
 		for device, objects := range m.rdmaHCAHandles {
 			if objects > 0 {
-				ch <- prometheus.MustNewConstMetric(c.cgRDMAHCAObjects, prometheus.GaugeValue, objects, c.cgroupManager.manager, c.hostname, m.cgroup.hostname, m.cgroup.uuid, device)
+				ch <- prometheus.MustNewConstMetric(c.cgRDMAHCAObjects, prometheus.GaugeValue, objects, c.cgroupManager.name, c.hostname, m.cgroup.hostname, m.cgroup.uuid, device)
 			}
 		}
 	}
@@ -845,51 +1037,8 @@ func (c *cgroupCollector) stats(cgrp cgroup) cgMetric {
 	}
 }
 
-// parseCPUSet parses cpuset.cpus file to return a list of CPUs in the cgroup.
-func (c *cgroupCollector) parseCPUSet(cpuset string) ([]string, error) {
-	var cpus []string
-
-	var start, end int
-
-	var err error
-
-	if cpuset == "" {
-		return nil, errors.New("empty cpuset file")
-	}
-
-	ranges := strings.Split(cpuset, ",")
-	for _, r := range ranges {
-		boundaries := strings.Split(r, "-")
-		if len(boundaries) == 1 {
-			start, err = strconv.Atoi(boundaries[0])
-			if err != nil {
-				return nil, err
-			}
-
-			end = start
-		} else if len(boundaries) == 2 {
-			start, err = strconv.Atoi(boundaries[0])
-			if err != nil {
-				return nil, err
-			}
-
-			end, err = strconv.Atoi(boundaries[1])
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		for e := start; e <= end; e++ {
-			cpu := strconv.Itoa(e)
-			cpus = append(cpus, cpu)
-		}
-	}
-
-	return cpus, nil
-}
-
-// getCPUs returns list of CPUs in the cgroup.
-func (c *cgroupCollector) getCPUs(path string) ([]string, error) {
+// cpusFromCPUSet returns number of milli CPUs from cpuset cgroup.
+func (c *cgroupCollector) cpusFromCPUSet(path string) (int, error) {
 	var cpusPath string
 	if c.cgroupManager.mode == cgroups.Unified {
 		cpusPath = fmt.Sprintf("%s%s/cpuset.cpus.effective", *cgroupfsPath, path)
@@ -898,24 +1047,125 @@ func (c *cgroupCollector) getCPUs(path string) ([]string, error) {
 	}
 
 	if !fileExists(cpusPath) {
-		return nil, fmt.Errorf("cpuset file %s not found", cpusPath)
+		return -1, fmt.Errorf("cpuset file %s not found", cpusPath)
 	}
 
 	cpusData, err := os.ReadFile(cpusPath)
 	if err != nil {
 		c.logger.Error("Error reading cpuset", "cpuset", cpusPath, "err", err)
 
-		return nil, err
+		return -1, err
 	}
 
-	cpus, err := c.parseCPUSet(strings.TrimSuffix(string(cpusData), "\n"))
+	// Parse cpuset range
+	cpus, err := parseRange(strings.TrimSuffix(string(cpusData), "\n"))
 	if err != nil {
 		c.logger.Error("Error parsing cpuset", "cpuset", cpusPath, "err", err)
 
-		return nil, err
+		return -1, err
 	}
 
-	return cpus, nil
+	return len(cpus) * milliCPUtoCPU, nil
+}
+
+// cpusFromChildren returns number of milli CPUs from child cgroups.
+func (c *cgroupCollector) cpusFromChildren(path string) (int, error) {
+	// Escape \x2d to get correct path
+	path = strings.Trim(strconv.Quote(path), `"`)
+
+	// For libvirt, there will be a vcpu* child cgroup for each
+	// virtual CPU
+	// In cgroup v1, they are flat whereas in cgroup v2 they are inside libvirt folder
+	var vcpuPath string
+
+	switch c.cgroupManager.mode { //nolint:exhaustive
+	case cgroups.Unified:
+		vcpuPath = fmt.Sprintf("%s%s/libvirt/vcpu*", c.cgroupManager.root, path)
+	default:
+		vcpuPath = fmt.Sprintf("%s%s/vcpu*", c.cgroupManager.root, path)
+	}
+
+	matches, err := filepath.Glob(vcpuPath)
+	if err != nil {
+		c.logger.Error("Error finding vcpu* cgroups", "path", path, "err", err)
+
+		return -1, err
+	}
+
+	return len(matches) * milliCPUtoCPU, nil
+}
+
+// cpusFromShares returns number of milli CPUs from cpu shares/weight from cgroup.
+func (c *cgroupCollector) cpusFromShares(path string) (int, error) {
+	// In cgroups v1, cpushares must be read whereas in cgroups v2
+	// cpuweight must be read
+	var filePath string
+
+	switch c.cgroupManager.mode { //nolint:exhaustive
+	case cgroups.Unified:
+		filePath = fmt.Sprintf("%s%s/cpu.weight", c.cgroupManager.root, path)
+	default:
+		filePath = fmt.Sprintf("%s%s/cpu.shares", c.cgroupManager.root, path)
+	}
+
+	b, err := os.ReadFile(filePath)
+	if err != nil {
+		c.logger.Error("Error reading shares/weight file", "path", filePath, "err", err)
+
+		return -1, err
+	}
+
+	// Convert to int
+	val, err := strconv.ParseInt(strings.Trim(string(b), "\n"), 10, 64)
+	if err != nil {
+		c.logger.Error("Error parsing integer string", "path", filePath, "err", err)
+
+		return -1, err
+	}
+
+	// If cgroups is v2, convert weight to shares
+	// Ref: https://github.com/kubernetes/kubernetes/blob/f5da3b717fc2177b05b9cd23a0e2711d42f74cad/pkg/kubelet/cm/cgroup_manager_linux.go#L570-L574
+	// Ref: https://victoriametrics.com/blog/kubernetes-cpu-go-gomaxprocs/
+	if c.cgroupManager.mode == cgroups.Unified {
+		val = (((val - 1) * 262142) / 9999) + 2
+	}
+
+	// Check bounds on shares
+	if val < minShares {
+		val = minShares
+	}
+
+	if val > maxShares {
+		val = maxShares
+	}
+
+	// Convert to int
+	var shares int
+	if val > math.MaxInt {
+		shares = math.MaxInt
+	} else {
+		shares = int(val)
+	}
+
+	// Convert shares to milli CPUs
+	// Ref: https://github.com/kubernetes/kubernetes/blob/f5da3b717fc2177b05b9cd23a0e2711d42f74cad/pkg/kubelet/cm/helpers_linux.go#L85-L101
+	milliCPUs := shares * milliCPUtoCPU / sharesPerCPU
+
+	return milliCPUs, nil
+}
+
+// getCPUs returns number of milli CPUs in the cgroup.
+func (c *cgroupCollector) getCPUs(path string) (int, error) {
+	switch c.cgroupManager.id {
+	case slurm:
+		return c.cpusFromCPUSet(path)
+	case libvirt:
+		return c.cpusFromChildren(path)
+	case k8s:
+		return c.cpusFromShares(path)
+	default:
+		return -1, errUnknownManager
+	}
 }
 
 // statsV1 fetches metrics from cgroups v1.
@@ -963,8 +1213,8 @@ func (c *cgroupCollector) statsV1(cgrp cgroup) cgMetric {
 		}
 	}
 
-	if cpus, err := c.getCPUs(path); err == nil {
-		metric.cpus = len(cpus)
+	if ncpus, err := c.getCPUs(path); err == nil {
+		metric.cpus = ncpus
 	}
 
 	// Get memory stats
@@ -1096,8 +1346,8 @@ func (c *cgroupCollector) statsV2(cgrp cgroup) cgMetric {
 		}
 	}
 
-	if cpus, err := c.getCPUs(path); err == nil {
-		metric.cpus = len(cpus)
+	if ncpus, err := c.getCPUs(path); err == nil {
+		metric.cpus = ncpus
 	}
 
 	// Get memory stats

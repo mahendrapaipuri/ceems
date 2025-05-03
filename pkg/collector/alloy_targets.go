@@ -17,7 +17,7 @@ import (
 var (
 	enableDiscoverer = CEEMSExporterApp.Flag(
 		"discoverer.alloy-targets",
-		"Enable Grafana Alloy targets discoverer (default: false).",
+		"Enable Grafana Alloy targets discoverer. Supported for SLURM and k8s. (default: false).",
 	).Default("false").Bool()
 	alloyTargetEnvVars = CEEMSExporterApp.Flag(
 		"discoverer.alloy-targets.env-var",
@@ -34,10 +34,6 @@ const selfTargetID = "__internal_ceems_exporter"
 const (
 	contentTypeHeader = "Content-Type"
 	contentType       = "application/json"
-)
-
-const (
-	alloyTargetDiscovererSubSystem = "alloy_targets"
 )
 
 // Security context names.
@@ -68,20 +64,22 @@ type CEEMSAlloyTargetDiscoverer struct {
 
 // NewAlloyTargetDiscoverer returns a new HTTP alloy discoverer.
 func NewAlloyTargetDiscoverer(logger *slog.Logger) (*CEEMSAlloyTargetDiscoverer, error) {
-	var cgManager string
+	var cgManager manager
 
 	// Check if either SLURM or k8s collector is enabled
 	switch {
 	case *collectorState["slurm"]:
-		cgManager = "slurm"
+		cgManager = slurm
+	case *collectorState["k8s"]:
+		cgManager = k8s
 	}
 
 	// Discoverer is not enabled or supported collector is not enabled
-	if !*enableDiscoverer || cgManager == "" {
+	if !*enableDiscoverer || cgManager == 0 {
 		return &CEEMSAlloyTargetDiscoverer{logger: logger, enabled: false}, nil
 	}
 
-	// Get SLURM's cgroup details
+	// Get resource manager's cgroup details
 	cgroupManager, err := NewCgroupManager(cgManager, logger)
 	if err != nil {
 		logger.Info("Failed to create cgroup manager", "err", err)
@@ -111,7 +109,11 @@ func NewAlloyTargetDiscoverer(logger *slog.Logger) (*CEEMSAlloyTargetDiscoverer,
 	// cap_dac_read_search caps
 	if len(discoverer.opts.targetEnvVars) > 0 {
 		capabilities := []string{"cap_sys_ptrace", "cap_dac_read_search"}
-		auxCaps := setupCollectorCaps(logger, alloyTargetDiscovererSubSystem, capabilities)
+
+		auxCaps, err := setupCollectorCaps(capabilities)
+		if err != nil {
+			logger.Warn("Failed to parse capability name(s)", "err", err)
+		}
 
 		discoverer.securityContexts[alloyTargetFilterCtx], err = security.NewSecurityContext(
 			alloyTargetFilterCtx,

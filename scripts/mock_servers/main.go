@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strconv"
@@ -19,8 +20,10 @@ import (
 	"time"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
+	ceems_k8s "github.com/mahendrapaipuri/ceems/pkg/k8s"
 	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
 	"google.golang.org/protobuf/proto"
+	podresourcesapi "k8s.io/kubelet/pkg/apis/podresources/v1"
 )
 
 // Default ports.
@@ -30,6 +33,7 @@ const (
 	promPortNum    = ":9090"
 	osNovaPortNum  = ":8080"
 	osKSPortNum    = ":7070"
+	k8sPortNum     = ":9080"
 )
 
 // Regex to capture query.
@@ -597,13 +601,27 @@ func ProjectsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("KO"))
 }
 
+// PodsListHandler handles k8s pods.
+func PodsListHandler(w http.ResponseWriter, r *http.Request) {
+	if data, err := os.ReadFile("pkg/collector/testdata/k8s/pods-metadata.json"); err == nil {
+		w.Header().Add("Content-Type", "application/json")
+		w.Header().Add("Content-Type", "application/vnd.kubernetes.protobuf")
+		w.Write(data)
+
+		return
+	}
+
+	w.WriteHeader(http.StatusInternalServerError)
+	w.Write([]byte("KO"))
+}
+
 func redfishProxyTarget(ctx context.Context, i, portNum int, tls bool) {
 	log.Println("Starting fake redfish target ", i, " on port", portNum)
 
 	// Registering our handler functions, and creating paths.
 	redfishMux := http.NewServeMux()
 	redfishMux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(fmt.Sprintf("BMC for host 192.168.1.%d is running on port %d\n", i, portNum)))
+		fmt.Fprintf(w, "BMC for host 192.168.1.%d is running on port %d\n", i, portNum)
 	})
 
 	log.Println("Started Redfish target on port", portNum)
@@ -790,6 +808,80 @@ func osKSServer(ctx context.Context) {
 	}
 }
 
+func k8sAPIServer(ctx context.Context) {
+	log.Println("Starting fake k8s API server")
+
+	// Registering our handler functions, and creating paths.
+	k8sAPIMux := http.NewServeMux()
+	k8sAPIMux.HandleFunc("/api/v1/pods", PodsListHandler)
+
+	log.Println("Started k8s API server on port", k8sPortNum)
+	log.Println("To close connection CTRL+C :-)")
+
+	// Start server
+	server := &http.Server{
+		Addr:              k8sPortNum,
+		ReadHeaderTimeout: 3 * time.Second,
+		Handler:           k8sAPIMux,
+	}
+	defer func() {
+		if err := server.Shutdown(ctx); err != nil {
+			log.Println("Failed to shutdown fake k8s API server", err)
+		}
+	}()
+
+	// Spinning up the server.
+	err := server.ListenAndServe()
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func kubeletSocketServer(_ context.Context) {
+	log.Println("Starting fake kubelet socket server")
+
+	socketDir := os.Getenv("CEEMS_KUBELET_SOCKET_DIR")
+	if socketDir == "" {
+		socketDir = os.TempDir()
+	}
+
+	for _, vendor := range []string{"nvidia", "amd"} {
+		vendorSocketDir := filepath.Join(socketDir, vendor)
+
+		log.Println("Started kubelet socket on path", vendorSocketDir, "for vendor", vendor)
+		log.Println("To close connection CTRL+C :-)")
+
+		// Make socket dir
+		if err := os.MkdirAll(vendorSocketDir, 0o700); err != nil {
+			log.Fatal(err)
+		}
+
+		// Read pod resources content
+		content, err := os.ReadFile(fmt.Sprintf("pkg/collector/testdata/k8s/%s-pod-resources.json", vendor))
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		var podResourcesResp podresourcesapi.ListPodResourcesResponse
+
+		err = json.Unmarshal(content, &podResourcesResp)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// Start server
+		kubelet, err := ceems_k8s.FakeKubeletServer(vendorSocketDir, &podResourcesResp, nil)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		defer kubelet.Server.Stop()
+	}
+
+	// Block forever
+	<-make(chan int)
+}
+
 func main() {
 	log.Println("Starting fake test servers")
 
@@ -843,6 +935,18 @@ func main() {
 	if slices.Contains(args, "os-identity") {
 		go func() {
 			osKSServer(ctx)
+		}()
+	}
+
+	if slices.Contains(args, "k8s-api") {
+		go func() {
+			k8sAPIServer(ctx)
+		}()
+	}
+
+	if slices.Contains(args, "k8s-kubelet-socket") {
+		go func() {
+			kubeletSocketServer(ctx)
 		}()
 	}
 

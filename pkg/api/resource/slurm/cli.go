@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/mahendrapaipuri/ceems/internal/common"
 	internal_osexec "github.com/mahendrapaipuri/ceems/internal/osexec"
 	"github.com/mahendrapaipuri/ceems/internal/security"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
@@ -315,7 +316,7 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 			}
 
 			// Expand nodelist range expressions
-			allNodes := helper.NodelistParser(components[sacctFieldMap["nodelist"]])
+			allNodes := common.NodelistParser(components[sacctFieldMap["nodelist"]])
 			nodelistExp := strings.Join(allNodes, "|")
 
 			// Allocation
@@ -512,7 +513,8 @@ func (s *slurmScheduler) runSacctCmd(ctx context.Context, start, end time.Time) 
 	}
 
 	// Run command as slurm user
-	if s.cmdExecMode == capabilityMode {
+	switch s.cmdExecMode {
+	case capabilityMode:
 		// Get security context
 		var securityCtx *security.SecurityContext
 
@@ -535,7 +537,7 @@ func (s *slurmScheduler) runSacctCmd(ctx context.Context, start, end time.Time) 
 		}
 
 		return executeInSecurityContext(securityCtx, dataPtr)
-	} else if s.cmdExecMode == sudoMode {
+	case sudoMode:
 		// Important that we need to export env as well as we set environment variables in the
 		// command execution
 		args = append([]string{"-E", sacctPath}, args...)
@@ -561,7 +563,8 @@ func (s *slurmScheduler) runSacctMgrCmd(ctx context.Context) ([]byte, error) {
 	}
 
 	// Run command as slurm user
-	if s.cmdExecMode == capabilityMode {
+	switch s.cmdExecMode {
+	case capabilityMode:
 		// Get security context
 		var securityCtx *security.SecurityContext
 
@@ -584,7 +587,7 @@ func (s *slurmScheduler) runSacctMgrCmd(ctx context.Context) ([]byte, error) {
 		}
 
 		return executeInSecurityContext(securityCtx, dataPtr)
-	} else if s.cmdExecMode == sudoMode {
+	case sudoMode:
 		// Important that we need to export env as well as we set environment variables in the
 		// command execution
 		args = append([]string{"-E", sacctMgrPath}, args...)
