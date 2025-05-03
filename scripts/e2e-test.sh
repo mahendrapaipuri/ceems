@@ -96,16 +96,21 @@ then
     cgroups_mode="unified"
     desc="Cgroups V2 with libvirt"
     fixture='pkg/collector/testdata/output/exporter/e2e-test-cgroupsv2-libvirt-output.txt'
-  elif [ "${scenario}" = "discoverer-cgroups-v2-slurm" ]
-  then
-    cgroups_mode="unified"
-    desc="Cgroups V2 discoverer for Slurm"
-    fixture='pkg/collector/testdata/output/discoverer/e2e-test-discoverer-cgroupsv2-slurm-output.txt'
-  elif [ "${scenario}" = "discoverer-cgroups-v1-slurm" ]
+  elif [ "${scenario}" = "exporter-cgroups-v1-k8s" ]
   then
     cgroups_mode="legacy"
-    desc="Cgroups V1 discoverer for Slurm"
-    fixture='pkg/collector/testdata/output/discoverer/e2e-test-discoverer-cgroupsv1-slurm-output.txt'
+    desc="Cgroups V1 with k8s"
+    fixture='pkg/collector/testdata/output/exporter/e2e-test-cgroupsv1-k8s-output.txt'
+  elif [ "${scenario}" = "exporter-cgroups-v2-k8s" ]
+  then
+    cgroups_mode="unified"
+    desc="Cgroups V2 with k8s"
+    fixture='pkg/collector/testdata/output/exporter/e2e-test-cgroupsv2-k8s-output.txt'
+  elif [ "${scenario}" = "exporter-cgroups-v2-k8s-nogpu" ]
+  then
+    cgroups_mode="unified"
+    desc="Cgroups V2 with k8s and no GPUs"
+    fixture='pkg/collector/testdata/output/exporter/e2e-test-cgroupsv2-k8s-nogpu-output.txt'
   fi
 
   logfile="${tmpdir}/ceems_exporter.log"
@@ -124,6 +129,16 @@ then
     cgroups_mode="legacy"
     desc="Cgroups V1 discoverer for Slurm"
     fixture='pkg/collector/testdata/output/discoverer/e2e-test-discoverer-cgroupsv1-slurm-output.txt'
+  elif [ "${scenario}" = "discoverer-cgroups-v2-k8s" ]
+  then
+    cgroups_mode="unified"
+    desc="Cgroups V2 discoverer for k8s"
+    fixture='pkg/collector/testdata/output/discoverer/e2e-test-discoverer-cgroupsv2-k8s-output.txt'
+  elif [ "${scenario}" = "discoverer-cgroups-v1-k8s" ]
+  then
+    cgroups_mode="legacy"
+    desc="Cgroups V1 discoverer for k8s"
+    fixture='pkg/collector/testdata/output/discoverer/e2e-test-discoverer-cgroupsv1-k8s-output.txt'
   fi
 
   logfile="${tmpdir}/ceems_exporter.log"
@@ -446,10 +461,12 @@ then
   fi
 
   export PATH="${GOBIN:-}:${PATH}"
-  ./bin/mock_servers redfish >> "${logfile}" 2>&1 &
+  export CEEMS_KUBELET_SOCKET_DIR="${tmpdir}/kubelet"
+  ./bin/mock_servers redfish k8s-api k8s-kubelet-socket >> "${logfile}" 2>&1 &
   MOCK_SERVERS_PID=$!
 
   waitport "5000"
+  waitport "9080"
 
   if [ "${scenario}" = "exporter-cgroups-v1" ] 
   then
@@ -459,6 +476,7 @@ then
         --path.procfs="pkg/collector/testdata/proc" \
         --collector.cgroups.force-version="v1" \
         --collector.slurm \
+        --collector.slurm.gres-config-file="pkg/collector/testdata/gres.conf" \
         --collector.gpu.type="nvidia" \
         --collector.gpu.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
         --collector.ipmi_dcmi \
@@ -481,6 +499,7 @@ then
         --collector.cgroups.force-version="v1" \
         --collector.cgroups.active-subsystem="memory" \
         --collector.slurm \
+        --collector.slurm.gres-config-file="pkg/collector/testdata/gres.conf" \
         --collector.gpu.type="nvidia" \
         --collector.gpu.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
         --collector.ipmi_dcmi \
@@ -499,6 +518,7 @@ then
         --path.procfs="pkg/collector/testdata/proc" \
         --collector.cgroups.force-version="v2" \
         --collector.slurm \
+        --collector.slurm.gres-config-file="pkg/collector/testdata/gres.conf" \
         --collector.gpu.type="nvidia" \
         --collector.gpu.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
         --collector.rdma.stats \
@@ -522,7 +542,7 @@ then
         --path.procfs="pkg/collector/testdata/proc" \
         --collector.cgroups.force-version="v2" \
         --collector.slurm \
-        --collector.slurm.gpu-order-map="0:0,1:1,2:4,3:5,4:2.1,5:2.5,6:2.13,7:3.1,8:3.5,9:3.13,10:6,11:7" \
+        --collector.slurm.gpu-order-map="0:0,1:1,2:4,3:5,4:2.1,5:2.5,6:2.13,7:3.1,8:3.5,9:3.6,10:6,11:7" \
         --collector.gpu.type="nvidia" \
         --collector.gpu.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
         --collector.rdma.stats \
@@ -563,6 +583,7 @@ then
         --path.procfs="pkg/collector/testdata/proc" \
         --collector.cgroups.force-version="v2" \
         --collector.slurm \
+        --collector.gpu.type="nogpu" \
         --collector.empty-hostname-label \
         --collector.ipmi_dcmi \
         --collector.ipmi_dcmi.test-mode \
@@ -656,6 +677,63 @@ then
         --web.listen-address "127.0.0.1:${port}" \
         --web.disable-exporter-metrics \
         --log.level="debug" > "${logfile}" 2>&1 &
+  elif [ "${scenario}" = "exporter-cgroups-v1-k8s" ] 
+  then
+      ./bin/ceems_exporter \
+        --path.sysfs="pkg/collector/testdata/sys" \
+        --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
+        --path.procfs="pkg/collector/testdata/proc" \
+        --collector.cgroups.force-version="v1" \
+        --collector.k8s \
+        --collector.k8s.kube-config-file="pkg/collector/testdata/k8s/kubeconfig.yml" \
+        --collector.k8s.kubelet-socket-file="${CEEMS_KUBELET_SOCKET_DIR}/nvidia/kubelet.sock" \
+        --collector.gpu.type="nvidia" \
+        --collector.gpu.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
+        --collector.ipmi_dcmi \
+        --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/capmc/capmc" \
+        --collector.ipmi_dcmi.test-mode \
+        --collector.empty-hostname-label \
+        --web.listen-address "127.0.0.1:${port}" \
+        --web.disable-exporter-metrics \
+        --log.level="debug" > "${logfile}" 2>&1 &
+  elif [ "${scenario}" = "exporter-cgroups-v2-k8s" ] 
+  then
+      ./bin/ceems_exporter \
+        --path.sysfs="pkg/collector/testdata/sys" \
+        --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
+        --path.procfs="pkg/collector/testdata/proc" \
+        --collector.cgroups.force-version="v2" \
+        --collector.k8s \
+        --collector.k8s.kube-config-file="pkg/collector/testdata/k8s/kubeconfig.yml" \
+        --collector.k8s.kubelet-socket-file="${CEEMS_KUBELET_SOCKET_DIR}/amd/kubelet.sock" \
+        --collector.gpu.type="amd" \
+        --collector.gpu.amd-smi-path="pkg/collector/testdata/amd-smi" \
+        --collector.ipmi_dcmi \
+        --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/capmc/capmc" \
+        --collector.ipmi_dcmi.test-mode \
+        --collector.redfish \
+        --collector.redfish.web-config="pkg/collector/testdata/redfish/config.yml" \
+        --collector.empty-hostname-label \
+        --web.listen-address "127.0.0.1:${port}" \
+        --web.disable-exporter-metrics \
+        --log.level="debug" > "${logfile}" 2>&1 &
+  elif [ "${scenario}" = "exporter-cgroups-v2-k8s-nogpu" ] 
+  then
+      ./bin/ceems_exporter \
+        --path.sysfs="pkg/collector/testdata/sys" \
+        --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
+        --path.procfs="pkg/collector/testdata/proc" \
+        --collector.cgroups.force-version="v2" \
+        --collector.gpu.type="nogpu" \
+        --collector.k8s \
+        --collector.k8s.kube-config-file="pkg/collector/testdata/k8s/kubeconfig.yml" \
+        --collector.ipmi_dcmi \
+        --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/capmc/capmc" \
+        --collector.ipmi_dcmi.test-mode \
+        --collector.empty-hostname-label \
+        --web.listen-address "127.0.0.1:${port}" \
+        --web.disable-exporter-metrics \
+        --log.level="debug" > "${logfile}" 2>&1 &
   elif [ "${scenario}" = "discoverer-cgroups-v2-slurm" ] 
   then
       ./bin/ceems_exporter \
@@ -665,6 +743,7 @@ then
         --discoverer.alloy-targets \
         --collector.cgroups.force-version="v2" \
         --collector.slurm \
+        --collector.gpu.type="nogpu" \
         --collector.ipmi_dcmi \
         --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/capmc/capmc" \
         --collector.ipmi_dcmi.test-mode \
@@ -680,10 +759,45 @@ then
         --path.procfs="pkg/collector/testdata/proc" \
         --discoverer.alloy-targets \
         --collector.slurm \
+        --collector.gpu.type="nogpu" \
         --collector.cgroups.force-version="v1" \
         --collector.ipmi_dcmi \
         --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/capmc/capmc" \
         --collector.ipmi_dcmi.test-mode \
+        --collector.redfish \
+        --collector.redfish.web-config="pkg/collector/testdata/redfish/config.yml" \
+        --collector.empty-hostname-label \
+        --web.listen-address "127.0.0.1:${port}" \
+        --web.disable-exporter-metrics \
+        --log.level="debug" > "${logfile}" 2>&1 &
+  elif [ "${scenario}" = "discoverer-cgroups-v2-k8s" ] 
+  then
+      ./bin/ceems_exporter \
+        --path.sysfs="pkg/collector/testdata/sys" \
+        --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
+        --path.procfs="pkg/collector/testdata/proc" \
+        --discoverer.alloy-targets \
+        --collector.cgroups.force-version="v2" \
+        --collector.gpu.type="nogpu" \
+        --collector.k8s \
+        --collector.k8s.kube-config-file="pkg/collector/testdata/k8s/kubeconfig.yml" \
+        --collector.k8s.kubelet-socket-file="${CEEMS_KUBELET_SOCKET_DIR}/amd/kubelet.sock" \
+        --collector.empty-hostname-label \
+        --web.listen-address "127.0.0.1:${port}" \
+        --web.disable-exporter-metrics \
+        --log.level="debug" > "${logfile}" 2>&1 &
+  elif [ "${scenario}" = "discoverer-cgroups-v1-k8s" ] 
+  then
+      ./bin/ceems_exporter \
+        --path.sysfs="pkg/collector/testdata/sys" \
+        --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
+        --path.procfs="pkg/collector/testdata/proc" \
+        --discoverer.alloy-targets \
+        --collector.gpu.type="nogpu" \
+        --collector.k8s \
+        --collector.k8s.kube-config-file="pkg/collector/testdata/k8s/kubeconfig.yml" \
+        --collector.k8s.kubelet-socket-file="${CEEMS_KUBELET_SOCKET_DIR}/amd/kubelet.sock" \
+        --collector.cgroups.force-version="v1" \
         --collector.redfish \
         --collector.redfish.web-config="pkg/collector/testdata/redfish/config.yml" \
         --collector.empty-hostname-label \
@@ -1296,11 +1410,12 @@ then
 
       waitport "5000"
 
-      ./bin/mock_exporters test-mode dcgm amd-smi > /dev/null 2>&1 &
+      ./bin/mock_exporters test-mode dcgm amd-smi amd-device-metrics > /dev/null 2>&1 &
       MOCK_SERVERS_PID=$!
 
       waitport "9400"
       waitport "9500"
+      waitport "9600"
 
       # IPMI and RAPL available
       ./bin/ceems_exporter \
@@ -1309,6 +1424,7 @@ then
         --path.procfs="pkg/collector/testdata/proc" \
         --collector.cgroups.force-version="v1" \
         --collector.slurm \
+        --collector.gpu.type="nogpu" \
         --collector.ipmi_dcmi \
         --collector.ipmi_dcmi.test-mode \
         --collector.ipmi_dcmi.cmd="pkg/collector/testdata/ipmi/freeipmi/ipmi-dcmi" \
@@ -1325,6 +1441,7 @@ then
         --path.procfs="pkg/collector/testdata/proc" \
         --collector.cgroups.force-version="v1" \
         --collector.slurm \
+        --collector.gpu.type="nogpu" \
         --collector.empty-hostname-label \
         --web.listen-address "127.0.0.1:9011" \
         --web.disable-exporter-metrics \
@@ -1338,6 +1455,7 @@ then
         --path.procfs="pkg/collector/testdata/proc" \
         --collector.cgroups.force-version="v1" \
         --collector.slurm \
+        --collector.gpu.type="nogpu" \
         --collector.redfish \
         --collector.redfish.web-config="pkg/collector/testdata/redfish/config.yml" \
         --collector.empty-hostname-label \
@@ -1433,7 +1551,10 @@ then
       echo "0" | ./bin/ceems_tool tsdb create-recording-rules --country-code=FR --output-dir "${tmpdir}/rules" >> "${logfile}" 2>&1
 
       # Add content of each recording file to fixture_output
-      find "${tmpdir}/rules" -type f -print0 | sort -z | while IFS= read -r -d $'\0' file; do 
+      find "${tmpdir}/rules" -type f -print0 | sort -z | while IFS= read -r -d $'\0' file; do
+          # Check generated rules
+          promtool check rules "${file}" >> "${logfile}" 2>&1
+
           echo $(basename "${file}") >> "${fixture_output}"
           cat "$file" >> "${fixture_output}"
       done
@@ -1442,7 +1563,10 @@ then
       echo "1" | ./bin/ceems_tool tsdb create-recording-rules --country-code=FR --disable-providers --output-dir "${tmpdir}/rules" >> "${logfile}" 2>&1
 
       # Add content of each recording file to fixture_output
-      find "${tmpdir}/rules" -type f -print0 | sort -z | while IFS= read -r -d $'\0' file; do 
+      find "${tmpdir}/rules" -type f -print0 | sort -z | while IFS= read -r -d $'\0' file; do
+          # Check generated rules
+          promtool check rules "${file}" >> "${logfile}" 2>&1
+
           echo $(basename "${file}") >> "${fixture_output}"
           cat "$file" >> "${fixture_output}"
       done
@@ -1451,7 +1575,10 @@ then
       echo "1" | ./bin/ceems_tool tsdb create-recording-rules --emission-factor=50 --output-dir "${tmpdir}/rules" >> "${logfile}" 2>&1
 
       # Add content of each recording file to fixture_output
-      find "${tmpdir}/rules" -type f -print0 | sort -z | while IFS= read -r -d $'\0' file; do 
+      find "${tmpdir}/rules" -type f -print0 | sort -z | while IFS= read -r -d $'\0' file; do
+        # Check generated rules
+          promtool check rules "${file}" >> "${logfile}" 2>&1
+
           echo $(basename "${file}") >> "${fixture_output}"
           cat "$file" >> "${fixture_output}"
       done
@@ -1481,11 +1608,12 @@ then
       ./bin/ceems_tool tsdb create-ceems-tsdb-updater-queries >> "${fixture_output}" 2>&1
   elif [ "${scenario}" = "tool-relabel-configs" ] 
   then
-      ./bin/mock_exporters test-mode dcgm amd-smi >> "${logfile}" 2>&1 &
+      ./bin/mock_exporters test-mode dcgm amd-smi amd-device-metrics >> "${logfile}" 2>&1 &
       MOCK_SERVERS_PID=$!
 
       waitport "9400"
       waitport "9500"
+      waitport "9600"
 
       prometheus \
         --config.file cmd/ceems_tool/testdata/prometheus.yml \

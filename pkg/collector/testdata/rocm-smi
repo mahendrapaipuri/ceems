@@ -1,7 +1,172 @@
 #!/bin/bash
 
-printf """device,Serial Number,PCI Bus,Card series,Card model,Card vendor,Card SKU
-card0,20170000800c,0000:C5:00.0,deon Instinct MI50 32GB,0x0834,Advanced Micro Devices Inc. [AMD/ATI],D16317
-card1,20170003580c,0000:C8:00.0,deon Instinct MI50 32GB,0x0834,Advanced Micro Devices Inc. [AMD/ATI],D16317
-card2,20180003050c,0000:8A:00.0,deon Instinct MI50 32GB,0x0834,Advanced Micro Devices Inc. [AMD/ATI],D16317
-card3,20170005280c,0000:8D:00.0,deon Instinct MI50 32GB,0x0834,Advanced Micro Devices Inc. [AMD/ATI],D16317"""
+echo -e '{
+  "card0": {
+    "Serial Number": "20170000800c",
+    "PCI Bus": "0000:C5:00.0",
+    "Card Series": "N/A",
+    "Card Model": "0x66a1",
+    "Card Vendor": "Advanced Micro Devices, Inc. [AMD/ATI]",
+    "Card SKU": "D1631700",
+    "Subsystem ID": "0x0834",
+    "Device Rev": "0x02",
+    "Node ID": "3",
+    "Compute Partition": "SPX",
+    "GUID": "61749",
+    "GFX Version": "gfx906"
+  },
+  "card1": {
+    "Serial Number": "20170003580c",
+    "PCI Bus": "0000:C8:00.0",
+    "Card Series": "N/A",
+    "Card Model": "0x66a1",
+    "Card Vendor": "Advanced Micro Devices, Inc. [AMD/ATI]",
+    "Card SKU": "D1631700",
+    "Subsystem ID": "0x0834",
+    "Device Rev": "0x02",
+    "Node ID": "2",
+    "Compute Partition": "CPX",
+    "GUID": "52106",
+    "GFX Version": "gfx906"
+  },
+  "card2": {
+    "Serial Number": "20170003580c",
+    "PCI Bus": "0000:C8:00.0",
+    "Card Series": "N/A",
+    "Card Model": "0x66a1",
+    "Card Vendor": "Advanced Micro Devices, Inc. [AMD/ATI]",
+    "Card SKU": "D1631700",
+    "Subsystem ID": "0x0834",
+    "Device Rev": "0x02",
+    "Node ID": "2",
+    "Compute Partition": "CPX",
+    "GUID": "52106",
+    "GFX Version": "gfx906"
+  },
+  "card3": {
+    "Serial Number": "20170003580c",
+    "PCI Bus": "0000:C8:00.0",
+    "Card Series": "N/A",
+    "Card Model": "0x66a1",
+    "Card Vendor": "Advanced Micro Devices, Inc. [AMD/ATI]",
+    "Card SKU": "D1631700",
+    "Subsystem ID": "0x0834",
+    "Device Rev": "0x02",
+    "Node ID": "2",
+    "Compute Partition": "CPX",
+    "GUID": "52106",
+    "GFX Version": "gfx906"
+  },
+  "card4": {
+    "Serial Number": "20170003580c",
+    "PCI Bus": "0000:C8:00.0",
+    "Card Series": "N/A",
+    "Card Model": "0x66a1",
+    "Card Vendor": "Advanced Micro Devices, Inc. [AMD/ATI]",
+    "Card SKU": "D1631700",
+    "Subsystem ID": "0x0834",
+    "Device Rev": "0x02",
+    "Node ID": "2",
+    "Compute Partition": "CPX",
+    "GUID": "52106",
+    "GFX Version": "gfx906"
+  },
+  "card5": {
+    "Serial Number": "20170003580c",
+    "PCI Bus": "0000:C8:00.0",
+    "Card Series": "N/A",
+    "Card Model": "0x66a1",
+    "Card Vendor": "Advanced Micro Devices, Inc. [AMD/ATI]",
+    "Card SKU": "D1631700",
+    "Subsystem ID": "0x0834",
+    "Device Rev": "0x02",
+    "Node ID": "2",
+    "Compute Partition": "CPX",
+    "GUID": "52106",
+    "GFX Version": "gfx906"
+  },
+  "card6": {
+    "Serial Number": "20170003580c",
+    "PCI Bus": "0000:C8:00.0",
+    "Card Series": "N/A",
+    "Card Model": "0x66a1",
+    "Card Vendor": "Advanced Micro Devices, Inc. [AMD/ATI]",
+    "Card SKU": "D1631700",
+    "Subsystem ID": "0x0834",
+    "Device Rev": "0x02",
+    "Node ID": "2",
+    "Compute Partition": "CPX",
+    "GUID": "52106",
+    "GFX Version": "gfx906"
+  },
+  "card7": {
+    "Serial Number": "20170003580c",
+    "PCI Bus": "0000:C8:00.0",
+    "Card Series": "N/A",
+    "Card Model": "0x66a1",
+    "Card Vendor": "Advanced Micro Devices, Inc. [AMD/ATI]",
+    "Card SKU": "D1631700",
+    "Subsystem ID": "0x0834",
+    "Device Rev": "0x02",
+    "Node ID": "2",
+    "Compute Partition": "CPX",
+    "GUID": "52106",
+    "GFX Version": "gfx906"
+  },
+  "card8": {
+    "Serial Number": "20170003580c",
+    "PCI Bus": "0000:C8:00.0",
+    "Card Series": "N/A",
+    "Card Model": "0x66a1",
+    "Card Vendor": "Advanced Micro Devices, Inc. [AMD/ATI]",
+    "Card SKU": "D1631700",
+    "Subsystem ID": "0x0834",
+    "Device Rev": "0x02",
+    "Node ID": "2",
+    "Compute Partition": "CPX",
+    "GUID": "52106",
+    "GFX Version": "gfx906"
+  },
+  "card9": {
+    "Serial Number": "20180003050c",
+    "PCI Bus": "0000:8A:00.0",
+    "Card Series": "N/A",
+    "Card Model": "0x66a1",
+    "Card Vendor": "Advanced Micro Devices, Inc. [AMD/ATI]",
+    "Card SKU": "D1631700",
+    "Subsystem ID": "0x0834",
+    "Device Rev": "0x02",
+    "Node ID": "0",
+    "Compute Partition": "DPX",
+    "GUID": "57482",
+    "GFX Version": "gfx906"
+  },
+  "card10": {
+    "Serial Number": "20180003050c",
+    "PCI Bus": "0000:8A:00.0",
+    "Card Series": "N/A",
+    "Card Model": "0x66a1",
+    "Card Vendor": "Advanced Micro Devices, Inc. [AMD/ATI]",
+    "Card SKU": "D1631700",
+    "Subsystem ID": "0x0834",
+    "Device Rev": "0x02",
+    "Node ID": "0",
+    "Compute Partition": "DPX",
+    "GUID": "57432",
+    "GFX Version": "gfx906"
+  },
+  "card11": {
+    "Serial Number": "20170005280c",
+    "PCI Bus": "0000:8D:00.0",
+    "Card Series": "N/A",
+    "Card Model": "0x66a1",
+    "Card Vendor": "Advanced Micro Devices, Inc. [AMD/ATI]",
+    "Card SKU": "D1631700",
+    "Subsystem ID": "0x0834",
+    "Device Rev": "0x02",
+    "Node ID": "1",
+    "Compute Partition": "SPX",
+    "GUID": "53482",
+    "GFX Version": "gfx906"
+  }
+}'

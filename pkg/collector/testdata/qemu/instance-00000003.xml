@@ -124,5 +124,10 @@ or other application using the libvirt API.
         <address uuid='64c3c4ae-44e1-45b8-8d46-5f76a1fa9824'/>
       </source>
     </hostdev>
+    <hostdev mode='subsystem' type='mdev' model='vfio-pci'>
+      <source>
+        <address uuid='f9702ffa-fa28-414e-a52f-e7831fd5ce41'/>
+      </source>
+    </hostdev>
   </devices>
 </domain>

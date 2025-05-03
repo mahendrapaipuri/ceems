@@ -34,9 +34,23 @@ ceems_compute_unit_cpus{cgrouphostname="node1",hostname="",manager="slurm",uuid=
 # HELP ceems_compute_unit_gpu_index_flag A value > 0 indicates the job using current GPU
 # TYPE ceems_compute_unit_gpu_index_flag gauge
 ceems_compute_unit_gpu_index_flag{cgrouphostname="",gpuiid="",gpuuuid="20170000800c",hindex="/gpu-0",hostname="",index="0",manager="slurm",uuid="1009249"} 1
-ceems_compute_unit_gpu_index_flag{cgrouphostname="",gpuiid="",gpuuuid="20170003580c",hindex="/gpu-1",hostname="",index="1",manager="slurm",uuid="1009250"} 1
-ceems_compute_unit_gpu_index_flag{cgrouphostname="",gpuiid="",gpuuuid="20170005280c",hindex="/gpu-3",hostname="",index="3",manager="slurm",uuid="1009248"} 1
-ceems_compute_unit_gpu_index_flag{cgrouphostname="",gpuiid="",gpuuuid="20180003050c",hindex="/gpu-2",hostname="",index="2",manager="slurm",uuid="1009248"} 1
+ceems_compute_unit_gpu_index_flag{cgrouphostname="",gpuiid="0",gpuuuid="20170003580c",hindex="/gpu-1",hostname="",index="1",manager="slurm",uuid="1009249"} 1
+ceems_compute_unit_gpu_index_flag{cgrouphostname="",gpuiid="0",gpuuuid="20170003580c",hindex="/gpu-1",hostname="",index="1",manager="slurm",uuid="1009250"} 1
+ceems_compute_unit_gpu_index_flag{cgrouphostname="",gpuiid="1",gpuuuid="20170003580c",hindex="/gpu-2",hostname="",index="2",manager="slurm",uuid="1009248"} 1
+ceems_compute_unit_gpu_index_flag{cgrouphostname="node0",gpuiid="0",gpuuuid="20180003050c",hindex="/gpu-9",hostname="",index="9",manager="slurm",uuid="2009249"} 1
+ceems_compute_unit_gpu_index_flag{cgrouphostname="node0",gpuiid="0",gpuuuid="20180003050c",hindex="/gpu-9",hostname="",index="9",manager="slurm",uuid="2009250"} 1
+ceems_compute_unit_gpu_index_flag{cgrouphostname="node0",gpuiid="6",gpuuuid="20170003580c",hindex="/gpu-7",hostname="",index="7",manager="slurm",uuid="2009248"} 1
+ceems_compute_unit_gpu_index_flag{cgrouphostname="node0",gpuiid="7",gpuuuid="20170003580c",hindex="/gpu-8",hostname="",index="8",manager="slurm",uuid="2009249"} 1
+# HELP ceems_compute_unit_gpu_sm_count Number of SMs/CUs in the GPU instance
+# TYPE ceems_compute_unit_gpu_sm_count gauge
+ceems_compute_unit_gpu_sm_count{cgrouphostname="",gpuiid="",gpuuuid="20170000800c",hindex="/gpu-0",hostname="",index="0",manager="slurm",uuid="1009249"} 304
+ceems_compute_unit_gpu_sm_count{cgrouphostname="",gpuiid="0",gpuuuid="20170003580c",hindex="/gpu-1",hostname="",index="1",manager="slurm",uuid="1009249"} 38
+ceems_compute_unit_gpu_sm_count{cgrouphostname="",gpuiid="0",gpuuuid="20170003580c",hindex="/gpu-1",hostname="",index="1",manager="slurm",uuid="1009250"} 38
+ceems_compute_unit_gpu_sm_count{cgrouphostname="",gpuiid="1",gpuuuid="20170003580c",hindex="/gpu-2",hostname="",index="2",manager="slurm",uuid="1009248"} 38
+ceems_compute_unit_gpu_sm_count{cgrouphostname="node0",gpuiid="0",gpuuuid="20180003050c",hindex="/gpu-9",hostname="",index="9",manager="slurm",uuid="2009249"} 152
+ceems_compute_unit_gpu_sm_count{cgrouphostname="node0",gpuiid="0",gpuuuid="20180003050c",hindex="/gpu-9",hostname="",index="9",manager="slurm",uuid="2009250"} 152
+ceems_compute_unit_gpu_sm_count{cgrouphostname="node0",gpuiid="6",gpuuuid="20170003580c",hindex="/gpu-7",hostname="",index="7",manager="slurm",uuid="2009248"} 38
+ceems_compute_unit_gpu_sm_count{cgrouphostname="node0",gpuiid="7",gpuuuid="20170003580c",hindex="/gpu-8",hostname="",index="8",manager="slurm",uuid="2009249"} 38
 # HELP ceems_compute_unit_memory_cache_bytes Memory cache used in bytes
 # TYPE ceems_compute_unit_memory_cache_bytes gauge
 ceems_compute_unit_memory_cache_bytes{cgrouphostname="",hostname="",manager="slurm",uuid="1009248"} 0

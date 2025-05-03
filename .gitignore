@@ -83,3 +83,6 @@ test-config.yml
 scripts/download_gh_releases.js
 website/static/repos
 *.json
+
+# Do not ignore k8s test files
+!pkg/collector/testdata/k8s/*.json

@@ -1,0 +1,241 @@
+# HELP ceems_compute_unit_blkio_read_total_bytes Total block IO read bytes
+# TYPE ceems_compute_unit_blkio_read_total_bytes gauge
+ceems_compute_unit_blkio_read_total_bytes{cgrouphostname="",device="loop2",hostname="",manager="k8s",uuid="9e524754-b3df-44e2-bb72-1fa05a9119ee"} 443392
+ceems_compute_unit_blkio_read_total_bytes{cgrouphostname="",device="sdc",hostname="",manager="k8s",uuid="3a61e77f-1538-476b-8231-5af9eed40fdc"} 2.932736e+06
+ceems_compute_unit_blkio_read_total_bytes{cgrouphostname="",device="sdc",hostname="",manager="k8s",uuid="483168fc-b347-4aa2-a9fa-9e3d220ba4c5"} 217088
+ceems_compute_unit_blkio_read_total_bytes{cgrouphostname="",device="sdc",hostname="",manager="k8s",uuid="6d06282c-0377-4527-9a0f-9968bc9c4102"} 274432
+ceems_compute_unit_blkio_read_total_bytes{cgrouphostname="",device="sdc",hostname="",manager="k8s",uuid="9e524754-b3df-44e2-bb72-1fa05a9119ee"} 7.313408e+07
+ceems_compute_unit_blkio_read_total_bytes{cgrouphostname="",device="sdc",hostname="",manager="k8s",uuid="c316ac07-9b95-4d1f-9f54-8138d2058f7a"} 16384
+ceems_compute_unit_blkio_read_total_bytes{cgrouphostname="",device="sdc",hostname="",manager="k8s",uuid="d3240201-ca7a-4bf0-944f-f788edc0e433"} 135168
+# HELP ceems_compute_unit_blkio_read_total_requests Total block IO read requests
+# TYPE ceems_compute_unit_blkio_read_total_requests gauge
+ceems_compute_unit_blkio_read_total_requests{cgrouphostname="",device="loop2",hostname="",manager="k8s",uuid="9e524754-b3df-44e2-bb72-1fa05a9119ee"} 13
+ceems_compute_unit_blkio_read_total_requests{cgrouphostname="",device="sdc",hostname="",manager="k8s",uuid="3a61e77f-1538-476b-8231-5af9eed40fdc"} 49
+ceems_compute_unit_blkio_read_total_requests{cgrouphostname="",device="sdc",hostname="",manager="k8s",uuid="483168fc-b347-4aa2-a9fa-9e3d220ba4c5"} 5
+ceems_compute_unit_blkio_read_total_requests{cgrouphostname="",device="sdc",hostname="",manager="k8s",uuid="6d06282c-0377-4527-9a0f-9968bc9c4102"} 7
+ceems_compute_unit_blkio_read_total_requests{cgrouphostname="",device="sdc",hostname="",manager="k8s",uuid="9e524754-b3df-44e2-bb72-1fa05a9119ee"} 1347
+ceems_compute_unit_blkio_read_total_requests{cgrouphostname="",device="sdc",hostname="",manager="k8s",uuid="c316ac07-9b95-4d1f-9f54-8138d2058f7a"} 1
+ceems_compute_unit_blkio_read_total_requests{cgrouphostname="",device="sdc",hostname="",manager="k8s",uuid="d3240201-ca7a-4bf0-944f-f788edc0e433"} 11
+# HELP ceems_compute_unit_blkio_write_total_bytes Total block IO write bytes
+# TYPE ceems_compute_unit_blkio_write_total_bytes gauge
+ceems_compute_unit_blkio_write_total_bytes{cgrouphostname="",device="sdc",hostname="",manager="k8s",uuid="3a61e77f-1538-476b-8231-5af9eed40fdc"} 57344
+ceems_compute_unit_blkio_write_total_bytes{cgrouphostname="",device="sdc",hostname="",manager="k8s",uuid="483168fc-b347-4aa2-a9fa-9e3d220ba4c5"} 12288
+ceems_compute_unit_blkio_write_total_bytes{cgrouphostname="",device="sdc",hostname="",manager="k8s",uuid="6232f0c5-57fa-409a-b026-0919f60e24a6"} 12288
+ceems_compute_unit_blkio_write_total_bytes{cgrouphostname="",device="sdc",hostname="",manager="k8s",uuid="6c22124f-e9a7-450b-8915-9bf3e0716d78"} 12288
+ceems_compute_unit_blkio_write_total_bytes{cgrouphostname="",device="sdc",hostname="",manager="k8s",uuid="6d06282c-0377-4527-9a0f-9968bc9c4102"} 36864
+ceems_compute_unit_blkio_write_total_bytes{cgrouphostname="",device="sdc",hostname="",manager="k8s",uuid="7a303ecc-ce90-4d0c-bb56-49d6bdad19f7"} 12288
+ceems_compute_unit_blkio_write_total_bytes{cgrouphostname="",device="sdc",hostname="",manager="k8s",uuid="964d7f07-f686-4ddc-991b-719febfba554"} 36864
+ceems_compute_unit_blkio_write_total_bytes{cgrouphostname="",device="sdc",hostname="",manager="k8s",uuid="9e524754-b3df-44e2-bb72-1fa05a9119ee"} 1.52813568e+08
+ceems_compute_unit_blkio_write_total_bytes{cgrouphostname="",device="sdc",hostname="",manager="k8s",uuid="c316ac07-9b95-4d1f-9f54-8138d2058f7a"} 12288
+ceems_compute_unit_blkio_write_total_bytes{cgrouphostname="",device="sdc",hostname="",manager="k8s",uuid="d3240201-ca7a-4bf0-944f-f788edc0e433"} 61440
+# HELP ceems_compute_unit_blkio_write_total_requests Total block IO write requests
+# TYPE ceems_compute_unit_blkio_write_total_requests gauge
+ceems_compute_unit_blkio_write_total_requests{cgrouphostname="",device="sdc",hostname="",manager="k8s",uuid="3a61e77f-1538-476b-8231-5af9eed40fdc"} 14
+ceems_compute_unit_blkio_write_total_requests{cgrouphostname="",device="sdc",hostname="",manager="k8s",uuid="483168fc-b347-4aa2-a9fa-9e3d220ba4c5"} 3
+ceems_compute_unit_blkio_write_total_requests{cgrouphostname="",device="sdc",hostname="",manager="k8s",uuid="6232f0c5-57fa-409a-b026-0919f60e24a6"} 3
+ceems_compute_unit_blkio_write_total_requests{cgrouphostname="",device="sdc",hostname="",manager="k8s",uuid="6c22124f-e9a7-450b-8915-9bf3e0716d78"} 3
+ceems_compute_unit_blkio_write_total_requests{cgrouphostname="",device="sdc",hostname="",manager="k8s",uuid="6d06282c-0377-4527-9a0f-9968bc9c4102"} 9
+ceems_compute_unit_blkio_write_total_requests{cgrouphostname="",device="sdc",hostname="",manager="k8s",uuid="7a303ecc-ce90-4d0c-bb56-49d6bdad19f7"} 3
+ceems_compute_unit_blkio_write_total_requests{cgrouphostname="",device="sdc",hostname="",manager="k8s",uuid="964d7f07-f686-4ddc-991b-719febfba554"} 9
+ceems_compute_unit_blkio_write_total_requests{cgrouphostname="",device="sdc",hostname="",manager="k8s",uuid="9e524754-b3df-44e2-bb72-1fa05a9119ee"} 207
+ceems_compute_unit_blkio_write_total_requests{cgrouphostname="",device="sdc",hostname="",manager="k8s",uuid="c316ac07-9b95-4d1f-9f54-8138d2058f7a"} 3
+ceems_compute_unit_blkio_write_total_requests{cgrouphostname="",device="sdc",hostname="",manager="k8s",uuid="d3240201-ca7a-4bf0-944f-f788edc0e433"} 15
+# HELP ceems_compute_unit_cpu_system_seconds_total Total job CPU system seconds
+# TYPE ceems_compute_unit_cpu_system_seconds_total counter
+ceems_compute_unit_cpu_system_seconds_total{cgrouphostname="",hostname="",manager="k8s",uuid="3a61e77f-1538-476b-8231-5af9eed40fdc"} 0.162528
+ceems_compute_unit_cpu_system_seconds_total{cgrouphostname="",hostname="",manager="k8s",uuid="483168fc-b347-4aa2-a9fa-9e3d220ba4c5"} 0.156634
+ceems_compute_unit_cpu_system_seconds_total{cgrouphostname="",hostname="",manager="k8s",uuid="6232f0c5-57fa-409a-b026-0919f60e24a6"} 0.145383
+ceems_compute_unit_cpu_system_seconds_total{cgrouphostname="",hostname="",manager="k8s",uuid="6c22124f-e9a7-450b-8915-9bf3e0716d78"} 0.15571
+ceems_compute_unit_cpu_system_seconds_total{cgrouphostname="",hostname="",manager="k8s",uuid="6d06282c-0377-4527-9a0f-9968bc9c4102"} 1.561373
+ceems_compute_unit_cpu_system_seconds_total{cgrouphostname="",hostname="",manager="k8s",uuid="7a303ecc-ce90-4d0c-bb56-49d6bdad19f7"} 0.142965
+ceems_compute_unit_cpu_system_seconds_total{cgrouphostname="",hostname="",manager="k8s",uuid="964d7f07-f686-4ddc-991b-719febfba554"} 1.538261
+ceems_compute_unit_cpu_system_seconds_total{cgrouphostname="",hostname="",manager="k8s",uuid="9e524754-b3df-44e2-bb72-1fa05a9119ee"} 26.254607
+ceems_compute_unit_cpu_system_seconds_total{cgrouphostname="",hostname="",manager="k8s",uuid="c316ac07-9b95-4d1f-9f54-8138d2058f7a"} 0.156114
+ceems_compute_unit_cpu_system_seconds_total{cgrouphostname="",hostname="",manager="k8s",uuid="d3240201-ca7a-4bf0-944f-f788edc0e433"} 2.519986
+# HELP ceems_compute_unit_cpu_user_seconds_total Total job CPU user seconds
+# TYPE ceems_compute_unit_cpu_user_seconds_total counter
+ceems_compute_unit_cpu_user_seconds_total{cgrouphostname="",hostname="",manager="k8s",uuid="3a61e77f-1538-476b-8231-5af9eed40fdc"} 0.056531
+ceems_compute_unit_cpu_user_seconds_total{cgrouphostname="",hostname="",manager="k8s",uuid="483168fc-b347-4aa2-a9fa-9e3d220ba4c5"} 0.058617
+ceems_compute_unit_cpu_user_seconds_total{cgrouphostname="",hostname="",manager="k8s",uuid="6232f0c5-57fa-409a-b026-0919f60e24a6"} 0.052338
+ceems_compute_unit_cpu_user_seconds_total{cgrouphostname="",hostname="",manager="k8s",uuid="6c22124f-e9a7-450b-8915-9bf3e0716d78"} 0.051246
+ceems_compute_unit_cpu_user_seconds_total{cgrouphostname="",hostname="",manager="k8s",uuid="6d06282c-0377-4527-9a0f-9968bc9c4102"} 1.434007
+ceems_compute_unit_cpu_user_seconds_total{cgrouphostname="",hostname="",manager="k8s",uuid="7a303ecc-ce90-4d0c-bb56-49d6bdad19f7"} 0.060985
+ceems_compute_unit_cpu_user_seconds_total{cgrouphostname="",hostname="",manager="k8s",uuid="964d7f07-f686-4ddc-991b-719febfba554"} 3.108218
+ceems_compute_unit_cpu_user_seconds_total{cgrouphostname="",hostname="",manager="k8s",uuid="9e524754-b3df-44e2-bb72-1fa05a9119ee"} 27.927992
+ceems_compute_unit_cpu_user_seconds_total{cgrouphostname="",hostname="",manager="k8s",uuid="c316ac07-9b95-4d1f-9f54-8138d2058f7a"} 0.060044
+ceems_compute_unit_cpu_user_seconds_total{cgrouphostname="",hostname="",manager="k8s",uuid="d3240201-ca7a-4bf0-944f-f788edc0e433"} 1.493859
+# HELP ceems_compute_unit_cpus Total number of job CPUs
+# TYPE ceems_compute_unit_cpus gauge
+ceems_compute_unit_cpus{cgrouphostname="",hostname="",manager="k8s",uuid="3a61e77f-1538-476b-8231-5af9eed40fdc"} 0.001
+ceems_compute_unit_cpus{cgrouphostname="",hostname="",manager="k8s",uuid="483168fc-b347-4aa2-a9fa-9e3d220ba4c5"} 0.231
+ceems_compute_unit_cpus{cgrouphostname="",hostname="",manager="k8s",uuid="6232f0c5-57fa-409a-b026-0919f60e24a6"} 0.001
+ceems_compute_unit_cpus{cgrouphostname="",hostname="",manager="k8s",uuid="6c22124f-e9a7-450b-8915-9bf3e0716d78"} 0.488
+ceems_compute_unit_cpus{cgrouphostname="",hostname="",manager="k8s",uuid="6d06282c-0377-4527-9a0f-9968bc9c4102"} 0.078
+ceems_compute_unit_cpus{cgrouphostname="",hostname="",manager="k8s",uuid="7a303ecc-ce90-4d0c-bb56-49d6bdad19f7"} 0.488
+ceems_compute_unit_cpus{cgrouphostname="",hostname="",manager="k8s",uuid="964d7f07-f686-4ddc-991b-719febfba554"} 0.001
+ceems_compute_unit_cpus{cgrouphostname="",hostname="",manager="k8s",uuid="9e524754-b3df-44e2-bb72-1fa05a9119ee"} 0.231
+ceems_compute_unit_cpus{cgrouphostname="",hostname="",manager="k8s",uuid="c316ac07-9b95-4d1f-9f54-8138d2058f7a"} 0.001
+ceems_compute_unit_cpus{cgrouphostname="",hostname="",manager="k8s",uuid="d3240201-ca7a-4bf0-944f-f788edc0e433"} 0.001
+# HELP ceems_compute_unit_memory_cache_bytes Memory cache used in bytes
+# TYPE ceems_compute_unit_memory_cache_bytes gauge
+ceems_compute_unit_memory_cache_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="3a61e77f-1538-476b-8231-5af9eed40fdc"} 3.018752e+06
+ceems_compute_unit_memory_cache_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="483168fc-b347-4aa2-a9fa-9e3d220ba4c5"} 311296
+ceems_compute_unit_memory_cache_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="6232f0c5-57fa-409a-b026-0919f60e24a6"} 77824
+ceems_compute_unit_memory_cache_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="6c22124f-e9a7-450b-8915-9bf3e0716d78"} 98304
+ceems_compute_unit_memory_cache_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="6d06282c-0377-4527-9a0f-9968bc9c4102"} 335872
+ceems_compute_unit_memory_cache_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="7a303ecc-ce90-4d0c-bb56-49d6bdad19f7"} 106496
+ceems_compute_unit_memory_cache_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="964d7f07-f686-4ddc-991b-719febfba554"} 69632
+ceems_compute_unit_memory_cache_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="9e524754-b3df-44e2-bb72-1fa05a9119ee"} 5.6500224e+07
+ceems_compute_unit_memory_cache_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="c316ac07-9b95-4d1f-9f54-8138d2058f7a"} 106496
+ceems_compute_unit_memory_cache_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="d3240201-ca7a-4bf0-944f-f788edc0e433"} 159744
+# HELP ceems_compute_unit_memory_fail_count Memory fail count
+# TYPE ceems_compute_unit_memory_fail_count gauge
+ceems_compute_unit_memory_fail_count{cgrouphostname="",hostname="",manager="k8s",uuid="3a61e77f-1538-476b-8231-5af9eed40fdc"} 0
+ceems_compute_unit_memory_fail_count{cgrouphostname="",hostname="",manager="k8s",uuid="483168fc-b347-4aa2-a9fa-9e3d220ba4c5"} 0
+ceems_compute_unit_memory_fail_count{cgrouphostname="",hostname="",manager="k8s",uuid="6232f0c5-57fa-409a-b026-0919f60e24a6"} 0
+ceems_compute_unit_memory_fail_count{cgrouphostname="",hostname="",manager="k8s",uuid="6c22124f-e9a7-450b-8915-9bf3e0716d78"} 0
+ceems_compute_unit_memory_fail_count{cgrouphostname="",hostname="",manager="k8s",uuid="6d06282c-0377-4527-9a0f-9968bc9c4102"} 0
+ceems_compute_unit_memory_fail_count{cgrouphostname="",hostname="",manager="k8s",uuid="7a303ecc-ce90-4d0c-bb56-49d6bdad19f7"} 0
+ceems_compute_unit_memory_fail_count{cgrouphostname="",hostname="",manager="k8s",uuid="964d7f07-f686-4ddc-991b-719febfba554"} 0
+ceems_compute_unit_memory_fail_count{cgrouphostname="",hostname="",manager="k8s",uuid="9e524754-b3df-44e2-bb72-1fa05a9119ee"} 0
+ceems_compute_unit_memory_fail_count{cgrouphostname="",hostname="",manager="k8s",uuid="c316ac07-9b95-4d1f-9f54-8138d2058f7a"} 0
+ceems_compute_unit_memory_fail_count{cgrouphostname="",hostname="",manager="k8s",uuid="d3240201-ca7a-4bf0-944f-f788edc0e433"} 0
+# HELP ceems_compute_unit_memory_rss_bytes Memory RSS used in bytes
+# TYPE ceems_compute_unit_memory_rss_bytes gauge
+ceems_compute_unit_memory_rss_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="3a61e77f-1538-476b-8231-5af9eed40fdc"} 2.494464e+06
+ceems_compute_unit_memory_rss_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="483168fc-b347-4aa2-a9fa-9e3d220ba4c5"} 2.531328e+06
+ceems_compute_unit_memory_rss_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="6232f0c5-57fa-409a-b026-0919f60e24a6"} 2.543616e+06
+ceems_compute_unit_memory_rss_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="6c22124f-e9a7-450b-8915-9bf3e0716d78"} 2.527232e+06
+ceems_compute_unit_memory_rss_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="6d06282c-0377-4527-9a0f-9968bc9c4102"} 1.1849728e+07
+ceems_compute_unit_memory_rss_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="7a303ecc-ce90-4d0c-bb56-49d6bdad19f7"} 2.531328e+06
+ceems_compute_unit_memory_rss_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="964d7f07-f686-4ddc-991b-719febfba554"} 8.23296e+06
+ceems_compute_unit_memory_rss_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="9e524754-b3df-44e2-bb72-1fa05a9119ee"} 9.5358976e+07
+ceems_compute_unit_memory_rss_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="c316ac07-9b95-4d1f-9f54-8138d2058f7a"} 2.531328e+06
+ceems_compute_unit_memory_rss_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="d3240201-ca7a-4bf0-944f-f788edc0e433"} 1.067008e+07
+# HELP ceems_compute_unit_memory_total_bytes Memory total in bytes
+# TYPE ceems_compute_unit_memory_total_bytes gauge
+ceems_compute_unit_memory_total_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="3a61e77f-1538-476b-8231-5af9eed40fdc"} 1.6042172416e+10
+ceems_compute_unit_memory_total_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="483168fc-b347-4aa2-a9fa-9e3d220ba4c5"} 5.36870912e+08
+ceems_compute_unit_memory_total_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="6232f0c5-57fa-409a-b026-0919f60e24a6"} 1.6042172416e+10
+ceems_compute_unit_memory_total_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="6c22124f-e9a7-450b-8915-9bf3e0716d78"} 5.36870912e+08
+ceems_compute_unit_memory_total_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="6d06282c-0377-4527-9a0f-9968bc9c4102"} 1.7825792e+08
+ceems_compute_unit_memory_total_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="7a303ecc-ce90-4d0c-bb56-49d6bdad19f7"} 5.36870912e+08
+ceems_compute_unit_memory_total_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="964d7f07-f686-4ddc-991b-719febfba554"} 1.6042172416e+10
+ceems_compute_unit_memory_total_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="9e524754-b3df-44e2-bb72-1fa05a9119ee"} 1.6042172416e+10
+ceems_compute_unit_memory_total_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="c316ac07-9b95-4d1f-9f54-8138d2058f7a"} 1.6042172416e+10
+ceems_compute_unit_memory_total_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="d3240201-ca7a-4bf0-944f-f788edc0e433"} 1.6042172416e+10
+# HELP ceems_compute_unit_memory_used_bytes Memory used in bytes
+# TYPE ceems_compute_unit_memory_used_bytes gauge
+ceems_compute_unit_memory_used_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="3a61e77f-1538-476b-8231-5af9eed40fdc"} 6.393856e+06
+ceems_compute_unit_memory_used_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="483168fc-b347-4aa2-a9fa-9e3d220ba4c5"} 3.641344e+06
+ceems_compute_unit_memory_used_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="6232f0c5-57fa-409a-b026-0919f60e24a6"} 3.391488e+06
+ceems_compute_unit_memory_used_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="6c22124f-e9a7-450b-8915-9bf3e0716d78"} 3.432448e+06
+ceems_compute_unit_memory_used_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="6d06282c-0377-4527-9a0f-9968bc9c4102"} 1.30048e+07
+ceems_compute_unit_memory_used_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="7a303ecc-ce90-4d0c-bb56-49d6bdad19f7"} 3.432448e+06
+ceems_compute_unit_memory_used_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="964d7f07-f686-4ddc-991b-719febfba554"} 8.925184e+06
+ceems_compute_unit_memory_used_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="9e524754-b3df-44e2-bb72-1fa05a9119ee"} 1.58875648e+08
+ceems_compute_unit_memory_used_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="c316ac07-9b95-4d1f-9f54-8138d2058f7a"} 3.387392e+06
+ceems_compute_unit_memory_used_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="d3240201-ca7a-4bf0-944f-f788edc0e433"} 1.1505664e+07
+# HELP ceems_compute_unit_memsw_fail_count Swap fail count
+# TYPE ceems_compute_unit_memsw_fail_count gauge
+ceems_compute_unit_memsw_fail_count{cgrouphostname="",hostname="",manager="k8s",uuid="3a61e77f-1538-476b-8231-5af9eed40fdc"} 0
+ceems_compute_unit_memsw_fail_count{cgrouphostname="",hostname="",manager="k8s",uuid="483168fc-b347-4aa2-a9fa-9e3d220ba4c5"} 0
+ceems_compute_unit_memsw_fail_count{cgrouphostname="",hostname="",manager="k8s",uuid="6232f0c5-57fa-409a-b026-0919f60e24a6"} 0
+ceems_compute_unit_memsw_fail_count{cgrouphostname="",hostname="",manager="k8s",uuid="6c22124f-e9a7-450b-8915-9bf3e0716d78"} 0
+ceems_compute_unit_memsw_fail_count{cgrouphostname="",hostname="",manager="k8s",uuid="6d06282c-0377-4527-9a0f-9968bc9c4102"} 0
+ceems_compute_unit_memsw_fail_count{cgrouphostname="",hostname="",manager="k8s",uuid="7a303ecc-ce90-4d0c-bb56-49d6bdad19f7"} 0
+ceems_compute_unit_memsw_fail_count{cgrouphostname="",hostname="",manager="k8s",uuid="964d7f07-f686-4ddc-991b-719febfba554"} 0
+ceems_compute_unit_memsw_fail_count{cgrouphostname="",hostname="",manager="k8s",uuid="9e524754-b3df-44e2-bb72-1fa05a9119ee"} 0
+ceems_compute_unit_memsw_fail_count{cgrouphostname="",hostname="",manager="k8s",uuid="c316ac07-9b95-4d1f-9f54-8138d2058f7a"} 0
+ceems_compute_unit_memsw_fail_count{cgrouphostname="",hostname="",manager="k8s",uuid="d3240201-ca7a-4bf0-944f-f788edc0e433"} 0
+# HELP ceems_compute_unit_memsw_total_bytes Swap total in bytes
+# TYPE ceems_compute_unit_memsw_total_bytes gauge
+ceems_compute_unit_memsw_total_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="3a61e77f-1538-476b-8231-5af9eed40fdc"} 1.6042172416e+10
+ceems_compute_unit_memsw_total_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="483168fc-b347-4aa2-a9fa-9e3d220ba4c5"} 1.6042172416e+10
+ceems_compute_unit_memsw_total_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="6232f0c5-57fa-409a-b026-0919f60e24a6"} 1.6042172416e+10
+ceems_compute_unit_memsw_total_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="6c22124f-e9a7-450b-8915-9bf3e0716d78"} 1.6042172416e+10
+ceems_compute_unit_memsw_total_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="6d06282c-0377-4527-9a0f-9968bc9c4102"} 1.6042172416e+10
+ceems_compute_unit_memsw_total_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="7a303ecc-ce90-4d0c-bb56-49d6bdad19f7"} 1.6042172416e+10
+ceems_compute_unit_memsw_total_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="964d7f07-f686-4ddc-991b-719febfba554"} 1.6042172416e+10
+ceems_compute_unit_memsw_total_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="9e524754-b3df-44e2-bb72-1fa05a9119ee"} 1.6042172416e+10
+ceems_compute_unit_memsw_total_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="c316ac07-9b95-4d1f-9f54-8138d2058f7a"} 1.6042172416e+10
+ceems_compute_unit_memsw_total_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="d3240201-ca7a-4bf0-944f-f788edc0e433"} 1.6042172416e+10
+# HELP ceems_compute_unit_memsw_used_bytes Swap used in bytes
+# TYPE ceems_compute_unit_memsw_used_bytes gauge
+ceems_compute_unit_memsw_used_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="3a61e77f-1538-476b-8231-5af9eed40fdc"} 45056
+ceems_compute_unit_memsw_used_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="483168fc-b347-4aa2-a9fa-9e3d220ba4c5"} 0
+ceems_compute_unit_memsw_used_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="6232f0c5-57fa-409a-b026-0919f60e24a6"} 0
+ceems_compute_unit_memsw_used_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="6c22124f-e9a7-450b-8915-9bf3e0716d78"} 0
+ceems_compute_unit_memsw_used_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="6d06282c-0377-4527-9a0f-9968bc9c4102"} 36864
+ceems_compute_unit_memsw_used_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="7a303ecc-ce90-4d0c-bb56-49d6bdad19f7"} 0
+ceems_compute_unit_memsw_used_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="964d7f07-f686-4ddc-991b-719febfba554"} 36864
+ceems_compute_unit_memsw_used_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="9e524754-b3df-44e2-bb72-1fa05a9119ee"} 0
+ceems_compute_unit_memsw_used_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="c316ac07-9b95-4d1f-9f54-8138d2058f7a"} 0
+ceems_compute_unit_memsw_used_bytes{cgrouphostname="",hostname="",manager="k8s",uuid="d3240201-ca7a-4bf0-944f-f788edc0e433"} 40960
+# HELP ceems_compute_units Total number of jobs
+# TYPE ceems_compute_units gauge
+ceems_compute_units{hostname="",manager="k8s"} 10
+# HELP ceems_cpu_count Number of CPUs.
+# TYPE ceems_cpu_count gauge
+ceems_cpu_count{hostname=""} 8
+# HELP ceems_cpu_per_core_count Number of logical CPUs per physical core.
+# TYPE ceems_cpu_per_core_count gauge
+ceems_cpu_per_core_count{hostname=""} 2
+# HELP ceems_cpu_seconds_total Seconds the CPUs spent in each mode.
+# TYPE ceems_cpu_seconds_total counter
+ceems_cpu_seconds_total{hostname="",mode="idle"} 89790.04
+ceems_cpu_seconds_total{hostname="",mode="iowait"} 35.52
+ceems_cpu_seconds_total{hostname="",mode="irq"} 0.02
+ceems_cpu_seconds_total{hostname="",mode="nice"} 6.12
+ceems_cpu_seconds_total{hostname="",mode="softirq"} 39.44
+ceems_cpu_seconds_total{hostname="",mode="steal"} 0
+ceems_cpu_seconds_total{hostname="",mode="system"} 1119.22
+ceems_cpu_seconds_total{hostname="",mode="user"} 3018.54
+# HELP ceems_exporter_build_info A metric with a constant '1' value labeled by version, revision, branch, goversion from which ceems_exporter was built, and the goos and goarch for the build.
+# TYPE ceems_exporter_build_info gauge
+# HELP ceems_ipmi_dcmi_avg_watts Average Power consumption in watts
+# TYPE ceems_ipmi_dcmi_avg_watts gauge
+ceems_ipmi_dcmi_avg_watts{hostname=""} 5942
+# HELP ceems_ipmi_dcmi_current_watts Current Power consumption in watts
+# TYPE ceems_ipmi_dcmi_current_watts gauge
+ceems_ipmi_dcmi_current_watts{hostname=""} 5942
+# HELP ceems_ipmi_dcmi_max_watts Maximum Power consumption in watts
+# TYPE ceems_ipmi_dcmi_max_watts gauge
+ceems_ipmi_dcmi_max_watts{hostname=""} 6132
+# HELP ceems_ipmi_dcmi_min_watts Minimum Power consumption in watts
+# TYPE ceems_ipmi_dcmi_min_watts gauge
+ceems_ipmi_dcmi_min_watts{hostname=""} 5748
+# HELP ceems_meminfo_MemAvailable_bytes Memory information field MemAvailable_bytes.
+# TYPE ceems_meminfo_MemAvailable_bytes gauge
+ceems_meminfo_MemAvailable_bytes{hostname=""} 0
+# HELP ceems_meminfo_MemFree_bytes Memory information field MemFree_bytes.
+# TYPE ceems_meminfo_MemFree_bytes gauge
+ceems_meminfo_MemFree_bytes{hostname=""} 4.50891776e+08
+# HELP ceems_meminfo_MemTotal_bytes Memory information field MemTotal_bytes.
+# TYPE ceems_meminfo_MemTotal_bytes gauge
+ceems_meminfo_MemTotal_bytes{hostname=""} 1.6042172416e+10
+# HELP ceems_rapl_dram_joules_total Current RAPL dram value in joules
+# TYPE ceems_rapl_dram_joules_total counter
+ceems_rapl_dram_joules_total{hostname="",index="0",path="pkg/collector/testdata/sys/class/powercap/intel-rapl:0:0"} 24468.409791
+ceems_rapl_dram_joules_total{hostname="",index="1",path="pkg/collector/testdata/sys/class/powercap/intel-rapl:1:0"} 64930.394974
+# HELP ceems_rapl_dram_power_limit_watts_total Current RAPL dram power limit in watts
+# TYPE ceems_rapl_dram_power_limit_watts_total counter
+ceems_rapl_dram_power_limit_watts_total{hostname="",index="0",path="pkg/collector/testdata/sys/class/powercap/intel-rapl:0:0"} 0
+ceems_rapl_dram_power_limit_watts_total{hostname="",index="1",path="pkg/collector/testdata/sys/class/powercap/intel-rapl:1:0"} 0
+# HELP ceems_rapl_package_joules_total Current RAPL package value in joules
+# TYPE ceems_rapl_package_joules_total counter
+ceems_rapl_package_joules_total{hostname="",index="0",path="pkg/collector/testdata/sys/class/powercap/intel-rapl:0"} 258218.293244
+ceems_rapl_package_joules_total{hostname="",index="1",path="pkg/collector/testdata/sys/class/powercap/intel-rapl:1"} 130570.505826
+# HELP ceems_rapl_package_power_limit_watts_total Current RAPL package power limit in watts
+# TYPE ceems_rapl_package_power_limit_watts_total counter
+ceems_rapl_package_power_limit_watts_total{hostname="",index="0",path="pkg/collector/testdata/sys/class/powercap/intel-rapl:0"} 180
+ceems_rapl_package_power_limit_watts_total{hostname="",index="1",path="pkg/collector/testdata/sys/class/powercap/intel-rapl:1"} 180
+# HELP ceems_scrape_collector_duration_seconds ceems_exporter: Duration of a collector scrape.
+# TYPE ceems_scrape_collector_duration_seconds gauge
+# HELP ceems_scrape_collector_success ceems_exporter: Whether a collector succeeded.
+# TYPE ceems_scrape_collector_success gauge
+ceems_scrape_collector_success{collector="cpu"} 1
+ceems_scrape_collector_success{collector="ipmi_dcmi"} 1
+ceems_scrape_collector_success{collector="k8s"} 1
+ceems_scrape_collector_success{collector="meminfo"} 1
+ceems_scrape_collector_success{collector="rapl"} 1

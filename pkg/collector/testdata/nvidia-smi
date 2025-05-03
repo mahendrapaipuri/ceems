@@ -4,6 +4,23 @@ sub_help(){
     echo "nvidia-smi help"
 }
 
+sub_-L(){
+    printf """GPU 0: NVIDIA A100-PCIE-40GB (UUID: GPU-f124aa59-d406-d45b-9481-8fcd694e6c9e)
+GPU 1: NVIDIA A100-PCIE-40GB (UUID: GPU-61a65011-6571-a6d2-5ab8-66cbb6f7f9c3)
+GPU 2: NVIDIA A100-PCIE-40GB (UUID: GPU-956348bc-d43d-23ed-53d4-857749fa2b67)
+  MIG 4g.20gb     Device  0: (UUID: MIG-ce2e805f-ce8e-5cf7-8132-176167d87d24)
+  MIG 1g.5gb     Device  1: (UUID: MIG-2cc993d7-588c-5c28-b454-b3851897e3d7)
+  MIG 1g.5gb     Device  2: (UUID: MIG-4bd078f2-f9bb-5bfb-8695-774674f75e96)
+GPU 3: NVIDIA A100-PCIE-40GB (UUID: GPU-feba7e40-d724-01ff-b00f-3a439a28a6c7)
+  MIG 4g.20gb     Device  0: (UUID: MIG-4894e267-46d0-557e-b826-500e978d88d1)
+  MIG 2g.10gb     Device  1: (UUID: MIG-ed3d4e0a-516b-5cdf-a202-6239aa536031)
+  MIG 1g.5gb     Device  2: (UUID: MIG-017c61e4-656c-5059-b7b1-276506580e3c)
+GPU 4: NVIDIA A100-PCIE-40GB (UUID: GPU-61a65011-6571-a6d2-5th8-66cbb6f7f9c3)
+GPU 5: NVIDIA A100-PCIE-40GB (UUID: GPU-61a65011-6571-a64n-5ab8-66cbb6f7f9c3)
+GPU 6: NVIDIA A100-PCIE-40GB (UUID: GPU-1d4d0f3e-b51a-4040-96e3-bf380f7c5728)
+GPU 7: NVIDIA A100-PCIE-40GB (UUID: GPU-6cc98505-fdde-461e-a93c-6935fba45a27)"""
+}
+
 sub_--query(){
     printf """<?xml version="1.0" ?>
 <!DOCTYPE nvidia_smi_log SYSTEM "nvsmi_device_v12.dtd">
