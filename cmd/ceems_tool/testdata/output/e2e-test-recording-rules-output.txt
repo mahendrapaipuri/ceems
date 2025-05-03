@@ -1,6 +1,10 @@
-amd-gpu-gpu.rules
+amd-device-metrics-gpu-gpu.rules
 ---
-# Recording rules for AMD GPUs scrape job amd-gpu.
+# Recording rules for AMD GPUs scrape job amd-device-metrics-gpu.
+#
+# These recording rules are used when AMD device metrics exporter is found
+# in Prometheus targets
+# https://instinct.docs.amd.com/projects/device-metrics-exporter
 #
 # These rules map the GPU usage to the compute unit `uuid` which gives
 # GPU metrics for each compute unit.
@@ -9,31 +13,40 @@ amd-gpu-gpu.rules
 # estimation as well.
 #
 groups:
-  - name: compute-unit-gpu-rules-amd-gpu
+  - name: compute-unit-gpu-rules-amd-device-metrics-gpu
     interval: 1s
     rules:
       # GPU Usage (%) by compute unit
       - record: uuid:ceems_gpu_usage:ratio
         expr: |2
-            amd_gpu_use_percent{job="amd-gpu"}
+            gpu_gfx_activity{job="amd-device-metrics-gpu"}
             * on (index) group_right ()
             ceems_compute_unit_gpu_index_flag{job="cpu-cray-amd-gpu"}
 
       # GPU Memory Usage (%) by compute unit
       - record: uuid:ceems_gpu_memory_usage:ratio
         expr: |2
-          amd_gpu_memory_use_percent{job="amd-gpu"}
+          (
+              gpu_used_vram{job="amd-device-metrics-gpu"} * 100
+            /
+              gpu_total_vram{job="amd-device-metrics-gpu"}
+          )
           * on (index) group_right ()
           ceems_compute_unit_gpu_index_flag{job="cpu-cray-amd-gpu"}
       
       # Total power (Watts) consumed by the GPU by accounting Power Usage Effectiveness (PUE) value.
-      # AMD GPU power is in micro Watts and we need to convert it to Watts here
-      - record: dev:amd_gpu_power_watts:pue
-        expr: 1 * amd_gpu_power{job="amd-gpu"} / 1e6
+      - record: dev:gpu_power_usage_watts:pue
+        expr: 1 * gpu_power_usage{job="amd-device-metrics-gpu"}
 
       - record: uuid:ceems_gpu_power_watts:pue
         expr: |2
-          dev:amd_gpu_power_watts:pue{job="amd-gpu"}
+          (
+              ceems_compute_unit_gpu_sm_count{job="cpu-cray-amd-gpu"}
+            / on (index) group_left ()
+              (sum by (index) (ceems_compute_unit_gpu_sm_count{job="cpu-cray-amd-gpu"}) > 0)
+          )
+            * on (index) group_right()
+              dev:gpu_power_usage_watts:pue{job="amd-device-metrics-gpu"}
           * on (index) group_right()
           ceems_compute_unit_gpu_index_flag{job="cpu-cray-amd-gpu"}
 
@@ -43,7 +56,7 @@ groups:
       - record: uuid:ceems_gpu_emissions_g_s:pue
         expr: |2
           label_replace(
-              dev:amd_gpu_power_watts:pue{job="amd-gpu"} / 3.6e+06
+              dev:gpu_power_usage_watts:pue{job="amd-device-metrics-gpu"} / 3.6e+06
             * on (index) group_right ()
               ceems_compute_unit_gpu_index_flag{job="cpu-cray-amd-gpu"},
               "provider",
@@ -65,21 +78,28 @@ groups:
   # total GPU power and its equivalent emissions aggregared for all hosts 
   # per Prometheus job.
   # 
-  - name: host-agg-gpu-rules-amd-gpu
+  - name: host-agg-gpu-rules-amd-device-metrics-gpu
     interval: 2s
     rules:
       # Average GPU Usage (%) for all hosts aggregated per Prometheus job
       - record: job:ceems_gpu_usage:avg
-        expr: avg by (job) (amd_gpu_use_percent{job="amd-gpu"})
+        expr: avg by (job) (gpu_gfx_activity{job="amd-device-metrics-gpu"})
 
       # Average GPU memory usage (%) for all hosts aggregated per Prometheus job
       - record: job:ceems_gpu_memory_usage:avg_ratio
-        expr: avg by (job) (amd_gpu_memory_use_percent{job="amd-gpu"})
+        expr: |2
+          avg by (job) (
+            (
+                gpu_used_vram{job="amd-device-metrics-gpu"} * 100
+              /
+                gpu_total_vram{job="amd-device-metrics-gpu"}
+            )
+          )
 
       # Total power usage (Watts) by GPUs on all hosts aggregated per Prometheus job
       # AMD GPU power is in micro Watts and we need to convert it to Watts here
       - record: job:ceems_gpu_power_watts:pue
-        expr: sum by (job)(1 * amd_gpu_power{job="amd-gpu"} / 1e6)
+        expr: sum by (job)(1 * gpu_power_usage{job="amd-device-metrics-gpu"} / 1e6)
 
       # Total equivalent emissions rate (g/s) due to the power consumed by GPUs on all ths hosts
       # in a Prometheus job accounting PUE value.
@@ -88,9 +108,9 @@ groups:
         expr: |2
           sum by (job, country_code, country, provider) (
             (
-                job:ceems_gpu_power_watts:pue{job="amd-gpu"} / 3.6e+06
+                job:ceems_gpu_power_watts:pue{job="amd-device-metrics-gpu"} / 3.6e+06
               * on (job) group_right ()
-                label_replace(ceems_emissions_gCo2_kWh, "job", "amd-gpu", "instance", "(.*)")
+                label_replace(ceems_emissions_gCo2_kWh, "job", "amd-device-metrics-gpu", "instance", "(.*)")
             )
           )
 cpu-cray-amd-gpu.rules
@@ -1202,9 +1222,13 @@ groups:
     interval: 1s
     rules:
       # GPU Usage (%) by compute unit
+      # Prefer DCGM_FI_PROF_GR_ENGINE_ACTIVE to DCGM_FI_DEV_GPU_UTIL
+      # when available
+      # Ref: https://github.com/NVIDIA/DCGM/issues/64#issuecomment-1400811885
+      # Ref: https://github.com/NVIDIA/DCGM/issues/80#issuecomment-1537603016
       - record: uuid:ceems_gpu_usage:ratio
         expr: |2
-            DCGM_FI_DEV_GPU_UTIL{job="ipmi-nvidia-gpu"}
+            DCGM_FI_PROF_GR_ENGINE_ACTIVE{job="ipmi-nvidia-gpu"}
             * on (gpuuuid,gpuiid) group_right ()
             ceems_compute_unit_gpu_index_flag{job="cpu-ipmi-nvidia-gpu"}
 
@@ -1223,11 +1247,43 @@ groups:
       - record: dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue
         expr: 1 * DCGM_FI_DEV_POWER_USAGE_INSTANT{job="ipmi-nvidia-gpu"}
 
+      # When profiling metrics are available, we split the total power consumed by physical
+      # GPU among all MIG instances based on "effective" SM usage on each MIG instance. This
+      # is estimated as TotalPower * number of SMs * Mean SM usage * SM Occupancy / sum(number of SMs * Mean SM usage * SM Occupancy)
+      #
+      # When profiling metrics are not available, we split the total power based on number of SMs
+      # available in that instance compared to total number of SMs being used in the physical GPU
       - record: uuid:ceems_gpu_power_watts:pue
         expr: |2
-          dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue{job="ipmi-nvidia-gpu"}
-          * on (gpuuuid,gpuiid) group_right()
-          ceems_compute_unit_gpu_index_flag{job="cpu-ipmi-nvidia-gpu"}
+            (
+              (
+                (
+                      DCGM_FI_PROF_SM_ACTIVE{job="ipmi-nvidia-gpu"}
+                    * on (gpuuuid, gpuiid)
+                      DCGM_FI_PROF_SM_OCCUPANCY{job="ipmi-nvidia-gpu"}
+                  * on (gpuuuid, gpuiid)
+                    ceems_compute_unit_gpu_sm_count{job="cpu-ipmi-nvidia-gpu"}
+                )
+              )
+            / on (gpuuuid) group_left ()
+              (
+                sum by (gpuuuid) (
+                    (
+                          DCGM_FI_PROF_SM_ACTIVE{job="ipmi-nvidia-gpu"}
+                        * on (gpuuuid, gpuiid)
+                          DCGM_FI_PROF_SM_OCCUPANCY{job="ipmi-nvidia-gpu"}
+                      * on (gpuuuid, gpuiid)
+                        ceems_compute_unit_gpu_sm_count{job="cpu-ipmi-nvidia-gpu"}
+                    )
+                  >
+                    0
+                )
+              )
+            )
+              * on (gpuuuid) group_right ()
+                dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue{job="ipmi-nvidia-gpu"}
+            * on (gpuuuid, gpuiid) group_right ()
+              ceems_compute_unit_gpu_index_flag{job="cpu-ipmi-nvidia-gpu"}
 
       # Total equivalent emissions rate (g/s) from GPU due to the power consumed by the compute unit's GPUs.
       # The equivalent emissions are estimated using emission factor from owid for country
@@ -1327,9 +1383,13 @@ groups:
     interval: 1s
     rules:
       # GPU Usage (%) by compute unit
+      # Prefer DCGM_FI_PROF_GR_ENGINE_ACTIVE to DCGM_FI_DEV_GPU_UTIL
+      # when available
+      # Ref: https://github.com/NVIDIA/DCGM/issues/64#issuecomment-1400811885
+      # Ref: https://github.com/NVIDIA/DCGM/issues/80#issuecomment-1537603016
       - record: uuid:ceems_gpu_usage:ratio
         expr: |2
-            DCGM_FI_DEV_GPU_UTIL{job="nvidia-gpu"}
+            DCGM_FI_PROF_GR_ENGINE_ACTIVE{job="nvidia-gpu"}
             * on (gpuuuid,gpuiid) group_right ()
             ceems_compute_unit_gpu_index_flag{job="cpu-redfish-nvidia-gpu"}
 
@@ -1348,11 +1408,43 @@ groups:
       - record: dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue
         expr: 1 * DCGM_FI_DEV_POWER_USAGE_INSTANT{job="nvidia-gpu"}
 
+      # When profiling metrics are available, we split the total power consumed by physical
+      # GPU among all MIG instances based on "effective" SM usage on each MIG instance. This
+      # is estimated as TotalPower * number of SMs * Mean SM usage * SM Occupancy / sum(number of SMs * Mean SM usage * SM Occupancy)
+      #
+      # When profiling metrics are not available, we split the total power based on number of SMs
+      # available in that instance compared to total number of SMs being used in the physical GPU
       - record: uuid:ceems_gpu_power_watts:pue
         expr: |2
-          dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue{job="nvidia-gpu"}
-          * on (gpuuuid,gpuiid) group_right()
-          ceems_compute_unit_gpu_index_flag{job="cpu-redfish-nvidia-gpu"}
+            (
+              (
+                (
+                      DCGM_FI_PROF_SM_ACTIVE{job="nvidia-gpu"}
+                    * on (gpuuuid, gpuiid)
+                      DCGM_FI_PROF_SM_OCCUPANCY{job="nvidia-gpu"}
+                  * on (gpuuuid, gpuiid)
+                    ceems_compute_unit_gpu_sm_count{job="cpu-redfish-nvidia-gpu"}
+                )
+              )
+            / on (gpuuuid) group_left ()
+              (
+                sum by (gpuuuid) (
+                    (
+                          DCGM_FI_PROF_SM_ACTIVE{job="nvidia-gpu"}
+                        * on (gpuuuid, gpuiid)
+                          DCGM_FI_PROF_SM_OCCUPANCY{job="nvidia-gpu"}
+                      * on (gpuuuid, gpuiid)
+                        ceems_compute_unit_gpu_sm_count{job="cpu-redfish-nvidia-gpu"}
+                    )
+                  >
+                    0
+                )
+              )
+            )
+              * on (gpuuuid) group_right ()
+                dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue{job="nvidia-gpu"}
+            * on (gpuuuid, gpuiid) group_right ()
+              ceems_compute_unit_gpu_index_flag{job="cpu-redfish-nvidia-gpu"}
 
       # Total equivalent emissions rate (g/s) from GPU due to the power consumed by the compute unit's GPUs.
       # The equivalent emissions are estimated using emission factor from owid for country
@@ -1437,9 +1529,13 @@ groups:
                 label_replace(ceems_emissions_gCo2_kWh, "job", "nvidia-gpu", "instance", "(.*)")
             )
           )
-amd-gpu-gpu.rules
+amd-device-metrics-gpu-gpu.rules
 ---
-# Recording rules for AMD GPUs scrape job amd-gpu.
+# Recording rules for AMD GPUs scrape job amd-device-metrics-gpu.
+#
+# These recording rules are used when AMD device metrics exporter is found
+# in Prometheus targets
+# https://instinct.docs.amd.com/projects/device-metrics-exporter
 #
 # These rules map the GPU usage to the compute unit `uuid` which gives
 # GPU metrics for each compute unit.
@@ -1448,31 +1544,40 @@ amd-gpu-gpu.rules
 # estimation as well.
 #
 groups:
-  - name: compute-unit-gpu-rules-amd-gpu
+  - name: compute-unit-gpu-rules-amd-device-metrics-gpu
     interval: 1s
     rules:
       # GPU Usage (%) by compute unit
       - record: uuid:ceems_gpu_usage:ratio
         expr: |2
-            amd_gpu_use_percent{job="amd-gpu"}
+            gpu_gfx_activity{job="amd-device-metrics-gpu"}
             * on (index) group_right ()
             ceems_compute_unit_gpu_index_flag{job="cpu-cray-amd-gpu"}
 
       # GPU Memory Usage (%) by compute unit
       - record: uuid:ceems_gpu_memory_usage:ratio
         expr: |2
-          amd_gpu_memory_use_percent{job="amd-gpu"}
+          (
+              gpu_used_vram{job="amd-device-metrics-gpu"} * 100
+            /
+              gpu_total_vram{job="amd-device-metrics-gpu"}
+          )
           * on (index) group_right ()
           ceems_compute_unit_gpu_index_flag{job="cpu-cray-amd-gpu"}
       
       # Total power (Watts) consumed by the GPU by accounting Power Usage Effectiveness (PUE) value.
-      # AMD GPU power is in micro Watts and we need to convert it to Watts here
-      - record: dev:amd_gpu_power_watts:pue
-        expr: 1 * amd_gpu_power{job="amd-gpu"} / 1e6
+      - record: dev:gpu_power_usage_watts:pue
+        expr: 1 * gpu_power_usage{job="amd-device-metrics-gpu"}
 
       - record: uuid:ceems_gpu_power_watts:pue
         expr: |2
-          dev:amd_gpu_power_watts:pue{job="amd-gpu"}
+          (
+              ceems_compute_unit_gpu_sm_count{job="cpu-cray-amd-gpu"}
+            / on (index) group_left ()
+              (sum by (index) (ceems_compute_unit_gpu_sm_count{job="cpu-cray-amd-gpu"}) > 0)
+          )
+            * on (index) group_right()
+              dev:gpu_power_usage_watts:pue{job="amd-device-metrics-gpu"}
           * on (index) group_right()
           ceems_compute_unit_gpu_index_flag{job="cpu-cray-amd-gpu"}
 
@@ -1482,7 +1587,7 @@ groups:
       - record: uuid:ceems_gpu_emissions_g_s:pue
         expr: |2
           label_replace(
-              dev:amd_gpu_power_watts:pue{job="amd-gpu"} / 3.6e+06
+              dev:gpu_power_usage_watts:pue{job="amd-device-metrics-gpu"} / 3.6e+06
             * on (index) group_right ()
               ceems_compute_unit_gpu_index_flag{job="cpu-cray-amd-gpu"},
               "provider",
@@ -1496,21 +1601,28 @@ groups:
   # total GPU power and its equivalent emissions aggregared for all hosts 
   # per Prometheus job.
   # 
-  - name: host-agg-gpu-rules-amd-gpu
+  - name: host-agg-gpu-rules-amd-device-metrics-gpu
     interval: 2s
     rules:
       # Average GPU Usage (%) for all hosts aggregated per Prometheus job
       - record: job:ceems_gpu_usage:avg
-        expr: avg by (job) (amd_gpu_use_percent{job="amd-gpu"})
+        expr: avg by (job) (gpu_gfx_activity{job="amd-device-metrics-gpu"})
 
       # Average GPU memory usage (%) for all hosts aggregated per Prometheus job
       - record: job:ceems_gpu_memory_usage:avg_ratio
-        expr: avg by (job) (amd_gpu_memory_use_percent{job="amd-gpu"})
+        expr: |2
+          avg by (job) (
+            (
+                gpu_used_vram{job="amd-device-metrics-gpu"} * 100
+              /
+                gpu_total_vram{job="amd-device-metrics-gpu"}
+            )
+          )
 
       # Total power usage (Watts) by GPUs on all hosts aggregated per Prometheus job
       # AMD GPU power is in micro Watts and we need to convert it to Watts here
       - record: job:ceems_gpu_power_watts:pue
-        expr: sum by (job)(1 * amd_gpu_power{job="amd-gpu"} / 1e6)
+        expr: sum by (job)(1 * gpu_power_usage{job="amd-device-metrics-gpu"} / 1e6)
 
       # Total equivalent emissions rate (g/s) due to the power consumed by GPUs on all ths hosts
       # in a Prometheus job accounting PUE value.
@@ -1520,7 +1632,7 @@ groups:
         expr: |2
           label_replace(
             label_replace(
-              56.03859 * job:ceems_gpu_power_watts:pue{job="amd-gpu"} / 3.6e+06,
+              56.03859 * job:ceems_gpu_power_watts:pue{job="amd-device-metrics-gpu"} / 3.6e+06,
               "provider",
               "owid",
               "instance",
@@ -2670,9 +2782,13 @@ groups:
     interval: 1s
     rules:
       # GPU Usage (%) by compute unit
+      # Prefer DCGM_FI_PROF_GR_ENGINE_ACTIVE to DCGM_FI_DEV_GPU_UTIL
+      # when available
+      # Ref: https://github.com/NVIDIA/DCGM/issues/64#issuecomment-1400811885
+      # Ref: https://github.com/NVIDIA/DCGM/issues/80#issuecomment-1537603016
       - record: uuid:ceems_gpu_usage:ratio
         expr: |2
-            DCGM_FI_DEV_GPU_UTIL{job="ipmi-nvidia-gpu"}
+            DCGM_FI_PROF_GR_ENGINE_ACTIVE{job="ipmi-nvidia-gpu"}
             * on (gpuuuid,gpuiid) group_right ()
             ceems_compute_unit_gpu_index_flag{job="cpu-ipmi-nvidia-gpu"}
 
@@ -2691,11 +2807,43 @@ groups:
       - record: dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue
         expr: 1 * DCGM_FI_DEV_POWER_USAGE_INSTANT{job="ipmi-nvidia-gpu"}
 
+      # When profiling metrics are available, we split the total power consumed by physical
+      # GPU among all MIG instances based on "effective" SM usage on each MIG instance. This
+      # is estimated as TotalPower * number of SMs * Mean SM usage * SM Occupancy / sum(number of SMs * Mean SM usage * SM Occupancy)
+      #
+      # When profiling metrics are not available, we split the total power based on number of SMs
+      # available in that instance compared to total number of SMs being used in the physical GPU
       - record: uuid:ceems_gpu_power_watts:pue
         expr: |2
-          dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue{job="ipmi-nvidia-gpu"}
-          * on (gpuuuid,gpuiid) group_right()
-          ceems_compute_unit_gpu_index_flag{job="cpu-ipmi-nvidia-gpu"}
+            (
+              (
+                (
+                      DCGM_FI_PROF_SM_ACTIVE{job="ipmi-nvidia-gpu"}
+                    * on (gpuuuid, gpuiid)
+                      DCGM_FI_PROF_SM_OCCUPANCY{job="ipmi-nvidia-gpu"}
+                  * on (gpuuuid, gpuiid)
+                    ceems_compute_unit_gpu_sm_count{job="cpu-ipmi-nvidia-gpu"}
+                )
+              )
+            / on (gpuuuid) group_left ()
+              (
+                sum by (gpuuuid) (
+                    (
+                          DCGM_FI_PROF_SM_ACTIVE{job="ipmi-nvidia-gpu"}
+                        * on (gpuuuid, gpuiid)
+                          DCGM_FI_PROF_SM_OCCUPANCY{job="ipmi-nvidia-gpu"}
+                      * on (gpuuuid, gpuiid)
+                        ceems_compute_unit_gpu_sm_count{job="cpu-ipmi-nvidia-gpu"}
+                    )
+                  >
+                    0
+                )
+              )
+            )
+              * on (gpuuuid) group_right ()
+                dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue{job="ipmi-nvidia-gpu"}
+            * on (gpuuuid, gpuiid) group_right ()
+              ceems_compute_unit_gpu_index_flag{job="cpu-ipmi-nvidia-gpu"}
 
       # Total equivalent emissions rate (g/s) due to the power consumed by the compute unit's GPUs.
       # The equivalent emissions are estimated using static emission factor from OWID for country
@@ -2794,9 +2942,13 @@ groups:
     interval: 1s
     rules:
       # GPU Usage (%) by compute unit
+      # Prefer DCGM_FI_PROF_GR_ENGINE_ACTIVE to DCGM_FI_DEV_GPU_UTIL
+      # when available
+      # Ref: https://github.com/NVIDIA/DCGM/issues/64#issuecomment-1400811885
+      # Ref: https://github.com/NVIDIA/DCGM/issues/80#issuecomment-1537603016
       - record: uuid:ceems_gpu_usage:ratio
         expr: |2
-            DCGM_FI_DEV_GPU_UTIL{job="nvidia-gpu"}
+            DCGM_FI_PROF_GR_ENGINE_ACTIVE{job="nvidia-gpu"}
             * on (gpuuuid,gpuiid) group_right ()
             ceems_compute_unit_gpu_index_flag{job="cpu-redfish-nvidia-gpu"}
 
@@ -2815,11 +2967,43 @@ groups:
       - record: dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue
         expr: 1 * DCGM_FI_DEV_POWER_USAGE_INSTANT{job="nvidia-gpu"}
 
+      # When profiling metrics are available, we split the total power consumed by physical
+      # GPU among all MIG instances based on "effective" SM usage on each MIG instance. This
+      # is estimated as TotalPower * number of SMs * Mean SM usage * SM Occupancy / sum(number of SMs * Mean SM usage * SM Occupancy)
+      #
+      # When profiling metrics are not available, we split the total power based on number of SMs
+      # available in that instance compared to total number of SMs being used in the physical GPU
       - record: uuid:ceems_gpu_power_watts:pue
         expr: |2
-          dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue{job="nvidia-gpu"}
-          * on (gpuuuid,gpuiid) group_right()
-          ceems_compute_unit_gpu_index_flag{job="cpu-redfish-nvidia-gpu"}
+            (
+              (
+                (
+                      DCGM_FI_PROF_SM_ACTIVE{job="nvidia-gpu"}
+                    * on (gpuuuid, gpuiid)
+                      DCGM_FI_PROF_SM_OCCUPANCY{job="nvidia-gpu"}
+                  * on (gpuuuid, gpuiid)
+                    ceems_compute_unit_gpu_sm_count{job="cpu-redfish-nvidia-gpu"}
+                )
+              )
+            / on (gpuuuid) group_left ()
+              (
+                sum by (gpuuuid) (
+                    (
+                          DCGM_FI_PROF_SM_ACTIVE{job="nvidia-gpu"}
+                        * on (gpuuuid, gpuiid)
+                          DCGM_FI_PROF_SM_OCCUPANCY{job="nvidia-gpu"}
+                      * on (gpuuuid, gpuiid)
+                        ceems_compute_unit_gpu_sm_count{job="cpu-redfish-nvidia-gpu"}
+                    )
+                  >
+                    0
+                )
+              )
+            )
+              * on (gpuuuid) group_right ()
+                dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue{job="nvidia-gpu"}
+            * on (gpuuuid, gpuiid) group_right ()
+              ceems_compute_unit_gpu_index_flag{job="cpu-redfish-nvidia-gpu"}
 
       # Total equivalent emissions rate (g/s) due to the power consumed by the compute unit's GPUs.
       # The equivalent emissions are estimated using static emission factor from OWID for country
@@ -2903,9 +3087,13 @@ groups:
             "instance",
             "(.*)"
           )
-amd-gpu-gpu.rules
+amd-device-metrics-gpu-gpu.rules
 ---
-# Recording rules for AMD GPUs scrape job amd-gpu.
+# Recording rules for AMD GPUs scrape job amd-device-metrics-gpu.
+#
+# These recording rules are used when AMD device metrics exporter is found
+# in Prometheus targets
+# https://instinct.docs.amd.com/projects/device-metrics-exporter
 #
 # These rules map the GPU usage to the compute unit `uuid` which gives
 # GPU metrics for each compute unit.
@@ -2914,31 +3102,40 @@ amd-gpu-gpu.rules
 # estimation as well.
 #
 groups:
-  - name: compute-unit-gpu-rules-amd-gpu
+  - name: compute-unit-gpu-rules-amd-device-metrics-gpu
     interval: 1s
     rules:
       # GPU Usage (%) by compute unit
       - record: uuid:ceems_gpu_usage:ratio
         expr: |2
-            amd_gpu_use_percent{job="amd-gpu"}
+            gpu_gfx_activity{job="amd-device-metrics-gpu"}
             * on (index) group_right ()
             ceems_compute_unit_gpu_index_flag{job="cpu-cray-amd-gpu"}
 
       # GPU Memory Usage (%) by compute unit
       - record: uuid:ceems_gpu_memory_usage:ratio
         expr: |2
-          amd_gpu_memory_use_percent{job="amd-gpu"}
+          (
+              gpu_used_vram{job="amd-device-metrics-gpu"} * 100
+            /
+              gpu_total_vram{job="amd-device-metrics-gpu"}
+          )
           * on (index) group_right ()
           ceems_compute_unit_gpu_index_flag{job="cpu-cray-amd-gpu"}
       
       # Total power (Watts) consumed by the GPU by accounting Power Usage Effectiveness (PUE) value.
-      # AMD GPU power is in micro Watts and we need to convert it to Watts here
-      - record: dev:amd_gpu_power_watts:pue
-        expr: 1 * amd_gpu_power{job="amd-gpu"} / 1e6
+      - record: dev:gpu_power_usage_watts:pue
+        expr: 1 * gpu_power_usage{job="amd-device-metrics-gpu"}
 
       - record: uuid:ceems_gpu_power_watts:pue
         expr: |2
-          dev:amd_gpu_power_watts:pue{job="amd-gpu"}
+          (
+              ceems_compute_unit_gpu_sm_count{job="cpu-cray-amd-gpu"}
+            / on (index) group_left ()
+              (sum by (index) (ceems_compute_unit_gpu_sm_count{job="cpu-cray-amd-gpu"}) > 0)
+          )
+            * on (index) group_right()
+              dev:gpu_power_usage_watts:pue{job="amd-device-metrics-gpu"}
           * on (index) group_right()
           ceems_compute_unit_gpu_index_flag{job="cpu-cray-amd-gpu"}
 
@@ -2948,7 +3145,7 @@ groups:
       - record: uuid:ceems_gpu_emissions_g_s:pue
         expr: |2
           label_replace(
-              dev:amd_gpu_power_watts:pue{job="amd-gpu"} / 3.6e+06
+              dev:gpu_power_usage_watts:pue{job="amd-device-metrics-gpu"} / 3.6e+06
             * on (index) group_right ()
               ceems_compute_unit_gpu_index_flag{job="cpu-cray-amd-gpu"},
               "provider",
@@ -2962,21 +3159,28 @@ groups:
   # total GPU power and its equivalent emissions aggregared for all hosts 
   # per Prometheus job.
   # 
-  - name: host-agg-gpu-rules-amd-gpu
+  - name: host-agg-gpu-rules-amd-device-metrics-gpu
     interval: 2s
     rules:
       # Average GPU Usage (%) for all hosts aggregated per Prometheus job
       - record: job:ceems_gpu_usage:avg
-        expr: avg by (job) (amd_gpu_use_percent{job="amd-gpu"})
+        expr: avg by (job) (gpu_gfx_activity{job="amd-device-metrics-gpu"})
 
       # Average GPU memory usage (%) for all hosts aggregated per Prometheus job
       - record: job:ceems_gpu_memory_usage:avg_ratio
-        expr: avg by (job) (amd_gpu_memory_use_percent{job="amd-gpu"})
+        expr: |2
+          avg by (job) (
+            (
+                gpu_used_vram{job="amd-device-metrics-gpu"} * 100
+              /
+                gpu_total_vram{job="amd-device-metrics-gpu"}
+            )
+          )
 
       # Total power usage (Watts) by GPUs on all hosts aggregated per Prometheus job
       # AMD GPU power is in micro Watts and we need to convert it to Watts here
       - record: job:ceems_gpu_power_watts:pue
-        expr: sum by (job)(1 * amd_gpu_power{job="amd-gpu"} / 1e6)
+        expr: sum by (job)(1 * gpu_power_usage{job="amd-device-metrics-gpu"} / 1e6)
 
       # Total equivalent emissions rate (g/s) due to the power consumed by GPUs on all ths hosts
       # in a Prometheus job accounting PUE value.
@@ -2986,7 +3190,7 @@ groups:
         expr: |2
           label_replace(
             label_replace(
-              50 * job:ceems_gpu_power_watts:pue{job="amd-gpu"} / 3.6e+06,
+              50 * job:ceems_gpu_power_watts:pue{job="amd-device-metrics-gpu"} / 3.6e+06,
               "provider",
               "custom",
               "instance",
@@ -4136,9 +4340,13 @@ groups:
     interval: 1s
     rules:
       # GPU Usage (%) by compute unit
+      # Prefer DCGM_FI_PROF_GR_ENGINE_ACTIVE to DCGM_FI_DEV_GPU_UTIL
+      # when available
+      # Ref: https://github.com/NVIDIA/DCGM/issues/64#issuecomment-1400811885
+      # Ref: https://github.com/NVIDIA/DCGM/issues/80#issuecomment-1537603016
       - record: uuid:ceems_gpu_usage:ratio
         expr: |2
-            DCGM_FI_DEV_GPU_UTIL{job="ipmi-nvidia-gpu"}
+            DCGM_FI_PROF_GR_ENGINE_ACTIVE{job="ipmi-nvidia-gpu"}
             * on (gpuuuid,gpuiid) group_right ()
             ceems_compute_unit_gpu_index_flag{job="cpu-ipmi-nvidia-gpu"}
 
@@ -4157,11 +4365,43 @@ groups:
       - record: dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue
         expr: 1 * DCGM_FI_DEV_POWER_USAGE_INSTANT{job="ipmi-nvidia-gpu"}
 
+      # When profiling metrics are available, we split the total power consumed by physical
+      # GPU among all MIG instances based on "effective" SM usage on each MIG instance. This
+      # is estimated as TotalPower * number of SMs * Mean SM usage * SM Occupancy / sum(number of SMs * Mean SM usage * SM Occupancy)
+      #
+      # When profiling metrics are not available, we split the total power based on number of SMs
+      # available in that instance compared to total number of SMs being used in the physical GPU
       - record: uuid:ceems_gpu_power_watts:pue
         expr: |2
-          dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue{job="ipmi-nvidia-gpu"}
-          * on (gpuuuid,gpuiid) group_right()
-          ceems_compute_unit_gpu_index_flag{job="cpu-ipmi-nvidia-gpu"}
+            (
+              (
+                (
+                      DCGM_FI_PROF_SM_ACTIVE{job="ipmi-nvidia-gpu"}
+                    * on (gpuuuid, gpuiid)
+                      DCGM_FI_PROF_SM_OCCUPANCY{job="ipmi-nvidia-gpu"}
+                  * on (gpuuuid, gpuiid)
+                    ceems_compute_unit_gpu_sm_count{job="cpu-ipmi-nvidia-gpu"}
+                )
+              )
+            / on (gpuuuid) group_left ()
+              (
+                sum by (gpuuuid) (
+                    (
+                          DCGM_FI_PROF_SM_ACTIVE{job="ipmi-nvidia-gpu"}
+                        * on (gpuuuid, gpuiid)
+                          DCGM_FI_PROF_SM_OCCUPANCY{job="ipmi-nvidia-gpu"}
+                      * on (gpuuuid, gpuiid)
+                        ceems_compute_unit_gpu_sm_count{job="cpu-ipmi-nvidia-gpu"}
+                    )
+                  >
+                    0
+                )
+              )
+            )
+              * on (gpuuuid) group_right ()
+                dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue{job="ipmi-nvidia-gpu"}
+            * on (gpuuuid, gpuiid) group_right ()
+              ceems_compute_unit_gpu_index_flag{job="cpu-ipmi-nvidia-gpu"}
 
       # Total equivalent emissions rate (g/s) due to the power consumed by the compute unit's GPUs.
       # The equivalent emissions are estimated using static emission factor from OWID for country
@@ -4260,9 +4500,13 @@ groups:
     interval: 1s
     rules:
       # GPU Usage (%) by compute unit
+      # Prefer DCGM_FI_PROF_GR_ENGINE_ACTIVE to DCGM_FI_DEV_GPU_UTIL
+      # when available
+      # Ref: https://github.com/NVIDIA/DCGM/issues/64#issuecomment-1400811885
+      # Ref: https://github.com/NVIDIA/DCGM/issues/80#issuecomment-1537603016
       - record: uuid:ceems_gpu_usage:ratio
         expr: |2
-            DCGM_FI_DEV_GPU_UTIL{job="nvidia-gpu"}
+            DCGM_FI_PROF_GR_ENGINE_ACTIVE{job="nvidia-gpu"}
             * on (gpuuuid,gpuiid) group_right ()
             ceems_compute_unit_gpu_index_flag{job="cpu-redfish-nvidia-gpu"}
 
@@ -4281,11 +4525,43 @@ groups:
       - record: dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue
         expr: 1 * DCGM_FI_DEV_POWER_USAGE_INSTANT{job="nvidia-gpu"}
 
+      # When profiling metrics are available, we split the total power consumed by physical
+      # GPU among all MIG instances based on "effective" SM usage on each MIG instance. This
+      # is estimated as TotalPower * number of SMs * Mean SM usage * SM Occupancy / sum(number of SMs * Mean SM usage * SM Occupancy)
+      #
+      # When profiling metrics are not available, we split the total power based on number of SMs
+      # available in that instance compared to total number of SMs being used in the physical GPU
       - record: uuid:ceems_gpu_power_watts:pue
         expr: |2
-          dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue{job="nvidia-gpu"}
-          * on (gpuuuid,gpuiid) group_right()
-          ceems_compute_unit_gpu_index_flag{job="cpu-redfish-nvidia-gpu"}
+            (
+              (
+                (
+                      DCGM_FI_PROF_SM_ACTIVE{job="nvidia-gpu"}
+                    * on (gpuuuid, gpuiid)
+                      DCGM_FI_PROF_SM_OCCUPANCY{job="nvidia-gpu"}
+                  * on (gpuuuid, gpuiid)
+                    ceems_compute_unit_gpu_sm_count{job="cpu-redfish-nvidia-gpu"}
+                )
+              )
+            / on (gpuuuid) group_left ()
+              (
+                sum by (gpuuuid) (
+                    (
+                          DCGM_FI_PROF_SM_ACTIVE{job="nvidia-gpu"}
+                        * on (gpuuuid, gpuiid)
+                          DCGM_FI_PROF_SM_OCCUPANCY{job="nvidia-gpu"}
+                      * on (gpuuuid, gpuiid)
+                        ceems_compute_unit_gpu_sm_count{job="cpu-redfish-nvidia-gpu"}
+                    )
+                  >
+                    0
+                )
+              )
+            )
+              * on (gpuuuid) group_right ()
+                dev:DCGM_FI_DEV_POWER_USAGE_INSTANT:pue{job="nvidia-gpu"}
+            * on (gpuuuid, gpuiid) group_right ()
+              ceems_compute_unit_gpu_index_flag{job="cpu-redfish-nvidia-gpu"}
 
       # Total equivalent emissions rate (g/s) due to the power consumed by the compute unit's GPUs.
       # The equivalent emissions are estimated using static emission factor from OWID for country

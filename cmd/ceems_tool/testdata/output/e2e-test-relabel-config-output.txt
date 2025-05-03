@@ -40,7 +40,7 @@ scrape_configs:
         action: labeldrop
       - regex: GPU_I_ID
         action: labeldrop
-  - job: amd-gpu
+  - job: amd-smi-gpu
     metric_relabel_configs:
       - source_labels:
           - gpu_power
@@ -67,5 +67,23 @@ scrape_configs:
       - regex: gpu_use_percent
         action: labeldrop
       - regex: gpu_memory_use_percent
+        action: labeldrop
+  - job: amd-device-metrics-gpu
+    metric_relabel_configs:
+      - source_labels:
+          - gpu_id
+        target_label: index
+        regex: (.*)
+        replacement: $1
+        action: replace
+      - source_labels:
+          - gpu_partition_id
+        target_label: gpuiid
+        regex: (.*)
+        replacement: $1
+        action: replace
+      - regex: gpu_id
+        action: labeldrop
+      - regex: gpu_partition_id
         action: labeldrop
 

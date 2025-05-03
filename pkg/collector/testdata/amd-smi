@@ -1,0 +1,316 @@
+#!/bin/bash
+
+echo -e '[
+    {
+        "gpu": 0,
+        "asic": {
+            "vendor_id": "0x1002",
+            "num_compute_units": 304
+        },
+        "bus": {
+            "bdf": "0000:C5:00.0",
+            "max_pcie_width": "N/A",
+            "max_pcie_speed": "N/A",
+            "pcie_interface_version": "N/A",
+            "slot_type": "N/A"
+        },
+        "board": {
+            "model_number": "2-D16317-10ct",
+            "product_serial": "20170000800c",
+            "fru_id": "N/A",
+            "product_name": "Advanced Micro Devices, Inc. [AMD/ATI]",
+            "manufacturer_name": "0x1002"
+        },
+        "partition": {
+            "compute_partition": "SPX",
+            "memory_partition": "NPS1",
+            "partition_id": 0
+        }
+    },
+    {
+        "gpu": 1,
+        "asic": {
+            "vendor_id": "0x1002",
+            "num_compute_units": 38
+        },
+        "bus": {
+            "bdf": "0000:C8:00.0",
+            "max_pcie_width": "N/A",
+            "max_pcie_speed": "N/A",
+            "pcie_interface_version": "N/A",
+            "slot_type": "N/A"
+        },
+        "board": {
+            "model_number": "2-D16317-10ct",
+            "product_serial": "20170003580c",
+            "fru_id": "N/A",
+            "product_name": "Advanced Micro Devices, Inc. [AMD/ATI]",
+            "manufacturer_name": "0x1002"
+        },
+        "partition": {
+            "compute_partition": "CPX",
+            "memory_partition": "NPS4",
+            "partition_id": 0
+        }
+    },
+    {
+        "gpu": 2,
+        "asic": {
+            "vendor_id": "0x1002",
+            "num_compute_units": 38
+        },
+        "bus": {
+            "bdf": "0000:C8:00.0",
+            "max_pcie_width": "N/A",
+            "max_pcie_speed": "N/A",
+            "pcie_interface_version": "N/A",
+            "slot_type": "N/A"
+        },
+        "board": {
+            "model_number": "2-D16317-10ct",
+            "product_serial": "20170003580c",
+            "fru_id": "N/A",
+            "product_name": "Advanced Micro Devices, Inc. [AMD/ATI]",
+            "manufacturer_name": "0x1002"
+        },
+        "partition": {
+            "compute_partition": "CPX",
+            "memory_partition": "NPS4",
+            "partition_id": 1
+        }
+    },
+    {
+        "gpu": 3,
+        "asic": {
+            "vendor_id": "0x1002",
+            "num_compute_units": 38
+        },
+        "bus": {
+            "bdf": "0000:C8:00.0",
+            "max_pcie_width": "N/A",
+            "max_pcie_speed": "N/A",
+            "pcie_interface_version": "N/A",
+            "slot_type": "N/A"
+        },
+        "board": {
+            "model_number": "2-D16317-10ct",
+            "product_serial": "20170003580c",
+            "fru_id": "N/A",
+            "product_name": "Advanced Micro Devices, Inc. [AMD/ATI]",
+            "manufacturer_name": "0x1002"
+        },
+        "partition": {
+            "compute_partition": "CPX",
+            "memory_partition": "NPS4",
+            "partition_id": 2
+        }
+    },
+    {
+        "gpu": 4,
+        "asic": {
+            "vendor_id": "0x1002",
+            "num_compute_units": 38
+        },
+        "bus": {
+            "bdf": "0000:C8:00.0",
+            "max_pcie_width": "N/A",
+            "max_pcie_speed": "N/A",
+            "pcie_interface_version": "N/A",
+            "slot_type": "N/A"
+        },
+        "board": {
+            "model_number": "2-D16317-10ct",
+            "product_serial": "20170003580c",
+            "fru_id": "N/A",
+            "product_name": "Advanced Micro Devices, Inc. [AMD/ATI]",
+            "manufacturer_name": "0x1002"
+        },
+        "partition": {
+            "compute_partition": "CPX",
+            "memory_partition": "NPS4",
+            "partition_id": 3
+        }
+    },
+    {
+        "gpu": 5,
+        "asic": {
+            "vendor_id": "0x1002",
+            "num_compute_units": 38
+        },
+        "bus": {
+            "bdf": "0000:C8:00.0",
+            "max_pcie_width": "N/A",
+            "max_pcie_speed": "N/A",
+            "pcie_interface_version": "N/A",
+            "slot_type": "N/A"
+        },
+        "board": {
+            "model_number": "2-D16317-10ct",
+            "product_serial": "20170003580c",
+            "fru_id": "N/A",
+            "product_name": "Advanced Micro Devices, Inc. [AMD/ATI]",
+            "manufacturer_name": "0x1002"
+        },
+        "partition": {
+            "compute_partition": "CPX",
+            "memory_partition": "NPS4",
+            "partition_id": 4
+        }
+    },
+    {
+        "gpu": 6,
+        "asic": {
+            "vendor_id": "0x1002",
+            "num_compute_units": 38
+        },
+        "bus": {
+            "bdf": "0000:C8:00.0",
+            "max_pcie_width": "N/A",
+            "max_pcie_speed": "N/A",
+            "pcie_interface_version": "N/A",
+            "slot_type": "N/A"
+        },
+        "board": {
+            "model_number": "2-D16317-10ct",
+            "product_serial": "20170003580c",
+            "fru_id": "N/A",
+            "product_name": "Advanced Micro Devices, Inc. [AMD/ATI]",
+            "manufacturer_name": "0x1002"
+        },
+        "partition": {
+            "compute_partition": "CPX",
+            "memory_partition": "NPS4",
+            "partition_id": 5
+        }
+    },
+    {
+        "gpu": 7,
+        "asic": {
+            "vendor_id": "0x1002",
+            "num_compute_units": 38
+        },
+        "bus": {
+            "bdf": "0000:C8:00.0",
+            "max_pcie_width": "N/A",
+            "max_pcie_speed": "N/A",
+            "pcie_interface_version": "N/A",
+            "slot_type": "N/A"
+        },
+        "board": {
+            "model_number": "2-D16317-10ct",
+            "product_serial": "20170003580c",
+            "fru_id": "N/A",
+            "product_name": "Advanced Micro Devices, Inc. [AMD/ATI]",
+            "manufacturer_name": "0x1002"
+        },
+        "partition": {
+            "compute_partition": "CPX",
+            "memory_partition": "NPS4",
+            "partition_id": 6
+        }
+    },
+    {
+        "gpu": 8,
+        "asic": {
+            "vendor_id": "0x1002",
+            "num_compute_units": 38
+        },
+        "bus": {
+            "bdf": "0000:C8:00.0",
+            "max_pcie_width": "N/A",
+            "max_pcie_speed": "N/A",
+            "pcie_interface_version": "N/A",
+            "slot_type": "N/A"
+        },
+        "board": {
+            "model_number": "2-D16317-10ct",
+            "product_serial": "20170003580c",
+            "fru_id": "N/A",
+            "product_name": "Advanced Micro Devices, Inc. [AMD/ATI]",
+            "manufacturer_name": "0x1002"
+        },
+        "partition": {
+            "compute_partition": "CPX",
+            "memory_partition": "NPS4",
+            "partition_id": 7
+        }
+    },
+    {
+        "gpu": 9,
+        "asic": {
+            "vendor_id": "0x1002",
+            "num_compute_units": 152
+        },
+        "bus": {
+            "bdf": "0000:8A:00.0",
+            "max_pcie_width": "N/A",
+            "max_pcie_speed": "N/A",
+            "pcie_interface_version": "N/A",
+            "slot_type": "N/A"
+        },
+        "board": {
+            "model_number": "2-D16317-10ct",
+            "product_serial": "20180003050c",
+            "fru_id": "N/A",
+            "product_name": "Advanced Micro Devices, Inc. [AMD/ATI]",
+            "manufacturer_name": "0x1002"
+        },
+        "partition": {
+            "compute_partition": "DPX",
+            "memory_partition": "NPS1",
+            "partition_id": 0
+        }
+    },
+    {
+        "gpu": 10,
+        "asic": {
+            "vendor_id": "0x1002",
+            "num_compute_units": 152
+        },
+        "bus": {
+            "bdf": "0000:8A:00.0",
+            "max_pcie_width": "N/A",
+            "max_pcie_speed": "N/A",
+            "pcie_interface_version": "N/A",
+            "slot_type": "N/A"
+        },
+        "board": {
+            "model_number": "2-D16317-10ct",
+            "product_serial": "20180003050c",
+            "fru_id": "N/A",
+            "product_name": "Advanced Micro Devices, Inc. [AMD/ATI]",
+            "manufacturer_name": "0x1002"
+        },
+        "partition": {
+            "compute_partition": "DPX",
+            "memory_partition": "NPS1",
+            "partition_id": 1
+        }
+    },
+    {
+        "gpu": 11,
+        "asic": {
+            "vendor_id": "0x1002",
+            "num_compute_units": 304
+        },
+        "bus": {
+            "bdf": "0000:8D:00.0",
+            "max_pcie_width": "N/A",
+            "max_pcie_speed": "N/A",
+            "pcie_interface_version": "N/A",
+            "slot_type": "N/A"
+        },
+        "board": {
+            "model_number": "2-D16317-10ct",
+            "product_serial": "20170005280c",
+            "fru_id": "N/A",
+            "product_name": "Advanced Micro Devices, Inc. [AMD/ATI]",
+            "manufacturer_name": "0x1002"
+        },
+        "partition": {
+            "compute_partition": "SPX",
+            "memory_partition": "NPS1",
+            "partition_id": 0
+        }
+    }
+]'

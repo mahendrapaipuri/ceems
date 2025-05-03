@@ -53,11 +53,18 @@ scrape_configs:
           instance: compute-cray-0:9014
 
   # AMD SMI job for above hosts
-  - job_name: amd-gpu
+  - job_name: amd-smi-gpu
     static_configs:
       - targets: ["localhost:9500"]
         labels:
           instance: compute-cray-0:9500
+
+  # AMD Device metrics job for above hosts
+  - job_name: amd-device-metrics-gpu
+    static_configs:
+      - targets: ["localhost:9600"]
+        labels:
+          instance: compute-cray-0:9600
 
   # CPU and NVIDIA GPU hosts with IPMI available and including GPU power
   - job_name: cpu-ipmi-nvidia-gpu

@@ -1,0 +1,98 @@
+{
+    "pod_resources": [
+      {
+        "name": "pod11",
+        "namespace": "ns1",
+        "containers": [
+          {
+            "name": "cont111",
+            "devices": [
+              {
+                "resource_name": "amd.com/gpu",
+                "device_ids": [
+                  "0000:c5:00.0",
+                  "0000:8a:00.0"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "cont112",
+            "devices": [
+              {
+                "resource_name": "amd.com/gpu_cpx",
+                "device_ids": [
+                  "0000:c8:00.0"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "pod21",
+        "namespace": "ns2",
+        "containers": [
+          {
+            "name": "cont211",
+            "devices": [
+              {
+                "resource_name": "amd.com/gpu_cpx",
+                "device_ids": [
+                  "amdgpu_xcp_1",
+                  "amdgpu_xcp_2",
+                  "amdgpu_xcp_3"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "pod22",
+        "namespace": "ns2",
+        "containers": [
+          {
+            "name": "cont221",
+            "devices": [
+              {
+                "resource_name": "amd.com/gpu_cpx",
+                "device_ids": [
+                  "amdgpu_xcp_4"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "pod31",
+        "namespace": "ns3",
+        "containers": [
+          {
+            "name": "cont311",
+            "devices": [
+              {
+                "resource_name": "amd.com/gpu",
+                "device_ids": [
+                  "0000:8d:00.0"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "cont312",
+            "devices": [
+              {
+                "resource_name": "amd.com/gpu_cpx",
+                "device_ids": [
+                  "amdgpu_xcp_5",
+                  "amdgpu_xcp_6"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }

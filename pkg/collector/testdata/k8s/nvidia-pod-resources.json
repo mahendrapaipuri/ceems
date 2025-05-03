@@ -1,0 +1,128 @@
+{
+    "pod_resources": [
+      {
+        "name": "pod11",
+        "namespace": "ns1",
+        "containers": [
+          {
+            "name": "cont111",
+            "devices": [
+              {
+                "resource_name": "nvidia.com/gpu",
+                "device_ids": [
+                  "GPU-f124aa59-d406-d45b-9481-8fcd694e6c9e",
+                  "GPU-61a65011-6571-a6d2-5ab8-66cbb6f7f9c3"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "cont112",
+            "devices": [
+              {
+                "resource_name": "nvidia.com/mig-1g.5gb",
+                "device_ids": [
+                  "MIG-2cc993d7-588c-5c28-b454-b3851897e3d7"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "pod21",
+        "namespace": "ns2",
+        "containers": [
+          {
+            "name": "cont211",
+            "devices": [
+              {
+                "resource_name": "nvidia.com/mig-4g.20gb",
+                "device_ids": [
+                  "MIG-4894e267-46d0-557e-b826-500e978d88d1::0",
+                  "MIG-4894e267-46d0-557e-b826-500e978d88d1::1",
+                  "MIG-4894e267-46d0-557e-b826-500e978d88d1::2",
+                  "MIG-4894e267-46d0-557e-b826-500e978d88d1::3"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "pod22",
+        "namespace": "ns2",
+        "containers": [
+          {
+            "name": "cont221",
+            "devices": [
+              {
+                "resource_name": "nvidia.com/mig-4g.20gb",
+                "device_ids": [
+                  "MIG-4894e267-46d0-557e-b826-500e978d88d1::4",
+                  "MIG-4894e267-46d0-557e-b826-500e978d88d1::5"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "cont222",
+            "devices": [
+              {
+                "resource_name": "nvidia.com/gpu",
+                "device_ids": [
+                  "GPU-61a65011-6571-a6d2-5th8-66cbb6f7f9c3::0",
+                  "GPU-61a65011-6571-a6d2-5th8-66cbb6f7f9c3::1"
+                ]
+              },
+              {
+                "resource_name": "nvidia.com/mig-1g.5gb",
+                "device_ids": [
+                  "MIG-017c61e4-656c-5059-b7b1-276506580e3c"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "pod31",
+        "namespace": "ns3",
+        "containers": [
+          {
+            "name": "cont311",
+            "devices": [
+              {
+                "resource_name": "nvidia.com/gpu",
+                "device_ids": [
+                  "GPU-61a65011-6571-a6d2-5th8-66cbb6f7f9c3::2",
+                  "GPU-61a65011-6571-a6d2-5th8-66cbb6f7f9c3::3",
+                  "GPU-61a65011-6571-a64n-5ab8-66cbb6f7f9c3::0",
+                  "GPU-61a65011-6571-a64n-5ab8-66cbb6f7f9c3::1",
+                  "GPU-61a65011-6571-a64n-5ab8-66cbb6f7f9c3::2"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "cont312",
+            "devices": [
+              {
+                "resource_name": "nvidia.com/gpu",
+                "device_ids": [
+                  "GPU-6cc98505-fdde-461e-a93c-6935fba45a27"
+                ]
+              },
+              {
+                "resource_name": "nvidia.com/mig-4g.20gb",
+                "device_ids": [
+                  "MIG-4894e267-46d0-557e-b826-500e978d88d1::6",
+                  "MIG-4894e267-46d0-557e-b826-500e978d88d1::7"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
