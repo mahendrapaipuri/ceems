@@ -2,13 +2,14 @@ package emissions
 
 import (
 	"errors"
-	"io"
 	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+var noOpLogger = slog.New(slog.DiscardHandler)
 
 type mockProvider struct {
 	logger *slog.Logger
@@ -35,7 +36,7 @@ func TestNewFactorProviders(t *testing.T) {
 	enabled := []string{"owid", "global"}
 
 	// Make new instance
-	providers, err := NewFactorProviders(slog.New(slog.NewTextHandler(io.Discard, nil)), enabled)
+	providers, err := NewFactorProviders(noOpLogger, enabled)
 	require.NoError(t, err)
 
 	// Collect factors
@@ -52,7 +53,7 @@ func TestUnknownProviders(t *testing.T) {
 	enabled := []string{"foo"}
 
 	// Instance creation should fail
-	_, err := NewFactorProviders(slog.New(slog.NewTextHandler(io.Discard, nil)), enabled)
+	_, err := NewFactorProviders(noOpLogger, enabled)
 	require.Error(t, err)
 }
 
@@ -64,7 +65,7 @@ func TestErrorInProviders(t *testing.T) {
 	enabled := []string{"error"}
 
 	// Instance creation should fail
-	_, err := NewFactorProviders(slog.New(slog.NewTextHandler(io.Discard, nil)), enabled)
+	_, err := NewFactorProviders(noOpLogger, enabled)
 	require.Error(t, err)
 }
 
@@ -76,7 +77,7 @@ func TestErrorInUpdate(t *testing.T) {
 	enabled := []string{"mock"}
 
 	// Instance creation should fail
-	p, err := NewFactorProviders(slog.New(slog.NewTextHandler(io.Discard, nil)), enabled)
+	p, err := NewFactorProviders(noOpLogger, enabled)
 	require.NoError(t, err)
 
 	// Collect should return empty

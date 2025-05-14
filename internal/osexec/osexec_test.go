@@ -45,7 +45,7 @@ func TestExecuteAs(t *testing.T) {
 }
 
 func TestExecuteContext(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Millisecond)
 	defer cancel()
 
 	// Test successful command execution

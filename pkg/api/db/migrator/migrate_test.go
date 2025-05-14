@@ -3,7 +3,6 @@ package migrator
 import (
 	"database/sql"
 	"embed"
-	"io"
 	"log/slog"
 	"path/filepath"
 	"testing"
@@ -20,7 +19,7 @@ var testMigrationsFS embed.FS
 
 func TestMigratorError(t *testing.T) {
 	// Setup Migrator
-	migrator, err := New(testMigrationsFS, testMigrationsDir, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	migrator, err := New(testMigrationsFS, testMigrationsDir, slog.New(slog.DiscardHandler))
 	require.NoError(t, err, "failed to create migrator")
 
 	db, err := sql.Open("sqlite3", filepath.Join(t.TempDir(), "test.db"))

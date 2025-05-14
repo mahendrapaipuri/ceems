@@ -3,7 +3,6 @@ package emissions
 import (
 	"encoding/json"
 	"errors"
-	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -52,7 +51,7 @@ func mockEMapsAPIFailRequest(
 
 func TestEMapsDataProvider(t *testing.T) {
 	s := emapsProvider{
-		logger:       slog.New(slog.NewTextHandler(io.Discard, nil)),
+		logger:       noOpLogger,
 		updatePeriod: 10 * time.Millisecond,
 		fetch:        mockEMapsAPIRequest,
 	}
@@ -88,7 +87,7 @@ func TestEMapsDataProvider(t *testing.T) {
 
 func TestEMapsDataProviderError(t *testing.T) {
 	s := emapsProvider{
-		logger:       slog.New(slog.NewTextHandler(io.Discard, nil)),
+		logger:       noOpLogger,
 		updatePeriod: 2 * time.Millisecond,
 		fetch:        mockEMapsAPIFailRequest,
 	}
@@ -120,7 +119,7 @@ func TestNewEMapsProvider(t *testing.T) {
 	t.Setenv("EMAPS_API_TOKEN", "secret")
 	t.Setenv("__EMAPS_BASE_URL", server.URL)
 
-	s, err := NewEMapsProvider(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	s, err := NewEMapsProvider(noOpLogger)
 	defer s.Stop()
 
 	assert.NoError(t, err)
@@ -141,7 +140,7 @@ func TestNewEMapsProviderFail(t *testing.T) {
 	t.Setenv("EMAPS_API_TOKEN", "secret")
 	t.Setenv("__EMAPS_BASE_URL", server.URL)
 
-	_, err := NewEMapsProvider(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	_, err := NewEMapsProvider(noOpLogger)
 	assert.Error(t, err)
 }
 
@@ -201,7 +200,7 @@ func TestEMapsAPIRequestZones(t *testing.T) {
 		"FR": "France",
 		"DE": "Germany",
 	}
-	factors, err := makeEMapsAPIRequest(server.URL, "", zones, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	factors, err := makeEMapsAPIRequest(server.URL, "", zones, noOpLogger)
 	require.NoError(t, err)
 	assert.Equal(t, expectedFactors, factors)
 }

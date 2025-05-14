@@ -1,8 +1,6 @@
 package emissions
 
 import (
-	"io"
-	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -36,6 +34,6 @@ Algeria,DZA,2001,494.60645
 }
 
 func TestNewOWIDProvider(t *testing.T) {
-	_, err := NewOWIDProvider(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	_, err := NewOWIDProvider(noOpLogger)
 	require.NoError(t, err)
 }
