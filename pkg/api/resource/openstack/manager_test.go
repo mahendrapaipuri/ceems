@@ -1,10 +1,8 @@
 package openstack
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -25,6 +23,8 @@ var (
 	start, _   = time.Parse(base.DatetimezoneLayout, "2024-10-15T16:15:00+0200")
 	end, _     = time.Parse(base.DatetimezoneLayout, "2024-10-15T16:45:00+0200")
 	current, _ = time.Parse(base.DatetimezoneLayout, "2024-10-15T16:45:00+0200")
+
+	noOpLogger = slog.New(slog.DiscardHandler)
 
 	expectedUnits = map[string]models.Unit{
 		"d0d60434-4bf1-4eb1-9469-d7b38083a88f": {
@@ -312,10 +312,10 @@ func TestOpenstackFetcher(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	for _, cluster := range clusters {
-		os, err := New(cluster, slog.New(slog.NewTextHandler(io.Discard, nil)))
+		os, err := New(cluster, noOpLogger)
 		require.NoError(t, err)
 
 		units, err := os.FetchUnits(ctx, start, end)
@@ -365,8 +365,8 @@ func TestOpenstackFetcherFail(t *testing.T) {
 		Extra:   extraConfig,
 	}
 
-	ctx := context.Background()
-	os, err := New(cluster, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	ctx := t.Context()
+	os, err := New(cluster, noOpLogger)
 	require.NoError(t, err)
 
 	// Stop test servers to simulate when OS services are offline
@@ -407,8 +407,8 @@ func TestOpenstackServiceError(t *testing.T) {
 		Values: []string{"latest"},
 	}
 
-	ctx := context.Background()
-	os, err := New(cluster, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	ctx := t.Context()
+	os, err := New(cluster, noOpLogger)
 	require.NoError(t, err)
 
 	// Attempt to fetch instances and we should get an error

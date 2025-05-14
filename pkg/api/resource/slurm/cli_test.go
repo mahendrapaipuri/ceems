@@ -2,8 +2,6 @@ package slurm
 
 import (
 	"fmt"
-	"io"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
@@ -16,7 +14,7 @@ import (
 
 func TestPreflightsCLI(t *testing.T) {
 	manager := slurmScheduler{
-		logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
+		logger:           noOpLogger,
 		securityContexts: make(map[string]*security.SecurityContext),
 	}
 	err := preflightsCLI(&manager)

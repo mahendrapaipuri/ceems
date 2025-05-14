@@ -2,7 +2,6 @@ package security
 
 import (
 	"fmt"
-	"io"
 	"log/slog"
 	"testing"
 
@@ -12,7 +11,7 @@ import (
 	"kernel.org/pub/linux/libs/security/libcap/cap"
 )
 
-var noOpLogger = slog.New(slog.NewTextHandler(io.Discard, nil))
+var noOpLogger = slog.New(slog.DiscardHandler)
 
 type testData struct {
 	targetUser string

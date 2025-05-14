@@ -4,7 +4,6 @@
 package collector
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -204,7 +203,7 @@ redfish_web_config:
 	err = collector.Update(metrics)
 	require.NoError(t, err)
 
-	err = collector.Stop(context.Background())
+	err = collector.Stop(t.Context())
 	require.NoError(t, err)
 }
 
@@ -255,7 +254,7 @@ redfish_web_config:
 	err = collector.Update(metrics)
 	require.NoError(t, err)
 
-	err = collector.Stop(context.Background())
+	err = collector.Stop(t.Context())
 	require.NoError(t, err)
 }
 

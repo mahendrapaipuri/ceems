@@ -4,7 +4,6 @@
 package sqlite3
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"io"
@@ -20,7 +19,7 @@ func TestDriver(t *testing.T) {
 	db, err := sql.Open(DriverName, filepath.Join(t.TempDir(), "test.db"))
 	require.NoError(t, err)
 
-	conn, err := db.Conn(context.Background())
+	conn, err := db.Conn(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, 1, NumConns())
 

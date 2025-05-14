@@ -3,7 +3,6 @@ package resource
 import (
 	"context"
 	"fmt"
-	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -15,6 +14,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+var noOpLogger = slog.New(slog.DiscardHandler)
 
 // mockResourceManager struct.
 type mockResourceManager struct {
@@ -286,13 +287,13 @@ func TestMixedClusterConfig(t *testing.T) {
 func TestNewManager(t *testing.T) {
 	// Make mock config
 	base.ConfigFilePath = mockConfig(t.TempDir(), "mock_instance")
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Register mock manager
 	Register("mock", NewMockResourceManager)
 
 	// Create new manager
-	manager, err := New(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	manager, err := New(noOpLogger)
 	require.NoError(t, err)
 
 	// Fetch units
@@ -312,13 +313,13 @@ func TestNewManager(t *testing.T) {
 func TestNewManagerWithNoClusters(t *testing.T) {
 	// Make mock config
 	base.ConfigFilePath = mockConfig(t.TempDir(), "empty_instance")
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Register mock manager
 	Register("mock", NewMockResourceManager)
 
 	// Create new manager
-	manager, err := New(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	manager, err := New(noOpLogger)
 	require.NoError(t, err)
 
 	// Fetch units

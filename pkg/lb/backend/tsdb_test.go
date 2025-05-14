@@ -3,7 +3,6 @@ package backend
 import (
 	"encoding/json"
 	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -81,7 +80,7 @@ func TestTSDBConfigSuccess(t *testing.T) {
 	server := testTSDBServer("30d", false, false)
 	// defer server.Close()
 
-	b, err := NewTSDB(&ServerConfig{Web: &models.WebConfig{URL: server.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	b, err := NewTSDB(&ServerConfig{Web: &models.WebConfig{URL: server.URL}}, noOpLogger)
 	require.NoError(t, err)
 
 	assert.Equal(t, server.URL, b.URL().String())
@@ -100,7 +99,7 @@ func TestTSDBConfigSuccessWithTwoRetentions(t *testing.T) {
 	server := testTSDBServer("30d or 10GiB", false, false)
 	defer server.Close()
 
-	b, err := NewTSDB(&ServerConfig{Web: &models.WebConfig{URL: server.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	b, err := NewTSDB(&ServerConfig{Web: &models.WebConfig{URL: server.URL}}, noOpLogger)
 	require.NoError(t, err)
 
 	assert.Equal(t, server.URL, b.URL().String())
@@ -113,7 +112,7 @@ func TestTSDBConfigSuccessWithRetentionSize(t *testing.T) {
 	server := testTSDBServer("10GiB", false, false)
 	defer server.Close()
 
-	b, err := NewTSDB(&ServerConfig{Web: &models.WebConfig{URL: server.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	b, err := NewTSDB(&ServerConfig{Web: &models.WebConfig{URL: server.URL}}, noOpLogger)
 	require.NoError(t, err)
 
 	assert.Equal(t, server.URL, b.URL().String())
@@ -126,7 +125,7 @@ func TestTSDBConfigFail(t *testing.T) {
 	server := testTSDBServer("10GiB", true, false)
 	defer server.Close()
 
-	b, err := NewTSDB(&ServerConfig{Web: &models.WebConfig{URL: server.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	b, err := NewTSDB(&ServerConfig{Web: &models.WebConfig{URL: server.URL}}, noOpLogger)
 	require.NoError(t, err)
 
 	assert.Equal(t, server.URL, b.URL().String())
@@ -150,7 +149,7 @@ func TestTSDBBackendWithBasicAuth(t *testing.T) {
 			},
 		},
 	}
-	b, err := NewTSDB(c, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	b, err := NewTSDB(c, noOpLogger)
 	require.NoError(t, err)
 
 	assert.Equal(t, 354*time.Hour, b.RetentionPeriod())
@@ -164,7 +163,7 @@ func TestTSDBQueryWithLabelFilter(t *testing.T) {
 
 	b, err := NewTSDB(
 		&ServerConfig{Web: &models.WebConfig{URL: server.URL}, FilterLabels: []string{"instance"}},
-		slog.New(slog.NewTextHandler(io.Discard, nil)),
+		noOpLogger,
 	)
 	require.NoError(t, err)
 
@@ -187,7 +186,7 @@ func TestTSDBQueryWithLabelFilter(t *testing.T) {
 
 func TestTSDBBackendAlive(t *testing.T) {
 	c := &ServerConfig{Web: &models.WebConfig{URL: "http://localhost:9090"}}
-	b, err := NewTSDB(c, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	b, err := NewTSDB(c, noOpLogger)
 	require.NoError(t, err)
 
 	b.SetAlive(b.IsAlive())

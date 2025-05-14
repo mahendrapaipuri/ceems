@@ -8,7 +8,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -27,6 +26,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+var noOpLogger = slog.New(slog.DiscardHandler)
 
 func setupClusterIDsDB(d string) error {
 	dbPath := filepath.Join(d, "ceems.db")
@@ -114,18 +115,18 @@ func TestNewFrontend(t *testing.T) {
 	dummyServer1 := dummyTSDBServer(clusterID)
 	defer dummyServer1.Close()
 
-	backend1, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer1.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	backend1, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer1.URL}}, noOpLogger)
 	require.NoError(t, err)
 
 	// Start manager
-	manager, err := serverpool.New("resource-based", slog.New(slog.NewTextHandler(io.Discard, nil)))
+	manager, err := serverpool.New("resource-based", noOpLogger)
 	require.NoError(t, err)
 
 	manager.Add(clusterID, backend1)
 
 	// make minimal config
 	config := &Config{
-		Logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Logger:  noOpLogger,
 		Manager: manager,
 		Address: "localhost:9030", // dummy address
 		APIServer: cli.CEEMSAPIServerConfig{
@@ -139,12 +140,12 @@ func TestNewFrontend(t *testing.T) {
 
 	var errStart error
 	go func() {
-		errStart = lb.Start(context.Background())
+		errStart = lb.Start(t.Context())
 	}()
 	require.NoError(t, errStart)
 
 	// Shutdown server
-	err = lb.Shutdown(context.Background())
+	err = lb.Shutdown(t.Context())
 	require.NoError(t, err)
 }
 
@@ -155,18 +156,18 @@ func TestNewFrontendSingleGroup(t *testing.T) {
 	dummyServer1 := dummyTSDBServer(clusterID)
 	defer dummyServer1.Close()
 
-	backend1, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer1.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	backend1, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer1.URL}}, noOpLogger)
 	require.NoError(t, err)
 
 	// Start manager
-	manager, err := serverpool.New("resource-based", slog.New(slog.NewTextHandler(io.Discard, nil)))
+	manager, err := serverpool.New("resource-based", noOpLogger)
 	require.NoError(t, err)
 
 	manager.Add(clusterID, backend1)
 
 	// make minimal config
 	config := &Config{
-		Logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Logger:  noOpLogger,
 		Manager: manager,
 		Address: "localhost:9030", // dummy address
 	}
@@ -249,18 +250,18 @@ func TestNewFrontendTwoGroups(t *testing.T) {
 	dummyServer1 := dummyTSDBServer("rm-0")
 	defer dummyServer1.Close()
 
-	backend1, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer1.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	backend1, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer1.URL}}, noOpLogger)
 	require.NoError(t, err)
 
 	// Backends for group 2
 	dummyServer2 := dummyTSDBServer("rm-1")
 	defer dummyServer2.Close()
 
-	backend2, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer2.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	backend2, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer2.URL}}, noOpLogger)
 	require.NoError(t, err)
 
 	// Start manager
-	manager, err := serverpool.New("resource-based", slog.New(slog.NewTextHandler(io.Discard, nil)))
+	manager, err := serverpool.New("resource-based", noOpLogger)
 	require.NoError(t, err)
 
 	manager.Add("rm-0", backend1)
@@ -268,7 +269,7 @@ func TestNewFrontendTwoGroups(t *testing.T) {
 
 	// make minimal config
 	config := &Config{
-		Logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Logger:  noOpLogger,
 		Manager: manager,
 		Address: "localhost:9030", // dummy address
 	}
@@ -366,11 +367,11 @@ func TestValidateClusterIDsWithDBPass(t *testing.T) {
 	dummyServer := dummyTSDBServer("slurm-0")
 	defer dummyServer.Close()
 
-	backend, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	backend, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer.URL}}, noOpLogger)
 	require.NoError(t, err)
 
 	// Start manager
-	manager, err := serverpool.New("resource-based", slog.New(slog.NewTextHandler(io.Discard, nil)))
+	manager, err := serverpool.New("resource-based", noOpLogger)
 	require.NoError(t, err)
 
 	manager.Add("slurm-0", backend)
@@ -378,7 +379,7 @@ func TestValidateClusterIDsWithDBPass(t *testing.T) {
 
 	// make minimal config
 	config := &Config{
-		Logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Logger:  noOpLogger,
 		Manager: manager,
 		Address: "localhost:9030", // dummy address
 	}
@@ -398,11 +399,11 @@ func TestValidateClusterIDsWithDBFail(t *testing.T) {
 	dummyServer := dummyTSDBServer("slurm-0")
 	defer dummyServer.Close()
 
-	backend, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	backend, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer.URL}}, noOpLogger)
 	require.NoError(t, err)
 
 	// Start manager
-	manager, err := serverpool.New("resource-based", slog.New(slog.NewTextHandler(io.Discard, nil)))
+	manager, err := serverpool.New("resource-based", noOpLogger)
 	require.NoError(t, err)
 
 	manager.Add("unknown", backend)
@@ -410,7 +411,7 @@ func TestValidateClusterIDsWithDBFail(t *testing.T) {
 
 	// make minimal config
 	config := &Config{
-		Logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Logger:  noOpLogger,
 		Manager: manager,
 		Address: "localhost:9030", // dummy address
 	}
@@ -446,11 +447,11 @@ func TestValidateClusterIDsWithAPIPass(t *testing.T) {
 	dummyServer := dummyTSDBServer("slurm-0")
 	defer dummyServer.Close()
 
-	backend, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	backend, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer.URL}}, noOpLogger)
 	require.NoError(t, err)
 
 	// Start manager
-	manager, err := serverpool.New("resource-based", slog.New(slog.NewTextHandler(io.Discard, nil)))
+	manager, err := serverpool.New("resource-based", noOpLogger)
 	require.NoError(t, err)
 
 	manager.Add("slurm-0", backend)
@@ -458,7 +459,7 @@ func TestValidateClusterIDsWithAPIPass(t *testing.T) {
 
 	// make minimal config
 	config := &Config{
-		Logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Logger:  noOpLogger,
 		Manager: manager,
 		Address: "localhost:9030", // dummy address
 	}
@@ -486,11 +487,11 @@ func TestValidateClusterIDsWithAPIFail(t *testing.T) {
 	dummyServer := dummyTSDBServer("slurm-0")
 	defer dummyServer.Close()
 
-	backend, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	backend, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer.URL}}, noOpLogger)
 	require.NoError(t, err)
 
 	// Start manager
-	manager, err := serverpool.New("resource-based", slog.New(slog.NewTextHandler(io.Discard, nil)))
+	manager, err := serverpool.New("resource-based", noOpLogger)
 	require.NoError(t, err)
 
 	manager.Add("slurm-0", backend)
@@ -498,7 +499,7 @@ func TestValidateClusterIDsWithAPIFail(t *testing.T) {
 
 	// make minimal config
 	config := &Config{
-		Logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Logger:  noOpLogger,
 		Manager: manager,
 		Address: "localhost:9030", // dummy address
 	}

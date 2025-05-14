@@ -1,7 +1,6 @@
 package serverpool
 
 import (
-	"io"
 	"log/slog"
 	"net/http"
 	"testing"
@@ -19,13 +18,12 @@ func SleepHandler(w http.ResponseWriter, r *http.Request) {
 
 var h = http.HandlerFunc(SleepHandler)
 
-// req = httptest.NewRequest(http.MethodGet, "/test", nil)
-// w   = httptest.NewRecorder()
+var noOpLogger = slog.New(slog.DiscardHandler)
 
 func TestNew(t *testing.T) {
 	for _, strategy := range []string{"round-robin", "least-connection", "resource-based"} {
-		m, _ := New(strategy, slog.New(slog.NewTextHandler(io.Discard, nil)))
-		b, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: "http://localhost:3333"}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+		m, _ := New(strategy, noOpLogger)
+		b, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: "http://localhost:3333"}}, noOpLogger)
 		require.NoError(t, err)
 
 		m.Add("default", b)
@@ -35,6 +33,6 @@ func TestNew(t *testing.T) {
 }
 
 func TestNewUnknownStrategy(t *testing.T) {
-	_, err := New("unknown", slog.New(slog.NewTextHandler(io.Discard, nil)))
+	_, err := New("unknown", noOpLogger)
 	assert.Error(t, err)
 }

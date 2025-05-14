@@ -1,11 +1,8 @@
 package http
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
-	"io"
-	"log/slog"
 	"path/filepath"
 	"testing"
 
@@ -188,13 +185,13 @@ func TestVerifyOwnership(t *testing.T) {
 
 	for _, test := range tests {
 		result := VerifyOwnership(
-			context.Background(),
+			t.Context(),
 			test.user,
 			[]string{test.rmID},
 			test.uuids,
 			test.starts,
 			db,
-			slog.New(slog.NewTextHandler(io.Discard, nil)),
+			noOpLogger,
 		)
 		assert.Equal(t, test.verify, result, test.name)
 	}
@@ -207,7 +204,7 @@ func TestAdminUsers(t *testing.T) {
 	// Expected users
 	expectedUsers := []string{"adm1", "adm2", "adm3", "adm4", "adm5", "adm6"}
 
-	users, err := AdminUserNames(context.Background(), db)
+	users, err := AdminUserNames(t.Context(), db)
 	require.NoError(t, err)
 
 	assert.Equal(t, expectedUsers, users)

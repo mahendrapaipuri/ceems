@@ -4,7 +4,6 @@
 package collector
 
 import (
-	"context"
 	"testing"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -36,6 +35,6 @@ func TestEmissionsCollector(t *testing.T) {
 	err = collector.Update(metrics)
 	require.NoError(t, err)
 
-	err = collector.Stop(context.Background())
+	err = collector.Stop(t.Context())
 	require.NoError(t, err)
 }

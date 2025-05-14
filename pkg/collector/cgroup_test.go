@@ -4,7 +4,6 @@
 package collector
 
 import (
-	"context"
 	"testing"
 
 	"github.com/containerd/cgroups/v3"
@@ -176,7 +175,7 @@ func TestNewCgroupCollector(t *testing.T) {
 	err = collector.Update(metrics, cgroups)
 	require.NoError(t, err)
 
-	err = collector.Stop(context.Background())
+	err = collector.Stop(t.Context())
 	require.NoError(t, err)
 }
 

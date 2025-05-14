@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -564,7 +563,7 @@ func prepareMockConfig(tmpDir string) (*Config, error) {
 	sacctFile.Close()
 
 	return &Config{
-		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Logger: slog.New(slog.DiscardHandler),
 		Data: DataConfig{
 			Path:              dataDir,
 			BackupPath:        dataBackupDir,
@@ -581,9 +580,7 @@ func prepareMockConfig(tmpDir string) (*Config, error) {
 	}, nil
 }
 
-func populateDBWithMockData(s *stats) error {
-	ctx := context.Background()
-
+func populateDBWithMockData(ctx context.Context, s *stats) error {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err
@@ -640,7 +637,7 @@ func TestUnitStatsDBEntries(t *testing.T) {
 	c, err := prepareMockConfig(tmpDir)
 	require.NoError(t, err, "failed to create mock config")
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Make new stats DB
 	s, err := New(c)
@@ -755,7 +752,7 @@ func TestCollectContextCancellation(t *testing.T) {
 	require.NoError(t, err, "failed to create mock config")
 
 	// Start a context with timeout less than 10 milliseconds
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Millisecond)
 	defer cancel()
 
 	// Make new stats DB
@@ -773,7 +770,7 @@ func TestUnitStatsDBEntriesHistorical(t *testing.T) {
 	require.NoError(t, err, "failed to create mock config")
 
 	c.Data.LastUpdate.Time = time.Now().Add(-2 * time.Hour)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Make new stats DB
 	s, err := New(c)
@@ -850,7 +847,7 @@ func TestUnitStatsDBLock(t *testing.T) {
 	require.NoError(t, err)
 
 	// Try to insert data. It should fail
-	err = s.Collect(context.Background())
+	err = s.Collect(t.Context())
 	require.Error(t, err, "expected error due to DB lock")
 	s.db.Exec("COMMIT")
 }
@@ -866,15 +863,15 @@ func TestUnitStatsDBVacuum(t *testing.T) {
 	require.NoError(t, err, "Failed to create new stats")
 
 	// Populate DB with data
-	err = populateDBWithMockData(s)
+	err = populateDBWithMockData(t.Context(), s)
 	require.NoError(t, err, "failed to insert data in test DB")
 
 	// Run vacuum
-	err = s.vacuum(context.Background())
+	err = s.vacuum(t.Context())
 	require.NoError(t, err, "failed to vacuum DB")
 
 	// Run vacuum with timeout. Hoping that vacuum takes more than nanosecond
-	ctx, cancel := context.WithTimeout(context.Background(), time.Nanosecond)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Nanosecond)
 	defer cancel()
 
 	err = s.vacuum(ctx)
@@ -892,7 +889,7 @@ func TestUnitStatsDBBackup(t *testing.T) {
 	require.NoError(t, err, "Failed to create new stats")
 
 	// Populate DB with data
-	err = populateDBWithMockData(s)
+	err = populateDBWithMockData(t.Context(), s)
 	require.NoError(t, err, "failed to insert data in test DB")
 
 	// // For debugging
@@ -905,7 +902,7 @@ func TestUnitStatsDBBackup(t *testing.T) {
 
 	// Run backup
 	expectedBackupFile := filepath.Join(c.Data.BackupPath, "backup.db")
-	err = s.backup(context.Background(), expectedBackupFile)
+	err = s.backup(t.Context(), expectedBackupFile)
 	require.NoError(t, err, "failed to backup DB")
 
 	_, err = os.Stat(expectedBackupFile)
@@ -957,21 +954,21 @@ func TestAdminUsersDBUpdate(t *testing.T) {
 	require.NoError(t, err, "failed to create new stats")
 
 	// Make backup dir non existent
-	s.admin.grafana, err = grafana.New(server.URL, config_util.HTTPClientConfig{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	s.admin.grafana, err = grafana.New(server.URL, config_util.HTTPClientConfig{}, slog.New(slog.DiscardHandler))
 	require.NoError(t, err)
 
 	// Setup a mock teamIDs
 	s.admin.grafanaAdminTeamsIDs = []string{"1"}
 
 	// update admin users
-	err = s.updateAdminUsers(context.Background())
+	err = s.updateAdminUsers(t.Context())
 	require.NoError(t, err, "failed to update admin users")
 
 	// Check admin users from grafana
 	assert.ElementsMatch(t, s.admin.users["grafana"], []string{"foo", "bar"})
 
 	// do second update of admin users and users should not be duplicated
-	err = s.updateAdminUsers(context.Background())
+	err = s.updateAdminUsers(t.Context())
 	require.NoError(t, err, "failed to update admin users")
 
 	// Check admin users from grafana
@@ -992,11 +989,11 @@ func TestStatsDBBackup(t *testing.T) {
 	s.storage.dbBackupPath = tmpDir
 
 	// Populate DB with data
-	err = populateDBWithMockData(s)
+	err = populateDBWithMockData(t.Context(), s)
 	require.NoError(t, err, "failed to insert data in test DB")
 
 	// Run backup
-	err = s.createBackup(context.Background())
+	err = s.createBackup(t.Context())
 	require.NoError(t, err, "failed to backup DB")
 }
 
@@ -1025,7 +1022,7 @@ func TestUnitStatsDeleteOldUnits(t *testing.T) {
 			},
 		},
 	}
-	ctx := context.Background()
+	ctx := t.Context()
 	tx, err := s.db.Begin()
 	require.NoError(t, err)
 	// stmtMap, err := s.prepareStatements(ctx, tx)

@@ -8,8 +8,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -124,7 +122,7 @@ func setupMiddlewareWithDB(tmpDir string) (http.Handler, error) {
 
 	// Create an instance of middleware
 	amw := authenticationMiddleware{
-		logger:        slog.New(slog.NewTextHandler(io.Discard, nil)),
+		logger:        noOpLogger,
 		clusterIDs:    []string{"rm-0", "rm-1"},
 		ceems:         &ceems{db: db},
 		parseRequest:  parseTSDBRequest,
@@ -151,7 +149,7 @@ func setupMiddlewareWithAPI(tmpDir string) (http.Handler, error) {
 
 	// Create an instance of middleware
 	amw := authenticationMiddleware{
-		logger:        slog.New(slog.NewTextHandler(io.Discard, nil)),
+		logger:        noOpLogger,
 		clusterIDs:    []string{"rm-0", "rm-1"},
 		ceems:         &ceems{webURL: ceemsURL, client: http.DefaultClient},
 		parseRequest:  parseTSDBRequest,
@@ -199,7 +197,7 @@ func setupCEEMSAPI(db *sql.DB) *httptest.Server {
 				uuids,
 				starts,
 				db,
-				slog.New(slog.NewTextHandler(io.Discard, nil)),
+				noOpLogger,
 			) {
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte("success"))

@@ -1,9 +1,7 @@
 package slurm
 
 import (
-	"context"
 	"fmt"
-	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -16,6 +14,7 @@ import (
 )
 
 var (
+	noOpLogger     = slog.New(slog.DiscardHandler)
 	start, _       = time.Parse(base.DatetimezoneLayout, "2023-02-21T15:00:00+0100")
 	end, _         = time.Parse(base.DatetimezoneLayout, "2023-02-21T15:15:00+0100")
 	current, _     = time.Parse(base.DatetimezoneLayout, "2023-02-21T15:15:00+0100")
@@ -180,10 +179,10 @@ printf """%s"""`, sacctMgrCmdOutput)
 	start, _ = time.Parse(base.DatetimezoneLayout, "2023-02-21T15:00:00+0100")
 	end, _ = time.Parse(base.DatetimezoneLayout, "2023-02-21T15:15:00+0100")
 	current, _ = time.Parse(base.DatetimezoneLayout, "2023-02-21T15:15:00+0100")
-	ctx := context.Background()
+	ctx := t.Context()
 
 	for _, cluster := range clusters {
-		slurm, err := New(cluster, slog.New(slog.NewTextHandler(io.Discard, nil)))
+		slurm, err := New(cluster, noOpLogger)
 		require.NoError(t, err)
 
 		_, err = slurm.FetchUnits(ctx, start, end)

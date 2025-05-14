@@ -4,7 +4,6 @@
 package db
 
 import (
-	"io"
 	"log/slog"
 	"path/filepath"
 	"testing"
@@ -18,7 +17,7 @@ func TestJobStatsDBPreparation(t *testing.T) {
 	tmpDir := t.TempDir()
 	statDBPath := filepath.Join(tmpDir, "stats.db")
 	j := stats{
-		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		logger: slog.New(slog.DiscardHandler),
 	}
 
 	// Test setupDB function

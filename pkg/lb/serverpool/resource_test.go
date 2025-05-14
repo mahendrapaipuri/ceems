@@ -2,8 +2,6 @@ package serverpool
 
 import (
 	"encoding/json"
-	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -68,7 +66,7 @@ func dummyServer(retention string) *httptest.Server {
 
 func TestResourceBasedLB(t *testing.T) {
 	// Create a manager
-	manager, err := New("resource-based", slog.New(slog.NewTextHandler(io.Discard, nil)))
+	manager, err := New("resource-based", noOpLogger)
 	require.NoError(t, err)
 
 	// Retention periods
@@ -91,7 +89,7 @@ func TestResourceBasedLB(t *testing.T) {
 
 			backendURLs[id][i] = backendURL
 
-			backend, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: backendURL.String()}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+			backend, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: backendURL.String()}}, noOpLogger)
 			require.NoError(t, err)
 
 			manager.Add(id, backend)

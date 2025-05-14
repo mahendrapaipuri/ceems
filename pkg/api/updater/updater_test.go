@@ -3,7 +3,6 @@ package updater
 import (
 	"context"
 	"fmt"
-	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -212,13 +211,13 @@ func TestOneInstanceConfig(t *testing.T) {
 func TestNewUpdater(t *testing.T) {
 	// Make mock config
 	base.ConfigFilePath = mockConfig(t.TempDir(), "mock_instance", "http://localhost:9090")
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Register mock updater
 	Register("mock", NewMockUpdater)
 
 	// Create new updater
-	updater, err := New(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	updater, err := New(slog.New(slog.DiscardHandler))
 	require.NoError(t, err)
 
 	// Fetch units

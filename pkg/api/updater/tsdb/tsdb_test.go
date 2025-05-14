@@ -1,10 +1,8 @@
 package tsdb
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -18,6 +16,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
+
+var noOpLogger = slog.New(slog.DiscardHandler)
 
 func mockTSDBServer() *httptest.Server {
 	// Start test server
@@ -295,10 +295,10 @@ func TestTSDBUpdateSuccessSingleInstance(t *testing.T) {
 		},
 	}
 
-	tsdb, err := New(instance, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	tsdb, err := New(instance, noOpLogger)
 	require.NoError(t, err)
 
-	updatedUnits := tsdb.Update(context.Background(), time.Now().Add(-5*time.Minute), time.Now(), units)
+	updatedUnits := tsdb.Update(t.Context(), time.Now().Add(-5*time.Minute), time.Now(), units)
 	for i := range expectedUnits {
 		assert.Equal(t, expectedUnits[i], updatedUnits[0].Units[i], "Unit: %d", i)
 	}
@@ -403,10 +403,10 @@ func TestTSDBUpdateFailMaxDuration(t *testing.T) {
 		},
 	}
 
-	tsdb, err := New(instance, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	tsdb, err := New(instance, noOpLogger)
 	require.NoError(t, err)
 
-	updatedUnits := tsdb.Update(context.Background(), time.Now().Add(-1*time.Minute), time.Now(), units)
+	updatedUnits := tsdb.Update(t.Context(), time.Now().Add(-1*time.Minute), time.Now(), units)
 	assert.Equal(t, expectedUnits, updatedUnits[0].Units)
 }
 
@@ -428,14 +428,14 @@ func TestTSDBUpdateFailNoUnits(t *testing.T) {
 		},
 	}
 
-	tsdb, err := New(instance, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	tsdb, err := New(instance, noOpLogger)
 	require.NoError(t, err)
 
 	if err != nil {
 		t.Errorf("Failed to create TSDB updater instance")
 	}
 
-	updatedUnits := tsdb.Update(context.Background(), time.Now().Add(-5*time.Minute), time.Now(), units)
+	updatedUnits := tsdb.Update(t.Context(), time.Now().Add(-5*time.Minute), time.Now(), units)
 	assert.Empty(t, updatedUnits[0].Units)
 }
 
@@ -481,12 +481,12 @@ func TestTSDBUpdateFailNoTSDB(t *testing.T) {
 
 	expectedUnits := units
 
-	tsdb, err := New(instance, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	tsdb, err := New(instance, noOpLogger)
 	require.NoError(t, err)
 
 	// Stop TSDB server
 	server.Close()
 
-	updatedUnits := tsdb.Update(context.Background(), time.Now().Add(-5*time.Minute), time.Now(), units)
+	updatedUnits := tsdb.Update(t.Context(), time.Now().Add(-5*time.Minute), time.Now(), units)
 	assert.Equal(t, expectedUnits, updatedUnits)
 }

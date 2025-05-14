@@ -2,8 +2,6 @@ package serverpool
 
 import (
 	"fmt"
-	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -23,7 +21,7 @@ func TestUnAvailableBackends(t *testing.T) {
 	d := 0 * time.Second
 
 	// Start manager
-	manager, err := New("least-connection", slog.New(slog.NewTextHandler(io.Discard, nil)))
+	manager, err := New("least-connection", noOpLogger)
 	require.NoError(t, err)
 
 	// Make dummy backend servers
@@ -42,7 +40,7 @@ func TestUnAvailableBackends(t *testing.T) {
 
 			backendURLs[id][i] = backendURL
 
-			backend, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: backendURL.String()}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+			backend, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: backendURL.String()}}, noOpLogger)
 			require.NoError(t, err)
 
 			backends[id][i] = backend
@@ -79,7 +77,7 @@ func TestLeastConnectionLB(t *testing.T) {
 	d := 0 * time.Second
 
 	// Start manager
-	manager, err := New("least-connection", slog.New(slog.NewTextHandler(io.Discard, nil)))
+	manager, err := New("least-connection", noOpLogger)
 	require.NoError(t, err)
 
 	backendURLs := make(map[string][]*url.URL, 2)
@@ -99,7 +97,7 @@ func TestLeastConnectionLB(t *testing.T) {
 
 			backendURLs[id][i] = backendURL
 
-			backend, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: backendURL.String()}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+			backend, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: backendURL.String()}}, noOpLogger)
 			require.NoError(t, err)
 
 			backends[id][i] = backend

@@ -6,8 +6,6 @@ package http
 import (
 	"context"
 	"database/sql"
-	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -22,7 +20,7 @@ func mockAdminUsers(_ context.Context, _ *sql.DB) ([]string, error) {
 }
 
 func setupMiddleware() (http.Handler, error) {
-	amw, err := newAuthenticationMiddleware("/api/v1", []string{base.GrafanaUserHeader}, nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	amw, err := newAuthenticationMiddleware("/api/v1", []string{base.GrafanaUserHeader}, nil, noOpLogger)
 	if err != nil {
 		return nil, err
 	}
@@ -39,15 +37,15 @@ func setupMiddleware() (http.Handler, error) {
 
 func TestNewMiddleware(t *testing.T) {
 	// Valid route prefix
-	_, err := newAuthenticationMiddleware("/api/v1", []string{base.GrafanaUserHeader}, nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	_, err := newAuthenticationMiddleware("/api/v1", []string{base.GrafanaUserHeader}, nil, noOpLogger)
 	require.NoError(t, err)
 
 	// Invald route prefix
-	_, err = newAuthenticationMiddleware("/(?!\\/)", []string{base.GrafanaUserHeader}, nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	_, err = newAuthenticationMiddleware("/(?!\\/)", []string{base.GrafanaUserHeader}, nil, noOpLogger)
 	require.Error(t, err)
 
 	// No user headers
-	_, err = newAuthenticationMiddleware("/api/v1", nil, nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	_, err = newAuthenticationMiddleware("/api/v1", nil, nil, noOpLogger)
 	require.Error(t, err)
 }
 

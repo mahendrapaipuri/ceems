@@ -3,7 +3,6 @@ package tsdb
 import (
 	"context"
 	"encoding/json"
-	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -24,6 +23,8 @@ var (
 	expectedQueryLookback      model.Duration
 	expectedQueryRangeLookback model.Duration
 )
+
+var noOpLogger = slog.New(slog.DiscardHandler)
 
 func testTSDBServer(emptyResponse bool) *httptest.Server {
 	// Start test server
@@ -186,7 +187,7 @@ func testTSDBServer(emptyResponse bool) *httptest.Server {
 }
 
 func TestNewWithNoURL(t *testing.T) {
-	tsdb, err := New("", config_util.HTTPClientConfig{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	tsdb, err := New("", config_util.HTTPClientConfig{}, noOpLogger)
 	require.NoError(t, err)
 	assert.False(t, tsdb.Available())
 }
@@ -200,7 +201,7 @@ func TestNewWithURL(t *testing.T) {
 	}))
 	defer server.Close()
 
-	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, noOpLogger)
 	require.NoError(t, err)
 	assert.True(t, tsdb.Available())
 
@@ -213,10 +214,10 @@ func TestTSDBConfigSuccess(t *testing.T) {
 	server := testTSDBServer(false)
 	defer server.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
-	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, noOpLogger)
 	require.NoError(t, err)
 
 	// Check if Ping is working
@@ -264,11 +265,11 @@ func TestTSDBConfigFail(t *testing.T) {
 	server := testTSDBServer(true)
 	defer server.Close()
 
-	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, noOpLogger)
 	require.NoError(t, err)
 	assert.True(t, tsdb.Available())
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
 	// Check if config is working
@@ -294,11 +295,11 @@ func TestTSDBSeriesSuccess(t *testing.T) {
 	server := testTSDBServer(false)
 	defer server.Close()
 
-	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, noOpLogger)
 	require.NoError(t, err)
 	assert.True(t, tsdb.Available())
 
-	m, err := tsdb.Series(context.Background(), []string{"up", "process_start_time_seconds"}, time.Time{}, time.Time{})
+	m, err := tsdb.Series(t.Context(), []string{"up", "process_start_time_seconds"}, time.Time{}, time.Time{})
 	require.NoError(t, err)
 	assert.Equal(t, expectedSeries.Data, m)
 }
@@ -308,11 +309,11 @@ func TestTSDBSeriesFail(t *testing.T) {
 	server := testTSDBServer(true)
 	defer server.Close()
 
-	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, noOpLogger)
 	require.NoError(t, err)
 	assert.True(t, tsdb.Available())
 
-	_, err = tsdb.Series(context.Background(), []string{"up", "process_start_time_seconds"}, time.Time{}, time.Time{})
+	_, err = tsdb.Series(t.Context(), []string{"up", "process_start_time_seconds"}, time.Time{}, time.Time{})
 	assert.Error(t, err)
 }
 
@@ -321,11 +322,11 @@ func TestTSDBLabelsSuccess(t *testing.T) {
 	server := testTSDBServer(false)
 	defer server.Close()
 
-	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, noOpLogger)
 	require.NoError(t, err)
 	assert.True(t, tsdb.Available())
 
-	m, err := tsdb.Labels(context.Background(), []string{"up", "process_start_time_seconds"}, time.Time{}, time.Time{})
+	m, err := tsdb.Labels(t.Context(), []string{"up", "process_start_time_seconds"}, time.Time{}, time.Time{})
 	require.NoError(t, err)
 	assert.Equal(t, expectedLabels.Data, m)
 }
@@ -335,11 +336,11 @@ func TestTSDBLabelsFail(t *testing.T) {
 	server := testTSDBServer(true)
 	defer server.Close()
 
-	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, noOpLogger)
 	require.NoError(t, err)
 	assert.True(t, tsdb.Available())
 
-	_, err = tsdb.Labels(context.Background(), []string{"up", "process_start_time_seconds"}, time.Time{}, time.Time{})
+	_, err = tsdb.Labels(t.Context(), []string{"up", "process_start_time_seconds"}, time.Time{}, time.Time{})
 	assert.Error(t, err)
 }
 
@@ -348,11 +349,11 @@ func TestTSDBQuerySuccess(t *testing.T) {
 	server := testTSDBServer(false)
 	defer server.Close()
 
-	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, noOpLogger)
 	require.NoError(t, err)
 	assert.True(t, tsdb.Available())
 
-	m, err := tsdb.Query(context.Background(), "foo", time.Now())
+	m, err := tsdb.Query(t.Context(), "foo", time.Now())
 	require.NoError(t, err)
 	assert.Equal(t, Metric{"1": 1.1, "2": 2.2}, m)
 	assert.Equal(t, 15*time.Second, time.Duration(expectedQueryLookback))
@@ -363,11 +364,11 @@ func TestTSDBQueryFail(t *testing.T) {
 	server := testTSDBServer(true)
 	defer server.Close()
 
-	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, noOpLogger)
 	require.NoError(t, err)
 	assert.True(t, tsdb.Available())
 
-	_, err = tsdb.Query(context.Background(), "", time.Now())
+	_, err = tsdb.Query(t.Context(), "", time.Now())
 	assert.Error(t, err)
 }
 
@@ -376,11 +377,11 @@ func TestTSDBQueryRangeSuccess(t *testing.T) {
 	server := testTSDBServer(false)
 	defer server.Close()
 
-	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, noOpLogger)
 	require.NoError(t, err)
 	assert.True(t, tsdb.Available())
 
-	m, err := tsdb.RangeQuery(context.Background(), "", time.Now(), time.Now(), time.Minute)
+	m, err := tsdb.RangeQuery(t.Context(), "", time.Now(), time.Now(), time.Minute)
 	require.NoError(t, err)
 
 	expected := model.Matrix{
@@ -405,11 +406,11 @@ func TestTSDBQueryRangeFail(t *testing.T) {
 	server := testTSDBServer(true)
 	defer server.Close()
 
-	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, noOpLogger)
 	require.NoError(t, err)
 	assert.True(t, tsdb.Available())
 
-	_, err = tsdb.RangeQuery(context.Background(), "", time.Now(), time.Now(), time.Minute)
+	_, err = tsdb.RangeQuery(t.Context(), "", time.Now(), time.Now(), time.Minute)
 	assert.Error(t, err)
 }
 
@@ -434,11 +435,11 @@ func TestTSDBDeleteSuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, noOpLogger)
 	require.NoError(t, err)
 	assert.True(t, tsdb.Available())
 
-	err = tsdb.Delete(context.Background(), time.Now(), time.Now(), expected)
+	err = tsdb.Delete(t.Context(), time.Now(), time.Now(), expected)
 	require.NoError(t, err)
 	assert.ElementsMatch(t, expected, got)
 }
@@ -460,10 +461,10 @@ func TestTSDBDeleteFail(t *testing.T) {
 	}))
 	defer server.Close()
 
-	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	tsdb, err := New(server.URL, config_util.HTTPClientConfig{}, noOpLogger)
 	require.NoError(t, err)
 	assert.True(t, tsdb.Available())
 
-	err = tsdb.Delete(context.Background(), time.Now(), time.Now(), expected)
+	err = tsdb.Delete(t.Context(), time.Now(), time.Now(), expected)
 	require.Error(t, err)
 }

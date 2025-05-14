@@ -2,8 +2,6 @@ package serverpool
 
 import (
 	"fmt"
-	"io"
-	"log/slog"
 	"net/url"
 	"sync"
 	"testing"
@@ -19,7 +17,7 @@ var rrIDs = []string{"rr0", "rr1"}
 
 func TestRoundRobinIteration(t *testing.T) {
 	d := 0 * time.Second
-	manager, err := New("round-robin", slog.New(slog.NewTextHandler(io.Discard, nil)))
+	manager, err := New("round-robin", noOpLogger)
 	require.NoError(t, err)
 
 	// Make dummy backend servers
@@ -38,7 +36,7 @@ func TestRoundRobinIteration(t *testing.T) {
 
 			backendURLs[id][i] = backendURL
 
-			backend, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: backendURL.String()}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+			backend, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: backendURL.String()}}, noOpLogger)
 			require.NoError(t, err)
 
 			backends[id][i] = backend

@@ -6,7 +6,6 @@ import (
 	"embed"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -200,7 +199,7 @@ func CreatePromRecordingRules(
 		// static OWID data
 		providers, err = efProviders(ctx, api, stime, etime, countryCode, disableProviders)
 		if err != nil {
-			if owid, err := emissions.NewOWIDProvider(slog.New(slog.NewTextHandler(io.Discard, nil))); err == nil {
+			if owid, err := emissions.NewOWIDProvider(slog.New(slog.DiscardHandler)); err == nil {
 				if owidData, err := owid.Update(); err == nil {
 					emissionFactor = EmissionFactor{Provider: "owid", Value: owidData[countryCode].Factor}
 

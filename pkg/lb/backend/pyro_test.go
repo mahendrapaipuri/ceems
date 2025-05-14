@@ -1,8 +1,6 @@
 package backend
 
 import (
-	"io"
-	"log/slog"
 	"testing"
 
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
@@ -23,7 +21,7 @@ func TestPyroBackendWithBasicAuth(t *testing.T) {
 			},
 		},
 	}
-	b, err := NewPyroscope(c, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	b, err := NewPyroscope(c, noOpLogger)
 	require.NoError(t, err)
 
 	assert.True(t, b.IsAlive())
@@ -34,7 +32,7 @@ func TestPyroBackendWithBasicAuth(t *testing.T) {
 
 func TestPyroBackendAlive(t *testing.T) {
 	c := &ServerConfig{Web: &models.WebConfig{URL: "http://localhost:4040"}}
-	b, err := NewPyroscope(c, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	b, err := NewPyroscope(c, noOpLogger)
 	require.NoError(t, err)
 
 	b.SetAlive(b.IsAlive())
