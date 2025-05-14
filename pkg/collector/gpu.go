@@ -1209,27 +1209,25 @@ func parseRocmSmioutput(cmdOutput []byte) ([]Device, error) {
 	}
 
 	// Now add all the GPU instances to corresponding physical GPU
-	var xcpIndx int
+	// var xcpIndx int
 
 	for idev, dev := range gpuDevices {
 		if partitions, ok := gpuPartitions[dev.UUID]; ok {
-			for ipartition, partition := range partitions {
+			for _, partition := range partitions {
 				partition.SMFraction = float64(1.0) / float64(len(partitions))
 
-				// When GPU partitions are enabled, each partition ID will be
-				// setup in /sys/devices/platform with fake PCIe addresses. They
-				// will be of form `amdgpu_xcp_1`, `amdgpu_xcp_2`, etc. We are
-				// not sure if index starts with 0 or 1. Anyways we are doing an
-				// educated guess here and it will be eventually overwritten by
-				// "actual" IDs parsed from topology and sys devices later.
-				// Ref: https://github.com/ROCm/k8s-device-plugin/blob/af51ed1db60839d47c59027e896ac106f8b813a7/internal/pkg/amdgpu/amdgpu.go#L142-L262
-				if ipartition == 0 {
-					partition.UUID = dev.BusID.pathName
-				} else {
-					partition.UUID = fmt.Sprintf("amdgpu_xcp_%d", xcpIndx)
-				}
-
-				xcpIndx++
+				// // When GPU partitions are enabled, each partition ID will be
+				// // setup in /sys/devices/platform with fake PCIe addresses. They
+				// // will be of form `amdgpu_xcp.0`, `amdgpu_xcp.1`, etc. Anyways we are doing an
+				// // educated guess here and it will be eventually overwritten by
+				// // "actual" IDs parsed from topology and sys devices later.
+				// // Ref: https://github.com/ROCm/k8s-device-plugin/blob/af51ed1db60839d47c59027e896ac106f8b813a7/internal/pkg/amdgpu/amdgpu.go#L142-L262
+				// if ipartition == 0 {
+				// 	partition.UUID = dev.BusID.pathName
+				// } else {
+				// 	partition.UUID = fmt.Sprintf("amdgpu_xcp.%d", xcpIndx)
+				// 	xcpIndx++
+				// }
 
 				gpuDevices[idev].Instances = append(gpuDevices[idev].Instances, partition)
 			}
@@ -1359,27 +1357,27 @@ func parseAmdSmioutput(cmdOutput []byte) ([]Device, error) {
 	}
 
 	// Now add all the GPU instances to corresponding physical GPU
-	var xcpIndx int
+	// var xcpIndx int
 
 	for idev, dev := range gpuDevices {
 		if partitions, ok := gpuPartitions[dev.UUID]; ok {
-			for ipartition, partition := range partitions {
+			for _, partition := range partitions {
 				partition.SMFraction = float64(1.0) / float64(len(partitions))
 
-				// When GPU partitions are enabled, each partition ID will be
-				// setup in /sys/devices/platform with fake PCIe addresses. They
-				// will be of form `amdgpu_xcp_1`, `amdgpu_xcp_2`, etc. We are
-				// not sure if index starts with 0 or 1. Anyways we are doing an
-				// educated guess here and it will be eventually overwritten by
-				// "actual" IDs parsed from topology and sys devices later.
-				// Ref: https://github.com/ROCm/k8s-device-plugin/blob/af51ed1db60839d47c59027e896ac106f8b813a7/internal/pkg/amdgpu/amdgpu.go#L142-L262
-				if ipartition == 0 {
-					partition.UUID = dev.BusID.pathName
-				} else {
-					partition.UUID = fmt.Sprintf("amdgpu_xcp_%d", xcpIndx)
-				}
+				// // When GPU partitions are enabled, each partition ID will be
+				// // setup in /sys/devices/platform with fake PCIe addresses. They
+				// // will be of form `amdgpu_xcp_1`, `amdgpu_xcp_2`, etc. We are
+				// // not sure if index starts with 0 or 1. Anyways we are doing an
+				// // educated guess here and it will be eventually overwritten by
+				// // "actual" IDs parsed from topology and sys devices later.
+				// // Ref: https://github.com/ROCm/k8s-device-plugin/blob/af51ed1db60839d47c59027e896ac106f8b813a7/internal/pkg/amdgpu/amdgpu.go#L142-L262
+				// if ipartition == 0 {
+				// 	partition.UUID = dev.BusID.pathName
+				// } else {
+				// 	partition.UUID = fmt.Sprintf("amdgpu_xcp_%d", xcpIndx)
+				// }
 
-				xcpIndx++
+				// xcpIndx++
 
 				gpuDevices[idev].Instances = append(gpuDevices[idev].Instances, partition)
 			}
@@ -1408,8 +1406,8 @@ func parseAMDDevPropertiesFromPCIDevices() (map[string][]AMDNodeProperties, erro
 
 	// When GPU partitioning is enabled (such as MI300's partitions), we will have more
 	// devices
-	// For eg /sys/devices/platform/amdgpu_xcp_30
-	platformMatches, err := filepath.Glob(sysFilePath("devices/platform/amdgpu_xcp_*"))
+	// For eg /sys/devices/platform/amdgpu_xcp.30
+	platformMatches, err := filepath.Glob(sysFilePath("devices/platform/amdgpu_xcp*"))
 	if err != nil {
 		return nil, err
 	}

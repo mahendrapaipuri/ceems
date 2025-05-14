@@ -39,9 +39,9 @@
               {
                 "resource_name": "amd.com/gpu_cpx",
                 "device_ids": [
-                  "amdgpu_xcp_1",
-                  "amdgpu_xcp_2",
-                  "amdgpu_xcp_3"
+                  "amdgpu_xcp.7",
+                  "amdgpu_xcp.8",
+                  "amdgpu_xcp.9"
                 ]
               }
             ]
@@ -58,7 +58,7 @@
               {
                 "resource_name": "amd.com/gpu_cpx",
                 "device_ids": [
-                  "amdgpu_xcp_4"
+                  "amdgpu_xcp.10"
                 ]
               }
             ]
@@ -86,8 +86,8 @@
               {
                 "resource_name": "amd.com/gpu_cpx",
                 "device_ids": [
-                  "amdgpu_xcp_5",
-                  "amdgpu_xcp_6"
+                  "amdgpu_xcp.11",
+                  "amdgpu_xcp.12"
                 ]
               }
             ]
