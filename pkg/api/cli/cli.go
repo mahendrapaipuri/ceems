@@ -279,7 +279,7 @@ func (b *CEEMSServer) Main() error {
 	}
 
 	// Start a new manager
-	securityManager, err := security.NewManager(securityCfg)
+	securityManager, err := security.NewManager(securityCfg, logger)
 	if err != nil {
 		logger.Error("Failed to create a new security manager", "err", err)
 

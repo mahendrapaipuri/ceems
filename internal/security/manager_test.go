@@ -69,7 +69,7 @@ func TestNewManager(t *testing.T) {
 	c, err := testConfig(tmpDir)
 	require.NoError(t, err)
 
-	m, err := NewManager(c)
+	m, err := NewManager(c, noOpLogger)
 	require.NoError(t, err)
 
 	expectedEntries := []acl{
@@ -85,7 +85,7 @@ func TestNewManager(t *testing.T) {
 	// Test illegal runAsUser
 	c.RunAsUser = "illegal"
 
-	_, err = NewManager(c)
+	_, err = NewManager(c, noOpLogger)
 	require.Error(t, err)
 }
 
@@ -100,7 +100,7 @@ func TestACLs(t *testing.T) {
 	readFile := filepath.Join(tmpDir, "l1", "l2", "l3", "testRead")
 	writeFile := filepath.Join(tmpDir, "l1", "l2", "l3", "testWrite")
 
-	m, err := NewManager(c)
+	m, err := NewManager(c, noOpLogger)
 	require.NoError(t, err)
 
 	// Add ACL entries

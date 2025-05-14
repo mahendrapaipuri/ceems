@@ -52,9 +52,18 @@ redfish_web_config: {}
 
   # # Username that has enough privileges to query for chassis power data.
   # #
+  # # This can be provided using an environment variable REDFISH_WEB_USERNAME.
+  # # When the environment variable is set, it will override the value
+  # # provided by the config file.
+  # #
   # username: admin
 
   # # Password corresponding to the username provided above.
+  # #
+  # #
+  # # This can be provided using an environment variable REDFISH_WEB_PASSWORD.
+  # # When the environment variable is set, it will override the value
+  # # provided by the config file.
   # #
   # password: supersecret
 

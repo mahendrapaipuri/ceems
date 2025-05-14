@@ -5,7 +5,6 @@ package security
 import (
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"os"
 	"os/user"
@@ -40,6 +39,7 @@ type acl struct {
 
 // Manager implements security manager.
 type Manager struct {
+	logger           *slog.Logger
 	runAsUser        *user.User
 	caps             []cap.Value
 	acls             []acl
@@ -47,12 +47,13 @@ type Manager struct {
 }
 
 // NewManager returns a new instance of security manager.
-func NewManager(c *Config) (*Manager, error) {
+func NewManager(c *Config, logger *slog.Logger) (*Manager, error) {
 	var err, errs error
 
 	// Start a new instance of manager
 	manager := &Manager{
-		caps: c.Caps,
+		logger: logger,
+		caps:   c.Caps,
 	}
 
 	// Get current user
@@ -169,7 +170,7 @@ func NewManager(c *Config) (*Manager, error) {
 		}
 
 		// Create a new security context
-		securityCtx, err := NewSecurityContext(deleteACLCtx, []cap.Value{cap.FOWNER}, deleteACLEntries, slog.New(slog.NewTextHandler(io.Discard, nil)))
+		securityCtx, err := NewSecurityContext(deleteACLCtx, []cap.Value{cap.FOWNER}, deleteACLEntries, logger)
 		if err != nil {
 			return nil, fmt.Errorf("failed to setup security context: %w", err)
 		}
@@ -257,18 +258,20 @@ func (m *Manager) addACLEntries() error {
 
 		// Load the existing ACL entries of the PosixACLAccess type
 		if err := a.Load(acl.path, acls.PosixACLAccess); err != nil {
-			return err
+			return fmt.Errorf("failed to load acl entries: %w", err)
 		}
 
 		// Add entry to new ACL
 		if err := a.AddEntry(acl.entry); err != nil {
-			return err
+			return fmt.Errorf("failed to add acl entry %s err: %w", acl.entry, err)
 		}
 
 		// Apply entry to new ACL
 		if err := a.Apply(acl.path, acls.PosixACLAccess); err != nil {
-			return err
+			return fmt.Errorf("failed to apply acl entries %s to path %s err: %w", a, acl.path, err)
 		}
+
+		m.logger.Debug("ACL applied", "path", acl.path, "acl", acl.entry)
 	}
 
 	return nil
@@ -298,6 +301,8 @@ func (m *Manager) changeUser() error {
 	if err != nil {
 		return fmt.Errorf("could not setuid to %d: %w", localUserUID, err)
 	}
+
+	m.logger.Debug("Current user changed after dropping privileges", "username", m.runAsUser.Name)
 
 	// This may not be necessary, but is good hygiene
 	return os.Setenv("HOME", m.runAsUser.HomeDir)

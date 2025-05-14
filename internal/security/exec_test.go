@@ -12,6 +12,8 @@ import (
 	"kernel.org/pub/linux/libs/security/libcap/cap"
 )
 
+var noOpLogger = slog.New(slog.NewTextHandler(io.Discard, nil))
+
 type testData struct {
 	targetUser string
 	gotID      string
@@ -47,7 +49,7 @@ func TestNewSecurityLauncher(t *testing.T) {
 	}
 
 	// New security context
-	s, err := NewSecurityContext("test", values, testFunc, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	s, err := NewSecurityContext("test", values, testFunc, noOpLogger)
 	require.NoError(t, err)
 
 	d := &testData{targetUser: "nobody"}

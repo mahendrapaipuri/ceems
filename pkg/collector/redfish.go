@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -169,6 +170,15 @@ func NewRedfishCollector(logger *slog.Logger) (Collector, error) {
 	}
 
 	httpClient.Timeout = time.Duration(cfg.Web.Timeout * int64(time.Millisecond))
+
+	// Override username and password from env vars when found
+	if os.Getenv("REDFISH_WEB_USERNAME") != "" {
+		cfg.Web.Username = os.Getenv("REDFISH_WEB_USERNAME")
+	}
+
+	if os.Getenv("REDFISH_WEB_PASSWORD") != "" {
+		cfg.Web.Password = os.Getenv("REDFISH_WEB_PASSWORD")
+	}
 
 	// Create a redfish client
 	config := gofish.ClientConfig{
