@@ -5,6 +5,11 @@ LABEL maintainer="Mahendra Paipuri <mahendra.paipuri@gmail.com>"
 
 ARG ARCH="amd64"
 ARG OS="linux"
+
+# Add curl for liveness script to work
+RUN apk add --no-cache curl
+COPY build/scripts/liveness-probe.sh /bin/liveness-probe.sh
+
 COPY .build/${OS}-${ARCH}/ceems_exporter /bin/ceems_exporter
 COPY .build/${OS}-${ARCH}/ceems_api_server /bin/ceems_api_server
 COPY .build/${OS}-${ARCH}/ceems_lb /bin/ceems_lb
@@ -22,7 +27,7 @@ ENV CEEMS_API_SERVER_CONFIG_FILE /etc/ceems_api_server/config.yml
 ENV CEEMS_LB_CONFIG_FILE /etc/ceems_lb/config.yml
 ENV REDFISH_PROXY_CONFIG_FILE /etc/redfish_proxy/config.yml
 
-RUN mkdir -p /var/lib/ceems && chown -R root:root /etc/ceems_exporter /var/lib/ceems /etc/ceems_api_server /etc/ceems_lb /etc/redfish_proxy
+RUN mkdir -p /var/lib/ceems && chown -R root:root /etc/ceems_exporter /var/lib/ceems /etc/ceems_api_server /etc/ceems_lb /etc/redfish_proxy && chmod +x /bin/liveness-probe.sh
 
 USER        root
 WORKDIR     /var/lib/ceems
