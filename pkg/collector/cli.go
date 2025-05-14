@@ -149,9 +149,14 @@ func (b *CEEMSExporter) Main() error {
 
 	// Get hostname
 	if !*emptyHostnameLabel {
-		hostname, err = os.Hostname()
-		if err != nil {
-			logger.Error("Failed to get hostname", "err", err)
+		// Inside k8s pod, we need to get hostname from NODE_NAME env var
+		if os.Getenv("NODE_NAME") != "" {
+			hostname = os.Getenv("NODE_NAME")
+		} else {
+			hostname, err = os.Hostname()
+			if err != nil {
+				logger.Error("Failed to get hostname", "err", err)
+			}
 		}
 	}
 
@@ -193,7 +198,7 @@ func (b *CEEMSExporter) Main() error {
 	}
 
 	// Start a new manager
-	securityManager, err := security.NewManager(securityCfg)
+	securityManager, err := security.NewManager(securityCfg, logger)
 	if err != nil {
 		logger.Error("Failed to create a new security manager", "err", err)
 

@@ -86,11 +86,35 @@ const config: Config = {
         theme: {
           customCss: "./src/css/custom.css",
         },
+        // pages: {
+        //   include: [
+        //     "**/*.{js,jsx,ts,tsx,md,mdx}",
+        //     "**/*.{yaml,yml}",
+        //   ]
+        // },
       } satisfies Preset.Options,
     ],
   ],
 
   plugins: [
+    // // Custom plugin to modify Webpack config
+    // function myCustomPlugin(context, options) {
+    //   return {
+    //     name: 'custom-webpack-plugin',
+    //     configureWebpack(config, isServer, utils, content) {
+    //       return {
+    //         module: {
+    //          rules: [
+    //            {
+    //              test: /\.yaml$/,
+    //              use: 'yaml-loader'
+    //            }
+    //          ]
+    //         },
+    //       };
+    //     },
+    //   };
+    // },
     [
       'docusaurus-plugin-openapi-docs',
       {

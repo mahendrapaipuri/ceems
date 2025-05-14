@@ -22,6 +22,7 @@ GO_VERSION        ?= $(shell $(GO) version)
 GO_VERSION_NUMBER ?= $(word 3, $(GO_VERSION))
 PRE_GO_111        ?= $(shell echo $(GO_VERSION_NUMBER) | grep -E 'go1\.(10|[0-9])\.')
 
+PYTHON       := python3
 PROMU        := $(FIRST_GOPATH)/bin/promu
 SWAG         := $(FIRST_GOPATH)/bin/swag
 pkgs          = ./...
@@ -44,6 +45,14 @@ ifneq ($(shell command -v gotestsum > /dev/null),)
 	GOTEST := gotestsum --junitfile $(GOTEST_DIR)/unit-tests.xml --
 endif
 endif
+
+HELM_VERSION	 ?= 3.17.3
+HELM_URL		 := https://get.helm.sh/helm-v${HELM_VERSION}-${GO_BUILD_PLATFORM}.tar.gz
+HELM			 := $(FIRST_GOPATH)/bin/helm
+
+CT_VERSION 		 ?= 3.12.0
+CT_URL			 := https://github.com/helm/chart-testing/releases/download/v${CT_VERSION}/chart-testing_${CT_VERSION}_$(GOHOSTOS)_$(GOHOSTARCH).tar.gz
+CT				 := $(FIRST_GOPATH)/bin/ct
 
 PROMU_VERSION ?= 0.17.0
 PROMU_URL     := https://github.com/prometheus/promu/releases/download/v$(PROMU_VERSION)/promu-$(PROMU_VERSION).$(GO_BUILD_PLATFORM).tar.gz
@@ -85,10 +94,10 @@ PULL_DOCKER_ARCHS = $(addprefix common-docker-pull-,$(DOCKER_ARCHS))
 SANITIZED_DOCKER_IMAGE_TAG := $(subst +,-,$(DOCKER_IMAGE_TAG))
 
 ifeq ($(GOHOSTARCH),amd64)
-        ifeq ($(GOHOSTOS),$(filter $(GOHOSTOS),linux freebsd darwin windows))
-                # Only supported on amd64
-                test-flags := -race
-        endif
+	ifeq ($(GOHOSTOS),$(filter $(GOHOSTOS),linux freebsd darwin windows))
+		# Only supported on amd64
+		test-flags := -race
+	endif
 endif
 
 # This rule is used to forward a target like "build" to "common-build".  This
@@ -98,6 +107,10 @@ endif
 
 .PHONY: common-all
 common-all: precheck style lint yamllint unused build test
+
+# Chart-testing targets
+.PHONY: common-ct
+common-ct: ctlint cttest
 
 .PHONY: common-style
 common-style:
@@ -175,6 +188,16 @@ else
 	yamllint .
 endif
 
+.PHONY: common-ctlint
+common-ctlint: $(CT)
+	@echo ">> running ctlint on helm charts"
+	$(CT) lint --config deployment/ct/config.yaml --chart-dirs deployment/charts
+
+.PHONY: common-cttest
+common-cttest: $(CT)
+	@echo ">> testing helm charts"
+	$(CT) install --config deployment/ct/config.yaml --chart-dirs deployment/charts
+
 .PHONY: common-clang-format
 clang-format: ## Run code formatter on BPF code.
 	find pkg/collector/bpf $(FORMAT_FIND_FLAGS) | xargs -n 1000 clang-format -i -style=file
@@ -221,6 +244,11 @@ common-crossbuild-test: promu updatevars
 common-tarball: promu
 	@echo ">> building release tarball"
 	$(PROMU) tarball --prefix $(PREFIX) $(BIN_DIR)
+
+.PHONY: common-helm-package
+common-helm-package: helm
+	@echo ">> building helm packages"
+	$(HELM) package deployment/charts/* -d .tarballs
 
 .PHONY: common-docker-repo-name
 common-docker-repo-name:
@@ -272,6 +300,25 @@ $(PROMU):
 	mkdir -p $(FIRST_GOPATH)/bin
 	cp $(PROMU_TMP)/promu-$(PROMU_VERSION).$(GO_BUILD_PLATFORM)/promu $(FIRST_GOPATH)/bin/promu
 	rm -r $(PROMU_TMP)
+
+.PHONY: helm
+helm: $(HELM)
+$(HELM):
+	$(eval HELM_TMP := $(shell mktemp -d))
+	curl -s -L $(HELM_URL) | tar -xvzf - -C $(HELM_TMP)
+	mkdir -p $(FIRST_GOPATH)/bin
+	cp $(HELM_TMP)/$(GO_BUILD_PLATFORM)/helm $(FIRST_GOPATH)/bin/helm
+	rm -r $(HELM_TMP)
+
+.PHONY: ct
+ct: $(CT)
+$(CT):
+	$(eval CT_TMP := $(shell mktemp -d))
+	curl -s -L $(CT_URL) | tar -xvzf - -C $(CT_TMP)
+	mkdir -p $(FIRST_GOPATH)/bin
+	cp $(CT_TMP)/ct $(FIRST_GOPATH)/bin/ct
+	cp -r $(CT_TMP)/etc $(HOME)/.ct
+	rm -r $(CT_TMP)
 
 # Build bpf assets
 .PHONY: bpf
