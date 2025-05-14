@@ -142,6 +142,8 @@ func TestNewFrontend(t *testing.T) {
 	go func() {
 		errStart = lb.Start(t.Context())
 	}()
+
+	time.Sleep(100 * time.Millisecond)
 	require.NoError(t, errStart)
 
 	// Shutdown server
