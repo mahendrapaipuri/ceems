@@ -6,7 +6,6 @@ package db
 import (
 	"database/sql"
 	"fmt"
-	"log/slog"
 	"os"
 	"strings"
 
@@ -66,14 +65,12 @@ func openDBConnection(dbFilePath string) (*sql.DB, *ceems_sqlite3.Conn, error) {
 }
 
 // Setup DB and create table.
-func setupDB(dbFilePath string, logger *slog.Logger) (*sql.DB, *ceems_sqlite3.Conn, error) {
+func setupDB(dbFilePath string) (*sql.DB, *ceems_sqlite3.Conn, error) {
 	if _, err := os.Stat(dbFilePath); err == nil {
 		// Open the created SQLite File
 		db, dbConn, err := openDBConnection(dbFilePath)
 		if err != nil {
-			logger.Error("Failed to open DB file", "err", err)
-
-			return nil, nil, err
+			return nil, nil, fmt.Errorf("failed to open DB file: %w", err)
 		}
 
 		return db, dbConn, nil
@@ -82,26 +79,20 @@ func setupDB(dbFilePath string, logger *slog.Logger) (*sql.DB, *ceems_sqlite3.Co
 	// If file does not exist, create SQLite file
 	file, err := os.Create(dbFilePath)
 	if err != nil {
-		logger.Error("Failed to create DB file", "err", err)
-
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to create DB file: %w", err)
 	}
 
 	file.Close()
 
 	// Set strict permissions
 	if err := os.Chmod(dbFilePath, 0o640); err != nil {
-		logger.Error("Failed to harden permissions on DB file", "err", err)
-
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to harden permissions on DB file: %w", err)
 	}
 
 	// Open the created SQLite File
 	db, dbConn, err := openDBConnection(dbFilePath)
 	if err != nil {
-		logger.Error("Failed to open DB file", "err", err)
-
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to open DB connection: %w", err)
 	}
 
 	return db, dbConn, nil

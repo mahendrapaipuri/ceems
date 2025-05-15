@@ -6,7 +6,6 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -36,7 +35,7 @@ type queryMetadata struct {
 // tsdbData saves time series data of units in CSV files.
 func tsdbData(ctx context.Context, config *Config, units []models.Unit, outDir string) error {
 	// New TSDB client
-	tsdb, err := tsdb.New(config.TSDB.Web.URL, config.TSDB.Web.HTTPClientConfig, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	tsdb, err := tsdb.New(config.TSDB.Web.URL, config.TSDB.Web.HTTPClientConfig, slog.New(slog.DiscardHandler))
 	if err != nil {
 		return fmt.Errorf("failed to create tsdb API client: %w", err)
 	}

@@ -29,6 +29,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var noOpLogger = slog.New(slog.DiscardHandler)
+
 type testCase struct {
 	name      string
 	req       string
@@ -75,10 +77,9 @@ var (
 )
 
 func setupServer(d string) *CEEMSServer {
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	server, _, _ := New(
 		&Config{
-			Logger: logger,
+			Logger: noOpLogger,
 			DB: db.Config{
 				Data: db.DataConfig{
 					Path:     d,
@@ -163,7 +164,7 @@ func TestUsersHandlers(t *testing.T) {
 	defer f.Close()
 
 	server := setupServer(tmpDir)
-	defer server.Shutdown(context.Background())
+	defer server.Shutdown(t.Context())
 
 	// Test cases
 	tests := []testCase{
@@ -253,7 +254,7 @@ func TestProjectsHandler(t *testing.T) {
 	defer f.Close()
 
 	server := setupServer(tmpDir)
-	defer server.Shutdown(context.Background())
+	defer server.Shutdown(t.Context())
 
 	// Test cases
 	tests := []testCase{
@@ -319,7 +320,7 @@ func TestUnitsHandler(t *testing.T) {
 	defer f.Close()
 
 	server := setupServer(tmpDir)
-	defer server.Shutdown(context.Background())
+	defer server.Shutdown(t.Context())
 
 	// Test cases
 	tests := []testCase{
@@ -409,7 +410,7 @@ func TestUsageHandlers(t *testing.T) {
 	defer f.Close()
 
 	server := setupServer(tmpDir)
-	defer server.Shutdown(context.Background())
+	defer server.Shutdown(t.Context())
 
 	// Test cases
 	tests := []testCase{
@@ -518,7 +519,7 @@ func TestUsageErrorHandlers(t *testing.T) {
 	defer f.Close()
 
 	server := setupServer(tmpDir)
-	defer server.Shutdown(context.Background())
+	defer server.Shutdown(t.Context())
 
 	// Return errors for intermediate queries
 	server.queriers.key = keyQuerierErr
@@ -621,7 +622,7 @@ func TestStatsHandlers(t *testing.T) {
 	defer f.Close()
 
 	server := setupServer(tmpDir)
-	defer server.Shutdown(context.Background())
+	defer server.Shutdown(t.Context())
 
 	// Test cases
 	tests := []testCase{
@@ -692,7 +693,7 @@ func TestVerifyHandler(t *testing.T) {
 	defer f.Close()
 
 	server := setupServer(tmpDir)
-	defer server.Shutdown(context.Background())
+	defer server.Shutdown(t.Context())
 
 	tests := []testCase{
 		{
@@ -740,7 +741,7 @@ func TestDemoHandlers(t *testing.T) {
 	defer f.Close()
 
 	server := setupServer(tmpDir)
-	defer server.Shutdown(context.Background())
+	defer server.Shutdown(t.Context())
 
 	// Test cases
 	tests := []testCase{
@@ -795,7 +796,7 @@ func TestClustersHandler(t *testing.T) {
 	defer f.Close()
 
 	server := setupServer(tmpDir)
-	defer server.Shutdown(context.Background())
+	defer server.Shutdown(t.Context())
 
 	// Create request
 	req := httptest.NewRequest(http.MethodGet, "/api/"+base.APIVersion+"/clusters/admin", nil)
@@ -815,7 +816,7 @@ func TestClustersHandler(t *testing.T) {
 	require.NoError(t, err)
 
 	// Expected result
-	expectedClusters, _ := clusterQuerier(context.Background(), server.db, Query{}, server.logger)
+	expectedClusters, _ := clusterQuerier(t.Context(), server.db, Query{}, server.logger)
 
 	// Unmarshal byte into structs
 	var response Response[models.Cluster]
@@ -838,7 +839,7 @@ func TestUnitsHandlerWithMalformedQueryParams(t *testing.T) {
 	defer f.Close()
 
 	server := setupServer(tmpDir)
-	defer server.Shutdown(context.Background())
+	defer server.Shutdown(t.Context())
 
 	// Create request
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/units", nil)
@@ -882,7 +883,7 @@ func TestUnitsHandlerWithQueryWindowExceeded(t *testing.T) {
 	defer f.Close()
 
 	server := setupServer(tmpDir)
-	defer server.Shutdown(context.Background())
+	defer server.Shutdown(t.Context())
 	// Create request
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/units", nil)
 	// Add user header
@@ -927,7 +928,7 @@ func TestUnitsHandlerWithUnituuidsQueryParams(t *testing.T) {
 	defer f.Close()
 
 	server := setupServer(tmpDir)
-	defer server.Shutdown(context.Background())
+	defer server.Shutdown(t.Context())
 
 	// Create request
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/units", nil)
@@ -966,7 +967,7 @@ func TestUnitsHandlerWithUnituuidsQueryParams(t *testing.T) {
 // // Test /usage
 // func TestUsageHandler(t *testing.T) {
 // 	server := setupServer()
-// 	defer server.Shutdown(context.Background())
+// 	defer server.Shutdown(t.Context())
 
 // 	// Create request
 // 	req := httptest.NewRequest(http.MethodGet, "/api/v1/usage/current", nil)

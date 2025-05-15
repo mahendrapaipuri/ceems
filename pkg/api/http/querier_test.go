@@ -4,11 +4,8 @@
 package http
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
-	"io"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
@@ -36,7 +33,7 @@ func setupTestDB() (*sql.DB, error) {
 }
 
 func TestUnitsQuerier(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	logger := noOpLogger
 
 	db, err := setupTestDB()
 	require.NoError(t, err, "failed to setup test DB")
@@ -169,13 +166,13 @@ func TestUnitsQuerier(t *testing.T) {
 			LastUpdatedAt: "2024-07-02T14:49:39",
 		},
 	}
-	units, err := Querier[models.Unit](context.Background(), db, q, logger)
+	units, err := Querier[models.Unit](t.Context(), db, q, logger)
 	require.NoError(t, err)
 	assert.Equal(t, expectedUnits, units)
 }
 
 func TestUsageQuerier(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	logger := noOpLogger
 
 	db, err := setupTestDB()
 	require.NoError(t, err, "failed to setup test DB")
@@ -222,13 +219,13 @@ func TestUsageQuerier(t *testing.T) {
 			NumUpdates:          2,
 		},
 	}
-	usageStats, err := Querier[models.Usage](context.Background(), db, q, logger)
+	usageStats, err := Querier[models.Usage](t.Context(), db, q, logger)
 	require.NoError(t, err)
 	assert.Equal(t, expectedUsageStats, usageStats)
 }
 
 func TestProjectQuerier(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	logger := noOpLogger
 
 	db, err := setupTestDB()
 	require.NoError(t, err, "failed to setup test DB")
@@ -253,13 +250,13 @@ func TestProjectQuerier(t *testing.T) {
 			LastUpdatedAt:   "2024-07-02T14:49:39",
 		},
 	}
-	projects, err := Querier[models.Project](context.Background(), db, q, logger)
+	projects, err := Querier[models.Project](t.Context(), db, q, logger)
 	require.NoError(t, err)
 	assert.Equal(t, expectedProjects, projects)
 }
 
 func TestUserQuerier(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	logger := noOpLogger
 
 	db, err := setupTestDB()
 	require.NoError(t, err, "failed to setup test DB")
@@ -284,13 +281,13 @@ func TestUserQuerier(t *testing.T) {
 			LastUpdatedAt:   "2024-07-02T14:49:39",
 		},
 	}
-	users, err := Querier[models.User](context.Background(), db, q, logger)
+	users, err := Querier[models.User](t.Context(), db, q, logger)
 	require.NoError(t, err)
 	assert.Equal(t, expectedUsers, users)
 }
 
 func TestClusterQuerier(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	logger := noOpLogger
 
 	db, err := setupTestDB()
 	require.NoError(t, err, "failed to setup test DB")
@@ -310,13 +307,13 @@ func TestClusterQuerier(t *testing.T) {
 			Manager: "slurm",
 		},
 	}
-	clusters, err := Querier[models.Cluster](context.Background(), db, q, logger)
+	clusters, err := Querier[models.Cluster](t.Context(), db, q, logger)
 	require.NoError(t, err)
 	assert.Equal(t, expectedClusters, clusters)
 }
 
 func TestStatsQuerier(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	logger := noOpLogger
 
 	db, err := setupTestDB()
 	require.NoError(t, err, "failed to setup test DB")
@@ -337,13 +334,13 @@ func TestStatsQuerier(t *testing.T) {
 			NumUsers:         7,
 		},
 	}
-	stats, err := Querier[models.Stat](context.Background(), db, q, logger)
+	stats, err := Querier[models.Stat](t.Context(), db, q, logger)
 	require.NoError(t, err)
 	assert.Equal(t, expectedStats, stats)
 }
 
 func TestKeysQuerier(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	logger := noOpLogger
 
 	db, err := setupTestDB()
 	require.NoError(t, err, "failed to setup test DB")
@@ -367,7 +364,7 @@ func TestKeysQuerier(t *testing.T) {
 			Name: "requests",
 		},
 	}
-	keys, err := Querier[models.Key](context.Background(), db, q, logger)
+	keys, err := Querier[models.Key](t.Context(), db, q, logger)
 	require.NoError(t, err)
 	assert.Equal(t, expectedKeys, keys)
 }

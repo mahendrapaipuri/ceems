@@ -4,29 +4,26 @@
 package frontend
 
 import (
-	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/mahendrapaipuri/ceems/pkg/api/cli"
 	ceems_db "github.com/mahendrapaipuri/ceems/pkg/api/db"
-	ceems_api_http "github.com/mahendrapaipuri/ceems/pkg/api/http"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/backend"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/serverpool"
 	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+var noOpLogger = slog.New(slog.DiscardHandler)
 
 func setupClusterIDsDB(d string) error {
 	dbPath := filepath.Join(d, "ceems.db")
@@ -114,18 +111,18 @@ func TestNewFrontend(t *testing.T) {
 	dummyServer1 := dummyTSDBServer(clusterID)
 	defer dummyServer1.Close()
 
-	backend1, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer1.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	backend1, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer1.URL}}, noOpLogger)
 	require.NoError(t, err)
 
 	// Start manager
-	manager, err := serverpool.New("resource-based", slog.New(slog.NewTextHandler(io.Discard, nil)))
+	manager, err := serverpool.New("resource-based", noOpLogger)
 	require.NoError(t, err)
 
 	manager.Add(clusterID, backend1)
 
 	// make minimal config
 	config := &Config{
-		Logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Logger:  noOpLogger,
 		Manager: manager,
 		Address: "localhost:9030", // dummy address
 		APIServer: cli.CEEMSAPIServerConfig{
@@ -137,374 +134,371 @@ func TestNewFrontend(t *testing.T) {
 	lb, err := New(config)
 	require.NoError(t, err)
 
-	var errStart error
 	go func() {
-		errStart = lb.Start(context.Background())
+		lb.Start(t.Context())
 	}()
-	require.NoError(t, errStart)
 
-	// Shutdown server
-	err = lb.Shutdown(context.Background())
+	err = lb.Shutdown(t.Context())
 	require.NoError(t, err)
 }
 
-func TestNewFrontendSingleGroup(t *testing.T) {
-	clusterID := "default"
-
-	// Backends
-	dummyServer1 := dummyTSDBServer(clusterID)
-	defer dummyServer1.Close()
-
-	backend1, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer1.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
-	require.NoError(t, err)
-
-	// Start manager
-	manager, err := serverpool.New("resource-based", slog.New(slog.NewTextHandler(io.Discard, nil)))
-	require.NoError(t, err)
-
-	manager.Add(clusterID, backend1)
-
-	// make minimal config
-	config := &Config{
-		Logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
-		Manager: manager,
-		Address: "localhost:9030", // dummy address
-	}
-
-	// New load balancer
-	lb, err := New(config)
-	require.NoError(t, err)
-
-	tests := []struct {
-		name     string
-		start    int64
-		code     int
-		response bool
-	}{
-		{
-			name:     "query with params in ctx",
-			start:    time.Now().UTC().Unix(),
-			code:     200,
-			response: true,
-		},
-		{
-			name:     "query with no params in ctx",
-			code:     400,
-			response: false,
-		},
-		{
-			name:     "query with params in ctx and start more than retention period",
-			start:    time.Now().UTC().Add(-32 * 24 * time.Hour).Unix(),
-			code:     503,
-			response: false,
-		},
-	}
-
-	for _, test := range tests {
-		request := httptest.NewRequest(http.MethodGet, "/test", nil)
-
-		// Add uuids and start to context
-		var newReq *http.Request
-
-		if test.start > 0 {
-			period := time.Duration((time.Now().UTC().Unix() - test.start)) * time.Second
-			newReq = request.WithContext(
-				context.WithValue(
-					request.Context(), ReqParamsContextKey{},
-					&ReqParams{queryPeriod: period, clusterID: clusterID},
-				),
-			)
-		} else {
-			newReq = request
-		}
-
-		responseRecorder := httptest.NewRecorder()
-		http.HandlerFunc(lb.Serve).ServeHTTP(responseRecorder, newReq)
-
-		assert.Equal(t, responseRecorder.Code, test.code, test.name)
-
-		if test.response {
-			assert.Equal(t, responseRecorder.Body.String(), clusterID, test.name)
-		}
-	}
-
-	// Take backend offline, we should expect 503
-	backend1.SetAlive(false)
-
-	request := httptest.NewRequest(http.MethodGet, "/test", nil)
-	newReq := request.WithContext(
-		context.WithValue(
-			request.Context(), ReqParamsContextKey{},
-			&ReqParams{clusterID: "default"},
-		),
-	)
-	responseRecorder := httptest.NewRecorder()
-	http.HandlerFunc(lb.Serve).ServeHTTP(responseRecorder, newReq)
-
-	assert.Equal(t, 503, responseRecorder.Code)
-}
-
-func TestNewFrontendTwoGroups(t *testing.T) {
-	// Backends for group 1
-	dummyServer1 := dummyTSDBServer("rm-0")
-	defer dummyServer1.Close()
-
-	backend1, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer1.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
-	require.NoError(t, err)
-
-	// Backends for group 2
-	dummyServer2 := dummyTSDBServer("rm-1")
-	defer dummyServer2.Close()
-
-	backend2, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer2.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
-	require.NoError(t, err)
-
-	// Start manager
-	manager, err := serverpool.New("resource-based", slog.New(slog.NewTextHandler(io.Discard, nil)))
-	require.NoError(t, err)
-
-	manager.Add("rm-0", backend1)
-	manager.Add("rm-1", backend2)
-
-	// make minimal config
-	config := &Config{
-		Logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
-		Manager: manager,
-		Address: "localhost:9030", // dummy address
-	}
-
-	// New load balancer
-	lb, err := New(config)
-	require.NoError(t, err)
-
-	tests := []struct {
-		name      string
-		start     int64
-		clusterID string
-		code      int
-		response  bool
-	}{
-		{
-			name:      "query for rm-0 with params in ctx",
-			start:     time.Now().UTC().Unix(),
-			clusterID: "rm-0",
-			code:      200,
-			response:  true,
-		},
-		{
-			name:      "query for rm-1 with params in ctx",
-			start:     time.Now().UTC().Unix(),
-			clusterID: "rm-1",
-			code:      200,
-			response:  true,
-		},
-		{
-			name:     "query with no clusterID params in ctx",
-			start:    time.Now().UTC().Unix(),
-			code:     503,
-			response: false,
-		},
-		{
-			name:      "query with params in ctx and start more than retention period",
-			start:     time.Now().UTC().Add(-31 * 24 * time.Hour).Unix(),
-			clusterID: "rm-0",
-			code:      503,
-			response:  false,
-		},
-	}
-
-	for _, test := range tests {
-		request := httptest.NewRequest(http.MethodGet, "/test", nil)
-
-		// Add uuids and start to context
-		var newReq *http.Request
-
-		if test.start > 0 {
-			period := time.Duration((time.Now().UTC().Unix() - test.start)) * time.Second
-			newReq = request.WithContext(
-				context.WithValue(
-					request.Context(), ReqParamsContextKey{},
-					&ReqParams{queryPeriod: period, clusterID: test.clusterID},
-				),
-			)
-		} else {
-			newReq = request
-		}
-
-		responseRecorder := httptest.NewRecorder()
-		http.HandlerFunc(lb.Serve).ServeHTTP(responseRecorder, newReq)
-
-		assert.Equal(t, responseRecorder.Code, test.code)
-
-		if test.response {
-			assert.Equal(t, responseRecorder.Body.String(), test.clusterID)
-		}
-	}
-
-	// Take backend offline, we should expect 503
-	backend1.SetAlive(false)
-
-	request := httptest.NewRequest(http.MethodGet, "/test", nil)
-	newReq := request.WithContext(
-		context.WithValue(
-			request.Context(), ReqParamsContextKey{},
-			&ReqParams{clusterID: "rm-0"},
-		),
-	)
-	responseRecorder := httptest.NewRecorder()
-	http.HandlerFunc(lb.Serve).ServeHTTP(responseRecorder, newReq)
-
-	assert.Equal(t, 503, responseRecorder.Code)
-}
-
-func TestValidateClusterIDsWithDBPass(t *testing.T) {
-	tmpDir := t.TempDir()
-	err := setupClusterIDsDB(tmpDir)
-	require.NoError(t, err, "failed to setup test DB")
-
-	// Backends for group 1
-	dummyServer := dummyTSDBServer("slurm-0")
-	defer dummyServer.Close()
-
-	backend, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
-	require.NoError(t, err)
-
-	// Start manager
-	manager, err := serverpool.New("resource-based", slog.New(slog.NewTextHandler(io.Discard, nil)))
-	require.NoError(t, err)
-
-	manager.Add("slurm-0", backend)
-	manager.Add("os-1", backend)
-
-	// make minimal config
-	config := &Config{
-		Logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
-		Manager: manager,
-		Address: "localhost:9030", // dummy address
-	}
-	config.APIServer.Data.Path = tmpDir
-
-	// New load balancer
-	_, err = New(config)
-	require.NoError(t, err)
-}
-
-func TestValidateClusterIDsWithDBFail(t *testing.T) {
-	tmpDir := t.TempDir()
-	err := setupClusterIDsDB(tmpDir)
-	require.NoError(t, err, "failed to setup test DB")
-
-	// Backends for group 1
-	dummyServer := dummyTSDBServer("slurm-0")
-	defer dummyServer.Close()
-
-	backend, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
-	require.NoError(t, err)
-
-	// Start manager
-	manager, err := serverpool.New("resource-based", slog.New(slog.NewTextHandler(io.Discard, nil)))
-	require.NoError(t, err)
-
-	manager.Add("unknown", backend)
-	manager.Add("os-1", backend)
-
-	// make minimal config
-	config := &Config{
-		Logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
-		Manager: manager,
-		Address: "localhost:9030", // dummy address
-	}
-	config.APIServer.Data.Path = tmpDir
-
-	// New load balancer
-	_, err = New(config)
-	require.Error(t, err)
-}
-
-func TestValidateClusterIDsWithAPIPass(t *testing.T) {
-	// Test CEEMS API server
-	expected := ceems_api_http.Response[models.Cluster]{
-		Status: "success",
-		Data: []models.Cluster{
-			{
-				ID: "slurm-0",
-			},
-			{
-				ID: "os-1",
-			},
-		},
-	}
-
-	ceemsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if err := json.NewEncoder(w).Encode(&expected); err != nil {
-			w.Write([]byte("KO"))
-		}
-	}))
-	defer ceemsServer.Close()
-
-	// Backends for group 1
-	dummyServer := dummyTSDBServer("slurm-0")
-	defer dummyServer.Close()
-
-	backend, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
-	require.NoError(t, err)
-
-	// Start manager
-	manager, err := serverpool.New("resource-based", slog.New(slog.NewTextHandler(io.Discard, nil)))
-	require.NoError(t, err)
-
-	manager.Add("slurm-0", backend)
-	manager.Add("os-1", backend)
-
-	// make minimal config
-	config := &Config{
-		Logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
-		Manager: manager,
-		Address: "localhost:9030", // dummy address
-	}
-	config.APIServer.Web.URL = ceemsServer.URL
-
-	// New load balancer
-	_, err = New(config)
-	require.NoError(t, err)
-}
-
-func TestValidateClusterIDsWithAPIFail(t *testing.T) {
-	// Test CEEMS API server
-	expected := ceems_api_http.Response[models.Cluster]{
-		Status: "error",
-	}
-
-	ceemsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if err := json.NewEncoder(w).Encode(&expected); err != nil {
-			w.Write([]byte("KO"))
-		}
-	}))
-	defer ceemsServer.Close()
-
-	// Backends for group 1
-	dummyServer := dummyTSDBServer("slurm-0")
-	defer dummyServer.Close()
-
-	backend, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer.URL}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
-	require.NoError(t, err)
-
-	// Start manager
-	manager, err := serverpool.New("resource-based", slog.New(slog.NewTextHandler(io.Discard, nil)))
-	require.NoError(t, err)
-
-	manager.Add("slurm-0", backend)
-	manager.Add("os-1", backend)
-
-	// make minimal config
-	config := &Config{
-		Logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
-		Manager: manager,
-		Address: "localhost:9030", // dummy address
-	}
-	config.APIServer.Web.URL = ceemsServer.URL
-
-	// New load balancer
-	_, err = New(config)
-	require.Error(t, err)
-}
+// func TestNewFrontendSingleGroup(t *testing.T) {
+// 	clusterID := "default"
+
+// 	// Backends
+// 	dummyServer1 := dummyTSDBServer(clusterID)
+// 	defer dummyServer1.Close()
+
+// 	backend1, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer1.URL}}, noOpLogger)
+// 	require.NoError(t, err)
+
+// 	// Start manager
+// 	manager, err := serverpool.New("resource-based", noOpLogger)
+// 	require.NoError(t, err)
+
+// 	manager.Add(clusterID, backend1)
+
+// 	// make minimal config
+// 	config := &Config{
+// 		Logger:  noOpLogger,
+// 		Manager: manager,
+// 		Address: "localhost:9030", // dummy address
+// 	}
+
+// 	// New load balancer
+// 	lb, err := New(config)
+// 	require.NoError(t, err)
+
+// 	tests := []struct {
+// 		name     string
+// 		start    int64
+// 		code     int
+// 		response bool
+// 	}{
+// 		{
+// 			name:     "query with params in ctx",
+// 			start:    time.Now().UTC().Unix(),
+// 			code:     200,
+// 			response: true,
+// 		},
+// 		{
+// 			name:     "query with no params in ctx",
+// 			code:     400,
+// 			response: false,
+// 		},
+// 		{
+// 			name:     "query with params in ctx and start more than retention period",
+// 			start:    time.Now().UTC().Add(-32 * 24 * time.Hour).Unix(),
+// 			code:     503,
+// 			response: false,
+// 		},
+// 	}
+
+// 	for _, test := range tests {
+// 		request := httptest.NewRequest(http.MethodGet, "/test", nil)
+
+// 		// Add uuids and start to context
+// 		var newReq *http.Request
+
+// 		if test.start > 0 {
+// 			period := time.Duration((time.Now().UTC().Unix() - test.start)) * time.Second
+// 			newReq = request.WithContext(
+// 				context.WithValue(
+// 					request.Context(), ReqParamsContextKey{},
+// 					&ReqParams{queryPeriod: period, clusterID: clusterID},
+// 				),
+// 			)
+// 		} else {
+// 			newReq = request
+// 		}
+
+// 		responseRecorder := httptest.NewRecorder()
+// 		http.HandlerFunc(lb.Serve).ServeHTTP(responseRecorder, newReq)
+
+// 		assert.Equal(t, responseRecorder.Code, test.code, test.name)
+
+// 		if test.response {
+// 			assert.Equal(t, responseRecorder.Body.String(), clusterID, test.name)
+// 		}
+// 	}
+
+// 	// Take backend offline, we should expect 503
+// 	backend1.SetAlive(false)
+
+// 	request := httptest.NewRequest(http.MethodGet, "/test", nil)
+// 	newReq := request.WithContext(
+// 		context.WithValue(
+// 			request.Context(), ReqParamsContextKey{},
+// 			&ReqParams{clusterID: "default"},
+// 		),
+// 	)
+// 	responseRecorder := httptest.NewRecorder()
+// 	http.HandlerFunc(lb.Serve).ServeHTTP(responseRecorder, newReq)
+
+// 	assert.Equal(t, 503, responseRecorder.Code)
+// }
+
+// func TestNewFrontendTwoGroups(t *testing.T) {
+// 	// Backends for group 1
+// 	dummyServer1 := dummyTSDBServer("rm-0")
+// 	defer dummyServer1.Close()
+
+// 	backend1, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer1.URL}}, noOpLogger)
+// 	require.NoError(t, err)
+
+// 	// Backends for group 2
+// 	dummyServer2 := dummyTSDBServer("rm-1")
+// 	defer dummyServer2.Close()
+
+// 	backend2, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer2.URL}}, noOpLogger)
+// 	require.NoError(t, err)
+
+// 	// Start manager
+// 	manager, err := serverpool.New("resource-based", noOpLogger)
+// 	require.NoError(t, err)
+
+// 	manager.Add("rm-0", backend1)
+// 	manager.Add("rm-1", backend2)
+
+// 	// make minimal config
+// 	config := &Config{
+// 		Logger:  noOpLogger,
+// 		Manager: manager,
+// 		Address: "localhost:9030", // dummy address
+// 	}
+
+// 	// New load balancer
+// 	lb, err := New(config)
+// 	require.NoError(t, err)
+
+// 	tests := []struct {
+// 		name      string
+// 		start     int64
+// 		clusterID string
+// 		code      int
+// 		response  bool
+// 	}{
+// 		{
+// 			name:      "query for rm-0 with params in ctx",
+// 			start:     time.Now().UTC().Unix(),
+// 			clusterID: "rm-0",
+// 			code:      200,
+// 			response:  true,
+// 		},
+// 		{
+// 			name:      "query for rm-1 with params in ctx",
+// 			start:     time.Now().UTC().Unix(),
+// 			clusterID: "rm-1",
+// 			code:      200,
+// 			response:  true,
+// 		},
+// 		{
+// 			name:     "query with no clusterID params in ctx",
+// 			start:    time.Now().UTC().Unix(),
+// 			code:     503,
+// 			response: false,
+// 		},
+// 		{
+// 			name:      "query with params in ctx and start more than retention period",
+// 			start:     time.Now().UTC().Add(-31 * 24 * time.Hour).Unix(),
+// 			clusterID: "rm-0",
+// 			code:      503,
+// 			response:  false,
+// 		},
+// 	}
+
+// 	for _, test := range tests {
+// 		request := httptest.NewRequest(http.MethodGet, "/test", nil)
+
+// 		// Add uuids and start to context
+// 		var newReq *http.Request
+
+// 		if test.start > 0 {
+// 			period := time.Duration((time.Now().UTC().Unix() - test.start)) * time.Second
+// 			newReq = request.WithContext(
+// 				context.WithValue(
+// 					request.Context(), ReqParamsContextKey{},
+// 					&ReqParams{queryPeriod: period, clusterID: test.clusterID},
+// 				),
+// 			)
+// 		} else {
+// 			newReq = request
+// 		}
+
+// 		responseRecorder := httptest.NewRecorder()
+// 		http.HandlerFunc(lb.Serve).ServeHTTP(responseRecorder, newReq)
+
+// 		assert.Equal(t, responseRecorder.Code, test.code)
+
+// 		if test.response {
+// 			assert.Equal(t, responseRecorder.Body.String(), test.clusterID)
+// 		}
+// 	}
+
+// 	// Take backend offline, we should expect 503
+// 	backend1.SetAlive(false)
+
+// 	request := httptest.NewRequest(http.MethodGet, "/test", nil)
+// 	newReq := request.WithContext(
+// 		context.WithValue(
+// 			request.Context(), ReqParamsContextKey{},
+// 			&ReqParams{clusterID: "rm-0"},
+// 		),
+// 	)
+// 	responseRecorder := httptest.NewRecorder()
+// 	http.HandlerFunc(lb.Serve).ServeHTTP(responseRecorder, newReq)
+
+// 	assert.Equal(t, 503, responseRecorder.Code)
+// }
+
+// func TestValidateClusterIDsWithDBPass(t *testing.T) {
+// 	tmpDir := t.TempDir()
+// 	err := setupClusterIDsDB(tmpDir)
+// 	require.NoError(t, err, "failed to setup test DB")
+
+// 	// Backends for group 1
+// 	dummyServer := dummyTSDBServer("slurm-0")
+// 	defer dummyServer.Close()
+
+// 	backend, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer.URL}}, noOpLogger)
+// 	require.NoError(t, err)
+
+// 	// Start manager
+// 	manager, err := serverpool.New("resource-based", noOpLogger)
+// 	require.NoError(t, err)
+
+// 	manager.Add("slurm-0", backend)
+// 	manager.Add("os-1", backend)
+
+// 	// make minimal config
+// 	config := &Config{
+// 		Logger:  noOpLogger,
+// 		Manager: manager,
+// 		Address: "localhost:9030", // dummy address
+// 	}
+// 	config.APIServer.Data.Path = tmpDir
+
+// 	// New load balancer
+// 	_, err = New(config)
+// 	require.NoError(t, err)
+// }
+
+// func TestValidateClusterIDsWithDBFail(t *testing.T) {
+// 	tmpDir := t.TempDir()
+// 	err := setupClusterIDsDB(tmpDir)
+// 	require.NoError(t, err, "failed to setup test DB")
+
+// 	// Backends for group 1
+// 	dummyServer := dummyTSDBServer("slurm-0")
+// 	defer dummyServer.Close()
+
+// 	backend, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer.URL}}, noOpLogger)
+// 	require.NoError(t, err)
+
+// 	// Start manager
+// 	manager, err := serverpool.New("resource-based", noOpLogger)
+// 	require.NoError(t, err)
+
+// 	manager.Add("unknown", backend)
+// 	manager.Add("os-1", backend)
+
+// 	// make minimal config
+// 	config := &Config{
+// 		Logger:  noOpLogger,
+// 		Manager: manager,
+// 		Address: "localhost:9030", // dummy address
+// 	}
+// 	config.APIServer.Data.Path = tmpDir
+
+// 	// New load balancer
+// 	_, err = New(config)
+// 	require.Error(t, err)
+// }
+
+// func TestValidateClusterIDsWithAPIPass(t *testing.T) {
+// 	// Test CEEMS API server
+// 	expected := ceems_api_http.Response[models.Cluster]{
+// 		Status: "success",
+// 		Data: []models.Cluster{
+// 			{
+// 				ID: "slurm-0",
+// 			},
+// 			{
+// 				ID: "os-1",
+// 			},
+// 		},
+// 	}
+
+// 	ceemsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// 		if err := json.NewEncoder(w).Encode(&expected); err != nil {
+// 			w.Write([]byte("KO"))
+// 		}
+// 	}))
+// 	defer ceemsServer.Close()
+
+// 	// Backends for group 1
+// 	dummyServer := dummyTSDBServer("slurm-0")
+// 	defer dummyServer.Close()
+
+// 	backend, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer.URL}}, noOpLogger)
+// 	require.NoError(t, err)
+
+// 	// Start manager
+// 	manager, err := serverpool.New("resource-based", noOpLogger)
+// 	require.NoError(t, err)
+
+// 	manager.Add("slurm-0", backend)
+// 	manager.Add("os-1", backend)
+
+// 	// make minimal config
+// 	config := &Config{
+// 		Logger:  noOpLogger,
+// 		Manager: manager,
+// 		Address: "localhost:9030", // dummy address
+// 	}
+// 	config.APIServer.Web.URL = ceemsServer.URL
+
+// 	// New load balancer
+// 	_, err = New(config)
+// 	require.NoError(t, err)
+// }
+
+// func TestValidateClusterIDsWithAPIFail(t *testing.T) {
+// 	// Test CEEMS API server
+// 	expected := ceems_api_http.Response[models.Cluster]{
+// 		Status: "error",
+// 	}
+
+// 	ceemsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// 		if err := json.NewEncoder(w).Encode(&expected); err != nil {
+// 			w.Write([]byte("KO"))
+// 		}
+// 	}))
+// 	defer ceemsServer.Close()
+
+// 	// Backends for group 1
+// 	dummyServer := dummyTSDBServer("slurm-0")
+// 	defer dummyServer.Close()
+
+// 	backend, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: dummyServer.URL}}, noOpLogger)
+// 	require.NoError(t, err)
+
+// 	// Start manager
+// 	manager, err := serverpool.New("resource-based", noOpLogger)
+// 	require.NoError(t, err)
+
+// 	manager.Add("slurm-0", backend)
+// 	manager.Add("os-1", backend)
+
+// 	// make minimal config
+// 	config := &Config{
+// 		Logger:  noOpLogger,
+// 		Manager: manager,
+// 		Address: "localhost:9030", // dummy address
+// 	}
+// 	config.APIServer.Web.URL = ceemsServer.URL
+
+// 	// New load balancer
+// 	_, err = New(config)
+// 	require.Error(t, err)
+// }

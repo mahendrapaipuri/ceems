@@ -46,7 +46,7 @@ func TestNewRedfishProxyServerWithTargets(t *testing.T) {
 
 	// Test config
 	config := &Config{
-		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Logger: slog.New(slog.DiscardHandler),
 		Redfish: &Redfish{
 			Config: struct {
 				Web struct {
@@ -125,7 +125,7 @@ func TestNewRedfishProxyServerWithWebConfig(t *testing.T) {
 
 	// Test config
 	config := &Config{
-		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Logger: slog.New(slog.DiscardHandler),
 		Redfish: &Redfish{
 			Config: struct {
 				Web struct {

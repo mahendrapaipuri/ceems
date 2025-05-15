@@ -3,8 +3,6 @@ package emissions
 import (
 	"encoding/json"
 	"errors"
-	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -39,7 +37,7 @@ func mockRTEAPIFailRequest(url string) (EmissionFactors, error) {
 
 func TestRTEDataSource(t *testing.T) {
 	s := rteProvider{
-		logger:       slog.New(slog.NewTextHandler(io.Discard, nil)),
+		logger:       noOpLogger,
 		updatePeriod: 10 * time.Millisecond,
 		fetch:        mockRTEAPIRequest,
 	}
@@ -75,7 +73,7 @@ func TestRTEDataSource(t *testing.T) {
 
 func TestRTEDataSourceError(t *testing.T) {
 	s := rteProvider{
-		logger:       slog.New(slog.NewTextHandler(io.Discard, nil)),
+		logger:       noOpLogger,
 		updatePeriod: 2 * time.Millisecond,
 		fetch:        mockRTEAPIFailRequest,
 	}
@@ -93,7 +91,7 @@ func TestRTEDataSourceError(t *testing.T) {
 }
 
 func TestNewRTEProvider(t *testing.T) {
-	s, err := NewRTEProvider(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	s, err := NewRTEProvider(noOpLogger)
 	defer s.Stop()
 
 	require.NoError(t, err)

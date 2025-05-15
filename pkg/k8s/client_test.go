@@ -2,7 +2,6 @@ package k8s
 
 import (
 	"bytes"
-	"context"
 	"io"
 	"log/slog"
 	"net/http"
@@ -23,6 +22,8 @@ import (
 	"k8s.io/client-go/tools/remotecommand"
 	podresourcesapi "k8s.io/kubelet/pkg/apis/podresources/v1"
 )
+
+var noOpLogger = slog.New(slog.DiscardHandler)
 
 var testPods = []runtime.Object{
 	&v1.Pod{
@@ -90,7 +91,7 @@ users:
 
 	defer kubelet.Server.Stop()
 
-	c, err := New(tmpfile.Name(), filepath.Join(socketDir, "kubelet.sock"), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	c, err := New(tmpfile.Name(), filepath.Join(socketDir, "kubelet.sock"), noOpLogger)
 	require.NoError(t, err)
 
 	err = c.Close()
@@ -160,12 +161,12 @@ func TestPods(t *testing.T) {
 
 	// Make k8s client
 	client := &Client{
-		Logger:    slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Logger:    noOpLogger,
 		Clientset: fakeClientset,
 	}
 
 	for _, test := range testCases {
-		got, err := client.Pods(context.Background(), test.targetNS, test.opts)
+		got, err := client.Pods(t.Context(), test.targetNS, test.opts)
 		require.NoError(t, err)
 
 		assert.ElementsMatch(t, test.expected, got, test.name)
@@ -286,12 +287,12 @@ func TestPodDevices(t *testing.T) {
 
 	// Make k8s client
 	client := &Client{
-		Logger:            slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Logger:            noOpLogger,
 		Clientset:         fakeClientset,
 		PodResourceClient: kubeletClient,
 	}
 
-	got, err := client.PodDevices(context.Background())
+	got, err := client.PodDevices(t.Context())
 	require.NoError(t, err)
 
 	assert.ElementsMatch(t, expected, got)
@@ -332,12 +333,12 @@ GPU 3: NVIDIA H100 80GB HBM3 (UUID: GPU-2114ac3c-d010-ef91-2ab8-45544c7b64c5)`
 
 	// Make k8s client
 	client := &Client{
-		Logger:    slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Logger:    noOpLogger,
 		Clientset: kubernetes.NewForConfigOrDie(&rest.Config{Host: server.URL}),
 		Config:    &rest.Config{Host: server.URL},
 	}
 
-	stdout, stderr, err := client.Exec(context.Background(), "ns1", "pod11", "cont110", []string{"nvidia-smi", "-L"})
+	stdout, stderr, err := client.Exec(t.Context(), "ns1", "pod11", "cont110", []string{"nvidia-smi", "-L"})
 	require.NoError(t, err)
 	assert.Equal(t, expected, string(stdout))
 	assert.Empty(t, stderr)

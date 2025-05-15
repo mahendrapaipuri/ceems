@@ -1,9 +1,7 @@
 package grafana
 
 import (
-	"context"
 	"encoding/json"
-	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -14,8 +12,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var noOpLogger = slog.New(slog.DiscardHandler)
+
 func TestNewGrafanaWithNoURL(t *testing.T) {
-	grafana, err := New("", config_util.HTTPClientConfig{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	grafana, err := New("", config_util.HTTPClientConfig{}, noOpLogger)
 	require.NoError(t, err)
 	assert.False(t, grafana.Available())
 }
@@ -31,7 +31,7 @@ func TestNewGrafanaWithURL(t *testing.T) {
 	}))
 	defer server.Close()
 
-	grafana, err := New(server.URL, config_util.HTTPClientConfig{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	grafana, err := New(server.URL, config_util.HTTPClientConfig{}, noOpLogger)
 	require.NoError(t, err)
 	assert.True(t, grafana.Available())
 
@@ -54,11 +54,11 @@ func TestGrafanaTeamMembersQuerySuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	grafana, err := New(server.URL, config_util.HTTPClientConfig{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	grafana, err := New(server.URL, config_util.HTTPClientConfig{}, noOpLogger)
 	require.NoError(t, err)
 	assert.True(t, grafana.Available())
 
-	m, err := grafana.TeamMembers(context.Background(), []string{"0"})
+	m, err := grafana.TeamMembers(t.Context(), []string{"0"})
 	require.NoError(t, err)
 	assert.Equal(t, []string{"foo", "bar"}, m)
 }
@@ -78,10 +78,10 @@ func TestGrafanaTeamMembersQueryFailNoTeamID(t *testing.T) {
 	}))
 	defer server.Close()
 
-	grafana, err := New(server.URL, config_util.HTTPClientConfig{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	grafana, err := New(server.URL, config_util.HTTPClientConfig{}, noOpLogger)
 	require.NoError(t, err)
 	assert.True(t, grafana.Available())
 
-	_, err = grafana.teamMembers(context.Background(), "")
+	_, err = grafana.teamMembers(t.Context(), "")
 	assert.Error(t, err)
 }

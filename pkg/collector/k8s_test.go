@@ -4,7 +4,6 @@
 package collector
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -115,7 +114,7 @@ users:
 	err = collector.Update(metrics)
 	require.NoError(t, err)
 
-	err = collector.Stop(context.Background())
+	err = collector.Stop(t.Context())
 	require.NoError(t, err)
 }
 

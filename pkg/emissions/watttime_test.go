@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -48,7 +46,7 @@ func mockWTAPIFailRequest(
 
 func TestWTDataProvider(t *testing.T) {
 	s := wtProvider{
-		logger:       slog.New(slog.NewTextHandler(io.Discard, nil)),
+		logger:       noOpLogger,
 		updatePeriod: 10 * time.Millisecond,
 		fetch:        mockWTAPIRequest,
 	}
@@ -84,7 +82,7 @@ func TestWTDataProvider(t *testing.T) {
 
 func TestWTDataProviderError(t *testing.T) {
 	s := wtProvider{
-		logger:       slog.New(slog.NewTextHandler(io.Discard, nil)),
+		logger:       noOpLogger,
 		updatePeriod: 10 * time.Millisecond,
 		fetch:        mockWTAPIFailRequest,
 	}
@@ -133,7 +131,7 @@ func TestNewWTProvider(t *testing.T) {
 	t.Setenv("WT_REGION", "Region")
 	t.Setenv("__WT_BASE_URL", server.URL)
 
-	s, err := NewWattTimeProvider(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	s, err := NewWattTimeProvider(noOpLogger)
 	defer s.Stop()
 
 	assert.NoError(t, err)
@@ -156,7 +154,7 @@ func TestNewWTProviderFail(t *testing.T) {
 	t.Setenv("WT_REGION", "Region")
 	t.Setenv("__WT_BASE_URL", server.URL)
 
-	_, err := NewWattTimeProvider(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	_, err := NewWattTimeProvider(noOpLogger)
 	assert.Error(t, err)
 }
 

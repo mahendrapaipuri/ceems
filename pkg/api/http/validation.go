@@ -3,7 +3,6 @@ package http
 import (
 	"context"
 	"database/sql"
-	"io"
 	"log/slog"
 	"slices"
 	"strconv"
@@ -20,7 +19,7 @@ const (
 // Null logger for adminUsers function. We dont need to log
 // admin users query for each request.
 var (
-	nullLogger = slog.New(slog.NewTextHandler(io.Discard, nil))
+	nullLogger = slog.New(slog.DiscardHandler)
 )
 
 // AdminUsers returns a slice of admin users fetched from DB.
