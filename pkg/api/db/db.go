@@ -307,7 +307,7 @@ func New(c *Config) (*stats, error) {
 	dbPath := filepath.Join(c.Data.Path, base.CEEMSDBName)
 
 	// Setup DB
-	db, dbConn, err := setupDB(dbPath, c.Logger)
+	db, dbConn, err := setupDB(dbPath)
 	if err != nil {
 		c.Logger.Error("DB setup failed", "err", err)
 

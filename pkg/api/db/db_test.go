@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mahendrapaipuri/ceems/internal/common"
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/mahendrapaipuri/ceems/pkg/api/resource"
@@ -25,6 +26,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 )
 
 type mockFetcherOne struct {
@@ -1046,4 +1048,172 @@ func TestUnitStatsDeleteOldUnits(t *testing.T) {
 	err = result.QueryRow(unitID).Scan(&numRows)
 	require.NoError(t, err, "failed to query DB")
 	assert.Equal(t, 0, numRows, "expected 0 rows after deletion")
+}
+
+func TestDataConfig(t *testing.T) {
+	todayMidnight, _ := time.Parse("2006-01-02", time.Now().Format("2006-01-02"))
+
+	tests := []struct {
+		name          string
+		configString  string
+		config        DataConfig
+		canUnmarshall bool
+		valid         bool
+	}{
+		{
+			name:         "empty config",
+			configString: `path: data`,
+			config: DataConfig{
+				Path:              "data",
+				RetentionPeriod:   model.Duration(30 * 24 * time.Hour),
+				UpdateInterval:    model.Duration(15 * time.Minute),
+				MaxUpdateInterval: model.Duration(time.Hour),
+				BackupInterval:    model.Duration(24 * time.Hour),
+				Timezone:          Timezone{Location: time.Local},
+				LastUpdate:        DateTime{todayMidnight},
+			},
+			canUnmarshall: true,
+			valid:         true,
+		},
+		{
+			name:         "update_from with date",
+			configString: `update_from: 2024-10-10`,
+			config: DataConfig{
+				Path:              "data",
+				RetentionPeriod:   model.Duration(30 * 24 * time.Hour),
+				UpdateInterval:    model.Duration(15 * time.Minute),
+				MaxUpdateInterval: model.Duration(time.Hour),
+				BackupInterval:    model.Duration(24 * time.Hour),
+				Timezone:          Timezone{Location: time.Local},
+				LastUpdate:        DateTime{time.Date(2024, time.October, 10, 0, 0, 0, 0, time.UTC)},
+			},
+			canUnmarshall: true,
+			valid:         true,
+		},
+		{
+			name:         "update_from with datetime",
+			configString: `update_from: 2024-10-10T15:04`,
+			config: DataConfig{
+				Path:              "data",
+				RetentionPeriod:   model.Duration(30 * 24 * time.Hour),
+				UpdateInterval:    model.Duration(15 * time.Minute),
+				MaxUpdateInterval: model.Duration(time.Hour),
+				BackupInterval:    model.Duration(24 * time.Hour),
+				Timezone:          Timezone{Location: time.Local},
+				LastUpdate:        DateTime{time.Date(2024, time.October, 10, 15, 4, 0, 0, time.UTC)},
+			},
+			canUnmarshall: true,
+			valid:         true,
+		},
+		{
+			name: "update_from with datetime and seconds",
+			configString: `update_from: 2024-10-10T15:04:05
+time_zone: UTC`,
+			config: DataConfig{
+				Path:              "data",
+				RetentionPeriod:   model.Duration(30 * 24 * time.Hour),
+				UpdateInterval:    model.Duration(15 * time.Minute),
+				MaxUpdateInterval: model.Duration(time.Hour),
+				BackupInterval:    model.Duration(24 * time.Hour),
+				Timezone:          Timezone{Location: time.UTC},
+				LastUpdate:        DateTime{time.Date(2024, time.October, 10, 15, 4, 5, 0, time.UTC)},
+			},
+			canUnmarshall: true,
+			valid:         true,
+		},
+		{
+			name:         "invalid update_interval",
+			configString: `update_interval: 0s`,
+			config: DataConfig{
+				Path:              "data",
+				RetentionPeriod:   model.Duration(30 * 24 * time.Hour),
+				UpdateInterval:    model.Duration(0),
+				MaxUpdateInterval: model.Duration(time.Hour),
+				BackupInterval:    model.Duration(24 * time.Hour),
+				Timezone:          Timezone{Location: time.Local},
+				LastUpdate:        DateTime{todayMidnight},
+			},
+			canUnmarshall: true,
+			valid:         false,
+		},
+		{
+			name:         "invalid backup_interval",
+			configString: `backup_interval: 1h`,
+			config: DataConfig{
+				Path:              "data",
+				RetentionPeriod:   model.Duration(30 * 24 * time.Hour),
+				UpdateInterval:    model.Duration(15 * time.Minute),
+				MaxUpdateInterval: model.Duration(time.Hour),
+				BackupInterval:    model.Duration(1 * time.Hour),
+				Timezone:          Timezone{Location: time.Local},
+				LastUpdate:        DateTime{todayMidnight},
+			},
+			canUnmarshall: true,
+			valid:         false,
+		},
+	}
+
+	for _, test := range tests {
+		var c DataConfig
+
+		err := yaml.Unmarshal([]byte(test.configString), &c) //nolint:musttag
+		if test.canUnmarshall {
+			require.NoError(t, err, test.name)
+
+			assert.Equal(t, test.config, c, test.name)
+		} else {
+			require.Error(t, err, test.name)
+		}
+
+		if test.valid {
+			require.NoError(t, c.Validate(), test.name)
+		} else {
+			require.Error(t, c.Validate(), test.name)
+		}
+	}
+}
+
+func TestAdminConfig(t *testing.T) {
+	tests := []struct {
+		name          string
+		configString  string
+		config        AdminConfig
+		canUnmarshall bool
+		valid         bool
+	}{
+		{
+			name: "basic config",
+			configString: `
+users:
+  - foo
+  - bar`,
+			config: AdminConfig{
+				Users: []string{"foo", "bar", base.CEEMSServiceAccount},
+				Grafana: common.GrafanaWebConfig{
+					HTTPClientConfig: config_util.DefaultHTTPClientConfig,
+				},
+			},
+			canUnmarshall: true,
+			valid:         true,
+		},
+	}
+
+	for _, test := range tests {
+		var c AdminConfig
+
+		err := yaml.Unmarshal([]byte(test.configString), &c)
+		if test.canUnmarshall {
+			require.NoError(t, err, test.name)
+
+			assert.Equal(t, test.config, c, test.name)
+		} else {
+			require.Error(t, err, test.name)
+		}
+
+		if test.valid {
+			require.NoError(t, c.Validate(), test.name)
+		} else {
+			require.Error(t, c.Validate(), test.name)
+		}
+	}
 }
