@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 
@@ -81,11 +82,9 @@ func rewriteRequestURL(logger *slog.Logger, req *http.Request, targets map[strin
 	// First get the remote address of the client
 	remoteIPs = req.Header[http.CanonicalHeaderKey(realIPHeaderName)]
 
-	if ip, _, err := net.SplitHostPort(req.RemoteAddr); err == nil {
-		// Only consider non localhost remote addresses
-		if ip != "127.0.0.1" {
-			remoteIPs = append(remoteIPs, ip)
-		}
+	// Add remoteAddr only when not on testing
+	if ip, _, err := net.SplitHostPort(req.RemoteAddr); err == nil && os.Getenv("__IS_TESTING") == "" {
+		remoteIPs = append(remoteIPs, ip)
 	}
 
 	// Check if target is already in map

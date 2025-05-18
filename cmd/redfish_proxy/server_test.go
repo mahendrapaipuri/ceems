@@ -34,6 +34,9 @@ func testTargets() ([]*httptest.Server, []string) {
 }
 
 func TestNewRedfishProxyServerWithTargets(t *testing.T) {
+	// Set env var
+	t.Setenv("__IS_TESTING", "1")
+
 	// Start test targets
 	targets, remoteIPs := testTargets()
 
@@ -114,6 +117,9 @@ func TestNewRedfishProxyServerWithTargets(t *testing.T) {
 }
 
 func TestNewRedfishProxyServerWithWebConfig(t *testing.T) {
+	// Set env var
+	t.Setenv("__IS_TESTING", "1")
+
 	// Start test targets
 	targets, remoteIPs := testTargets()
 
