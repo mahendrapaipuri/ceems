@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
-	"net/http/httputil"
 	_ "net/http/pprof" // #nosec
 	"time"
 
@@ -22,7 +22,7 @@ type RedfishProxyServer struct {
 }
 
 // NewRedfishProxyServer creates new RedfishProxyServer struct instance.
-func NewRedfishProxyServer(c *Config) *RedfishProxyServer {
+func NewRedfishProxyServer(c *Config) (*RedfishProxyServer, error) {
 	router := mux.NewRouter()
 	server := &RedfishProxyServer{
 		logger:  c.Logger,
@@ -47,10 +47,16 @@ func NewRedfishProxyServer(c *Config) *RedfishProxyServer {
 		router.PathPrefix("/debug/").Handler(http.DefaultServeMux).Methods(http.MethodGet).Host("localhost")
 	}
 
-	// Handle metrics path
-	router.PathPrefix("/").Handler(server.newProxyHandler())
+	// Create a new handler
+	proxyHandler, err := server.newProxyHandlerFunc()
+	if err != nil {
+		return nil, err
+	}
 
-	return server
+	// Handle metrics path
+	router.PathPrefix("/").HandlerFunc(proxyHandler)
+
+	return server, nil
 }
 
 // Start launches CEEMS exporter HTTP server.
@@ -84,11 +90,31 @@ func (s *RedfishProxyServer) Shutdown(ctx context.Context) error {
 }
 
 // newProxyHandler creates a new handler for proxying requests to redfish targets.
-func (s *RedfishProxyServer) newProxyHandler() *httputil.ReverseProxy {
+func (s *RedfishProxyServer) newProxyHandlerFunc() (func(w http.ResponseWriter, r *http.Request), error) {
 	config := &rpConfig{
 		logger:  s.logger.With("subsystem", "rp"),
 		redfish: s.redfish,
 	}
 
-	return NewMultiHostReverseProxy(config)
+	// Make a new instance of reverse proxy
+	rp, err := NewMultiHostReverseProxy(config)
+	if err != nil {
+		return nil, err
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		// First check if the req URL is in the allowed resources. If not, return
+		if s.redfish.Config.Web.allowedAPIResourcesRegexp != nil {
+			if !s.redfish.Config.Web.allowedAPIResourcesRegexp.MatchString(r.URL.Path) {
+				s.logger.Error("Requested resource is not allowed", "path", r.URL.Path, "allowed_resources", s.redfish.Config.Web.allowedAPIResourcesRegexp)
+				w.WriteHeader(http.StatusUnauthorized)
+				fmt.Fprintf(w, "access to api resource %s is not allowed", r.URL.Path)
+
+				return
+			}
+		}
+
+		// Proxy request to upstream targets
+		rp.ServeHTTP(w, r)
+	}, nil
 }

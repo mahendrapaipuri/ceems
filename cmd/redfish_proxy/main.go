@@ -8,13 +8,16 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"regexp"
 	"runtime"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/mahendrapaipuri/ceems/internal/common"
 	internal_runtime "github.com/mahendrapaipuri/ceems/internal/runtime"
+	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/promslog"
 	"github.com/prometheus/common/promslog/flag"
 	"github.com/prometheus/common/version"
@@ -22,6 +25,18 @@ import (
 
 const (
 	appName = "redfish_proxy"
+)
+
+// Default API Resources that proxy will allow.
+var (
+	defaultAllowedAPIResources = []string{
+		"^/redfish/v1/$",
+		"^/redfish/v1/Sessions$",
+		"^/redfish/v1/SessionService/Sessions$",
+		"^/redfish/v1/Chassis$",
+		"^/redfish/v1/Chassis/[a-zA-Z0-9-_]*$",
+		"^/redfish/v1/Chassis/[a-zA-Z0-9-_]*/Power$",
+	}
 )
 
 var (
@@ -87,10 +102,56 @@ func (t *Target) UnmarshalYAML(unmarshal func(interface{}) error) error {
 type Redfish struct {
 	Config struct {
 		Web struct {
-			Insecure bool `yaml:"insecure_skip_verify"`
+			HTTPClientConfig config.HTTPClientConfig `yaml:",inline"`
+			// List of allowed API resources that will be proxied. Each
+			// string must be a valid regular expression. Ensure
+			// that each string use start and end delimiters (^$) to
+			// ensure the entire string will be captured. All the strings
+			// will be joined by | delimiter to form a regular expression.
+			//
+			// Default values for this will ensure to allow API requests
+			// to root, sessions, chassis and power resources.
+			// Ref: https://regex101.com/r/9dy4JE/1
+			AllowedAPIResources []string `yaml:"allowed_api_resources"`
+			// Deprecated: InSecure exists for historical compatibility
+			// and should not be used. This must be configured under
+			// `tls_config.insecure_skip_verify` from now on.
+			Insecure                  bool `yaml:"insecure_skip_verify"`
+			allowedAPIResourcesRegexp *regexp.Regexp
 		} `yaml:"web"`
 		Targets []Target `yaml:"targets"`
 	} `yaml:"redfish_config"`
+}
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface.
+func (r *Redfish) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	// Set a default config
+	*r = Redfish{}
+	r.Config.Web.AllowedAPIResources = defaultAllowedAPIResources
+	r.Config.Web.HTTPClientConfig = config.DefaultHTTPClientConfig
+
+	type plain Redfish
+
+	if err := unmarshal((*plain)(r)); err != nil {
+		return err
+	}
+
+	// If InSecure is set to true
+	if r.Config.Web.Insecure {
+		r.Config.Web.HTTPClientConfig.TLSConfig = config.TLSConfig{
+			InsecureSkipVerify: r.Config.Web.Insecure,
+		}
+	}
+
+	var err error
+
+	// Compile regex
+	r.Config.Web.allowedAPIResourcesRegexp, err = regexp.Compile(strings.Join(r.Config.Web.AllowedAPIResources, "|"))
+	if err != nil {
+		return fmt.Errorf("invalid regexp in allowed_resources: %w", err)
+	}
+
+	return nil
 }
 
 // WebConfig makes HTTP web config from CLI args.
@@ -193,7 +254,10 @@ func main() {
 	defer stop()
 
 	// Create a new proxy instance
-	server := NewRedfishProxyServer(config)
+	server, err := NewRedfishProxyServer(config)
+	if err != nil {
+		panic(err)
+	}
 
 	// Initializing the server in a goroutine so that
 	// it won't block the graceful shutdown handling below.

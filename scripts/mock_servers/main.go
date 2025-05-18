@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"embed"
 	"encoding/json"
 	"fmt"
 	"hash/fnv"
@@ -25,6 +26,9 @@ import (
 	"google.golang.org/protobuf/proto"
 	podresourcesapi "k8s.io/kubelet/pkg/apis/podresources/v1"
 )
+
+//go:embed assets/*
+var assetsFS embed.FS
 
 // Default ports.
 const (
@@ -68,7 +72,7 @@ func lenLoop(i uint32) int {
 
 // ServiceRootHandler handles root of redfish API.
 func ServiceRootHandler(w http.ResponseWriter, r *http.Request) {
-	if data, err := os.ReadFile("pkg/collector/testdata/redfish/service_root.json"); err == nil {
+	if data, err := assetsFS.ReadFile("assets/redfish/service_root.json"); err == nil {
 		w.Write(data)
 
 		return
@@ -80,7 +84,7 @@ func ServiceRootHandler(w http.ResponseWriter, r *http.Request) {
 
 // ChassisRootHandler handles chassis collections of redfish API.
 func ChassisRootHandler(w http.ResponseWriter, r *http.Request) {
-	if data, err := os.ReadFile("pkg/collector/testdata/redfish/chassis_collection.json"); err == nil {
+	if data, err := assetsFS.ReadFile("assets/redfish/chassis_collection.json"); err == nil {
 		w.Write(data)
 
 		return
@@ -93,7 +97,7 @@ func ChassisRootHandler(w http.ResponseWriter, r *http.Request) {
 // ChassisHandler handles a given chassis of redfish API.
 func ChassisHandler(w http.ResponseWriter, r *http.Request) {
 	chassisID := strings.ReplaceAll(strings.ToLower(r.PathValue("chassisID")), "-", "_")
-	if data, err := os.ReadFile(fmt.Sprintf("pkg/collector/testdata/redfish/%s.json", chassisID)); err == nil {
+	if data, err := assetsFS.ReadFile(fmt.Sprintf("assets/redfish/%s.json", chassisID)); err == nil {
 		w.Write(data)
 
 		return
@@ -106,7 +110,7 @@ func ChassisHandler(w http.ResponseWriter, r *http.Request) {
 // ChassisPowerHandler handles chassis power of redfish API.
 func ChassisPowerHandler(w http.ResponseWriter, r *http.Request) {
 	chassisID := strings.ReplaceAll(strings.ToLower(r.PathValue("chassisID")), "-", "_")
-	if data, err := os.ReadFile(fmt.Sprintf("pkg/collector/testdata/redfish/%s_power.json", chassisID)); err == nil {
+	if data, err := assetsFS.ReadFile(fmt.Sprintf("assets/redfish/%s_power.json", chassisID)); err == nil {
 		w.Write(data)
 
 		return
@@ -118,7 +122,7 @@ func ChassisPowerHandler(w http.ResponseWriter, r *http.Request) {
 
 // PyroConfigHandler handles pyroscope config.
 func PyroConfigHandler(w http.ResponseWriter, r *http.Request) {
-	if data, err := os.ReadFile("pkg/lb/testdata/pyroscope/config.yml"); err == nil {
+	if data, err := assetsFS.ReadFile("assets/pyroscope/config.yml"); err == nil {
 		w.Write(data)
 
 		return
@@ -550,7 +554,7 @@ func ServersHandler(w http.ResponseWriter, r *http.Request) {
 		fileName = "servers"
 	}
 
-	if data, err := os.ReadFile(fmt.Sprintf("pkg/api/testdata/openstack/compute/%s.json", fileName)); err == nil {
+	if data, err := assetsFS.ReadFile(fmt.Sprintf("assets/openstack/compute/%s.json", fileName)); err == nil {
 		w.Write(data)
 
 		return
@@ -578,7 +582,7 @@ func TokensHandler(w http.ResponseWriter, r *http.Request) {
 
 // UsersHandler handles OS users.
 func UsersHandler(w http.ResponseWriter, r *http.Request) {
-	if data, err := os.ReadFile("pkg/api/testdata/openstack/identity/users.json"); err == nil {
+	if data, err := assetsFS.ReadFile("assets/openstack/identity/users.json"); err == nil {
 		w.Write(data)
 
 		return
@@ -591,7 +595,7 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 // ProjectsHandler handles OS projects.
 func ProjectsHandler(w http.ResponseWriter, r *http.Request) {
 	userID := r.PathValue("id")
-	if data, err := os.ReadFile(fmt.Sprintf("pkg/api/testdata/openstack/identity/%s.json", userID)); err == nil {
+	if data, err := assetsFS.ReadFile(fmt.Sprintf("assets/openstack/identity/%s.json", userID)); err == nil {
 		w.Write(data)
 
 		return
@@ -603,7 +607,7 @@ func ProjectsHandler(w http.ResponseWriter, r *http.Request) {
 
 // PodsListHandler handles k8s pods.
 func PodsListHandler(w http.ResponseWriter, r *http.Request) {
-	if data, err := os.ReadFile("pkg/collector/testdata/k8s/pods-metadata.json"); err == nil {
+	if data, err := assetsFS.ReadFile("assets/k8s/pods-metadata.json"); err == nil {
 		w.Header().Add("Content-Type", "application/json")
 		w.Header().Add("Content-Type", "application/vnd.kubernetes.protobuf")
 		w.Write(data)
@@ -620,7 +624,7 @@ func redfishProxyTarget(ctx context.Context, i, portNum int, tls bool) {
 
 	// Registering our handler functions, and creating paths.
 	redfishMux := http.NewServeMux()
-	redfishMux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	redfishMux.HandleFunc("/redfish/v1/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "BMC for host 192.168.1.%d is running on port %d\n", i, portNum)
 	})
 
@@ -857,7 +861,7 @@ func kubeletSocketServer(_ context.Context) {
 		}
 
 		// Read pod resources content
-		content, err := os.ReadFile(fmt.Sprintf("pkg/collector/testdata/k8s/%s-pod-resources.json", vendor))
+		content, err := assetsFS.ReadFile(fmt.Sprintf("assets/k8s/%s-pod-resources.json", vendor))
 		if err != nil {
 			log.Fatal(err)
 		}

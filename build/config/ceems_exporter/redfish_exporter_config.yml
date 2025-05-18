@@ -67,9 +67,27 @@ redfish_web_config: {}
   # #
   # password: supersecret
 
+  # # When TLS is enabled on Redfish server or Redfish Proxy server,
+  # # use this to configure the TLS transport
+  # #
+  # # Ref: https://pkg.go.dev/github.com/prometheus/common@v0.63.0/config#TLSConfig
+  # #
+  # tls_config: {}
+
+  # # When Redfish Proxy is protected with an API token, use this section
+  # # to setup the autorization to proxy server. This is relevant in k8s
+  # # deployments where kube RBAC proxy is deployed along with redfish proxy
+  # # server to protect the access to proxy.
+  # #
+  # # Ref: https://pkg.go.dev/github.com/prometheus/common@v0.63.0/config#Authorization
+  # #
+  # authorization: {}
+
   # # If TLS is enabled on Redfish server or Redfish Proxy server 
   # # with self signed certificates, set it to true to skip TLS 
   # # certificate verification.
+  # #
+  # # Deprecated: Use `tls_config.insecure_skip_verify` instead
   # #
   # insecure_skip_verify: false
 

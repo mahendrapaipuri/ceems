@@ -421,9 +421,28 @@ redfish_web_config:
   #
   password: supersecret
 
+  # When TLS is enabled on Redfish server or Redfish Proxy server,
+  # use this to configure the TLS transport
+  #
+  # Ref: https://pkg.go.dev/github.com/prometheus/common@v0.63.0/config#TLSConfig
+  #
+  tls_config:
+    insecure_skip_verify: true
+
+  # When Redfish Proxy is protected with an API token, use this section
+  # to setup the autorization to proxy server. This is relevant in k8s
+  # deployments where kube RBAC proxy is deployed along with redfish proxy
+  # server to protect the access to proxy.
+  #
+  # Ref: https://pkg.go.dev/github.com/prometheus/common@v0.63.0/config#Authorization
+  #
+  authorization: {}
+
   # If TLS is enabled on Redfish server or Redfish Proxy server 
   # with self-signed certificates, set it to true to skip TLS 
   # certificate verification.
+  #
+  # Deprecated: Use `tls_config.insecure_skip_verify` instead
   #
   insecure_skip_verify: true
 
@@ -495,16 +514,28 @@ redfish_config:
   # Redfish API server.
   #
   web:
+    # If Redfish targets are using TLS, use this section to
+    # configure the root CA when they are using self signed.
+    # Also it is possible to ignore certificate check by
+    # setting `insecure_skip_verify` to `true` in trusted
+    # deployments.
+    #
+    # Ref: https://pkg.go.dev/github.com/prometheus/common@v0.63.0/config#TLSConfig
+    #
+    tls_config: {}
+
     # If Redfish API servers are running with TLS enabled
     # and using self-signed certificates, set `insecure_skip_verify`
     # to `true` to skip TLS certificate verification
+    #
+    # Deprecated: Use `tls_config.insecure_skip_verify` instead
     #
     insecure_skip_verify: false
 ```
 
 If the Redfish servers are running with TLS using self-signed certificates, provide
-a config file with `insecure_skip_verify` set to `true`. If that is not the case, the config
-file can be avoided.
+a config file with `tls_config.insecure_skip_verify` set to `true`. If that is not the case,
+the config file can be avoided.
 
 <!-- If there are multiple network interfaces with IP addresses on the compute nodes, it is
 **strongly advised to add entry for each IP address**. For instance, if a compute node

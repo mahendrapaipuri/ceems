@@ -134,11 +134,20 @@ func TestNewFrontend(t *testing.T) {
 	lb, err := New(config)
 	require.NoError(t, err)
 
+	// Use a channel to hand off the error
+	// Ref: https://github.com/ipfs/kubo/issues/2043#issuecomment-164136026
+	errs := make(chan error, 1)
+
 	go func() {
-		lb.Start(t.Context())
+		err := lb.Start(t.Context())
+		errs <- err
 	}()
 
 	err = lb.Shutdown(t.Context())
+	require.NoError(t, err)
+
+	// Wait for it
+	err = <-errs
 	require.NoError(t, err)
 }
 

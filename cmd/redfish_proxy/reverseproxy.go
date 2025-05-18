@@ -1,19 +1,27 @@
 package main
 
 import (
-	"crypto/tls"
 	"log/slog"
 	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"strings"
+	"sync"
+
+	"github.com/prometheus/common/config"
 )
 
 // Header names.
 const (
 	redfishURLHeaderName = "X-Redfish-Url"
 	realIPHeaderName     = "X-Real-IP"
+	authorization        = "Authorization"
+)
+
+// Mutex to read/write to targets map.
+var (
+	targetsMapMu = sync.RWMutex{}
 )
 
 type rpConfig struct {
@@ -23,7 +31,7 @@ type rpConfig struct {
 
 // NewMultiHostReverseProxy returns a new instance of ReverseProxy that routes requests
 // to multiple targets based on remote address of the request.
-func NewMultiHostReverseProxy(c *rpConfig) *httputil.ReverseProxy {
+func NewMultiHostReverseProxy(c *rpConfig) (*httputil.ReverseProxy, error) {
 	// Make a map of host addr to bmc url using config
 	targets := make(map[string]*url.URL)
 
@@ -33,26 +41,33 @@ func NewMultiHostReverseProxy(c *rpConfig) *httputil.ReverseProxy {
 		}
 	}
 
-	// Setup TLS check
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: c.redfish.Config.Web.Insecure}, //nolint:gosec
+	// Create a HTTP roundtripper
+	httpRoundTripper, err := config.NewRoundTripperFromConfig(c.redfish.Config.Web.HTTPClientConfig, "redfish_proxy", config.WithUserAgent("ceems/redfish_proxy"))
+	if err != nil {
+		return nil, err
 	}
 
 	director := func(req *http.Request) {
 		rewriteRequestURL(c.logger, req, targets)
 	}
 
-	return &httputil.ReverseProxy{Director: director, Transport: tr}
+	// Create a custom error handler that returns invalid request on all errors
+	errorHandler := func(rw http.ResponseWriter, req *http.Request, err error) {
+		rw.WriteHeader(http.StatusBadRequest)
+		rw.Write([]byte("failed to find redfish target"))
+	}
+
+	return &httputil.ReverseProxy{Director: director, Transport: httpRoundTripper, ErrorHandler: errorHandler}, nil
 }
 
 // rewriteRequestURL rewrites the request URL to point to the target.
 //
 // We attempt to find the correct target using following methods:
 //
-// - Check X-BMC-Host header and build target URL based on web config
+// - Check X-Redfish-Url header
 // - Lookup RemoteAddr and find the target from map of provided targets
 //
-// Always X-BMC-Host header is checked for BMC hostname and if not found,
+// Always X-Redfish-Url header is checked for BMC hostname and if not found,
 // target URL is looked up from provided targets.
 func rewriteRequestURL(logger *slog.Logger, req *http.Request, targets map[string]*url.URL) {
 	var target *url.URL
@@ -63,17 +78,27 @@ func rewriteRequestURL(logger *slog.Logger, req *http.Request, targets map[strin
 
 	var ok bool
 
-	// First check in targets map if there is an entry already
+	// First get the remote address of the client
 	remoteIPs = req.Header[http.CanonicalHeaderKey(realIPHeaderName)]
+
 	if ip, _, err := net.SplitHostPort(req.RemoteAddr); err == nil {
-		remoteIPs = append(remoteIPs, ip)
+		// Only consider non localhost remote addresses
+		if ip != "127.0.0.1" {
+			remoteIPs = append(remoteIPs, ip)
+		}
 	}
 
+	// Check if target is already in map
+	targetsMapMu.RLock()
 	for _, ip := range remoteIPs {
 		if target, ok = targets[ip]; ok {
+			// Unlock map and go to rewrite_req
+			targetsMapMu.RUnlock()
+
 			goto rewrite_req
 		}
 	}
+	targetsMapMu.RUnlock()
 
 	// If target is not found in map, check header
 	// Always use CanonicalHeaderKey as golang always canonicalize headers
@@ -87,9 +112,11 @@ func rewriteRequestURL(logger *slog.Logger, req *http.Request, targets map[strin
 		}
 
 		// Add this to targets map
+		targetsMapMu.Lock()
 		for _, ip := range remoteIPs {
 			targets[ip] = target
 		}
+		targetsMapMu.Unlock()
 
 		goto rewrite_req
 	} else {
@@ -115,6 +142,9 @@ rewrite_req:
 
 	// Strip X-Redfish-Url header before proxying request to target
 	req.Header.Del(redfishURLHeaderName)
+
+	// Strip Authorization header as well
+	req.Header.Del(authorization)
 }
 
 func singleJoiningSlash(a, b string) string {

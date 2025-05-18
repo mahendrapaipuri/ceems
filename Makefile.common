@@ -222,6 +222,11 @@ ifeq ($(CGO_BUILD), 1)
 	$(SWAG) fmt -d $(SWAGGER_DIR) -g $(SWAGGER_MAIN)
 endif
 	@echo ">> building test binaries"
+	mkdir -p scripts/mock_servers/assets
+	cp -r pkg/collector/testdata/redfish scripts/mock_servers/assets
+	cp -r pkg/collector/testdata/k8s scripts/mock_servers/assets
+	cp -r pkg/lb/testdata/pyroscope scripts/mock_servers/assets
+	cp -r pkg/api/testdata/openstack scripts/mock_servers/assets
 	$(PROMU_GO_TEST) build --prefix $(PREFIX) $(PROMU_BINARIES)
 ifeq ($(CGO_BUILD), 0)
 	$(PROMU_CGO_TEST) build --prefix $(PREFIX) $(PROMU_BINARIES)
