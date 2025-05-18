@@ -22,6 +22,8 @@ jobs:
         run: |
           mkdir -p pkg/collector/bpf/objs
           touch pkg/collector/bpf/objs/sample.o
+          mkdir -p scripts/mock_servers/assets
+          touch scripts/mock_servers/assets/sample.json
 
       - name: Lint
         uses: golangci/golangci-lint-action@v7
