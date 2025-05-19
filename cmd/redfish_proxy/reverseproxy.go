@@ -54,6 +54,8 @@ func NewMultiHostReverseProxy(c *rpConfig) (*httputil.ReverseProxy, error) {
 
 	// Create a custom error handler that returns invalid request on all errors
 	errorHandler := func(rw http.ResponseWriter, req *http.Request, err error) {
+		c.logger.Error("failed to proxy request", "err", err)
+
 		rw.WriteHeader(http.StatusBadRequest)
 		rw.Write([]byte("failed to find redfish target"))
 	}
