@@ -58,7 +58,7 @@ fi
 # Check if HTTP server is responding
 if ! [ -z "${port}" ]; then
     if ! curl -sf "http://localhost:${port}/health" > /dev/null; then
-        echo "App at port ${port} is not responding"
+        echo "${app} at port ${port} is not responding"
         exit 1
     fi
 fi

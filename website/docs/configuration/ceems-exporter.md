@@ -421,9 +421,44 @@ redfish_web_config:
   #
   password: supersecret
 
+  # When TLS is enabled on Redfish server or Redfish Proxy server,
+  # use this to configure the TLS transport
+  #
+  # Ref: https://pkg.go.dev/github.com/prometheus/common@v0.63.0/config#TLSConfig
+  #
+  tls_config:
+    insecure_skip_verify: true
+
+  # When Redfish Proxy is protected with an API token, use this section
+  # to setup the autorization to proxy server. This is relevant in k8s
+  # deployments where kube RBAC proxy is deployed along with redfish proxy
+  # server to protect the access to proxy.
+  #
+  # Authorization header added to the request will be dropped before proxying 
+  # request to upstream redfish server.
+  #
+  # Ref: https://pkg.go.dev/github.com/prometheus/common@v0.63.0/config#Authorization
+  #
+  authorization: {}
+
+  # When Redfish Proxy is protected with basic authentication, use this section
+  # to setup basic auth username and password. In production environment where
+  # Redfish proxy is deployed, we strongly advise to protect the proxy server with
+  # basic auth to protect the upstream redfish servers from DoS/DDoS attacks. 
+  # 
+  # DO NOT USE THIS SECTION TO CONFIGURE THE CREDENTIALS OF REDFISH SERVER.
+  # Authorization header added to the request will be dropped before proxying 
+  # request to upstream redfish server.
+  #
+  # Ref: https://pkg.go.dev/github.com/prometheus/common@v0.63.0/config#BasicAuth
+  #
+  basic_auth: {}
+
   # If TLS is enabled on Redfish server or Redfish Proxy server 
   # with self-signed certificates, set it to true to skip TLS 
   # certificate verification.
+  #
+  # Deprecated: Use `tls_config.insecure_skip_verify` instead
   #
   insecure_skip_verify: true
 
@@ -495,16 +530,43 @@ redfish_config:
   # Redfish API server.
   #
   web:
+    # If Redfish targets are using TLS, use this section to
+    # configure the root CA when they are using self signed.
+    # Also it is possible to ignore certificate check by
+    # setting `insecure_skip_verify` to `true` in trusted
+    # deployments.
+    #
+    # Ref: https://pkg.go.dev/github.com/prometheus/common@v0.63.0/config#TLSConfig
+    #
+    tls_config: {}
+
     # If Redfish API servers are running with TLS enabled
     # and using self-signed certificates, set `insecure_skip_verify`
     # to `true` to skip TLS certificate verification
+    #
+    # Deprecated: Use `tls_config.insecure_skip_verify` instead
     #
     insecure_skip_verify: false
 ```
 
 If the Redfish servers are running with TLS using self-signed certificates, provide
-a config file with `insecure_skip_verify` set to `true`. If that is not the case, the config
-file can be avoided.
+a config file with `tls_config.insecure_skip_verify` set to `true`. If that is not the case,
+the config file can be avoided.
+
+Redfish proxy server supports TLS and basic auth as well and they follow the same configuration
+as CEEMS apps. Please consult [Web Security](./basic-auth.md) section on how to configure
+TLS and/or basic auth for the proxy server.
+
+:::important[IMPORTANT]
+
+We strongly recommend to enable either basic auth or mTLS on redfish proxy server to
+make it immune to DoS/DDoS attacks. Without such mechanism, it is possible for rogue
+users to make repeated calls to redfish server when their IP addresses are know. Although
+Redfish proxy allows only handful of API resources that are just enough to fetch power
+readings, it is still possible to overwhelm redfish servers when too many requests are
+made which can potentially make BMC unresponsive.
+
+:::
 
 <!-- If there are multiple network interfaces with IP addresses on the compute nodes, it is
 **strongly advised to add entry for each IP address**. For instance, if a compute node
@@ -526,10 +588,11 @@ redfish_config:
 ``` -->
 
 Assuming the management node is `mgmt-0` and starting `redfish_proxy` on that node with the above
-config in a file stored at `/etc/redfish_proxy/config.yml` can be done as follows:
+config in a file stored at `/etc/redfish_proxy/config.yml` and web config file with basic auth user
+is at `/etc/redfish_proxy/web-config.yml` can be done as follows:
 
 ```bash
-redfish_proxy --config.file=/etc/redfish_proxy/config.yml --web.listen-address=":5000"
+redfish_proxy --config.file=/etc/redfish_proxy/config.yml --web.config.file=/etc/redfish_proxy/web-config.yml --web.listen-address=":5000"
 ```
 
 This will start the Redfish proxy on the management node running at `mgmt-0:5000`. Finally, the
@@ -541,14 +604,17 @@ redfish_web_config:
   protocol: http
   hostname: '{hostname}-bmc'
   port: 5000
-  # Redfish proxy is running on mgmt-0 at port 5000
-  external_url: http://mgmt-0:5000
   # Redfish proxy will pass these credentials transparently
   # to the target Redfish API server
   username: admin
   password: supersecret
-  insecure_skip_verify: true
   use_session_token: true
+
+  # Redfish proxy is running on mgmt-0 at port 5000
+  external_url: http://mgmt-0:5000
+  basic_auth:
+    username: proxyadmin
+    password: proxysupersecret
 ```
 
 With the above config, the collector will build the Redfish API URL based on `protocol`,

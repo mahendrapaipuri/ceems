@@ -7,12 +7,15 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/mahendrapaipuri/ceems/internal/common"
+	"github.com/prometheus/common/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -31,6 +34,9 @@ func testTargets() ([]*httptest.Server, []string) {
 }
 
 func TestNewRedfishProxyServerWithTargets(t *testing.T) {
+	// Set env var
+	t.Setenv("__IS_TESTING", "1")
+
 	// Start test targets
 	targets, remoteIPs := testTargets()
 
@@ -50,7 +56,10 @@ func TestNewRedfishProxyServerWithTargets(t *testing.T) {
 		Redfish: &Redfish{
 			Config: struct {
 				Web struct {
-					Insecure bool `yaml:"insecure_skip_verify"`
+					HTTPClientConfig          config.HTTPClientConfig `yaml:",inline"`
+					AllowedAPIResources       []string                `yaml:"allowed_api_resources"`
+					Insecure                  bool                    `yaml:"insecure_skip_verify"`
+					allowedAPIResourcesRegexp *regexp.Regexp
 				} `yaml:"web"`
 				Targets []Target `yaml:"targets"`
 			}{
@@ -76,7 +85,8 @@ func TestNewRedfishProxyServerWithTargets(t *testing.T) {
 	config.Web.Addresses = []string{":" + strconv.FormatInt(int64(p), 10)}
 
 	// New instance
-	server := NewRedfishProxyServer(config)
+	server, err := NewRedfishProxyServer(config)
+	require.NoError(t, err)
 
 	// Start server
 	go func() {
@@ -107,6 +117,9 @@ func TestNewRedfishProxyServerWithTargets(t *testing.T) {
 }
 
 func TestNewRedfishProxyServerWithWebConfig(t *testing.T) {
+	// Set env var
+	t.Setenv("__IS_TESTING", "1")
+
 	// Start test targets
 	targets, remoteIPs := testTargets()
 
@@ -129,14 +142,21 @@ func TestNewRedfishProxyServerWithWebConfig(t *testing.T) {
 		Redfish: &Redfish{
 			Config: struct {
 				Web struct {
-					Insecure bool `yaml:"insecure_skip_verify"`
+					HTTPClientConfig          config.HTTPClientConfig `yaml:",inline"`
+					AllowedAPIResources       []string                `yaml:"allowed_api_resources"`
+					Insecure                  bool                    `yaml:"insecure_skip_verify"`
+					allowedAPIResourcesRegexp *regexp.Regexp
 				} `yaml:"web"`
 				Targets []Target `yaml:"targets"`
 			}{
 				Web: struct {
-					Insecure bool `yaml:"insecure_skip_verify"`
+					HTTPClientConfig          config.HTTPClientConfig `yaml:",inline"`
+					AllowedAPIResources       []string                `yaml:"allowed_api_resources"`
+					Insecure                  bool                    `yaml:"insecure_skip_verify"`
+					allowedAPIResourcesRegexp *regexp.Regexp
 				}{
-					Insecure: true,
+					Insecure:                  true,
+					allowedAPIResourcesRegexp: regexp.MustCompile(strings.Join(defaultAllowedAPIResources, "|")),
 				},
 			},
 		},
@@ -150,7 +170,8 @@ func TestNewRedfishProxyServerWithWebConfig(t *testing.T) {
 	config.Web.Addresses = []string{":" + strconv.FormatInt(int64(p), 10)}
 
 	// New instance
-	server := NewRedfishProxyServer(config)
+	server, err := NewRedfishProxyServer(config)
+	require.NoError(t, err)
 
 	// Start server
 	go func() {
@@ -164,7 +185,7 @@ func TestNewRedfishProxyServerWithWebConfig(t *testing.T) {
 
 	// Make request to only 1st server
 	for i := range 2 {
-		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://localhost:%d", p), nil) //nolint:noctx
+		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://localhost:%d/redfish/v1/", p), nil) //nolint:noctx
 		require.NoError(t, err)
 
 		// Make second request without Redfish URL header and it should pass as we
@@ -184,5 +205,63 @@ func TestNewRedfishProxyServerWithWebConfig(t *testing.T) {
 
 		// Check the body if it has same IP set
 		assert.Equal(t, strings.Join([]string{remoteIPs[0]}, ","), string(bodyBytes))
+	}
+
+	// Make a request without redfishURL header and invalid remoteIP
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://localhost:%d/redfish/v1/", p), nil) //nolint:noctx
+	require.NoError(t, err)
+
+	req.Header.Add(realIPHeaderName, "1.1.1.1")
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	// Check the body if it has same IP set
+	assert.Equal(t, 400, resp.StatusCode)
+
+	// Start a wait group
+	wg := sync.WaitGroup{}
+
+	// Use a channel to hand off the error
+	// Ref: https://github.com/ipfs/kubo/issues/2043#issuecomment-164136026
+	errs := make(chan error, 20*3)
+
+	// Make concurrent requests to detect data races
+	for i := range 20 {
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://localhost:%d/redfish/v1/", p), nil) //nolint:noctx
+			errs <- err
+
+			// Target ID
+			tid := i % len(targetURLs)
+
+			req.Header.Add(redfishURLHeaderName, "http://localhost:"+targetURLs[tid].Port())
+			req.Header.Add(realIPHeaderName, remoteIPs[tid])
+
+			resp, err := client.Do(req)
+			errs <- err
+			defer resp.Body.Close()
+
+			bodyBytes, err := io.ReadAll(resp.Body)
+			errs <- err
+
+			// Check the body if it has same IP set
+			assert.Equal(t, strings.Join([]string{remoteIPs[tid]}, ","), string(bodyBytes))
+		}()
+	}
+
+	// Wait for all requests to finish
+	wg.Wait()
+
+	// Check for any errs
+	// wait for all N to finish
+	for range 20 * 3 {
+		err := <-errs
+		require.NoError(t, err)
 	}
 }

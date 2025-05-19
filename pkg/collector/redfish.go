@@ -33,17 +33,87 @@ const hostnamePlaceholder = "{hostname}"
 
 type redfishConfig struct {
 	Web struct {
-		Proto        string `yaml:"protocol"`
-		Hostname     string `yaml:"hostname"`
-		Port         int    `yaml:"port"`
-		URL          *url.URL
-		ExternalURL  string `yaml:"external_url"`
-		Username     string `yaml:"username"`
-		Password     string `yaml:"password"`
-		InSecure     bool   `yaml:"insecure_skip_verify"`
-		SessionToken bool   `yaml:"use_session_token"`
-		Timeout      int64  `yaml:"timeout"`
+		Proto            string                  `yaml:"protocol"`
+		Hostname         string                  `yaml:"hostname"`
+		Port             int                     `yaml:"port"`
+		Username         string                  `yaml:"username"`
+		Password         string                  `yaml:"password"`
+		SessionToken     bool                    `yaml:"use_session_token"`
+		Timeout          int64                   `yaml:"timeout"`
+		ExternalURL      string                  `yaml:"external_url"`
+		HTTPClientConfig config.HTTPClientConfig `yaml:",inline"`
+		url              *url.URL
+		// Deprecated: InSecure exists for historical compatibility
+		// and should not be used. This must be configured under
+		// `tls_config.insecure_skip_verify` from now on.
+		InSecure bool `yaml:"insecure_skip_verify"`
 	} `yaml:"redfish_web_config"`
+}
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface.
+func (c *redfishConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	// Set a default config
+	*c = redfishConfig{}
+	c.Web.SessionToken = true
+	c.Web.HTTPClientConfig = config.DefaultHTTPClientConfig
+
+	type plain redfishConfig
+
+	if err := unmarshal((*plain)(c)); err != nil {
+		return err
+	}
+
+	var err error
+
+	// If BMC Hostname is not provided, attempt to discover it using OpenIPMI interface
+	if c.Web.Hostname == "" {
+		// Make a new IPMI client
+		client, err := ipmi.NewIPMIClient(0, slog.New(slog.DiscardHandler))
+		if err != nil {
+			return fmt.Errorf("failed to create IPMI client to get BMC address: %w", err)
+		}
+		defer client.Close()
+
+		// Attempt to get new IP address
+		bmcIP, err := client.LanIP(time.Second)
+		if err != nil {
+			return fmt.Errorf("failed to get BMC LAN IP: %w", err)
+		}
+
+		// Attempt to get BMC hostname from IP
+		if hostname, err := net.LookupAddr(*bmcIP); err == nil {
+			c.Web.Hostname = hostname[0]
+		} else {
+			c.Web.Hostname = *bmcIP
+		}
+	}
+
+	// If cfg.Web.Hostname has {hostname} placeholder, replace it with current host name
+	c.Web.Hostname = strings.ReplaceAll(c.Web.Hostname, hostnamePlaceholder, hostname)
+
+	// Build Redfish URL
+	c.Web.url, err = url.Parse(fmt.Sprintf("%s://%s:%d", c.Web.Proto, c.Web.Hostname, c.Web.Port))
+	if err != nil {
+		return fmt.Errorf("invalid redfish web config: %w", err)
+	}
+
+	// Add redfish target URL in the header for proxy web config
+	c.Web.HTTPClientConfig.HTTPHeaders = &config.Headers{
+		Headers: map[string]config.Header{
+			redfishURLHeaderName: {
+				Values: []string{c.Web.url.String()},
+			},
+		},
+	}
+
+	// If InSecure is set to true
+	if c.Web.InSecure {
+		c.Web.HTTPClientConfig.TLSConfig = config.TLSConfig{
+			InsecureSkipVerify: c.Web.InSecure,
+		}
+	}
+
+	return nil
 }
 
 type redfishCollector struct {
@@ -101,49 +171,7 @@ func NewRedfishCollector(logger *slog.Logger) (Collector, error) {
 		return nil, fmt.Errorf("failed to parse Redfish config file: %w", err)
 	}
 
-	// If BMC Hostname is not provided, attempt to discover it using OpenIPMI interface
-	if cfg.Web.Hostname == "" {
-		// Make a new IPMI client
-		if client, err := ipmi.NewIPMIClient(0, logger.With("subsystem", "ipmi_client")); err == nil {
-			// Attempt to get new IP address
-			if bmcIP, err := client.LanIP(time.Second); err == nil {
-				// Attempt to get BMC hostname from IP
-				if hostname, err := net.LookupAddr(*bmcIP); err == nil {
-					cfg.Web.Hostname = hostname[0]
-				} else {
-					cfg.Web.Hostname = *bmcIP
-				}
-			}
-			defer client.Close()
-		}
-	}
-
-	// If cfg.Web.Hostname has {hostname} placeholder, replace it with current host name
-	cfg.Web.Hostname = strings.ReplaceAll(cfg.Web.Hostname, hostnamePlaceholder, hostname)
-
-	// Build Redfish URL
-	cfg.Web.URL, err = url.Parse(fmt.Sprintf("%s://%s:%d", cfg.Web.Proto, cfg.Web.Hostname, cfg.Web.Port))
-	if err != nil {
-		logger.Error("Failed to build Redfish URL", "err", err)
-
-		return nil, fmt.Errorf("invalid redfish web config: %w", err)
-	}
-
-	logger.Debug("Redfish URL", "url", cfg.Web.URL.String())
-
-	// Make a new HTTP client config
-	clientConfig := config.HTTPClientConfig{
-		TLSConfig: config.TLSConfig{
-			InsecureSkipVerify: cfg.Web.InSecure,
-		},
-		HTTPHeaders: &config.Headers{
-			Headers: map[string]config.Header{
-				redfishURLHeaderName: {
-					Values: []string{cfg.Web.URL.String()},
-				},
-			},
-		},
-	}
+	logger.Debug("Redfish URL", "url", cfg.Web.url.String())
 
 	// Get the URL that client will talk to
 	// If external URL is provided, always prefer it over the raw BMC hostname and port
@@ -151,11 +179,11 @@ func NewRedfishCollector(logger *slog.Logger) (Collector, error) {
 	if cfg.Web.ExternalURL != "" {
 		endpoint = cfg.Web.ExternalURL
 	} else {
-		endpoint = cfg.Web.URL.String()
+		endpoint = cfg.Web.url.String()
 	}
 
 	// Make a HTTP client from client config
-	httpClient, err := config.NewClientFromConfig(clientConfig, "redfish")
+	httpClient, err := config.NewClientFromConfig(cfg.Web.HTTPClientConfig, "redfish")
 	if err != nil {
 		logger.Error("Failed to create a HTTP client for Redfish", "err", err)
 
@@ -185,7 +213,7 @@ func NewRedfishCollector(logger *slog.Logger) (Collector, error) {
 		Endpoint:         endpoint,
 		Username:         cfg.Web.Username,
 		Password:         cfg.Web.Password,
-		Insecure:         cfg.Web.InSecure,
+		Insecure:         cfg.Web.HTTPClientConfig.TLSConfig.InsecureSkipVerify,
 		BasicAuth:        !cfg.Web.SessionToken,
 		HTTPClient:       httpClient,
 		ReuseConnections: true,

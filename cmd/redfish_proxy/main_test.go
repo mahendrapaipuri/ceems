@@ -20,7 +20,7 @@ func queryServer(address, port string) error {
 	client := &http.Client{}
 	req, _ := http.NewRequest( //nolint:noctx
 		http.MethodGet,
-		fmt.Sprintf("http://%s/", address),
+		fmt.Sprintf("http://%s/redfish/v1/", address),
 		nil,
 	)
 	req.Header.Set(redfishURLHeaderName, "http://localhost:"+port)

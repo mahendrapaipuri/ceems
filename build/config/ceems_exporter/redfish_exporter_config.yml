@@ -60,16 +60,49 @@ redfish_web_config: {}
 
   # # Password corresponding to the username provided above.
   # #
-  # #
   # # This can be provided using an environment variable REDFISH_WEB_PASSWORD.
   # # When the environment variable is set, it will override the value
   # # provided by the config file.
   # #
   # password: supersecret
 
+  # # When TLS is enabled on Redfish server or Redfish Proxy server,
+  # # use this to configure the TLS transport
+  # #
+  # # Ref: https://pkg.go.dev/github.com/prometheus/common@v0.63.0/config#TLSConfig
+  # #
+  # tls_config: {}
+
+  # # When Redfish Proxy is protected with an API token, use this section
+  # # to setup the autorization to proxy server. This is relevant in k8s
+  # # deployments where kube RBAC proxy is deployed along with redfish proxy
+  # # server to protect the access to proxy.
+  # #
+  # # Authorization header added to the request will be dropped before proxying 
+  # # request to upstream redfish server.
+  # #
+  # # Ref: https://pkg.go.dev/github.com/prometheus/common@v0.63.0/config#Authorization
+  # #
+  # authorization: {}
+
+  # # When Redfish Proxy is protected with basic authentication, use this section
+  # # to setup basic auth username and password. In production environment where
+  # # Redfish proxy is deployed, we strongly advise to protect the proxy server with
+  # # basic auth to protect the upstream redfish servers from DoS/DDoS attacks. 
+  # # 
+  # # DO NOT USE THIS SECTION TO CONFIGURE THE CREDENTIALS OF REDFISH SERVER.
+  # # Authorization header added to the request will be dropped before proxying 
+  # # request to upstream redfish server.
+  # #
+  # # Ref: https://pkg.go.dev/github.com/prometheus/common@v0.63.0/config#BasicAuth
+  # #
+  # basic_auth: {}
+
   # # If TLS is enabled on Redfish server or Redfish Proxy server 
   # # with self signed certificates, set it to true to skip TLS 
   # # certificate verification.
+  # #
+  # # Deprecated: Use `tls_config.insecure_skip_verify` instead
   # #
   # insecure_skip_verify: false
 

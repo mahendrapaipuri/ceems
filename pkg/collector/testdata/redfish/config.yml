@@ -1,6 +1,6 @@
 ---
 redfish_web_config:
   protocol: http
-  host: localhost
+  hostname: localhost
   port: 5000
   use_session_token: true

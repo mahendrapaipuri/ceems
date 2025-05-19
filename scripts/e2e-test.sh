@@ -1243,9 +1243,9 @@ then
     waitport "${port}"
     for i in {0..9}
     do
-      get -H "X-Real-IP: 192.168.1.${i}" "127.0.0.1:${port}" >> "${fixture_output}"
+      get -H "X-Real-IP: 192.168.1.${i}" "127.0.0.1:${port}/redfish/v1/" >> "${fixture_output}"
     done
-    get -H "X-Redfish-Url: http://localhost:5000" "127.0.0.1:${port}" >> "${fixture_output}"
+    get -H "X-Redfish-Url: http://localhost:5000" "127.0.0.1:${port}/redfish/v1/" >> "${fixture_output}"
 
   elif [ "${scenario}" = "redfish-proxy-frontend-tls-backend-plain" ]
   then
@@ -1266,9 +1266,12 @@ then
     waitport "${port}"
     for i in {0..9}
     do
-      get -H "X-Real-IP: 192.168.1.${i}" "https://127.0.0.1:${port}" >> "${fixture_output}"
+      get -H "X-Real-IP: 192.168.1.${i}" "https://admin:admin@127.0.0.1:${port}/redfish/v1/" >> "${fixture_output}"
     done
-    get -H "X-Redfish-Url: http://localhost:5000" "https://127.0.0.1:${port}" >> "${fixture_output}"
+    get -H "X-Redfish-Url: http://localhost:5000" "https://admin:admin@127.0.0.1:${port}/redfish/v1/" >> "${fixture_output}"
+
+    # Request without basic auth credentials which should give us unauthorized response
+    get -H "X-Redfish-Url: http://localhost:5000" "https://127.0.0.1:${port}/redfish/v1/" >> "${fixture_output}"
 
   elif [ "${scenario}" = "redfish-proxy-frontend-plain-backend-tls" ]
   then
@@ -1288,9 +1291,9 @@ then
     waitport "${port}"
     for i in {0..9}
     do
-      get -H "X-Real-IP: 192.168.1.${i}" "127.0.0.1:${port}" >> "${fixture_output}"
+      get -H "X-Real-IP: 192.168.1.${i}" "127.0.0.1:${port}/redfish/v1/" >> "${fixture_output}"
     done
-    get -H "X-Redfish-Url: https://localhost:5005" "127.0.0.1:${port}" >> "${fixture_output}"
+    get -H "X-Redfish-Url: https://localhost:5005" "127.0.0.1:${port}/redfish/v1/" >> "${fixture_output}"
 
   elif [ "${scenario}" = "redfish-proxy-frontend-tls-backend-tls" ]
   then
@@ -1311,9 +1314,9 @@ then
     waitport "${port}"
     for i in {0..9}
     do
-      get -H "X-Real-IP: 192.168.1.${i}" "https://127.0.0.1:${port}" >> "${fixture_output}"
+      get -H "X-Real-IP: 192.168.1.${i}" "https://admin:admin@127.0.0.1:${port}/redfish/v1/" >> "${fixture_output}"
     done
-    get -H "X-Redfish-Url: https://localhost:5005" "https://127.0.0.1:${port}" >> "${fixture_output}"
+    get -H "X-Redfish-Url: https://localhost:5005" "https://admin:admin@127.0.0.1:${port}/redfish/v1/" >> "${fixture_output}"
 
   elif [ "${scenario}" = "redfish-proxy-targetless-frontend-plain-backend-plain" ]
   then
@@ -1330,7 +1333,7 @@ then
 
     sleep 5
     waitport "${port}"
-    get -H "X-Redfish-Url: http://localhost:5000" "http://127.0.0.1:${port}" >> "${fixture_output}"
+    get -H "X-Redfish-Url: http://localhost:5000" "http://127.0.0.1:${port}/redfish/v1/" >> "${fixture_output}"
   fi
 
 elif [[ "${scenario}" =~ ^"cacct" ]]
