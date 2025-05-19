@@ -9,3 +9,4 @@ BMC for host 192.168.1.7 is running on port 5007
 BMC for host 192.168.1.8 is running on port 5008
 BMC for host 192.168.1.9 is running on port 5009
 BMC for host 192.168.1.0 is running on port 5000
+Unauthorized
