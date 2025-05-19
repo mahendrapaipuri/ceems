@@ -1314,9 +1314,9 @@ then
     waitport "${port}"
     for i in {0..9}
     do
-      get -H "X-Real-IP: 192.168.1.${i}" "https://127.0.0.1:${port}/redfish/v1/" >> "${fixture_output}"
+      get -H "X-Real-IP: 192.168.1.${i}" "https://admin:admin@127.0.0.1:${port}/redfish/v1/" >> "${fixture_output}"
     done
-    get -H "X-Redfish-Url: https://localhost:5005" "https://127.0.0.1:${port}/redfish/v1/" >> "${fixture_output}"
+    get -H "X-Redfish-Url: https://localhost:5005" "https://admin:admin@127.0.0.1:${port}/redfish/v1/" >> "${fixture_output}"
 
   elif [ "${scenario}" = "redfish-proxy-targetless-frontend-plain-backend-plain" ]
   then
