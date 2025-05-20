@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.0 / 2025-05-20
+
+- [FEAT] Harden redfish proxy app [#357](https://github.com/mahendrapaipuri/ceems/pull/357) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [MAINT] Several maintenance changes [#354](https://github.com/mahendrapaipuri/ceems/pull/354) ([@ncreddine](https://github.com/ncreddine))
+- [FEAT] Add k8s collector in the exporter [#349](https://github.com/mahendrapaipuri/ceems/pull/349) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [MAINT] Bump dependencies [#345](https://github.com/mahendrapaipuri/ceems/pull/345), [#346](https://github.com/mahendrapaipuri/ceems/pull/346), [#347](https://github.com/mahendrapaipuri/ceems/pull/347), [#348](https://github.com/mahendrapaipuri/ceems/pull/348), [#351](https://github.com/mahendrapaipuri/ceems/pull/351), [#353](https://github.com/mahendrapaipuri/ceems/pull/353), [#355](https://github.com/mahendrapaipuri/ceems/pull/355), [#356](https://github.com/mahendrapaipuri/ceems/pull/356), [#358](https://github.com/mahendrapaipuri/ceems/pull/358) ([@dependabot](https://github.com/dependabot))
+
 ## 0.7.2 / 2025-04-19
 
 - [FEAT] Make redfish timeout a configurable value [#342](https://github.com/mahendrapaipuri/ceems/pull/342) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
