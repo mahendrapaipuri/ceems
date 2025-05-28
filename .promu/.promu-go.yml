@@ -30,6 +30,7 @@ build:
 tarball:
     files:
         - build/config/ceems_exporter/redfish_exporter_config.yml
+        - build/config/ceems_exporter/ebpf_profiling_config.yml
         - build/config/redfish_proxy/redfish_proxy.yml
         - build/config/cacct/cacct.yml
         - build/config/web-config.yml

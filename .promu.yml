@@ -28,6 +28,7 @@ build:
 tarball:
     files:
         - build/config/ceems_exporter/redfish_exporter_config.yml
+        - build/config/ceems_exporter/ebpf_profiling_config.yml
         - build/config/ceems_lb/ceems_lb.yml
         - build/config/ceems_api_server/ceems_api_server.yml
         - build/config/redfish_proxy/redfish_proxy.yml

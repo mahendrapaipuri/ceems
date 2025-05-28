@@ -2,6 +2,7 @@ package collector
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -9,24 +10,14 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/grafana/pyroscope/ebpf/sd"
 	"github.com/mahendrapaipuri/ceems/internal/security"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-// CLI opts.
-var (
-	enableDiscoverer = CEEMSExporterApp.Flag(
-		"discoverer.alloy-targets",
-		"Enable Grafana Alloy targets discoverer. Supported for SLURM and k8s. (default: false).",
-	).Default("false").Bool()
-	alloyTargetEnvVars = CEEMSExporterApp.Flag(
-		"discoverer.alloy-targets.env-var",
-		"Enable continuous profiling by Grafana Alloy only on the processes having any of these environment variables.",
-	).Strings()
-	alloySelfTarget = CEEMSExporterApp.Flag(
-		"discoverer.alloy-targets.self-profiler",
-		"Enable continuous profiling by Grafana Alloy on current process (default: false).",
-	).Default("false").Bool()
+const (
+	labelPID         = "__process_pid__"
+	labelServiceName = "service_name"
 )
 
 const selfTargetID = "__internal_ceems_exporter"
@@ -41,29 +32,43 @@ const (
 	alloyTargetFilterCtx = "alloy_targets_filter"
 )
 
-// alloyTargetDiscovererSecurityCtxData contains the input/output data for
+// targetDiscovererSecurityCtxData contains the input/output data for
 // discoverer function to execute inside security context.
 type alloyTargetFilterSecurityCtxData = perfProcFilterSecurityCtxData
 
 type Target struct {
-	Targets []string          `json:"targets"`
-	Labels  map[string]string `json:"labels"`
+	Targets []string           `json:"targets"`
+	Labels  sd.DiscoveryTarget `json:"labels"`
 }
 
-type alloyTargetOpts struct {
+type Discoverer interface {
+	Discover() ([]Target, error)
+	Enabled() bool
+}
+
+type discovererConfig struct {
+	logger        *slog.Logger
+	enabled       bool
 	targetEnvVars []string
+	selfProfile   bool
 }
 
-type CEEMSAlloyTargetDiscoverer struct {
+type targetDiscoverer struct {
 	logger           *slog.Logger
 	cgroupManager    *cgroupManager
-	opts             alloyTargetOpts
+	targetEnvVars    []string
+	selfProfile      bool
 	enabled          bool
 	securityContexts map[string]*security.SecurityContext
 }
 
-// NewAlloyTargetDiscoverer returns a new HTTP alloy discoverer.
-func NewAlloyTargetDiscoverer(logger *slog.Logger) (*CEEMSAlloyTargetDiscoverer, error) {
+// NewTargetDiscoverer returns a new profiling target discoverer.
+func NewTargetDiscoverer(c *discovererConfig) (Discoverer, error) {
+	// If not enabled, return ealry
+	if !c.enabled {
+		return &targetDiscoverer{logger: c.logger, enabled: false}, nil
+	}
+
 	var cgManager manager
 
 	// Check if either SLURM or k8s collector is enabled
@@ -74,55 +79,54 @@ func NewAlloyTargetDiscoverer(logger *slog.Logger) (*CEEMSAlloyTargetDiscoverer,
 		cgManager = k8s
 	}
 
-	// Discoverer is not enabled or supported collector is not enabled
-	if !*enableDiscoverer || cgManager == 0 {
-		return &CEEMSAlloyTargetDiscoverer{logger: logger, enabled: false}, nil
+	// If supported collector is not enabled
+	if cgManager == 0 {
+		return &targetDiscoverer{logger: c.logger, enabled: false}, nil
 	}
 
 	// Get resource manager's cgroup details
-	cgroupManager, err := NewCgroupManager(cgManager, logger)
+	cgroupManager, err := NewCgroupManager(cgManager, c.logger)
 	if err != nil {
-		logger.Info("Failed to create cgroup manager", "err", err)
+		c.logger.Info("Failed to create cgroup manager", "err", err)
 
 		return nil, err
 	}
 
-	logger.Info("cgroup: " + cgroupManager.String())
+	c.logger.Info("cgroup: " + cgroupManager.String())
 
-	// Make alloyTargetOpts
-	opts := alloyTargetOpts{
-		targetEnvVars: *alloyTargetEnvVars,
-	}
-
-	discoverer := &CEEMSAlloyTargetDiscoverer{
-		logger:        logger,
+	discoverer := &targetDiscoverer{
+		logger:        c.logger,
 		cgroupManager: cgroupManager,
-		opts:          opts,
-		enabled:       true,
+		enabled:       c.enabled,
+		targetEnvVars: c.targetEnvVars,
+		selfProfile:   c.selfProfile,
 	}
 
 	// Setup new security context(s)
-	// Security context for openining profilers
 	discoverer.securityContexts = make(map[string]*security.SecurityContext)
 
 	// If we need to inspect env vars of processes, we will need cap_sys_ptrace and
 	// cap_dac_read_search caps
-	if len(discoverer.opts.targetEnvVars) > 0 {
+	if len(discoverer.targetEnvVars) > 0 {
 		capabilities := []string{"cap_sys_ptrace", "cap_dac_read_search"}
 
-		auxCaps, err := setupCollectorCaps(capabilities)
+		auxCaps, err := setupAppCaps(capabilities)
 		if err != nil {
-			logger.Warn("Failed to parse capability name(s)", "err", err)
+			c.logger.Warn("Failed to parse capability name(s)", "err", err)
 		}
 
-		discoverer.securityContexts[alloyTargetFilterCtx], err = security.NewSecurityContext(
-			alloyTargetFilterCtx,
-			auxCaps,
-			filterTargets,
-			logger,
-		)
+		// Setup security context
+		cfg := &security.SCConfig{
+			Name:         alloyTargetFilterCtx,
+			Caps:         auxCaps,
+			Func:         filterTargets,
+			Logger:       c.logger,
+			ExecNatively: disableCapAwareness,
+		}
+
+		discoverer.securityContexts[alloyTargetFilterCtx], err = security.NewSecurityContext(cfg)
 		if err != nil {
-			logger.Error("Failed to create a security context for alloy target discoverer", "err", err)
+			c.logger.Error("Failed to create a security context for alloy target discoverer", "err", err)
 
 			return nil, err
 		}
@@ -132,7 +136,14 @@ func NewAlloyTargetDiscoverer(logger *slog.Logger) (*CEEMSAlloyTargetDiscoverer,
 }
 
 // Discover targets for Grafana Alloy.
-func (d *CEEMSAlloyTargetDiscoverer) Discover() ([]Target, error) {
+func (d *targetDiscoverer) Discover() ([]Target, error) {
+	// If the discoverer is not enabled, return empty targets
+	if !d.enabled {
+		d.logger.Debug("Grafana Alloy targets discoverer not enabled")
+
+		return nil, errors.New("alloy targets discoverer not enabled")
+	}
+
 	begin := time.Now()
 	targets, err := d.discover()
 	duration := time.Since(begin)
@@ -146,15 +157,13 @@ func (d *CEEMSAlloyTargetDiscoverer) Discover() ([]Target, error) {
 	return targets, err
 }
 
+// Enabled returns status of discoverer.
+func (d *targetDiscoverer) Enabled() bool {
+	return d.enabled
+}
+
 // discover targets by reading processes and mapping them to cgroups.
-func (d *CEEMSAlloyTargetDiscoverer) discover() ([]Target, error) {
-	// If the discoverer is not enabled, return empty targets
-	if !d.enabled {
-		d.logger.Debug("Grafana Alloy targets discoverer not enabled")
-
-		return []Target{}, nil
-	}
-
+func (d *targetDiscoverer) discover() ([]Target, error) {
 	// Get active cgroups
 	cgroups, err := d.cgroupManager.discover()
 	if err != nil {
@@ -164,13 +173,13 @@ func (d *CEEMSAlloyTargetDiscoverer) discover() ([]Target, error) {
 	// Read discovered cgroups into data pointer
 	dataPtr := &alloyTargetFilterSecurityCtxData{
 		cgroups:       cgroups,
-		targetEnvVars: d.opts.targetEnvVars,
+		targetEnvVars: d.targetEnvVars,
 		ignoreProc:    d.cgroupManager.ignoreProc,
 	}
 
 	// If there is a need to read processes' environ, use security context
 	// else execute function natively
-	if len(d.opts.targetEnvVars) > 0 {
+	if len(d.targetEnvVars) > 0 {
 		if securityCtx, ok := d.securityContexts[alloyTargetFilterCtx]; ok {
 			if err := securityCtx.Exec(dataPtr); err != nil {
 				return nil, err
@@ -183,7 +192,7 @@ func (d *CEEMSAlloyTargetDiscoverer) discover() ([]Target, error) {
 	if len(dataPtr.cgroups) == 0 {
 		d.logger.Debug("No targets found for Grafana Alloy")
 
-		return []Target{}, nil
+		return nil, nil
 	}
 
 	// Make targets from cgrpoups
@@ -196,8 +205,8 @@ func (d *CEEMSAlloyTargetDiscoverer) discover() ([]Target, error) {
 			target := Target{
 				Targets: []string{cgroup.id},
 				Labels: map[string]string{
-					"__process_pid__": strconv.FormatInt(int64(proc.PID), 10),
-					"service_name":    cgroup.uuid,
+					labelPID:         strconv.FormatInt(int64(proc.PID), 10),
+					labelServiceName: cgroup.uuid,
 				},
 			}
 
@@ -206,12 +215,12 @@ func (d *CEEMSAlloyTargetDiscoverer) discover() ([]Target, error) {
 	}
 
 	// If self profiler is enabled add current process to targets
-	if *alloySelfTarget {
+	if d.selfProfile {
 		targets = append(targets, Target{
 			Targets: []string{selfTargetID},
 			Labels: map[string]string{
-				"__process_pid__": strconv.FormatInt(int64(os.Getpid()), 10),
-				"service_name":    selfTargetID,
+				labelPID:         strconv.FormatInt(int64(os.Getpid()), 10),
+				labelServiceName: selfTargetID,
 			},
 		})
 	}
@@ -221,7 +230,7 @@ func (d *CEEMSAlloyTargetDiscoverer) discover() ([]Target, error) {
 
 // filterTargets filters the targets based on target env vars and return filtered targets.
 func filterTargets(data interface{}) error {
-	// Assert data is of alloyTargetDiscovererSecurityCtxData
+	// Assert data is of targetDiscovererSecurityCtxData
 	var d *alloyTargetFilterSecurityCtxData
 
 	var ok bool
@@ -236,7 +245,7 @@ func filterTargets(data interface{}) error {
 }
 
 // TargetsHandlerFor returns http.Handler for Alloy targets.
-func TargetsHandlerFor(discoverer *CEEMSAlloyTargetDiscoverer, opts promhttp.HandlerOpts) http.Handler {
+func TargetsHandlerFor(discoverer Discoverer, opts promhttp.HandlerOpts) http.Handler {
 	var inFlightSem chan struct{}
 
 	if opts.MaxRequestsInFlight > 0 {
@@ -260,7 +269,7 @@ func TargetsHandlerFor(discoverer *CEEMSAlloyTargetDiscoverer, opts promhttp.Han
 		targets, err := discoverer.Discover()
 		if err != nil {
 			if opts.ErrorLog != nil {
-				opts.ErrorLog.Println("error gathering metrics:", err)
+				opts.ErrorLog.Println("error gathering targets:", err)
 			}
 
 			switch opts.ErrorHandling {
@@ -305,7 +314,7 @@ func httpEncode(rsp http.ResponseWriter, response []Target) {
 func httpError(rsp http.ResponseWriter, err error) {
 	http.Error(
 		rsp,
-		"An error has occurred while serving targets:\n\n"+err.Error(),
+		"An error has occurred while gathering targets:\n\n"+err.Error(),
 		http.StatusInternalServerError,
 	)
 }

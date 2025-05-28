@@ -18,6 +18,7 @@ import (
 	"github.com/prometheus/common/promslog/flag"
 	"github.com/prometheus/common/version"
 	"github.com/prometheus/exporter-toolkit/web"
+	"kernel.org/pub/linux/libs/security/libcap/cap"
 )
 
 // CEEMSExporter represents the `ceems_exporter` cli.
@@ -32,11 +33,25 @@ const CEEMSExporterAppName = "ceems_exporter"
 // CEEMSExporterApp is kingpin CLI app.
 var CEEMSExporterApp = *kingpin.New(
 	CEEMSExporterAppName,
-	"Prometheus Exporter to export compute (job, VM, pod) resource usage metrics.",
+	"Prometheus Exporter and Pyroscope client to export compute (job, VM, pod) resource usage and ebpf based profiling metrics.",
+)
+
+var (
+	appCaps           = make([]cap.Value, 0) // Unique slice of all required caps of currently enabled collectors
+	appReadPaths      = make([]string, 0)    // Slice of paths that exporter needs read access
+	appReadWritePaths = make([]string, 0)    // Slice of paths that exporter needs read write access
+)
+
+// Placeholders that will be replaced with node labels.
+const (
+	hostnamePlaceholder = "{hostname}"
 )
 
 // Current hostname.
 var hostname string
+
+// Disable capbility awareness.
+var disableCapAwareness bool
 
 // Empty hostname flag (Used only for testing).
 // var emptyHostnameLabel *bool
@@ -57,6 +72,39 @@ func NewCEEMSExporter() (*CEEMSExporter, error) {
 // Main is the entry point of the `ceems_exporter` command.
 func (b *CEEMSExporter) Main() error {
 	var (
+		// Alloy target discoverer related flags
+		enableDiscoverer = b.App.Flag(
+			"discoverer.alloy-targets",
+			"Enable Grafana Alloy targets discoverer. Supported for SLURM and k8s. (default: false).",
+		).Default("false").Bool()
+		alloyTargetEnvVars = b.App.Flag(
+			"discoverer.alloy-targets.env-var",
+			"Enable continuous profiling by Grafana Alloy only on the processes having any of these environment variables.",
+		).Strings()
+		alloySelfTarget = b.App.Flag(
+			"discoverer.alloy-targets.self-profiler",
+			"Enable continuous profiling by Grafana Alloy on current process (default: false).",
+		).Default("false").Bool()
+
+		// eBPF profiling related flags
+		enableProfiler = b.App.Flag(
+			"profiling.ebpf",
+			"[Experimental] Enable eBPF based continuous profiling. Supported for SLURM and k8s. Enabling this "+
+				"will continuously profile compute units without needing to deploy Grafana Alloy (default: false).",
+		).Default("false").Bool()
+		profilingConfigFile = b.App.Flag(
+			"profiling.ebpf.config-file",
+			"Path to eBPF based continuous profiling configuration file.",
+		).Envar("CEEMS_EXPORTER_PROFILING_CONFIG_FILE").Default("").String()
+		profilingTargetEnvVars = b.App.Flag(
+			"profiling.ebpf.env-var",
+			"Enable eBPF based continuous profiling only on the processes having any of these environment variables.",
+		).Strings()
+		profilingSelfTarget = b.App.Flag(
+			"profiling.ebpf.self-profiler",
+			"Enable eBPF based continuous profiling on current process (default: false).",
+		).Default("false").Bool()
+
 		webListenAddresses = b.App.Flag(
 			"web.listen-address",
 			"Addresses on which to expose metrics and web interface.",
@@ -97,13 +145,18 @@ func (b *CEEMSExporter) Main() error {
 			"security.run-as-user",
 			"User to run as when exporter is started as root. Accepts either a username or uid.",
 		).Default("nobody").String()
-
-		// test CLI flags hidden
-		dropPrivs = b.App.Flag(
-			"security.drop-privileges",
-			"Drop privileges and run as nobody when exporter is started as root.",
-		).Default("true").Hidden().Bool()
 	)
+
+	// test CLI flags hidden
+	b.App.Flag(
+		"security.disable-cap-awareness",
+		"Disable capability awareness and run as privileged process (default: false).",
+	).Default("false").Hidden().BoolVar(&disableCapAwareness)
+
+	dropPrivs := b.App.Flag(
+		"security.drop-privileges",
+		"Drop privileges and run as nobody when exporter is started as root.",
+	).Default("true").Hidden().Bool()
 
 	// Socket activation only available on Linux
 	systemdSocket := func() *bool { b := false; return &b }() //nolint:nlreturn
@@ -174,9 +227,42 @@ func (b *CEEMSExporter) Main() error {
 	}
 
 	// Create a new instance of Alloy targets discoverer
-	discoverer, err := NewAlloyTargetDiscoverer(logger.With("discoverer", "alloy_targets"))
+	discovererConfig := &discovererConfig{
+		logger:        logger.With("discoverer", "alloy_targets"),
+		enabled:       *enableDiscoverer,
+		targetEnvVars: *alloyTargetEnvVars,
+		selfProfile:   *alloySelfTarget,
+	}
+
+	discoverer, err := NewTargetDiscoverer(discovererConfig)
 	if err != nil {
 		return err
+	}
+
+	// Create a new instance of profiler
+	profilerConfig := &profilerConfig{
+		logger:        logger.With("profiler", "ebpf"),
+		logLevel:      promslogConfig.Level.String(),
+		enabled:       *enableProfiler,
+		configFile:    *profilingConfigFile,
+		targetEnvVars: *profilingTargetEnvVars,
+		selfProfile:   *profilingSelfTarget,
+	}
+
+	profiler, err := NeweBPFProfiler(profilerConfig)
+	if err != nil {
+		return err
+	}
+
+	// If ebpf profiling is enabled, disable capability awareness. Even in this
+	// case only required capabilities will be kept but they remain in state
+	// effective all the time.
+	//
+	// The reason is that the ebpf library from Pyroscope that we use for profiling
+	// uses a lot of go routines and channels for communication. Executing all of them
+	// within a security context is not possible and hence, we disable awareness.
+	if profiler.Enabled() {
+		disableCapAwareness = true
 	}
 
 	if user, err := user.Current(); err == nil && user.Uid == "0" {
@@ -192,9 +278,9 @@ func (b *CEEMSExporter) Main() error {
 	// security
 	securityCfg := &security.Config{
 		RunAsUser:      *runAsUser,
-		Caps:           collectorCaps,
-		ReadPaths:      append([]string{webConfigFilePath}, collectorReadPaths...),
-		ReadWritePaths: collectorReadWritePaths,
+		Caps:           appCaps,
+		ReadPaths:      append([]string{webConfigFilePath}, appReadPaths...),
+		ReadWritePaths: appReadWritePaths,
 	}
 
 	// Start a new manager
@@ -207,7 +293,7 @@ func (b *CEEMSExporter) Main() error {
 
 	// Drop all unnecessary privileges
 	if *dropPrivs {
-		if err := securityManager.DropPrivileges(); err != nil {
+		if err := securityManager.DropPrivileges(disableCapAwareness); err != nil {
 			logger.Error("Failed to drop privileges", "err", err)
 
 			return err
@@ -247,6 +333,15 @@ func (b *CEEMSExporter) Main() error {
 		},
 	}
 
+	// Start profiling session if enabled
+	if profiler.Enabled() {
+		go func() {
+			if err := profiler.Start(ctx); err != nil {
+				logger.Error("Failed to start ebpf profiler", "err", err)
+			}
+		}()
+	}
+
 	// Create a new exporter server instance
 	server, err := NewCEEMSExporterServer(config)
 	if err != nil {
@@ -264,6 +359,11 @@ func (b *CEEMSExporter) Main() error {
 	// Listen for the interrupt signal.
 	<-ctx.Done()
 
+	// Stop profiling session
+	if profiler.Enabled() {
+		profiler.Stop()
+	}
+
 	// Restore default behavior on the interrupt signal and notify user of shutdown.
 	stop()
 	logger.Info("Shutting down gracefully, press Ctrl+C again to force")
@@ -278,6 +378,8 @@ func (b *CEEMSExporter) Main() error {
 	}
 
 	// Restore file permissions by removing any ACLs added
+	// When dropPrivs is false, this is noop, so it is fine to leave it
+	// here
 	if err := securityManager.DeleteACLEntries(); err != nil {
 		logger.Error("Failed to remove ACL entries", "err", err)
 	}

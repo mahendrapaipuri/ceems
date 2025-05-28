@@ -1,9 +1,11 @@
 package collector
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -13,6 +15,8 @@ import (
 	"syscall"
 	"unique"
 
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/prometheus/procfs"
 	"kernel.org/pub/linux/libs/security/libcap/cap"
 )
@@ -21,6 +25,72 @@ var (
 	metricNameRegex = regexp.MustCompile(`_*[^0-9A-Za-z_]+_*`)
 	reParens        = regexp.MustCompile(`\((.*)\)`)
 )
+
+// Nicked from https://github.com/isauran/logger/blob/master/adapters/gokit/logger.go
+// Ref: https://github.com/go-kit/log/issues/35
+type logFunc func(ctx context.Context, msg string, keysAndValues ...interface{})
+
+// Log retrieves the key values and formats them into slog.Logger.
+func (l logFunc) Log(keyvals ...interface{}) error {
+	// Extract message if present
+	var msg string
+
+	for i := 0; i < len(keyvals)-1; i += 2 {
+		if key, ok := keyvals[i].(string); ok && key == "msg" {
+			if msgVal, ok := keyvals[i+1].(string); ok {
+				msg = msgVal
+				// Remove message from keyvals
+				keyvals = append(keyvals[:i], keyvals[i+2:]...)
+
+				break
+			}
+		}
+	}
+
+	// Remove level key value pair if present
+	for i := 0; i < len(keyvals)-1; i += 2 {
+		if key, ok := keyvals[i].(string); ok && key == "level" {
+			if _, ok := keyvals[i+1].(level.Value); ok {
+				// Remove level from keyvals
+				keyvals = append(keyvals[:i], keyvals[i+2:]...)
+
+				break
+			}
+		}
+	}
+
+	ctx := context.Background()
+	l(ctx, msg, keyvals...)
+
+	return nil
+}
+
+// NewGokitLogger creates a new Go-kit logger from slog.Logger.
+func NewGokitLogger(lvl string, logger *slog.Logger) log.Logger {
+	var logF logFunc
+
+	var logLevel level.Option
+
+	switch strings.ToLower(lvl) {
+	case "debug":
+		logF = logger.DebugContext
+		logLevel = level.AllowDebug()
+	case "info":
+		logF = logger.InfoContext
+		logLevel = level.AllowInfo()
+	case "warn":
+		logF = logger.WarnContext
+		logLevel = level.AllowWarn()
+	case "error":
+		logF = logger.ErrorContext
+		logLevel = level.AllowError()
+	default:
+		logF = logger.InfoContext
+		logLevel = level.AllowInfo()
+	}
+
+	return log.With(level.NewFilter(logF, logLevel), "source", log.DefaultCaller)
+}
 
 // SanitizeMetricName sanitize the given metric name by replacing invalid characters by underscores.
 //
@@ -37,8 +107,8 @@ func SanitizeMetricName(metricName string) string {
 	return metricNameRegex.ReplaceAllString(metricName, "_")
 }
 
-// setupCollectorCaps sets up the required capabilities for collector.
-func setupCollectorCaps(capabilities []string) ([]cap.Value, error) {
+// setupAppCaps sets up the required capabilities for the app.
+func setupAppCaps(capabilities []string) ([]cap.Value, error) {
 	// If there is nothing to setup, return
 	if len(capabilities) == 0 {
 		return nil, nil
@@ -59,17 +129,17 @@ func setupCollectorCaps(capabilities []string) ([]cap.Value, error) {
 
 	// Add to global caps
 	for _, cap := range caps {
-		if !slices.Contains(collectorCaps, cap) {
-			collectorCaps = append(collectorCaps, cap)
+		if !slices.Contains(appCaps, cap) {
+			appCaps = append(appCaps, cap)
 		}
 	}
 
 	return caps, errs
 }
 
-// setupCollectorPathPerms sets up the required permissions on read and/or read write paths on file system
-// for collector.
-func setupCollectorPathPerms(readPaths []string, readWritePaths []string) {
+// setupAppPathPerms sets up the required permissions on read and/or read write paths on file system
+// for app.
+func setupAppPathPerms(readPaths []string, readWritePaths []string) {
 	// If there is nothing to setup, return
 	if len(readPaths) == 0 && len(readWritePaths) == 0 {
 		return
@@ -77,15 +147,15 @@ func setupCollectorPathPerms(readPaths []string, readWritePaths []string) {
 
 	// Add read paths to global slice
 	for _, path := range readPaths {
-		if !slices.Contains(collectorReadPaths, path) {
-			collectorReadPaths = append(collectorReadPaths, path)
+		if !slices.Contains(appReadPaths, path) {
+			appReadPaths = append(appReadPaths, path)
 		}
 	}
 
 	// Add write path to global slice
 	for _, path := range readWritePaths {
-		if !slices.Contains(collectorReadWritePaths, path) {
-			collectorReadWritePaths = append(collectorReadWritePaths, path)
+		if !slices.Contains(appReadWritePaths, path) {
+			appReadWritePaths = append(appReadWritePaths, path)
 		}
 	}
 }

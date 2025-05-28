@@ -51,6 +51,10 @@ dashboards according to their business requirements.
 
 ![GPU metrics](/img/dashboards/gpu_ts_stats.png)
 
+### Continuous profiling of a given compute unit
+
+![Profiling](/img/dashboards/profiling.png)
+
 ## Admin's/Operator's perspective
 
 ### Resource usage of entire cluster with time

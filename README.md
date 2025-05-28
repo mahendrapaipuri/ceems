@@ -29,7 +29,8 @@ with Grafana and Prometheus to show statistics to users.
 Although CEEMS was born out of a need to monitor energy and carbon footprint of compute
 workloads, it supports monitoring performance metrics as well. In addition, it leverages
 [eBPF](https://ebpf.io/what-is-ebpf/) framework to monitor IO and network metrics
-in a resource manager agnostic way.
+in a resource manager agnostic way. It also supports eBPF based zero instrumentation
+continuous profiling of compute units.
 
 ## 🎯 Features
 
@@ -37,8 +38,8 @@ in a resource manager agnostic way.
 managers (SLURM, Openstack, k8s)
 - Supports different energy sources like RAPL, HWMON, Cray's PM Counters and BMC _via_ IPMI or Redfish
 - Supports NVIDIA (MIG, time sharing, MPS and vGPU) and AMD GPUs ([Partition](https://rocm.blogs.amd.com/software-tools-optimization/compute-memory-modes/README.html) like CPX, QPX, TPX, DPX)
-- Provides targets using [HTTP Discovery Component](https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.http/)
-to [Grafana Alloy](https://grafana.com/docs/alloy/latest) to continuously profile compute units
+- Supports zero instrumentation eBPF based continuous profiling using
+[Grafana Pyroscope](https://grafana.com/oss/pyroscope/) as backend
 - Realtime access to metrics *via* Grafana dashboards or a simple CLI tool
 - Access control to Prometheus and Pyroscope datasources in Grafana
 - Stores aggregated metrics in a separate DB that can be retained for long time
@@ -65,10 +66,10 @@ consumption is estimated by assuming a Thermal Design Power (TDP) value and curr
 usage of the instance. Several dashboards have been created in Grafana for visualizing
 metrics which are listed below.
 
-- [Overall usage of cluster](https://ceems-demo.myaddr.tools/d/adrenju36n2tcb/cluster-status?orgId=1&from=now-24h&to=now&var-job=openstack&var-host=$__all&var-provider=rte&var-country_code=FR&refresh=15m){:target="_blank"}
-- [Usage of different Projects/Accounts by SLURM and Openstack](https://ceems-demo.myaddr.tools/d/cdreu45pp9erkd/user-and-project-stats?orgId=1&from=now-90d&to=now&refresh=15m){:target="_blank"}
-- [Usage of Openstack resources by a given user and project](https://ceems-demo.myaddr.tools/d/be5x3it7gpx4wf/openstack-instance-summary?orgId=1&from=now-90d&to=now&var-user=gazoo&var-account=cornerstone&refresh=15m){:target="_blank"}
-- [Usage of SLURM resources by a given user and project](https://ceems-demo.myaddr.tools/d/fdsm8aom8hqf4fewfwe3123dascdsc/slurm-job-summary?orgId=1&from=now-90d&to=now&var-user=wilma&var-account=bedrock&refresh=15m){:target="_blank"}
+- [Overall usage of cluster](https://ceems-demo.myaddr.tools/d/adrenju36n2tcb/cluster-status?orgId=1&from=now-24h&to=now&var-job=openstack&var-host=$__all&var-provider=rte&var-country_code=FR&refresh=15m)
+- [Usage of different Projects/Accounts by SLURM and Openstack](https://ceems-demo.myaddr.tools/d/cdreu45pp9erkd/user-and-project-stats?orgId=1&from=now-90d&to=now&refresh=15m)
+- [Usage of Openstack resources by a given user and project](https://ceems-demo.myaddr.tools/d/be5x3it7gpx4wf/openstack-instance-summary?orgId=1&from=now-90d&to=now&var-user=gazoo&var-account=cornerstone&refresh=15m)
+- [Usage of SLURM resources by a given user and project](https://ceems-demo.myaddr.tools/d/fdsm8aom8hqf4fewfwe3123dascdsc/slurm-job-summary?orgId=1&from=now-90d&to=now&var-user=wilma&var-account=bedrock&refresh=15m)
 
 > [!WARNING]
 > All the dashboards provided in the demo instance are only meant to be for demonstrative

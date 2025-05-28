@@ -741,6 +741,15 @@ must be installed on service node.
 
 ### Deploying Grafana Alloy and Pyroscope
 
+:::note[NOTE]
+
+CEEMS exporter now supports doing eBPF based continuous profiling of compute units natively
+and hence, there is no need to install Grafana Alloy on the compute nodes. This functionality
+can be enabled using `--profiling.ebpf` flag to CEEMS exporter and passing an appropriate
+configuration file discussed in [Configuration Section](../configuration/ceems-exporter.md#ebpf-based-continuous-profiling).
+
+:::
+
 First, ensure that [Grafana Alloy](https://grafana.com/docs/alloy/latest/set-up/install/linux/)
 and [Pyroscope](https://github.com/grafana/pyroscope/releases) packages must be added and enabled.
 
@@ -870,6 +879,40 @@ are otherwise not permitted for non-privileged users.
 
 After this step, Grafana Alloy should be sending the profiles data to Pyroscope for every
 SLURM job on the compute node.
+
+As mentioned before Grafana Alloy is not strictly necessary for enabling continuous profiling
+and it can be done by the CEEMS exporter natively. This enables operators to manage fewer components
+and helps maintainability of the stack on the platform. In order to enable profiling natively,
+first a [configuration file](../configuration/ceems-exporter.md#ebpf-based-continuous-profiling) with
+at least client configuration of the Grafana Pyroscope server must be created and saved to
+`/etc/ceems_exporter/ebpf_profiling_config.yml` and then the CLI flags to the exporter can be
+modified as follows:
+
+```bash
+whoami
+# root
+
+hostname
+# compute-0 or compute-gpu-0
+
+cat > /etc/systemd/system/ceems_exporter.service.d/override.conf << EOF
+[Service]
+Environment=CEEMS_EXPORTER_OPTIONS="--collector.slurm --profiling.ebpf --profiling.ebpf.config-file=/etc/ceems_exporter/ebpf_profiling_config.yml --web.disable-exporter-metrics"
+EOF
+```
+
+Finally, restarting the CEEMS exporter will start collecting profiles of compute units.
+
+```bash
+whoami
+# root
+
+hostname
+# compute-0 or compute-gpu-0
+
+systemctl enable ceems_exporter.service
+systemctl restart ceems_exporter.service
+```
 
 ### Installing and Configuring CEEMS LB
 

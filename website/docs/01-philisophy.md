@@ -78,7 +78,8 @@ and users can choose the factor that suits their needs.
 
 Currently, only nVIDIA and AMD GPUs are supported. This exporter leverages
 [DCGM exporter](https://github.com/NVIDIA/dcgm-exporter/tree/main) for nVIDIA GPUs and
-[ROCM device metrics exporter](https://github.com/ROCm/device-metrics-exporter) for AMD GPUs to get GPU metrics of
+[ROCM device metrics exporter](https://github.com/ROCm/device-metrics-exporter) for AMD
+GPUs to get GPU metrics of
 each compute unit. DCGM/Device metric exporters exposes the GPU metrics of each GPU and the
 current exporter takes care of the GPU index to compute unit mapping. These two metrics
 can be used together using PromQL to show the metrics of GPU metrics of a given compute
@@ -114,8 +115,10 @@ documentation.
 [Continuous Profiling](https://www.cncf.io/blog/2022/05/31/what-is-continuous-profiling/) enables
 users to profile their code on production systems, which can help them fix abnormal CPU
 usage, memory leaks, etc. A good primer for continuous profiling can be consulted from
-[Elastic Docs](https://www.elastic.co/what-is/continuous-profiling). The CEEMS stack lets users
-and developers identify which applications or processes to continuously profile and works in tandem with profiling software to monitor these targets.
+[Elastic Docs](https://www.elastic.co/what-is/continuous-profiling). The CEEMS exporter supports
+eBPF based zero instrumentation continuous profiling. This means users do not need to modify
+their code to generate profiles which can be used to identify the bottlenecks of their applications
+in real time production application which very negligible overhead.
 
 ## Technologies involved
 
@@ -135,10 +138,8 @@ maintain complex DB servers.
 
 For the case of continuous profiling, [Grafana Pyroscope](https://grafana.com/oss/pyroscope/)
 provides an OSS version of a continuous profiling database, which can be regarded as equivalent
-to Prometheus for profiling data. [Grafana Alloy](https://grafana.com/docs/alloy/latest/)
-is the agent that runs on all compute nodes like the Prometheus exporter, which in turn sends
-profiling data to the Pyroscope server. The CEEMS stack provides a list of targets (processes)
-that need continuous profiling to Grafana Alloy.
+to Prometheus for profiling data. CEEMS exporter can gather the profiles of compute units and sends
+profiling data to the Pyroscope server.
 
 ### Visualization
 

@@ -29,8 +29,8 @@ of backward compatibility.
 managers (SLURM, Openstack, k8s)
 - Supports different energy sources like RAPL, HWMON, Cray's PM Counters and BMC _via_ IPMI or Redfish
 - Supports NVIDIA (MIG, time sharing, MPS and vGPU) and AMD GPUs ([Partition](https://rocm.blogs.amd.com/software-tools-optimization/compute-memory-modes/README.html) like CPX, QPX, TPX, DPX)
-- Provides targets using [HTTP Discovery Component](https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.http/)
-to [Grafana Alloy](https://grafana.com/docs/alloy/latest) to continuously profile compute units
+- Supports zero instrumentation eBPF based continuous profiling using
+[Grafana Pyroscope](https://grafana.com/oss/pyroscope/) as backend
 - Realtime access to metrics _via_ Grafana dashboards or a simple CLI tool
 - Access control to Prometheus and Pyroscope datasources in Grafana
 - Stores aggregated metrics in a separate DB that can be retained for long time
@@ -44,10 +44,8 @@ Kubernetes.
 
 - CEEMS Prometheus exporter is capable of exporting compute unit metrics including energy
 consumption, performance, IO and network metrics from different resource managers in a
-unified manner. In addition, CEEMS exporter is capable of providing targets to
-[Grafana Alloy](https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.http/)
-for continuously profiling compute units using
-[eBPF](https://grafana.com/docs/alloy/latest/reference/components/pyroscope/pyroscope.ebpf/)
+unified manner. In addition, CEEMS exporter is capable of continuous profiling of compute units using
+[eBPF](https://grafana.com/docs/pyroscope/latest/configure-client/grafana-alloy/ebpf/)
 
 - CEEMS API server can store the aggregate metrics and metadata of each compute unit
 originating from different resource managers.

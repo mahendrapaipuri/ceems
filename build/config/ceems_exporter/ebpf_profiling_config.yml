@@ -1,0 +1,202 @@
+---
+# This is a sample configuration file for ebpf based
+# continuous profiler provided by CEEMS exporter. This
+# profiler is based on 
+# Pyroscope's ebpf (https://github.com/grafana/pyroscope/blob/main/ebpf)
+# library and a Pyroscope server must be available to push
+# the profiles.
+#
+ceems_profiler:
+  # This section will configure the ebpf based options while
+  # continuously profiling processes
+  #
+  ebpf_config: {}
+    # # How frequently to collect profiles
+    # #
+    # # Default: 30s
+    # #
+    # collect_interval: 30s
+
+    # # How frequently to discover new profiling targets
+    # #
+    # # Default: 30s
+    # #
+    # discover_interval: 30s
+
+    # # How many times per second to collect profile samples
+    # #
+    # # Default: 97
+    # #
+    # sample_rate: 97
+
+    # # A flag to enable/disable collection of userspace profiles
+    # # 
+    # # Default: true
+    # #
+    # collect_user_profile: true
+
+    # # A flag to enable/disable collection of kernel space profiles
+    # # 
+    # # Default: false
+    # #
+    # collect_kernel_profile: false
+
+    # # A flag to enable/disable python profiling
+    # # 
+    # # Default: true
+    # #
+    # python_enabled: true
+
+    # # C++ demangle mode. 
+    # # Available options are: none, simplified, templates, or full
+    # # 
+    # # Default: none
+    # #
+    # demangle: none
+
+    # # The size of the elf file build id -> symbols table LRU cache
+    # # 
+    # # Default: 64
+    # #
+    # build_id_cache_size: 64
+
+    # # The size of the PID -> proc symbols table LRU cache
+    # # 
+    # # Default: 32
+    # #
+    # pid_cache_size: 32
+
+    # # The size of eBPF PID map
+    # # 
+    # # Default: true
+    # #
+    # pid_map_size: 2048
+
+    # # The size of eBPF symbols map
+    # # 
+    # # Default: true
+    # #
+    # symbols_map_size: 16384
+
+  # This section configures the Pyroscope server to which the profiles
+  # will be sent
+  #
+  pyroscope_config: {}
+    # # URL at which Pyroscope server is reachable
+    # #
+    # url: http://localhost:4040
+
+    # # Labels to add to profiles sent over the network.
+    # # A label value of {hostname} will be replaced by the
+    # # node's hostname.
+    # #
+    # external_labels: {}
+
+    # # Sets the `Authorization` header on every API request with the
+    # # configured username and password.
+    # # password and password_file are mutually exclusive.
+    # #
+    # basic_auth:
+    #   username: ''
+    #   password: ''
+    #   password_file: ''
+
+    # # Sets the `Authorization` header on every API request with
+    # # the configured credentials.
+    # #
+    # authorization:
+    #   # Sets the authentication type of the request. Default is `Bearer`.
+    #   type: Bearer
+    #   # Sets the credentials of the request. It is mutually exclusive with
+    #   # `credentials_file`.
+    #   credentials: ''
+    #   # Sets the credentials of the request with the credentials read from the
+    #   # configured file. It is mutually exclusive with `credentials`.
+    #   credentials_file: ''
+
+    # # Optional OAuth 2.0 configuration.
+    # # Cannot be used at the same time as basic_auth or authorization.
+    # #
+    # oauth2:
+    #   client_id: ''
+    #   client_secret: ''
+    #   # Read the client secret from a file.
+    #   # It is mutually exclusive with `client_secret`.
+    #   client_secret_file: ''
+    #   # Scopes for the token request.
+    #   scopes: []
+    #   # The URL to fetch the token from.
+    #   token_url: ''
+    #   # Optional parameters to append to the token URL.
+    #   endpoint_params: {}
+    #   # Configures the token request's TLS settings.
+    #   tls_config: {}
+
+    #   # Configure whether API requests follow HTTP 3xx redirects.
+    #   # Default is true
+    #   #
+    #   follow_redirects: true
+
+    #   # Whether to enable HTTP2.
+    #   # Default is true
+    #   #
+    #   enable_http2: true
+
+    # # Configures the API request's TLS settings.
+    # #
+    # tls_config:
+    #   # CA certificate to validate API server certificate with. 
+    #   # At most one of ca and ca_file is allowed.
+    #   #
+    #   ca: ''
+    #   ca_file: ''
+
+    #   # Certificate and key for client cert authentication to the server.
+    #   # At most one of cert and cert_file is allowed.
+    #   # At most one of key and key_file is allowed.
+    #   #
+    #   cert: ''
+    #   cert_file: ''
+    #   key: ''
+    #   key_file: ''
+
+    #   # Disable validation of the server certificate.
+    #   #
+    #   insecure_skip_verify: false
+
+    #   # Minimum acceptable TLS version. Accepted values: TLS10 (TLS 1.0), TLS11 (TLS
+    #   # 1.1), TLS12 (TLS 1.2), TLS13 (TLS 1.3).
+    #   # If unset, Prometheus will use Go default minimum version, which is TLS 1.2.
+    #   # See MinVersion in https://pkg.go.dev/crypto/tls#Config.
+    #   #
+    #   min_version: ''
+    #   # Maximum acceptable TLS version. Accepted values: TLS10 (TLS 1.0), TLS11 (TLS
+    #   # 1.1), TLS12 (TLS 1.2), TLS13 (TLS 1.3).
+    #   # If unset, Prometheus will use Go default maximum version, which is TLS 1.3.
+    #   # See MaxVersion in https://pkg.go.dev/crypto/tls#Config.
+    #   #
+    #   max_version: ''
+
+    # # List of headers that will be passed in the API requests to the server.
+    # # Authentication related headers may be configured in this section. Header name
+    # # must be configured as key and header value supports three different types of 
+    # # headers: values, secrets and files.
+    # #
+    # # The difference between values and secrets is that secret will be redacted
+    # # in server logs where as values will be emitted in the logs.
+    # #
+    # # Values are regular headers with values, secrets are headers that pass secret
+    # # information like tokens and files pass the file content in the headers.
+    # #
+    # # Example:
+    # # http_headers:
+    # #   one:
+    # #     values: [value1a, value1b, value1c]
+    # #   two:
+    # #     values: [value2a]
+    # #     secrets: [value2b, value2c]
+    # #   three:
+    # #     files: [testdata/headers-file-a, testdata/headers-file-b, testdata/headers-file-c]
+    # #
+    # http_headers: {}
+
