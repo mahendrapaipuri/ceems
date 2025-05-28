@@ -103,12 +103,14 @@ func preflightsCLI(slurm *slurmScheduler) error {
 
 		// If we choose capability mode, setup security context
 		// Setup new security context(s)
-		slurm.securityContexts[slurmExecCmdCtx], err = security.NewSecurityContext(
-			slurmExecCmdCtx,
-			caps,
-			security.ExecAsUser,
-			slurm.logger,
-		)
+		cfg := &security.SCConfig{
+			Name:   slurmExecCmdCtx,
+			Caps:   caps,
+			Func:   security.ExecAsUser,
+			Logger: slurm.logger,
+		}
+
+		slurm.securityContexts[slurmExecCmdCtx], err = security.NewSecurityContext(cfg)
 		if err != nil {
 			slurm.logger.Error("Failed to create a security context for SLURM", "err", err)
 

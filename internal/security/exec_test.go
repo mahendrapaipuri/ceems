@@ -48,7 +48,8 @@ func TestNewSecurityLauncher(t *testing.T) {
 	}
 
 	// New security context
-	s, err := NewSecurityContext("test", values, testFunc, noOpLogger)
+	c := &SCConfig{Name: "test", Caps: values, Func: testFunc, Logger: noOpLogger}
+	s, err := NewSecurityContext(c)
 	require.NoError(t, err)
 
 	d := &testData{targetUser: "nobody"}

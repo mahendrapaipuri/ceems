@@ -235,13 +235,21 @@ func NewSlurmCollector(logger *slog.Logger) (Collector, error) {
 
 	// Setup necessary capabilities. These are the caps we need to read
 	// env vars in /proc file system to get SLURM job GPU indices
-	caps, err := setupCollectorCaps([]string{"cap_sys_ptrace", "cap_dac_read_search"})
+	caps, err := setupAppCaps([]string{"cap_sys_ptrace", "cap_dac_read_search"})
 	if err != nil {
 		logger.Warn("Failed to parse capability name(s)", "err", err)
 	}
 
 	// Setup new security context(s)
-	securityCtx, err := security.NewSecurityContext(slurmReadProcCtx, caps, readProcEnvirons, logger)
+	cfg := &security.SCConfig{
+		Name:         slurmReadProcCtx,
+		Caps:         caps,
+		Func:         readProcEnvirons,
+		Logger:       logger,
+		ExecNatively: disableCapAwareness,
+	}
+
+	securityCtx, err := security.NewSecurityContext(cfg)
 	if err != nil {
 		logger.Error("Failed to create a security context", "err", err)
 

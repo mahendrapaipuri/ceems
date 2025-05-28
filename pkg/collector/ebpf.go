@@ -375,7 +375,7 @@ func NewEbpfCollector(logger *slog.Logger, cgManager *cgroupManager) (*ebpfColle
 		capabilities = []string{"cap_bpf", "cap_perfmon"}
 	}
 
-	caps, err := setupCollectorCaps(capabilities)
+	caps, err := setupAppCaps(capabilities)
 	if err != nil {
 		logger.Warn("Failed to parse capability name(s)", "err", err)
 	}
@@ -384,7 +384,16 @@ func NewEbpfCollector(logger *slog.Logger, cgManager *cgroupManager) (*ebpfColle
 	// Security context for reading eBPF VFS maps
 	securityContexts := make(map[string]*security.SecurityContext)
 
-	securityContexts[ebpfReadBPFMapsCtx], err = security.NewSecurityContext(ebpfReadBPFMapsCtx, caps, aggStats, logger)
+	// Setup security context
+	cfg := &security.SCConfig{
+		Name:         ebpfReadBPFMapsCtx,
+		Caps:         caps,
+		Func:         aggStats,
+		Logger:       logger,
+		ExecNatively: disableCapAwareness,
+	}
+
+	securityContexts[ebpfReadBPFMapsCtx], err = security.NewSecurityContext(cfg)
 	if err != nil {
 		logger.Error("Failed to create a security context for reading BPF maps", "err", err)
 

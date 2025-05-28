@@ -17,42 +17,56 @@ var (
 	ErrSecurityCtxDataAssertion = errors.New("data type cannot be asserted")
 )
 
+type SCConfig struct {
+	Logger *slog.Logger
+	Func   func(interface{}) error
+	Caps   []cap.Value
+	Name   string
+
+	// Execute function natively without a security context.
+	// This is an escape hatch in case if we want to turn of
+	// capability awareness but still use the same API design.
+	ExecNatively bool
+}
+
 // SecurityContext implements a security context where functions can be
 // safely executed with required privileges on a thread locked to OS.
 type SecurityContext struct {
-	Logger   *slog.Logger
-	Launcher *cap.Launcher
-	Func     func(interface{}) error
-	Caps     []cap.Value
-	CapSet   *cap.Set
-	Name     string
+	logger       *slog.Logger
+	launcher     *cap.Launcher
+	f            func(interface{}) error
+	caps         []cap.Value
+	capSet       *cap.Set
+	execNatively bool
+	Name         string
 }
 
 // NewSecurityContext returns a new instance of SecurityContext.
-func NewSecurityContext(
-	name string,
-	caps []cap.Value,
-	f func(interface{}) error,
-	logger *slog.Logger,
-) (*SecurityContext, error) {
+func NewSecurityContext(c *SCConfig) (*SecurityContext, error) {
 	// Create a SecurityContext
 	s := &SecurityContext{
-		Logger: logger,
-		Caps:   caps,
-		Name:   name,
-		CapSet: cap.NewSet(),
-		Func:   f,
+		logger: c.Logger,
+		caps:   c.Caps,
+		Name:   c.Name,
+		capSet: cap.NewSet(),
+		f:      c.Func,
 	}
 
 	// Create a new Launcher after embedding the function inside enclave
-	s.Launcher = cap.FuncLauncher(s.targetFunc)
+	s.launcher = cap.FuncLauncher(s.targetFunc)
 
 	return s, nil
 }
 
 // Exec executes the function inside the security context and returns error if any.
 func (s *SecurityContext) Exec(data interface{}) error {
-	if _, err := s.Launcher.Launch(data); err != nil {
+	// If ExecNatively is set to true, execute function natively without creating
+	// a security context
+	if s.execNatively {
+		return s.f(data)
+	}
+
+	if _, err := s.launcher.Launch(data); err != nil {
 		return err
 	}
 
@@ -62,19 +76,19 @@ func (s *SecurityContext) Exec(data interface{}) error {
 // raiseCaps raises the effective set of current capabilities set. If there are
 // no capabilities, this is a no-op.
 func (s *SecurityContext) raiseCaps() error {
-	if len(s.Caps) == 0 {
+	if len(s.caps) == 0 {
 		return nil
 	}
 
-	if err := s.CapSet.SetFlag(cap.Permitted, true, s.Caps...); err != nil {
+	if err := s.capSet.SetFlag(cap.Permitted, true, s.caps...); err != nil {
 		return fmt.Errorf("raising: error setting permitted capabilities: %w", err)
 	}
 
-	if err := s.CapSet.SetFlag(cap.Effective, true, s.Caps...); err != nil {
+	if err := s.capSet.SetFlag(cap.Effective, true, s.caps...); err != nil {
 		return fmt.Errorf("raising: error setting effective capabilities: %w", err)
 	}
 
-	if err := s.CapSet.SetProc(); err != nil {
+	if err := s.capSet.SetProc(); err != nil {
 		return fmt.Errorf("raising: error setting capabilities: %w", err)
 	}
 
@@ -84,15 +98,15 @@ func (s *SecurityContext) raiseCaps() error {
 // dropCaps drops the effective set of current capabilities set. If there are
 // no capabilities, this is a no-op.
 func (s *SecurityContext) dropCaps() error {
-	if len(s.Caps) == 0 {
+	if len(s.caps) == 0 {
 		return nil
 	}
 
-	if err := s.CapSet.SetFlag(cap.Effective, false, s.Caps...); err != nil {
+	if err := s.capSet.SetFlag(cap.Effective, false, s.caps...); err != nil {
 		return fmt.Errorf("dropping: error setting effective capabilities: %w", err)
 	}
 
-	if err := s.CapSet.SetProc(); err != nil {
+	if err := s.capSet.SetProc(); err != nil {
 		return fmt.Errorf("dropping: error setting capabilities: %w", err)
 	}
 
@@ -109,16 +123,16 @@ func (s *SecurityContext) targetFunc(data interface{}) error {
 	// Log an error so that operators will be aware that the reason
 	// for the error is lack of privileges.
 	if err := s.raiseCaps(); err != nil {
-		s.Logger.Error("Failed to raise capabilities", "name", s.Name, "caps", cap.GetProc().String(), "err", err)
+		s.logger.Error("Failed to raise capabilities", "name", s.Name, "caps", cap.GetProc().String(), "err", err)
 	}
 
-	s.Logger.Debug("Executing in security context", "name", s.Name, "caps", cap.GetProc().String())
+	s.logger.Debug("Executing in security context", "name", s.Name, "caps", cap.GetProc().String())
 
 	// Execute function
-	if err := s.Func(data); err != nil {
+	if err := s.f(data); err != nil {
 		// Attempt to drop capabilities and ignore any errors
 		if err := s.dropCaps(); err != nil {
-			s.Logger.Warn("Failed to drop capabilities", "name", s.Name, "caps", cap.GetProc().String(), "err", err)
+			s.logger.Warn("Failed to drop capabilities", "name", s.Name, "caps", cap.GetProc().String(), "err", err)
 		}
 
 		return err
@@ -128,7 +142,7 @@ func (s *SecurityContext) targetFunc(data interface{}) error {
 	// destroyed. But just in case...
 	// Ignore any errors
 	if err := s.dropCaps(); err != nil {
-		s.Logger.Warn("Failed to drop capabilities", "name", s.Name, "caps", cap.GetProc().String(), "err", err)
+		s.logger.Warn("Failed to drop capabilities", "name", s.Name, "caps", cap.GetProc().String(), "err", err)
 	}
 
 	return nil

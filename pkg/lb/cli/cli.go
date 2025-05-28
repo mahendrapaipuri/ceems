@@ -173,9 +173,13 @@ func (lb *CEEMSLoadBalancer) Main() error {
 		).Default("nobody").String()
 
 		// Hidden test flags
+		disableCapAwareness = lb.App.Flag(
+			"security.disable-cap-awareness",
+			"Disable capability awareness and run as privileged process (default: false).",
+		).Default("false").Hidden().Bool()
 		dropPrivs = lb.App.Flag(
 			"security.drop-privileges",
-			"Drop privileges and run as nobody when LB is started as root.",
+			"Drop privileges and run as nobody when exporter is started as root.",
 		).Default("true").Hidden().Bool()
 	)
 
@@ -261,7 +265,7 @@ func (lb *CEEMSLoadBalancer) Main() error {
 
 	// Drop all unnecessary privileges
 	if *dropPrivs {
-		if err := securityManager.DropPrivileges(); err != nil {
+		if err := securityManager.DropPrivileges(*disableCapAwareness); err != nil {
 			logger.Error("Failed to drop privileges", "err", err)
 
 			return err

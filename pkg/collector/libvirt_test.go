@@ -103,12 +103,13 @@ func TestLibvirtInstanceProps(t *testing.T) {
 	lastUpdateTime := c.instanceDeviceslastUpdateTime
 
 	// Add dummy security context
-	c.securityContexts[libvirtReadXMLCtx], err = security.NewSecurityContext(
-		libvirtReadXMLCtx,
-		nil,
-		readLibvirtXMLFile,
-		c.logger,
-	)
+	cfg := &security.SCConfig{
+		Name:   libvirtReadXMLCtx,
+		Caps:   nil,
+		Func:   readLibvirtXMLFile,
+		Logger: c.logger,
+	}
+	c.securityContexts[libvirtReadXMLCtx], err = security.NewSecurityContext(cfg)
 	require.NoError(t, err)
 
 	expectedDeviceUnits := map[string][]ComputeUnit{
@@ -203,12 +204,13 @@ func TestInstancePropsCaching(t *testing.T) {
 	}
 
 	// Add dummy security context
-	c.securityContexts[libvirtReadXMLCtx], err = security.NewSecurityContext(
-		libvirtReadXMLCtx,
-		nil,
-		readLibvirtXMLFile,
-		c.logger,
-	)
+	cfg := &security.SCConfig{
+		Name:   libvirtReadXMLCtx,
+		Caps:   nil,
+		Func:   readLibvirtXMLFile,
+		Logger: c.logger,
+	}
+	c.securityContexts[libvirtReadXMLCtx], err = security.NewSecurityContext(cfg)
 	require.NoError(t, err)
 
 	// Add cgroups

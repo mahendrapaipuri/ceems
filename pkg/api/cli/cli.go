@@ -145,6 +145,10 @@ func (b *CEEMSServer) Main() error {
 		maxProcs = b.App.Flag(
 			"runtime.gomaxprocs", "The target number of CPUs Go will run on (GOMAXPROCS)",
 		).Envar("GOMAXPROCS").Default("1").Int()
+		disableCapAwareness = b.App.Flag(
+			"security.disable-cap-awareness",
+			"Disable capability awareness and run as privileged process (default: false).",
+		).Default("false").Hidden().Bool()
 		dropPrivs = b.App.Flag(
 			"security.drop-privileges",
 			"Drop privileges and run as nobody when exporter is started as root.",
@@ -288,7 +292,7 @@ func (b *CEEMSServer) Main() error {
 
 	// Drop all unnecessary privileges
 	if *dropPrivs {
-		if err := securityManager.DropPrivileges(); err != nil {
+		if err := securityManager.DropPrivileges(*disableCapAwareness); err != nil {
 			logger.Error("Failed to drop privileges", "err", err)
 
 			return err

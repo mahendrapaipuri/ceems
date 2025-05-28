@@ -170,12 +170,13 @@ func TestSlurmJobPropsWithProcsFS(t *testing.T) {
 	}
 
 	// Add dummy security context
-	c.securityContexts[slurmReadProcCtx], err = security.NewSecurityContext(
-		slurmReadProcCtx,
-		nil,
-		readProcEnvirons,
-		c.logger,
-	)
+	cfg := &security.SCConfig{
+		Name:   slurmReadProcCtx,
+		Caps:   nil,
+		Func:   readProcEnvirons,
+		Logger: c.logger,
+	}
+	c.securityContexts[slurmReadProcCtx], err = security.NewSecurityContext(cfg)
 	require.NoError(t, err)
 
 	expectedJobIDs := []string{
@@ -527,12 +528,13 @@ func TestJobDevicesCaching(t *testing.T) {
 	}
 
 	// Add dummy security context
-	c.securityContexts[slurmReadProcCtx], err = security.NewSecurityContext(
-		slurmReadProcCtx,
-		nil,
-		readProcEnvirons,
-		c.logger,
-	)
+	cfg := &security.SCConfig{
+		Name:   slurmReadProcCtx,
+		Caps:   nil,
+		Func:   readProcEnvirons,
+		Logger: c.logger,
+	}
+	c.securityContexts[slurmReadProcCtx], err = security.NewSecurityContext(cfg)
 	require.NoError(t, err)
 
 	// Add cgroups
