@@ -85,12 +85,13 @@ func TestDiscoverProcess(t *testing.T) {
 	}
 
 	// Create dummy security context
-	collector.securityContexts[perfProcFilterCtx], err = security.NewSecurityContext(
-		perfProcFilterCtx,
-		nil,
-		filterPerfProcs,
-		collector.logger,
-	)
+	cfg := &security.SCConfig{
+		Name:   perfProcFilterCtx,
+		Caps:   nil,
+		Func:   filterPerfProcs,
+		Logger: collector.logger,
+	}
+	collector.securityContexts[perfProcFilterCtx], err = security.NewSecurityContext(cfg)
 	require.NoError(t, err)
 
 	collector.fs, err = procfs.NewFS("testdata/proc")

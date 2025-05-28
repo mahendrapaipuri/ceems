@@ -34,7 +34,7 @@ type WebConfig struct {
 type Config struct {
 	Logger     *slog.Logger
 	Collector  *CEEMSCollector
-	Discoverer *CEEMSAlloyTargetDiscoverer
+	Discoverer Discoverer
 	Web        WebConfig
 }
 
@@ -44,7 +44,7 @@ type CEEMSExporterServer struct {
 	server         *http.Server
 	webConfig      *web.FlagConfig
 	collector      *CEEMSCollector
-	discoverer     *CEEMSAlloyTargetDiscoverer
+	discoverer     Discoverer
 	metricsHandler *metricsHandler
 	targetsHandler *targetsHandler
 }
@@ -135,7 +135,9 @@ func NewCEEMSExporterServer(c *Config) (*CEEMSExporterServer, error) {
 	router.Handle(c.Web.MetricsPath, server.newMetricsHandler())
 
 	// Handle targets path
-	router.Handle(c.Web.TargetsPath, server.newTargetsHandler())
+	if c.Discoverer != nil && c.Discoverer.Enabled() {
+		router.Handle(c.Web.TargetsPath, server.newTargetsHandler())
+	}
 
 	// Health endpoint
 	router.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {

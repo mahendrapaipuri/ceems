@@ -224,13 +224,21 @@ func NewLibvirtCollector(logger *slog.Logger) (Collector, error) {
 
 	// Setup necessary capabilities. These are the caps we need to read
 	// XML files in /etc/libvirt/qemu folder that contains GPU devs used by guests.
-	caps, err := setupCollectorCaps([]string{"cap_dac_read_search"})
+	caps, err := setupAppCaps([]string{"cap_dac_read_search"})
 	if err != nil {
 		logger.Warn("Failed to parse capability name(s)", "err", err)
 	}
 
-	// Setup new security context(s)
-	securityCtx, err := security.NewSecurityContext(libvirtReadXMLCtx, caps, readLibvirtXMLFile, logger)
+	// Setup security context
+	cfg := &security.SCConfig{
+		Name:         libvirtReadXMLCtx,
+		Caps:         caps,
+		Func:         readLibvirtXMLFile,
+		Logger:       logger,
+		ExecNatively: disableCapAwareness,
+	}
+
+	securityCtx, err := security.NewSecurityContext(cfg)
 	if err != nil {
 		logger.Error("Failed to create a security context", "err", err)
 

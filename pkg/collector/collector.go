@@ -13,7 +13,6 @@ import (
 
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/prometheus/client_golang/prometheus"
-	"kernel.org/pub/linux/libs/security/libcap/cap"
 )
 
 // Namespace defines the common namespace to be used by all metrics.
@@ -40,14 +39,11 @@ const (
 )
 
 var (
-	factories               = make(map[string]func(logger *slog.Logger) (Collector, error))
-	initiatedCollectorsMtx  = sync.Mutex{}
-	initiatedCollectors     = make(map[string]Collector)
-	collectorState          = make(map[string]*bool)
-	collectorCaps           = make([]cap.Value, 0) // Unique slice of all required caps of currently enabled collectors
-	collectorReadPaths      = make([]string, 0)
-	collectorReadWritePaths = make([]string, 0)
-	forcedCollectors        = map[string]bool{} // collectors which have been explicitly enabled or disabled
+	factories              = make(map[string]func(logger *slog.Logger) (Collector, error))
+	initiatedCollectorsMtx = sync.Mutex{}
+	initiatedCollectors    = make(map[string]Collector)
+	collectorState         = make(map[string]*bool)
+	forcedCollectors       = map[string]bool{} // collectors which have been explicitly enabled or disabled
 )
 
 // Collector is the interface a collector has to implement.
@@ -161,18 +157,6 @@ func NewCEEMSCollector(logger *slog.Logger) (*CEEMSCollector, error) {
 	for _, coll := range coll {
 		logger.Info(coll)
 	}
-
-	// // Remove duplicates of caps
-	// for subSystem, caps := range collectorCaps {
-	// 	slices.Sort(caps)
-	// 	uniqueCaps := slices.Compact(caps)
-	// 	collectorCaps[subSystem] = uniqueCaps
-
-	// 	allCollectorCaps = append(allCollectorCaps, caps...)
-	// }
-
-	// slices.Sort(allCollectorCaps)
-	// allCollectorCaps = slices.Compact(allCollectorCaps)
 
 	return &CEEMSCollector{Collectors: collectors, logger: logger}, nil
 }

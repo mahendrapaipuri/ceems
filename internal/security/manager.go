@@ -170,7 +170,14 @@ func NewManager(c *Config, logger *slog.Logger) (*Manager, error) {
 		}
 
 		// Create a new security context
-		securityCtx, err := NewSecurityContext(deleteACLCtx, []cap.Value{cap.FOWNER}, deleteACLEntries, logger)
+		cfg := &SCConfig{
+			Name:   deleteACLCtx,
+			Caps:   []cap.Value{cap.FOWNER},
+			Func:   deleteACLEntries,
+			Logger: logger,
+		}
+
+		securityCtx, err := NewSecurityContext(cfg)
 		if err != nil {
 			return nil, fmt.Errorf("failed to setup security context: %w", err)
 		}
@@ -186,7 +193,7 @@ func NewManager(c *Config, logger *slog.Logger) (*Manager, error) {
 // If current user is not root, this function is no-op and we expect
 // either process or file to have necessary capabilities in the production
 // environments.
-func (m *Manager) DropPrivileges() error {
+func (m *Manager) DropPrivileges(enableEffective bool) error {
 	if syscall.Geteuid() != 0 {
 		existing := cap.GetProc()
 
@@ -199,7 +206,7 @@ func (m *Manager) DropPrivileges() error {
 
 		// If there are capabilities, ensure we raise only permitted set
 		// and clear effective set
-		return setCapabilities(m.caps)
+		return setCapabilities(m.caps, enableEffective)
 	}
 
 	// Here we set a bunch of linux specific security stuff.
@@ -224,7 +231,7 @@ func (m *Manager) DropPrivileges() error {
 	// Note that we discard any errors because they are not actionable.
 	// The beat should use `getcap` at a later point to examine available capabilities
 	// rather than relying on errors from `setcap`
-	return setCapabilities(m.caps)
+	return setCapabilities(m.caps, enableEffective)
 }
 
 // DeleteACLEntries removes any ACL added entries.
@@ -322,14 +329,14 @@ func (m *Manager) pathsReachable() error {
 
 // DropCapabilities drops any existing capabilities on the process.
 func DropCapabilities() error {
-	return setCapabilities(nil)
+	return setCapabilities(nil, false)
 }
 
 // setCapabilities sets the specific list of Linux capabilities on current process.
 // It only add the capabilities to `permitted` set and it is responsible of the
 // functions that need privileges to enable `effective` set before perfoming
 // privileged action and then dropping them off straight after.
-func setCapabilities(caps []cap.Value) error {
+func setCapabilities(caps []cap.Value, enableEffective bool) error {
 	// Start with an empty capability set
 	newcaps := cap.NewSet()
 
@@ -340,7 +347,7 @@ func setCapabilities(caps []cap.Value) error {
 		}
 
 		// Only enable effective set before performing a privileged operation
-		if err := newcaps.SetFlag(cap.Effective, false, c); err != nil {
+		if err := newcaps.SetFlag(cap.Effective, enableEffective, c); err != nil {
 			return fmt.Errorf("error setting effective setcap: %w", err)
 		}
 

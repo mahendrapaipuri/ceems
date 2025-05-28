@@ -229,7 +229,7 @@ func NewK8sCollector(logger *slog.Logger) (Collector, error) {
 		}
 
 		// Setup necessary path permissions
-		setupCollectorPathPerms(readPaths, readWritePaths)
+		setupAppPathPerms(readPaths, readWritePaths)
 	}
 
 	return coll, nil

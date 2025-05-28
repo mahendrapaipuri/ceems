@@ -329,13 +329,21 @@ outside:
 		// Setup command
 		collector.ipmiCmd = cmdSlice
 
-		caps, err := setupCollectorCaps([]string{"cap_setuid", "cap_setgid"})
+		caps, err := setupAppCaps([]string{"cap_setuid", "cap_setgid"})
 		if err != nil {
 			logger.Warn("Failed to parse capability name(s)", "err", err)
 		}
 
-		// Setup new security context(s)
-		collector.securityContexts[ipmiExecCmdCtx], err = security.NewSecurityContext(ipmiExecCmdCtx, caps, security.ExecAsUser, logger)
+		// Setup security context
+		cfg := &security.SCConfig{
+			Name:         ipmiExecCmdCtx,
+			Caps:         caps,
+			Func:         security.ExecAsUser,
+			Logger:       logger,
+			ExecNatively: disableCapAwareness,
+		}
+
+		collector.securityContexts[ipmiExecCmdCtx], err = security.NewSecurityContext(cfg)
 		if err != nil {
 			logger.Error("Failed to create a security context for IPMI collector", "err", err)
 
@@ -343,7 +351,7 @@ outside:
 		}
 	case nativeMode:
 		// Capability to be able to talk to /dev/ipmi0
-		caps, err := setupCollectorCaps([]string{"cap_dac_override"})
+		caps, err := setupAppCaps([]string{"cap_dac_override"})
 		if err != nil {
 			logger.Warn("Failed to parse capability name(s)", "err", err)
 		}
@@ -356,8 +364,16 @@ outside:
 			return nil, err
 		}
 
-		// Setup new security context(s)
-		collector.securityContexts[openIPMICtx], err = security.NewSecurityContext(openIPMICtx, caps, dcmiPowerReading, logger)
+		// Setup security context
+		cfg := &security.SCConfig{
+			Name:         openIPMICtx,
+			Caps:         caps,
+			Func:         dcmiPowerReading,
+			Logger:       logger,
+			ExecNatively: disableCapAwareness,
+		}
+
+		collector.securityContexts[openIPMICtx], err = security.NewSecurityContext(cfg)
 		if err != nil {
 			logger.Error("Failed to create a security context for IPMI collector", "err", err)
 
@@ -570,7 +586,9 @@ func (c *impiCollector) executeCmdInSecurityContext() ([]byte, error) {
 			return nil, err
 		}
 	} else {
-		return nil, security.ErrNoSecurityCtx
+		if err := security.ExecAsUser(dataPtr); err != nil {
+			return nil, err
+		}
 	}
 
 	return dataPtr.StdOut, nil

@@ -67,17 +67,20 @@ func NewRaplCollector(logger *slog.Logger) (Collector, error) {
 			// Setup necessary capabilities. cap_perfmon is necessary to open perf events.
 			capabilities := []string{"cap_dac_read_search"}
 
-			reqCaps, err := setupCollectorCaps(capabilities)
+			reqCaps, err := setupAppCaps(capabilities)
 			if err != nil {
 				logger.Warn("Failed to parse capability name(s)", "err", err)
 			}
 
-			securityContexts[raplReadEnergyCounter], err = security.NewSecurityContext(
-				raplReadEnergyCounter,
-				reqCaps,
-				readCounters,
-				logger,
-			)
+			cfg := &security.SCConfig{
+				Name:         raplReadEnergyCounter,
+				Caps:         reqCaps,
+				Func:         readCounters,
+				Logger:       logger,
+				ExecNatively: disableCapAwareness,
+			}
+
+			securityContexts[raplReadEnergyCounter], err = security.NewSecurityContext(cfg)
 			if err != nil {
 				logger.Error("Failed to create a security context for reading rapl counters", "err", err)
 

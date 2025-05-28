@@ -491,21 +491,23 @@ func NewPerfCollector(logger *slog.Logger, cgManager *cgroupManager) (*perfColle
 	// Setup necessary capabilities. cap_perfmon is necessary to open perf events.
 	capabilities := []string{"cap_perfmon"}
 
-	reqCaps, err := setupCollectorCaps(capabilities)
+	reqCaps, err := setupAppCaps(capabilities)
 	if err != nil {
 		logger.Warn("Failed to parse capability name(s)", "err", err)
 	}
 
 	// Setup new security context(s)
 	// Security context for openining profilers
+	cfg := &security.SCConfig{
+		Name:         perfOpenProfilersCtx,
+		Caps:         reqCaps,
+		Func:         openProfilers,
+		Logger:       logger,
+		ExecNatively: disableCapAwareness,
+	}
 	collector.securityContexts = make(map[string]*security.SecurityContext)
 
-	collector.securityContexts[perfOpenProfilersCtx], err = security.NewSecurityContext(
-		perfOpenProfilersCtx,
-		reqCaps,
-		openProfilers,
-		logger,
-	)
+	collector.securityContexts[perfOpenProfilersCtx], err = security.NewSecurityContext(cfg)
 	if err != nil {
 		logger.Error("Failed to create a security context for opening perf profiler(s)", "err", err)
 
@@ -513,12 +515,15 @@ func NewPerfCollector(logger *slog.Logger, cgManager *cgroupManager) (*perfColle
 	}
 
 	// Security context for closing profilers
-	collector.securityContexts[perfCloseProfilersCtx], err = security.NewSecurityContext(
-		perfCloseProfilersCtx,
-		reqCaps,
-		closeProfilers,
-		logger,
-	)
+	cfg = &security.SCConfig{
+		Name:         perfCloseProfilersCtx,
+		Caps:         reqCaps,
+		Func:         closeProfilers,
+		Logger:       logger,
+		ExecNatively: disableCapAwareness,
+	}
+
+	collector.securityContexts[perfCloseProfilersCtx], err = security.NewSecurityContext(cfg)
 	if err != nil {
 		logger.Error("Failed to create a security context for closing perf profiler(s)", "err", err)
 
@@ -530,17 +535,20 @@ func NewPerfCollector(logger *slog.Logger, cgManager *cgroupManager) (*perfColle
 	if len(collector.opts.targetEnvVars) > 0 {
 		capabilities = []string{"cap_sys_ptrace", "cap_dac_read_search"}
 
-		auxCaps, err := setupCollectorCaps(capabilities)
+		auxCaps, err := setupAppCaps(capabilities)
 		if err != nil {
 			logger.Warn("Failed to parse capability name(s)", "err", err)
 		}
 
-		collector.securityContexts[perfProcFilterCtx], err = security.NewSecurityContext(
-			perfProcFilterCtx,
-			auxCaps,
-			filterPerfProcs,
-			logger,
-		)
+		cfg = &security.SCConfig{
+			Name:         perfProcFilterCtx,
+			Caps:         auxCaps,
+			Func:         filterPerfProcs,
+			Logger:       logger,
+			ExecNatively: disableCapAwareness,
+		}
+
+		collector.securityContexts[perfProcFilterCtx], err = security.NewSecurityContext(cfg)
 		if err != nil {
 			logger.Error("Failed to create a security context for perf process filter", "err", err)
 

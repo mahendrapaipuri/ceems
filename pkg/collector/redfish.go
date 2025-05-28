@@ -29,8 +29,6 @@ const (
 	redfishURLHeaderName = "X-Redfish-Url"
 )
 
-const hostnamePlaceholder = "{hostname}"
-
 type redfishConfig struct {
 	Web struct {
 		Proto            string                  `yaml:"protocol"`

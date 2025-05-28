@@ -129,13 +129,21 @@ func NewRDMACollector(logger *slog.Logger, cgManager *cgroupManager) (*rdmaColle
 	if len(qpModes) > 0 {
 		logger.Info("Per-PID QP stats available")
 
-		caps, err := setupCollectorCaps([]string{"cap_setuid", "cap_setgid"})
+		caps, err := setupAppCaps([]string{"cap_setuid", "cap_setgid"})
 		if err != nil {
 			logger.Warn("Failed to parse capability name(s)", "err", err)
 		}
 
 		// Setup new security context(s)
-		securityContexts[rdmaExecCmdCtx], err = security.NewSecurityContext(rdmaExecCmdCtx, caps, security.ExecAsUser, logger)
+		cfg := &security.SCConfig{
+			Name:         rdmaExecCmdCtx,
+			Caps:         caps,
+			Func:         security.ExecAsUser,
+			Logger:       logger,
+			ExecNatively: disableCapAwareness,
+		}
+
+		securityContexts[rdmaExecCmdCtx], err = security.NewSecurityContext(cfg)
 		if err != nil {
 			logger.Error("Failed to create a security context for RDMA collector", "err", err)
 
