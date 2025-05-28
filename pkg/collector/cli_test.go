@@ -5,28 +5,33 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"path/filepath"
 	"syscall"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// Logger to be used in uni tests.
+// Logger to be used in unit tests.
 var (
 	noOpLogger = slog.New(slog.DiscardHandler)
 )
 
 func queryExporter(address string) error {
-	for _, path := range []string{"metrics", "alloy-targets"} {
+	status := map[string]int{
+		"metrics":       http.StatusOK,
+		"alloy-targets": http.StatusNotFound,
+	}
+
+	for path, code := range status {
 		resp, err := http.Get(fmt.Sprintf("http://%s/%s", address, path)) //nolint:noctx
 		if err != nil {
 			return err
 		}
 		defer resp.Body.Close()
 
-		if want, have := http.StatusOK, resp.StatusCode; want != have {
+		if want, have := code, resp.StatusCode; want != have {
 			return fmt.Errorf("want /%s status code %d, have %d.", path, want, have)
 		}
 	}
@@ -35,23 +40,18 @@ func queryExporter(address string) error {
 }
 
 func TestCEEMSExporterMain(t *testing.T) {
-	// Add IPMI command to PATH
-	absPath, err := filepath.Abs("testdata/ipmi/ipmiutils/ipmiutil")
+	// Create new instance of exporter CLI app
+	a, err := NewCEEMSExporter()
 	require.NoError(t, err)
-	// t.Setenv("PATH", absPath+":"+os.Getenv("PATH"))
 
 	// Remove test related args and add a dummy arg
 	os.Args = append([]string{os.Args[0]},
 		"--web.max-requests=2",
+		"--discoverer.alloy-targets",
 		"--no-security.drop-privileges",
-		"--collector.ipmi_dcmi.cmd", absPath,
 		"--path.procfs", "testdata/proc",
 		"--path.cgroupfs", "testdata/sys/fs/cgroup",
 	)
-
-	// Create new instance of exporter CLI app
-	a, err := NewCEEMSExporter()
-	require.NoError(t, err)
 
 	// Start Main
 	go func() {
@@ -67,7 +67,7 @@ func TestCEEMSExporterMain(t *testing.T) {
 		time.Sleep(500 * time.Millisecond)
 
 		if i == 9 {
-			t.Errorf("Could not start exporter after %d attempts", i)
+			assert.Fail(t, fmt.Sprintf("Could not start exporter after %d attempts", i))
 		}
 	}
 

@@ -1,12 +1,95 @@
 package collector
 
 import (
+	"bytes"
+	"encoding/json"
+	"log/slog"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/go-kit/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type logLine struct {
+	Level   string `json:"level"`
+	Message string `json:"msg"`
+	Source  string `json:"source"`
+	AAttr   int    `json:"a"`
+	PAttr   string `json:"p"`
+}
+
+func TestGokitLogger(t *testing.T) {
+	// logfmt
+	for _, lvl := range []string{"info", "error", "warn", ""} {
+		// slog logger
+		buf := &bytes.Buffer{}
+		slogger := slog.New(slog.NewTextHandler(buf, nil))
+		logger := NewGokitLogger(lvl, slogger)
+
+		// When level is empty string, we default to info
+		if lvl == "" {
+			lvl = "info"
+		}
+
+		kvs := []interface{}{"a", 123}
+		lc := log.With(logger, kvs...)
+
+		err := lc.Log("msg", "message")
+		require.NoError(t, err)
+		assert.Equal(
+			t, "msg=message source=helper_test.go:40 a=123",
+			strings.TrimSpace(strings.Split(buf.String(), "level="+strings.ToUpper(lvl))[1]),
+		)
+
+		buf.Reset()
+
+		lc = log.WithPrefix(lc, "p", "first")
+		lc.Log("msg", "message")
+		require.NoError(t, err)
+		assert.Equal(
+			t, "msg=message p=first source=helper_test.go:50 a=123",
+			strings.TrimSpace(strings.Split(buf.String(), "level="+strings.ToUpper(lvl))[1]),
+		)
+	}
+
+	// json format
+	for _, lvl := range []string{"info", "error", "warn", ""} {
+		// slog logger
+		buf := &bytes.Buffer{}
+		slogger := slog.New(slog.NewJSONHandler(buf, nil))
+		logger := NewGokitLogger(lvl, slogger)
+
+		// When level is empty string, we default to info
+		if lvl == "" {
+			lvl = "info"
+		}
+
+		kvs := []interface{}{"a", 123}
+		lc := log.With(logger, kvs...)
+
+		err := lc.Log("msg", "message")
+		require.NoError(t, err)
+
+		var got logLine
+		err = json.Unmarshal(buf.Bytes(), &got)
+		require.NoError(t, err)
+
+		assert.Equal(t, logLine{strings.ToUpper(lvl), "message", "helper_test.go:73", 123, ""}, got)
+
+		buf.Reset()
+
+		lc = log.WithPrefix(lc, "p", "first")
+		err = lc.Log("msg", "message")
+		require.NoError(t, err)
+
+		err = json.Unmarshal(buf.Bytes(), &got)
+		require.NoError(t, err)
+		assert.Equal(t, logLine{strings.ToUpper(lvl), "message", "helper_test.go:85", 123, "first"}, got)
+	}
+}
 
 func TestAreEqual(t *testing.T) {
 	testCases := []struct {

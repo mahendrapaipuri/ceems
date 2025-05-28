@@ -48,6 +48,7 @@ linters:
     goconst:
       ignore-string-values: 
         - cpu
+        - info
   exclusions:
     generated: lax
     presets:

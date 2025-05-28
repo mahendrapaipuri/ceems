@@ -676,13 +676,81 @@ rest of the collectors.
 
 :::
 
+## eBPF based continuous profiling
+
+CEEMS exporter has an optional component that can continuous profiling compute units
+of SLURM and k8s resource managers. This can be enabled by the flag `--profiling.ebpf`.
+The profile samples must be sent to Grafana Pyroscope server and hence thee server
+must be installed beforehand. The continuous profiling requires a config file to configure
+the profiling parameters and Grafana Pyroscope server client.
+
+A sample profiling config file is shown as below:
+
+```yaml
+---
+ceems_profiler:
+  ebpf_config:
+    # How frequently to collect profiles
+    collect_interval: 15s
+    # How frequently to discover new profiling targets
+    discover_interval: 15s
+  pyroscope_config:
+    # External URL at which Pyroscope is reachable
+    url: http://pyroscope:4040
+    # Labels to add to profiles sent over the network.
+    # A label value of {hostname} will be replaced by the
+    # node's hostname.
+    external_labels:
+      hostname: '{hostname}'
+      mylabel: myvalue
+```
+
+The above config will collect the profiles and new profiling targets for every
+15s and send them to Pyroscope server running at `http://pyroscope:4040`. Assuming
+that this file is saved at `/etc/ceems_exporter/ebpf_profiling_config.yml`, the
+profiling can be enabled using:
+
+```bash
+ceems_exporter --profiling.ebpf --profiling.ebpf.config-file=/etc/ceems_exporter/ebpf_profiling_config.yml
+```
+
+A complete reference to configuration file can be found in the
+[repository](https://github.com/@ceemsOrg@/@ceemsRepo@/tree/main/build/config/ceems_exporter/ebpf_profiling_config.yml).
+
+It is possible to selectively profile the compute units based on a presence of environment
+variable like in the case of `perf` sub-collector. For instance, if we want to profile
+compute units with environment variable `CEEMS_ENABLE_PROFILING=1`, then this can be
+configured with the exporter as follows:
+
+```bash
+ceems_exporter --profiling.ebpf --profiling.ebpf.config-file=/etc/ceems_exporter/ebpf_profiling_config.yml --profiling.ebpf.env-var=CEEMS_ENABLE_PROFILING
+```
+
+:::important[IMPORTANT]
+
+Note that the flag `--profiling.ebpf.env-var` can be repeated to configure multiple environment
+variables. The
+presence of an environment variable triggers the continuous profiling irrespective of
+the value set to it.
+
+:::
+
 ## Grafana Alloy targets discoverer
+
+:::note[NOTE]
+
+CEEMS exporter supports profiling compute units natively without needing to deploying
+Grafana Alloy alongside. Although the profiling component is kept under experimental
+section in CEEMS exporter, it uses the exact same library that Grafana Alloy uses to
+profile the compute units.
+
+:::
 
 The CEEMS exporter exposes a special endpoint that can be used as an
 [HTTP discovery component](https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.http/)
 which can provide a list of targets to the Pyroscope eBPF component for continuous profiling.
 
-Currently, the discovery component supports **only the SLURM resource manager**. There is
+Currently, the discovery component supports **only the SLURM and k8s resource managers**. There is
 no added value to continuously profile a VM instance managed by Libvirt from the hypervisor
 as we will not be able to easily resolve symbols of the guest instance from the hypervisor. By
 default, the discovery component is disabled and it can be enabled using the following

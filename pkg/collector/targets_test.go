@@ -94,13 +94,15 @@ func TestAlloyDiscovererSlurmCgroupsV2(t *testing.T) {
 	_, err := CEEMSExporterApp.Parse([]string{
 		"--path.procfs", "testdata/proc",
 		"--path.cgroupfs", "testdata/sys/fs/cgroup",
-		"--discoverer.alloy-targets",
 		"--collector.slurm",
 		"--collector.cgroups.force-version", "v2",
 	})
 	require.NoError(t, err)
 
-	discoverer, err := NewAlloyTargetDiscoverer(noOpLogger)
+	discoverer, err := NewTargetDiscoverer(&discovererConfig{
+		logger:  noOpLogger,
+		enabled: true,
+	})
 	require.NoError(t, err)
 
 	targets, err := discoverer.Discover()
@@ -112,13 +114,15 @@ func TestAlloyDiscovererSlurmCgroupsV1(t *testing.T) {
 	_, err := CEEMSExporterApp.Parse([]string{
 		"--path.procfs", "testdata/proc",
 		"--path.cgroupfs", "testdata/sys/fs/cgroup",
-		"--discoverer.alloy-targets",
 		"--collector.slurm",
 		"--collector.cgroups.force-version", "v1",
 	})
 	require.NoError(t, err)
 
-	discoverer, err := NewAlloyTargetDiscoverer(noOpLogger)
+	discoverer, err := NewTargetDiscoverer(&discovererConfig{
+		logger:  noOpLogger,
+		enabled: true,
+	})
 	require.NoError(t, err)
 
 	targets, err := discoverer.Discover()
@@ -130,15 +134,17 @@ func TestAlloyDiscovererSlurmCgroupsV2WithEnviron(t *testing.T) {
 	_, err := CEEMSExporterApp.Parse([]string{
 		"--path.procfs", "testdata/proc",
 		"--path.cgroupfs", "testdata/sys/fs/cgroup",
-		"--discoverer.alloy-targets",
 		"--collector.slurm",
-		"--discoverer.alloy-targets.env-var", "ENABLE_PROFILING",
 		"--collector.cgroups.force-version", "v2",
-		"--discoverer.alloy-targets.self-profiler",
 	})
 	require.NoError(t, err)
 
-	discoverer, err := NewAlloyTargetDiscoverer(noOpLogger)
+	discoverer, err := NewTargetDiscoverer(&discovererConfig{
+		logger:        noOpLogger,
+		enabled:       true,
+		targetEnvVars: []string{"ENABLE_PROFILING"},
+		selfProfile:   true,
+	})
 	require.NoError(t, err)
 
 	targets, err := discoverer.Discover()

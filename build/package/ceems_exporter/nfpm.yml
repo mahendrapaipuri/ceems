@@ -77,6 +77,16 @@ contents:
       mode: 0660
       owner: root
       group: ceems
+  
+  # CEEMS exporter eBPF profiler config file
+  - src: build/config/ceems_exporter/ebpf_profiling_config.yml
+    dst: /etc/ceems_exporter/ebpf-profiling-config.yml
+    type: config|noreplace
+    file_info:
+      # Make sure that the mode is specified in octal, e.g. 0644 instead of 644.
+      mode: 0660
+      owner: root
+      group: ceems
 
   # systemd unit file
   - src: build/package/ceems_exporter/ceems_exporter.service

@@ -9,8 +9,7 @@ sidebar_position: 1
 `ceems_exporter` is the Prometheus exporter that exposes individual compute unit
 metrics, RAPL energy, IPMI power consumption, emission factor, GPU to compute unit
 mapping, performance metrics, IO and network metrics. Besides, the exporter supports
-a [HTTP discovery component](https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.http/)
-that can provide a list of targets to [Grafana Alloy](https://grafana.com/docs/alloy/latest/).
+eBPF based continuous profiling of compute units.
 
 `ceems_exporter` collectors can be categorized as follows:
 
@@ -506,7 +505,7 @@ from different IB devices. These collectors are heavily inspired by
 These metrics are mainly used to estimate the proportion of CPU and memory usage by individual compute units and to estimate the energy consumption of compute units
 based on these proportions.
 
-## Grafana Alloy target discovery
+<!-- ## Grafana Alloy target discovery
 
 Grafana Alloy provides an [eBPF based continuous profiling](https://grafana.com/docs/alloy/latest/reference/components/pyroscope/pyroscope.ebpf/)
 component. It needs a list of targets (processes in the current case) and label those
@@ -515,7 +514,17 @@ given compute unit (like batch job for SLURM), there can be multiple processes i
 job and we need to provide a list of all these processes PIDs labeled by the ID of
 that compute unit to Grafana Alloy. CEEMS exporter can provide a list of these processes
 correctly labeled by the compute unit identifier and eventually these profiles will be
-aggregated by compute unit identifier on Pyroscope server.
+aggregated by compute unit identifier on Pyroscope server. -->
+
+## eBPF based continuous profiling
+
+CEEMS exporter supports continuously profiling compute units using
+[Grafana Pyroscope](https://grafana.com/docs/pyroscope/latest/configure-client/grafana-alloy/ebpf/).
+The continuously profiling is only relevant for SLURM and k8s resource managers as
+profiling Openstack VMs from the hypervisor is not practical. Based on a configurable
+discovery interval, the exporter will find all the new process PIDs of a given compute
+unit and starts profiling them and send those profiling samples to Grafana Pyroscope
+server for aggregation.
 
 ## Metrics
 

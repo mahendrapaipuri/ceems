@@ -12,7 +12,7 @@ const projectName = "ceems";
 // Global variables that will be replaced
 // in markdown files
 let globalVars = {
-  goVersion: "1.23.x", // Everytime Go version is updated, this needs to be updated as well
+  goVersion: "1.24.x", // Everytime Go version is updated, this needs to be updated as well
   ceemsVersion: "",
   ceemsOrg: organizationName,
   ceemsRepo: projectName,
