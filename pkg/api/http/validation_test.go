@@ -189,7 +189,6 @@ func TestVerifyOwnership(t *testing.T) {
 			test.user,
 			[]string{test.rmID},
 			test.uuids,
-			test.starts,
 			db,
 			noOpLogger,
 		)

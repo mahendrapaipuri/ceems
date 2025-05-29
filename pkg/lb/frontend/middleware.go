@@ -16,7 +16,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
@@ -346,7 +345,6 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 			loggedUser,
 			[]string{reqParams.clusterID},
 			reqParams.uuids,
-			[]int64{reqParams.time},
 		) {
 			// Write an error and stop the handler chain
 			w.WriteHeader(http.StatusForbidden)
@@ -392,12 +390,11 @@ func (amw *authenticationMiddleware) isUserUnit(
 	user string,
 	clusterIDs []string,
 	uuids []string,
-	starts []int64,
 ) bool {
 	// Always prefer checking with DB connection directly if it is available
 	// As DB query is way more faster than HTTP API request
 	if amw.ceems.db != nil {
-		return ceems_api.VerifyOwnership(ctx, user, clusterIDs, uuids, starts, amw.ceems.db, amw.logger)
+		return ceems_api.VerifyOwnership(ctx, user, clusterIDs, uuids, amw.ceems.db, amw.logger)
 	}
 
 	// If CEEMS URL is available make a API request
@@ -414,9 +411,6 @@ func (amw *authenticationMiddleware) isUserUnit(
 
 	// Add uuids to request
 	urlVals := url.Values{"uuid": uuids, "cluster_id": clusterIDs}
-	for _, s := range starts {
-		urlVals.Add("time", strconv.FormatInt(s, 10))
-	}
 
 	req.URL.RawQuery = urlVals.Encode()
 

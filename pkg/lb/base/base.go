@@ -19,7 +19,8 @@ type LBType int
 
 // LB types enum.
 const (
-	PromLB LBType = iota
+	_ LBType = iota
+	PromLB
 	PyroLB
 )
 
@@ -32,4 +33,31 @@ func (l LBType) String() string {
 	}
 
 	return "undefined"
+}
+
+// LBStrategy is strategy of load balancer server.
+type LBStrategy int
+
+// LB types enum.
+const (
+	_ LBStrategy = iota
+	RoundRobin
+	LeastConnection
+)
+
+func (l LBStrategy) String() string {
+	switch l {
+	case RoundRobin:
+		return "round-robin"
+	case LeastConnection:
+		return "least-connection"
+	}
+
+	return "undefined"
+}
+
+// LBStrategyMap defines the map to translate the value in config to enum.
+var LBStrategyMap = map[string]LBStrategy{
+	"round-robin":      RoundRobin,
+	"least-connection": LeastConnection,
 }

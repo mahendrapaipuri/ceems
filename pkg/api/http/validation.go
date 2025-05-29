@@ -4,16 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"log/slog"
-	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/mahendrapaipuri/ceems/pkg/api/base"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
-)
-
-const (
-	startTimeTol = 3600000 // 1 hour in milliseconds
 )
 
 // Null logger for adminUsers function. We dont need to log
@@ -56,7 +50,6 @@ func VerifyOwnership(
 	user string,
 	clusterIDs []string,
 	uuids []string,
-	starts []int64,
 	db *sql.DB,
 	logger *slog.Logger,
 ) bool {
@@ -99,14 +92,6 @@ func VerifyOwnership(
 	q.query(" AND uuid IN ")
 	q.param(uuids)
 
-	// Get min and max of starts and use 1 hour as tolerance for boundaries
-	if len(starts) > 0 {
-		q.query(" AND started_at_ts BETWEEN ")
-		q.param([]string{strconv.FormatInt(slices.Min(starts)-startTimeTol, 10)})
-		q.query(" AND ")
-		q.param([]string{strconv.FormatInt(slices.Max(starts)+startTimeTol, 10)})
-	}
-
 	// Run query and get response
 	units, err := Querier[models.Unit](ctx, db, q, logger)
 	if err != nil {
@@ -118,9 +103,16 @@ func VerifyOwnership(
 		return false
 	}
 
-	// If returned number of UUIDs is not same as queried UUIDs, user is attempting
-	// to query for jobs of other user
-	if len(units) != len(uuids) {
+	// If returned number of UUIDs is less than requested UUIDs, it means user do not have
+	// access to some of the queried UUIDs and we need to forbid the request
+	// As SLURM JobIDs can overflow and start over, there can be more than 1 units with given
+	// attributes that is why we check for less than condition.
+	// To use the equality, we need to add start/end time to the query and that will start to
+	// become complicated as for certain queries we cannot realiably get start/end times. So,
+	// we "loosen" the query a little for better usability.
+	// NOTE that this does not/should not have any impact on security which means user's will not
+	// be able to access metrics of others.
+	if len(units) < len(uuids) {
 		logger.Debug("Unauthorized query", "user", user,
 			"queried_uuids", len(uuids), "found_uuids", len(units),
 		)
@@ -128,16 +120,5 @@ func VerifyOwnership(
 		return false
 	}
 
-	// // In the case when verification is success, get ownership mode of each unit
-	// var mode string
-	// var ownershipModes []models.Ownership
-	// for _, unit := range units {
-	// 	if unit.Usr == user {
-	// 		mode = "self"
-	// 	} else {
-	// 		mode = "project"
-	// 	}
-	// 	ownershipModes = append(ownershipModes, models.Ownership{UUID: unit.UUID, Mode: mode})
-	// }
 	return true
 }

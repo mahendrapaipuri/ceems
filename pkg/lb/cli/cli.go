@@ -301,7 +301,7 @@ func (lb *CEEMSLoadBalancer) Main() error {
 
 	for i, lbType := range lbTypes {
 		// Create a pool of backend servers
-		managers[lbType], err = serverpool.New(config.LB.Strategy, logger.With("backend_type", lbType))
+		managers[lbType], err = serverpool.New(base.LBStrategyMap[config.LB.Strategy], logger.With("backend_type", lbType))
 		if err != nil {
 			logger.Error("Failed to create backend server poo", "backend_type", lbType, "err", err)
 

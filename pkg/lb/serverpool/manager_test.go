@@ -8,6 +8,7 @@ import (
 
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/backend"
+	"github.com/mahendrapaipuri/ceems/pkg/lb/base"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -21,7 +22,7 @@ var h = http.HandlerFunc(SleepHandler)
 var noOpLogger = slog.New(slog.DiscardHandler)
 
 func TestNew(t *testing.T) {
-	for _, strategy := range []string{"round-robin", "least-connection", "resource-based"} {
+	for _, strategy := range []base.LBStrategy{base.RoundRobin, base.LeastConnection} {
 		m, _ := New(strategy, noOpLogger)
 		b, err := backend.NewTSDB(&backend.ServerConfig{Web: &models.WebConfig{URL: "http://localhost:3333"}}, noOpLogger)
 		require.NoError(t, err)
@@ -33,6 +34,6 @@ func TestNew(t *testing.T) {
 }
 
 func TestNewUnknownStrategy(t *testing.T) {
-	_, err := New("unknown", noOpLogger)
+	_, err := New(-1, noOpLogger)
 	assert.Error(t, err)
 }

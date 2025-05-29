@@ -168,12 +168,6 @@ func (b *tsdbServer) fetchRetentionPeriod() (time.Duration, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	// // Only used in e2e and unit tests
-	// // Return a long enough retention period
-	// if os.Getenv("__CEEMS_CI_TEST_RETENTION_PERIOD") != "" {
-	// 	return 10 * 365 * 24 * time.Hour, nil
-	// }
-
 	var period time.Duration
 
 	// For first update, get retention period from settings

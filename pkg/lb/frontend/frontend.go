@@ -36,10 +36,8 @@ type ReqParamsContextKey struct{}
 
 // ReqParams is the context value.
 type ReqParams struct {
-	clusterID   string
-	uuids       []string
-	time        int64
-	queryPeriod time.Duration
+	clusterID string
+	uuids     []string
 }
 
 // LoadBalancer is the interface to implement.
@@ -169,12 +167,9 @@ func (lb *loadBalancer) Serve(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Middleware ensures that query parameters are always set in request's context
-	var queryPeriod time.Duration
-
 	var id string
 
 	if v, ok := queryParams.(*ReqParams); ok {
-		queryPeriod = v.queryPeriod
 		id = v.clusterID
 	} else {
 		http.Error(w, "Invalid query parameters", http.StatusBadRequest)
@@ -183,7 +178,7 @@ func (lb *loadBalancer) Serve(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Choose target based on query Period
-	if target := lb.manager.Target(id, queryPeriod); target != nil {
+	if target := lb.manager.Target(id); target != nil {
 		target.Serve(w, r)
 
 		return

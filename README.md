@@ -161,6 +161,11 @@ cacct  --starttime="2025-01-01" --endtime="2025-03-22"
 - [An Introduction to CEEMS at ISC 2024](https://drive.google.com/file/d/1kUbD3GgDKwzgIuxjrTY95YJN5aSuIejQ/view?usp=drive_link)
 - [CEEMS Architecture and Usage](https://docs.google.com/presentation/d/1xNQTCsmPUz37KDb2BLrpWExuQWxk49NpVN9VDbxSe6Y/edit#slide=id.p)
 
+## 🤝 Adopters
+
+- Currently CEEMS is running on [Jean Zay HPC](http://www.idris.fr/eng/jean-zay/jean-zay-presentation-eng.html)
+platform that has a daily job churn rate of around 25k jobs with a scrape interval of 10s.
+
 ## 👍 Contributing
 
 We welcome contributions to this project, we hope to see this project grow and become

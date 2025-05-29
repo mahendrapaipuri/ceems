@@ -9,30 +9,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"net/http"
 	"slices"
-	"strconv"
 	"strings"
-	"time"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"google.golang.org/protobuf/proto"
-)
-
-// These functions are nicked from https://github.com/prometheus/prometheus/blob/main/web/api/v1/api.go
-var (
-	// MinTime is the default timestamp used for the begin of optional time ranges.
-	// Exposed to let downstream projects to reference it.
-	MinTime = time.Unix(math.MinInt64/1000+62135596801, 0).UTC()
-
-	// MaxTime is the default timestamp used for the end of optional time ranges.
-	// Exposed to let downstream projects to reference it.
-	MaxTime = time.Unix(math.MaxInt64/1000-62135596801, 999999999).UTC()
-
-	minTimeFormatted = MinTime.Format(time.RFC3339Nano)
-	maxTimeFormatted = MaxTime.Format(time.RFC3339Nano)
 )
 
 // Set query params into request's context and return new request.
@@ -69,18 +52,15 @@ func parseTSDBRequest(p *ReqParams, r *http.Request) error {
 	}
 
 	// Except for query API, rest of the load balanced API endpoint have start query param
-	var targetTimeParam, targetQueryParam string
+	var targetQueryParam string
 
 	switch {
 	case strings.HasSuffix(clonedReq.URL.Path, "query"):
 		targetQueryParam = "query"
-		targetTimeParam = "time"
 	case strings.HasSuffix(clonedReq.URL.Path, "query_range"):
 		targetQueryParam = "query"
-		targetTimeParam = "start"
 	default:
 		targetQueryParam = "match[]"
-		targetTimeParam = "start"
 	}
 
 	// Parse TSDB's query in request query params
@@ -88,15 +68,6 @@ func parseTSDBRequest(p *ReqParams, r *http.Request) error {
 		for _, val := range vals {
 			parseReqParams(p, val)
 		}
-	}
-
-	// Parse TSDB's start query in request query params
-	if startTime, err := parseTimeParam(clonedReq, targetTimeParam, time.Now().Local()); err != nil {
-		p.queryPeriod = 0 * time.Second
-		p.time = time.Now().Local().UnixMilli()
-	} else {
-		p.queryPeriod = time.Now().Local().Sub(startTime)
-		p.time = startTime.Local().UnixMilli()
 	}
 
 	return nil
@@ -121,8 +92,6 @@ func parsePyroRequest(p *ReqParams, r *http.Request) error {
 	// clone body to existing request
 	r.Body = io.NopCloser(bytes.NewReader(body))
 
-	var start int64
-
 	// Read body into request data based on resource
 	switch {
 	case strings.HasSuffix(r.URL.Path, "SelectMergeStacktraces"):
@@ -136,9 +105,6 @@ func parsePyroRequest(p *ReqParams, r *http.Request) error {
 		if val := data.GetLabelSelector(); val != "" {
 			parseReqParams(p, val)
 		}
-
-		// Get start time of query
-		start = data.GetStart()
 	case strings.HasSuffix(r.URL.Path, "LabelNames"):
 		// Read body into request data
 		data := typesv1.LabelNamesRequest{}
@@ -152,9 +118,6 @@ func parsePyroRequest(p *ReqParams, r *http.Request) error {
 				parseReqParams(p, val)
 			}
 		}
-
-		// Get start time of query
-		start = data.GetStart()
 	case strings.HasSuffix(r.URL.Path, "LabelValues"):
 		// Read body into request data
 		data := typesv1.LabelValuesRequest{}
@@ -168,21 +131,6 @@ func parsePyroRequest(p *ReqParams, r *http.Request) error {
 				parseReqParams(p, val)
 			}
 		}
-
-		// Get start time of query
-		start = data.GetStart()
-	}
-
-	// Parse Pyroscope's start query in request query params
-	// The times are already in milliseconds and so we need to
-	// convert it to seconds before setting it to struct.
-	if start == 0 {
-		p.queryPeriod = 0 * time.Second
-		p.time = time.Now().UTC().UnixMilli()
-	} else {
-		startTime := time.Unix(start/1000, 0).UTC()
-		p.queryPeriod = time.Now().UTC().Sub(startTime)
-		p.time = startTime.UnixMilli()
 	}
 
 	return nil
@@ -215,46 +163,4 @@ func parseReqParams(p *ReqParams, req string) {
 			}
 		}
 	}
-}
-
-// Parse time parameter in request.
-func parseTimeParam(r *http.Request, paramName string, defaultValue time.Time) (time.Time, error) {
-	val := r.FormValue(paramName)
-	if val == "" {
-		return defaultValue, nil
-	}
-
-	result, err := parseTime(val)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("invalid time value for '%s': %w", paramName, err)
-	}
-
-	return result, nil
-}
-
-// Convert time parameter string into time.Time.
-func parseTime(s string) (time.Time, error) {
-	if t, err := strconv.ParseFloat(s, 64); err == nil {
-		s, ns := math.Modf(t)
-		ns = math.Round(ns*1000) / 1000
-
-		return time.Unix(int64(s), int64(ns*float64(time.Second))).UTC(), nil
-	}
-
-	if t, err := time.Parse(time.RFC3339Nano, s); err == nil {
-		return t, nil
-	}
-
-	// Stdlib's time parser can only handle 4 digit years. As a workaround until
-	// that is fixed we want to at least support our own boundary times.
-	// Context: https://github.com/prometheus/client_golang/issues/614
-	// Upstream issue: https://github.com/golang/go/issues/20555
-	switch s {
-	case minTimeFormatted:
-		return MinTime, nil
-	case maxTimeFormatted:
-		return MaxTime, nil
-	}
-
-	return time.Time{}, fmt.Errorf("cannot parse %q to a valid timestamp", s)
 }

@@ -78,13 +78,15 @@ needed to pull profiling data from the Pyroscope server.
 ## Load Balancing
 
 The CEEMS load balancer supports classic load balancing strategies like round-robin and least
-connection methods. Besides these two, it supports a resource-based strategy that is
-based on retention time. Let's take a look at this strategy in detail.
+connection methods. Let's take a look at this strategy in detail.
 
 :::warning[WARNING]
 
-The resource-based load balancing strategy is only supported for TSDB. For Pyroscope,
-this strategy is not supported and when used, it will default to the least-connection strategy.
+The resource-based load balancing strategy is not supported anymore and starting from
+version `0.9.0`, it is removed. We recommend to use
+[Prometheus' remote read](https://prometheus.io/docs/prometheus/latest/querying/remote_read_api/)
+feature to achieve the same functionality of resource-based load balancing which is more
+performant and reliable.
 
 :::
 
@@ -98,16 +100,25 @@ to provide the basic functionality proposed by Thanos, Cortex, _etc_.
 The core idea is to replicate the Prometheus data using
 [Prometheus' remote write](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#remote_write)
 functionality onto a remote storage which
-is fault-tolerant and has higher storage capacity but with degraded query performance.
-In this scenario, we have two TSDBs with the following characteristics:
+is fault-tolerant. In this we can have following different scenarios.
+
+In the first scenario, both TSDB using local storage and remote storage have same retention
+period and we achieve fault tolerance of data by remote write feature. In this case
+CEEMS LB loading balancing techniques (round-robin or least connection) can be used
+to distribute the requests between two instances of TSDB.
+
+In a different scenario, we have two TSDBs with the following characteristics:
 
 - TSDB using local disk: faster query performance with limited storage space
 - TSDB using remote storage: slower query performance with bigger storage space
 
 The TSDB using local disk ("hot" instance) will have a shorter retention period, and the
-one using remote storage ("cold" instance)
-can have a longer retention. The CEEMS load balancer is capable of introspecting the query and
-then routing the request to either "hot" or "cold" instances of TSDB.
+one using remote storage ("cold" instance) can have a longer retention. By enabling
+[Prometheus' remote read](https://prometheus.io/docs/prometheus/latest/querying/remote_read_api/)
+feature, the hot instance of TSDB can fetch the data from cold instance when it does not
+find it in its own database. In this case as well we cab use
+CEEMS LB loading balancing techniques (round-robin or least connection)
+to distribute the requests between two instances of TSDB.
 
 ## Multi-Cluster Support
 
