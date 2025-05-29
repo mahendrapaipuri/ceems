@@ -157,61 +157,39 @@ func TestIpmiMetricsDisactive(t *testing.T) {
 	}
 }
 
-func TestIpmiDcmiFinder(t *testing.T) {
-	tmpDir := t.TempDir()
-	tmpIPMIPath := tmpDir + "/ipmi-dcmi"
+func TestIpmiClientFinder(t *testing.T) {
+	tests := []struct {
+		name string
+		path string
+	}{
+		{
+			name: "ipmi-dcmi",
+			path: "freeipmi",
+		},
+		{
+			name: "ipmitool",
+			path: "openipmi",
+		},
+		{
+			name: "ipmiutil",
+			path: "ipmiutils",
+		},
+	}
 
-	// Set path
-	t.Setenv("PATH", fmt.Sprintf("%s:%s", tmpDir, os.Getenv("PATH")))
+	// Get PATH
+	basePath := os.Getenv("PATH")
 
-	ipmiDcmiPath, err := filepath.Abs("testdata/ipmi/freeipmi/ipmi-dcmi")
-	require.NoError(t, err)
+	for _, test := range tests {
+		ipmiClientPath, err := filepath.Abs(filepath.Join("testdata/ipmi", test.path))
+		require.NoError(t, err)
 
-	err = os.Link(ipmiDcmiPath, tmpIPMIPath)
-	require.NoError(t, err)
+		// Set path
+		t.Setenv("PATH", fmt.Sprintf("%s:%s", ipmiClientPath, basePath))
 
-	// findIPMICmd() should give ipmi-dcmi command
-	ipmiCmdSlice, err := findIPMICmd()
-	require.NoError(t, err)
-	assert.Equal(t, "ipmi-dcmi", ipmiCmdSlice[0])
-}
-
-func TestIpmiToolFinder(t *testing.T) {
-	tmpDir := t.TempDir()
-	tmpIPMIPath := tmpDir + "/ipmitool"
-
-	// Set path
-	t.Setenv("PATH", fmt.Sprintf("%s:%s", tmpDir, os.Getenv("PATH")))
-
-	ipmiDcmiPath, err := filepath.Abs("testdata/ipmi/openipmi/ipmitool")
-	require.NoError(t, err)
-
-	err = os.Link(ipmiDcmiPath, tmpIPMIPath)
-	require.NoError(t, err)
-
-	// findIPMICmd() should give ipmitool command
-	ipmiCmdSlice, err := findIPMICmd()
-	require.NoError(t, err)
-	assert.Equal(t, "ipmitool", ipmiCmdSlice[0])
-}
-
-func TestIpmiUtilFinder(t *testing.T) {
-	tmpDir := t.TempDir()
-	tmpIPMIPath := tmpDir + "/ipmiutil"
-
-	// Set path
-	t.Setenv("PATH", fmt.Sprintf("%s:%s", tmpDir, os.Getenv("PATH")))
-
-	ipmiDcmiPath, err := filepath.Abs("testdata/ipmi/ipmiutils/ipmiutil")
-	require.NoError(t, err)
-
-	err = os.Link(ipmiDcmiPath, tmpIPMIPath)
-	require.NoError(t, err)
-
-	// findIPMICmd() should give ipmiutil command
-	ipmiCmdSlice, err := findIPMICmd()
-	require.NoError(t, err)
-	assert.Equal(t, "ipmiutil", ipmiCmdSlice[0])
+		ipmiClientSlice, err := findIPMICmd()
+		require.NoError(t, err)
+		assert.Equal(t, test.name, ipmiClientSlice[0])
+	}
 }
 
 func TestCachedPowerReadings(t *testing.T) {

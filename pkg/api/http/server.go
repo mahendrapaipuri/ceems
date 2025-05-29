@@ -904,7 +904,6 @@ func (s *CEEMSServer) units(w http.ResponseWriter, r *http.Request) {
 //	@Param			X-Grafana-User	header		string		true	"Current user name"
 //	@Param			uuid			query		[]string	false	"Unit UUID"		collectionFormat(multi)
 //	@Param			cluster_id		query		[]string	false	"Cluster ID"	collectionFormat(multi)
-//	@Param			time			query		[]string	false	"Timestamps"	collectionFormat(multi)
 //	@Success		200				{object}	Response[any]
 //	@Failure		401				{object}	Response[any]
 //	@Failure		403				{object}	Response[any]
@@ -934,17 +933,8 @@ func (s *CEEMSServer) verifyUnitsOwnership(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Get start time of queried uuids
-	var starts []int64
-
-	for _, s := range r.URL.Query()["time"] {
-		if is, err := strconv.ParseInt(s, 10, 64); err == nil {
-			starts = append(starts, is)
-		}
-	}
-
 	// Check if user is owner of the queries uuids
-	if VerifyOwnership(r.Context(), loggedUser, clusterID, uuids, starts, s.db, s.logger) {
+	if VerifyOwnership(r.Context(), loggedUser, clusterID, uuids, s.db, s.logger) {
 		w.WriteHeader(http.StatusOK)
 
 		response := Response[string]{

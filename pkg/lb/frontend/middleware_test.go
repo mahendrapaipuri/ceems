@@ -12,7 +12,6 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -136,7 +135,7 @@ func setupMiddlewareWithDB(tmpDir string) (http.Handler, error) {
 	return amw.Middleware(nextHandler), nil
 }
 
-func setupMiddlewareWithAPI(tmpDir string) (http.Handler, error) {
+func setupMiddlewareWithAPI(ctx context.Context, tmpDir string) (http.Handler, error) {
 	// Setup test DB
 	db, err := setupTestDB(tmpDir)
 	if err != nil {
@@ -144,7 +143,7 @@ func setupMiddlewareWithAPI(tmpDir string) (http.Handler, error) {
 	}
 
 	// Setup test CEEMS API server
-	ceemsServer := setupCEEMSAPI(db)
+	ceemsServer := setupCEEMSAPI(ctx, db)
 	ceemsURL, _ := url.Parse(ceemsServer.URL)
 
 	// Create an instance of middleware
@@ -163,7 +162,7 @@ func setupMiddlewareWithAPI(tmpDir string) (http.Handler, error) {
 	return amw.Middleware(nextHandler), nil
 }
 
-func setupCEEMSAPI(db *sql.DB) *httptest.Server {
+func setupCEEMSAPI(ctx context.Context, db *sql.DB) *httptest.Server {
 	// We copy the logic from CEEMS API server here for testing
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Set headers
@@ -177,25 +176,16 @@ func setupCEEMSAPI(db *sql.DB) *httptest.Server {
 		uuids := r.URL.Query()["uuid"]
 		rmIDs := r.URL.Query()["cluster_id"]
 
-		var starts []int64
-
-		for _, s := range r.URL.Query()["start"] {
-			if is, err := strconv.ParseInt(s, 10, 64); err == nil {
-				starts = append(starts, is)
-			}
-		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
 
 		if strings.HasSuffix(r.URL.Path, "verify") {
 			// Check if user is owner of the queries uuids
-			if http_api.VerifyOwnership( //nolint:contextcheck
+			if http_api.VerifyOwnership(
 				ctx,
 				user,
 				rmIDs,
 				uuids,
-				starts,
 				db,
 				noOpLogger,
 			) {
@@ -206,7 +196,7 @@ func setupCEEMSAPI(db *sql.DB) *httptest.Server {
 				w.Write([]byte("fail"))
 			}
 		} else {
-			if admins, err := http_api.AdminUsers(ctx, db); err == nil { //nolint:contextcheck
+			if admins, err := http_api.AdminUsers(ctx, db); err == nil {
 				// Write response
 				w.WriteHeader(http.StatusOK)
 
@@ -229,7 +219,7 @@ func TestMiddleware(t *testing.T) {
 	// Setup middleware handlers
 	handlerToTestDB, err := setupMiddlewareWithDB(t.TempDir())
 	require.NoError(t, err, "failed to setup middleware with DB")
-	handlerToTestAPI, err := setupMiddlewareWithAPI(t.TempDir())
+	handlerToTestAPI, err := setupMiddlewareWithAPI(t.Context(), t.TempDir())
 	require.NoError(t, err, "failed to setup middleware with API")
 
 	tests := []struct {

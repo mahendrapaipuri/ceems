@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
-	"time"
 
 	"github.com/mahendrapaipuri/ceems/pkg/lb/backend"
 )
@@ -16,7 +15,7 @@ type leastConn struct {
 }
 
 // Target returns the backend server to send the request if it is alive.
-func (s *leastConn) Target(id string, _ time.Duration) backend.Server {
+func (s *leastConn) Target(id string) backend.Server {
 	// If the ID is unknown return
 	if _, ok := s.backends[id]; !ok {
 		s.logger.Error("Round Robin strategy", "err", fmt.Errorf("unknown backend ID: %s", id))

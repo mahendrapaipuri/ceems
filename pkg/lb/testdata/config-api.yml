@@ -1,7 +1,7 @@
 ---
 
 ceems_lb:
-  strategy: resource-based
+  strategy: round-robin
   backends:
     - id: slurm-0
       tsdb: 

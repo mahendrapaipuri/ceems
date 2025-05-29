@@ -21,6 +21,7 @@ import (
 	ceems_api_http "github.com/mahendrapaipuri/ceems/pkg/api/http"
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/backend"
+	"github.com/mahendrapaipuri/ceems/pkg/lb/base"
 	"github.com/mahendrapaipuri/ceems/pkg/lb/serverpool"
 	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
 	"github.com/stretchr/testify/assert"
@@ -119,7 +120,7 @@ func TestNewFrontend(t *testing.T) {
 	require.NoError(t, err)
 
 	// Start manager
-	manager, err := serverpool.New("resource-based", noOpLogger)
+	manager, err := serverpool.New(base.RoundRobin, noOpLogger)
 	require.NoError(t, err)
 
 	manager.Add(clusterID, backend1)
@@ -168,7 +169,7 @@ func TestNewFrontendSingleGroup(t *testing.T) {
 	require.NoError(t, err)
 
 	// Start manager
-	manager, err := serverpool.New("resource-based", noOpLogger)
+	manager, err := serverpool.New(base.RoundRobin, noOpLogger)
 	require.NoError(t, err)
 
 	manager.Add(clusterID, backend1)
@@ -201,12 +202,12 @@ func TestNewFrontendSingleGroup(t *testing.T) {
 			code:     400,
 			response: false,
 		},
-		{
-			name:     "query with params in ctx and start more than retention period",
-			start:    time.Now().UTC().Add(-32 * 24 * time.Hour).Unix(),
-			code:     503,
-			response: false,
-		},
+		// {
+		// 	name:     "query with params in ctx and start more than retention period",
+		// 	start:    time.Now().UTC().Add(-32 * 24 * time.Hour).Unix(),
+		// 	code:     503,
+		// 	response: false,
+		// },
 	}
 
 	for _, test := range tests {
@@ -216,11 +217,10 @@ func TestNewFrontendSingleGroup(t *testing.T) {
 		var newReq *http.Request
 
 		if test.start > 0 {
-			period := time.Duration((time.Now().UTC().Unix() - test.start)) * time.Second
 			newReq = request.WithContext(
 				context.WithValue(
 					request.Context(), ReqParamsContextKey{},
-					&ReqParams{queryPeriod: period, clusterID: clusterID},
+					&ReqParams{clusterID: clusterID},
 				),
 			)
 		} else {
@@ -269,7 +269,7 @@ func TestNewFrontendTwoGroups(t *testing.T) {
 	require.NoError(t, err)
 
 	// Start manager
-	manager, err := serverpool.New("resource-based", noOpLogger)
+	manager, err := serverpool.New(base.RoundRobin, noOpLogger)
 	require.NoError(t, err)
 
 	manager.Add("rm-0", backend1)
@@ -313,13 +313,13 @@ func TestNewFrontendTwoGroups(t *testing.T) {
 			code:     503,
 			response: false,
 		},
-		{
-			name:      "query with params in ctx and start more than retention period",
-			start:     time.Now().UTC().Add(-31 * 24 * time.Hour).Unix(),
-			clusterID: "rm-0",
-			code:      503,
-			response:  false,
-		},
+		// {
+		// 	name:      "query with params in ctx and start more than retention period",
+		// 	start:     time.Now().UTC().Add(-31 * 24 * time.Hour).Unix(),
+		// 	clusterID: "rm-0",
+		// 	code:      503,
+		// 	response:  false,
+		// },
 	}
 
 	for _, test := range tests {
@@ -329,11 +329,10 @@ func TestNewFrontendTwoGroups(t *testing.T) {
 		var newReq *http.Request
 
 		if test.start > 0 {
-			period := time.Duration((time.Now().UTC().Unix() - test.start)) * time.Second
 			newReq = request.WithContext(
 				context.WithValue(
 					request.Context(), ReqParamsContextKey{},
-					&ReqParams{queryPeriod: period, clusterID: test.clusterID},
+					&ReqParams{clusterID: test.clusterID},
 				),
 			)
 		} else {
@@ -379,7 +378,7 @@ func TestValidateClusterIDsWithDBPass(t *testing.T) {
 	require.NoError(t, err)
 
 	// Start manager
-	manager, err := serverpool.New("resource-based", noOpLogger)
+	manager, err := serverpool.New(base.RoundRobin, noOpLogger)
 	require.NoError(t, err)
 
 	manager.Add("slurm-0", backend)
@@ -411,7 +410,7 @@ func TestValidateClusterIDsWithDBFail(t *testing.T) {
 	require.NoError(t, err)
 
 	// Start manager
-	manager, err := serverpool.New("resource-based", noOpLogger)
+	manager, err := serverpool.New(base.RoundRobin, noOpLogger)
 	require.NoError(t, err)
 
 	manager.Add("unknown", backend)
@@ -459,7 +458,7 @@ func TestValidateClusterIDsWithAPIPass(t *testing.T) {
 	require.NoError(t, err)
 
 	// Start manager
-	manager, err := serverpool.New("resource-based", noOpLogger)
+	manager, err := serverpool.New(base.RoundRobin, noOpLogger)
 	require.NoError(t, err)
 
 	manager.Add("slurm-0", backend)
@@ -499,7 +498,7 @@ func TestValidateClusterIDsWithAPIFail(t *testing.T) {
 	require.NoError(t, err)
 
 	// Start manager
-	manager, err := serverpool.New("resource-based", noOpLogger)
+	manager, err := serverpool.New(base.RoundRobin, noOpLogger)
 	require.NoError(t, err)
 
 	manager.Add("slurm-0", backend)

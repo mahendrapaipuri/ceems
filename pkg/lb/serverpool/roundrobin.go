@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
-	"time"
 
 	"github.com/mahendrapaipuri/ceems/pkg/lb/backend"
 )
@@ -27,7 +26,7 @@ func (s *roundRobin) Rotate(id string) backend.Server {
 }
 
 // Target returns the backend server to send the request if it is alive.
-func (s *roundRobin) Target(id string, _ time.Duration) backend.Server {
+func (s *roundRobin) Target(id string) backend.Server {
 	// If the ID is unknown return
 	if _, ok := s.backends[id]; !ok {
 		s.logger.Error("Round Robin strategy", "err", fmt.Errorf("unknown backend ID: %s", id))
