@@ -5,7 +5,7 @@ go 1.24.0
 toolchain go1.24.2
 
 require (
-	connectrpc.com/connect v1.16.2
+	connectrpc.com/connect v1.18.1
 	github.com/alecthomas/kingpin/v2 v2.4.0
 	github.com/cilium/ebpf v0.18.0
 	github.com/containerd/cgroups/v3 v3.0.5
@@ -33,7 +33,7 @@ require (
 	github.com/zeebo/xxh3 v1.0.2
 	golang.org/x/crypto v0.38.0
 	golang.org/x/sys v0.33.0
-	google.golang.org/grpc v1.72.1
+	google.golang.org/grpc v1.72.2
 	google.golang.org/protobuf v1.36.6
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.33.1
