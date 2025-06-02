@@ -295,7 +295,7 @@ updatevars:
 	@echo ">> updating makefile vars in-place"
 	sed -i -e 's/RELEASE_BUILD           ?= 0/RELEASE_BUILD           ?= 1/g' Makefile
 	sed -i -e 's/osusergo, netgo, static_build, test/osusergo, netgo, static_build/g' .promu/.promu-go.yml
-	sed -i -e 's/CGO_APPS               ?= 0/CGO_APPS               ?= $(CGO_APPS)/g' Makefile
+	sed -i -e 's/CGO_APPS                ?= 0/CGO_APPS                ?= $(CGO_APPS)/g' Makefile
 
 .PHONY: promu
 promu: $(PROMU)
