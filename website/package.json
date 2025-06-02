@@ -21,8 +21,8 @@
     "checks": "yarn spellcheck && yarn linkcheck"
   },
   "dependencies": {
-    "@docusaurus/core": "3.7.0",
-    "@docusaurus/preset-classic": "3.7.0",
+    "@docusaurus/core": "3.8.0",
+    "@docusaurus/preset-classic": "3.8.0",
     "@mdx-js/react": "^3.1.0",
     "clsx": "^2.0.0",
     "docusaurus-plugin-openapi-docs": "^4.4.0",
@@ -32,9 +32,9 @@
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
-    "@docusaurus/module-type-aliases": "3.7.0",
-    "@docusaurus/tsconfig": "3.7.0",
-    "@docusaurus/types": "3.7.0",
+    "@docusaurus/module-type-aliases": "3.8.0",
+    "@docusaurus/tsconfig": "3.8.0",
+    "@docusaurus/types": "3.8.0",
     "cspell": "^9.0.2",
     "markdown-link-check": "3.13.7",
     "typescript": "~5.8.3"
