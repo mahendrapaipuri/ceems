@@ -216,7 +216,7 @@ common-unused:
 .PHONY: common-build
 common-build: promu swag bpf
 ifeq ($(RELEASE_BUILD), 0)
-ifeq ($(CGO_BUILD), 1)
+ifeq ($(CGO_APPS), 1)
 	@echo ">> updating swagger docs"
 	$(SWAG) init -d $(SWAGGER_DIR) -g $(SWAGGER_MAIN) -o $(SWAGGER_DIR)/docs --pd --quiet
 	$(SWAG) fmt -d $(SWAGGER_DIR) -g $(SWAGGER_MAIN)
@@ -228,7 +228,7 @@ endif
 	cp -r pkg/lb/testdata/pyroscope scripts/mock_servers/assets
 	cp -r pkg/api/testdata/openstack scripts/mock_servers/assets
 	$(PROMU_GO_TEST) build --prefix $(PREFIX) $(PROMU_BINARIES)
-ifeq ($(CGO_BUILD), 0)
+ifeq ($(CGO_APPS), 0)
 	$(PROMU_CGO_TEST) build --prefix $(PREFIX) $(PROMU_BINARIES)
 endif
 endif
@@ -295,7 +295,7 @@ updatevars:
 	@echo ">> updating makefile vars in-place"
 	sed -i -e 's/RELEASE_BUILD           ?= 0/RELEASE_BUILD           ?= 1/g' Makefile
 	sed -i -e 's/osusergo, netgo, static_build, test/osusergo, netgo, static_build/g' .promu/.promu-go.yml
-	sed -i -e 's/CGO_BUILD               ?= 0/CGO_BUILD               ?= $(CGO_BUILD)/g' Makefile
+	sed -i -e 's/CGO_APPS               ?= 0/CGO_APPS               ?= $(CGO_APPS)/g' Makefile
 
 .PHONY: promu
 promu: $(PROMU)
@@ -327,8 +327,8 @@ $(CT):
 
 # Build bpf assets
 .PHONY: bpf
-# Build bpf assets only when CGO_BUILD=0
-ifeq ($(CGO_BUILD), 0)
+# Build bpf assets only when CGO_APPS=0
+ifeq ($(CGO_APPS), 0)
 bpf: clang bpfclean
 	@echo ">> building bpf assets using clang"
 	$(MAKE) -C ./pkg/collector/bpf
@@ -358,7 +358,7 @@ endif
 swag: $(SWAG)
 $(SWAG):
 ifeq ($(RELEASE_BUILD), 0)
-ifeq ($(CGO_BUILD), 1)
+ifeq ($(CGO_APPS), 1)
 	$(GO) install github.com/swaggo/swag/cmd/swag@v1.16.3
 endif
 endif

@@ -59,7 +59,7 @@ jobs:
         echo 'Building pure go binaries'
         make build
         echo 'Building cgo binaries'
-        CGO_BUILD=1 make build
+        CGO_APPS=1 make build
         # Run extractor
         "${CODEQL_EXTRACTOR_GO_ROOT}/tools/linux64/go-extractor" ./...
 

@@ -164,10 +164,11 @@ func TestNewRedfishCollector(t *testing.T) {
 	serverURL, err := url.Parse(server.URL)
 	require.NoError(t, err)
 
-	// Make config file
-	configFileTmpl := `
+	for _, cfgName := range []string{"redfish_web_config", "redfish_web"} {
+		// Make config file
+		configFileTmpl := `
 ---
-redfish_web_config:
+%s:
   protocol: http
   hostname: %s
   port: %s
@@ -175,36 +176,37 @@ redfish_web_config:
   password: secret
   use_session_token: true`
 
-	configPath := filepath.Join(tmpDir, "config.yml")
-	configFile := fmt.Sprintf(configFileTmpl, serverURL.Hostname(), serverURL.Port())
-	os.WriteFile(configPath, []byte(configFile), 0o600)
+		configPath := filepath.Join(tmpDir, "config.yml")
+		configFile := fmt.Sprintf(configFileTmpl, cfgName, serverURL.Hostname(), serverURL.Port())
+		os.WriteFile(configPath, []byte(configFile), 0o600)
 
-	_, err = CEEMSExporterApp.Parse(
-		[]string{
-			"--collector.redfish.web-config", configPath,
-		},
-	)
-	require.NoError(t, err)
+		_, err = CEEMSExporterApp.Parse(
+			[]string{
+				"--collector.redfish.web-config", configPath,
+			},
+		)
+		require.NoError(t, err)
 
-	collector, err := NewRedfishCollector(noOpLogger)
-	require.NoError(t, err)
+		collector, err := NewRedfishCollector(noOpLogger)
+		require.NoError(t, err)
 
-	// Setup background goroutine to capture metrics.
-	metrics := make(chan prometheus.Metric)
-	defer close(metrics)
+		// Setup background goroutine to capture metrics.
+		metrics := make(chan prometheus.Metric)
+		defer close(metrics)
 
-	go func() {
-		i := 0
-		for range metrics {
-			i++
-		}
-	}()
+		go func() {
+			i := 0
+			for range metrics {
+				i++
+			}
+		}()
 
-	err = collector.Update(metrics)
-	require.NoError(t, err)
+		err = collector.Update(metrics)
+		require.NoError(t, err)
 
-	err = collector.Stop(t.Context())
-	require.NoError(t, err)
+		err = collector.Stop(t.Context())
+		require.NoError(t, err)
+	}
 }
 
 func TestNewRedfishCollectorWithExternalURL(t *testing.T) {

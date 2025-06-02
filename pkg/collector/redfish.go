@@ -29,33 +29,31 @@ const (
 	redfishURLHeaderName = "X-Redfish-Url"
 )
 
-type redfishConfig struct {
-	Web struct {
-		Proto            string                  `yaml:"protocol"`
-		Hostname         string                  `yaml:"hostname"`
-		Port             int                     `yaml:"port"`
-		Username         string                  `yaml:"username"`
-		Password         string                  `yaml:"password"`
-		SessionToken     bool                    `yaml:"use_session_token"`
-		Timeout          int64                   `yaml:"timeout"`
-		ExternalURL      string                  `yaml:"external_url"`
-		HTTPClientConfig config.HTTPClientConfig `yaml:",inline"`
-		url              *url.URL
-		// Deprecated: InSecure exists for historical compatibility
-		// and should not be used. This must be configured under
-		// `tls_config.insecure_skip_verify` from now on.
-		InSecure bool `yaml:"insecure_skip_verify"`
-	} `yaml:"redfish_web_config"`
+type redfishWebConfig struct {
+	Proto            string                  `yaml:"protocol"`
+	Hostname         string                  `yaml:"hostname"`
+	Port             int                     `yaml:"port"`
+	Username         string                  `yaml:"username"`
+	Password         string                  `yaml:"password"`
+	SessionToken     bool                    `yaml:"use_session_token"`
+	Timeout          int64                   `yaml:"timeout"`
+	ExternalURL      string                  `yaml:"external_url"`
+	HTTPClientConfig config.HTTPClientConfig `yaml:",inline"`
+	url              *url.URL
+	// Deprecated: InSecure exists for historical compatibility
+	// and should not be used. This must be configured under
+	// `tls_config.insecure_skip_verify` from now on.
+	InSecure bool `yaml:"insecure_skip_verify"`
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
-func (c *redfishConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *redfishWebConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	// Set a default config
-	*c = redfishConfig{}
-	c.Web.SessionToken = true
-	c.Web.HTTPClientConfig = config.DefaultHTTPClientConfig
+	*c = redfishWebConfig{}
+	c.SessionToken = true
+	c.HTTPClientConfig = config.DefaultHTTPClientConfig
 
-	type plain redfishConfig
+	type plain redfishWebConfig
 
 	if err := unmarshal((*plain)(c)); err != nil {
 		return err
@@ -64,7 +62,7 @@ func (c *redfishConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var err error
 
 	// If BMC Hostname is not provided, attempt to discover it using OpenIPMI interface
-	if c.Web.Hostname == "" {
+	if c.Hostname == "" {
 		// Make a new IPMI client
 		client, err := ipmi.NewIPMIClient(0, slog.New(slog.DiscardHandler))
 		if err != nil {
@@ -80,35 +78,60 @@ func (c *redfishConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 		// Attempt to get BMC hostname from IP
 		if hostname, err := net.LookupAddr(*bmcIP); err == nil {
-			c.Web.Hostname = hostname[0]
+			c.Hostname = hostname[0]
 		} else {
-			c.Web.Hostname = *bmcIP
+			c.Hostname = *bmcIP
 		}
 	}
 
-	// If cfg.Web.Hostname has {hostname} placeholder, replace it with current host name
-	c.Web.Hostname = strings.ReplaceAll(c.Web.Hostname, hostnamePlaceholder, hostname)
+	// If cfg.Hostname has {hostname} placeholder, replace it with current host name
+	c.Hostname = strings.ReplaceAll(c.Hostname, hostnamePlaceholder, hostname)
 
 	// Build Redfish URL
-	c.Web.url, err = url.Parse(fmt.Sprintf("%s://%s:%d", c.Web.Proto, c.Web.Hostname, c.Web.Port))
+	c.url, err = url.Parse(fmt.Sprintf("%s://%s:%d", c.Proto, c.Hostname, c.Port))
 	if err != nil {
 		return fmt.Errorf("invalid redfish web config: %w", err)
 	}
 
 	// Add redfish target URL in the header for proxy web config
-	c.Web.HTTPClientConfig.HTTPHeaders = &config.Headers{
+	c.HTTPClientConfig.HTTPHeaders = &config.Headers{
 		Headers: map[string]config.Header{
 			redfishURLHeaderName: {
-				Values: []string{c.Web.url.String()},
+				Values: []string{c.url.String()},
 			},
 		},
 	}
 
 	// If InSecure is set to true
-	if c.Web.InSecure {
-		c.Web.HTTPClientConfig.TLSConfig = config.TLSConfig{
-			InsecureSkipVerify: c.Web.InSecure,
+	if c.InSecure {
+		c.HTTPClientConfig.TLSConfig = config.TLSConfig{
+			InsecureSkipVerify: c.InSecure,
 		}
+	}
+
+	return nil
+}
+
+type redfishConfig struct {
+	Web redfishWebConfig `yaml:"redfish_web"`
+	// Deprecated: `redfish_web_config` exists for historical compatibility
+	// and should not be used. This must be configured under
+	// `redfish_web` from now on.
+	WebDeprecated redfishWebConfig `yaml:"redfish_web_config"`
+}
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface.
+func (c *redfishConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type plain redfishConfig
+
+	if err := unmarshal((*plain)(c)); err != nil {
+		return err
+	}
+
+	// If WebDeprecated.url is non-nil and Web.url is nil, config is set on
+	// deprecated tag. Overwrite it on Web
+	if c.WebDeprecated.url != nil && c.Web.url == nil {
+		c.Web = c.WebDeprecated
 	}
 
 	return nil
@@ -124,10 +147,15 @@ type redfishCollector struct {
 	metricDesc  map[string]*prometheus.Desc
 }
 
-var redfishConfigFile = CEEMSExporterApp.Flag(
+var redfishConfigFileDepre = CEEMSExporterApp.Flag(
 	"collector.redfish.web-config",
 	"Path to Redfish web configuration file.",
-).Envar("CEEMS_EXPORTER_REDFISH_COLL_CONFIG_FILE").Default("").String()
+).Envar("CEEMS_EXPORTER_REDFISH_COLL_CONFIG_FILE").Default("").Hidden().String()
+
+var redfishConfigFile = CEEMSExporterApp.Flag(
+	"collector.redfish.web-config-file",
+	"Path to Redfish web configuration file.",
+).Envar("CEEMS_EXPORTER_REDFISH_COLL_WEB_CONFIG_FILE").Default("").String()
 
 func init() {
 	RegisterCollector(redfishCollectorSubsystem, defaultDisabled, NewRedfishCollector)
@@ -135,6 +163,13 @@ func init() {
 
 // NewRedfishCollector returns a new Collector to fetch power usage from redfish API.
 func NewRedfishCollector(logger *slog.Logger) (Collector, error) {
+	// Log deprecation notices
+	if *redfishConfigFileDepre != "" {
+		logger.Warn("flag --collector.redfish.web-config has been deprecated. Use --collector.redfish.web-config-file instead")
+
+		*redfishConfigFile = *redfishConfigFileDepre
+	}
+
 	// Initialize metricDesc map
 	metricDesc := map[string]*prometheus.Desc{
 		"current": prometheus.NewDesc(
@@ -167,6 +202,11 @@ func NewRedfishCollector(logger *slog.Logger) (Collector, error) {
 		logger.Error("Failed to parse Redfish config file", "err", err)
 
 		return nil, fmt.Errorf("failed to parse Redfish config file: %w", err)
+	}
+
+	// Check if config is provided with deprecated tag and if so, log a warning
+	if cfg.WebDeprecated.url != nil {
+		logger.Warn("Redfish collector config provided under redfish_web_config section which is deprecated. Move it under redfish_web")
 	}
 
 	logger.Debug("Redfish URL", "url", cfg.Web.url.String())

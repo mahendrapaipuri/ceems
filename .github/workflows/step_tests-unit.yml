@@ -27,7 +27,7 @@ jobs:
         run: make test
 
       - name: Run unit tests for CGo packages
-        run: CGO_BUILD=1 make test
+        run: CGO_APPS=1 make test
 
       - name: Merge coverage files
         run: |
