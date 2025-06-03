@@ -527,7 +527,7 @@ then
         --collector.ipmi_dcmi \
         --collector.ipmi_dcmi.test-mode \
         --collector.redfish \
-        --collector.redfish.web-config="pkg/collector/testdata/redfish/config.yml" \
+        --collector.redfish.web-config-file="pkg/collector/testdata/redfish/config.yml" \
         --collector.netdev \
         --collector.netdev.device-include="eth0" \
         --web.listen-address "127.0.0.1:${port}" \
@@ -627,7 +627,7 @@ then
         --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/capmc/capmc" \
         --collector.ipmi_dcmi.test-mode \
         --collector.redfish \
-        --collector.redfish.web-config="pkg/collector/testdata/redfish/config.yml" \
+        --collector.redfish.web-config-file="pkg/collector/testdata/redfish/config.yml" \
         --collector.cray_pm_counters \
         --collector.empty-hostname-label \
         --web.listen-address "127.0.0.1:${port}" \
@@ -712,7 +712,7 @@ then
         --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/capmc/capmc" \
         --collector.ipmi_dcmi.test-mode \
         --collector.redfish \
-        --collector.redfish.web-config="pkg/collector/testdata/redfish/config.yml" \
+        --collector.redfish.web-config-file="pkg/collector/testdata/redfish/config.yml" \
         --collector.empty-hostname-label \
         --web.listen-address "127.0.0.1:${port}" \
         --web.disable-exporter-metrics \
@@ -799,7 +799,7 @@ then
         --collector.k8s.kubelet-socket-file="${CEEMS_KUBELET_SOCKET_DIR}/amd/kubelet.sock" \
         --collector.cgroups.force-version="v1" \
         --collector.redfish \
-        --collector.redfish.web-config="pkg/collector/testdata/redfish/config.yml" \
+        --collector.redfish.web-config-file="pkg/collector/testdata/redfish/config.yml" \
         --collector.empty-hostname-label \
         --web.listen-address "127.0.0.1:${port}" \
         --web.disable-exporter-metrics \
@@ -1460,7 +1460,7 @@ then
         --collector.slurm \
         --collector.gpu.type="nogpu" \
         --collector.redfish \
-        --collector.redfish.web-config="pkg/collector/testdata/redfish/config.yml" \
+        --collector.redfish.web-config-file="pkg/collector/testdata/redfish/config.yml" \
         --collector.empty-hostname-label \
         --web.listen-address "127.0.0.1:9012" \
         --web.disable-exporter-metrics \

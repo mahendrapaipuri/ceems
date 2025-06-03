@@ -99,56 +99,79 @@ func (t *Target) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
-type Redfish struct {
-	Config struct {
-		Web struct {
-			HTTPClientConfig config.HTTPClientConfig `yaml:",inline"`
-			// List of allowed API resources that will be proxied. Each
-			// string must be a valid regular expression. Ensure
-			// that each string use start and end delimiters (^$) to
-			// ensure the entire string will be captured. All the strings
-			// will be joined by | delimiter to form a regular expression.
-			//
-			// Default values for this will ensure to allow API requests
-			// to root, sessions, chassis and power resources.
-			// Ref: https://regex101.com/r/9dy4JE/1
-			AllowedAPIResources []string `yaml:"allowed_api_resources"`
-			// Deprecated: InSecure exists for historical compatibility
-			// and should not be used. This must be configured under
-			// `tls_config.insecure_skip_verify` from now on.
-			Insecure                  bool `yaml:"insecure_skip_verify"`
-			allowedAPIResourcesRegexp *regexp.Regexp
-		} `yaml:"web"`
-		Targets []Target `yaml:"targets"`
-	} `yaml:"redfish_config"`
+type ProxyConfig struct {
+	Web struct {
+		HTTPClientConfig config.HTTPClientConfig `yaml:",inline"`
+		// List of allowed API resources that will be proxied. Each
+		// string must be a valid regular expression. Ensure
+		// that each string use start and end delimiters (^$) to
+		// ensure the entire string will be captured. All the strings
+		// will be joined by | delimiter to form a regular expression.
+		//
+		// Default values for this will ensure to allow API requests
+		// to root, sessions, chassis and power resources.
+		// Ref: https://regex101.com/r/9dy4JE/1
+		AllowedAPIResources []string `yaml:"allowed_api_resources"`
+		// Deprecated: InSecure exists for historical compatibility
+		// and should not be used. This must be configured under
+		// `tls_config.insecure_skip_verify` from now on.
+		Insecure                  bool `yaml:"insecure_skip_verify"`
+		allowedAPIResourcesRegexp *regexp.Regexp
+	} `yaml:"web"`
+	Targets []Target `yaml:"targets"`
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
-func (r *Redfish) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (r *ProxyConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	// Set a default config
-	*r = Redfish{}
-	r.Config.Web.AllowedAPIResources = defaultAllowedAPIResources
-	r.Config.Web.HTTPClientConfig = config.DefaultHTTPClientConfig
+	*r = ProxyConfig{}
+	r.Web.AllowedAPIResources = defaultAllowedAPIResources
+	r.Web.HTTPClientConfig = config.DefaultHTTPClientConfig
 
-	type plain Redfish
+	type plain ProxyConfig
 
 	if err := unmarshal((*plain)(r)); err != nil {
 		return err
 	}
 
 	// If InSecure is set to true
-	if r.Config.Web.Insecure {
-		r.Config.Web.HTTPClientConfig.TLSConfig = config.TLSConfig{
-			InsecureSkipVerify: r.Config.Web.Insecure,
+	if r.Web.Insecure {
+		r.Web.HTTPClientConfig.TLSConfig = config.TLSConfig{
+			InsecureSkipVerify: r.Web.Insecure,
 		}
 	}
 
 	var err error
 
 	// Compile regex
-	r.Config.Web.allowedAPIResourcesRegexp, err = regexp.Compile(strings.Join(r.Config.Web.AllowedAPIResources, "|"))
+	r.Web.allowedAPIResourcesRegexp, err = regexp.Compile(strings.Join(r.Web.AllowedAPIResources, "|"))
 	if err != nil {
 		return fmt.Errorf("invalid regexp in allowed_resources: %w", err)
+	}
+
+	return nil
+}
+
+type Redfish struct {
+	Config ProxyConfig `yaml:"redfish_proxy"`
+	// Deprecated: `redfish_config` exists for historical compatibility
+	// and should not be used. This must be configured under
+	// `redfish_proxy` from now on.
+	ConfigDeprecated ProxyConfig `yaml:"redfish_config"`
+}
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface.
+func (r *Redfish) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type plain Redfish
+
+	if err := unmarshal((*plain)(r)); err != nil {
+		return err
+	}
+
+	// If ConfigDeprecated.allowedAPIResourcesRegexp is non-nil and Config.allowedAPIResourcesRegexp is nil, config is set on
+	// deprecated tag.
+	if r.ConfigDeprecated.Web.allowedAPIResourcesRegexp != nil && r.Config.Web.allowedAPIResourcesRegexp == nil {
+		r.Config = r.ConfigDeprecated
 	}
 
 	return nil
@@ -224,6 +247,11 @@ func main() {
 	} else {
 		// If no config file provided, start with a default config
 		redfish = &Redfish{}
+	}
+
+	// Check if config is provided with deprecated tag and if so, log a warning
+	if redfish.ConfigDeprecated.Web.allowedAPIResourcesRegexp != nil {
+		logger.Warn("Redfish proxy config provided under redfish_config section which is deprecated. Move it under redfish_proxy")
 	}
 
 	// If webConfigFile is set, get absolute path

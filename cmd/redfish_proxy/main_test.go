@@ -58,12 +58,25 @@ func TestConfigValidation(t *testing.T) {
 			name: "valid config with web section",
 			content: `
 ---
-redfish_config:
+redfish_proxy:
   web:
     insecure_skip_verify: true`,
 		},
 		{
 			name: "valid config with web and targets section",
+			content: `
+---
+redfish_proxy:
+  web:
+    insecure_skip_verify: true
+  targets:
+    - host_ip_addrs:
+        - 192.168.1.1
+        - 192.168.1.2
+      url: http://172.134.1.1:80`,
+		},
+		{
+			name: "valid deprecated config with web and targets section",
 			content: `
 ---
 redfish_config:
@@ -80,7 +93,7 @@ redfish_config:
 			err:  true,
 			content: `
 ---
-redfish_config:
+redfish_proxy:
   web:
     insecure_skip_verify: true
   targets:

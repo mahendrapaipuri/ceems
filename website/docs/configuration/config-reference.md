@@ -642,14 +642,12 @@ configuration file can be found in the
 #
 ---
 ceems_lb:
-  # Load balancing strategy. Three possibilities:
+  # Load balancing strategy. Two possibilities:
   #
   # - round-robin
   # - least-connection
   #
   # Round robin and least connection are classic strategies.
-  # Resource-based works based on the query range in the TSDB query. The 
-  # query will be proxied to the backend that covers the query_range.
   #
   [ strategy: <lbstrategy> | default = round-robin ]
 

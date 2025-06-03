@@ -1,6 +1,6 @@
 ---
 # Conifguration file for redfish_proxy app
-redfish_config:
+redfish_proxy:
   # This section must provide web configuration of
   # Redfish API server.
   #

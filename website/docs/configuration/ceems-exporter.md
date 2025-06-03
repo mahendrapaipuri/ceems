@@ -352,11 +352,21 @@ ceems_exporter --collector.redfish
 ```
 
 A YAML configuration file containing the Redfish's API server details must be provided
-to the CLI flag `--collector.redfish.web-config`. A sample file is shown as follows:
+to the CLI flag `--collector.redfish.web-config-file`. A sample file is shown as follows:
+
+:::warning[WARNING]
+
+CLI flag `--collector.redfish.web-config` has been deprecated and will be removed in the
+next stable release. The flag will be now available under `--collector.redfish.web-config-file`.
+
+Similarly, the web configuration for Redfish must be now provided under `redfish_web` section
+instead of `redfish_web_config` which has also been deprecated.
+
+:::
 
 ```yaml
 ---
-redfish_web_config:
+redfish_web:
   # Protocol of Redfish API server. Possible values are http, https
   #
   protocol: https
@@ -503,7 +513,7 @@ Once a file with the above config has been placed and secured, say at `/etc/ceem
 the collector can be enabled and configured as follows:
 
 ```bash
-ceems_exporter --collector.redfish --collector.redfish.web-config=/etc/ceems_exporter/redfish-config.yml
+ceems_exporter --collector.redfish --collector.redfish.web-config-file=/etc/ceems_exporter/redfish-config.yml
 ```
 
 This configuration assumes that the Redfish API server is reachable from the compute node
@@ -522,10 +532,17 @@ as the `external_url` in the Redfish web config of the collector.
 The Redfish proxy uses a very simple config file that is optional. A sample configuration
 file is shown below:
 
+:::warning[WARNING]
+
+The configuration file for Redfish proxy must now be provided under `redfish_proxy` section
+rather than `redfish_config` section which has been deprecated.
+
+:::
+
 ```yaml
 ---
 # Configuration file for redfish_proxy app
-redfish_config:
+redfish_proxy:
   # This section must provide web configuration of
   # Redfish API server.
   #
@@ -599,7 +616,7 @@ This will start the Redfish proxy on the management node running at `mgmt-0:5000
 Redfish configuration file for the exporter should be set as follows:
 
 ```yaml
-redfish_web_config:
+redfish_web:
   # Redfish API server config
   protocol: http
   hostname: '{hostname}-bmc'

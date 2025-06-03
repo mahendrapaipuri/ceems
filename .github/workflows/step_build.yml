@@ -28,7 +28,7 @@ jobs:
         run: make crossbuild-test
 
       - name: Cross compile CGo packages
-        run: CGO_BUILD=1 make crossbuild-test
+        run: CGO_APPS=1 make crossbuild-test
 
       - name: Upload go build artifacts
         uses: actions/upload-artifact@v4

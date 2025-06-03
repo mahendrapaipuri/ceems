@@ -1,5 +1,5 @@
 ---
-redfish_web_config:
+redfish_web:
   protocol: http
   hostname: localhost
   port: 5000

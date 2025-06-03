@@ -25,7 +25,7 @@ CGROUPS_MODE            ?= $([ $(stat -fc %T /sys/fs/cgroup/) = "cgroup2fs" ] &&
 
 STATICCHECK_IGNORE =
 
-CGO_BUILD               ?= 0
+CGO_APPS                ?= 0
 RELEASE_BUILD           ?= 0
 
 # Swagger docs
@@ -51,7 +51,7 @@ test-flags := -covermode=atomic -race
 
 # Use CGO for api and GO for ceems_exporter.
 PROMU_TEST_CONF ?= .promu/.promu-go-test.yml
-ifeq ($(CGO_BUILD), 1)
+ifeq ($(CGO_APPS), 1)
 	PROMU_CONF ?= .promu/.promu-cgo.yml
 	pkgs := ./pkg/sqlite3 ./pkg/api/cli \
 			./pkg/api/db ./pkg/api/db/migrator ./pkg/api/helper \
@@ -103,7 +103,7 @@ e2e-out = pkg/collector/testdata/output
 cross-test = skip-test-32bit
 define goarch_pair
 	ifeq ($$(GOHOSTOS), linux)
-		ifndef CGO_BUILD
+		ifndef CGO_APPS
 			ifeq ($$(GOHOSTARCH), $1)
 				GOARCH_CROSS = $2
 				cross-test = test-32bit
@@ -152,7 +152,7 @@ update_testdata:
 	./scripts/ttar -C pkg/collector/testdata -c -f pkg/collector/testdata/sys.ttar sys
 	./scripts/ttar -C pkg/collector/testdata -c -f pkg/collector/testdata/proc.ttar proc
 
-ifeq ($(CGO_BUILD), 0)
+ifeq ($(CGO_APPS), 0)
 .PHONY: test-e2e
 test-e2e: $(PROMTOOL) build pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked
 	@echo ">> running end-to-end tests"
@@ -230,7 +230,7 @@ test-e2e: $(PROMTOOL) build pkg/collector/testdata/sys/.unpacked pkg/collector/t
 	@env GOBIN=$(FIRST_GOPATH) ./scripts/e2e-test.sh -s lb-auth
 endif
 
-ifeq ($(CGO_BUILD), 0)
+ifeq ($(CGO_APPS), 0)
 .PHONY: test-e2e-update
 test-e2e-update: build pkg/collector/testdata/sys/.unpacked pkg/collector/testdata/proc/.unpacked
 	@echo ">> updating end-to-end tests outputs"

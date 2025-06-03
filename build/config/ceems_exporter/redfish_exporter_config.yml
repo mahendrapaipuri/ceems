@@ -2,7 +2,7 @@
 # This is a sample configuration file for redfish collector
 # to fetch the power consumption readings from redfish API server
 #
-redfish_web_config: {}
+redfish_web: {}
   # # Protocol of Redfish API server. Possible values are http, https
   # #
   # protocol: https

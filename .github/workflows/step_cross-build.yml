@@ -32,7 +32,7 @@ jobs:
         run: make crossbuild
 
       - name: Cross compile CGo packages
-        run: CGO_BUILD=1 make crossbuild
+        run: CGO_APPS=1 make crossbuild
       
       - name: Create tarballs and checksums
         run: |

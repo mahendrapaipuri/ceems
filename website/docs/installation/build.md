@@ -34,7 +34,7 @@ The CEEMS API server and CEEMS load balancer use SQLite and hence require CGO fo
 To build these two components, execute:
 
 ```bash
-CGO_BUILD=1 make build
+CGO_APPS=1 make build
 ```
 
 This will build the `ceems_api_server` and `ceems_lb` binaries in the `./bin` folder.

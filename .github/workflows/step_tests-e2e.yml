@@ -24,4 +24,4 @@ jobs:
         run: make test-e2e
 
       - name: Run e2e tests for CGo packages
-        run: CGO_BUILD=1 make test-e2e
+        run: CGO_APPS=1 make test-e2e
