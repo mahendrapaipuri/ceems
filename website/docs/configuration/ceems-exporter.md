@@ -706,12 +706,12 @@ A sample profiling config file is shown as below:
 ```yaml
 ---
 ceems_profiler:
-  ebpf_config:
+  ebpf:
     # How frequently to collect profiles
     collect_interval: 15s
     # How frequently to discover new profiling targets
     discover_interval: 15s
-  pyroscope_config:
+  pyroscope:
     # External URL at which Pyroscope is reachable
     url: http://pyroscope:4040
     # Labels to add to profiles sent over the network.

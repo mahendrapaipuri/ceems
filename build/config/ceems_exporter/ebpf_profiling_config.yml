@@ -10,7 +10,7 @@ ceems_profiler:
   # This section will configure the ebpf based options while
   # continuously profiling processes
   #
-  ebpf_config: {}
+  ebpf: {}
     # # How frequently to collect profiles
     # #
     # # Default: 30s
@@ -81,7 +81,7 @@ ceems_profiler:
   # This section configures the Pyroscope server to which the profiles
   # will be sent
   #
-  pyroscope_config: {}
+  pyroscope: {}
     # # URL at which Pyroscope server is reachable
     # #
     # url: http://localhost:4040

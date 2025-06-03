@@ -143,8 +143,8 @@ func (c *PyroscopeConfig) Validate() error {
 }
 
 type CEEMSProfilerConfig struct {
-	Session   SessionConfig   `yaml:"ebpf_config"`
-	Pyroscope PyroscopeConfig `yaml:"pyroscope_config"`
+	Session   SessionConfig   `yaml:"ebpf"`
+	Pyroscope PyroscopeConfig `yaml:"pyroscope"`
 }
 
 type ProfilerConfig struct {

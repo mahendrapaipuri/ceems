@@ -35,7 +35,7 @@ func TestProfilingConfig(t *testing.T) {
 			config: `
 ---
 ceems_profiler:
-  ebpf_config:
+  ebpf:
     demangle: foo`,
 			errExpected: true,
 		},
@@ -44,9 +44,9 @@ ceems_profiler:
 			config: `
 ---
 ceems_profiler:
-  ebpf_config:
+  ebpf:
     demangle: FULL
-  pyroscope_config:
+  pyroscope:
     external_labels:
       mylabel: value`,
 			errExpected: false,
@@ -56,7 +56,7 @@ ceems_profiler:
 			config: `
 ---
 ceems_profiler:
-  ebpf_config:
+  ebpf:
     demangle: TemPLAtes`,
 			errExpected: false,
 		},
@@ -65,7 +65,7 @@ ceems_profiler:
 			config: `
 ---
 ceems_profiler:
-  pyroscope_config:
+  pyroscope:
     url: http://192.168.0.%31:4040/`,
 			errExpected: true,
 		},
@@ -125,10 +125,10 @@ func TestNewProfiler(t *testing.T) {
 	configContent := `
 ---
 ceems_profiler:
-  ebpf_profiler:
+  ebpf:
     collect_interval: 500ms
     discover_interval: 500ms
-  pyroscope_config:
+  pyroscope:
     url: %s
     external_labels:
       test: mylabel`
