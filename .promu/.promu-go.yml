@@ -8,6 +8,8 @@ build:
     binaries:
         - name: ceems_exporter
           path: ./cmd/ceems_exporter
+        - name: ceems_k8s_admission_controller
+          path: ./cmd/ceems_k8s_admission_controller
         - name: ceems_tool
           path: ./cmd/ceems_tool
         - name: cacct
