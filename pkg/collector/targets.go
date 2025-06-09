@@ -135,13 +135,13 @@ func NewTargetDiscoverer(c *discovererConfig) (Discoverer, error) {
 	return discoverer, nil
 }
 
-// Discover targets for Grafana Alloy.
+// Discover targets for profiling.
 func (d *targetDiscoverer) Discover() ([]Target, error) {
 	// If the discoverer is not enabled, return empty targets
 	if !d.enabled {
-		d.logger.Debug("Grafana Alloy targets discoverer not enabled")
+		d.logger.Debug("Profiling targets discoverer not enabled")
 
-		return nil, errors.New("alloy targets discoverer not enabled")
+		return nil, errors.New("profiling targets discoverer not enabled")
 	}
 
 	begin := time.Now()
@@ -190,7 +190,7 @@ func (d *targetDiscoverer) discover() ([]Target, error) {
 	}
 
 	if len(dataPtr.cgroups) == 0 {
-		d.logger.Debug("No targets found for Grafana Alloy")
+		d.logger.Debug("No targets found for profiling")
 
 		return nil, nil
 	}
