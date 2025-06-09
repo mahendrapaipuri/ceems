@@ -6,13 +6,13 @@ LABEL maintainer="Mahendra Paipuri <mahendra.paipuri@gmail.com>"
 ARG ARCH="amd64"
 ARG OS="linux"
 
-# Add curl for liveness script to work
-RUN apk add --no-cache curl
+# Liveness probes will use the following script
 COPY build/scripts/liveness-probe.sh /bin/liveness-probe.sh
 
 COPY .build/${OS}-${ARCH}/ceems_exporter /bin/ceems_exporter
 COPY .build/${OS}-${ARCH}/ceems_api_server /bin/ceems_api_server
 COPY .build/${OS}-${ARCH}/ceems_lb /bin/ceems_lb
+COPY .build/${OS}-${ARCH}/ceems_k8s_admission_controller /bin/ceems_k8s_admission_controller
 COPY .build/${OS}-${ARCH}/redfish_proxy /bin/redfish_proxy
 COPY .build/${OS}-${ARCH}/ceems_tool /bin/ceems_tool
 COPY .build/${OS}-${ARCH}/cacct /bin/cacct
