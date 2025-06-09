@@ -74,7 +74,10 @@ func New(kubeconfigPath string, kubeletSocket string, logger *slog.Logger) (*Cli
 
 	// If configFile is not found, it will fallback to in cluster config
 	if kubeconfigPath == "" {
-		logger.Debug("Falling back to in-cluster k8s config")
+		// Emit log only when we are in k8s context
+		if os.Getenv("KUBERNETES_SERVICE_HOST") != "" {
+			logger.Debug("Falling back to in-cluster k8s config")
+		}
 
 		config, err = rest.InClusterConfig()
 	} else {

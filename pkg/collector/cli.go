@@ -232,15 +232,9 @@ func (b *CEEMSExporter) Main() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	// Create a new instance of collector
-	collector, err := NewCEEMSCollector(logger)
-	if err != nil {
-		return err
-	}
-
 	// Create a new instance of Alloy targets discoverer
 	discovererConfig := &discovererConfig{
-		logger:        logger.With("discoverer", "alloy_targets"),
+		logger:        logger.With("discoverer", "profiler_targets"),
 		enabled:       enableDiscoverer,
 		targetEnvVars: alloyTargetEnvVars,
 		selfProfile:   alloySelfTarget,
@@ -276,6 +270,14 @@ func (b *CEEMSExporter) Main() error {
 	// within a security context is not possible and hence, we disable awareness.
 	if profiler.Enabled() {
 		disableCapAwareness = true
+	}
+
+	// Create a new instance of collector
+	// Important to instantiate it "after" profiler so that `disableCapAwareness` is
+	// taken into account when creating individual collectors
+	collector, err := NewCEEMSCollector(logger)
+	if err != nil {
+		return err
 	}
 
 	if user, err := user.Current(); err == nil && user.Uid == "0" {
