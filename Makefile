@@ -72,7 +72,7 @@ else
 	pkgs := ./pkg/collector ./pkg/emissions ./pkg/tsdb ./pkg/grafana ./pkg/k8s \
 			./internal/common ./internal/osexec ./internal/structset \
 			./internal/security ./cmd/ceems_exporter ./cmd/redfish_proxy \
-			./cmd/ceems_tool ./cmd/cacct
+			./cmd/ceems_tool ./cmd/cacct ./cmd/ceems_k8s_admission_controller
 	checkmetrics := checkmetrics
 	checkrules := checkrules
 	checkbpf := checkbpf
@@ -173,6 +173,8 @@ test-e2e: $(PROMTOOL) build pkg/collector/testdata/sys/.unpacked pkg/collector/t
 	./scripts/e2e-test.sh -s discoverer-cgroups-v1-slurm
 	./scripts/e2e-test.sh -s discoverer-cgroups-v2-k8s
 	./scripts/e2e-test.sh -s discoverer-cgroups-v1-k8s
+	./scripts/e2e-test.sh -s k8s-admission-controller-basic
+	./scripts/e2e-test.sh -s k8s-admission-controller-advanced
 	./scripts/e2e-test.sh -s redfish-proxy-frontend-plain-backend-plain
 	./scripts/e2e-test.sh -s redfish-proxy-frontend-tls-backend-plain
 	./scripts/e2e-test.sh -s redfish-proxy-frontend-plain-backend-tls
@@ -251,6 +253,8 @@ test-e2e-update: build pkg/collector/testdata/sys/.unpacked pkg/collector/testda
 	./scripts/e2e-test.sh -s discoverer-cgroups-v1-slurm -u || true
 	./scripts/e2e-test.sh -s discoverer-cgroups-v2-k8s -u || true
 	./scripts/e2e-test.sh -s discoverer-cgroups-v1-k8s -u || true
+	./scripts/e2e-test.sh -s k8s-admission-controller-basic -u || true
+	./scripts/e2e-test.sh -s k8s-admission-controller-advanced -u || true
 	./scripts/e2e-test.sh -s redfish-proxy-frontend-plain-backend-plain -u || true
 	./scripts/e2e-test.sh -s redfish-proxy-frontend-tls-backend-plain -u || true
 	./scripts/e2e-test.sh -s redfish-proxy-frontend-plain-backend-tls -u || true
@@ -346,6 +350,7 @@ test-docker:
 	./scripts/test_image.sh "$(DOCKER_REPO)/$(DOCKER_IMAGE_NAME)-linux-amd64:$(DOCKER_IMAGE_TAG)" 9020 ceems_api_server
 	./scripts/test_image.sh "$(DOCKER_REPO)/$(DOCKER_IMAGE_NAME)-linux-amd64:$(DOCKER_IMAGE_TAG)" 9030 ceems_lb
 	./scripts/test_image.sh "$(DOCKER_REPO)/$(DOCKER_IMAGE_NAME)-linux-amd64:$(DOCKER_IMAGE_TAG)" 5000 redfish_proxy
+	./scripts/test_image.sh "$(DOCKER_REPO)/$(DOCKER_IMAGE_NAME)-linux-amd64:$(DOCKER_IMAGE_TAG)" 9000 ceems_k8s_admission_controller
 
 .PHONY: skip-test-docker
 skip-test-docker:

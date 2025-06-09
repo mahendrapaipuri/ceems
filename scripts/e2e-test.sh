@@ -397,6 +397,23 @@ then
   fixture_output="${tmpdir}/e2e-test-ceems-tool-output.txt"
   pidfile="${tmpdir}/ceems_tool.pid"
 
+elif [[ "${scenario}" =~ ^"k8s-admission-controller" ]]
+then
+
+  if [ "${scenario}" = "k8s-admission-controller-basic" ]
+  then
+    desc="ceems k8s admission controller admission basic endpoints tests"
+    fixture='cmd/ceems_k8s_admission_controller/testdata/output/e2e-test-admission-basic-response-output.txt'
+  elif [ "${scenario}" = "k8s-admission-controller-advanced" ]
+  then
+    desc="ceems k8s admission controller admission advanced endpoints tests"
+    fixture='cmd/ceems_k8s_admission_controller/testdata/output/e2e-test-admission-advanced-response-output.txt'
+  fi
+
+  logfile="${tmpdir}/ceems_k8s_admission_controller.log"
+  fixture_output="${tmpdir}/e2e-test-ceems-k8s-admission-controller-output.txt"
+  pidfile="${tmpdir}/ceems_k8s_admission_controller.pid"
+
 fi
 
 # Current time stamp
@@ -1675,6 +1692,43 @@ store (.*)'
       get "https://ceems:${secret}@127.0.0.1:${port}/metrics" | grep -E -v "${skip_re}" > "${fixture_output}"
   fi
 
+elif [[ "${scenario}" =~ ^"k8s-admission-controller" ]]
+then
+  if [ ! -x ./bin/ceems_k8s_admission_controller ]
+  then
+      echo './bin/ceems_k8s_admission_controller not found. Consider running `go build` first.' >&2
+      exit 1
+  fi
+
+  export PATH="${GOBIN:-}:${PATH}"
+
+  ./bin/ceems_k8s_admission_controller \
+    --log.level=debug \
+    --web.listen-address "127.0.0.1:${port}" >> "${logfile}" 2>&1 &
+  K8S_ADMISSION_CONTROLLER_PID=$!
+
+  waitport "${port}"
+
+  echo "${K8S_ADMISSION_CONTROLLER_PID}" > "${pidfile}"
+
+  if [ "${scenario}" = "k8s-admission-controller-basic" ] 
+  then
+      for endpoint in "validate" "mutate"; do
+        for request in "create-request-without-annotations.json" "create-request-with-annotations.json" "update-request-without-annotations.json" "update-request-with-annotations.json"; do
+          for version in "v1" "v1beta1"; do
+            vrequest=$(echo "${request}" | sed "s/request/${version}request/g")
+            get -X POST -H "Content-Type: application/json" -d @cmd/ceems_k8s_admission_controller/testdata/requests/${vrequest} "http://127.0.0.1:${port}/ceems-admission-controller/${endpoint}" >> "${fixture_output}"
+          done
+        done
+      done
+
+  elif [ "${scenario}" = "k8s-admission-controller-advanced" ] 
+  then
+      for request in "deployment-request-with-annotations-sa.json" "deployment-request-with-annotations.json" "deployment-request-with-template-annotations-sa.json" "deployment-request-with-template-annotations.json" "deployment-request-without-annotations-sa.json" "deployment-request-without-annotations.json"; do
+        get -X POST -H "Content-Type: application/json" -d @cmd/ceems_k8s_admission_controller/testdata/requests/${request} "http://127.0.0.1:${port}/ceems-admission-controller/mutate" >> "${fixture_output}"
+      done
+  fi
+  
 fi
 
 # Make classic diff and if it fails attempt to compare JSON
