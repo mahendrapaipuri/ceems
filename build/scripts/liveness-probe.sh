@@ -16,8 +16,6 @@
 # One of these two must be provided for the liveness check. If not, check will
 # be skipped with a warning message.
 #
-# The script always assumes that the app is running without TLS as kube-rbac-proxy
-# will handle TLS when enabled
 
 app=""; port=""; verbose=0
 while getopts ":a:p:v" opt; do
@@ -32,7 +30,7 @@ while getopts ":a:p:v" opt; do
       ;;
     *)
       echo "Usage: $0 [-a] [-p] [-v]"
-      echo "  -a: app name to test [options: ceems_exporter, ceems_api_server, ceems_lb, redfish_proxy]"
+      echo "  -a: app name to test [options: ceems_exporter, ceems_api_server, ceems_lb, ceems_k8s_admission_controller, redfish_proxy]"
       echo "  -p: port at which app is running"
       echo "  -v: verbose output"
       exit 1
@@ -56,8 +54,11 @@ if ! [ -z "${app}" ]; then
 fi
 
 # Check if HTTP server is responding
+# We use netstat here so we do not make a connection to the
+# server. On TLS enabled servers, making connections can pollute
+# logs with HTTP connection attempted on HTTPS server lines
 if ! [ -z "${port}" ]; then
-    if ! curl -sf "http://localhost:${port}/health" > /dev/null; then
+    if ! netstat -tuplen | grep "${port}" > /dev/null; then
         echo "${app} at port ${port} is not responding"
         exit 1
     fi

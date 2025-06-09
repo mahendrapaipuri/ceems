@@ -45,11 +45,12 @@ type SecurityContext struct {
 func NewSecurityContext(c *SCConfig) (*SecurityContext, error) {
 	// Create a SecurityContext
 	s := &SecurityContext{
-		logger: c.Logger,
-		caps:   c.Caps,
-		Name:   c.Name,
-		capSet: cap.NewSet(),
-		f:      c.Func,
+		logger:       c.Logger,
+		caps:         c.Caps,
+		Name:         c.Name,
+		capSet:       cap.NewSet(),
+		execNatively: c.ExecNatively,
+		f:            c.Func,
 	}
 
 	// Create a new Launcher after embedding the function inside enclave
