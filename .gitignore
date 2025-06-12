@@ -86,6 +86,7 @@ website/static/repos
 
 # Do not ignore k8s test files
 !pkg/collector/testdata/k8s/*.json
+!cmd/ceems_k8s_admission_controller/testdata/requests/*.json
 
 # Ignore assets for mock_servers
 scripts/mock_servers/assets

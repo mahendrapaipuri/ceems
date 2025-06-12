@@ -235,6 +235,12 @@ func (m *Manager) DropPrivileges(enableEffective bool) error {
 }
 
 // DeleteACLEntries removes any ACL added entries.
+// Even after deletion there can be stable mask entry left because of the
+// bootstraping (https://github.com/steiler/acls/blob/4ab4fd13906d754855a374a0cb0e0a41124efa54/acls.go#L69-L74)
+// made the ACL lib when no ACLs found on the path. We can technically remove
+// this mask entry as well but if dont know if that entry is added by us or already exists
+// In order to keep the logic simpler, we leave the mask entry as such as it does not
+// have any effect without any valid ACL entry.
 func (m *Manager) DeleteACLEntries() error {
 	// If there are no ACLs, nothing to remove here
 	if len(m.acls) == 0 {

@@ -87,6 +87,7 @@ jobs:
   docker-test:
     needs: [docker]
     uses: ./.github/workflows/step_tests-remote-images.yml
+    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
     # Since workflow_dispatch inputs are only available on manual triggers
     # we need to set default values to the context vars here
     with:
@@ -111,6 +112,7 @@ jobs:
   quay-test:
     needs: [quay]
     uses: ./.github/workflows/step_tests-remote-images.yml
+    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
     # Since workflow_dispatch inputs are only available on manual triggers
     # we need to set default values to the context vars here
     with:

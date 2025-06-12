@@ -59,7 +59,7 @@ func NewRedfishProxyServer(c *Config) (*RedfishProxyServer, error) {
 	return server, nil
 }
 
-// Start launches CEEMS exporter HTTP server.
+// Start launches redfish proxy HTTP server.
 func (s *RedfishProxyServer) Start() error {
 	s.logger.Info("Starting " + appName)
 
@@ -72,7 +72,7 @@ func (s *RedfishProxyServer) Start() error {
 	return nil
 }
 
-// Shutdown stops CEEMS exporter HTTP server.
+// Shutdown stops redfish proxy HTTP server.
 func (s *RedfishProxyServer) Shutdown(ctx context.Context) error {
 	s.logger.Info("Stopping " + appName)
 
