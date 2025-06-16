@@ -148,48 +148,58 @@ func NewCEEMSLoadBalancer() (*CEEMSLoadBalancer, error) {
 
 // Main is the entry point of the `ceems_lb` command.
 func (lb *CEEMSLoadBalancer) Main() error {
+	// CLI vars.
 	var (
-		webListenAddresses = lb.App.Flag(
-			"web.listen-address",
-			"Addresses on which to expose load balancer(s). When both TSDB and Pyroscope LBs are configured, it must be "+
-				"repeated to provide two addresses: one for TSDB LB and one for Pyroscope LB. In that case TSDB LB will listen on "+
-				"first address and Pyroscope LB on second address",
-		).Default(":9030", ":9040").Strings()
-		webConfigFile = lb.App.Flag(
-			"web.config.file",
-			"Path to configuration file that can enable TLS or authentication. See: https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md",
-		).Envar("CEEMS_LB_WEB_CONFIG_FILE").Default("").String()
-		configFile = lb.App.Flag(
-			"config.file",
-			"Configuration file path.",
-		).Envar("CEEMS_LB_CONFIG_FILE").Default("").String()
-		maxProcs = lb.App.Flag(
-			"runtime.gomaxprocs", "The target number of CPUs Go will run on (GOMAXPROCS)",
-		).Envar("GOMAXPROCS").Default("1").Int()
-
-		runAsUser = lb.App.Flag(
-			"security.run-as-user",
-			"User to run as when LB server is started as root. Accepts either a username or uid.",
-		).Default("nobody").String()
-
-		// Hidden test flags
-		disableCapAwareness = lb.App.Flag(
-			"security.disable-cap-awareness",
-			"Disable capability awareness and run as privileged process (default: false).",
-		).Default("false").Hidden().Bool()
-		dropPrivs = lb.App.Flag(
-			"security.drop-privileges",
-			"Drop privileges and run as nobody when exporter is started as root.",
-		).Default("true").Hidden().Bool()
+		configFile, webConfigFile, runAsUser                               string
+		configExpandEnvVars, disableCapAwareness, dropPrivs, systemdSocket bool
+		webListenAddresses                                                 []string
+		maxProcs                                                           int
 	)
 
+	lb.App.Flag(
+		"config.file",
+		"Configuration file path.",
+	).Envar("CEEMS_LB_CONFIG_FILE").Default("").StringVar(&configFile)
+	lb.App.Flag(
+		"config.expand-env-vars",
+		"Any environment variables that are referenced in ebpf config file will be expanded. To escape $ use $$ (default: false).",
+	).Default("false").BoolVar(&configExpandEnvVars)
+
+	lb.App.Flag(
+		"web.listen-address",
+		"Addresses on which to expose load balancer(s). When both TSDB and Pyroscope LBs are configured, it must be "+
+			"repeated to provide two addresses: one for TSDB LB and one for Pyroscope LB. In that case TSDB LB will listen on "+
+			"first address and Pyroscope LB on second address",
+	).Default(":9030", ":9040").StringsVar(&webListenAddresses)
+	lb.App.Flag(
+		"web.config.file",
+		"Path to configuration file that can enable TLS or authentication. See: https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md",
+	).Envar("CEEMS_LB_WEB_CONFIG_FILE").Default("").StringVar(&webConfigFile)
+	lb.App.Flag(
+		"runtime.gomaxprocs", "The target number of CPUs Go will run on (GOMAXPROCS)",
+	).Envar("GOMAXPROCS").Default("1").IntVar(&maxProcs)
+
+	lb.App.Flag(
+		"security.run-as-user",
+		"User to run as when LB server is started as root. Accepts either a username or uid.",
+	).Default("nobody").StringVar(&runAsUser)
+
+	// Hidden test flags
+	lb.App.Flag(
+		"security.disable-cap-awareness",
+		"Disable capability awareness and run as privileged process (default: false).",
+	).Default("false").Hidden().BoolVar(&disableCapAwareness)
+	lb.App.Flag(
+		"security.drop-privileges",
+		"Drop privileges and run as nobody when exporter is started as root.",
+	).Default("true").Hidden().BoolVar(&dropPrivs)
+
 	// Socket activation only available on Linux
-	systemdSocket := func() *bool { b := false; return &b }() //nolint:nlreturn
 	if runtime.GOOS == "linux" {
-		systemdSocket = lb.App.Flag(
+		lb.App.Flag(
 			"web.systemd-socket",
 			"Use systemd socket activation listeners instead of port listeners (Linux only).",
-		).Hidden().Bool()
+		).Default("false").BoolVar(&systemdSocket)
 	}
 
 	promslogConfig := &promslog.Config{}
@@ -205,8 +215,8 @@ func (lb *CEEMSLoadBalancer) Main() error {
 
 	// Get absolute path for web config file if provided
 	var webConfigFilePath string
-	if *webConfigFile != "" {
-		webConfigFilePath, err = filepath.Abs(*webConfigFile)
+	if webConfigFile != "" {
+		webConfigFilePath, err = filepath.Abs(webConfigFile)
 		if err != nil {
 			return fmt.Errorf("failed to get absolute path of the web config file: %w", err)
 		}
@@ -214,13 +224,13 @@ func (lb *CEEMSLoadBalancer) Main() error {
 
 	// Get absolute config file path global variable that will be used in resource manager
 	// and updater packages
-	configFilePath, err := filepath.Abs(*configFile)
+	configFilePath, err := filepath.Abs(configFile)
 	if err != nil {
 		return fmt.Errorf("failed to get absolute path of the config file: %w", err)
 	}
 
 	// Make LB config
-	config, err := common.MakeConfig[CEEMSLBAppConfig](configFilePath)
+	config, err := common.MakeConfig[CEEMSLBAppConfig](configFilePath, configExpandEnvVars)
 	if err != nil {
 		return fmt.Errorf("failed to parse config file: %w", err)
 	}
@@ -234,12 +244,12 @@ func (lb *CEEMSLoadBalancer) Main() error {
 		"host_details", internal_runtime.Uname(), "fd_limits", internal_runtime.FdLimits(),
 	)
 
-	runtime.GOMAXPROCS(*maxProcs)
+	runtime.GOMAXPROCS(maxProcs)
 	logger.Debug("Go MAXPROCS", "procs", runtime.GOMAXPROCS(0))
 
 	// We should STRONGLY advise in docs that CEEMS LB should not be started as root.
 	securityCfg := &security.Config{
-		RunAsUser: *runAsUser,
+		RunAsUser: runAsUser,
 		Caps:      nil,
 		ReadPaths: []string{webConfigFilePath, configFilePath},
 	}
@@ -264,8 +274,8 @@ func (lb *CEEMSLoadBalancer) Main() error {
 	}
 
 	// Drop all unnecessary privileges
-	if *dropPrivs {
-		if err := securityManager.DropPrivileges(*disableCapAwareness); err != nil {
+	if dropPrivs {
+		if err := securityManager.DropPrivileges(disableCapAwareness); err != nil {
 			logger.Error("Failed to drop privileges", "err", err)
 
 			return err
@@ -284,7 +294,7 @@ func (lb *CEEMSLoadBalancer) Main() error {
 	logger.Info("Load balancers: " + strings.Join(lbNames, ", "))
 
 	// Ensure that enough web listen addresses are provided
-	webListenAddrs := *webListenAddresses
+	webListenAddrs := webListenAddresses
 	if len(lbTypes) > len(webListenAddrs) {
 		logger.Error("Missing web listen addresses", "num_lbs", len(lbTypes), "num_addrs", len(webListenAddrs))
 
@@ -330,7 +340,7 @@ func (lb *CEEMSLoadBalancer) Main() error {
 			Logger:           logger.With("backend_type", lbType),
 			LBType:           lbType,
 			Address:          webListenAddrs[i],
-			WebSystemdSocket: *systemdSocket,
+			WebSystemdSocket: systemdSocket,
 			WebConfigFile:    webConfigFilePath,
 			APIServer:        config.Server,
 			Manager:          managers[lbType],

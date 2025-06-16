@@ -101,7 +101,7 @@ func checkConfig(updaters []string, config *Config[Instance]) (map[string][]Inst
 // updaterConfig returns the configuration of updaters.
 func updaterConfig() (*Config[Instance], error) {
 	// Merge default config with provided config
-	config, err := common.MakeConfig[Config[Instance]](base.ConfigFilePath)
+	config, err := common.MakeConfig[Config[Instance]](base.ConfigFilePath, base.ConfigFileExpandEnvVars)
 	if err != nil {
 		return nil, err
 	}

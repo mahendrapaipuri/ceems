@@ -4,9 +4,30 @@ sidebar_position: 10
 
 # Configuration Reference
 
-The following reference applies to the configuration files of the CEEMS API server, CEEMS LB, and web configuration. CEEMS uses Prometheus' [client config](https://github.com/prometheus/common/tree/main/config) to configure HTTP clients. Thus, most of the configuration used to configure HTTP clients resembles that of Prometheus'. The configuration reference has also been inspired by Prometheus documentation.
+The following reference applies to the configuration files of the CEEMS API server,
+CEEMS LB, and web configuration. CEEMS uses Prometheus'
+[client config](https://github.com/prometheus/common/tree/main/config)
+to configure HTTP clients. Thus, most of the configuration used to configure HTTP
+clients resembles that of Prometheus'. The configuration reference has also been
+inspired by Prometheus documentation.
 
-The file is written in [YAML format](https://en.wikipedia.org/wiki/YAML), defined by the scheme described below. Brackets indicate that a parameter is optional. For non-list parameters, the value is set to the specified default.
+The file is written in [YAML format](https://en.wikipedia.org/wiki/YAML), defined
+by the scheme described below. Brackets indicate that a parameter is optional.
+For non-list parameters, the value is set to the specified default.
+
+:::tip[TIP]
+
+Some of the configuration files used by the CEEMS components support expanding
+environment variables referenced inside the YAML file. This is not enabled by default
+and it can be enabled using CLI flag `--*.expand-env-vars`. For example, the environment
+variables in the configuration file to CEEMS API server can be expanded by using CLI flag,
+`--config.file.expand-env-vars`. Note that when expanding environment variables is enabled,
+`$` can be escaped using `$$`.
+
+It is important to note that expanding environment variables is
+**not supported for web configuration file.**
+
+:::
 
 Generic placeholders are defined as follows:
 

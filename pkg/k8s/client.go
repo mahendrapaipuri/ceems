@@ -10,6 +10,7 @@ import (
 	"os"
 	"time"
 
+	"google.golang.org/grpc"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -23,6 +24,11 @@ import (
 // We inject this env var into pod.
 const (
 	nodenameEnvVar = "NODE_NAME"
+)
+
+// Maximum gRPC receive message size.
+const (
+	grpcClientRecvSizeMax = 128 * 1024 * 1024
 )
 
 type Client struct {
@@ -175,7 +181,10 @@ func (c *Client) PodDevices(ctx context.Context) ([]Pod, error) {
 	}
 
 	// Get pod resources
-	resp, err := c.PodResourceClient.List(ctx, &podresourcesapi.ListPodResourcesRequest{})
+	// We set maximum message receive size to 128 MiB just in case if there are too many
+	// pods running on the node. Should be ok for most of the production cases. Default when
+	// is 4 MiB.
+	resp, err := c.PodResourceClient.List(ctx, &podresourcesapi.ListPodResourcesRequest{}, grpc.MaxCallRecvMsgSize(grpcClientRecvSizeMax))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pod resources: %w", err)
 	}

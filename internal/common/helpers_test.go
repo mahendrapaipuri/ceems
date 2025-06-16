@@ -344,23 +344,89 @@ func TestConvertMapI2MapS(t *testing.T) {
 }
 
 func TestMakeConfig(t *testing.T) {
+	// Set some sample env vars
+	t.Setenv("samplekey1", "samplevalue1")
+	t.Setenv("samplekey2", "samplevalue2")
+
 	tmpDir := t.TempDir()
-	configFile := `
----
-field1: foo
-field2: bar`
 	configPath := filepath.Join(tmpDir, "config.yml")
-	os.WriteFile(configPath, []byte(configFile), 0o600)
 
 	// Check error when no file path is provided
-	_, err := MakeConfig[mockConfig]("")
+	_, err := MakeConfig[mockConfig]("", false)
 	require.Error(t, err, "expected error due to missing file path")
 
-	// Check if config file is correctly read
-	expected := &mockConfig{Field1: "foo", Field2: "bar"}
-	cfg, err := MakeConfig[mockConfig](configPath)
-	require.NoError(t, err)
-	assert.Equal(t, expected, cfg)
+	tests := []struct {
+		name          string
+		config        string
+		expandEnvVars bool
+		expected      *mockConfig
+	}{
+		{
+			name: "config with no env vars",
+			config: `
+---
+field1: foo
+field2: bar`,
+			expected: &mockConfig{Field1: "foo", Field2: "bar"},
+		},
+		{
+			name: "config with env vars reference but no bool flag",
+			config: `
+---
+field1: $samplekay1
+field2: bar`,
+			expected: &mockConfig{Field1: "$samplekay1", Field2: "bar"},
+		},
+		{
+			name: "config with env vars reference with bool flag",
+			config: `
+---
+field1: $samplekey1
+field2: ${samplekey2}`,
+			expandEnvVars: true,
+			expected:      &mockConfig{Field1: "samplevalue1", Field2: "samplevalue2"},
+		},
+		{
+			name: "config with env vars reference with default value with bool flag",
+			config: `
+---
+field1: $samplekey1
+field2: ${samplekey3:-test}`,
+			expandEnvVars: true,
+			expected:      &mockConfig{Field1: "samplevalue1", Field2: ""},
+		},
+		{
+			name: "config with env vars reference with escpaing $ value with bool flag",
+			config: `
+---
+field1: $samplekey1
+field2: somerandom$$stuff`,
+			expandEnvVars: true,
+			expected:      &mockConfig{Field1: "samplevalue1", Field2: "somerandom$stuff"},
+		},
+		{
+			name: "config with env vars with forbidden template token",
+			config: `
+---
+field1: $samplekey1
+field2: ${samplekey3}` + templateToken,
+			expandEnvVars: true,
+			expected:      nil,
+		},
+	}
+
+	for _, test := range tests {
+		os.WriteFile(configPath, []byte(test.config), 0o600)
+
+		cfg, err := MakeConfig[mockConfig](configPath, test.expandEnvVars)
+
+		if test.expected != nil {
+			require.NoError(t, err, test.name)
+			assert.Equal(t, test.expected, cfg, test.name)
+		} else {
+			require.Error(t, err, test.name)
+		}
+	}
 }
 
 func TestGetFreePort(t *testing.T) {

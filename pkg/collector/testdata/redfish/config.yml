@@ -1,6 +1,6 @@
 ---
-redfish_web:
+redfish_collector:
   protocol: http
-  hostname: localhost
-  port: 5000
+  hostname: $REDFISH_HOST
+  port: ${REDFISH_PORT}
   use_session_token: true

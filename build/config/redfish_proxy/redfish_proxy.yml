@@ -1,24 +1,20 @@
 ---
 # Conifguration file for redfish_proxy app
 redfish_proxy:
-  # This section must provide web configuration of
-  # Redfish API server.
+  # If Redfish targets are using TLS, use this section to
+  # configure the root CA when they are using self signed.
+  # Also it is possible to ignore certificate check by
+  # setting `insecure_skip_verify` to `true` in trusted
+  # deployments.
   #
-  web:
-    # If Redfish targets are using TLS, use this section to
-    # configure the root CA when they are using self signed.
-    # Also it is possible to ignore certificate check by
-    # setting `insecure_skip_verify` to `true` in trusted
-    # deployments.
-    #
-    # Ref: https://pkg.go.dev/github.com/prometheus/common@v0.63.0/config#TLSConfig
-    #
-    tls_config: {}
-    
-    # If Redfish API servers are running with TLS enabled
-    # and using self signed certificates, set `insecure_skip_verify`
-    # to `true` to skip TLS certifcate verification
-    #
-    # Deprecated: Use `tls_config.insecure_skip_verify` instead
-    #
-    insecure_skip_verify: false 
+  # Ref: https://pkg.go.dev/github.com/prometheus/common@v0.63.0/config#TLSConfig
+  #
+  tls_config: {}
+  
+  # If Redfish API servers are running with TLS enabled
+  # and using self signed certificates, set `insecure_skip_verify`
+  # to `true` to skip TLS certifcate verification
+  #
+  # Deprecated: Use `tls_config.insecure_skip_verify` instead
+  #
+  insecure_skip_verify: false 

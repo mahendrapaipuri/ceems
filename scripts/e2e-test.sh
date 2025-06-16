@@ -470,7 +470,7 @@ then
 
   if [ "${scenario}" = "exporter-cgroups-v1" ] 
   then
-      ./bin/ceems_exporter \
+      REDFISH_HOST=localhost REDFISH_PORT=5000 ./bin/ceems_exporter \
         --path.sysfs="pkg/collector/testdata/sys" \
         --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
         --path.procfs="pkg/collector/testdata/proc" \
@@ -484,6 +484,7 @@ then
         --collector.ipmi_dcmi.cmd="pkg/collector/testdata/ipmi/freeipmi/ipmi-dcmi" \
         --collector.redfish \
         --collector.redfish.web-config="pkg/collector/testdata/redfish/config.yml" \
+        --collector.redfish.config.file.expand-env-vars \
         --collector.cray_pm_counters \
         --collector.empty-hostname-label \
         --web.listen-address "127.0.0.1:${port}" \
@@ -512,7 +513,7 @@ then
 
   elif [ "${scenario}" = "exporter-cgroups-v2-nvidia-ipmiutil" ] 
   then
-      PATH="${PWD}/pkg/collector/testdata/ipmi/ipmiutils:${PATH}" ./bin/ceems_exporter \
+      REDFISH_HOST=localhost REDFISH_PORT=5000 PATH="${PWD}/pkg/collector/testdata/ipmi/ipmiutils:${PATH}" ./bin/ceems_exporter \
         --path.sysfs="pkg/collector/testdata/sys" \
         --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
         --path.procfs="pkg/collector/testdata/proc" \
@@ -527,7 +528,8 @@ then
         --collector.ipmi_dcmi \
         --collector.ipmi_dcmi.test-mode \
         --collector.redfish \
-        --collector.redfish.web-config-file="pkg/collector/testdata/redfish/config.yml" \
+        --collector.redfish.config.file="pkg/collector/testdata/redfish/config.yml" \
+        --collector.redfish.config.file.expand-env-vars \
         --collector.netdev \
         --collector.netdev.device-include="eth0" \
         --web.listen-address "127.0.0.1:${port}" \
@@ -557,7 +559,7 @@ then
 
   elif [ "${scenario}" = "exporter-cgroups-v2-amd-ipmitool" ] 
   then
-      PATH="${PWD}/pkg/collector/testdata/ipmi/openipmi:${PATH}" ./bin/ceems_exporter \
+      REDFISH_HOST=localhost REDFISH_PORT=5000 PATH="${PWD}/pkg/collector/testdata/ipmi/openipmi:${PATH}" ./bin/ceems_exporter \
         --path.sysfs="pkg/collector/testdata/sys" \
         --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
         --path.procfs="pkg/collector/testdata/proc" \
@@ -570,7 +572,8 @@ then
         --collector.ipmi_dcmi \
         --collector.ipmi_dcmi.test-mode \
         --collector.redfish \
-        --collector.redfish.web-config="pkg/collector/testdata/redfish/config.yml" \
+        --collector.redfish.config.file="pkg/collector/testdata/redfish/config.yml" \
+        --collector.redfish.config.file.expand-env-vars \
         --web.listen-address "127.0.0.1:${port}" \
         --web.disable-exporter-metrics \
         --log.level="debug" > "${logfile}" 2>&1 &
@@ -613,7 +616,7 @@ then
   
   elif [ "${scenario}" = "exporter-cgroups-v2-all-metrics" ] 
   then
-      ./bin/ceems_exporter \
+      REDFISH_HOST=localhost REDFISH_PORT=5000 ./bin/ceems_exporter \
         --path.sysfs="pkg/collector/testdata/sys" \
         --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
         --path.procfs="pkg/collector/testdata/proc" \
@@ -627,7 +630,8 @@ then
         --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/capmc/capmc" \
         --collector.ipmi_dcmi.test-mode \
         --collector.redfish \
-        --collector.redfish.web-config-file="pkg/collector/testdata/redfish/config.yml" \
+        --collector.redfish.config.file="pkg/collector/testdata/redfish/config.yml" \
+        --collector.redfish.config.file.expand-env-vars \
         --collector.cray_pm_counters \
         --collector.empty-hostname-label \
         --web.listen-address "127.0.0.1:${port}" \
@@ -656,7 +660,7 @@ then
         --log.level="debug" > "${logfile}" 2>&1 &
   elif [ "${scenario}" = "exporter-cgroups-v2-libvirt" ] 
   then
-      ./bin/ceems_exporter \
+      REDFISH_HOST=localhost REDFISH_PORT=5000 ./bin/ceems_exporter \
         --path.sysfs="pkg/collector/testdata/sys" \
         --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
         --path.procfs="pkg/collector/testdata/proc" \
@@ -672,7 +676,8 @@ then
         --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/capmc/capmc" \
         --collector.ipmi_dcmi.test-mode \
         --collector.redfish \
-        --collector.redfish.web-config="pkg/collector/testdata/redfish/config.yml" \
+        --collector.redfish.config.file="pkg/collector/testdata/redfish/config.yml" \
+        --collector.redfish.config.file.expand-env-vars \
         --collector.empty-hostname-label \
         --web.listen-address "127.0.0.1:${port}" \
         --web.disable-exporter-metrics \
@@ -698,7 +703,7 @@ then
         --log.level="debug" > "${logfile}" 2>&1 &
   elif [ "${scenario}" = "exporter-cgroups-v2-k8s" ] 
   then
-      ./bin/ceems_exporter \
+      REDFISH_HOST=localhost REDFISH_PORT=5000 ./bin/ceems_exporter \
         --path.sysfs="pkg/collector/testdata/sys" \
         --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
         --path.procfs="pkg/collector/testdata/proc" \
@@ -712,7 +717,8 @@ then
         --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/capmc/capmc" \
         --collector.ipmi_dcmi.test-mode \
         --collector.redfish \
-        --collector.redfish.web-config-file="pkg/collector/testdata/redfish/config.yml" \
+        --collector.redfish.config.file="pkg/collector/testdata/redfish/config.yml" \
+        --collector.redfish.config.file.expand-env-vars \
         --collector.empty-hostname-label \
         --web.listen-address "127.0.0.1:${port}" \
         --web.disable-exporter-metrics \
@@ -753,7 +759,7 @@ then
         --log.level="debug" > "${logfile}" 2>&1 &
   elif [ "${scenario}" = "discoverer-cgroups-v1-slurm" ] 
   then
-      ./bin/ceems_exporter \
+      REDFISH_HOST=localhost REDFISH_PORT=5000 ./bin/ceems_exporter \
         --path.sysfs="pkg/collector/testdata/sys" \
         --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
         --path.procfs="pkg/collector/testdata/proc" \
@@ -765,7 +771,8 @@ then
         --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/capmc/capmc" \
         --collector.ipmi_dcmi.test-mode \
         --collector.redfish \
-        --collector.redfish.web-config="pkg/collector/testdata/redfish/config.yml" \
+        --collector.redfish.config.file="pkg/collector/testdata/redfish/config.yml" \
+        --collector.redfish.config.file.expand-env-vars \
         --collector.empty-hostname-label \
         --web.listen-address "127.0.0.1:${port}" \
         --web.disable-exporter-metrics \
@@ -788,7 +795,7 @@ then
         --log.level="debug" > "${logfile}" 2>&1 &
   elif [ "${scenario}" = "discoverer-cgroups-v1-k8s" ] 
   then
-      ./bin/ceems_exporter \
+      REDFISH_HOST=localhost REDFISH_PORT=5000 ./bin/ceems_exporter \
         --path.sysfs="pkg/collector/testdata/sys" \
         --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
         --path.procfs="pkg/collector/testdata/proc" \
@@ -799,7 +806,8 @@ then
         --collector.k8s.kubelet-socket-file="${CEEMS_KUBELET_SOCKET_DIR}/amd/kubelet.sock" \
         --collector.cgroups.force-version="v1" \
         --collector.redfish \
-        --collector.redfish.web-config-file="pkg/collector/testdata/redfish/config.yml" \
+        --collector.redfish.config.file="pkg/collector/testdata/redfish/config.yml" \
+        --collector.redfish.config.file.expand-env-vars \
         --collector.empty-hostname-label \
         --web.listen-address "127.0.0.1:${port}" \
         --web.disable-exporter-metrics \
@@ -1452,7 +1460,7 @@ then
       MOCK_EXPORTER2_PID=$!
 
       # Only Redfish available with SINGLE CHASSIS
-      ./bin/ceems_exporter \
+      REDFISH_HOST=localhost REDFISH_PORT=5000 ./bin/ceems_exporter \
         --path.sysfs="pkg/collector/testdata/sys" \
         --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
         --path.procfs="pkg/collector/testdata/proc" \
@@ -1460,7 +1468,8 @@ then
         --collector.slurm \
         --collector.gpu.type="nogpu" \
         --collector.redfish \
-        --collector.redfish.web-config-file="pkg/collector/testdata/redfish/config.yml" \
+        --collector.redfish.config.file="pkg/collector/testdata/redfish/config.yml" \
+        --collector.redfish.config.file.expand-env-vars \
         --collector.empty-hostname-label \
         --web.listen-address "127.0.0.1:9012" \
         --web.disable-exporter-metrics \
@@ -1468,7 +1477,7 @@ then
       MOCK_EXPORTER3_PID=$!
 
       # Redfish and RAPL available
-      ./bin/ceems_exporter \
+      REDFISH_HOST=localhost REDFISH_PORT=5000 ./bin/ceems_exporter \
         --path.sysfs="pkg/collector/testdata/sys" \
         --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
         --path.procfs="pkg/collector/testdata/proc" \
@@ -1477,7 +1486,8 @@ then
         --collector.gpu.type="nvidia" \
         --collector.gpu.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
         --collector.redfish \
-        --collector.redfish.web-config="pkg/collector/testdata/redfish/config.yml" \
+        --collector.redfish.config.file="pkg/collector/testdata/redfish/config.yml" \
+        --collector.redfish.config.file.expand-env-vars \
         --collector.empty-hostname-label \
         --web.listen-address "127.0.0.1:9013" \
         --web.disable-exporter-metrics \
