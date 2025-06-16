@@ -7,6 +7,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"os/signal"
 	"os/user"
@@ -82,86 +83,96 @@ func NewCEEMSServer() (*CEEMSServer, error) {
 
 // Main is the entry point of the `ceems_server` command.
 func (b *CEEMSServer) Main() error {
+	// CLI vars
 	var (
-		configFile = b.App.Flag(
-			"config.file",
-			"Path to CEEMS API server configuration file.",
-		).Envar("CEEMS_API_SERVER_CONFIG_FILE").Default("").String()
-		webListenAddresses = b.App.Flag(
-			"web.listen-address",
-			"Addresses on which to expose API server and web interface.",
-		).Default(":9020").Strings()
-		webConfigFile = b.App.Flag(
-			"web.config.file",
-			"Path to configuration file that can enable TLS or authentication. See: https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md",
-		).Envar("CEEMS_API_SERVER_WEB_CONFIG_FILE").Default("").String()
-		routePrefix = b.App.Flag(
-			"web.route-prefix",
-			"Prefix for the internal routes of web endpoints.",
-		).Default("/").String()
-		requestsLimit = b.App.Flag(
-			"web.max-requests",
-			"Maximum number of requests allowed in 1 minute period per client identified by Real IP address. "+
-				"Request headers True-Client-IP, X-Real-IP and X-Forwarded-For are looked up to get the real client IP address."+
-				"By default no limit is applied.",
-		).Default("0").Int()
-		corsOrigin = b.App.Flag(
-			"web.cors.origin",
-			"Regex for CORS origin. It is fully anchored. Example: 'https?://(domain1|domain2)\\.com'.",
-		).Default(".*").String()
-		enableDebugServer = b.App.Flag(
-			"web.debug-server",
-			"Enable /debug/pprof profiling endpoints. (default: disabled).",
-		).Default("false").Bool()
-		maxQueryPeriod = b.App.Flag(
-			"query.max-period",
-			"Maximum allowable query range. Units Supported: y, w, d, h, m, s, ms. By default no limit is applied.",
-		).Default("0s").String()
-
-		runAsUser = b.App.Flag(
-			"security.run-as-user",
-			"User to run as when API server is started as root. Accepts either a username or uid.",
-		).Default("nobody").String()
-
-		// Hidden args that we can expose to users if found useful
-		externalURL = b.App.Flag(
-			"web.external-url",
-			"External URL at which CEEMS API server is reachable.",
-		).Hidden().Default("").URL()
-		userHeaders = b.App.Flag(
-			"web.user-header-name",
-			"Username will be fetched from these headers. (default: X-Grafana-User).",
-		).Hidden().Default(base.GrafanaUserHeader).Strings()
-
-		// Testing related hidden CLI args
-		skipDeleteOldUnits = b.App.Flag(
-			"storage.data.skip.delete.old.units",
-			"Skip deleting old compute units. Used only in testing. (default is false)",
-		).Hidden().Default("false").Bool()
-		disableChecks = b.App.Flag(
-			"test.disable.checks",
-			"Disable sanity checks. Used only in testing. (default is false)",
-		).Hidden().Default("false").Bool()
-		maxProcs = b.App.Flag(
-			"runtime.gomaxprocs", "The target number of CPUs Go will run on (GOMAXPROCS)",
-		).Envar("GOMAXPROCS").Default("1").Int()
-		disableCapAwareness = b.App.Flag(
-			"security.disable-cap-awareness",
-			"Disable capability awareness and run as privileged process (default: false).",
-		).Default("false").Hidden().Bool()
-		dropPrivs = b.App.Flag(
-			"security.drop-privileges",
-			"Drop privileges and run as nobody when exporter is started as root.",
-		).Default("true").Hidden().Bool()
+		configFile, webConfigFile, routePrefix, corsOrigin, maxQueryPeriod, runAsUser                       string
+		enableDebugServer, skipDeleteOldUnits, disableChecks, disableCapAwareness, dropPrivs, systemdSocket bool
+		webListenAddresses, userHeaders                                                                     []string
+		requestsLimit, maxProcs                                                                             int
+		externalURL                                                                                         *url.URL
 	)
 
+	b.App.Flag(
+		"config.file",
+		"Path to CEEMS API server configuration file.",
+	).Envar("CEEMS_API_SERVER_CONFIG_FILE").Default("").StringVar(&configFile)
+	b.App.Flag(
+		"config.expand-env-vars",
+		"Any environment variables that are referenced in config file will be expanded. To escape $ use $$ (default: false).",
+	).Default("false").BoolVar(&base.ConfigFileExpandEnvVars)
+	b.App.Flag(
+		"web.listen-address",
+		"Addresses on which to expose API server and web interface.",
+	).Default(":9020").StringsVar(&webListenAddresses)
+	b.App.Flag(
+		"web.config.file",
+		"Path to configuration file that can enable TLS or authentication. See: https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md",
+	).Envar("CEEMS_API_SERVER_WEB_CONFIG_FILE").Default("").StringVar(&webConfigFile)
+	b.App.Flag(
+		"web.route-prefix",
+		"Prefix for the internal routes of web endpoints.",
+	).Default("/").StringVar(&routePrefix)
+	b.App.Flag(
+		"web.max-requests",
+		"Maximum number of requests allowed in 1 minute period per client identified by Real IP address. "+
+			"Request headers True-Client-IP, X-Real-IP and X-Forwarded-For are looked up to get the real client IP address."+
+			"By default no limit is applied.",
+	).Default("0").IntVar(&requestsLimit)
+	b.App.Flag(
+		"web.cors.origin",
+		"Regex for CORS origin. It is fully anchored. Example: 'https?://(domain1|domain2)\\.com'.",
+	).Default(".*").StringVar(&corsOrigin)
+	b.App.Flag(
+		"web.debug-server",
+		"Enable /debug/pprof profiling endpoints. (default: disabled).",
+	).Default("false").BoolVar(&enableDebugServer)
+	b.App.Flag(
+		"query.max-period",
+		"Maximum allowable query range. Units Supported: y, w, d, h, m, s, ms. By default no limit is applied.",
+	).Default("0s").StringVar(&maxQueryPeriod)
+
+	b.App.Flag(
+		"security.run-as-user",
+		"User to run as when API server is started as root. Accepts either a username or uid.",
+	).Default("nobody").StringVar(&runAsUser)
+
+	// Hidden args that we can expose to users if found useful
+	b.App.Flag(
+		"web.external-url",
+		"External URL at which CEEMS API server is reachable.",
+	).Hidden().Default("").URLVar(&externalURL)
+	b.App.Flag(
+		"web.user-header-name",
+		"Username will be fetched from these headers. (default: X-Grafana-User).",
+	).Hidden().Default(base.GrafanaUserHeader).StringsVar(&userHeaders)
+
+	// Testing related hidden CLI args
+	b.App.Flag(
+		"storage.data.skip.delete.old.units",
+		"Skip deleting old compute units. Used only in testing. (default is false)",
+	).Hidden().Default("false").BoolVar(&skipDeleteOldUnits)
+	b.App.Flag(
+		"test.disable.checks",
+		"Disable sanity checks. Used only in testing. (default is false)",
+	).Hidden().Default("false").BoolVar(&disableChecks)
+	b.App.Flag(
+		"runtime.gomaxprocs", "The target number of CPUs Go will run on (GOMAXPROCS)",
+	).Envar("GOMAXPROCS").Default("1").IntVar(&maxProcs)
+	b.App.Flag(
+		"security.disable-cap-awareness",
+		"Disable capability awareness and run as privileged process (default: false).",
+	).Default("false").Hidden().BoolVar(&disableCapAwareness)
+	b.App.Flag(
+		"security.drop-privileges",
+		"Drop privileges and run as nobody when exporter is started as root.",
+	).Default("true").Hidden().BoolVar(&dropPrivs)
+
 	// Socket activation only available on Linux
-	systemdSocket := func() *bool { b := false; return &b }() //nolint:nlreturn
 	if runtime.GOOS == "linux" {
-		systemdSocket = b.App.Flag(
+		b.App.Flag(
 			"web.systemd-socket",
 			"Use systemd socket activation listeners instead of port listeners (Linux only).",
-		).Bool()
+		).Default("false").BoolVar(&systemdSocket)
 	}
 
 	promslogConfig := &promslog.Config{}
@@ -176,21 +187,21 @@ func (b *CEEMSServer) Main() error {
 	}
 
 	// Parse max query period
-	period, err := model.ParseDuration(*maxQueryPeriod)
+	period, err := model.ParseDuration(maxQueryPeriod)
 	if err != nil {
 		return fmt.Errorf("failed to parse option for --query.max-period: %w", err)
 	}
 
 	// Compile CORS regex
-	corsRegex, err := regexp.Compile("^(?s:" + *corsOrigin + ")$")
+	corsRegex, err := regexp.Compile("^(?s:" + corsOrigin + ")$")
 	if err != nil {
 		return fmt.Errorf("failed to compile option for --web.cors.origin: %w", err)
 	}
 
 	// Get absolute path for web config file if provided
 	var webConfigFilePath string
-	if *webConfigFile != "" {
-		webConfigFilePath, err = filepath.Abs(*webConfigFile)
+	if webConfigFile != "" {
+		webConfigFilePath, err = filepath.Abs(webConfigFile)
 		if err != nil {
 			return fmt.Errorf("failed to get absolute path of the web config file: %w", err)
 		}
@@ -198,23 +209,23 @@ func (b *CEEMSServer) Main() error {
 
 	// Get absolute config file path global variable that will be used in resource manager
 	// and updater packages
-	base.ConfigFilePath, err = filepath.Abs(*configFile)
+	base.ConfigFilePath, err = filepath.Abs(configFile)
 	if err != nil {
 		return fmt.Errorf("failed to get absolute path of the config file: %w", err)
 	}
 
 	// Make config from file
-	config, err := common.MakeConfig[CEEMSAPIAppConfig](base.ConfigFilePath)
+	config, err := common.MakeConfig[CEEMSAPIAppConfig](base.ConfigFilePath, base.ConfigFileExpandEnvVars)
 	if err != nil {
 		return fmt.Errorf("failed to parse config file: %w", err)
 	}
 	// Set directory for reading files
 	config.SetDirectory(filepath.Dir(base.ConfigFilePath))
 	// This is used only in tests
-	config.Server.Data.SkipDeleteOldUnits = *skipDeleteOldUnits
+	config.Server.Data.SkipDeleteOldUnits = skipDeleteOldUnits
 
 	// Return error if backup interval of less than 1 day is used
-	if err := config.Validate(); err != nil && !*disableChecks {
+	if err := config.Validate(); err != nil && !disableChecks {
 		return err
 	}
 
@@ -232,7 +243,7 @@ func (b *CEEMSServer) Main() error {
 		"host_details", internal_runtime.Uname(), "fd_limits", internal_runtime.FdLimits(),
 	)
 
-	runtime.GOMAXPROCS(*maxProcs)
+	runtime.GOMAXPROCS(maxProcs)
 	logger.Debug("Go MAXPROCS", "procs", runtime.GOMAXPROCS(0))
 
 	if user, err := user.Current(); err == nil && user.Uid == "0" {
@@ -270,7 +281,7 @@ func (b *CEEMSServer) Main() error {
 	// as that will end up dropping the privileges and running it as nobody user which can
 	// be strange as CEEMS API server writes data to DB.
 	securityCfg := &security.Config{
-		RunAsUser:      *runAsUser,
+		RunAsUser:      runAsUser,
 		Caps:           allCaps,
 		ReadPaths:      []string{webConfigFilePath, base.ConfigFilePath},
 		ReadWritePaths: []string{config.Server.Data.Path, config.Server.Data.BackupPath},
@@ -291,8 +302,8 @@ func (b *CEEMSServer) Main() error {
 	}
 
 	// Drop all unnecessary privileges
-	if *dropPrivs {
-		if err := securityManager.DropPrivileges(*disableCapAwareness); err != nil {
+	if dropPrivs {
+		if err := securityManager.DropPrivileges(disableCapAwareness); err != nil {
 			logger.Error("Failed to drop privileges", "err", err)
 
 			return err
@@ -316,15 +327,15 @@ func (b *CEEMSServer) Main() error {
 	serverConfig := &ceems_http.Config{
 		Logger: logger,
 		Web: ceems_http.WebConfig{
-			Addresses:         *webListenAddresses,
-			WebSystemdSocket:  *systemdSocket,
+			Addresses:         webListenAddresses,
+			WebSystemdSocket:  systemdSocket,
 			WebConfigFile:     webConfigFilePath,
-			EnableDebugServer: *enableDebugServer,
-			UserHeaderNames:   *userHeaders,
-			ExternalURL:       *externalURL,
-			RoutePrefix:       *routePrefix,
+			EnableDebugServer: enableDebugServer,
+			UserHeaderNames:   userHeaders,
+			ExternalURL:       externalURL,
+			RoutePrefix:       routePrefix,
 			CORSOrigin:        corsRegex,
-			RequestsLimit:     *requestsLimit,
+			RequestsLimit:     requestsLimit,
 			MaxQueryPeriod:    period,
 			LandingConfig: &web.LandingConfig{
 				Name:        b.App.Name,

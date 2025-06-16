@@ -21,6 +21,9 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Template token.
+const templateToken = "[[{$}]]"
+
 var nodelistRegExp = regexp.MustCompile(`\[(.*?)\]`)
 
 // Timespan is a custom type to format time.Duration.
@@ -232,7 +235,7 @@ func ConvertMapI2MapS(v interface{}) interface{} {
 
 // MakeConfig reads config file, merges with passed default config and returns updated
 // config instance.
-func MakeConfig[T any](filePath string) (*T, error) {
+func MakeConfig[T any](filePath string, expandEnvVars bool) (*T, error) {
 	// Create a new pointer to config instance
 	config := new(T)
 
@@ -245,6 +248,28 @@ func MakeConfig[T any](filePath string) (*T, error) {
 	configFile, err := os.ReadFile(filePath)
 	if err != nil {
 		return config, err
+	}
+
+	// If we need to expand env vars
+	if expandEnvVars {
+		fileContent := string(configFile)
+
+		// If there is a literal template token in the config file, raise error
+		if strings.Contains(fileContent, templateToken) {
+			return nil, fmt.Errorf("expanding env vars is not supported with literal template token %s in the config file", templateToken)
+		}
+
+		// First replace any $$ to [[{$}]].
+		fileContent = strings.ReplaceAll(fileContent, "$$", templateToken)
+
+		// Now expand any env vars in the file
+		fileContent = os.ExpandEnv(fileContent)
+
+		// Replace [[{$}]] by $ before passing it to unmarshaller
+		fileContent = strings.ReplaceAll(fileContent, templateToken, "$")
+
+		// Convert it back to bytes
+		configFile = []byte(fileContent)
 	}
 
 	err = yaml.Unmarshal(configFile, config)

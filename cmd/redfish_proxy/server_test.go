@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/mahendrapaipuri/ceems/internal/common"
-	"github.com/prometheus/common/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -54,15 +53,7 @@ func TestNewRedfishProxyServerWithTargets(t *testing.T) {
 	config := &Config{
 		Logger: slog.New(slog.DiscardHandler),
 		Redfish: &Redfish{
-			Config: struct {
-				Web struct {
-					HTTPClientConfig          config.HTTPClientConfig `yaml:",inline"`
-					AllowedAPIResources       []string                `yaml:"allowed_api_resources"`
-					Insecure                  bool                    `yaml:"insecure_skip_verify"`
-					allowedAPIResourcesRegexp *regexp.Regexp
-				} `yaml:"web"`
-				Targets []Target `yaml:"targets"`
-			}{
+			Config: ProxyConfig{
 				Targets: []Target{
 					{
 						HostAddrs: []string{remoteIPs[0]},
@@ -140,24 +131,9 @@ func TestNewRedfishProxyServerWithWebConfig(t *testing.T) {
 	config := &Config{
 		Logger: slog.New(slog.DiscardHandler),
 		Redfish: &Redfish{
-			Config: struct {
-				Web struct {
-					HTTPClientConfig          config.HTTPClientConfig `yaml:",inline"`
-					AllowedAPIResources       []string                `yaml:"allowed_api_resources"`
-					Insecure                  bool                    `yaml:"insecure_skip_verify"`
-					allowedAPIResourcesRegexp *regexp.Regexp
-				} `yaml:"web"`
-				Targets []Target `yaml:"targets"`
-			}{
-				Web: struct {
-					HTTPClientConfig          config.HTTPClientConfig `yaml:",inline"`
-					AllowedAPIResources       []string                `yaml:"allowed_api_resources"`
-					Insecure                  bool                    `yaml:"insecure_skip_verify"`
-					allowedAPIResourcesRegexp *regexp.Regexp
-				}{
-					Insecure:                  true,
-					allowedAPIResourcesRegexp: regexp.MustCompile(strings.Join(defaultAllowedAPIResources, "|")),
-				},
+			Config: ProxyConfig{
+				Insecure:                  true,
+				allowedAPIResourcesRegexp: regexp.MustCompile(strings.Join(defaultAllowedAPIResources, "|")),
 			},
 		},
 	}

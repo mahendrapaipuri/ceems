@@ -273,8 +273,17 @@ to list all the pods in all the namespaces and create a kube config file for
 this service account. Then this kube config file can be provided to the collector
 using:
 
+:::warning[WARNING]
+
+CLI flags `--collector.k8s.kube-config-file` and `--collector.k8s.kubelet-socket-file`
+are deprecated in favour of `--collector.k8s.kubeconfig-file` and
+`--collector.k8s.kubelet-podresources-socket.file`, respectively. The deprecated flags
+are still supported but they will be removed in the next major release.
+
+:::
+
 ```bash
-ceems_exporter --collector.k8s --collector.k8s.kube-config-file=/etc/ceems_exporter/kubeconfig.yml
+ceems_exporter --collector.k8s --collector.k8s.kubeconfig-file=/etc/ceems_exporter/kubeconfig.yml
 ```
 
 :::tip[TIP]
@@ -357,16 +366,16 @@ to the CLI flag `--collector.redfish.web-config-file`. A sample file is shown as
 :::warning[WARNING]
 
 CLI flag `--collector.redfish.web-config` has been deprecated and will be removed in the
-next stable release. The flag will be now available under `--collector.redfish.web-config-file`.
+next stable release. The flag will be now available under `--collector.redfish.config.file`.
 
-Similarly, the web configuration for Redfish must be now provided under `redfish_web` section
+Similarly, the web configuration for Redfish must be now provided under `redfish_collector` section
 instead of `redfish_web_config` which has also been deprecated.
 
 :::
 
 ```yaml
 ---
-redfish_web:
+redfish_collector:
   # Protocol of Redfish API server. Possible values are http, https
   #
   protocol: https
@@ -513,7 +522,7 @@ Once a file with the above config has been placed and secured, say at `/etc/ceem
 the collector can be enabled and configured as follows:
 
 ```bash
-ceems_exporter --collector.redfish --collector.redfish.web-config-file=/etc/ceems_exporter/redfish-config.yml
+ceems_exporter --collector.redfish --collector.redfish.config.file=/etc/ceems_exporter/redfish-config.yml
 ```
 
 This configuration assumes that the Redfish API server is reachable from the compute node
@@ -537,33 +546,32 @@ file is shown below:
 The configuration file for Redfish proxy must now be provided under `redfish_proxy` section
 rather than `redfish_config` section which has been deprecated.
 
+Similarly, the configuration provided under `redfish_config.web` must be provided under
+`redfish_proxy` now and the `web` section has been deprecated.
+
 :::
 
 ```yaml
 ---
 # Configuration file for redfish_proxy app
 redfish_proxy:
-  # This section must provide web configuration of
-  # Redfish API server.
+  # If Redfish targets are using TLS, use this section to
+  # configure the root CA when they are using self signed.
+  # Also it is possible to ignore certificate check by
+  # setting `insecure_skip_verify` to `true` in trusted
+  # deployments.
   #
-  web:
-    # If Redfish targets are using TLS, use this section to
-    # configure the root CA when they are using self signed.
-    # Also it is possible to ignore certificate check by
-    # setting `insecure_skip_verify` to `true` in trusted
-    # deployments.
-    #
-    # Ref: https://pkg.go.dev/github.com/prometheus/common@v0.63.0/config#TLSConfig
-    #
-    tls_config: {}
+  # Ref: https://pkg.go.dev/github.com/prometheus/common@v0.63.0/config#TLSConfig
+  #
+  tls_config: {}
 
-    # If Redfish API servers are running with TLS enabled
-    # and using self-signed certificates, set `insecure_skip_verify`
-    # to `true` to skip TLS certificate verification
-    #
-    # Deprecated: Use `tls_config.insecure_skip_verify` instead
-    #
-    insecure_skip_verify: false
+  # If Redfish API servers are running with TLS enabled
+  # and using self-signed certificates, set `insecure_skip_verify`
+  # to `true` to skip TLS certificate verification
+  #
+  # Deprecated: Use `tls_config.insecure_skip_verify` instead
+  #
+  insecure_skip_verify: false 
 ```
 
 If the Redfish servers are running with TLS using self-signed certificates, provide
@@ -616,7 +624,7 @@ This will start the Redfish proxy on the management node running at `mgmt-0:5000
 Redfish configuration file for the exporter should be set as follows:
 
 ```yaml
-redfish_web:
+redfish_collector:
   # Redfish API server config
   protocol: http
   hostname: '{hostname}-bmc'

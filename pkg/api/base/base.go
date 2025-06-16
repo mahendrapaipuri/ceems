@@ -60,7 +60,8 @@ var DatetimezoneLayout = DatetimeLayout + "-0700"
 
 // CLI args with global scope.
 var (
-	ConfigFilePath string
+	ConfigFilePath          string
+	ConfigFileExpandEnvVars bool
 )
 
 // APIVersion sets the version of API in paths.
