@@ -164,7 +164,7 @@ func TestNewRedfishCollector(t *testing.T) {
 	serverURL, err := url.Parse(server.URL)
 	require.NoError(t, err)
 
-	for _, cfgName := range []string{"redfish_web_config", "redfish_web"} {
+	for _, cfgName := range []string{"redfish_web_config", "redfish_collector"} {
 		// Make config file
 		configFileTmpl := `
 ---
@@ -182,7 +182,7 @@ func TestNewRedfishCollector(t *testing.T) {
 
 		_, err = CEEMSExporterApp.Parse(
 			[]string{
-				"--collector.redfish.web-config", configPath,
+				"--collector.redfish.config.file", configPath,
 			},
 		)
 		require.NoError(t, err)

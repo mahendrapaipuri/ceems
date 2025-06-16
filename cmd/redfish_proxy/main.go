@@ -39,30 +39,9 @@ var (
 	}
 )
 
-var (
-	app = kingpin.New(
-		appName,
-		"A Reverse proxy to Redfish API server.",
-	)
-	webListenAddresses = app.Flag(
-		"web.listen-address",
-		"Addresses on which to expose proxy server and web interface.",
-	).Default(":5000").Strings()
-	webConfigFile = app.Flag(
-		"web.config.file",
-		"Path to configuration file that can enable TLS or authentication. See: https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md",
-	).Default("").String()
-	configFile = app.Flag(
-		"config.file",
-		"Path to configuration file of redfish proxy.",
-	).Envar("REDFISH_PROXY_CONFIG_FILE").Default("").String()
-	maxProcs = app.Flag(
-		"runtime.gomaxprocs", "The target number of CPUs Go will run on (GOMAXPROCS)",
-	).Envar("GOMAXPROCS").Default("1").Int()
-	enableDebugServer = app.Flag(
-		"web.debug-server",
-		"Enable /debug/pprof profiling (default: disabled).",
-	).Default("false").Bool()
+var app = kingpin.New(
+	appName,
+	"A Reverse proxy to Redfish API server.",
 )
 
 type Target struct {
@@ -100,33 +79,31 @@ func (t *Target) UnmarshalYAML(unmarshal func(interface{}) error) error {
 }
 
 type ProxyConfig struct {
-	Web struct {
-		HTTPClientConfig config.HTTPClientConfig `yaml:",inline"`
-		// List of allowed API resources that will be proxied. Each
-		// string must be a valid regular expression. Ensure
-		// that each string use start and end delimiters (^$) to
-		// ensure the entire string will be captured. All the strings
-		// will be joined by | delimiter to form a regular expression.
-		//
-		// Default values for this will ensure to allow API requests
-		// to root, sessions, chassis and power resources.
-		// Ref: https://regex101.com/r/9dy4JE/1
-		AllowedAPIResources []string `yaml:"allowed_api_resources"`
-		// Deprecated: InSecure exists for historical compatibility
-		// and should not be used. This must be configured under
-		// `tls_config.insecure_skip_verify` from now on.
-		Insecure                  bool `yaml:"insecure_skip_verify"`
-		allowedAPIResourcesRegexp *regexp.Regexp
-	} `yaml:"web"`
 	Targets []Target `yaml:"targets"`
+	// List of allowed API resources that will be proxied. Each
+	// string must be a valid regular expression. Ensure
+	// that each string use start and end delimiters (^$) to
+	// ensure the entire string will be captured. All the strings
+	// will be joined by | delimiter to form a regular expression.
+	//
+	// Default values for this will ensure to allow API requests
+	// to root, sessions, chassis and power resources.
+	// Ref: https://regex101.com/r/9dy4JE/1
+	AllowedAPIResources []string `yaml:"allowed_api_resources"`
+	// Deprecated: InSecure exists for historical compatibility
+	// and should not be used. This must be configured under
+	// `tls_config.insecure_skip_verify` from now on.
+	Insecure                  bool                    `yaml:"insecure_skip_verify"`
+	HTTPClientConfig          config.HTTPClientConfig `yaml:",inline"`
+	allowedAPIResourcesRegexp *regexp.Regexp
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
 func (r *ProxyConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	// Set a default config
 	*r = ProxyConfig{}
-	r.Web.AllowedAPIResources = defaultAllowedAPIResources
-	r.Web.HTTPClientConfig = config.DefaultHTTPClientConfig
+	r.AllowedAPIResources = defaultAllowedAPIResources
+	r.HTTPClientConfig = config.DefaultHTTPClientConfig
 
 	type plain ProxyConfig
 
@@ -135,16 +112,16 @@ func (r *ProxyConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 
 	// If InSecure is set to true
-	if r.Web.Insecure {
-		r.Web.HTTPClientConfig.TLSConfig = config.TLSConfig{
-			InsecureSkipVerify: r.Web.Insecure,
+	if r.Insecure {
+		r.HTTPClientConfig.TLSConfig = config.TLSConfig{
+			InsecureSkipVerify: r.Insecure,
 		}
 	}
 
 	var err error
 
 	// Compile regex
-	r.Web.allowedAPIResourcesRegexp, err = regexp.Compile(strings.Join(r.Web.AllowedAPIResources, "|"))
+	r.allowedAPIResourcesRegexp, err = regexp.Compile(strings.Join(r.AllowedAPIResources, "|"))
 	if err != nil {
 		return fmt.Errorf("invalid regexp in allowed_resources: %w", err)
 	}
@@ -170,7 +147,7 @@ func (r *Redfish) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 	// If ConfigDeprecated.allowedAPIResourcesRegexp is non-nil and Config.allowedAPIResourcesRegexp is nil, config is set on
 	// deprecated tag.
-	if r.ConfigDeprecated.Web.allowedAPIResourcesRegexp != nil && r.Config.Web.allowedAPIResourcesRegexp == nil {
+	if r.ConfigDeprecated.allowedAPIResourcesRegexp != nil && r.Config.allowedAPIResourcesRegexp == nil {
 		r.Config = r.ConfigDeprecated
 	}
 
@@ -193,14 +170,48 @@ type Config struct {
 }
 
 func main() {
-	// Socket activation only available on Linux
-	systemdSocket := func() *bool { b := false; return &b }() //nolint:nlreturn
+	var (
+		webConfigFile, configFile                                 string
+		configFileExpandEnvVars, enableDebugServer, systemdSocket bool
+		webListenAddresses                                        []string
+		maxProcs                                                  int
+	)
+
+	// Config file CLI flags
+	app.Flag(
+		"config.file",
+		"Path to configuration file of redfish proxy.",
+	).Envar("REDFISH_PROXY_CONFIG_FILE").Default("").StringVar(&configFile)
+	app.Flag(
+		"config.file.expand-env-vars",
+		"Any environment variables that are referenced in the config file will be expanded. To escape $ use $$ (default: false).",
+	).Default("false").BoolVar(&configFileExpandEnvVars)
+
+	// Web server CLI flags
+	app.Flag(
+		"web.listen-address",
+		"Addresses on which to expose proxy server and web interface.",
+	).Default(":5000").StringsVar(&webListenAddresses)
+	app.Flag(
+		"web.config.file",
+		"Path to configuration file that can enable TLS or authentication. See: https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md",
+	).Default("").StringVar(&webConfigFile)
+	app.Flag(
+		"web.debug-server",
+		"Enable /debug/pprof profiling (default: disabled).",
+	).Default("false").BoolVar(&enableDebugServer)
+
 	if runtime.GOOS == "linux" {
-		systemdSocket = app.Flag(
+		app.Flag(
 			"web.systemd-socket",
 			"Use systemd socket activation listeners instead of port listeners (Linux only).",
-		).Bool()
+		).Default("false").BoolVar(&systemdSocket)
 	}
+
+	// Runtime CLI flags
+	app.Flag(
+		"runtime.gomaxprocs", "The target number of CPUs Go will run on (GOMAXPROCS)",
+	).Envar("GOMAXPROCS").Default("1").IntVar(&maxProcs)
 
 	// Setup logger config
 	promslogConfig := &promslog.Config{}
@@ -209,8 +220,7 @@ func main() {
 	app.UsageWriter(os.Stdout)
 	app.HelpFlag.Short('h')
 
-	_, err := app.Parse(os.Args[1:])
-	if err != nil {
+	if _, err := app.Parse(os.Args[1:]); err != nil {
 		panic(err)
 	}
 
@@ -223,14 +233,14 @@ func main() {
 		"host_details", internal_runtime.Uname(), "fd_limits", internal_runtime.FdLimits(),
 	)
 
-	runtime.GOMAXPROCS(*maxProcs)
+	runtime.GOMAXPROCS(maxProcs)
 	logger.Debug("Go MAXPROCS", "procs", runtime.GOMAXPROCS(0))
 
 	// Read config from file only when file path is provided
 	var redfish *Redfish
 
-	if *configFile != "" {
-		configFilePath, err := filepath.Abs(*configFile)
+	if configFile != "" {
+		configFilePath, err := filepath.Abs(configFile)
 		if err != nil {
 			logger.Error("Failed to get absolute path of config file", "err", err)
 
@@ -238,7 +248,7 @@ func main() {
 		}
 
 		// Make config from file
-		redfish, err = common.MakeConfig[Redfish](configFilePath)
+		redfish, err = common.MakeConfig[Redfish](configFilePath, configFileExpandEnvVars)
 		if err != nil {
 			logger.Error("Failed to parse Redfish proxy config file", "err", err)
 
@@ -250,14 +260,16 @@ func main() {
 	}
 
 	// Check if config is provided with deprecated tag and if so, log a warning
-	if redfish.ConfigDeprecated.Web.allowedAPIResourcesRegexp != nil {
+	if redfish.ConfigDeprecated.allowedAPIResourcesRegexp != nil {
 		logger.Warn("Redfish proxy config provided under redfish_config section which is deprecated. Move it under redfish_proxy")
 	}
 
 	// If webConfigFile is set, get absolute path
 	var webConfigFilePath string
-	if *webConfigFile != "" {
-		webConfigFilePath, err = filepath.Abs(*webConfigFile)
+
+	var err error
+	if webConfigFile != "" {
+		webConfigFilePath, err = filepath.Abs(webConfigFile)
 		if err != nil {
 			logger.Error("Failed to get absolute path of web config file", "err", err)
 
@@ -269,10 +281,10 @@ func main() {
 	config := &Config{
 		Logger: logger,
 		Web: WebConfig{
-			Addresses:         *webListenAddresses,
-			WebSystemdSocket:  *systemdSocket,
+			Addresses:         webListenAddresses,
+			WebSystemdSocket:  systemdSocket,
 			WebConfigFile:     webConfigFilePath,
-			EnableDebugServer: *enableDebugServer,
+			EnableDebugServer: enableDebugServer,
 		},
 		Redfish: redfish,
 	}

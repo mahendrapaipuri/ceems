@@ -95,7 +95,7 @@ func checkConfig(managers []string, config *Config[models.Cluster]) (map[string]
 // managerConfig returns the configuration of resource managers.
 func managerConfig() (*Config[models.Cluster], error) {
 	// Make config from file
-	config, err := common.MakeConfig[Config[models.Cluster]](base.ConfigFilePath)
+	config, err := common.MakeConfig[Config[models.Cluster]](base.ConfigFilePath, base.ConfigFileExpandEnvVars)
 	if err != nil {
 		return nil, err
 	}

@@ -100,7 +100,7 @@ ceems_api_server:
 	configFile := fmt.Sprintf(configFileTmpl, dataDir)
 	configFilePath := makeConfigFile(configFile, tmpDir)
 
-	_, err := common.MakeConfig[CEEMSAPIAppConfig](configFilePath)
+	_, err := common.MakeConfig[CEEMSAPIAppConfig](configFilePath, false)
 	assert.Error(t, err)
 }
 

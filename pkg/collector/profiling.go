@@ -152,12 +152,13 @@ type ProfilerConfig struct {
 }
 
 type profilerConfig struct {
-	logger        *slog.Logger
-	logLevel      string
-	enabled       bool
-	configFile    string
-	targetEnvVars []string
-	selfProfile   bool
+	logger                  *slog.Logger
+	logLevel                string
+	enabled                 bool
+	configFile              string
+	configFileExpandEnvVars bool
+	targetEnvVars           []string
+	selfProfile             bool
 }
 
 type Profiler struct {
@@ -213,7 +214,7 @@ func NeweBPFProfiler(c *profilerConfig) (*Profiler, error) {
 		}
 
 		// Make config from file
-		cfg, err = common.MakeConfig[ProfilerConfig](configFilePath)
+		cfg, err = common.MakeConfig[ProfilerConfig](configFilePath, c.configFileExpandEnvVars)
 		if err != nil {
 			c.logger.Error("Failed to parse profiling config file", "err", err)
 
