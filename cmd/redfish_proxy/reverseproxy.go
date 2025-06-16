@@ -43,7 +43,7 @@ func NewMultiHostReverseProxy(c *rpConfig) (*httputil.ReverseProxy, error) {
 	}
 
 	// Create a HTTP roundtripper
-	httpRoundTripper, err := config.NewRoundTripperFromConfig(c.redfish.Config.Web.HTTPClientConfig, "redfish_proxy", config.WithUserAgent("ceems/redfish_proxy"))
+	httpRoundTripper, err := config.NewRoundTripperFromConfig(c.redfish.Config.HTTPClientConfig, "redfish_proxy", config.WithUserAgent("ceems/redfish_proxy"))
 	if err != nil {
 		return nil, err
 	}

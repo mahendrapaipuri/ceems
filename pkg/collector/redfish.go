@@ -29,7 +29,25 @@ const (
 	redfishURLHeaderName = "X-Redfish-Url"
 )
 
-type redfishWebConfig struct {
+var (
+	redfishConfigFileDepre = CEEMSExporterApp.Flag(
+		"collector.redfish.web-config",
+		"Path to Redfish web configuration file.",
+	).Envar("CEEMS_EXPORTER_REDFISH_COLL_CONFIG_FILE").Default("").Hidden().String()
+
+	redfishConfigFile = CEEMSExporterApp.Flag(
+		"collector.redfish.config.file",
+		"Path to Redfish web configuration file.",
+	).Envar("CEEMS_EXPORTER_REDFISH_COLL_WEB_CONFIG_FILE").Default("").String()
+
+	// Flag to control th expansion of env vars in config file.
+	redfishConfigExpandEnvVars = CEEMSExporterApp.Flag(
+		"collector.redfish.config.file.expand-env-vars",
+		"Any environment variables that are referenced in Redfish config file will be expanded. To escape $ use $$ (default: false).",
+	).Default("false").Bool()
+)
+
+type redfishClientConfig struct {
 	Proto            string                  `yaml:"protocol"`
 	Hostname         string                  `yaml:"hostname"`
 	Port             int                     `yaml:"port"`
@@ -47,13 +65,13 @@ type redfishWebConfig struct {
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
-func (c *redfishWebConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *redfishClientConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	// Set a default config
-	*c = redfishWebConfig{}
+	*c = redfishClientConfig{}
 	c.SessionToken = true
 	c.HTTPClientConfig = config.DefaultHTTPClientConfig
 
-	type plain redfishWebConfig
+	type plain redfishClientConfig
 
 	if err := unmarshal((*plain)(c)); err != nil {
 		return err
@@ -90,7 +108,7 @@ func (c *redfishWebConfig) UnmarshalYAML(unmarshal func(interface{}) error) erro
 	// Build Redfish URL
 	c.url, err = url.Parse(fmt.Sprintf("%s://%s:%d", c.Proto, c.Hostname, c.Port))
 	if err != nil {
-		return fmt.Errorf("invalid redfish web config: %w", err)
+		return fmt.Errorf("invalid redfish client config: %w", err)
 	}
 
 	// Add redfish target URL in the header for proxy web config
@@ -113,11 +131,11 @@ func (c *redfishWebConfig) UnmarshalYAML(unmarshal func(interface{}) error) erro
 }
 
 type redfishConfig struct {
-	Web redfishWebConfig `yaml:"redfish_web"`
+	Client redfishClientConfig `yaml:"redfish_collector"`
 	// Deprecated: `redfish_web_config` exists for historical compatibility
 	// and should not be used. This must be configured under
-	// `redfish_web` from now on.
-	WebDeprecated redfishWebConfig `yaml:"redfish_web_config"`
+	// `redfish_collector` from now on.
+	ClientDeprecated redfishClientConfig `yaml:"redfish_web_config"`
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
@@ -128,10 +146,10 @@ func (c *redfishConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return err
 	}
 
-	// If WebDeprecated.url is non-nil and Web.url is nil, config is set on
-	// deprecated tag. Overwrite it on Web
-	if c.WebDeprecated.url != nil && c.Web.url == nil {
-		c.Web = c.WebDeprecated
+	// If ClientDeprecated.url is non-nil and Web.url is nil, config is set on
+	// deprecated tag. Overwrite it on Client
+	if c.ClientDeprecated.url != nil && c.Client.url == nil {
+		c.Client = c.ClientDeprecated
 	}
 
 	return nil
@@ -147,16 +165,6 @@ type redfishCollector struct {
 	metricDesc  map[string]*prometheus.Desc
 }
 
-var redfishConfigFileDepre = CEEMSExporterApp.Flag(
-	"collector.redfish.web-config",
-	"Path to Redfish web configuration file.",
-).Envar("CEEMS_EXPORTER_REDFISH_COLL_CONFIG_FILE").Default("").Hidden().String()
-
-var redfishConfigFile = CEEMSExporterApp.Flag(
-	"collector.redfish.web-config-file",
-	"Path to Redfish web configuration file.",
-).Envar("CEEMS_EXPORTER_REDFISH_COLL_WEB_CONFIG_FILE").Default("").String()
-
 func init() {
 	RegisterCollector(redfishCollectorSubsystem, defaultDisabled, NewRedfishCollector)
 }
@@ -165,7 +173,7 @@ func init() {
 func NewRedfishCollector(logger *slog.Logger) (Collector, error) {
 	// Log deprecation notices
 	if *redfishConfigFileDepre != "" {
-		logger.Warn("flag --collector.redfish.web-config has been deprecated. Use --collector.redfish.web-config-file instead")
+		logger.Warn("flag --collector.redfish.web-config has been deprecated. Use --collector.redfish.config.file instead")
 
 		*redfishConfigFile = *redfishConfigFileDepre
 	}
@@ -197,7 +205,7 @@ func NewRedfishCollector(logger *slog.Logger) (Collector, error) {
 	}
 
 	// Make config from file
-	cfg, err := common.MakeConfig[redfishConfig](configFilePath)
+	cfg, err := common.MakeConfig[redfishConfig](configFilePath, *redfishConfigExpandEnvVars)
 	if err != nil {
 		logger.Error("Failed to parse Redfish config file", "err", err)
 
@@ -205,23 +213,23 @@ func NewRedfishCollector(logger *slog.Logger) (Collector, error) {
 	}
 
 	// Check if config is provided with deprecated tag and if so, log a warning
-	if cfg.WebDeprecated.url != nil {
-		logger.Warn("Redfish collector config provided under redfish_web_config section which is deprecated. Move it under redfish_web")
+	if cfg.ClientDeprecated.url != nil {
+		logger.Warn("Redfish collector config provided under redfish_web_config section which is deprecated. Move it under redfish_collector")
 	}
 
-	logger.Debug("Redfish URL", "url", cfg.Web.url.String())
+	logger.Debug("Redfish URL", "url", cfg.Client.url.String())
 
 	// Get the URL that client will talk to
 	// If external URL is provided, always prefer it over the raw BMC hostname and port
 	var endpoint string
-	if cfg.Web.ExternalURL != "" {
-		endpoint = cfg.Web.ExternalURL
+	if cfg.Client.ExternalURL != "" {
+		endpoint = cfg.Client.ExternalURL
 	} else {
-		endpoint = cfg.Web.url.String()
+		endpoint = cfg.Client.url.String()
 	}
 
 	// Make a HTTP client from client config
-	httpClient, err := config.NewClientFromConfig(cfg.Web.HTTPClientConfig, "redfish")
+	httpClient, err := config.NewClientFromConfig(cfg.Client.HTTPClientConfig, "redfish")
 	if err != nil {
 		logger.Error("Failed to create a HTTP client for Redfish", "err", err)
 
@@ -231,28 +239,28 @@ func NewRedfishCollector(logger *slog.Logger) (Collector, error) {
 	// Set a timeout here to not to block redfish collector whole
 	// exporter. If no timeout is provided use default value of 5 seconds
 	// Good ref: https://stackoverflow.com/a/72358623
-	if cfg.Web.Timeout <= 0 {
-		cfg.Web.Timeout = 5000
+	if cfg.Client.Timeout <= 0 {
+		cfg.Client.Timeout = 5000
 	}
 
-	httpClient.Timeout = time.Duration(cfg.Web.Timeout * int64(time.Millisecond))
+	httpClient.Timeout = time.Duration(cfg.Client.Timeout * int64(time.Millisecond))
 
 	// Override username and password from env vars when found
 	if os.Getenv("REDFISH_WEB_USERNAME") != "" {
-		cfg.Web.Username = os.Getenv("REDFISH_WEB_USERNAME")
+		cfg.Client.Username = os.Getenv("REDFISH_WEB_USERNAME")
 	}
 
 	if os.Getenv("REDFISH_WEB_PASSWORD") != "" {
-		cfg.Web.Password = os.Getenv("REDFISH_WEB_PASSWORD")
+		cfg.Client.Password = os.Getenv("REDFISH_WEB_PASSWORD")
 	}
 
 	// Create a redfish client
 	config := gofish.ClientConfig{
 		Endpoint:         endpoint,
-		Username:         cfg.Web.Username,
-		Password:         cfg.Web.Password,
-		Insecure:         cfg.Web.HTTPClientConfig.TLSConfig.InsecureSkipVerify,
-		BasicAuth:        !cfg.Web.SessionToken,
+		Username:         cfg.Client.Username,
+		Password:         cfg.Client.Password,
+		Insecure:         cfg.Client.HTTPClientConfig.TLSConfig.InsecureSkipVerify,
+		BasicAuth:        !cfg.Client.SessionToken,
 		HTTPClient:       httpClient,
 		ReuseConnections: true,
 	}

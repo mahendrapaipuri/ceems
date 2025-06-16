@@ -23,12 +23,21 @@ const (
 
 // CLI opts.
 var (
-	kubeConfigFile = CEEMSExporterApp.Flag(
+	kubeConfigFileDepr = CEEMSExporterApp.Flag(
 		"collector.k8s.kube-config-file",
 		"Path to the configuration file to connect to k8s cluster. If left empty, in-cluster config will be used",
+	).Default("").Hidden().String()
+	kubeConfigFile = CEEMSExporterApp.Flag(
+		"collector.k8s.kubeconfig.file",
+		"Path to the configuration file to connect to k8s cluster. If left empty, in-cluster config will be used",
 	).Default("").String()
-	kubeletSocketFile = CEEMSExporterApp.Flag(
+
+	kubeletSocketFileDepre = CEEMSExporterApp.Flag(
 		"collector.k8s.kubelet-socket-file",
+		"Path to the kubelet pod-resources socket file",
+	).Default("/var/lib/kubelet/pod-resources/kubelet.sock").Hidden().String()
+	kubeletSocketFile = CEEMSExporterApp.Flag(
+		"collector.k8s.kubelet-podresources-socket.file",
 		"Path to the kubelet pod-resources socket file",
 	).Default("/var/lib/kubelet/pod-resources/kubelet.sock").String()
 	k8sCollectPSIStats = CEEMSExporterApp.Flag(
@@ -59,6 +68,19 @@ func init() {
 
 // NewK8sCollector returns a new Collector exposing a summary of cgroups.
 func NewK8sCollector(logger *slog.Logger) (Collector, error) {
+	// Log deprecation notices
+	if *kubeConfigFileDepr != "" {
+		logger.Warn("flag --collector.k8s.kube-config-file has been deprecated. Use --collector.k8s.kubeconfig.file instead")
+
+		*kubeConfigFile = *kubeConfigFileDepr
+	}
+
+	if *kubeletSocketFileDepre != "" {
+		logger.Warn("flag --collector.k8s.kubelet-socket-file has been deprecated. Use --collector.k8s.kubelet-podresources-socket.file instead")
+
+		*kubeletSocketFile = *kubeletSocketFileDepre
+	}
+
 	// Get SLURM's cgroup details
 	cgroupManager, err := NewCgroupManager(k8s, logger)
 	if err != nil {

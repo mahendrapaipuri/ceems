@@ -50,8 +50,10 @@ const (
 // Current hostname.
 var hostname string
 
-// Disable capbility awareness.
-var disableCapAwareness bool
+// Global scoped CLI vars.
+var (
+	disableCapAwareness bool
+)
 
 // Empty hostname flag (Used only for testing).
 // var emptyHostnameLabel *bool
@@ -71,101 +73,111 @@ func NewCEEMSExporter() (*CEEMSExporter, error) {
 
 // Main is the entry point of the `ceems_exporter` command.
 func (b *CEEMSExporter) Main() error {
+	// Local scoped variables
 	var (
-		// Alloy target discoverer related flags
-		enableDiscoverer = b.App.Flag(
-			"discoverer.alloy-targets",
-			"Enable Grafana Alloy targets discoverer. Supported for SLURM and k8s. (default: false).",
-		).Default("false").Bool()
-		alloyTargetEnvVars = b.App.Flag(
-			"discoverer.alloy-targets.env-var",
-			"Enable continuous profiling by Grafana Alloy only on the processes having any of these environment variables.",
-		).Strings()
-		alloySelfTarget = b.App.Flag(
-			"discoverer.alloy-targets.self-profiler",
-			"Enable continuous profiling by Grafana Alloy on current process (default: false).",
-		).Default("false").Bool()
-
-		// eBPF profiling related flags
-		enableProfiler = b.App.Flag(
-			"profiling.ebpf",
-			"[Experimental] Enable eBPF based continuous profiling. Supported for SLURM and k8s. Enabling this "+
-				"will continuously profile compute units without needing to deploy Grafana Alloy (default: false).",
-		).Default("false").Bool()
-		profilingConfigFile = b.App.Flag(
-			"profiling.ebpf.config-file",
-			"Path to eBPF based continuous profiling configuration file.",
-		).Envar("CEEMS_EXPORTER_PROFILING_CONFIG_FILE").Default("").String()
-		profilingTargetEnvVars = b.App.Flag(
-			"profiling.ebpf.env-var",
-			"Enable eBPF based continuous profiling only on the processes having any of these environment variables.",
-		).Strings()
-		profilingSelfTarget = b.App.Flag(
-			"profiling.ebpf.self-profiler",
-			"Enable eBPF based continuous profiling on current process (default: false).",
-		).Default("false").Bool()
-
-		webListenAddresses = b.App.Flag(
-			"web.listen-address",
-			"Addresses on which to expose metrics and web interface.",
-		).Default(":9010").Strings()
-		webConfigFile = b.App.Flag(
-			"web.config.file",
-			"Path to configuration file that can enable TLS or authentication. See: https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md",
-		).Envar("CEEMS_EXPORTER_WEB_CONFIG_FILE").Default("").String()
-		metricsPath = b.App.Flag(
-			"web.telemetry-path",
-			"Path under which to expose metrics.",
-		).Default("/metrics").String()
-		targetsPath = b.App.Flag(
-			"web.targets-path",
-			"Path under which to expose Grafana Alloy targets.",
-		).Default("/alloy-targets").String()
-		disableExporterMetrics = b.App.Flag(
-			"web.disable-exporter-metrics",
-			"Exclude metrics about the exporter itself (promhttp_*, process_*, go_*).",
-		).Bool()
-		maxRequests = b.App.Flag(
-			"web.max-requests",
-			"Maximum number of parallel scrape requests. Use 0 to disable.",
-		).Default("40").Int()
-		disableDefaultCollectors = b.App.Flag(
-			"collector.disable-defaults",
-			"Set all collectors to disabled by default.",
-		).Default("false").Bool()
-		maxProcs = b.App.Flag(
-			"runtime.gomaxprocs", "The target number of CPUs Go will run on (GOMAXPROCS)",
-		).Envar("GOMAXPROCS").Default("1").Int()
-		enableDebugServer = b.App.Flag(
-			"web.debug-server",
-			"Enable /debug/pprof profiling endpoints. (default: disabled).",
-		).Default("false").Bool()
-
-		runAsUser = b.App.Flag(
-			"security.run-as-user",
-			"User to run as when exporter is started as root. Accepts either a username or uid.",
-		).Default("nobody").String()
+		disableDefaultCollectors, disableExporterMetrics, enableDebugServer, systemdSocket, dropPrivs  bool
+		enableDiscoverer, enableProfiler, profilingExpandEnvVars, profilingSelfTarget, alloySelfTarget bool
+		webConfigFile, profilingConfigFile, metricsPath, targetsPath, runAsUser                        string
+		maxRequests, maxProcs                                                                          int
+		webListenAddresses, alloyTargetEnvVars, profilingTargetEnvVars                                 []string
 	)
 
-	// test CLI flags hidden
+	b.App.Flag(
+		"collector.disable-defaults",
+		"Set all collectors to disabled by default.",
+	).Default("false").BoolVar(&disableDefaultCollectors)
+
+	// Alloy target discoverer related flags
+	b.App.Flag(
+		"discoverer.alloy-targets",
+		"Enable Grafana Alloy targets discoverer. Supported for SLURM and k8s. (default: false).",
+	).Default("false").BoolVar(&enableDiscoverer)
+	b.App.Flag(
+		"discoverer.alloy-targets.env-var",
+		"Enable continuous profiling by Grafana Alloy only on the processes having any of these environment variables.",
+	).StringsVar(&alloyTargetEnvVars)
+	b.App.Flag(
+		"discoverer.alloy-targets.self-profiler",
+		"Enable continuous profiling by Grafana Alloy on current process (default: false).",
+	).Default("false").BoolVar(&alloySelfTarget)
+
+	// eBPF profiling related flags
+	b.App.Flag(
+		"profiling.ebpf",
+		"[Experimental] Enable eBPF based continuous profiling. Supported for SLURM and k8s. Enabling this "+
+			"will continuously profile compute units without needing to deploy Grafana Alloy (default: false).",
+	).Default("false").BoolVar(&enableProfiler)
+	b.App.Flag(
+		"profiling.ebpf.config.file",
+		"Path to eBPF based continuous profiling configuration file.",
+	).Envar("CEEMS_EXPORTER_PROFILING_CONFIG_FILE").Default("").StringVar(&profilingConfigFile)
+	b.App.Flag(
+		"profiling.ebpf.config.file.expand-env-vars",
+		"Any environment variables that are referenced in eBPF config file will be expanded. To escape $ use $$ (default: false).",
+	).Default("false").BoolVar(&profilingExpandEnvVars)
+	b.App.Flag(
+		"profiling.ebpf.env-var",
+		"Enable eBPF based continuous profiling only on the processes having any of these environment variables.",
+	).StringsVar(&profilingTargetEnvVars)
+	b.App.Flag(
+		"profiling.ebpf.self-profiler",
+		"Enable eBPF based continuous profiling on current process (default: false).",
+	).Default("false").BoolVar(&profilingSelfTarget)
+
+	b.App.Flag(
+		"web.listen-address",
+		"Addresses on which to expose metrics and web interface.",
+	).Default(":9010").StringsVar(&webListenAddresses)
+	b.App.Flag(
+		"web.config.file",
+		"Path to configuration file that can enable TLS or authentication. See: https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md",
+	).Envar("CEEMS_EXPORTER_WEB_CONFIG_FILE").Default("").StringVar(&webConfigFile)
+	b.App.Flag(
+		"web.telemetry-path",
+		"Path under which to expose metrics.",
+	).Default("/metrics").StringVar(&metricsPath)
+	b.App.Flag(
+		"web.targets-path",
+		"Path under which to expose Grafana Alloy targets.",
+	).Default("/alloy-targets").StringVar(&targetsPath)
+	b.App.Flag(
+		"web.disable-exporter-metrics",
+		"Exclude metrics about the exporter itself (promhttp_*, process_*, go_*).",
+	).BoolVar(&disableExporterMetrics)
+	b.App.Flag(
+		"web.max-requests",
+		"Maximum number of parallel scrape requests. Use 0 to disable.",
+	).Default("40").IntVar(&maxRequests)
+	b.App.Flag(
+		"web.debug-server",
+		"Enable /debug/pprof profiling endpoints. (default: disabled).",
+	).Default("false").BoolVar(&enableDebugServer)
+
+	// Socket activation only available on Linux
+	if runtime.GOOS == "linux" {
+		b.App.Flag(
+			"web.systemd-socket",
+			"Use systemd socket activation listeners instead of port listeners (Linux only).",
+		).Default("false").BoolVar(&systemdSocket)
+	}
+
+	// Security related flags
+	b.App.Flag(
+		"security.run-as-user",
+		"User to run as when exporter is started as root. Accepts either a username or uid.",
+	).Default("nobody").StringVar(&runAsUser)
+	b.App.Flag(
+		"security.drop-privileges",
+		"Drop privileges and run as nobody when exporter is started as root.",
+	).Default("true").Hidden().BoolVar(&dropPrivs)
 	b.App.Flag(
 		"security.disable-cap-awareness",
 		"Disable capability awareness and run as privileged process (default: false).",
 	).Default("false").Hidden().BoolVar(&disableCapAwareness)
 
-	dropPrivs := b.App.Flag(
-		"security.drop-privileges",
-		"Drop privileges and run as nobody when exporter is started as root.",
-	).Default("true").Hidden().Bool()
-
-	// Socket activation only available on Linux
-	systemdSocket := func() *bool { b := false; return &b }() //nolint:nlreturn
-	if runtime.GOOS == "linux" {
-		systemdSocket = b.App.Flag(
-			"web.systemd-socket",
-			"Use systemd socket activation listeners instead of port listeners (Linux only).",
-		).Bool()
-	}
+	b.App.Flag(
+		"runtime.gomaxprocs", "The target number of CPUs Go will run on (GOMAXPROCS)",
+	).Envar("GOMAXPROCS").Default("1").IntVar(&maxProcs)
 
 	promslogConfig := &promslog.Config{}
 	flag.AddFlags(&b.App, promslogConfig)
@@ -180,8 +192,8 @@ func (b *CEEMSExporter) Main() error {
 
 	// Get absolute path for web config file if provided
 	var webConfigFilePath string
-	if *webConfigFile != "" {
-		webConfigFilePath, err = filepath.Abs(*webConfigFile)
+	if webConfigFile != "" {
+		webConfigFilePath, err = filepath.Abs(webConfigFile)
 		if err != nil {
 			return fmt.Errorf("failed to get absolute path of the web config file: %w", err)
 		}
@@ -190,7 +202,7 @@ func (b *CEEMSExporter) Main() error {
 	// Set logger here after properly configuring promlog
 	logger := promslog.New(promslogConfig)
 
-	if *disableDefaultCollectors {
+	if disableDefaultCollectors {
 		DisableDefaultCollectors()
 	}
 
@@ -213,7 +225,7 @@ func (b *CEEMSExporter) Main() error {
 		}
 	}
 
-	runtime.GOMAXPROCS(*maxProcs)
+	runtime.GOMAXPROCS(maxProcs)
 	logger.Debug("Go MAXPROCS", "procs", runtime.GOMAXPROCS(0))
 
 	// Create context that listens for the interrupt signal from the OS.
@@ -229,9 +241,9 @@ func (b *CEEMSExporter) Main() error {
 	// Create a new instance of Alloy targets discoverer
 	discovererConfig := &discovererConfig{
 		logger:        logger.With("discoverer", "alloy_targets"),
-		enabled:       *enableDiscoverer,
-		targetEnvVars: *alloyTargetEnvVars,
-		selfProfile:   *alloySelfTarget,
+		enabled:       enableDiscoverer,
+		targetEnvVars: alloyTargetEnvVars,
+		selfProfile:   alloySelfTarget,
 	}
 
 	discoverer, err := NewTargetDiscoverer(discovererConfig)
@@ -241,12 +253,13 @@ func (b *CEEMSExporter) Main() error {
 
 	// Create a new instance of profiler
 	profilerConfig := &profilerConfig{
-		logger:        logger.With("profiler", "ebpf"),
-		logLevel:      promslogConfig.Level.String(),
-		enabled:       *enableProfiler,
-		configFile:    *profilingConfigFile,
-		targetEnvVars: *profilingTargetEnvVars,
-		selfProfile:   *profilingSelfTarget,
+		logger:                  logger.With("profiler", "ebpf"),
+		logLevel:                promslogConfig.Level.String(),
+		enabled:                 enableProfiler,
+		configFile:              profilingConfigFile,
+		configFileExpandEnvVars: profilingExpandEnvVars,
+		targetEnvVars:           profilingTargetEnvVars,
+		selfProfile:             profilingSelfTarget,
 	}
 
 	profiler, err := NeweBPFProfiler(profilerConfig)
@@ -277,7 +290,7 @@ func (b *CEEMSExporter) Main() error {
 	// We should be minimally intrusive but at the same time should provide maximum
 	// security
 	securityCfg := &security.Config{
-		RunAsUser:      *runAsUser,
+		RunAsUser:      runAsUser,
 		Caps:           appCaps,
 		ReadPaths:      append([]string{webConfigFilePath}, appReadPaths...),
 		ReadWritePaths: appReadWritePaths,
@@ -292,7 +305,7 @@ func (b *CEEMSExporter) Main() error {
 	}
 
 	// Drop all unnecessary privileges
-	if *dropPrivs {
+	if dropPrivs {
 		if err := securityManager.DropPrivileges(disableCapAwareness); err != nil {
 			logger.Error("Failed to drop privileges", "err", err)
 
@@ -306,14 +319,14 @@ func (b *CEEMSExporter) Main() error {
 		Collector:  collector,
 		Discoverer: discoverer,
 		Web: WebConfig{
-			Addresses:              *webListenAddresses,
-			WebSystemdSocket:       *systemdSocket,
+			Addresses:              webListenAddresses,
+			WebSystemdSocket:       systemdSocket,
 			WebConfigFile:          webConfigFilePath,
-			MetricsPath:            *metricsPath,
-			TargetsPath:            *targetsPath,
-			MaxRequests:            *maxRequests,
-			IncludeExporterMetrics: !*disableExporterMetrics,
-			EnableDebugServer:      *enableDebugServer,
+			MetricsPath:            metricsPath,
+			TargetsPath:            targetsPath,
+			MaxRequests:            maxRequests,
+			IncludeExporterMetrics: !disableExporterMetrics,
+			EnableDebugServer:      enableDebugServer,
 			LandingConfig: &web.LandingConfig{
 				Name:        b.App.Name,
 				Description: b.App.Help,
@@ -321,11 +334,11 @@ func (b *CEEMSExporter) Main() error {
 				HeaderColor: "#3cc9beff",
 				Links: []web.LandingLinks{
 					{
-						Address: *metricsPath,
+						Address: metricsPath,
 						Text:    "Metrics",
 					},
 					{
-						Address: *targetsPath,
+						Address: targetsPath,
 						Text:    "Grafana Alloy Targets",
 					},
 				},

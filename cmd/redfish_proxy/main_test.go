@@ -109,7 +109,7 @@ redfish_proxy:
 		os.WriteFile(configFilePath, []byte(test.content), 0o600)
 
 		// Read config file
-		cfg, err := common.MakeConfig[Redfish](configFilePath)
+		cfg, err := common.MakeConfig[Redfish](configFilePath, false)
 		if test.err {
 			require.Error(t, err, test.name)
 		} else {

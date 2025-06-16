@@ -183,7 +183,7 @@ ceems_lb:
 `
 
 	configFilePath := makeConfigFile(configFile, tmpDir)
-	_, err := common.MakeConfig[CEEMSLBAppConfig](configFilePath)
+	_, err := common.MakeConfig[CEEMSLBAppConfig](configFilePath, false)
 	require.Error(t, err, "missing IDs")
 }
 
@@ -200,7 +200,7 @@ ceems_lb:
 `
 
 	configFilePath := makeConfigFile(configFile, tmpDir)
-	_, err := common.MakeConfig[CEEMSLBAppConfig](configFilePath)
+	_, err := common.MakeConfig[CEEMSLBAppConfig](configFilePath, false)
 	require.Error(t, err, "missing backends")
 }
 
@@ -222,6 +222,6 @@ clusters:
   - id: "default-1"`
 
 	configFilePath := makeConfigFile(configFile, tmpDir)
-	_, err := common.MakeConfig[CEEMSLBAppConfig](configFilePath)
+	_, err := common.MakeConfig[CEEMSLBAppConfig](configFilePath, false)
 	require.Error(t, err)
 }

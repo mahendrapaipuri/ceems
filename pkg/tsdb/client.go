@@ -22,8 +22,8 @@ import (
 
 // Custom errors.
 var (
-	ErrMissingData         = errors.New("missing data in Client response")
-	ErrMissingConfig       = errors.New("global config not found in Client config")
+	ErrMissingData         = errors.New("missing data in client response")
+	ErrMissingConfig       = errors.New("global config not found in client config")
 	ErrFailedTypeAssertion = errors.New("failed type assertion")
 )
 
