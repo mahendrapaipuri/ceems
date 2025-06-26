@@ -1,9 +1,37 @@
 # Changelog
 
+## 0.9.0 / 2025-06-26
+
+### Breaking Changes
+
+#### CEEMS LB
+
+- Undocumented Resource-based LB strategy has been removed. Deployments using this strategy must use Prometheus' [remote read](https://prometheus.io/docs/prometheus/latest/querying/remote_read_api/) feature to achieve the same functionality.
+
+#### CEEMS Exporter
+
+- The configuration of Redfish collector must be under the section `redfish_collector` instead of `redfish_web`. More details in [docs](https://mahendrapaipuri.github.io/ceems/docs/configuration/ceems-exporter#redfish-collector).
+- CLI flag `--collector.redfish.web-config` has been deprecated in the favour of `--collector.redfish.config.file`.
+- CLI flag `--collector.k8s.kube-config-file` has been deprecated in the favour of `--collector.k8s.kubeconfig.file`.
+- CLI flag `--collector.k8s.kubelet-socket-file` has been deprecated in the favour of `--collector.k8s.kubelet-podresources-socket.file`.
+
+#### Redfish Proxy
+
+- The configuration of Redfish proxy must be under `redfish_proxy` instead of `redfish_proxy.web`. More details in [docs](https://mahendrapaipuri.github.io/ceems/docs/configuration/ceems-exporter#redfish-collector).
+
+### List of PRs
+
+- [FEAT] Support env vars in config files [#369](https://github.com/mahendrapaipuri/ceems/pull/369) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEAT] Add k8s admission controller [#367](https://github.com/mahendrapaipuri/ceems/pull/367) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [MAINT] refactor: Rename config section names to be consistent across package [#364](https://github.com/mahendrapaipuri/ceems/pull/364) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [BREAKING] breaking: Remove resource-based LB strategy [#361](https://github.com/mahendrapaipuri/ceems/pull/361) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEAT] Native eBPF profiler [#360](https://github.com/mahendrapaipuri/ceems/pull/360) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [MAINT] Bump dependencies [#359](https://github.com/mahendrapaipuri/ceems/pull/359), [#362](https://github.com/mahendrapaipuri/ceems/pull/363), [#365](https://github.com/mahendrapaipuri/ceems/pull/365), [#366](https://github.com/mahendrapaipuri/ceems/pull/366), [#368](https://github.com/mahendrapaipuri/ceems/pull/368), [#371](https://github.com/mahendrapaipuri/ceems/pull/371) ([@dependabot](https://github.com/dependabot))
+
 ## 0.8.0 / 2025-05-20
 
 - [FEAT] Harden redfish proxy app [#357](https://github.com/mahendrapaipuri/ceems/pull/357) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
-- [MAINT] Several maintenance changes [#354](https://github.com/mahendrapaipuri/ceems/pull/354) ([@ncreddine](https://github.com/ncreddine))
+- [MAINT] Several maintenance changes [#354](https://github.com/mahendrapaipuri/ceems/pull/354) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
 - [FEAT] Add k8s collector in the exporter [#349](https://github.com/mahendrapaipuri/ceems/pull/349) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
 - [MAINT] Bump dependencies [#345](https://github.com/mahendrapaipuri/ceems/pull/345), [#346](https://github.com/mahendrapaipuri/ceems/pull/346), [#347](https://github.com/mahendrapaipuri/ceems/pull/347), [#348](https://github.com/mahendrapaipuri/ceems/pull/348), [#351](https://github.com/mahendrapaipuri/ceems/pull/351), [#353](https://github.com/mahendrapaipuri/ceems/pull/353), [#355](https://github.com/mahendrapaipuri/ceems/pull/355), [#356](https://github.com/mahendrapaipuri/ceems/pull/356), [#358](https://github.com/mahendrapaipuri/ceems/pull/358) ([@dependabot](https://github.com/dependabot))
 
