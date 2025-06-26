@@ -105,7 +105,7 @@ func (b *CEEMSExporter) Main() error {
 	b.App.Flag(
 		"profiling.ebpf",
 		"[Experimental] Enable eBPF based continuous profiling. Supported for SLURM and k8s. Enabling this "+
-			"will continuously profile compute units without needing to deploy Grafana Alloy (default: false).",
+			"will continuously profile compute units without needing to deploy Grafana Alloy. Available only on amd64 and arm64 architectures. (default: false).",
 	).Default("false").BoolVar(&enableProfiler)
 	b.App.Flag(
 		"profiling.ebpf.config.file",
@@ -256,7 +256,7 @@ func (b *CEEMSExporter) Main() error {
 		selfProfile:             profilingSelfTarget,
 	}
 
-	profiler, err := NeweBPFProfiler(profilerConfig)
+	profiler, err := NewProfiler(profilerConfig)
 	if err != nil {
 		return err
 	}

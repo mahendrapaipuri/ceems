@@ -1,3 +1,6 @@
+//go:build amd64 || arm64
+// +build amd64 arm64
+
 package collector
 
 import (
@@ -5,10 +8,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net/url"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"time"
 
@@ -25,143 +26,9 @@ import (
 	"github.com/mahendrapaipuri/ceems/internal/common"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/config"
-	"github.com/prometheus/common/model"
 )
 
-// Valid Demangle options.
-var (
-	validDemangleOpts = []string{"none", "simplified", "templates", "full"}
-)
-
-// Default session config
-// Using same defaults used by Grafana Alloy
-// Ref: https://grafana.com/docs/alloy/latest/reference/components/pyroscope/pyroscope.ebpf/?pg=oss-alloy&plcmt=hero-btn-3.
-var (
-	defaultSessionConfig = SessionConfig{
-		PIDCacheSize:      32,
-		BuildIDCacheSize:  64,
-		SymbolsMapSize:    16384,
-		PIDMapSize:        2048,
-		SameFileCacheSize: 8,
-		CacheRounds:       3,
-		CollectInterval:   model.Duration(30 * time.Second),
-		DiscoverInterval:  model.Duration(30 * time.Second),
-		CollectUser:       true,
-		CollectKernel:     false,
-		PythonEnabled:     true,
-		SampleRate:        97,
-		Demangle:          "none",
-	}
-
-	defaultPyroscopeURL = "http://localhost:4040"
-)
-
-type SessionConfig struct {
-	CollectInterval   model.Duration `yaml:"collect_interval"`
-	DiscoverInterval  model.Duration `yaml:"discover_interval"`
-	CollectUser       bool           `yaml:"collect_user_profile"`
-	CollectKernel     bool           `yaml:"collect_kernel_profile"`
-	PythonEnabled     bool           `yaml:"python_enabled"`
-	SampleRate        int            `yaml:"sample_rate"`
-	Demangle          string         `yaml:"demangle"`
-	BuildIDCacheSize  int            `yaml:"build_id_cache_size"`
-	PIDCacheSize      int            `yaml:"pid_cache_size"`
-	PIDMapSize        uint32         `yaml:"pid_map_size"`
-	SameFileCacheSize int            `yaml:"same_file_cache_size"`
-	SymbolsMapSize    uint32         `yaml:"symbols_map_size"`
-	CacheRounds       int            `yaml:"cache_rounds"`
-}
-
-// UnmarshalYAML implements the yaml.Unmarshaler interface.
-func (c *SessionConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	// Set a default config
-	*c = defaultSessionConfig
-
-	type plain SessionConfig
-
-	if err := unmarshal((*plain)(c)); err != nil {
-		return err
-	}
-
-	// Remove any spaces and convert to lower
-	c.Demangle = strings.TrimSpace(strings.ToLower(c.Demangle))
-
-	// Validate config
-	if err := c.Validate(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// Validate validates the config.
-func (c *SessionConfig) Validate() error {
-	// Check if demangle is none/simplified/templates/full
-	if !slices.Contains(validDemangleOpts, c.Demangle) {
-		return fmt.Errorf("invalid demangle options %s. expected one of %s", c.Demangle, strings.Join(validDemangleOpts, ","))
-	}
-
-	return nil
-}
-
-type PyroscopeConfig struct {
-	URL              string                  `yaml:"url"`
-	ExternalLabels   map[string]string       `yaml:"external_labels"`
-	HTTPClientConfig config.HTTPClientConfig `yaml:",inline"`
-}
-
-// UnmarshalYAML implements the yaml.Unmarshaler interface.
-func (c *PyroscopeConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	// Set a default config
-	*c = PyroscopeConfig{
-		URL:              defaultPyroscopeURL,
-		HTTPClientConfig: config.DefaultHTTPClientConfig,
-	}
-
-	type plain PyroscopeConfig
-
-	if err := unmarshal((*plain)(c)); err != nil {
-		return err
-	}
-
-	// Validate config
-	if err := c.Validate(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// Validate validates the config.
-func (c *PyroscopeConfig) Validate() error {
-	// Check if URL is valid
-	if _, err := url.Parse(c.URL); err != nil {
-		return fmt.Errorf("invalid pyroscope URL: %w", err)
-	}
-
-	return nil
-}
-
-type CEEMSProfilerConfig struct {
-	Session   SessionConfig   `yaml:"ebpf"`
-	Pyroscope PyroscopeConfig `yaml:"pyroscope"`
-}
-
-type ProfilerConfig struct {
-	Profiler CEEMSProfilerConfig `yaml:"ceems_profiler"`
-}
-
-type profilerConfig struct {
-	logger                  *slog.Logger
-	logLevel                string
-	enabled                 bool
-	configFile              string
-	configFileExpandEnvVars bool
-	targetEnvVars           []string
-	selfProfile             bool
-}
-
-type Profiler struct {
+type eBPFProfiler struct {
 	logger         *slog.Logger
 	config         *ProfilerConfig
 	session        ebpfspy.Session
@@ -171,13 +38,13 @@ type Profiler struct {
 	enabled        bool
 }
 
-// NeweBPFProfiler returns a new instance of continuous profiler based on eBPF.
-func NeweBPFProfiler(c *profilerConfig) (*Profiler, error) {
+// NewProfiler returns a new instance of continuous profiler based on eBPF.
+func NewProfiler(c *profilerConfig) (Profiler, error) {
 	var err error
 
 	// If profiler is not enabled, return early
 	if !c.enabled {
-		return &Profiler{logger: c.logger, enabled: false}, nil
+		return &eBPFProfiler{logger: c.logger, enabled: false}, nil
 	}
 
 	// Make a new instance of discoverer that gathers targets
@@ -199,7 +66,7 @@ func NeweBPFProfiler(c *profilerConfig) (*Profiler, error) {
 	if !targets.Enabled() {
 		c.logger.Warn("eBPF based profiling is only available when one of slurm or k8s collectors are enabled")
 
-		return &Profiler{logger: c.logger, enabled: false}, nil
+		return &eBPFProfiler{logger: c.logger, enabled: false}, nil
 	}
 
 	// Initialise config
@@ -293,7 +160,7 @@ func NeweBPFProfiler(c *profilerConfig) (*Profiler, error) {
 		c.logger.Warn("Failed to parse capability name(s)", "err", err)
 	}
 
-	return &Profiler{
+	return &eBPFProfiler{
 		logger:         c.logger,
 		config:         cfg,
 		session:        session,
@@ -305,12 +172,12 @@ func NeweBPFProfiler(c *profilerConfig) (*Profiler, error) {
 }
 
 // Enabled returns if profiler is enabled or not.
-func (p *Profiler) Enabled() bool {
+func (p *eBPFProfiler) Enabled() bool {
 	return p.enabled
 }
 
 // Start a new profiling session.
-func (p *Profiler) Start(ctx context.Context) error {
+func (p *eBPFProfiler) Start(ctx context.Context) error {
 	p.logger.Debug("Starting profiling session")
 
 	// Start a new profiling session
@@ -354,7 +221,7 @@ func (p *Profiler) Start(ctx context.Context) error {
 }
 
 // Stop current profiling session.
-func (p *Profiler) Stop() {
+func (p *eBPFProfiler) Stop() {
 	p.logger.Debug("Stopping profiling session")
 
 	// Stop session
@@ -363,7 +230,7 @@ func (p *Profiler) Stop() {
 
 // collectProfiles fetches profiles from current session and sends them to ingester
 // on profiles channel.
-func (p *Profiler) collectProfiles(ctx context.Context, profiles chan *pushv1.PushRequest) error {
+func (p *eBPFProfiler) collectProfiles(ctx context.Context, profiles chan *pushv1.PushRequest) error {
 	// Build profiles
 	builders := pprof.NewProfileBuilders(pprof.BuildersOptions{
 		SampleRate:    int64(p.sessionOptions.SampleRate),
@@ -423,7 +290,7 @@ func (p *Profiler) collectProfiles(ctx context.Context, profiles chan *pushv1.Pu
 }
 
 // ingest pushes the profile samples to Pyroscope server.
-func (p *Profiler) ingest(ctx context.Context, profiles chan *pushv1.PushRequest) error {
+func (p *eBPFProfiler) ingest(ctx context.Context, profiles chan *pushv1.PushRequest) error {
 	httpClient, err := config.NewClientFromConfig(p.config.Profiler.Pyroscope.HTTPClientConfig, "ceems_profiling")
 	if err != nil {
 		return err
@@ -442,7 +309,7 @@ func (p *Profiler) ingest(ctx context.Context, profiles chan *pushv1.PushRequest
 }
 
 // convertTargetOptions converts the discovered Alloy targets to TargetOptions.
-func (p *Profiler) convertTargetOptions() sd.TargetsOptions {
+func (p *eBPFProfiler) convertTargetOptions() sd.TargetsOptions {
 	// Discover new targets
 	targets, err := p.targetsFinder.Discover()
 	if err != nil {

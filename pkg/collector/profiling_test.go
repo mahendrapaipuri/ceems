@@ -1,3 +1,6 @@
+//go:build amd64 || arm64
+// +build amd64 arm64
+
 package collector
 
 import (
@@ -92,7 +95,7 @@ ceems_profiler:
 		}
 
 		// New instance of profiler
-		_, err := NeweBPFProfiler(c)
+		_, err := NewProfiler(c)
 		if test.errExpected {
 			require.Error(t, err, test.name)
 		} else {
@@ -146,7 +149,7 @@ ceems_profiler:
 	}
 
 	// New instance of profiler
-	profiler, err := NeweBPFProfiler(c)
+	profiler, err := NewProfiler(c)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(t.Context())
@@ -280,7 +283,7 @@ func TestTargetUpdatesAndCollection(t *testing.T) {
 	config.Profiler.Session.DiscoverInterval = model.Duration(200 * time.Millisecond)
 
 	// Create an instance of profiler
-	p := &Profiler{
+	p := &eBPFProfiler{
 		logger:         noOpLogger,
 		session:        session,
 		config:         config,
