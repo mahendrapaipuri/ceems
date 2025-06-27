@@ -49,10 +49,11 @@ func NewProfiler(c *profilerConfig) (Profiler, error) {
 
 	// Make a new instance of discoverer that gathers targets
 	discovererConfig := &discovererConfig{
-		logger:        c.logger,
-		enabled:       true,
-		targetEnvVars: c.targetEnvVars,
-		selfProfile:   c.selfProfile,
+		logger:              c.logger,
+		enabled:             true,
+		targetEnvVars:       c.targetEnvVars,
+		selfProfile:         c.selfProfile,
+		disableCapAwareness: true,
 	}
 
 	targets, err := NewTargetDiscoverer(discovererConfig)

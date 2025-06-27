@@ -33,12 +33,12 @@ var (
 	redfishConfigFileDepre = CEEMSExporterApp.Flag(
 		"collector.redfish.web-config",
 		"Path to Redfish web configuration file.",
-	).Envar("CEEMS_EXPORTER_REDFISH_COLL_CONFIG_FILE").Default("").Hidden().String()
+	).Envar("CEEMS_EXPORTER_REDFISH_COLL_WEB_CONFIG_FILE").Default("").Hidden().String()
 
 	redfishConfigFile = CEEMSExporterApp.Flag(
 		"collector.redfish.config.file",
 		"Path to Redfish web configuration file.",
-	).Envar("CEEMS_EXPORTER_REDFISH_COLL_WEB_CONFIG_FILE").Default("").String()
+	).Envar("CEEMS_EXPORTER_REDFISH_COLL_CONFIG_FILE").Default("").String()
 
 	// Flag to control th expansion of env vars in config file.
 	redfishConfigExpandEnvVars = CEEMSExporterApp.Flag(

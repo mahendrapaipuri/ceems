@@ -29,12 +29,12 @@ const (
 
 // Security context names.
 const (
-	alloyTargetFilterCtx = "alloy_targets_filter"
+	profilingTargetFilterCtx = "profiling_targets_filter"
 )
 
 // targetDiscovererSecurityCtxData contains the input/output data for
 // discoverer function to execute inside security context.
-type alloyTargetFilterSecurityCtxData = perfProcFilterSecurityCtxData
+type targetDiscovererSecurityCtxData = perfProcFilterSecurityCtxData
 
 type Target struct {
 	Targets []string           `json:"targets"`
@@ -47,10 +47,11 @@ type Discoverer interface {
 }
 
 type discovererConfig struct {
-	logger        *slog.Logger
-	enabled       bool
-	targetEnvVars []string
-	selfProfile   bool
+	logger              *slog.Logger
+	enabled             bool
+	targetEnvVars       []string
+	selfProfile         bool
+	disableCapAwareness bool
 }
 
 type targetDiscoverer struct {
@@ -117,16 +118,16 @@ func NewTargetDiscoverer(c *discovererConfig) (Discoverer, error) {
 
 		// Setup security context
 		cfg := &security.SCConfig{
-			Name:         alloyTargetFilterCtx,
+			Name:         profilingTargetFilterCtx,
 			Caps:         auxCaps,
 			Func:         filterTargets,
 			Logger:       c.logger,
-			ExecNatively: disableCapAwareness,
+			ExecNatively: c.disableCapAwareness,
 		}
 
-		discoverer.securityContexts[alloyTargetFilterCtx], err = security.NewSecurityContext(cfg)
+		discoverer.securityContexts[profilingTargetFilterCtx], err = security.NewSecurityContext(cfg)
 		if err != nil {
-			c.logger.Error("Failed to create a security context for alloy target discoverer", "err", err)
+			c.logger.Error("Failed to create a security context for profiling target discoverer", "err", err)
 
 			return nil, err
 		}
@@ -171,7 +172,7 @@ func (d *targetDiscoverer) discover() ([]Target, error) {
 	}
 
 	// Read discovered cgroups into data pointer
-	dataPtr := &alloyTargetFilterSecurityCtxData{
+	dataPtr := &targetDiscovererSecurityCtxData{
 		cgroups:       cgroups,
 		targetEnvVars: d.targetEnvVars,
 		ignoreProc:    d.cgroupManager.ignoreProc,
@@ -180,7 +181,7 @@ func (d *targetDiscoverer) discover() ([]Target, error) {
 	// If there is a need to read processes' environ, use security context
 	// else execute function natively
 	if len(d.targetEnvVars) > 0 {
-		if securityCtx, ok := d.securityContexts[alloyTargetFilterCtx]; ok {
+		if securityCtx, ok := d.securityContexts[profilingTargetFilterCtx]; ok {
 			if err := securityCtx.Exec(dataPtr); err != nil {
 				return nil, err
 			}
@@ -231,10 +232,10 @@ func (d *targetDiscoverer) discover() ([]Target, error) {
 // filterTargets filters the targets based on target env vars and return filtered targets.
 func filterTargets(data interface{}) error {
 	// Assert data is of targetDiscovererSecurityCtxData
-	var d *alloyTargetFilterSecurityCtxData
+	var d *targetDiscovererSecurityCtxData
 
 	var ok bool
-	if d, ok = data.(*alloyTargetFilterSecurityCtxData); !ok {
+	if d, ok = data.(*targetDiscovererSecurityCtxData); !ok {
 		return security.ErrSecurityCtxDataAssertion
 	}
 

@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9.0 / 2025-06-26
+## 0.9.0 / 2025-06-27
 
 ### Breaking Changes
 

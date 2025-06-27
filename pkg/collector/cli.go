@@ -8,6 +8,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"syscall"
 	"time"
 
@@ -232,19 +233,6 @@ func (b *CEEMSExporter) Main() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	// Create a new instance of Alloy targets discoverer
-	discovererConfig := &discovererConfig{
-		logger:        logger.With("discoverer", "profiler_targets"),
-		enabled:       enableDiscoverer,
-		targetEnvVars: alloyTargetEnvVars,
-		selfProfile:   alloySelfTarget,
-	}
-
-	discoverer, err := NewTargetDiscoverer(discovererConfig)
-	if err != nil {
-		return err
-	}
-
 	// Create a new instance of profiler
 	profilerConfig := &profilerConfig{
 		logger:                  logger.With("profiler", "ebpf"),
@@ -258,6 +246,8 @@ func (b *CEEMSExporter) Main() error {
 
 	profiler, err := NewProfiler(profilerConfig)
 	if err != nil {
+		logger.Error("Failed to create a new profiler", "err", err)
+
 		return err
 	}
 
@@ -269,6 +259,8 @@ func (b *CEEMSExporter) Main() error {
 	// uses a lot of go routines and channels for communication. Executing all of them
 	// within a security context is not possible and hence, we disable awareness.
 	if profiler.Enabled() {
+		logger.Debug("Capability awareness is not supported when profiler is enabled")
+
 		disableCapAwareness = true
 	}
 
@@ -277,6 +269,24 @@ func (b *CEEMSExporter) Main() error {
 	// taken into account when creating individual collectors
 	collector, err := NewCEEMSCollector(logger)
 	if err != nil {
+		logger.Error("Failed to create a new CEEMS collector", "err", err)
+
+		return err
+	}
+
+	// Create a new instance of Alloy targets discoverer
+	discovererConfig := &discovererConfig{
+		logger:              logger.With("discoverer", "profiler_targets"),
+		enabled:             enableDiscoverer,
+		targetEnvVars:       alloyTargetEnvVars,
+		selfProfile:         alloySelfTarget,
+		disableCapAwareness: disableCapAwareness,
+	}
+
+	discoverer, err := NewTargetDiscoverer(discovererConfig)
+	if err != nil {
+		logger.Error("Failed to create a new target discoverer", "err", err)
+
 		return err
 	}
 
@@ -308,8 +318,14 @@ func (b *CEEMSExporter) Main() error {
 
 	// Drop all unnecessary privileges
 	if dropPrivs {
+		// Log list of required capabilities in case of errors
+		reqCaps := make([]string, len(appCaps))
+		for icap, cap := range appCaps {
+			reqCaps[icap] = cap.String()
+		}
+
 		if err := securityManager.DropPrivileges(disableCapAwareness); err != nil {
-			logger.Error("Failed to drop privileges", "err", err)
+			logger.Error("Failed to drop privileges", "err", err, "req_caps", strings.Join(reqCaps, ","))
 
 			return err
 		}
@@ -360,6 +376,8 @@ func (b *CEEMSExporter) Main() error {
 	// Create a new exporter server instance
 	server, err := NewCEEMSExporterServer(config)
 	if err != nil {
+		logger.Error("Failed to create a new CEEMS exporter server", "err", err)
+
 		return err
 	}
 
