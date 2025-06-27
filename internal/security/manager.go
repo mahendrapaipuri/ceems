@@ -41,6 +41,7 @@ type acl struct {
 type Manager struct {
 	logger           *slog.Logger
 	runAsUser        *user.User
+	currentUser      *user.User
 	caps             []cap.Value
 	acls             []acl
 	securityContexts map[string]*SecurityContext
@@ -57,7 +58,7 @@ func NewManager(c *Config, logger *slog.Logger) (*Manager, error) {
 	}
 
 	// Get current user
-	currentUser, err := user.Current()
+	manager.currentUser, err = user.Current()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get current user: %w", err)
 	}
@@ -107,10 +108,10 @@ func NewManager(c *Config, logger *slog.Logger) (*Manager, error) {
 		switch mode := fperms.Stat.Mode(); {
 		case mode.IsDir():
 			perms = 5
-			hasPerms = hasReadExecutable(fperms, currentUser, manager.runAsUser)
+			hasPerms = hasReadExecutable(fperms, manager.currentUser, manager.runAsUser)
 		case mode.IsRegular():
 			perms = 4
-			hasPerms = hasRead(fperms, currentUser, manager.runAsUser)
+			hasPerms = hasRead(fperms, manager.currentUser, manager.runAsUser)
 		}
 
 		// If the path is readable/executable by runAsUser, nothing to do here. Continue
@@ -144,10 +145,10 @@ func NewManager(c *Config, logger *slog.Logger) (*Manager, error) {
 		switch mode := fperms.Stat.Mode(); {
 		case mode.IsDir():
 			perms = 7
-			hasPerms = hasReadWriteExecutable(fperms, currentUser, manager.runAsUser)
+			hasPerms = hasReadWriteExecutable(fperms, manager.currentUser, manager.runAsUser)
 		case mode.IsRegular():
 			perms = 6
-			hasPerms = hasReadWrite(fperms, currentUser, manager.runAsUser)
+			hasPerms = hasReadWrite(fperms, manager.currentUser, manager.runAsUser)
 		}
 
 		// If the path is readable/executable by runAsUser, nothing to do here. Continue
@@ -292,6 +293,11 @@ func (m *Manager) addACLEntries() error {
 
 // changeUser switches the current user to run as user.
 func (m *Manager) changeUser() error {
+	// If current user and runAsUser is same, return
+	if m.currentUser.Uid == m.runAsUser.Uid {
+		return nil
+	}
+
 	localUserUID, err := strconv.Atoi(m.runAsUser.Uid)
 	if err != nil {
 		return fmt.Errorf("could not parse UID %s as int: %w", m.runAsUser.Uid, err)
