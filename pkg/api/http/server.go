@@ -70,6 +70,8 @@ type WebConfig struct {
 	MaxQueryPeriod    model.Duration
 	RequestsLimit     int
 	CORSOrigin        *regexp.Regexp
+	EnableCompression bool
+	CompressionLevel  int
 	URL               string                  `yaml:"url"`
 	HTTPClientConfig  config.HTTPClientConfig `yaml:",inline"`
 }
@@ -300,6 +302,12 @@ func New(c *Config) (*CEEMSServer, func(), error) {
 	}
 
 	router.Use(amw.Middleware)
+
+	// If compression is enabled, setup middleware
+	if c.Web.EnableCompression {
+		c.Logger.Debug("Responses will be compressed using gzip", "level", c.Web.CompressionLevel)
+		router.Use(Compress(c.Web.CompressionLevel))
+	}
 
 	// Instantiate new cache for storing current usage query results with TTL of 15 min
 	server.usageCache = ttlcache.New(
