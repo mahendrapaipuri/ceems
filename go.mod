@@ -7,7 +7,7 @@ toolchain go1.24.2
 require (
 	connectrpc.com/connect v1.18.1
 	github.com/alecthomas/kingpin/v2 v2.4.0
-	github.com/cilium/ebpf v0.18.0
+	github.com/cilium/ebpf v0.19.0
 	github.com/containerd/cgroups/v3 v3.0.5
 	github.com/go-chi/httprate v0.15.0
 	github.com/go-kit/log v0.2.1
