@@ -156,6 +156,12 @@ func (lb *CEEMSLoadBalancer) Main() error {
 		maxProcs                                                           int
 	)
 
+	// Get default run as user
+	defaultRunAsUser, err := security.GetDefaultRunAsUser()
+	if err != nil {
+		return err
+	}
+
 	lb.App.Flag(
 		"config.file",
 		"Configuration file path.",
@@ -181,8 +187,10 @@ func (lb *CEEMSLoadBalancer) Main() error {
 
 	lb.App.Flag(
 		"security.run-as-user",
-		"User to run as when LB server is started as root. Accepts either a username or uid.",
-	).Default("nobody").StringVar(&runAsUser)
+		"LB server will be run under this user. Accepts either a username or uid. If current user is unprivileged, same user "+
+			"will be used. When LB server is started as root, by default user will be changed to nobody. To be able to change the user necessary "+
+			"capabilities (CAP_SETUID, CAP_SETGID) must exist on the process.",
+	).Default(defaultRunAsUser).StringVar(&runAsUser)
 
 	// Hidden test flags
 	lb.App.Flag(
@@ -208,7 +216,7 @@ func (lb *CEEMSLoadBalancer) Main() error {
 	lb.App.UsageWriter(os.Stdout)
 	lb.App.HelpFlag.Short('h')
 
-	_, err := lb.App.Parse(os.Args[1:])
+	_, err = lb.App.Parse(os.Args[1:])
 	if err != nil {
 		return fmt.Errorf("failed to parse CLI flags: %w", err)
 	}

@@ -85,12 +85,18 @@ func NewCEEMSServer() (*CEEMSServer, error) {
 func (b *CEEMSServer) Main() error {
 	// CLI vars
 	var (
-		configFile, webConfigFile, routePrefix, corsOrigin, maxQueryPeriod, runAsUser                       string
-		enableDebugServer, skipDeleteOldUnits, disableChecks, disableCapAwareness, dropPrivs, systemdSocket bool
-		webListenAddresses, userHeaders                                                                     []string
-		requestsLimit, maxProcs                                                                             int
-		externalURL                                                                                         *url.URL
+		configFile, webConfigFile, routePrefix, corsOrigin, maxQueryPeriod, runAsUser                                    string
+		enableDebugServer, skipDeleteOldUnits, disableChecks, disableCapAwareness, dropPrivs, systemdSocket, compression bool
+		webListenAddresses, userHeaders                                                                                  []string
+		requestsLimit, maxProcs, compressionLevel                                                                        int
+		externalURL                                                                                                      *url.URL
 	)
+
+	// Get default run as user
+	defaultRunAsUser, err := security.GetDefaultRunAsUser()
+	if err != nil {
+		return err
+	}
 
 	b.App.Flag(
 		"config.file",
@@ -123,6 +129,14 @@ func (b *CEEMSServer) Main() error {
 		"Regex for CORS origin. It is fully anchored. Example: 'https?://(domain1|domain2)\\.com'.",
 	).Default(".*").StringVar(&corsOrigin)
 	b.App.Flag(
+		"web.compression",
+		"Enable gzip compression for responses (default: false).",
+	).Default("false").BoolVar(&compression)
+	b.App.Flag(
+		"web.compression.level",
+		"Compression level for the responses.",
+	).Default("5").IntVar(&compressionLevel)
+	b.App.Flag(
 		"web.debug-server",
 		"Enable /debug/pprof profiling endpoints. (default: disabled).",
 	).Default("false").BoolVar(&enableDebugServer)
@@ -133,8 +147,10 @@ func (b *CEEMSServer) Main() error {
 
 	b.App.Flag(
 		"security.run-as-user",
-		"User to run as when API server is started as root. Accepts either a username or uid.",
-	).Default("nobody").StringVar(&runAsUser)
+		"API server will be run under this user. Accepts either a username or uid. If current user is unprivileged, same user "+
+			"will be used. When API server is started as root, by default user will be changed to nobody. To be able to change the user necessary "+
+			"capabilities (CAP_SETUID, CAP_SETGID) must exist on the process.",
+	).Default(defaultRunAsUser).StringVar(&runAsUser)
 
 	// Hidden args that we can expose to users if found useful
 	b.App.Flag(
@@ -181,7 +197,7 @@ func (b *CEEMSServer) Main() error {
 	b.App.UsageWriter(os.Stdout)
 	b.App.HelpFlag.Short('h')
 
-	_, err := b.App.Parse(os.Args[1:])
+	_, err = b.App.Parse(os.Args[1:])
 	if err != nil {
 		return fmt.Errorf("failed to parse CLI flags: %w", err)
 	}
@@ -335,6 +351,8 @@ func (b *CEEMSServer) Main() error {
 			ExternalURL:       externalURL,
 			RoutePrefix:       routePrefix,
 			CORSOrigin:        corsRegex,
+			EnableCompression: compression,
+			CompressionLevel:  compressionLevel,
 			RequestsLimit:     requestsLimit,
 			MaxQueryPeriod:    period,
 			LandingConfig: &web.LandingConfig{

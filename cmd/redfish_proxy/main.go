@@ -33,6 +33,7 @@ var (
 		"^/redfish/v1/$",
 		"^/redfish/v1/Sessions$",
 		"^/redfish/v1/SessionService/Sessions$",
+		"^/redfish/v1/SessionService/Sessions/[a-zA-Z0-9-_]*$",
 		"^/redfish/v1/Chassis$",
 		"^/redfish/v1/Chassis/[a-zA-Z0-9-_]*$",
 		"^/redfish/v1/Chassis/[a-zA-Z0-9-_]*/Power$",
