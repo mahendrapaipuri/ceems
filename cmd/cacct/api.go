@@ -1,6 +1,7 @@
 package main
 
 import (
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
@@ -11,10 +12,15 @@ import (
 	"os"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	http_config "github.com/prometheus/common/config"
+)
+
+const (
+	headerKeyAcceptEncoding = "Accept-Encoding"
 )
 
 // stats returns units and usage structs by making requests to CEEMS API server.
@@ -50,6 +56,11 @@ func stats(
 				config.API.UserHeaderName: userHeaders,
 			},
 		}
+	}
+
+	// Add encoding header
+	config.API.Web.HTTPClientConfig.HTTPHeaders.Headers[headerKeyAcceptEncoding] = http_config.Header{
+		Values: []string{"gzip"},
 	}
 
 	// Parse web URL of API server
@@ -163,7 +174,7 @@ func makeRequest[T any](ctx context.Context, reqURL string, urlValues url.Values
 		}
 
 		// Read response body
-		body, err := io.ReadAll(resp.Body)
+		body, err := getBodyBytes(resp)
 		if err != nil {
 			return nil, err
 		}
@@ -181,4 +192,18 @@ func makeRequest[T any](ctx context.Context, reqURL string, urlValues url.Values
 
 		return data.Data, nil
 	}
+}
+
+func getBodyBytes(res *http.Response) ([]byte, error) {
+	if strings.EqualFold(res.Header.Get("Content-Encoding"), "gzip") {
+		reader, err := gzip.NewReader(res.Body)
+		if err != nil {
+			return nil, err
+		}
+		defer reader.Close()
+
+		return io.ReadAll(reader)
+	}
+
+	return io.ReadAll(res.Body)
 }
