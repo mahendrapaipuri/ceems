@@ -344,6 +344,19 @@ func DropCapabilities() error {
 	return setCapabilities(nil, false)
 }
 
+// GetDefaultRunAsUser returns default run as user for CLI args based on current user.
+func GetDefaultRunAsUser() (string, error) {
+	if syscall.Geteuid() == 0 {
+		return "nobody", nil
+	} else {
+		if currentUser, err := user.Current(); err != nil {
+			return "", fmt.Errorf("failed to get current user: %w", err)
+		} else {
+			return currentUser.Username, nil
+		}
+	}
+}
+
 // setCapabilities sets the specific list of Linux capabilities on current process.
 // It only add the capabilities to `permitted` set and it is responsible of the
 // functions that need privileges to enable `effective` set before perfoming
@@ -371,7 +384,7 @@ func setCapabilities(caps []cap.Value, enableEffective bool) error {
 
 	// Apply the new capabilities to the current process (incl. all threads)
 	if err := newcaps.SetProc(); err != nil {
-		return fmt.Errorf("error setting new process capabilities via setcap: %w", err)
+		return fmt.Errorf("error setting new process capabilities %s via setcap: %w", newcaps.String(), err)
 	}
 
 	return nil

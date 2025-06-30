@@ -8,7 +8,6 @@ import (
 	"os/user"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"syscall"
 	"time"
 
@@ -82,6 +81,12 @@ func (b *CEEMSExporter) Main() error {
 		maxRequests, maxProcs                                                                          int
 		webListenAddresses, alloyTargetEnvVars, profilingTargetEnvVars                                 []string
 	)
+
+	// Get default run as user
+	defaultRunAsUser, err := security.GetDefaultRunAsUser()
+	if err != nil {
+		return err
+	}
 
 	b.App.Flag(
 		"collector.disable-defaults",
@@ -165,8 +170,10 @@ func (b *CEEMSExporter) Main() error {
 	// Security related flags
 	b.App.Flag(
 		"security.run-as-user",
-		"User to run as when exporter is started as root. Accepts either a username or uid.",
-	).Default("nobody").StringVar(&runAsUser)
+		"Exporter will be run under this user. Accepts either a username or uid. If current user is unprivileged, same user "+
+			"will be used. When exporter is started as root, by default user will be changed to nobody. To be able to change the user necessary "+
+			"capabilities (CAP_SETUID, CAP_SETGID) must exist on the process.",
+	).Default(defaultRunAsUser).StringVar(&runAsUser)
 	b.App.Flag(
 		"security.drop-privileges",
 		"Drop privileges and run as nobody when exporter is started as root.",
@@ -186,7 +193,7 @@ func (b *CEEMSExporter) Main() error {
 	b.App.UsageWriter(os.Stdout)
 	b.App.HelpFlag.Short('h')
 
-	_, err := b.App.Parse(os.Args[1:])
+	_, err = b.App.Parse(os.Args[1:])
 	if err != nil {
 		return fmt.Errorf("failed to parse CLI flags: %w", err)
 	}
@@ -318,14 +325,8 @@ func (b *CEEMSExporter) Main() error {
 
 	// Drop all unnecessary privileges
 	if dropPrivs {
-		// Log list of required capabilities in case of errors
-		reqCaps := make([]string, len(appCaps))
-		for icap, cap := range appCaps {
-			reqCaps[icap] = cap.String()
-		}
-
 		if err := securityManager.DropPrivileges(disableCapAwareness); err != nil {
-			logger.Error("Failed to drop privileges", "err", err, "req_caps", strings.Join(reqCaps, ","))
+			logger.Error("Failed to drop privileges", "err", err)
 
 			return err
 		}

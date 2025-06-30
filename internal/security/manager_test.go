@@ -130,6 +130,15 @@ func TestACLs(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestGetDefaultRunAsUserPriv(t *testing.T) {
+	skipUnprivileged(t)
+
+	user, err := GetDefaultRunAsUser()
+	require.NoError(t, err)
+
+	assert.Equal(t, "nobody", user)
+}
+
 // func TestDropPrivileges(t *testing.T) {
 // 	skipUnprivileged(t)
 
