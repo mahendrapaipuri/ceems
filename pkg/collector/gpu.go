@@ -843,7 +843,10 @@ func (g *GPUSMI) amdGPUDevices(vendor vendor) ([]Device, error) {
 // execute a command natively or inside a container.
 func (g *GPUSMI) execute(vendor vendor, cmd []string) ([]byte, error) {
 	// Use a context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	// After making some tests on new nodes on Grid5000 with MI300X GPUs,
+	// we noticed that amd-smi command takes a while to return. So, use
+	// a longer timeout to ensure that we get the list of GPUs
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
 	// If smi command is found, always prefer to execute it natively
@@ -881,10 +884,11 @@ func detectVendors() ([]vendor, error) {
 
 	for _, devPath := range pciDevs {
 		// PCI class 0x03 is for display controllers AKA GPUs
+		// PCI class 0x12 is for processing accelerators. MI300X GPUs seems to have this class ID.
 		// Check if class starts with "0x03" and if it does, it means it is a GPU device
 		// Ref: https://pcisig.com/sites/default/files/files/PCI_Code-ID_r_1_11__v24_Jan_2019.pdf
 		if classBytes, err := os.ReadFile(filepath.Join(devPath, "class")); err == nil {
-			if class := strings.TrimSpace(strings.Trim(string(classBytes), "\n")); !strings.HasPrefix(class, "0x03") {
+			if class := strings.TrimSpace(strings.Trim(string(classBytes), "\n")); !strings.HasPrefix(class, "0x03") && !strings.HasPrefix(class, "0x12") {
 				continue
 			}
 

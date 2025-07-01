@@ -224,9 +224,11 @@ func (lb *loadBalancer) validate(ctx context.Context) error {
 		lb.amw.clusterIDs = append(lb.amw.clusterIDs, id)
 	}
 
-	// If neither CEEMD DB or API server is configured, return
+	// If neither CEEMS DB or API server is configured, return
 	// This means LB is used without any access control configured
 	if lb.amw.ceems.db == nil && lb.amw.ceems.clustersEndpoint() == nil {
+		lb.logger.Warn("Neither CEEMS API server DB nor web config found. Skipping cluster validation")
+
 		return nil
 	}
 

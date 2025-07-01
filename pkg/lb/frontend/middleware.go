@@ -190,6 +190,8 @@ func newAuthMiddleware(c *Config) (*authenticationMiddleware, error) {
 				return nil, err
 			}
 		}
+
+		c.Logger.Debug("CEEMS API server DB config found")
 	}
 
 	// Check if URL for CEEMS API exists
@@ -204,6 +206,8 @@ func newAuthMiddleware(c *Config) (*authenticationMiddleware, error) {
 		if ceemsClient, err = config.NewClientFromConfig(c.APIServer.Web.HTTPClientConfig, "ceems_api_server"); err != nil {
 			return nil, err
 		}
+
+		c.Logger.Debug("CEEMS API server web config found")
 	}
 
 	// Setup middleware
@@ -268,6 +272,8 @@ func (amw *authenticationMiddleware) Middleware(next http.Handler) http.Handler 
 		// If ceems url or db is not configured, pass through. There is nothing
 		// to check here
 		if amw.ceems.webURL == nil && amw.ceems.db == nil {
+			amw.logger.Debug("Neither CEEMS API server DB nor web config found. Access control cannot be imposed. Allowing the request", "url", r.URL)
+
 			goto end
 		}
 

@@ -475,8 +475,6 @@ func healthCheck(ctx context.Context, manager serverpool.Manager, logger *slog.L
 			requestCtx, stop := context.WithTimeout(ctx, 10*time.Second)
 			defer stop()
 
-			status := "up"
-
 			go isAlive(requestCtx, aliveChannel, backend.URL(), logger)
 
 			select {
@@ -488,10 +486,11 @@ func healthCheck(ctx context.Context, manager serverpool.Manager, logger *slog.L
 				backend.SetAlive(alive)
 
 				if !alive {
-					status = "down"
+					logger.Error("Health check", "id", id, "backend", backend.String(), "status", "down")
+				} else {
+					logger.Debug("Health check", "id", id, "backend", backend.String(), "status", "up")
 				}
 			}
-			logger.Debug("Health check", "id", id, "backend", backend.String(), "status", status)
 		}
 	}
 }
