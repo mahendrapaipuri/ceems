@@ -305,7 +305,7 @@ func New(c *Config) (*CEEMSServer, func(), error) {
 
 	// If compression is enabled, setup middleware
 	if c.Web.EnableCompression {
-		c.Logger.Debug("Responses will be compressed using gzip", "level", c.Web.CompressionLevel)
+		c.Logger.Debug("Responses will be compressed using gzip", "compression_level", c.Web.CompressionLevel)
 		router.Use(Compress(c.Web.CompressionLevel))
 	}
 

@@ -167,8 +167,8 @@ func (lb *CEEMSLoadBalancer) Main() error {
 		"Configuration file path.",
 	).Envar("CEEMS_LB_CONFIG_FILE").Default("").StringVar(&configFile)
 	lb.App.Flag(
-		"config.expand-env-vars",
-		"Any environment variables that are referenced in ebpf config file will be expanded. To escape $ use $$ (default: false).",
+		"config.file.expand-env-vars",
+		"Any environment variables that are referenced in config file will be expanded. To escape $ use $$ (default: false).",
 	).Default("false").BoolVar(&configExpandEnvVars)
 
 	lb.App.Flag(

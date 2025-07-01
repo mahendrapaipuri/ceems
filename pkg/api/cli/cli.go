@@ -103,7 +103,7 @@ func (b *CEEMSServer) Main() error {
 		"Path to CEEMS API server configuration file.",
 	).Envar("CEEMS_API_SERVER_CONFIG_FILE").Default("").StringVar(&configFile)
 	b.App.Flag(
-		"config.expand-env-vars",
+		"config.file.expand-env-vars",
 		"Any environment variables that are referenced in config file will be expanded. To escape $ use $$ (default: false).",
 	).Default("false").BoolVar(&base.ConfigFileExpandEnvVars)
 	b.App.Flag(
