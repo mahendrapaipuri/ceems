@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.1 / 2025-07-02
+
+- [FEAT] Support gzip compression [#374](https://github.com/mahendrapaipuri/ceems/pull/374) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [MAINT] Bump dependencies [#372](https://github.com/mahendrapaipuri/ceems/pull/372), [#373](https://github.com/mahendrapaipuri/ceems/pull/373) ([@dependabot](https://github.com/dependabot))
+
 ## 0.9.0 / 2025-06-27
 
 ### Breaking Changes
