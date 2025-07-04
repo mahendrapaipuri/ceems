@@ -73,6 +73,11 @@ const (
 	netSubsystem = "net_cls,net_prio"
 )
 
+const (
+	systemdSlicesName = "machine.slice"
+	nonSystemdSlicesName = "machine"
+)
+
 // Regular expressions of cgroup paths for different resource managers.
 // ^.*/(?:(.*?)_)?slurm(?:_(.*?)/)?(?:.*?)/job_([0-9]+)(?:.*$)
 // ^.*/slurm(?:_(.*?))?/(?:.*?)/job_([0-9]+)(?:.*$)
@@ -98,9 +103,12 @@ var (
 
 	For v2 possibilities are /machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000001.scope
 							 /machine.slice/machine-qemu\x2d2\x2dinstance\x2d00000001.scope/libvirt
+
+	Non systemd: machine/qemu-1-instance1.libvirt-qemu
 */
 var (
 	libvirtCgroupPathRegex = regexp.MustCompile("^.*/(?:.+?)-qemu-(?:[0-9]+)-(?P<id>instance-[0-9a-f]+)(?:.*$)")
+	libvirtCgroupNoSystemdPathRegex = regex.MustCompile("^.*/(?:.+?)qemu-(?:[0-9]+)-(?P<id>instance-[0-9a-f]+)(?:.*$)")
 )
 
 // Ref: https://linuxera.org/cpu-memory-management-kubernetes-cgroupsv2/
@@ -137,7 +145,26 @@ var (
 		"collector.cgroups.force-version",
 		"Set cgroups version manually. Used only for testing.",
 	).Hidden().Enum("v1", "v2")
+
+	noSystemdMode = CEEMSExporterApp.Flag(
+		"collector.cgroups.no-systemd-mode",
+		"Set if running on a non-systemd host",
+	).Default("false").Bool()
 )
+
+func resolveSlices(nonSystemdMode bool) string {
+	if nonSystemdMode:
+	  return nonSystemdSlicesName
+	else
+	  return systemdSlicesName
+}
+
+func resolveLibvirtRegex(nonSystemdMode bool) *Regexp {
+	if nonSystemdMode:
+	  return libvirtCgroupNoSystemdPathRegex
+	else
+	  return libvirtCgroupPathRegex
+}
 
 // resolveSubsystem returns the resolved cgroups v1 subsystem.
 func resolveSubsystem(subsystem string) string {
@@ -311,7 +338,7 @@ func NewCgroupManager(name manager, logger *slog.Logger) (*cgroupManager, error)
 				fs:     fs,
 				mode:   cgroups.Unified,
 				root:   *cgroupfsPath,
-				slices: []string{"machine.slice"},
+				slices: []string{resolveSlices(*nonSystemdMode)},
 			}
 		} else {
 			var mode cgroups.CGMode
@@ -330,7 +357,7 @@ func NewCgroupManager(name manager, logger *slog.Logger) (*cgroupManager, error)
 				mode:             mode,
 				root:             *cgroupfsPath,
 				activeController: activeSubsystem,
-				slices:           []string{"machine.slice"},
+				slices:           []string{resolveSlices(*nonSystemdMode)},
 			}
 		}
 
@@ -339,10 +366,10 @@ func NewCgroupManager(name manager, logger *slog.Logger) (*cgroupManager, error)
 		manager.name = rmNames[name]
 
 		// Add path regex
-		manager.idRegex = libvirtCgroupPathRegex
+		manager.idRegex = resolveLibvirtRegex(*nonSystemdMode)
 
 		// Identify child cgroup
-		// In cgroups v1, all the child cgroups like emulator, vcpu* are flat whereas
+		// In cgroups v1 or on a non-systemd host, all the child cgroups like emulator, vcpu* are flat whereas
 		// in v2 they are all inside libvirt child
 		manager.isChild = func(p string) bool {
 			return strings.Contains(p, "/libvirt") || strings.Contains(p, "/emulator") || strings.Contains(p, "/vcpu")
@@ -1078,10 +1105,9 @@ func (c *cgroupCollector) cpusFromChildren(path string) (int, error) {
 	// In cgroup v1, they are flat whereas in cgroup v2 they are inside libvirt folder
 	var vcpuPath string
 
-	switch c.cgroupManager.mode { //nolint:exhaustive
-	case cgroups.Unified:
+	if c.cgroupManager.mode == cgroups.Unified && !(*noSystemdMode){
 		vcpuPath = fmt.Sprintf("%s%s/libvirt/vcpu*", c.cgroupManager.root, path)
-	default:
+	} else {
 		vcpuPath = fmt.Sprintf("%s%s/vcpu*", c.cgroupManager.root, path)
 	}
 
