@@ -23,7 +23,7 @@ require (
 	github.com/prometheus/client_golang v1.22.0
 	github.com/prometheus/common v0.65.0
 	github.com/prometheus/exporter-toolkit v0.14.0
-	github.com/prometheus/procfs v0.16.1
+	github.com/prometheus/procfs v0.17.0
 	github.com/steiler/acls v0.1.1
 	github.com/stmcginnis/gofish v0.20.0
 	github.com/stretchr/testify v1.10.0
