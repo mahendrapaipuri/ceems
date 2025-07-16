@@ -635,16 +635,30 @@ func (c *slurmCollector) jobDevices(cgroups []cgroup) {
 
 // jobCgroups returns cgroups of active jobs.
 func (c *slurmCollector) jobCgroups() ([]cgroup, error) {
-	// Get active cgroups
+	// Get current cgroups
 	cgroups, err := c.cgroupManager.discover()
 	if err != nil {
 		return nil, fmt.Errorf("failed to discover cgroups: %w", err)
 	}
 
-	// Update devices
-	c.jobDevices(cgroups)
+	// Sometimes SLURM daemon fails to clean up cgroups for
+	// terminated jobs. In that case our current cgroup slice will
+	// contain terminated jobs and it is not desirable. We clean
+	// up current cgroups by looking at number of procs inside each
+	// cgroup. When there are no procs associated with cgroup, it is
+	// terminated job
+	var activeCgroups []cgroup
 
-	return cgroups, nil
+	for _, cgroup := range cgroups {
+		if len(cgroup.procs) > 0 {
+			activeCgroups = append(activeCgroups, cgroup)
+		}
+	}
+
+	// Update devices
+	c.jobDevices(activeCgroups)
+
+	return activeCgroups, nil
 }
 
 // jobGRESResources returns GRES resources bound to current job.

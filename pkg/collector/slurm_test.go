@@ -550,6 +550,11 @@ func TestJobDevicesCaching(t *testing.T) {
 			0o600,
 		)
 		require.NoError(t, err)
+
+		procDir := fmt.Sprintf("%s/%d", procFS, i)
+
+		err = os.MkdirAll(procDir, 0o750)
+		require.NoError(t, err)
 	}
 
 	// Fake jobs
@@ -566,9 +571,6 @@ func TestJobDevicesCaching(t *testing.T) {
 	// Binds GPUs to first n jobs
 	for ijob, gres := range mockJobs {
 		dir := fmt.Sprintf("%s/%d", procFS, ijob)
-
-		err = os.MkdirAll(dir, 0o750)
-		require.NoError(t, err)
 
 		envs := []string{fmt.Sprintf("SLURM_JOB_ID=%d", ijob), "SLURM_JOB_GPUS=" + strings.Join(gres.deviceIDs, ",")}
 
@@ -632,6 +634,11 @@ func TestJobDevicesCaching(t *testing.T) {
 			0o600,
 		)
 		require.NoError(t, err)
+
+		procDir := fmt.Sprintf("%s/%d", procFS, i)
+
+		err = os.MkdirAll(procDir, 0o750)
+		require.NoError(t, err)
 	}
 
 	// Binds GPUs to first jobs 19 to 25
@@ -639,9 +646,6 @@ func TestJobDevicesCaching(t *testing.T) {
 		jobid := ijob + 19
 
 		dir := fmt.Sprintf("%s/%d", procFS, jobid)
-
-		err = os.MkdirAll(dir, 0o750)
-		require.NoError(t, err)
 
 		envs := []string{fmt.Sprintf("SLURM_JOB_ID=%d", jobid), "SLURM_JOB_GPUS=" + strings.Join(gres.deviceIDs, ",")}
 
