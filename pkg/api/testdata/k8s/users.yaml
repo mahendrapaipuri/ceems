@@ -1,0 +1,7 @@
+---
+users:
+  ns1:
+    - file1
+    - file2
+  ns3:
+    - file3 

@@ -1,0 +1,122 @@
+{
+    "metadata": {},
+    "items": [
+      {
+				"apiVersion": "rbac.authorization.k8s.io/v1",
+				"kind": "RoleBinding",
+				"metadata": {
+					"annotations": {
+						"rbac.authorization.kubernetes.io/autoupdate": "true"
+					},
+					"creationTimestamp": "2025-07-06T10:08:02Z",
+					"labels": {
+						"kubernetes.io/bootstrapping": "rbac-defaults"
+					},
+					"name": "foobind",
+					"namespace": "ns1",
+					"resourceVersion": "202",
+					"uid": "c467a6cb-30cb-4a94-8c8b-f4fd4d9ddb8a"
+				},
+				"roleRef": {
+					"apiGroup": "rbac.authorization.k8s.io",
+					"kind": "Role",
+					"name": "foorole"
+				},
+				"subjects": [
+					{
+						"kind": "User",
+						"name": "rb1"
+					},
+					{
+						"kind": "ServiceAccount",
+						"name": "default",
+						"namespace": "ns1"
+					}
+				]
+			},
+			{
+				"apiVersion": "rbac.authorization.k8s.io/v1",
+				"kind": "RoleBinding",
+				"metadata": {
+					"annotations": {
+						"rbac.authorization.kubernetes.io/autoupdate": "true"
+					},
+					"creationTimestamp": "2025-07-06T10:08:02Z",
+					"labels": {
+						"kubernetes.io/bootstrapping": "rbac-defaults"
+					},
+					"name": "foobind",
+					"namespace": "ns2",
+					"resourceVersion": "202",
+					"uid": "7a6cbc46-30cb-4a94-8c8b-f4fd4d9ddb8a"
+				},
+				"roleRef": {
+					"apiGroup": "rbac.authorization.k8s.io",
+					"kind": "Role",
+					"name": "foorole"
+				},
+				"subjects": [
+					{
+						"kind": "User",
+						"name": "rb1"
+					}
+				]
+			},
+			{
+				"apiVersion": "rbac.authorization.k8s.io/v1",
+				"kind": "RoleBinding",
+				"metadata": {
+					"annotations": {
+						"rbac.authorization.kubernetes.io/autoupdate": "true"
+					},
+					"creationTimestamp": "2025-07-06T10:08:02Z",
+					"labels": {
+						"kubernetes.io/bootstrapping": "rbac-defaults"
+					},
+					"name": "foopbind",
+					"namespace": "ns2",
+					"resourceVersion": "202",
+					"uid": "76252885-5928-483d-bc34-2e76d5edd717"
+				},
+				"roleRef": {
+					"apiGroup": "rbac.authorization.k8s.io",
+					"kind": "Role",
+					"name": "fooprole"
+				},
+				"subjects": [
+					{
+						"kind": "User",
+						"name": "rb2"
+					}
+				]
+			},
+			{
+				"apiVersion": "rbac.authorization.k8s.io/v1",
+				"kind": "RoleBinding",
+				"metadata": {
+					"annotations": {
+						"rbac.authorization.kubernetes.io/autoupdate": "true"
+					},
+					"creationTimestamp": "2025-07-06T10:08:02Z",
+					"labels": {
+						"kubernetes.io/bootstrapping": "rbac-defaults"
+					},
+					"name": "foopbind",
+					"namespace": "ns3",
+					"resourceVersion": "202",
+					"uid": "28857625-5928-483d-bc34-2e76d5edd717"
+				},
+				"roleRef": {
+					"apiGroup": "rbac.authorization.k8s.io",
+					"kind": "Role",
+					"name": "fooprole"
+				},
+				"subjects": [
+					{
+						"kind": "User",
+						"name": "rb3"
+					}
+				]
+			}
+    ]
+  } 

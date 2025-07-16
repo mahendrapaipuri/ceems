@@ -84,8 +84,7 @@ this translates to implementing two interfaces, one for fetching compute units a
 for fetching users and projects/namespaces/tenants data from the underlying resource
 manager.
 
-Currently, the CEEMS API server includes SLURM support, and soon OpenStack support
-will be added.
+Currently, the CEEMS API server supports SLURM, Openstack and k8s resource managers.
 
 ### Updaters
 

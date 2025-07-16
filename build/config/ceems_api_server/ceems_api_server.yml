@@ -231,8 +231,10 @@ clusters: []
   #   #
   # - id: default
 
-  #   # Resource manager of the cluster. Currently only `slurm` is supported. In future,
-  #   # `openstack` will be supported
+  #   # Resource manager of the cluster. Currently supported managers:
+  #   #  - `slurm`
+  #   #  - `openstack`
+  #   #  - `k8s` 
   #   #
   #   manager: slurm
 
@@ -437,28 +439,69 @@ clusters: []
   #   # Any other configuration needed to reach API server of the resource manager
   #   # can be configured in this section.
   #   #
-  #   # Currently this section is used for Openstack resource manager
-  #   # to configure API versions
-  #   #
-  #   # In the case of Openstack, this section must have two keys `api_service_endpoints`
-  #   # and `auth`. Both of these are compulsory.
-  #   # `api_service_endpoints` must provide API endpoints for compute and identity
-  #   # services as provided in service catalog of Openstack cluster. `auth` must be the
-  #   # same `auth` object that must be sent in POST request to keystone to get a API token.
+  #   # Currently this section is used for Openstack and k8s resource managers
+  #   # to configure API servers
   #   #
   #   extra_config: {}
-  #      # api_service_endpoints:
-  #      #   compute: https://openstack-nova.example.com/v2.1
-  #      #   identity: https://openstack-keystone.example.com
-  #      # auth:
-  #      #   identity:
-  #      #     methods:
-  #      #       - password
-  #      #     password:
-  #      #       user:
-  #      #         name: admin
-  #      #         password: supersecret
-    
+  #     # # In the case of Openstack, this section must have two keys `api_service_endpoints`
+  #     # # and `auth`. Both of these are compulsory.
+  #     # # `api_service_endpoints` must provide API endpoints for compute and identity
+  #     # # services as provided in service catalog of Openstack cluster. `auth` must be the
+  #     # # same `auth` object that must be sent in POST request to keystone to get a API token.
+  #     # #
+  #     # api_service_endpoints:
+  #     #   compute: https://openstack-nova.example.com/v2.1
+  #     #   identity: https://openstack-keystone.example.com
+  #     # auth:
+  #     #   identity:
+  #     #     methods:
+  #     #       - password
+  #     #     password:
+  #     #       user:
+  #     #         name: admin
+  #     #         password: supersecret
+      
+  #     # # In the case of k8s, this section is used to configure the k8s API related config
+  #     # #
+  #     # # Path to the kube config file when out-of-cluster config file is used. If the
+  #     # # ceems_api_server is running in a pod, in-cluster config will be used by default.
+  #     # #
+  #     # kubeconfig_file: ''
+  #     # #
+  #     # # List of annotation names where the name of the user that created/modified the pod is stored.
+  #     # # The search for username will be stopped when the first annotation is found in the list.
+  #     # # Therefore the order of the list is important.
+  #     # #
+  #     # # Default: [ceems.io/created-by]
+  #     # #
+  #     # username_annotations: []
+  #     # #
+  #     # # List of annotation names where the name of the project that the pod belongs to is stored.
+  #     # # By default the project is always set to the namespace of the pod and when atleast one of
+  #     # # annotation names are found in the pod spec, the namespace will be overridded by the value
+  #     # # of the annotation
+  #     # #
+  #     # project_annotations: []
+  #     # #
+  #     # # List of GPU resource names in the cluster.
+  #     # #
+  #     # # Default: [nvidia.com/gpu, amd.com/gpu]
+  #     # #
+  #     # gpu_resource_names: []
+  #     # #
+  #     # # Path to the file that contains the list of namespaces and allowed users in each namespace.
+  #     # # The format of the file must be as follows:
+  #     # #
+  #     # # users:
+  #     # #  ns1:
+  #     # #    - usr1
+  #     # #    - usr2
+  #     # #  ns2:
+  #     # #    - usr1
+  #     # #    - usr3
+  #     # #
+  #     # ns_users_list_file: ''
+       
 # A list of Updaters that will be used to update the compute unit metrics. This update 
 # step can be used to update the aggregate metrics of each compute unit in real time
 # or to add complementary information to the compute units from on-premise third 

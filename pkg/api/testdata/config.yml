@@ -73,6 +73,35 @@ clusters:
           application_credential:
             id: 21dced0fd20347869b93710d2b98aae0
             secret: supersecret
+  
+  - id: k8s-0
+    manager: k8s
+    updaters:
+      - tsdb-0
+      - tsdb-1
+    extra_config: 
+      kubeconfig_file: pkg/api/testdata/k8s/kubeconfig.yaml
+      ns_users_list_file: pkg/api/testdata/k8s/users.yaml
+      gpu_resource_names:
+        - nvidia.com/gpu
+        - nvidia.com/mig-4g.20gb
+        - nvidia.com/mig-1g.5gb
+      project_annotations:
+        - ceems.io/project
+
+  - id: k8s-1
+    manager: k8s
+    updaters:
+      - tsdb-0
+    extra_config: 
+      kubeconfig_file: pkg/api/testdata/k8s/kubeconfig.yaml
+      ns_users_list_file: pkg/api/testdata/k8s/users.yaml
+      gpu_resource_names:
+        - nvidia.com/gpu
+        - nvidia.com/mig-4g.20gb
+        - nvidia.com/mig-1g.5gb
+      project_annotations:
+        - ceems.io/project
 
 updaters:
   - id: tsdb-0
@@ -81,7 +110,6 @@ updaters:
       url: http://localhost:9090
     extra_config:
       cutoff_duration: 0s
-      query_batch_size: 1
       queries:
         # Average CPU utilisation
         avg_cpu_usage: 
@@ -123,7 +151,6 @@ updaters:
       url: http://localhost:9090
     extra_config:
       cutoff_duration: 0s
-      query_batch_size: 1
       queries:
         # Total IO Read stats
         total_io_read_stats: 

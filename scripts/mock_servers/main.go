@@ -185,7 +185,7 @@ func QueryHandler(w http.ResponseWriter, r *http.Request) {
 	uuidMatches := regexpUUID.FindAllStringSubmatch(query, -1)
 	for _, match := range uuidMatches {
 		if len(match) > 1 {
-			for _, uuid := range strings.Split(match[1], "|") {
+			for uuid := range strings.SplitSeq(match[1], "|") {
 				// Ignore empty strings
 				if strings.TrimSpace(uuid) != "" && !slices.Contains(uuids, uuid) {
 					uuids = append(uuids, uuid)
@@ -202,7 +202,7 @@ func QueryHandler(w http.ResponseWriter, r *http.Request) {
 
 	// log.Println("Query", query, "UUIDs", uuids)
 
-	var results []interface{}
+	var results []any
 
 	switch {
 	case slices.Contains(
@@ -218,12 +218,12 @@ func QueryHandler(w http.ResponseWriter, r *http.Request) {
 			numDigits := lenLoop(h)
 			value := float64(h) / math.Pow(10, float64(numDigits)-2)
 			results = append(results,
-				map[string]interface{}{
+				map[string]any{
 					"metric": map[string]string{
 						"uuid":     uuid,
 						"instance": "localhost:9090",
 					},
-					"value": []interface{}{
+					"value": []any{
 						12345, strconv.FormatFloat(value, 'f', -1, 64),
 					},
 				})
@@ -235,12 +235,12 @@ func QueryHandler(w http.ResponseWriter, r *http.Request) {
 		for _, uuid := range uuids {
 			h := hash(uuid)
 			results = append(results,
-				map[string]interface{}{
+				map[string]any{
 					"metric": map[string]string{
 						"uuid":     uuid,
 						"instance": "localhost:9090",
 					},
-					"value": []interface{}{
+					"value": []any{
 						12345, strconv.FormatUint(uint64(h), 10),
 					},
 				})
@@ -252,12 +252,12 @@ func QueryHandler(w http.ResponseWriter, r *http.Request) {
 		for _, uuid := range uuids {
 			h := hash(uuid)
 			results = append(results,
-				map[string]interface{}{
+				map[string]any{
 					"metric": map[string]string{
 						"uuid":     uuid,
 						"instance": "localhost:9090",
 					},
-					"value": []interface{}{
+					"value": []any{
 						12345, strconv.FormatUint(uint64(h)*10, 10),
 					},
 				})
@@ -269,12 +269,12 @@ func QueryHandler(w http.ResponseWriter, r *http.Request) {
 		for _, uuid := range uuids {
 			h := hash(uuid)
 			results = append(results,
-				map[string]interface{}{
+				map[string]any{
 					"metric": map[string]string{
 						"uuid":     uuid,
 						"instance": "localhost:9090",
 					},
-					"value": []interface{}{
+					"value": []any{
 						12345, strconv.FormatUint(uint64(h)*100, 10),
 					},
 				})
@@ -286,12 +286,12 @@ func QueryHandler(w http.ResponseWriter, r *http.Request) {
 		for _, uuid := range uuids {
 			h := hash(uuid)
 			results = append(results,
-				map[string]interface{}{
+				map[string]any{
 					"metric": map[string]string{
 						"uuid":     uuid,
 						"instance": "localhost:9090",
 					},
-					"value": []interface{}{
+					"value": []any{
 						12345, strconv.FormatUint(uint64(h)*1000, 10),
 					},
 				})
@@ -301,7 +301,7 @@ func QueryHandler(w http.ResponseWriter, r *http.Request) {
 	// responseResults := filterResults(uuids, esults)
 	response = tsdb.Response[any]{
 		Status: "success",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"resultType": "vector",
 			"result":     results,
 		},
@@ -340,7 +340,7 @@ func QueryRangeHandler(w http.ResponseWriter, r *http.Request) {
 	uuidMatches := regexpUUID.FindAllStringSubmatch(query, -1)
 	for _, match := range uuidMatches {
 		if len(match) > 1 {
-			for _, uuid := range strings.Split(match[1], "|") {
+			for uuid := range strings.SplitSeq(match[1], "|") {
 				// Ignore empty strings
 				if strings.TrimSpace(uuid) != "" && !slices.Contains(uuids, uuid) {
 					uuids = append(uuids, uuid)
@@ -357,7 +357,7 @@ func QueryRangeHandler(w http.ResponseWriter, r *http.Request) {
 
 	// log.Println("Query", query, "UUIDs", uuids)
 
-	var results []interface{}
+	var results []any
 
 	status := "success"
 
@@ -374,16 +374,16 @@ func QueryRangeHandler(w http.ResponseWriter, r *http.Request) {
 			numDigits := lenLoop(h)
 			value := float64(h) / math.Pow(10, float64(numDigits)-2)
 			results = append(results,
-				map[string]interface{}{
+				map[string]any{
 					"metric": map[string]string{
 						"uuid":     uuid,
 						"instance": "localhost:9090",
 					},
-					"values": []interface{}{
-						[]interface{}{12345, strconv.FormatFloat(value, 'f', -1, 64)},
-						[]interface{}{12355, strconv.FormatFloat(value, 'f', -1, 64)},
-						[]interface{}{12365, strconv.FormatFloat(value, 'f', -1, 64)},
-						[]interface{}{12375, strconv.FormatFloat(value, 'f', -1, 64)},
+					"values": []any{
+						[]any{12345, strconv.FormatFloat(value, 'f', -1, 64)},
+						[]any{12355, strconv.FormatFloat(value, 'f', -1, 64)},
+						[]any{12365, strconv.FormatFloat(value, 'f', -1, 64)},
+						[]any{12375, strconv.FormatFloat(value, 'f', -1, 64)},
 					},
 				})
 		}
@@ -394,16 +394,16 @@ func QueryRangeHandler(w http.ResponseWriter, r *http.Request) {
 		for _, uuid := range uuids {
 			h := hash(uuid)
 			results = append(results,
-				map[string]interface{}{
+				map[string]any{
 					"metric": map[string]string{
 						"uuid":     uuid,
 						"instance": "localhost:9090",
 					},
-					"values": []interface{}{
-						[]interface{}{12345, strconv.FormatUint(uint64(h), 10)},
-						[]interface{}{12355, strconv.FormatUint(uint64(h), 10)},
-						[]interface{}{12365, strconv.FormatUint(uint64(h), 10)},
-						[]interface{}{12375, strconv.FormatUint(uint64(h), 10)},
+					"values": []any{
+						[]any{12345, strconv.FormatUint(uint64(h), 10)},
+						[]any{12355, strconv.FormatUint(uint64(h), 10)},
+						[]any{12365, strconv.FormatUint(uint64(h), 10)},
+						[]any{12375, strconv.FormatUint(uint64(h), 10)},
 					},
 				})
 		}
@@ -414,16 +414,16 @@ func QueryRangeHandler(w http.ResponseWriter, r *http.Request) {
 		for _, uuid := range uuids {
 			h := hash(uuid)
 			results = append(results,
-				map[string]interface{}{
+				map[string]any{
 					"metric": map[string]string{
 						"uuid":     uuid,
 						"instance": "localhost:9090",
 					},
-					"values": []interface{}{
-						[]interface{}{12345, strconv.FormatUint(uint64(h)*10, 10)},
-						[]interface{}{12355, strconv.FormatUint(uint64(h)*10, 10)},
-						[]interface{}{12365, strconv.FormatUint(uint64(h)*10, 10)},
-						[]interface{}{12375, strconv.FormatUint(uint64(h)*10, 10)},
+					"values": []any{
+						[]any{12345, strconv.FormatUint(uint64(h)*10, 10)},
+						[]any{12355, strconv.FormatUint(uint64(h)*10, 10)},
+						[]any{12365, strconv.FormatUint(uint64(h)*10, 10)},
+						[]any{12375, strconv.FormatUint(uint64(h)*10, 10)},
 					},
 				})
 		}
@@ -434,16 +434,16 @@ func QueryRangeHandler(w http.ResponseWriter, r *http.Request) {
 		for _, uuid := range uuids {
 			h := hash(uuid)
 			results = append(results,
-				map[string]interface{}{
+				map[string]any{
 					"metric": map[string]string{
 						"uuid":     uuid,
 						"instance": "localhost:9090",
 					},
-					"values": []interface{}{
-						[]interface{}{12345, strconv.FormatUint(uint64(h)*100, 10)},
-						[]interface{}{12355, strconv.FormatUint(uint64(h)*100, 10)},
-						[]interface{}{12365, strconv.FormatUint(uint64(h)*100, 10)},
-						[]interface{}{12375, strconv.FormatUint(uint64(h)*100, 10)},
+					"values": []any{
+						[]any{12345, strconv.FormatUint(uint64(h)*100, 10)},
+						[]any{12355, strconv.FormatUint(uint64(h)*100, 10)},
+						[]any{12365, strconv.FormatUint(uint64(h)*100, 10)},
+						[]any{12375, strconv.FormatUint(uint64(h)*100, 10)},
 					},
 				})
 		}
@@ -454,16 +454,16 @@ func QueryRangeHandler(w http.ResponseWriter, r *http.Request) {
 		for _, uuid := range uuids {
 			h := hash(uuid)
 			results = append(results,
-				map[string]interface{}{
+				map[string]any{
 					"metric": map[string]string{
 						"uuid":     uuid,
 						"instance": "localhost:9090",
 					},
-					"values": []interface{}{
-						[]interface{}{12345, strconv.FormatUint(uint64(h)*1000, 10)},
-						[]interface{}{12355, strconv.FormatUint(uint64(h)*1000, 10)},
-						[]interface{}{12365, strconv.FormatUint(uint64(h)*1000, 10)},
-						[]interface{}{12375, strconv.FormatUint(uint64(h)*1000, 10)},
+					"values": []any{
+						[]any{12345, strconv.FormatUint(uint64(h)*1000, 10)},
+						[]any{12355, strconv.FormatUint(uint64(h)*1000, 10)},
+						[]any{12365, strconv.FormatUint(uint64(h)*1000, 10)},
+						[]any{12375, strconv.FormatUint(uint64(h)*1000, 10)},
 					},
 				})
 		}
@@ -473,7 +473,7 @@ func QueryRangeHandler(w http.ResponseWriter, r *http.Request) {
 	// responseResults := filterResults(uuids, esults)
 	response = tsdb.Response[any]{
 		Status: status,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"resultType": "matrix",
 			"result":     results,
 		},
@@ -500,7 +500,7 @@ func ConfigHandler(w http.ResponseWriter, r *http.Request) {
 func FlagsHandler(w http.ResponseWriter, r *http.Request) {
 	response := tsdb.Response[any]{
 		Status: "success",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"query.lookback-delta": "5m",
 			"query.max-samples":    "50000000",
 			"query.timeout":        "2m",
@@ -515,7 +515,7 @@ func FlagsHandler(w http.ResponseWriter, r *http.Request) {
 func RuntimeInfoHandler(w http.ResponseWriter, r *http.Request) {
 	response := tsdb.Response[any]{
 		Status: "success",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"startTime":           "2025-02-18T07:43:52.775090028Z",
 			"CWD":                 "/var/lib/prometheus",
 			"reloadConfigSuccess": true,
@@ -568,7 +568,7 @@ func ServersHandler(w http.ResponseWriter, r *http.Request) {
 func TokensHandler(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 
-	var t map[string]interface{}
+	var t map[string]any
 
 	if err := decoder.Decode(&t); err != nil {
 		w.Write([]byte("KO"))
@@ -608,6 +608,20 @@ func ProjectsHandler(w http.ResponseWriter, r *http.Request) {
 // PodsListHandler handles k8s pods.
 func PodsListHandler(w http.ResponseWriter, r *http.Request) {
 	if data, err := assetsFS.ReadFile("assets/k8s/pods-metadata.json"); err == nil {
+		w.Header().Add("Content-Type", "application/json")
+		w.Header().Add("Content-Type", "application/vnd.kubernetes.protobuf")
+		w.Write(data)
+
+		return
+	}
+
+	w.WriteHeader(http.StatusInternalServerError)
+	w.Write([]byte("KO"))
+}
+
+// RoleBindingsListHandler handles k8s rolebindings.
+func RoleBindingsListHandler(w http.ResponseWriter, r *http.Request) {
+	if data, err := assetsFS.ReadFile("assets/k8s/rolebindings.json"); err == nil {
 		w.Header().Add("Content-Type", "application/json")
 		w.Header().Add("Content-Type", "application/vnd.kubernetes.protobuf")
 		w.Write(data)
@@ -818,6 +832,7 @@ func k8sAPIServer(ctx context.Context) {
 	// Registering our handler functions, and creating paths.
 	k8sAPIMux := http.NewServeMux()
 	k8sAPIMux.HandleFunc("/api/v1/pods", PodsListHandler)
+	k8sAPIMux.HandleFunc("/apis/rbac.authorization.k8s.io/v1/rolebindings", RoleBindingsListHandler)
 
 	log.Println("Started k8s API server on port", k8sPortNum)
 	log.Println("To close connection CTRL+C :-)")

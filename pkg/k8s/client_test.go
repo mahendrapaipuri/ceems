@@ -10,10 +10,12 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -25,38 +27,105 @@ import (
 
 var noOpLogger = slog.New(slog.DiscardHandler)
 
-var testPods = []runtime.Object{
-	&v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "pod11",
-			UID:       "uid11",
-			Namespace: "ns1",
-			Labels: map[string]string{
-				"label1": "value1",
+var (
+	testPods = []runtime.Object{
+		&v1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pod11",
+				UID:       "uid11",
+				Namespace: "ns1",
+				Labels: map[string]string{
+					"label1": "value1",
+				},
 			},
 		},
-	},
-	&v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "pod12",
-			UID:       "uid12",
-			Namespace: "ns1",
-			Labels: map[string]string{
-				"label1": "value1",
+		&v1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pod12",
+				UID:       "uid12",
+				Namespace: "ns1",
+				Labels: map[string]string{
+					"label1": "value1",
+				},
 			},
 		},
-	},
-	&v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "pod21",
-			UID:       "uid21",
-			Namespace: "ns2",
-			Labels: map[string]string{
-				"label2": "value2",
+		&v1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pod21",
+				UID:       "uid21",
+				Namespace: "ns2",
+				Labels: map[string]string{
+					"label2": "value2",
+				},
 			},
 		},
-	},
-}
+	}
+
+	testRoleBindings = []runtime.Object{
+		&rbacv1.RoleBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "rb1",
+				UID:       "rb1",
+				Namespace: "foo",
+			},
+			Subjects: []rbacv1.Subject{
+				{
+					Kind:      "User",
+					Name:      "foo",
+					Namespace: "foo",
+				},
+				{
+					Kind:      "User",
+					Name:      "fooplus",
+					Namespace: "foo",
+				},
+				{
+					Kind:      "Group",
+					Name:      "foogroup",
+					Namespace: "foo",
+				},
+				{
+					Kind:      "ServiceAccount",
+					Name:      "foosvc",
+					Namespace: "foo",
+				},
+			},
+		},
+		&rbacv1.RoleBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "rb2",
+				UID:       "rb2",
+				Namespace: "foo",
+			},
+			Subjects: []rbacv1.Subject{
+				{
+					Kind:      "User",
+					Name:      "bar",
+					Namespace: "foo",
+				},
+			},
+		},
+		&rbacv1.RoleBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "rb3",
+				UID:       "rb3",
+				Namespace: "bar",
+			},
+			Subjects: []rbacv1.Subject{
+				{
+					Kind:      "User",
+					Name:      "barplus",
+					Namespace: "bar",
+				},
+				{
+					Kind:      "User",
+					Name:      "fooplus",
+					Namespace: "bar",
+				},
+			},
+		},
+	}
+)
 
 func TestNew(t *testing.T) {
 	content := `
@@ -98,7 +167,7 @@ users:
 	require.NoError(t, err)
 }
 
-func TestPods(t *testing.T) {
+func TestPodsLister(t *testing.T) {
 	testCases := []struct {
 		name     string
 		targetNS string
@@ -166,11 +235,44 @@ func TestPods(t *testing.T) {
 	}
 
 	for _, test := range testCases {
-		got, err := client.Pods(t.Context(), test.targetNS, test.opts)
+		got, err := client.ListPods(t.Context(), test.targetNS, test.opts)
 		require.NoError(t, err)
 
 		assert.ElementsMatch(t, test.expected, got, test.name)
 	}
+}
+
+func TestInformer(t *testing.T) {
+	// Make fake client
+	fakeClientset := fake.NewClientset(testPods...)
+
+	// Make k8s client
+	client := &Client{
+		Logger:    noOpLogger,
+		Clientset: fakeClientset,
+		pods:      make(map[string]*v1.Pod),
+		stopCh:    make(chan struct{}),
+	}
+
+	// Make new informer
+	err := client.NewPodInformer(time.Second)
+	require.NoError(t, err)
+
+	// Start informer
+	err = client.StartInformer()
+	require.NoError(t, err)
+
+	// Sleep a while to fetch all pods
+	time.Sleep(time.Second)
+
+	// Fetch current pods
+	pods := client.Pods()
+
+	// Check fetched pods
+	assert.Len(t, pods, len(testPods))
+
+	// Stop informer
+	client.Close()
 }
 
 func TestPodDevices(t *testing.T) {
@@ -292,7 +394,7 @@ func TestPodDevices(t *testing.T) {
 		PodResourceClient: kubeletClient,
 	}
 
-	got, err := client.PodDevices(t.Context())
+	got, err := client.ListPodsWithDevs(t.Context())
 	require.NoError(t, err)
 
 	assert.ElementsMatch(t, expected, got)
@@ -342,4 +444,70 @@ GPU 3: NVIDIA H100 80GB HBM3 (UUID: GPU-2114ac3c-d010-ef91-2ab8-45544c7b64c5)`
 	require.NoError(t, err)
 	assert.Equal(t, expected, string(stdout))
 	assert.Empty(t, stderr)
+}
+
+func TestListUsers(t *testing.T) {
+	// Make fake client
+	fakeClientset := fake.NewClientset(testRoleBindings...)
+
+	// Make k8s client
+	client := &Client{
+		Logger:    noOpLogger,
+		Clientset: fakeClientset,
+		pods:      make(map[string]*v1.Pod),
+		stopCh:    make(chan struct{}),
+	}
+
+	// Fetch users
+	usersMap, err := client.ListUsers(t.Context(), "")
+	require.NoError(t, err)
+
+	// Expected
+	expectedUsersMap := map[string][]string{
+		"foo": {"foo", "fooplus", "bar"},
+		"bar": {"barplus", "fooplus"},
+	}
+
+	// Check fetched pods
+	assert.Equal(t, expectedUsersMap, usersMap)
+}
+
+func TestConfigMap(t *testing.T) {
+	// Expected data
+	expectedData := map[string]string{
+		"test": "value",
+	}
+
+	// Make fake client
+	fakeClientset := fake.NewClientset(
+		[]runtime.Object{
+			&v1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "cm",
+					UID:       "cm",
+					Namespace: "default",
+				},
+				Data: expectedData,
+			},
+		}...,
+	)
+
+	// Make k8s client
+	client := &Client{
+		Logger:    noOpLogger,
+		Clientset: fakeClientset,
+		pods:      make(map[string]*v1.Pod),
+		stopCh:    make(chan struct{}),
+	}
+
+	// Fetch config
+	cm, err := client.ConfigMap(t.Context(), "default", "cm")
+	require.NoError(t, err)
+
+	// Check config
+	assert.Equal(t, expectedData, cm)
+
+	// Try to fetch non existent cm
+	_, err = client.ConfigMap(t.Context(), "foo", "bar")
+	require.Error(t, err)
 }

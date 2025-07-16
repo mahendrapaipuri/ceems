@@ -1,0 +1,1 @@
+{"status":"success","data":[{"cluster_id":"k8s-0","resource_manager":"k8s","name":"rb1","projects":[["ns1","ns2"]]},{"cluster_id":"k8s-1","resource_manager":"k8s","name":"rb1","projects":[["ns1","ns2"]]}]}

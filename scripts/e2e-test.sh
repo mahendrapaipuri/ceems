@@ -159,6 +159,10 @@ then
   then
     desc="/projects/admin end point test"
     fixture='pkg/api/testdata/output/e2e-test-api-server-project-admin-query.txt'
+  elif [ "${scenario}" = "api-project-query-k8s" ]
+  then
+    desc="/projects end point test with k8s"
+    fixture='pkg/api/testdata/output/e2e-test-api-server-project-query-k8s.txt'
   elif [ "${scenario}" = "api-user-query" ]
   then
     desc="/users end point test"
@@ -171,6 +175,10 @@ then
   then
     desc="/users/admin end point test that queries all users"
     fixture='pkg/api/testdata/output/e2e-test-api-server-user-admin-all-query.txt'
+  elif [ "${scenario}" = "api-user-query-k8s" ]
+  then
+    desc="/users end point test with k8s"
+    fixture='pkg/api/testdata/output/e2e-test-api-server-user-query-k8s.txt'
   elif [ "${scenario}" = "api-cluster-admin-query" ]
   then
     desc="/clusters/admin end point test"
@@ -187,6 +195,10 @@ then
   then
     desc="/units end point test with running query param"
     fixture='pkg/api/testdata/output/e2e-test-api-server-running-query.txt'
+  elif [ "${scenario}" = "api-units-query-k8s" ]
+  then
+    desc="/units end point test with k8s"
+    fixture='pkg/api/testdata/output/e2e-test-api-server-query-k8s.txt'
   elif [ "${scenario}" = "api-admin-query" ]
   then
     desc="/units/admin end point test for admin query"
@@ -223,6 +235,10 @@ then
   then
     desc="/usage/current/admin end point test with experimental aggregation"
     fixture='pkg/api/testdata/output/e2e-test-api-server-current-usage-admin-experimental-query.txt'
+  elif [ "${scenario}" = "api-current-usage-query-k8s" ]
+  then
+    desc="/usage/current end point test with k8s"
+    fixture='pkg/api/testdata/output/e2e-test-api-server-current-usage-query-k8s.txt'
   elif [ "${scenario}" = "api-global-usage-admin-query" ]
   then
     desc="/usage/global/admin end point test"
@@ -239,6 +255,10 @@ then
   then
     desc="/stats/global/admin end point test"
     fixture='pkg/api/testdata/output/e2e-test-api-server-global-stats-admin-query.txt'
+  elif [ "${scenario}" = "api-global-usage-query-k8s" ]
+  then
+    desc="/usage/global end point test with k8s"
+    fixture='pkg/api/testdata/output/e2e-test-api-server-global-usage-query-k8s.txt'
   elif [ "${scenario}" = "api-verify-pass-query" ]
   then
     desc="/units/verify end point test with pass request"
@@ -852,12 +872,13 @@ then
   fi
 
   export PATH="${GOBIN:-}:${PATH}"
-  ./bin/mock_servers prom os-compute os-identity >> "${logfile}" 2>&1 &
+  ./bin/mock_servers prom os-compute os-identity k8s-api >> "${logfile}" 2>&1 &
   MOCK_SERVERS_PID=$!
 
   waitport "9090"
   waitport "8080"
   waitport "7070"
+  waitport "9080"
 
   # Copy config file to tmpdir
   cp pkg/api/testdata/config.yml "${tmpdir}/config.yml"
@@ -892,6 +913,9 @@ then
   elif [ "${scenario}" = "api-project-admin-query" ]
   then
     get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/projects/admin?project=test-project-3" > "${fixture_output}"
+  elif [ "${scenario}" = "api-project-query-k8s" ]
+  then
+    get -H "X-Grafana-User: rb1" "127.0.0.1:${port}/api/${api_version}/projects?project=ns2" > "${fixture_output}"
   elif [ "${scenario}" = "api-user-query" ]
   then
     get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/users" > "${fixture_output}"
@@ -901,6 +925,9 @@ then
   elif [ "${scenario}" = "api-user-admin-all-query" ]
   then
     get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/users/admin" > "${fixture_output}"
+  elif [ "${scenario}" = "api-user-query-k8s" ]
+  then
+    get -H "X-Grafana-User: rb1" "127.0.0.1:${port}/api/${api_version}/users" > "${fixture_output}"
   elif [ "${scenario}" = "api-cluster-admin-query" ]
   then
     get -H "X-Grafana-User: ceems-int-svc" "127.0.0.1:${port}/api/${api_version}/clusters/admin" > "${fixture_output}"
@@ -913,6 +940,9 @@ then
   elif [ "${scenario}" = "api-running-query" ]
   then
     get -H "X-Grafana-User: test-user-1" "127.0.0.1:${port}/api/${api_version}/units?running&cluster_id=os-1&field=uuid&field=state&field=started_at&field=allocation&field=tags&timezone=${timezone}" > "${fixture_output}"
+  elif [ "${scenario}" = "api-units-query-k8s" ]
+  then
+    get -H "X-Grafana-User: kusr2" "127.0.0.1:${port}/api/${api_version}/units?cluster_id=k8s-1&project=ns2&to=1751883060" > "${fixture_output}"
   elif [ "${scenario}" = "api-admin-query" ]
   then
     get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/units/admin?user=usr3&cluster_id=slurm-0&project=acc3&from=1676934000&to=1677538800" > "${fixture_output}"
@@ -931,27 +961,33 @@ then
   elif [ "${scenario}" = "api-current-usage-experimental-query" ]
   then
     get -H "X-Grafana-User: test-user-4" "127.0.0.1:${port}/api/${api_version}/usage/current?cluster_id=os-1&from=${usage_from}&to=${usage_to}&experimental" > "${fixture_output}"
-  elif [ "${scenario}" = "api-global-usage-query" ]
-  then
-    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/usage/global?cluster_id=slurm-0&field=username&field=project&field=num_units" > "${fixture_output}"
   elif [ "${scenario}" = "api-current-usage-admin-query" ]
   then
     get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/usage/current/admin?cluster_id=slurm-1&user=usr15&user=usr3&from=${usage_from}&to=${usage_to}&__terminated" > "${fixture_output}"
   elif [ "${scenario}" = "api-current-usage-admin-experimental-query" ]
   then
     get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/usage/current/admin?cluster_id=slurm-1&user=usr15&user=usr4&cluster_id=os-1&user=test-user-4&from=${usage_from}&to=${usage_to}&experimental" > "${fixture_output}"
+  elif [ "${scenario}" = "api-current-usage-query-k8s" ]
+  then
+    get -H "X-Grafana-User: kusr2" "127.0.0.1:${port}/api/${api_version}/usage/current?cluster_id=k8s-1&from=${usage_from}&to=${usage_to}&__terminated" > "${fixture_output}"
+  elif [ "${scenario}" = "api-current-usage-admin-denied-query" ]
+  then
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/usage/global/admin?cluster_id=slurm-1&user=usr2" > "${fixture_output}"
+  elif [ "${scenario}" = "api-global-usage-query" ]
+  then
+    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/usage/global?cluster_id=slurm-0&field=username&field=project&field=num_units" > "${fixture_output}"
   elif [ "${scenario}" = "api-global-usage-admin-query" ]
   then
     get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/usage/global/admin?cluster_id=slurm-0&field=username&field=project&field=num_units" > "${fixture_output}"
+  elif [ "${scenario}" = "api-global-usage-query-k8s" ]
+  then
+    get -H "X-Grafana-User: kusr1" "127.0.0.1:${port}/api/${api_version}/usage/global?cluster_id=slurm-0&field=username&field=project&field=num_units" > "${fixture_output}"
   elif [ "${scenario}" = "api-current-stats-admin-query" ]
   then
     get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/stats/current/admin?cluster_id=os-1&from=1728994800&to=1729005000" > "${fixture_output}"
   elif [ "${scenario}" = "api-global-stats-admin-query" ]
   then
     get -H "X-Grafana-User: grafana" "127.0.0.1:${port}/api/${api_version}/stats/global/admin" > "${fixture_output}"
-  elif [ "${scenario}" = "api-current-usage-admin-denied-query" ]
-  then
-    get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/usage/global/admin?cluster_id=slurm-1&user=usr2" > "${fixture_output}"
   elif [ "${scenario}" = "api-verify-pass-query" ]
   then
     get -H "X-Grafana-User: usr1" "127.0.0.1:${port}/api/${api_version}/units/verify?cluster_id=slurm-0&uuid=1479763&uuid=1479765" > "${fixture_output}"
@@ -1115,13 +1151,14 @@ then
 
   elif [[ "${scenario}" = "lb-forbid-user-query-api" ]] 
   then
-    ./bin/mock_servers prom pyro os-compute os-identity >> "${logfile}" 2>&1 &
+    ./bin/mock_servers prom pyro os-compute os-identity k8s-api >> "${logfile}" 2>&1 &
     MOCK_SERVERS_PID=$!
 
     waitport "9090"
     waitport "4040"
     waitport "8080"
     waitport "7070"
+    waitport "9080"
 
     # Copy config file to tmpdir
     cp pkg/api/testdata/config.yml "${tmpdir}/config.yml"
@@ -1155,13 +1192,14 @@ then
 
   elif [[ "${scenario}" = "lb-allow-user-query-api" ]] 
   then
-    ./bin/mock_servers prom pyro os-compute os-identity >> "${logfile}" 2>&1 &
+    ./bin/mock_servers prom pyro os-compute os-identity k8s-api >> "${logfile}" 2>&1 &
     MOCK_SERVERS_PID=$!
 
     waitport "4040"
     waitport "8080"
     waitport "7070"
     waitport "9090"
+    waitport "9080"
 
     # Copy config file to tmpdir
     cp pkg/api/testdata/config.yml "${tmpdir}/config.yml"

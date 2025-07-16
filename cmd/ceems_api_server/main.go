@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/mahendrapaipuri/ceems/pkg/api/cli"
+	_ "github.com/mahendrapaipuri/ceems/pkg/api/resource/k8s"
 	_ "github.com/mahendrapaipuri/ceems/pkg/api/resource/openstack"
 	_ "github.com/mahendrapaipuri/ceems/pkg/api/resource/slurm"
 	_ "github.com/mahendrapaipuri/ceems/pkg/api/updater/tsdb"

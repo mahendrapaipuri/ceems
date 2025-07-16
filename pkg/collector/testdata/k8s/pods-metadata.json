@@ -2,48 +2,199 @@
   "metadata": {},
   "items": [
     {
+      "apiVersion": "v1",
+      "kind": "Pod",
       "metadata": {
         "name": "pod11",
         "namespace": "ns1",
-        "uid": "6c22124f-e9a7-450b-8915-9bf3e0716d78"
+        "uid": "6c22124f-e9a7-450b-8915-9bf3e0716d78",
+        "creationTimestamp": "2025-07-07T08:56:56Z",
+        "annotations": {
+          "ceems.io/created-by": "kusr1"
+        }
       },
       "spec": {
-        "containers": null
+        "resources": {
+          "limits": {
+            "cpu": "100m",
+            "memory": "100Mi"
+          }
+        },
+        "containers": [
+          {
+            "name": "cont111",
+            "resources": {
+              "limits": {
+                "cpu": "50m",
+                "memory": "50Mi",
+                "nvidia.com/gpu": 2
+              }
+            }
+          },
+          {
+            "name": "cont112",
+            "resources": {
+              "limits": {
+                "cpu": "50m",
+                "memory": "50Mi",
+                "nvidia.com/mig-1g.5gb": 1
+              }
+            }
+          }
+        ]
       },
-      "status": {}
+      "status": {
+        "phase": "Running",
+        "startTime": "2025-07-07T08:56:58Z",
+        "qosClass": "BestEffort",
+        "conditions": [
+          {
+            "type": "PodReadyToStartContainers",
+            "status": "True",
+            "lastTransitionTime": "2025-07-07T08:56:58Z"
+          }
+        ]
+      }
     },
     {
+      "apiVersion": "v1",
+      "kind": "Pod",
       "metadata": {
         "name": "pod21",
-        "namespace": "ns2",
-        "uid": "483168fc-b347-4aa2-a9fa-9e3d220ba4c5"
+        "namespace": "default",
+        "uid": "483168fc-b347-4aa2-a9fa-9e3d220ba4c5",
+        "creationTimestamp": "2025-07-07T09:56:56Z",
+        "annotations": {
+          "ceems.io/created-by": "system:serviceaccount",
+          "ceems.io/project": "ns2"
+        }
       },
       "spec": {
-        "containers": null
+        "containers": [
+          {
+            "name": "cont211",
+            "resources": {
+              "limits": {
+                "cpu": "50m",
+                "memory": "50Mi",
+                "nvidia.com/mig-4g.20gb": 4
+              }
+            }
+          },
+          {
+            "name": "cont212",
+            "resources": {
+              "limits": {
+                "cpu": "150m",
+                "memory": "150Mi"
+              }
+            }
+          }
+        ]
       },
-      "status": {}
+      "status": {
+        "phase": "Running",
+        "startTime": "2025-07-07T09:56:58Z",
+        "qosClass": "Guaranteed",
+        "conditions": [
+          {
+            "type": "PodReadyToStartContainers",
+            "status": "True",
+            "lastTransitionTime": "2025-07-07T09:56:58Z"
+          }
+        ]
+      }
     },
     {
+      "apiVersion": "v1",
+      "kind": "Pod",
       "metadata": {
         "name": "pod22",
         "namespace": "ns2",
-        "uid": "6232f0c5-57fa-409a-b026-0919f60e24a6"
+        "uid": "6232f0c5-57fa-409a-b026-0919f60e24a6",
+        "creationTimestamp": "2025-07-07T09:26:56Z",
+        "deletionTimestamp": "2025-07-07T10:10:58Z",
+        "annotations": {
+          "ceems.io/created-by": "kusr2"
+        }
       },
       "spec": {
-        "containers": null
+        "containers": [
+          {
+            "name": "cont221",
+            "resources": {
+              "limits": {
+                "cpu": "2",
+                "memory": "2Gi",
+                "nvidia.com/mig-4g.20gb": 2
+              }
+            }
+          },
+          {
+            "name": "cont222",
+            "resources": {
+              "limits": {
+                "cpu": "1",
+                "memory": "1Gi",
+                "nvidia.com/mig-1g.5gb": 1
+              }
+            }
+          }
+        ]
       },
-      "status": {}
+      "status": {
+        "phase": "Succeeded",
+        "startTime": "2025-07-07T09:26:58Z",
+        "qosClass": "Burstable",
+        "conditions": [
+          {
+            "type": "PodReadyToStartContainers",
+            "status": "True",
+            "lastTransitionTime": "2025-07-07T09:26:58Z"
+          }
+        ]
+      }
     },
     {
+      "apiVersion": "v1",
+      "kind": "Pod",
       "metadata": {
         "name": "pod31",
         "namespace": "ns3",
-        "uid": "3a61e77f-1538-476b-8231-5af9eed40fdc"
+        "uid": "3a61e77f-1538-476b-8231-5af9eed40fdc",
+        "creationTimestamp": "2025-07-07T09:16:56Z",
+        "annotations": {
+          "ceems.io/created-by": "kusr3"
+        }
       },
       "spec": {
-        "containers": null
+        "containers": [
+          {
+            "name": "cont311",
+            "resources": {
+              "limits": {
+                "cpu": 2,
+                "memory": "2Gi",
+                "nvidia.com/gpu": 1
+              }
+            }
+          },
+          {
+            "name": "cont312",
+            "resources": {
+              "limits": {
+                "cpu": 1,
+                "memory": "1Gi",
+                "nvidia.com/mig-4g.20gb": 2
+              }
+            }
+          }
+        ]
       },
-      "status": {}
+      "status": {
+        "phase": "Pending",
+        "qosClass": "Burstable"
+      }
     }
   ]
 }

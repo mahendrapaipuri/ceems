@@ -44,7 +44,7 @@ Generic placeholders are defined as follows:
 * `<string>`: a regular string
 * `<size>`: a size in bytes, e.g., `512MB`. A unit is required. Supported units: B, KB, MB, GB, TB, PB, EB.
 * `<idname>`: a string matching the regular expression `[a-zA-Z_-][a-zA-Z0-9_-]*`. Any other unsupported character in the source label should be converted to an underscore
-* `<managername>`: a string that identifies the resource manager. Currently accepted values are `slurm`.
+* `<managername>`: a string that identifies the resource manager. Currently accepted values are `slurm`, `openstack` and `k8s`.
 * `<updatername>`: a string that identifies the updater type. Currently accepted values are `tsdb`.
 * `<promql_query>`: a valid PromQL query string.
 * `<lbstrategy>`: a valid load balancing strategy. Currently accepted values are `round-robin` and `least-connection`.
@@ -283,8 +283,10 @@ A `cluster_config` allows configuring the cluster of the CEEMS API server.
 #
 id: <idname>
 
-# Resource manager of the cluster. Currently, only `slurm` is supported. In the future,
-# `openstack` will be supported.
+# Resource manager of the cluster. Currently supported managers:
+#  - `slurm`
+#  - `openstack`
+#  - `k8s`
 #
 manager: <managername>
 
@@ -362,7 +364,7 @@ web:
 # Any other configuration needed to reach the API server of the resource manager
 # can be configured in this section.
 #
-# Currently, this section is used for the OpenStack resource manager
+# Currently, this section is used for the OpenStack and k8s resource managers
 # to configure API versions.
 #
 # In the case of OpenStack, this section must have two keys: `api_service_endpoints`
@@ -385,6 +387,58 @@ web:
 #         user:
 #           name: admin
 #           password: supersecret
+#
+# In the case of k8s, this section is used to configure the k8s API related config
+#
+# Path to the kube config file when out-of-cluster config file is used. If the
+# ceems_api_server is running in a pod, in-cluster config will be used by default.
+#
+# kubeconfig_file: ''
+#
+# List of annotation names where the name of the user that created/modified the pod is stored.
+# The search for username will be stopped when the first annotation is found in the list.
+# Therefore the order of the list is important.
+#
+# Default: [ceems.io/created-by]
+#
+# username_annotations: []
+#
+# List of annotation names where the name of the project that the pod belongs to is stored.
+# By default the project is always set to the namespace of the pod and when atleast one of
+# annotation names are found in the pod spec, the namespace will be overridded by the value
+# of the annotation
+#
+# project_annotations: []
+#
+# List of GPU resource names in the cluster.
+#
+# Default: [nvidia.com/gpu, amd.com/gpu]
+#
+# gpu_resource_names: []
+#
+# Path to the file that contains the list of namespaces and allowed users in each namespace.
+# The format of the file must be as follows:
+#
+# users:
+#  ns1:
+#    - usr1
+#    - usr2
+#  ns2:
+#    - usr1
+#    - usr3
+#
+# ns_users_list_file: ''
+#
+# Example:
+#
+# extra_config:
+#   username_annotations:
+#     - ceems.io/created-by
+#     - example.io/created-by
+#   gpu_resource_names:
+#     - nvidia.com/gpu
+#     - nvidia.com/mig-1g.10gb
+#   ns_users_list_file: /var/run/ceems/users.yaml
 #
 extra_config:
   [ <string>: <object> ... ]
@@ -522,12 +576,13 @@ A `queries_config` allows configuring PromQL queries for the TSDB updater of the
 #
 # The placeholder queries shown below should work out-of-the-box with the CEEMS 
 # exporter when the recording rules to Prometheus have been configured
-# using `ceems_tool`. If operators deploy more exporters of their own, queries
+# using `ceems_tool`. Moreover the placeholders are the default values for different
+# metrics. If operators deploy more exporters of their own, queries
 # must be modified accordingly.
 #
 # Average CPU utilization
 #
-# Example of a valid query:
+# Default value:
 #
 # global:
 #   avg_over_time(avg by (uuid) (uuid:ceems_cpu_usage:ratio_irate{uuid=~"{{.UUIDs}}"} >= 0 < inf)[{{.Range}}:])
@@ -537,7 +592,7 @@ avg_cpu_usage:
 
 # Average CPU Memory utilization
 #
-# Example of a valid query:
+# Default value:
 #
 # global:
 #   avg_over_time(avg by (uuid) (uuid:ceems_cpu_memory_usage:ratio{uuid=~"{{.UUIDs}}"} >= 0 < inf)[{{.Range}}:])
@@ -547,7 +602,7 @@ avg_cpu_mem_usage:
 
 # Total CPU energy usage in kWh
 #
-# Example of a valid query:
+# Default value:
 #
 # total:
 #   sum_over_time(sum by (uuid) (uuid:ceems_host_power_watts:pue{uuid=~"{{.UUIDs}}"} >= 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 3.6e9
@@ -557,7 +612,8 @@ total_cpu_energy_usage_kwh:
 
 # Total CPU emissions in gms
 #
-# Example of a valid query:
+# Default value:
+#
 # rte_total: |
 #   sum_over_time(sum by (uuid) (uuid:ceems_host_emissions_g_s:pue{uuid=~"{{.UUIDs}}",provider="rte"} >= 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 1e3
 # emaps_total: |
@@ -570,7 +626,7 @@ total_cpu_emissions_gms:
 
 # Average GPU utilization
 #
-# Example of a valid query:
+# Default value:
 #
 # global:
 #   avg_over_time(avg by (uuid) (uuid:ceems_gpu_usage:ratio{uuid=~"{{.UUIDs}}"} >= 0 < inf)[{{.Range}}:])
@@ -580,7 +636,7 @@ avg_gpu_usage:
 
 # Average GPU memory utilization
 #
-# Example of a valid query:
+# Default value:
 #
 # global:
 #   avg_over_time(avg by (uuid) (uuid:ceems_gpu_memory_usage:ratio{uuid=~"{{.UUIDs}}"} >= 0 < inf)[{{.Range}}:])
@@ -590,7 +646,7 @@ avg_gpu_mem_usage:
 
 # Total GPU energy usage in kWh
 #
-# Example of a valid query:
+# Default value:
 #
 # total:
 #   sum_over_time(sum by (uuid) (uuid:ceems_gpu_power_watts:pue{uuid=~"{{.UUIDs}}"} >= 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 3.6e9
@@ -600,7 +656,7 @@ total_gpu_energy_usage_kwh:
 
 # Total GPU emissions in gms
 #
-# Example of a valid query:
+# Default value:
 #
 # rte_total: |
 #   sum_over_time(sum by (uuid) (uuid:ceems_gpu_emissions_g_s:pue{uuid=~"{{.UUIDs}}",provider="rte"} >= 0 < inf)[{{.Range}}:{{.ScrapeInterval}}]) * {{.ScrapeIntervalMilli}} / 1e3
@@ -614,25 +670,33 @@ total_gpu_emissions_gms:
 
 # Total IO write in GB stats
 #
-# Example of a valid query:
+# Default value:
 #
 # bytes_total: |
 #   sum by (uuid) (increase(ceems_ebpf_write_bytes_total{uuid=~"{{.UUIDs}}"}[{{.Range}}]) >= 0 < inf)
+# requests_total: |
+#   sum by (uuid) (increase(ceems_ebpf_write_requests_total{uuid=~"{{.UUIDs}}"}[{{.Range}}]) >= 0 < inf)
+# errors_total: |
+#   sum by (uuid) (increase(ceems_ebpf_write_errors_total{uuid=~"{{.UUIDs}}"}[{{.Range}}]) >= 0 < inf)
 total_io_write_stats:
   [ <string>: <promql_query> ... ]
 
 # Total IO read in GB stats
 #
-# Example of a valid query:
+# Default value:
 #
 # bytes_total: |
 #   sum by (uuid) (increase(ceems_ebpf_read_bytes_total{uuid=~"{{.UUIDs}}"}[{{.Range}}]) >= 0 < inf)
+# requests_total: |
+#   sum by (uuid) (increase(ceems_ebpf_read_requests_total{uuid=~"{{.UUIDs}}"}[{{.Range}}]) >= 0 < inf)
+# errors_total: |
+#   sum by (uuid) (increase(ceems_ebpf_read_errors_total{uuid=~"{{.UUIDs}}"}[{{.Range}}]) >= 0 < inf)
 total_io_read_stats:
   [ <string>: <promql_query> ... ]
 
 # Total ingress traffic stats
 #
-# Example of a valid query:
+# Default value:
 #
 # bytes_total: |
 #   sum by (uuid) (increase(ceems_ebpf_ingress_bytes_total{uuid=~"{{.UUIDs}}"}[{{.Range}}]) >= 0 < inf)
@@ -640,6 +704,8 @@ total_ingress_stats:
   [ <string>: <promql_query> ... ]
 
 # Total egress traffic stats
+#
+# Default value:
 #
 # bytes_total: |
 #   sum by (uuid) (increase(ceems_ebpf_egress_bytes_total{uuid=~"{{.UUIDs}}"}[{{.Range}}]) >= 0 < inf)

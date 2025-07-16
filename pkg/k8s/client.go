@@ -8,14 +8,18 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"sync"
 	"time"
 
 	"google.golang.org/grpc"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/informers"
+	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/remotecommand"
 	podresourcesapi "k8s.io/kubelet/pkg/apis/podresources/v1"
@@ -31,12 +35,19 @@ const (
 	grpcClientRecvSizeMax = 128 * 1024 * 1024
 )
 
+var podMu = sync.RWMutex{}
+
 type Client struct {
 	Logger            *slog.Logger
 	Hostname          string
 	Config            *rest.Config
 	Clientset         kubernetes.Interface
 	PodResourceClient podresourcesapi.PodResourcesListerClient
+	PodInformer       coreinformers.PodInformer
+	informerFactory   informers.SharedInformerFactory
+	stopCh            chan struct{}
+	informerRunning   bool
+	pods              map[string]*v1.Pod
 	cleanup           func() error
 }
 
@@ -98,33 +109,32 @@ func New(kubeconfigPath string, kubeletSocket string, logger *slog.Logger) (*Cli
 		return nil, err
 	}
 
+	// Make a new instance of client
+	c := &Client{
+		Logger:    logger,
+		Hostname:  os.Getenv(nodenameEnvVar),
+		Config:    config,
+		Clientset: clientset,
+		pods:      make(map[string]*v1.Pod),
+		stopCh:    make(chan struct{}),
+	}
+
 	// If kubelet socket is mounted, create a pod resource client
-	var client podresourcesapi.PodResourcesListerClient
-
-	var cleanup func() error
-
 	if _, err := os.Stat(kubeletSocket); err == nil {
 		conn, err := ConnectToServer(kubeletSocket)
 		if err != nil {
 			return nil, err
 		}
 
-		client = podresourcesapi.NewPodResourcesListerClient(conn)
+		c.PodResourceClient = podresourcesapi.NewPodResourcesListerClient(conn)
 
 		// Close connection when stopping client
-		cleanup = func() error {
+		c.cleanup = func() error {
 			return conn.Close()
 		}
 	}
 
-	return &Client{
-		Logger:            logger,
-		Hostname:          os.Getenv(nodenameEnvVar),
-		Config:            config,
-		Clientset:         clientset,
-		PodResourceClient: client,
-		cleanup:           cleanup,
-	}, nil
+	return c, nil
 }
 
 // Close stops clients and release resources.
@@ -135,11 +145,75 @@ func (c *Client) Close() error {
 		return c.cleanup()
 	}
 
+	// Stop informer(s)
+	if c.informerRunning {
+		close(c.stopCh)
+	}
+
 	return nil
 }
 
-// Pods returns current pods in the cluster.
-func (c *Client) Pods(ctx context.Context, ns string, opts metav1.ListOptions) ([]Pod, error) {
+// NewInformer creates new pod informer using current client.
+func (c *Client) NewPodInformer(resyncPeriod time.Duration) error {
+	// Create a new informer from factory
+	// Discussion on ideal resync period: https://groups.google.com/g/kubernetes-sig-api-machinery/c/PbSCXdLDno0
+	c.informerFactory = informers.NewSharedInformerFactory(c.Clientset, resyncPeriod)
+
+	// Create a new instance of pod informer
+	c.PodInformer = c.informerFactory.Core().V1().Pods()
+	if _, err := c.PodInformer.Informer().AddEventHandler(
+		// Your custom resource event handlers.
+		cache.ResourceEventHandlerFuncs{
+			// Called on creation
+			AddFunc: c.podAdd,
+			// Called on resource update and every resyncPeriod on existing resources.
+			UpdateFunc: c.podUpdate,
+			// Called on resource deletion.
+			DeleteFunc: c.podDelete,
+		},
+	); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// StartInformer starts shared informers and waits for the shared informer cache to
+// synchronize.
+func (c *Client) StartInformer() error {
+	// Starts all the shared informers that have been created by the factory so
+	// far.
+	c.informerFactory.Start(c.stopCh)
+
+	// wait for the initial synchronization of the local cache.
+	if !cache.WaitForCacheSync(c.stopCh, c.PodInformer.Informer().HasSynced) {
+		return errors.New("failed to synchronize pod informer")
+	}
+
+	// Set informerRunning to true
+	c.informerRunning = true
+
+	return nil
+}
+
+// Pods returns a slice of pods provided by shared informer.
+func (c *Client) Pods() []*v1.Pod {
+	var pods []*v1.Pod
+
+	podMu.Lock()
+	for _, pod := range c.pods {
+		pods = append(pods, pod)
+	}
+
+	// Reset pods map
+	c.pods = make(map[string]*v1.Pod)
+	podMu.Unlock()
+
+	return pods
+}
+
+// ListPods returns lists all current pods in the cluster.
+func (c *Client) ListPods(ctx context.Context, ns string, opts metav1.ListOptions) ([]Pod, error) {
 	resp, err := c.Clientset.CoreV1().Pods(ns).List(ctx, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pods: %w", err)
@@ -163,8 +237,8 @@ func (c *Client) Pods(ctx context.Context, ns string, opts metav1.ListOptions) (
 	return pods, nil
 }
 
-// PodDevices returns a slice of pods with devices associated with each pod.
-func (c *Client) PodDevices(ctx context.Context) ([]Pod, error) {
+// ListPodsWithDevs returns a slice of pods with devices associated with each pod.
+func (c *Client) ListPodsWithDevs(ctx context.Context) ([]Pod, error) {
 	if c.PodResourceClient == nil {
 		return nil, errors.New("pod resource API is not available")
 	}
@@ -178,7 +252,7 @@ func (c *Client) PodDevices(ctx context.Context) ([]Pod, error) {
 	}
 
 	// Get pods from all namespaces on the current node
-	pods, err := c.Pods(ctx, "", opts)
+	pods, err := c.ListPods(ctx, "", opts)
 	if err != nil {
 		return nil, err
 	}
@@ -193,6 +267,27 @@ func (c *Client) PodDevices(ctx context.Context) ([]Pod, error) {
 	}
 
 	return mergePodResources(pods, resp), nil
+}
+
+// ListUsers returns a slice of map of namespaces to users fetched from rolebindings.
+func (c *Client) ListUsers(ctx context.Context, ns string) (map[string][]string, error) {
+	resp, err := c.Clientset.RbacV1().RoleBindings(ns).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get role bindings: %w", err)
+	}
+
+	// Loop over role bindings and make a map of namespaces to users
+	nsUsers := make(map[string][]string)
+
+	for _, bind := range resp.Items {
+		for _, sub := range bind.Subjects {
+			if sub.Kind == "User" {
+				nsUsers[bind.Namespace] = append(nsUsers[bind.Namespace], sub.Name)
+			}
+		}
+	}
+
+	return nsUsers, nil
 }
 
 // Exec executes a given command in the pod and returns output.
@@ -234,6 +329,43 @@ func (c *Client) Exec(ctx context.Context, ns string, pod string, container stri
 	}
 
 	return stdout.Bytes(), stderr.Bytes(), nil
+}
+
+// ConfigMap returns contents of a configMap.
+func (c *Client) ConfigMap(ctx context.Context, ns string, name string) (map[string]string, error) {
+	resp, err := c.Clientset.CoreV1().ConfigMaps(ns).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get configmap: %w", err)
+	}
+
+	return resp.Data, nil
+}
+
+// podAdd adds pod to pods map.
+func (c *Client) podAdd(obj any) {
+	if pod, ok := obj.(*v1.Pod); ok {
+		podMu.Lock()
+		c.pods[string(pod.UID)] = pod
+		podMu.Unlock()
+	}
+}
+
+// podUpdate updates pod in pods map.
+func (c *Client) podUpdate(_, newObj any) {
+	if pod, ok := newObj.(*v1.Pod); ok {
+		podMu.Lock()
+		c.pods[string(pod.UID)] = pod
+		podMu.Unlock()
+	}
+}
+
+// podDelete deletes pod from pods map.
+func (c *Client) podDelete(obj any) {
+	if pod, ok := obj.(*v1.Pod); ok {
+		podMu.Lock()
+		c.pods[string(pod.UID)] = pod
+		podMu.Unlock()
+	}
 }
 
 // mergePodResources merges the existing Pod resources, if and when found, to Pod struct.

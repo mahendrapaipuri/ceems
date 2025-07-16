@@ -6,13 +6,6 @@ sidebar_position: 1
 
 ## Basic Usage
 
-:::important[IMPORTANT]
-
-Currently, the CEEMS exporter supports exporting SLURM job and OpenStack VM metrics.
-Support for Kubernetes is planned for the next milestone.
-
-:::
-
 To run the exporter with the default enabled collectors, use the following command:
 
 ```bash

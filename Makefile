@@ -55,7 +55,7 @@ ifeq ($(CGO_APPS), 1)
 	PROMU_CONF ?= .promu/.promu-cgo.yml
 	pkgs := ./pkg/sqlite3 ./pkg/api/cli \
 			./pkg/api/db ./pkg/api/db/migrator ./pkg/api/helper \
-			./pkg/api/resource ./pkg/api/resource/slurm ./pkg/api/resource/openstack \
+			./pkg/api/resource ./pkg/api/resource/slurm ./pkg/api/resource/openstack ./pkg/api/resource/k8s \
 			./pkg/api/updater ./pkg/api/updater/tsdb \
 			./pkg/api/http ./cmd/ceems_api_server \
 			./pkg/lb/backend ./pkg/lb/cli \
@@ -197,21 +197,26 @@ test-e2e: $(PROMTOOL) build pkg/collector/testdata/sys/.unpacked pkg/collector/t
 	./scripts/e2e-test.sh -s api-project-query
 	./scripts/e2e-test.sh -s api-project-empty-query
 	./scripts/e2e-test.sh -s api-project-admin-query
+	./scripts/e2e-test.sh -s api-project-query-k8s
 	./scripts/e2e-test.sh -s api-user-query
 	./scripts/e2e-test.sh -s api-user-admin-query
+	./scripts/e2e-test.sh -s api-user-query-k8s
 	./scripts/e2e-test.sh -s api-cluster-admin-query
 	./scripts/e2e-test.sh -s api-uuid-query
 	./scripts/e2e-test.sh -s api-running-query
+	./scripts/e2e-test.sh -s api-units-query-k8s
 	./scripts/e2e-test.sh -s api-admin-query
 	./scripts/e2e-test.sh -s api-admin-query-all
 	./scripts/e2e-test.sh -s api-admin-query-all-selected-fields
 	./scripts/e2e-test.sh -s api-admin-denied-query
 	./scripts/e2e-test.sh -s api-current-usage-query
 	./scripts/e2e-test.sh -s api-current-usage-experimental-query
-	./scripts/e2e-test.sh -s api-global-usage-query
 	./scripts/e2e-test.sh -s api-current-usage-admin-query
 	./scripts/e2e-test.sh -s api-current-usage-admin-experimental-query
+	./scripts/e2e-test.sh -s api-current-usage-query-k8s
+	./scripts/e2e-test.sh -s api-global-usage-query
 	./scripts/e2e-test.sh -s api-global-usage-admin-query
+	./scripts/e2e-test.sh -s api-global-usage-query-k8s
 	./scripts/e2e-test.sh -s api-current-usage-admin-denied-query
 	./scripts/e2e-test.sh -s api-current-stats-admin-query
 	./scripts/e2e-test.sh -s api-global-stats-admin-query
@@ -277,21 +282,26 @@ test-e2e-update: $(PROMTOOL) build pkg/collector/testdata/sys/.unpacked pkg/coll
 	./scripts/e2e-test.sh -s api-project-query -u || true
 	./scripts/e2e-test.sh -s api-project-empty-query -u || true
 	./scripts/e2e-test.sh -s api-project-admin-query -u || true
+	./scripts/e2e-test.sh -s api-project-query-k8s -u || true
 	./scripts/e2e-test.sh -s api-user-query -u || true
 	./scripts/e2e-test.sh -s api-user-admin-query -u || true
+	./scripts/e2e-test.sh -s api-user-query-k8s -u || true
 	./scripts/e2e-test.sh -s api-cluster-admin-query -u || true
 	./scripts/e2e-test.sh -s api-uuid-query -u || true
 	./scripts/e2e-test.sh -s api-running-query -u || true
+	./scripts/e2e-test.sh -s api-units-query-k8s -u || true
 	./scripts/e2e-test.sh -s api-admin-query -u || true
 	./scripts/e2e-test.sh -s api-admin-query-all -u || true
 	./scripts/e2e-test.sh -s api-admin-query-all-selected-fields -u || true
 	./scripts/e2e-test.sh -s api-admin-denied-query -u || true
 	./scripts/e2e-test.sh -s api-current-usage-query -u || true
 	./scripts/e2e-test.sh -s api-current-usage-experimental-query -u || true
-	./scripts/e2e-test.sh -s api-global-usage-query -u || true
 	./scripts/e2e-test.sh -s api-current-usage-admin-query -u || true
 	./scripts/e2e-test.sh -s api-current-usage-admin-experimental-query -u || true
+	./scripts/e2e-test.sh -s api-current-usage-query-k8s -u || true
+	./scripts/e2e-test.sh -s api-global-usage-query -u || true
 	./scripts/e2e-test.sh -s api-global-usage-admin-query -u || true
+	./scripts/e2e-test.sh -s api-global-usage-query-k8s -u || true
 	./scripts/e2e-test.sh -s api-current-usage-admin-denied-query -u || true
 	./scripts/e2e-test.sh -s api-current-stats-admin-query -u || true
 	./scripts/e2e-test.sh -s api-global-stats-admin-query -u || true
