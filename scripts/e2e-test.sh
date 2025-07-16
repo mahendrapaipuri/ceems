@@ -1407,12 +1407,13 @@ then
         exit 1
   fi
 
-  ./bin/mock_servers prom os-compute os-identity >> "${logfile}" 2>&1 &
+  ./bin/mock_servers prom os-compute os-identity k8s-api >> "${logfile}" 2>&1 &
   MOCK_SERVERS_PID=$!
 
   waitport "9090"
   waitport "8080"
   waitport "7070"
+  waitport "9080"
 
   # Copy config file to tmpdir
   cp pkg/api/testdata/config.yml "${tmpdir}/config.yml"

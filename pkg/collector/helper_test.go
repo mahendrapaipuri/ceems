@@ -34,7 +34,7 @@ func TestGokitLogger(t *testing.T) {
 			lvl = "info"
 		}
 
-		kvs := []interface{}{"a", 123}
+		kvs := []any{"a", 123}
 		lc := log.With(logger, kvs...)
 
 		err := lc.Log("msg", "message")
@@ -67,7 +67,7 @@ func TestGokitLogger(t *testing.T) {
 			lvl = "info"
 		}
 
-		kvs := []interface{}{"a", 123}
+		kvs := []any{"a", 123}
 		lc := log.With(logger, kvs...)
 
 		err := lc.Log("msg", "message")

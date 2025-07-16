@@ -58,7 +58,7 @@ type SessionConfig struct {
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
-func (c *SessionConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *SessionConfig) UnmarshalYAML(unmarshal func(any) error) error {
 	// Set a default config
 	*c = defaultSessionConfig
 
@@ -96,7 +96,7 @@ type PyroscopeConfig struct {
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
-func (c *PyroscopeConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *PyroscopeConfig) UnmarshalYAML(unmarshal func(any) error) error {
 	// Set a default config
 	*c = PyroscopeConfig{
 		URL:              defaultPyroscopeURL,

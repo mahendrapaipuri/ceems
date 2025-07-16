@@ -19,7 +19,7 @@ var (
 
 type SCConfig struct {
 	Logger *slog.Logger
-	Func   func(interface{}) error
+	Func   func(any) error
 	Caps   []cap.Value
 	Name   string
 
@@ -34,7 +34,7 @@ type SCConfig struct {
 type SecurityContext struct {
 	logger       *slog.Logger
 	launcher     *cap.Launcher
-	f            func(interface{}) error
+	f            func(any) error
 	caps         []cap.Value
 	capSet       *cap.Set
 	execNatively bool
@@ -60,7 +60,7 @@ func NewSecurityContext(c *SCConfig) (*SecurityContext, error) {
 }
 
 // Exec executes the function inside the security context and returns error if any.
-func (s *SecurityContext) Exec(data interface{}) error {
+func (s *SecurityContext) Exec(data any) error {
 	// If ExecNatively is set to true, execute function natively without creating
 	// a security context
 	if s.execNatively {
@@ -117,7 +117,7 @@ func (s *SecurityContext) dropCaps() error {
 // targetFunc is the function that will be executed in the security context. The passed
 // function is embedded between raising and dropping capabilities so that the function
 // gets appropriate capabilities during its execution.
-func (s *SecurityContext) targetFunc(data interface{}) error {
+func (s *SecurityContext) targetFunc(data any) error {
 	// First raise all necessary capabilities
 	// Ignore all errors as any missing capabilities will fail
 	// the main function.
@@ -162,7 +162,7 @@ type ExecSecurityCtxData struct {
 }
 
 // ExecAsUser executes a subprocess as a given user inside a security context.
-func ExecAsUser(data interface{}) error {
+func ExecAsUser(data any) error {
 	// Assert data type
 	var ctxData *ExecSecurityCtxData
 

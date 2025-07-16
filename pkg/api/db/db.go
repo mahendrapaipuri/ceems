@@ -53,7 +53,7 @@ type Timezone struct {
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
-func (t *Timezone) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (t *Timezone) UnmarshalYAML(unmarshal func(any) error) error {
 	var tmp string
 
 	err := unmarshal(&tmp)
@@ -77,7 +77,7 @@ type DateTime struct {
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
-func (t *DateTime) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (t *DateTime) UnmarshalYAML(unmarshal func(any) error) error {
 	var tmp string
 
 	var err error
@@ -127,7 +127,7 @@ type AdminConfig struct {
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
-func (c *AdminConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *AdminConfig) UnmarshalYAML(unmarshal func(any) error) error {
 	// Set a default config
 	*c = AdminConfig{
 		Grafana: common.GrafanaWebConfig{
@@ -175,7 +175,7 @@ type DataConfig struct {
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
-func (c *DataConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *DataConfig) UnmarshalYAML(unmarshal func(any) error) error {
 	// Set a default config
 	todayMidnight, _ := time.Parse("2006-01-02", time.Now().Format("2006-01-02"))
 	*c = DataConfig{
@@ -562,8 +562,12 @@ func (s *stats) purgeExpiredUnits(ctx context.Context, tx *sql.Tx) error {
 	defer common.TimeTrack(time.Now(), "DB cleanup", s.logger)
 
 	// Purge expired units
+	// Check the units based on their end time rather than start time. In the
+	// case of long running units (like VMs and Pods), we can have these units
+	// running longer than retention period which will delete them from DB if
+	// we check based on their start time.
 	deleteUnitsQuery := fmt.Sprintf(
-		"DELETE FROM %s WHERE started_at <= date('now', '-%d day')",
+		"DELETE FROM %s WHERE ended_at <= date('now', '-%d day')",
 		base.UnitsDBTableName,
 		int(s.storage.retentionPeriod.Hours()/24),
 	) // #nosec

@@ -85,11 +85,12 @@ func NewCEEMSServer() (*CEEMSServer, error) {
 func (b *CEEMSServer) Main() error {
 	// CLI vars
 	var (
-		configFile, webConfigFile, routePrefix, corsOrigin, maxQueryPeriod, runAsUser                                    string
-		enableDebugServer, skipDeleteOldUnits, disableChecks, disableCapAwareness, dropPrivs, systemdSocket, compression bool
-		webListenAddresses, userHeaders                                                                                  []string
-		requestsLimit, maxProcs, compressionLevel                                                                        int
-		externalURL                                                                                                      *url.URL
+		configFile, webConfigFile, routePrefix, corsOrigin, maxQueryPeriod, runAsUser string
+		enableDebugServer, skipDeleteOldUnits, disableChecks                          bool
+		dropPrivs, systemdSocket, compression, disableCapAwareness                    bool
+		webListenAddresses, userHeaders                                               []string
+		requestsLimit, maxProcs, compressionLevel                                     int
+		externalURL                                                                   *url.URL
 	)
 
 	// Get default run as user
@@ -376,9 +377,7 @@ func (b *CEEMSServer) Main() error {
 	}
 
 	// Create server instance.
-	apiServer, cleanup, err := ceems_http.New(serverConfig)
-	defer cleanup()
-
+	apiServer, err := ceems_http.New(serverConfig)
 	if err != nil {
 		logger.Error("Failed to create ceems_server server", "err", err)
 

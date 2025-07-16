@@ -688,7 +688,7 @@ func (c *slurmCollector) jobGRESResources(uuid string, procs []procfs.Proc) *gre
 
 // readProcEnvirons reads the environment variables of processes and returns
 // GPU ordinals of job. This function will be executed in a security context.
-func readProcEnvirons(data interface{}) error {
+func readProcEnvirons(data any) error {
 	// Assert data is of slurmSecurityCtxData
 	var d *slurmReadProcSecurityCtxData
 
@@ -786,7 +786,7 @@ func updateGPUAvailableShares(content string, gresType string, hostname string, 
 	var enabled bool
 
 	// Split file content by new line
-	for _, line := range strings.Split(content, "\n") {
+	for line := range strings.SplitSeq(content, "\n") {
 		// Convert to lower cases for better comparison
 		line = strings.ToLower(line)
 
@@ -803,7 +803,7 @@ func updateGPUAvailableShares(content string, gresType string, hostname string, 
 
 			var count uint64
 
-			for _, d := range strings.Split(line, " ") {
+			for d := range strings.SplitSeq(line, " ") {
 				// Check if NodeName=compute[000-010] is available
 				// If it does, check if the current hostname is in list of
 				// node names.
@@ -828,7 +828,7 @@ func updateGPUAvailableShares(content string, gresType string, hostname string, 
 						dps := p[1][1:]
 
 						// When MultipleFiles= is found, we need to split by comma
-						for _, dp := range strings.Split(dps, ",/") {
+						for dp := range strings.SplitSeq(dps, ",/") {
 							// Trim all spaces
 							dp = strings.TrimSpace(dp)
 
@@ -925,9 +925,9 @@ func migInstanceIDFromDevMinor(migMinor string) (string, uint64, uint64) {
 	var computeInstID uint64
 
 	if b, err := os.ReadFile(procFilePath("driver/nvidia-caps/mig-minors")); err == nil {
-		for _, line := range strings.Split(string(b), "\n") {
+		for line := range strings.SplitSeq(string(b), "\n") {
 			if path := strings.Split(line, " "); len(path) >= 2 && path[1] == migMinor {
-				for _, p := range strings.Split(path[0], "/") {
+				for p := range strings.SplitSeq(path[0], "/") {
 					if strings.Contains(p, "gpu") {
 						gpuMinor = strings.Split(p, "gpu")[1]
 					}

@@ -154,5 +154,6 @@ ceems_api_server:
 
 	// Send INT signal and wait a second to clean up server and DB
 	syscall.Kill(syscall.Getpid(), syscall.SIGINT)
-	time.Sleep(1 * time.Second)
+	// Seems like 1 sec can be too short in CI workflows
+	time.Sleep(3 * time.Second)
 }

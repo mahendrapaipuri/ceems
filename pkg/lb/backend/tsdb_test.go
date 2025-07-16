@@ -26,17 +26,17 @@ func testTSDBServer(storageRetention string, emptyResponse bool, basicAuth bool)
 	}
 	expectedRange := tsdb.Response[any]{
 		Status: "success",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"resultType": "matrix",
-			"result": []interface{}{
-				map[string]interface{}{
+			"result": []any{
+				map[string]any{
 					"metric": map[string]string{
 						"__name__": "up",
 						"instance": "localhost:9090",
 					},
-					"values": []interface{}{
-						[]interface{}{time.Now().Add(-15 * 24 * time.Hour).Unix(), "1"},
-						[]interface{}{time.Now().Add(-15 * 23 * time.Hour).Unix(), "1"},
+					"values": []any{
+						[]any{time.Now().Add(-15 * 24 * time.Hour).Unix(), "1"},
+						[]any{time.Now().Add(-15 * 23 * time.Hour).Unix(), "1"},
 					},
 				},
 			},

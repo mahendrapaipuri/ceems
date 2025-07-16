@@ -144,7 +144,7 @@ func countRows(ctx context.Context, dbConn *sql.DB, query Query) (int, error) {
 	defer countStmt.Close()
 
 	// queryParams has to be an inteface. Do casting here
-	qParams := make([]interface{}, len(queryParams))
+	qParams := make([]any, len(queryParams))
 	for i, v := range queryParams {
 		qParams[i] = v
 	}
@@ -206,7 +206,7 @@ func Querier[T any](ctx context.Context, dbConn *sql.DB, query Query, logger *sl
 	defer queryStmt.Close()
 
 	// queryParams has to be an inteface. Do casting here
-	qParams := make([]interface{}, len(queryParams))
+	qParams := make([]any, len(queryParams))
 	for i, v := range queryParams {
 		qParams[i] = v
 	}

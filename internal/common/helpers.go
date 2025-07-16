@@ -94,7 +94,7 @@ func replaceNodelistDelimiter(nodelistExp string) string {
 func expandNodelist(nodelistExp string) []string {
 	var nodeNames []string
 	// First split by | to get individual nodes
-	for _, nodeexp := range strings.Split(nodelistExp, "|") {
+	for nodeexp := range strings.SplitSeq(nodelistExp, "|") {
 		if strings.Contains(nodeexp, "[") {
 			matches := nodelistRegExp.FindAllString(nodeexp, -1)
 			if len(matches) == 0 {
@@ -106,7 +106,7 @@ func expandNodelist(nodelistExp string) []string {
 				matchSansBrackets := match[1 : len(match)-1]
 				// matchSansBranckets can have multiple ranges like 0-2,4,5-8
 				// Split them by ","
-				for _, subMatches := range strings.Split(matchSansBrackets, ",") {
+				for subMatches := range strings.SplitSeq(matchSansBrackets, ",") {
 					subMatch := strings.Split(subMatches, "-")
 					// If subMatch is single number, copy it as second index
 					if len(subMatch) == 1 {
@@ -203,10 +203,10 @@ func GetUUIDFromString(stringSlice []string) (string, error) {
 // fmt.Sprint() with default formatting is used to convert the key to a string key.
 //
 // Nicked from https://github.com/icza/dyno
-func ConvertMapI2MapS(v interface{}) interface{} {
+func ConvertMapI2MapS(v any) any {
 	switch x := v.(type) {
-	case map[interface{}]interface{}:
-		m := map[string]interface{}{}
+	case map[any]any:
+		m := map[string]any{}
 
 		for k, v2 := range x {
 			switch k2 := k.(type) {
@@ -219,12 +219,12 @@ func ConvertMapI2MapS(v interface{}) interface{} {
 
 		v = m
 
-	case []interface{}:
+	case []any:
 		for i, v2 := range x {
 			x[i] = ConvertMapI2MapS(v2)
 		}
 
-	case map[string]interface{}:
+	case map[string]any:
 		for k, v2 := range x {
 			x[k] = ConvertMapI2MapS(v2)
 		}

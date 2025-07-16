@@ -172,8 +172,6 @@ func TestUnitsQuerier(t *testing.T) {
 }
 
 func TestUsageQuerier(t *testing.T) {
-	logger := noOpLogger
-
 	db, err := setupTestDB()
 	require.NoError(t, err, "failed to setup test DB")
 	defer db.Close()
@@ -219,14 +217,12 @@ func TestUsageQuerier(t *testing.T) {
 			NumUpdates:          2,
 		},
 	}
-	usageStats, err := Querier[models.Usage](t.Context(), db, q, logger)
+	usageStats, err := Querier[models.Usage](t.Context(), db, q, noOpLogger)
 	require.NoError(t, err)
 	assert.Equal(t, expectedUsageStats, usageStats)
 }
 
 func TestProjectQuerier(t *testing.T) {
-	logger := noOpLogger
-
 	db, err := setupTestDB()
 	require.NoError(t, err, "failed to setup test DB")
 	defer db.Close()
@@ -250,14 +246,12 @@ func TestProjectQuerier(t *testing.T) {
 			LastUpdatedAt:   "2024-07-02T14:49:39",
 		},
 	}
-	projects, err := Querier[models.Project](t.Context(), db, q, logger)
+	projects, err := Querier[models.Project](t.Context(), db, q, noOpLogger)
 	require.NoError(t, err)
 	assert.Equal(t, expectedProjects, projects)
 }
 
 func TestUserQuerier(t *testing.T) {
-	logger := noOpLogger
-
 	db, err := setupTestDB()
 	require.NoError(t, err, "failed to setup test DB")
 	defer db.Close()
@@ -281,14 +275,12 @@ func TestUserQuerier(t *testing.T) {
 			LastUpdatedAt:   "2024-07-02T14:49:39",
 		},
 	}
-	users, err := Querier[models.User](t.Context(), db, q, logger)
+	users, err := Querier[models.User](t.Context(), db, q, noOpLogger)
 	require.NoError(t, err)
 	assert.Equal(t, expectedUsers, users)
 }
 
 func TestClusterQuerier(t *testing.T) {
-	logger := noOpLogger
-
 	db, err := setupTestDB()
 	require.NoError(t, err, "failed to setup test DB")
 	defer db.Close()
@@ -307,14 +299,12 @@ func TestClusterQuerier(t *testing.T) {
 			Manager: "slurm",
 		},
 	}
-	clusters, err := Querier[models.Cluster](t.Context(), db, q, logger)
+	clusters, err := Querier[models.Cluster](t.Context(), db, q, noOpLogger)
 	require.NoError(t, err)
 	assert.Equal(t, expectedClusters, clusters)
 }
 
 func TestStatsQuerier(t *testing.T) {
-	logger := noOpLogger
-
 	db, err := setupTestDB()
 	require.NoError(t, err, "failed to setup test DB")
 	defer db.Close()
@@ -334,14 +324,12 @@ func TestStatsQuerier(t *testing.T) {
 			NumUsers:         7,
 		},
 	}
-	stats, err := Querier[models.Stat](t.Context(), db, q, logger)
+	stats, err := Querier[models.Stat](t.Context(), db, q, noOpLogger)
 	require.NoError(t, err)
 	assert.Equal(t, expectedStats, stats)
 }
 
 func TestKeysQuerier(t *testing.T) {
-	logger := noOpLogger
-
 	db, err := setupTestDB()
 	require.NoError(t, err, "failed to setup test DB")
 	defer db.Close()
@@ -364,7 +352,7 @@ func TestKeysQuerier(t *testing.T) {
 			Name: "requests",
 		},
 	}
-	keys, err := Querier[models.Key](t.Context(), db, q, logger)
+	keys, err := Querier[models.Key](t.Context(), db, q, noOpLogger)
 	require.NoError(t, err)
 	assert.Equal(t, expectedKeys, keys)
 }

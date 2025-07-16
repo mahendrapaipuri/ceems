@@ -65,7 +65,7 @@ type redfishClientConfig struct {
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
-func (c *redfishClientConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *redfishClientConfig) UnmarshalYAML(unmarshal func(any) error) error {
 	// Set a default config
 	*c = redfishClientConfig{}
 	c.SessionToken = true
@@ -139,7 +139,7 @@ type redfishConfig struct {
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
-func (c *redfishConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *redfishConfig) UnmarshalYAML(unmarshal func(any) error) error {
 	type plain redfishConfig
 
 	if err := unmarshal((*plain)(c)); err != nil {

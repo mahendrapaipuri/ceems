@@ -10,14 +10,14 @@ const (
 
 // PatchOperation is an operation of a JSON patch https://tools.ietf.org/html/rfc6902.
 type PatchOperation struct {
-	Op    string      `json:"op"`
-	Path  string      `json:"path"`
-	From  string      `json:"from"`
-	Value interface{} `json:"value,omitempty"`
+	Op    string `json:"op"`
+	Path  string `json:"path"`
+	From  string `json:"from"`
+	Value any    `json:"value,omitempty"`
 }
 
 // AddPatchOperation returns an add JSON patch operation.
-func AddPatchOperation(path string, value interface{}) PatchOperation {
+func AddPatchOperation(path string, value any) PatchOperation {
 	return PatchOperation{
 		Op:    addOperation,
 		Path:  path,
@@ -34,7 +34,7 @@ func RemovePatchOperation(path string) PatchOperation {
 }
 
 // ReplacePatchOperation returns a replace JSON patch operation.
-func ReplacePatchOperation(path string, value interface{}) PatchOperation {
+func ReplacePatchOperation(path string, value any) PatchOperation {
 	return PatchOperation{
 		Op:    replaceOperation,
 		Path:  path,

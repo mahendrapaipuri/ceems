@@ -11,7 +11,7 @@ import (
 var fieldIndexesCache sync.Map
 
 // StructFieldNames returns all fields in a given struct.
-func StructFieldNames(s interface{}) []string {
+func StructFieldNames(s any) []string {
 	v := reflect.ValueOf(s)
 	typeOfS := v.Type()
 
@@ -50,7 +50,7 @@ func tagValue(field reflect.StructField, tag string) string {
 }
 
 // StructFieldTagValues returns all tag names in a given struct for a given tag.
-func StructFieldTagValues(s interface{}, tag string) []string {
+func StructFieldTagValues(s any, tag string) []string {
 	v := reflect.ValueOf(s)
 	typeOfS := v.Type()
 
@@ -66,7 +66,7 @@ func StructFieldTagValues(s interface{}, tag string) []string {
 }
 
 // StructFieldTagMap returns a map of tags using keyTag as map key and valueTag as map value.
-func StructFieldTagMap(s interface{}, keyTag string, valueTag string) map[string]string {
+func StructFieldTagMap(s any, keyTag string, valueTag string) map[string]string {
 	v := reflect.ValueOf(s)
 	typeOfS := v.Type()
 

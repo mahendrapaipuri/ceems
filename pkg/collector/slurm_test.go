@@ -546,7 +546,7 @@ func TestJobDevicesCaching(t *testing.T) {
 
 		err = os.WriteFile(
 			dir+"/cgroup.procs",
-			[]byte(fmt.Sprintf("%d\n", i)),
+			fmt.Appendf(nil, "%d\n", i),
 			0o600,
 		)
 		require.NoError(t, err)
@@ -628,7 +628,7 @@ func TestJobDevicesCaching(t *testing.T) {
 
 		err = os.WriteFile(
 			dir+"/cgroup.procs",
-			[]byte(fmt.Sprintf("%d\n", i)),
+			fmt.Appendf(nil, "%d\n", i),
 			0o600,
 		)
 		require.NoError(t, err)

@@ -41,7 +41,7 @@ managers (SLURM, Openstack, k8s)
 - Supports zero instrumentation eBPF based continuous profiling using
 [Grafana Pyroscope](https://grafana.com/oss/pyroscope/) as backend
 - Realtime access to metrics *via* Grafana dashboards or a simple CLI tool
-- Access control to Prometheus and Pyroscope datasources in Grafana
+- Multi-tenancy and access control to Prometheus and Pyroscope datasources in Grafana
 - Stores aggregated metrics in a separate DB that can be retained for long time
 - CEEMS apps are [capability aware](https://tbhaxor.com/understanding-linux-capabilities/)
 

@@ -18,7 +18,7 @@ type testData struct {
 	gotID      string
 }
 
-func testFunc(d interface{}) error {
+func testFunc(d any) error {
 	data, ok := d.(*testData)
 	if !ok {
 		return fmt.Errorf("cannot be asserted: %v", d)

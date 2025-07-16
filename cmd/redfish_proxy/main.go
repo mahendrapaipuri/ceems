@@ -51,7 +51,7 @@ type Target struct {
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
-func (t *Target) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (t *Target) UnmarshalYAML(unmarshal func(any) error) error {
 	var tmp struct {
 		HostAddrs []string `yaml:"host_ip_addrs"`
 		URL       string   `yaml:"url"`
@@ -100,7 +100,7 @@ type ProxyConfig struct {
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
-func (r *ProxyConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (r *ProxyConfig) UnmarshalYAML(unmarshal func(any) error) error {
 	// Set a default config
 	*r = ProxyConfig{}
 	r.AllowedAPIResources = defaultAllowedAPIResources
@@ -139,7 +139,7 @@ type Redfish struct {
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
-func (r *Redfish) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (r *Redfish) UnmarshalYAML(unmarshal func(any) error) error {
 	type plain Redfish
 
 	if err := unmarshal((*plain)(r)); err != nil {

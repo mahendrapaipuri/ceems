@@ -1595,7 +1595,7 @@ groups:
               "instance",
               "(.*)"
             )
-          * 56.03859
+          * 44.179085
 
   # The following recording rules estimate the average GPU, GPU memory usages and
   # total GPU power and its equivalent emissions aggregared for all hosts 
@@ -1632,7 +1632,7 @@ groups:
         expr: |2
           label_replace(
             label_replace(
-              56.03859 * job:ceems_gpu_power_watts:pue{job="amd-device-metrics-gpu"} / 3.6e+06,
+              44.179085 * job:ceems_gpu_power_watts:pue{job="amd-device-metrics-gpu"} / 3.6e+06,
               "provider",
               "owid",
               "instance",
@@ -1751,7 +1751,7 @@ groups:
               "instance",
               "(.*)"
             )
-          * 56.03859
+          * 44.179085
 
   # The following recording rules estimate the average CPU, CPU memory usages and
   # total host power (excluding GPUs) and its equivalent emissions aggregared for all hosts 
@@ -1812,7 +1812,7 @@ groups:
         expr: |2
           label_replace(
             label_replace(
-              56.03859 * job:ceems_host_power_watts:pue{job="cpu-cray-amd-gpu"} / 3.6e+06,
+              44.179085 * job:ceems_host_power_watts:pue{job="cpu-cray-amd-gpu"} / 3.6e+06,
               "provider",
               "owid",
               "instance",
@@ -1930,7 +1930,7 @@ groups:
               "instance",
               "(.*)"
             )
-          * 56.03859
+          * 44.179085
 
   # The following recording rules estimate the average CPU, CPU memory usages and
   # total host power (excluding GPUs) and its equivalent emissions aggregared for all hosts 
@@ -1983,7 +1983,7 @@ groups:
         expr: |2
           label_replace(
             label_replace(
-              56.03859 * job:ceems_host_power_watts:pue{job="cpu-ipmi-nvidia-gpu"} / 3.6e+06,
+              44.179085 * job:ceems_host_power_watts:pue{job="cpu-ipmi-nvidia-gpu"} / 3.6e+06,
               "provider",
               "owid",
               "instance",
@@ -2132,7 +2132,7 @@ groups:
               "instance",
               "(.*)"
             )
-          * 56.03859
+          * 44.179085
 
   # The following recording rules estimate the average CPU, CPU memory usages and
   # total host power (excluding GPUs) and its equivalent emissions aggregared for all hosts 
@@ -2185,7 +2185,7 @@ groups:
         expr: |2
           label_replace(
             label_replace(
-              56.03859 * job:ceems_host_power_watts:pue{job="cpu-only-ipmi"} / 3.6e+06,
+              44.179085 * job:ceems_host_power_watts:pue{job="cpu-only-ipmi"} / 3.6e+06,
               "provider",
               "owid",
               "instance",
@@ -2291,7 +2291,7 @@ groups:
               "instance",
               "(.*)"
             )
-          * 56.03859
+          * 44.179085
 
   # The following recording rules estimate the average CPU, CPU memory usages and
   # total host power (excluding GPUs) and its equivalent emissions aggregared for all hosts 
@@ -2352,7 +2352,7 @@ groups:
         expr: |2
           label_replace(
             label_replace(
-              56.03859 * job:ceems_host_power_watts:pue{job="cpu-only-rapl"} / 3.6e+06,
+              44.179085 * job:ceems_host_power_watts:pue{job="cpu-only-rapl"} / 3.6e+06,
               "provider",
               "owid",
               "instance",
@@ -2501,7 +2501,7 @@ groups:
               "instance",
               "(.*)"
             )
-          * 56.03859
+          * 44.179085
 
   # The following recording rules estimate the average CPU, CPU memory usages and
   # total host power (excluding GPUs) and its equivalent emissions aggregared for all hosts 
@@ -2554,7 +2554,7 @@ groups:
         expr: |2
           label_replace(
             label_replace(
-              56.03859 * job:ceems_host_power_watts:pue{job="cpu-only-redfish"} / 3.6e+06,
+              44.179085 * job:ceems_host_power_watts:pue{job="cpu-only-redfish"} / 3.6e+06,
               "provider",
               "owid",
               "instance",
@@ -2703,7 +2703,7 @@ groups:
               "instance",
               "(.*)"
             )
-          * 56.03859
+          * 44.179085
 
   # The following recording rules estimate the average CPU, CPU memory usages and
   # total host power (excluding GPUs) and its equivalent emissions aggregared for all hosts 
@@ -2756,7 +2756,7 @@ groups:
         expr: |2
           label_replace(
             label_replace(
-              56.03859 * job:ceems_host_power_watts:pue{job="cpu-redfish-nvidia-gpu"} / 3.6e+06,
+              44.179085 * job:ceems_host_power_watts:pue{job="cpu-redfish-nvidia-gpu"} / 3.6e+06,
               "provider",
               "owid",
               "instance",
@@ -2859,7 +2859,7 @@ groups:
               "instance",
               "(.*)"
             )
-          * 56.03859
+          * 44.179085
 
       # Profiling metrics
 
@@ -2916,7 +2916,7 @@ groups:
         expr: |2
           label_replace(
             label_replace(
-              56.03859 * job:ceems_gpu_power_watts:pue{job="ipmi-nvidia-gpu"} / 3.6e+06,
+              44.179085 * job:ceems_gpu_power_watts:pue{job="ipmi-nvidia-gpu"} / 3.6e+06,
               "provider",
               "owid",
               "instance",
@@ -3019,7 +3019,7 @@ groups:
               "instance",
               "(.*)"
             )
-          * 56.03859
+          * 44.179085
 
       # Profiling metrics
 
@@ -3076,7 +3076,7 @@ groups:
         expr: |2
           label_replace(
             label_replace(
-              56.03859 * job:ceems_gpu_power_watts:pue{job="nvidia-gpu"} / 3.6e+06,
+              44.179085 * job:ceems_gpu_power_watts:pue{job="nvidia-gpu"} / 3.6e+06,
               "provider",
               "owid",
               "instance",

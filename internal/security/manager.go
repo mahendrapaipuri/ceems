@@ -452,7 +452,7 @@ func hasReadWriteExecutable(p fileperm.PermUser, currentUser *user.User, runAsUs
 }
 
 // deleteACLEntries deletes ACL entries inside a security context.
-func deleteACLEntries(data interface{}) error {
+func deleteACLEntries(data any) error {
 	// Assert data is of slurmSecurityCtxData
 	var d *deleteACLEntriesCtxData
 

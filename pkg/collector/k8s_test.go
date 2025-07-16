@@ -62,7 +62,7 @@ users:
 `
 	kubeConfigFile := filepath.Join(tmpDir, "kubeconfig")
 
-	err := os.WriteFile(kubeConfigFile, []byte(fmt.Sprintf(content, server.URL)), 0o700) //nolint:gosec
+	err := os.WriteFile(kubeConfigFile, fmt.Appendf(nil, content, server.URL), 0o700) //nolint:gosec
 	require.NoError(t, err)
 
 	// Read pod resource response json
