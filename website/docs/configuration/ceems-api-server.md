@@ -69,7 +69,7 @@ by `data.backup_interval` to a fault-tolerant storage.
 
 :::warning[WARNING]
 
-As the database grows in size, the time taken to create a backup increases non-linearly
+As the database grows in size, the time taken to create a backup increases exponentially
 and hence, use the backup option only if it is absolutely necessary. A general
 recommendation is to use a continuous backup solution like
 [litestream](https://litestream.io/) instead of the native backup solution offered
@@ -131,6 +131,19 @@ clusters:
           user:
             name: admin
             password: supersecret
+  
+  - id: k8s-0
+    manager: k8s
+    updaters:
+      - tsdb-0
+    extra_config:
+      username_annotations:
+        - myk8s.io/created-by
+        - ceems.io/created-by
+      gpu_resource_names:
+        - nvidia.com/gpu
+        - amd.com/gpu
+      users_db_file: /var/run/ceems/users.yaml
 ```
 
 Essentially, it is a list of objects where each object describes a cluster.
@@ -138,7 +151,7 @@ Essentially, it is a list of objects where each object describes a cluster.
 - `id`: A unique identifier for each cluster. The identifier must stay consistent across
 CEEMS components, especially for CEEMS LB. More details can be found in the
 [Configuring CEEMS LB](./ceems-lb.md) section.
-- `manager`: Resource manager kind. Currently, only `slurm` and `openstack` are
+- `manager`: Resource manager kind. Currently, `slurm`, `openstack` and `k8s` are
 supported.
 - `updaters`: List of updaters to be used to update the aggregate metrics of
 compute units. The order is important as compute units are updated in the same order
@@ -156,8 +169,8 @@ the OpenStack cluster's authentication is configured using the `web.http_headers
 All available options for the `web` configuration can be found in the
 [Web Client Configuration Reference](./config-reference.md#web_client_config).
 - `extra_config`: Any extra configuration required by a particular resource manager can be
-provided here. Currently, the OpenStack resource manager uses this section to configure the API
-URLs for compute and identity servers to fetch compute units, users and projects data.
+provided here. Currently, the OpenStack and k8s resource managers uses this section to configure
+extra information about API servers, users and projects.
 
 ### SLURM specific clusters configuration
 
@@ -298,6 +311,88 @@ clusters:
               name: admin
               password: supersecret
 ```
+
+### k8s specific clusters configuration
+
+:::important[IMPORTANT]
+
+Before going into the k8s configuration, we strongly recommend users to read
+[Kubernetes Section](./resource-managers.md#kubernetes) in
+Resource Managers docs.
+
+:::
+
+In the case of k8s, the `extra_config` section resembles as follows:
+
+```yaml
+extra_config:
+  kubeconfig_file: /path/to/out-of-cluster/kubeconfig.yaml
+  gpu_resource_names:
+    - nvidia.com/gpu
+    - amd.com/gpu
+  username_annotations:
+    - ceems.io/created-by
+    - exmaple.com/username
+  project_annotations:
+    - example.com/project
+  ns_users_list_file: /path/to/users.yaml
+```
+
+where each key is explained below:
+
+- `kubeconfig_file`: Path to the out-of-cluster kube config file to connect to
+k8s API. In the k8s context, CEEMS API server app will be deployed as a pod and
+hence, CEEMS API server will use in-cluster config. If in a scenario where CEEMS
+API server is deployed outside of k8s cluster, this key can be used to configure
+the kube config file of the target k8s cluster.
+- `gpu_resource_names`: If the k8s cluster supports GPUs, this key take a list
+of GPU resource names. By default it uses `[nvidia.com/gpu, amd.com/gpu]`. If
+there any special resource names like NVIDIA MIG profiles, they must be explicitly
+configured using this parameter.
+- `username_annotations`: List of annotations names where username of the pod can be
+retrieved. The first non empty string found in this list of annotations will be used
+as the username.
+- `project_annotations`: Similar to `username_annotations` but to retrieve the name
+of the project. If not configured or none of the annotations exist on the pod, namespace
+will be used as project in CEEMS DB.
+- `ns_users_list_file`: When k8s cluster do not use native RBAC model to separate users
+and projects, use this file to define a list of namespaces and the users that have
+access to those namespaces. Effectively the user and namespace association described
+in this file will be used in CEEMS DB to account for usage statistics and access control.
+
+A sample `ns_users_list_file` is shown below:
+
+```yaml
+users:
+  ns1:
+    - usr1
+    - usr2
+  ns2:
+    - usr2
+    - usr3
+```
+
+Everytime a new namespace or user is created, this file must be updated so that CEEMS
+API server will update its own DB with new associations.
+
+:::note[NOTE]
+
+CEEMS API server pulls users and their associated namespaces from rolebindings when the
+cluster uses native RBAC model. In the cases where users and namespaces do not use native
+RBAC model, use `ns_users_list_file` to setup users and namespaces
+
+:::
+
+#### Access control
+
+In the cases where end users interact with k8s clusters _via_ services like Argo CD, Kubeflow,
+it is not possible to get the real user who is created k8s resources like pods, deployments, _etc_.
+In such a scenario, it is not possible to impose "strict" access control by the CEEMS components
+as pod ownership cannot be established reliably. In this case, using `ns_users_list_file` to
+define users and their namespace associations can mitigate this issue to a certain extent. However,
+even with `ns_users_list_file` defined and maintained, usage statistics and access control can only
+be imposed at the project/namespace level and not at the user level. All the pods that have been
+created by k8s service accounts will be made available to all users in a given project.
 
 ## Updaters Configuration
 

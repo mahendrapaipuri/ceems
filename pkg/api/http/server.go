@@ -77,7 +77,7 @@ type WebConfig struct {
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
-func (c *WebConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *WebConfig) UnmarshalYAML(unmarshal func(any) error) error {
 	*c = WebConfig{}
 
 	type plain WebConfig
@@ -185,7 +185,7 @@ func getDBStatus(dbConn *sql.DB, logger *slog.Logger) bool {
 }
 
 // New creates new CEEMSServer struct instance.
-func New(c *Config) (*CEEMSServer, func(), error) {
+func New(c *Config) (*CEEMSServer, error) {
 	var err error
 
 	router := mux.NewRouter()
@@ -232,7 +232,7 @@ func New(c *Config) (*CEEMSServer, func(), error) {
 	// Make a landing page from config
 	landingPage, err := web.NewLandingPage(*c.Web.LandingConfig)
 	if err != nil {
-		return nil, func() {}, fmt.Errorf("failed to create landing page: %w", err)
+		return nil, fmt.Errorf("failed to create landing page: %w", err)
 	}
 
 	// Landing page
@@ -286,7 +286,7 @@ func New(c *Config) (*CEEMSServer, func(), error) {
 		"_mutex=no&mode=ro&_busy_timeout=5000",
 	)
 	if server.db, err = sql.Open(sqlite3.DriverName, dsn); err != nil {
-		return nil, func() {}, fmt.Errorf("failed to open DB: %w", err)
+		return nil, fmt.Errorf("failed to open DB: %w", err)
 	}
 
 	// Rate limit requests by RealIP
@@ -298,7 +298,7 @@ func New(c *Config) (*CEEMSServer, func(), error) {
 	// Add a middleware that verifies headers and pass them in requests
 	amw, err := newAuthenticationMiddleware(routePrefix, c.Web.UserHeaderNames, server.db, c.Logger)
 	if err != nil {
-		return nil, func() {}, fmt.Errorf("failed to create middleware: %w", err)
+		return nil, fmt.Errorf("failed to create middleware: %w", err)
 	}
 
 	router.Use(amw.Middleware)
@@ -316,7 +316,7 @@ func New(c *Config) (*CEEMSServer, func(), error) {
 	// starts automatic expired item deletion
 	go server.usageCache.Start()
 
-	return server, func() {}, nil
+	return server, nil
 }
 
 // Start launches CEEMS HTTP server godoc
@@ -428,6 +428,19 @@ func (s *CEEMSServer) getUser(r *http.Request) string {
 	return r.Header.Get(base.LoggedUserHeader)
 }
 
+// Get common project users.
+func (s *CEEMSServer) getCommonProjectUsers(r *http.Request) []string {
+	var users []string
+
+	if projects := r.URL.Query()["project"]; len(projects) > 0 {
+		for _, project := range projects {
+			users = append(users, fmt.Sprintf("%s:%s", project, base.UnknownUser))
+		}
+	}
+
+	return users
+}
+
 // setHeaders sets common response headers.
 func (s *CEEMSServer) setHeaders(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json")
@@ -515,10 +528,7 @@ func (s *CEEMSServer) getQueryWindow(r *http.Request, column string, running boo
 
 	var fromTime, toTime time.Time
 	// Get to and from query parameters and do checks on them
-	if f := q.Get("from"); f == "" {
-		// If from is not present in query params, use a default query window of 1 week
-		fromTime = time.Now().Add(-defaultQueryWindow).In(s.dbConfig.Data.Timezone.Location)
-	} else {
+	if f := q.Get("from"); f != "" {
 		// Return error response if from is not a timestamp
 		if ts, err := strconv.ParseInt(f, 10, 64); err != nil {
 			s.logger.Error("Failed to parse from timestamp", "from", f, "err", err)
@@ -529,10 +539,7 @@ func (s *CEEMSServer) getQueryWindow(r *http.Request, column string, running boo
 		}
 	}
 
-	if t := q.Get("to"); t == "" {
-		// Use current time as default to
-		toTime = time.Now().In(s.dbConfig.Data.Timezone.Location)
-	} else {
+	if t := q.Get("to"); t != "" {
 		// Return error response if to is not a timestamp
 		if ts, err := strconv.ParseInt(t, 10, 64); err != nil {
 			s.logger.Error("Failed to parse to timestamp", "to", t, "err", err)
@@ -541,6 +548,19 @@ func (s *CEEMSServer) getQueryWindow(r *http.Request, column string, running boo
 		} else {
 			toTime = time.Unix(ts, 0).In(s.dbConfig.Data.Timezone.Location)
 		}
+	}
+
+	switch {
+	// If only from is provided, add defaultQuery time to toTime
+	case !fromTime.IsZero() && toTime.IsZero():
+		toTime = fromTime.Add(defaultQueryWindow).In(s.dbConfig.Data.Timezone.Location)
+	// If only toTime is provided, subtract defaultQuery time from fromTime
+	case fromTime.IsZero() && !toTime.IsZero():
+		fromTime = toTime.Add(-defaultQueryWindow).In(s.dbConfig.Data.Timezone.Location)
+	// If none of them are provided, use current time
+	case fromTime.IsZero() && toTime.IsZero():
+		toTime = time.Now().In(s.dbConfig.Data.Timezone.Location)
+		fromTime = toTime.Add(-defaultQueryWindow).In(s.dbConfig.Data.Timezone.Location)
 	}
 
 	// If difference between from and to is more than max query period, return with empty
@@ -879,8 +899,11 @@ func (s *CEEMSServer) units(w http.ResponseWriter, r *http.Request) {
 	// Get current logged user from headers
 	loggedUser := s.getUser(r)
 
+	// Get project specific common users and add current user to slice
+	queriedUsers := append(s.getCommonProjectUsers(r), loggedUser)
+
 	// Query for units and write response
-	s.unitsQuerier([]string{loggedUser}, w, r)
+	s.unitsQuerier(queriedUsers, w, r)
 }
 
 // verifyUnitsOwnership         godoc
@@ -987,7 +1010,7 @@ func (s *CEEMSServer) clustersAdmin(w http.ResponseWriter, r *http.Request) {
 	s.setHeaders(w)
 
 	// Get current user from header
-	loggerUser := s.getUser(r)
+	loggedUser := s.getUser(r)
 
 	// Make query
 	q := Query{}
@@ -1001,7 +1024,7 @@ func (s *CEEMSServer) clustersAdmin(w http.ResponseWriter, r *http.Request) {
 	// Make query and get list of cluster ids
 	clusterIDs, err := s.queriers.cluster(r.Context(), s.db, q, s.logger)
 	if clusterIDs == nil && err != nil {
-		s.logger.Error("Failed to fetch cluster IDs", "user", loggerUser, "err", err)
+		s.logger.Error("Failed to fetch cluster IDs", "user", loggedUser, "err", err)
 		errorResponse[any](w, &apiError{errorInternal, err}, s.logger, nil)
 
 		return
@@ -1137,10 +1160,13 @@ func (s *CEEMSServer) users(w http.ResponseWriter, r *http.Request) {
 	defer common.TimeTrack(time.Now(), "users endpoint", s.logger)
 
 	// Get current user from header
-	loggerUser := s.getUser(r)
+	loggedUser := s.getUser(r)
+
+	// Get project specific common users and add current user to slice
+	queriedUsers := append(s.getCommonProjectUsers(r), loggedUser)
 
 	// Query for users and write response
-	s.usersQuerier([]string{loggerUser}, w, r)
+	s.usersQuerier(queriedUsers, w, r)
 }
 
 // usersAdmin         godoc
@@ -1280,10 +1306,13 @@ func (s *CEEMSServer) projects(w http.ResponseWriter, r *http.Request) {
 	defer common.TimeTrack(time.Now(), "projects endpoint", s.logger)
 
 	// Get current user from header
-	loggerUser := s.getUser(r)
+	loggedUser := s.getUser(r)
+
+	// Get project specific common users and add current user to slice
+	queriedUsers := append(s.getCommonProjectUsers(r), loggedUser)
 
 	// Make query and write response
-	s.projectsQuerier([]string{loggerUser}, w, r)
+	s.projectsQuerier(queriedUsers, w, r)
 }
 
 // projectsAdmin         godoc
@@ -1350,7 +1379,7 @@ func (s *CEEMSServer) aggQueryBuilder(
 	}
 
 	// Template data
-	data := map[string]interface{}{
+	data := map[string]any{
 		"MetricName":      metric,
 		"TimesMetricName": "total_time_seconds",
 		"MetricWeight":    db.Weights[metric],
@@ -1466,7 +1495,7 @@ func (s *CEEMSServer) currentUsage(users []string, fields []string, w http.Respo
 			continue
 		}
 
-		for _, p := range strings.Split(parts[1], "|") {
+		for p := range strings.SplitSeq(parts[1], "|") {
 			if p == "" || slices.Contains(virtualTables, p) {
 				continue
 			}
@@ -1679,7 +1708,10 @@ func (s *CEEMSServer) usage(w http.ResponseWriter, r *http.Request) {
 	s.setHeaders(w)
 
 	// Get current user from header
-	loggerUser := s.getUser(r)
+	loggedUser := s.getUser(r)
+
+	// Get project specific common users and add current user to slice
+	queriedUsers := append(s.getCommonProjectUsers(r), loggedUser)
 
 	// Get path parameter type
 	var mode string
@@ -1694,7 +1726,7 @@ func (s *CEEMSServer) usage(w http.ResponseWriter, r *http.Request) {
 	// Get fields query parameters if any
 	queriedFields := s.getQueriedFields(r.URL.Query(), base.UsageDBTableColNames)
 	if len(queriedFields) == 0 {
-		s.logger.Error("Invalid query fields", "logged_user", loggerUser)
+		s.logger.Error("Invalid query fields", "logged_user", loggedUser)
 		errorResponse[any](w, &apiError{errorBadData, errInvalidQueryField}, s.logger, nil)
 
 		return
@@ -1702,12 +1734,12 @@ func (s *CEEMSServer) usage(w http.ResponseWriter, r *http.Request) {
 
 	// handle current usage query
 	if mode == currentUsage {
-		s.currentUsage([]string{loggerUser}, queriedFields, w, r)
+		s.currentUsage(queriedUsers, queriedFields, w, r)
 	}
 
 	// handle global usage query
 	if mode == globalUsage {
-		s.globalUsage([]string{loggerUser}, queriedFields, w, r)
+		s.globalUsage(queriedUsers, queriedFields, w, r)
 	}
 }
 
@@ -1779,7 +1811,7 @@ func (s *CEEMSServer) usageAdmin(w http.ResponseWriter, r *http.Request) {
 	s.setHeaders(w)
 
 	// Get current user from header
-	loggerUser := s.getUser(r)
+	loggedUser := s.getUser(r)
 
 	// Get path parameter type
 	var mode string
@@ -1794,7 +1826,7 @@ func (s *CEEMSServer) usageAdmin(w http.ResponseWriter, r *http.Request) {
 	// Get fields query parameters if any
 	queriedFields := s.getQueriedFields(r.URL.Query(), base.UsageDBTableColNames)
 	if len(queriedFields) == 0 {
-		s.logger.Error("Invalid query fields", "logged_user", loggerUser)
+		s.logger.Error("Invalid query fields", "logged_user", loggedUser)
 		errorResponse[any](w, &apiError{errorBadData, errInvalidQueryField}, s.logger, nil)
 
 		return

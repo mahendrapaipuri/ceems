@@ -14,6 +14,19 @@ as follows:
 ceems_api_server --config.file=/path/core/config/file --web.config.file=/path/to/web/config/file
 ```
 
+If there are environment variables used in `/path/core/config/file`, they can be expanded using
+
+```bash
+ceems_api_server --config.file=/path/core/config/file --config.file.expand-env-vars --web.config.file=/path/to/web/config/file
+```
+
+:::tip[TIP]
+
+In order to escape `$` in the config file when CLI flag `--config.file.expand-env-vars` is used,
+use `$$`.
+
+:::
+
 The default interface and port can be changed using the `--web.listen-address` CLI argument:
 
 ```bash

@@ -84,3 +84,6 @@ const (
 	AdminUserHeader         = "X-Ceems-Admin-User"
 	ClusterIDHeader         = "X-Ceems-Cluster-Id"
 )
+
+// Username to be used for unknown users.
+const UnknownUser = "unknown"

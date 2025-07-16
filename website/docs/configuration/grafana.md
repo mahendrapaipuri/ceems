@@ -4,22 +4,29 @@ sidebar_position: 7
 
 # Grafana
 
-This document outlines the necessary configuration for the Grafana server and its datasources.
+This document outlines the necessary configuration for the Grafana server
+and its datasources.
 
 ## Grafana Server
 
-The only configuration that needs to be added to the Grafana server in the `/etc/grafana/grafana.ini` file is the following:
+The only configuration that needs to be added to the Grafana server in the
+`/etc/grafana/grafana.ini` file is the following:
 
 ```ini
 [dataproxy]
 send_user_header = true
 ```
 
-Alternatively, the same can be done by setting the `GF_DATAPROXY_SEND_USER_HEADER=true` environment variable on the Grafana server.
+Alternatively, the same can be done by setting the `GF_DATAPROXY_SEND_USER_HEADER=true`
+environment variable on the Grafana server.
 
 ## Grafana Datasources
 
-When using the CEEMS LB to provide access control and load balancing for TSDB servers, the Prometheus datasource in Grafana must be configured slightly differently than when using a regular native Prometheus server. As discussed in [CEEMS LB Configuration](./ceems-lb.md#matching-backendsid-with-clustersid), a custom header must be added to the queries sent to the CEEMS LB server.
+When using the CEEMS LB to provide access control and load balancing for
+TSDB servers, the Prometheus datasource in Grafana must be configured slightly
+differently than when using a regular native Prometheus server. As discussed in
+[CEEMS LB Configuration](./ceems-lb.md#matching-backendsid-with-clustersid), a
+custom header must be added to the queries sent to the CEEMS LB server.
 
 For instance, if the CEEMS API server and CEEMS LB have the following configuration:
 
@@ -81,7 +88,11 @@ ceems_lb:
         - http://tsdb-1-replica
 ```
 
-It is clear that there are two different clusters, `slurm-0` and `os-0`, and each cluster has its own TSDB server (`tsdb-0` and `tsdb-1`, respectively). In Grafana, a Prometheus datasource for each cluster must be configured to present the metrics of each cluster separately. Thus, the following provisioning configuration can be used to configure the datasources for each cluster:
+It is clear that there are two different clusters, `slurm-0` and `os-0`, and each
+cluster has its own TSDB server (`tsdb-0` and `tsdb-1`, respectively). In Grafana,
+a Prometheus datasource for each cluster must be configured to present the metrics
+of each cluster separately. Thus, the following provisioning configuration can be
+used to configure the datasources for each cluster:
 
 ```yaml
 datasources:
@@ -114,10 +125,49 @@ datasources:
       httpHeaderValue1: os-0
 ```
 
-Internally, the CEEMS LB checks the `X-Ceems-Cluster-Id` header and forwards the request to the correct backend group based on the provided cluster ID. This ensures that a single instance of CEEMS LB can be used to load balance across multiple clusters.
+Internally, the CEEMS LB checks the `X-Ceems-Cluster-Id` header and forwards the
+request to the correct backend group based on the provided cluster ID. This ensures
+that a single instance of CEEMS LB can be used to load balance across multiple clusters.
 
 :::important[IMPORTANT]
 
-Even if there is only one cluster and one TSDB instance, the datasource in Grafana must be configured with the custom header as explained above if you wish to use the CEEMS LB. This is the only way for the CEEMS LB to know which cluster to target.
+Even if there is only one cluster and one TSDB instance, the datasource in Grafana must
+be configured with the custom header as explained above if you wish to use the CEEMS LB.
+This is the only way for the CEEMS LB to know which cluster to target.
 
 :::
+
+Similarly, CEEMS API server must be added as
+[Grafana Infinity Datasource](https://grafana.com/docs/plugins/yesoreyeram-infinity-datasource/latest/)
+datasource to pull the list of compute units and their usage metrics. Following snippet shows
+a basic configuration for the datasource:
+
+:::important[IMPORTANT]
+
+Header name `X-Ceems-Disable-User-Check` must always be set even when the value is set to `false`
+just to ensure that end users cannot spoof the header value from the browser requests.
+
+:::
+
+```yaml
+# List of datasources that CEEMS uses
+datasources:
+  # CEEMS API server JSON datasource
+  - name: ceems-api
+    type: yesoreyeram-infinity-datasource
+    url: http://ceems-api:9020
+    basicAuth: true
+    basicAuthUser: <ceems_api_server_basic_auth_user>
+    jsonData:
+      auth_method: basicAuth
+      timeout: 120
+      allowedHosts:
+        - http://ceems-api:9020
+      httpHeaderName1: X-Grafana-User
+    secureJsonData:
+      basicAuthPassword: <ceems_api_server_basic_auth_password>
+      # This will be replaced by username before passing to API server
+      # This feature is available only for yesoreyeram-infinity-datasource >= 3.x
+      # IMPORTANT: Need $$ to escape $
+      httpHeaderValue1: $${__user.login}
+```

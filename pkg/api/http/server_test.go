@@ -77,7 +77,7 @@ var (
 )
 
 func setupServer(d string) *CEEMSServer {
-	server, _, _ := New(
+	server, _ := New(
 		&Config{
 			Logger: noOpLogger,
 			DB: db.Config{

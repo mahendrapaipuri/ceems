@@ -1,1 +1,1 @@
-{"status":"success","data":[{"id":"os-0","manager":"openstack"},{"id":"os-1","manager":"openstack"},{"id":"slurm-0","manager":"slurm"},{"id":"slurm-1","manager":"slurm"}]}
+{"status":"success","data":[{"id":"k8s-0","manager":"k8s"},{"id":"k8s-1","manager":"k8s"},{"id":"os-0","manager":"openstack"},{"id":"os-1","manager":"openstack"},{"id":"slurm-0","manager":"slurm"},{"id":"slurm-1","manager":"slurm"}]}

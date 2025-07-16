@@ -12,6 +12,19 @@ The CEEMS load balancer can be started with its core and web configuration files
 ceems_lb --config.file=/path/to/core/config/file --web.config.file=/path/to/web/config/file
 ```
 
+If there are environment variables used in `/path/core/config/file`, they can be expanded using
+
+```bash
+ceems_lb --config.file=/path/core/config/file --config.file.expand-env-vars --web.config.file=/path/to/web/config/file
+```
+
+:::tip[TIP]
+
+In order to escape `$` in the config file when CLI flag `--config.file.expand-env-vars` is used,
+use `$$`.
+
+:::
+
 This will start the CEEMS load balancer at the default port `9030`, listening on all interfaces.
 To change the default port and host, the `--web.listen-address` CLI argument must be passed to
 the binary:
