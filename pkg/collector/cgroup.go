@@ -350,7 +350,10 @@ func NewCgroupManager(name manager, logger *slog.Logger) (*cgroupManager, error)
 		for _, slice := range []string{"machine", "machine.slice"} {
 			if _, err := os.Stat(filepath.Join(slicesPrefix, slice)); err == nil {
 				manager.slices = append(manager.slices, slice)
+
 				if slice == "machine" {
+					logger.Debug("Non systemd cgroup layout detected")
+
 					manager.nonSystemdLayout = true
 				}
 
