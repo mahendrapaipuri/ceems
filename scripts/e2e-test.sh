@@ -96,6 +96,11 @@ then
     cgroups_mode="unified"
     desc="Cgroups V2 with libvirt"
     fixture='pkg/collector/testdata/output/exporter/e2e-test-cgroupsv2-libvirt-output.txt'
+   elif [ "${scenario}" = "exporter-cgroups-v2-libvirt-nonsystemd-layout" ]
+  then
+    cgroups_mode="unified"
+    desc="Cgroups V2 with libvirt with non-systemd cgroup layout"
+    fixture='pkg/collector/testdata/output/exporter/e2e-test-cgroupsv2-libvirt-nonsystemd-layout-output.txt'
   elif [ "${scenario}" = "exporter-cgroups-v1-k8s" ]
   then
     cgroups_mode="legacy"
@@ -680,6 +685,30 @@ then
       REDFISH_HOST=localhost REDFISH_PORT=5000 ./bin/ceems_exporter \
         --path.sysfs="pkg/collector/testdata/sys" \
         --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup" \
+        --path.procfs="pkg/collector/testdata/proc" \
+        --collector.cgroups.force-version="v2" \
+        --collector.libvirt \
+        --collector.gpu.type="nvidia" \
+        --collector.gpu.nvidia-smi-path="pkg/collector/testdata/nvidia-smi" \
+        --collector.libvirt.xml-dir="pkg/collector/testdata/qemu" \
+        --collector.libvirt.swap-memory-metrics \
+        --collector.libvirt.psi-metrics \
+        --collector.libvirt.blkio-metrics \
+        --collector.ipmi_dcmi \
+        --collector.ipmi.dcmi.cmd="pkg/collector/testdata/ipmi/capmc/capmc" \
+        --collector.ipmi_dcmi.test-mode \
+        --collector.redfish \
+        --collector.redfish.config.file="pkg/collector/testdata/redfish/config.yml" \
+        --collector.redfish.config.file.expand-env-vars \
+        --collector.empty-hostname-label \
+        --web.listen-address "127.0.0.1:${port}" \
+        --web.disable-exporter-metrics \
+        --log.level="debug" > "${logfile}" 2>&1 &
+  elif [ "${scenario}" = "exporter-cgroups-v2-libvirt-nonsystemd-layout" ] 
+  then
+      REDFISH_HOST=localhost REDFISH_PORT=5000 ./bin/ceems_exporter \
+        --path.sysfs="pkg/collector/testdata/sys" \
+        --path.cgroupfs="pkg/collector/testdata/sys/fs/cgroup_alt" \
         --path.procfs="pkg/collector/testdata/proc" \
         --collector.cgroups.force-version="v2" \
         --collector.libvirt \
