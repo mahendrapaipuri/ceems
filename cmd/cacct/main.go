@@ -8,7 +8,6 @@ import (
 	"os/user"
 	"path/filepath"
 	"slices"
-	"sort"
 	"strings"
 	"time"
 
@@ -237,12 +236,12 @@ type field struct {
 }
 
 // titles return header titles for the table.
-func (f field) titles() []interface{} {
+func (f field) titles() []any {
 	if len(f.keys) <= 1 {
-		return []interface{}{f.title}
+		return []any{f.title}
 	}
 
-	t := make([]interface{}, len(f.keys))
+	t := make([]any, len(f.keys))
 	for i := range len(f.keys) {
 		t[i] = f.title
 	}
@@ -251,12 +250,12 @@ func (f field) titles() []interface{} {
 }
 
 // subtitles return header subtitles for the table.
-func (f field) subtitles() []interface{} {
+func (f field) subtitles() []any {
 	if len(f.keys) <= 1 {
-		return []interface{}{""}
+		return []any{""}
 	}
 
-	t := make([]interface{}, len(f.keys))
+	t := make([]any, len(f.keys))
 	for i, k := range f.keys {
 		t[i] = k
 	}
@@ -294,7 +293,7 @@ type Config struct {
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
-func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *Config) UnmarshalYAML(unmarshal func(any) error) error {
 	// Set a default config
 	*c = Config{}
 	c.API.UserHeaderName = "X-Grafana-User"
@@ -316,7 +315,7 @@ type WebConfig struct {
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
-func (w *WebConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (w *WebConfig) UnmarshalYAML(unmarshal func(any) error) error {
 	// Set a default config
 	*w = WebConfig{}
 	w.HTTPClientConfig = http_config.DefaultHTTPClientConfig
@@ -726,7 +725,7 @@ func sortedKeys[K cmp.Ordered, V any](m map[K]V) []K {
 		i++
 	}
 
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	slices.Sort(keys)
 
 	return keys
 }
@@ -734,7 +733,7 @@ func sortedKeys[K cmp.Ordered, V any](m map[K]V) []K {
 func splitString(s, d string) []string { //nolint:unparam
 	var parts []string
 
-	for _, p := range strings.Split(s, d) {
+	for p := range strings.SplitSeq(s, d) {
 		if p != "" {
 			parts = append(parts, p)
 		}

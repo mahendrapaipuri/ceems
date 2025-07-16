@@ -198,6 +198,11 @@ func (o *openstackManager) activeInstances(ctx context.Context, start time.Time,
 			"extra_specs": server.Flavor.ExtraSpecs,
 		}
 
+		// Add vGPUs to allocation when found
+		if vgpu > 0 {
+			allocation["vgpus"] = int(vgpu)
+		}
+
 		// Tags
 		// IMPORTANT: Openstack user facing API does not provide any details
 		// of the compute node or hypervisor. So, we should be fetch any of those

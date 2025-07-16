@@ -37,7 +37,7 @@ func testTSDBServer(emptyResponse bool) *httptest.Server {
 
 	expectedFlags := Response[any]{
 		Status: "success",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"query.lookback-delta": "5m",
 			"query.max-samples":    "50000000",
 			"query.timeout":        "2m",
@@ -46,7 +46,7 @@ func testTSDBServer(emptyResponse bool) *httptest.Server {
 
 	expectedRuntimeInfo := Response[any]{
 		Status: "success",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"startTime":           "2025-02-18T07:43:52.775090028Z",
 			"CWD":                 "/var/lib/prometheus",
 			"reloadConfigSuccess": true,
@@ -91,22 +91,22 @@ func testTSDBServer(emptyResponse bool) *httptest.Server {
 
 	expectedQuery := Response[any]{
 		Status: "success",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"resultType": "vector",
-			"result": []interface{}{
-				map[string]interface{}{
+			"result": []any{
+				map[string]any{
 					"metric": map[string]string{
 						"uuid": "1",
 					},
-					"value": []interface{}{
+					"value": []any{
 						12345, "1.1",
 					},
 				},
-				map[string]interface{}{
+				map[string]any{
 					"metric": map[string]string{
 						"uuid": "2",
 					},
-					"value": []interface{}{
+					"value": []any{
 						12345, "2.2",
 					},
 				},
@@ -116,17 +116,17 @@ func testTSDBServer(emptyResponse bool) *httptest.Server {
 
 	expectedQueryRange := Response[any]{
 		Status: "success",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"resultType": "matrix",
-			"result": []interface{}{
-				map[string]interface{}{
+			"result": []any{
+				map[string]any{
 					"metric": map[string]string{
 						"__name__": "up",
 						"instance": "localhost:9090",
 					},
-					"values": []interface{}{
-						[]interface{}{1727367964.929, "1"},
-						[]interface{}{1727368964.929, "1"},
+					"values": []any{
+						[]any{1727367964.929, "1"},
+						[]any{1727368964.929, "1"},
 					},
 				},
 			},

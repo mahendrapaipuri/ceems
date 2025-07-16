@@ -28,10 +28,10 @@ var (
 
 // Nicked from https://github.com/isauran/logger/blob/master/adapters/gokit/logger.go
 // Ref: https://github.com/go-kit/log/issues/35
-type logFunc func(ctx context.Context, msg string, keysAndValues ...interface{})
+type logFunc func(ctx context.Context, msg string, keysAndValues ...any)
 
 // Log retrieves the key values and formats them into slog.Logger.
-func (l logFunc) Log(keyvals ...interface{}) error {
+func (l logFunc) Log(keyvals ...any) error {
 	// Extract message if present
 	var msg string
 
@@ -341,8 +341,8 @@ func parseRange(r string) ([]string, error) {
 		return nil, errors.New("empty range string")
 	}
 
-	ranges := strings.Split(r, ",")
-	for _, r := range ranges {
+	ranges := strings.SplitSeq(r, ",")
+	for r := range ranges {
 		boundaries := strings.Split(r, "-")
 		if len(boundaries) == 1 {
 			start, err = strconv.Atoi(boundaries[0])

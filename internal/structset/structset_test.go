@@ -9,11 +9,11 @@ import (
 
 // testStruct is a test struct that will be used in tests.
 type testStruct struct {
-	ID     int         `json:"-"                sql:"id"`
-	Field1 string      `json:"field1,omitempty" sql:"f1"`
-	Field2 bool        `json:"field2"           sql:"f2"`
-	Field3 interface{} `sql:"f3"`
-	Field4 []string    `json:"field4"           sql:"f4"`
+	ID     int      `json:"-"                sql:"id"`
+	Field1 string   `json:"field1,omitempty" sql:"f1"`
+	Field2 bool     `json:"field2"           sql:"f2"`
+	Field3 any      `sql:"f3"`
+	Field4 []string `json:"field4"           sql:"f4"`
 }
 
 func TestStructFieldNames(t *testing.T) {
@@ -51,7 +51,7 @@ func TestCachedFiledIndexes(t *testing.T) {
 	// Get length of sync map
 	var i int
 
-	fieldIndexesCache.Range(func(k, v interface{}) bool {
+	fieldIndexesCache.Range(func(k, v any) bool {
 		i++
 
 		return true

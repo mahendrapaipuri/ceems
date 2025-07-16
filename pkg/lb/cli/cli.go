@@ -91,7 +91,7 @@ func (c *CEEMSLBAppConfig) Validate() error {
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
-func (c *CEEMSLBAppConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *CEEMSLBAppConfig) UnmarshalYAML(unmarshal func(any) error) error {
 	// Set a default config
 	*c = CEEMSLBAppConfig{
 		CEEMSLBConfig{

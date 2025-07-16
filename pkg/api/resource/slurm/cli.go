@@ -206,7 +206,7 @@ func parseSacctCmdOutput(sacctOutput string, start time.Time, end time.Time) ([]
 
 			var memString string
 
-			for _, elem := range strings.Split(components[sacctFieldMap["alloctres"]], ",") {
+			for elem := range strings.SplitSeq(components[sacctFieldMap["alloctres"]], ",") {
 				// For MIG devices, it can be gres/gpu:<MIG ID>
 				// https://github.com/SchedMD/slurm/blob/db91ac3046b3b7b845cce4a99127db8c6f14a8e8/testsuite/expect/test39.19#L70
 				// Use a regex gres\/gpu:([^=]+)=(\d+) for identifying number of instances

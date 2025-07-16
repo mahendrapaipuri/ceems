@@ -599,7 +599,7 @@ func (c *libvirtCollector) instanceCgroups() ([]cgroup, error) {
 }
 
 // readLibvirtXMLFile reads the libvirt's XML file inside a security context.
-func readLibvirtXMLFile(data interface{}) error {
+func readLibvirtXMLFile(data any) error {
 	// Assert data
 	var d *libvirtReadXMLSecurityCtxData
 

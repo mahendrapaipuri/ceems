@@ -454,7 +454,7 @@ func (c *rdmaCollector) devMR(procCgroup map[string]string) (map[string]*mr, err
 	// Read line by line and match dev, pid and mrlen
 	mrs := make(map[string]*mr)
 
-	for _, line := range strings.Split(string(out), "\n") {
+	for line := range strings.SplitSeq(string(out), "\n") {
 		if devMatch := devRegex.FindStringSubmatch(line); len(devMatch) > 1 {
 			if pidMatch := pidRegex.FindStringSubmatch(line); len(pidMatch) > 1 {
 				if uuid, ok := procCgroup[pidMatch[1]]; ok {
@@ -495,7 +495,7 @@ func (c *rdmaCollector) devCQ(procCgroup map[string]string) (map[string]*cq, err
 	// Read line by line and match dev, pid and mrlen
 	cqs := make(map[string]*cq)
 
-	for _, line := range strings.Split(string(out), "\n") {
+	for line := range strings.SplitSeq(string(out), "\n") {
 		if devMatch := devRegex.FindStringSubmatch(line); len(devMatch) > 1 {
 			if pidMatch := pidRegex.FindStringSubmatch(line); len(pidMatch) > 1 {
 				if uuid, ok := procCgroup[pidMatch[1]]; ok {
@@ -535,7 +535,7 @@ func (c *rdmaCollector) linkQP(procCgroup map[string]string) (map[string]*qp, er
 	// Read line by line and match dev, pid and mrlen
 	qps := make(map[string]*qp)
 
-	for _, line := range strings.Split(string(out), "\n") {
+	for line := range strings.SplitSeq(string(out), "\n") {
 		if linkMatch := linkRegex.FindStringSubmatch(line); len(linkMatch) > 1 {
 			if pidMatch := pidRegex.FindStringSubmatch(line); len(pidMatch) > 1 {
 				if uuid, ok := procCgroup[pidMatch[1]]; ok {
@@ -565,7 +565,7 @@ func (c *rdmaCollector) linkQP(procCgroup map[string]string) (map[string]*qp, er
 			return qps, nil
 		}
 
-		for _, line := range strings.Split(string(out), "\n") {
+		for line := range strings.SplitSeq(string(out), "\n") {
 			if linkMatch := linkRegex.FindStringSubmatch(line); len(linkMatch) > 1 {
 				for _, hwCounter := range c.hwCounters {
 					if pidMatch := pidRegex.FindStringSubmatch(line); len(pidMatch) > 1 {
@@ -647,7 +647,7 @@ func qpMode(rdmaCmd string) (map[string]bool, error) {
 	// Split output and get mode for each device
 	linkMode := make(map[string]bool)
 
-	for _, line := range strings.Split(string(out), "\n") {
+	for line := range strings.SplitSeq(string(out), "\n") {
 		if linkMatch := linkRegex.FindStringSubmatch(line); len(linkMatch) > 1 && strings.HasPrefix(linkMatch[1], "mlx") {
 			if autoMatch := autoRegex.FindStringSubmatch(line); len(autoMatch) > 1 {
 				if autoMatch[1] == "off" {

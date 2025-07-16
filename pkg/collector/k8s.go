@@ -484,7 +484,7 @@ func (c *k8sCollector) podDevices(cgroups []cgroup) {
 	defer cancel()
 
 	// Get pod devices from pod resource API
-	pods, err := c.k8sClient.PodDevices(ctx)
+	pods, err := c.k8sClient.ListPodsWithDevs(ctx)
 	if err != nil {
 		c.logger.Error("Failed to fetch pod resources. Pod to device mappings will not be available", "err", err)
 

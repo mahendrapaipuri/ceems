@@ -342,7 +342,7 @@ func readPowerLimits(zones []sysfs.RaplZone) (map[sysfs.RaplZone]uint64, error) 
 }
 
 // readCounters reads the RAPL counters of different zones inside a security context.
-func readCounters(data interface{}) error {
+func readCounters(data any) error {
 	// Assert data
 	var d *raplCountersSecurityCtxData
 

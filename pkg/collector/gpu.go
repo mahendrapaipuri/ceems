@@ -503,7 +503,7 @@ func NewGPUSMI(k8sClient *ceems_k8s.Client, logger *slog.Logger) (*GPUSMI, error
 				smiQueryCmd = amdSMIQueryCmd
 			}
 
-			if pods, err := k8sClient.Pods(ctx, "", opts); err == nil && len(pods) > 0 {
+			if pods, err := k8sClient.ListPods(ctx, "", opts); err == nil && len(pods) > 0 {
 				vendors[iv].k8sNS = pods[0].Namespace
 				vendors[iv].k8sPod = pods[0].Name
 
@@ -683,7 +683,7 @@ func (g *GPUSMI) ReindexGPUs(orderMap string) {
 		return
 	}
 
-	for _, gpuMap := range strings.Split(orderMap, ",") {
+	for gpuMap := range strings.SplitSeq(orderMap, ",") {
 		orderMap := strings.Split(gpuMap, ":")
 		if len(orderMap) < 2 {
 			continue
@@ -977,8 +977,8 @@ func parseNvidiaSmiOutput(cmdOutput []byte) ([]Device, error) {
 			// NVIDIA B100 and so on..
 			// So we try to split by "space" and hypen and attempt to test
 			// against model names
-			for _, s := range strings.Split(gpu.ProductName, " ") {
-				for _, ss := range strings.Split(s, "-") {
+			for s := range strings.SplitSeq(gpu.ProductName, " ") {
+				for ss := range strings.SplitSeq(s, "-") {
 					if strings.TrimSpace(ss) == model {
 						dev.NumSMs = numSMs
 

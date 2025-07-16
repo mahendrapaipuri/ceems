@@ -216,7 +216,7 @@ func (m *mockSession) CollectProfiles(f pprof.CollectProfilesCallback) error {
 	return nil
 }
 
-func (m *mockSession) DebugInfo() interface{} {
+func (m *mockSession) DebugInfo() any {
 	return ebpfspy.SessionDebugInfo{
 		ElfCache: symtab.ElfCacheDebugInfo{
 			BuildIDCache: symtab.GCacheDebugInfo[elf.SymTabDebugInfo]{},

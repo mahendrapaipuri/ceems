@@ -45,8 +45,8 @@ type Config struct {
 
 type Result struct {
 	Metric map[string]string `json:"metric"`
-	Value  interface{}       `json:"value"`
-	Values []interface{}     `json:"values"`
+	Value  any               `json:"value"`
+	Values []any             `json:"values"`
 }
 
 type Data struct {
@@ -383,7 +383,7 @@ func (t *Client) fetchSettings(ctx context.Context) (*Settings, error) {
 	if retentionPeriod, err = model.ParseDuration(info.StorageRetention); err != nil {
 		// If storageRetention is set to size or time and size, we need to get
 		// "actual" retention period
-		for _, retentionString := range strings.Split(info.StorageRetention, "or") {
+		for retentionString := range strings.SplitSeq(info.StorageRetention, "or") {
 			retentionPeriod, err = model.ParseDuration(strings.TrimSpace(retentionString))
 			if err != nil {
 				continue

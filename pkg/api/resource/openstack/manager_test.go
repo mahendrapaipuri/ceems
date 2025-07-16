@@ -48,6 +48,7 @@ var (
 				"name":        "m10.vgpu",
 				"swap":        0,
 				"vcpus":       8,
+				"vgpus":       1,
 			},
 			TotalTime: models.MetricMap{
 				"alloc_cpumemtime": 8.429568e+06,
@@ -241,7 +242,7 @@ func mockOSIdentityAPIServer() *httptest.Server {
 		} else if strings.HasSuffix(r.URL.Path, "tokens") {
 			decoder := json.NewDecoder(r.Body)
 
-			var t map[string]interface{}
+			var t map[string]any
 
 			if err := decoder.Decode(&t); err != nil {
 				w.Write([]byte("KO"))

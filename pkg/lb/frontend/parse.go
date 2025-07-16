@@ -141,7 +141,7 @@ func parseReqParams(p *ReqParams, req string) {
 	// Extract UUIDs from query
 	for _, match := range regexpUUID.FindAllStringSubmatch(req, -1) {
 		if len(match) > 1 {
-			for _, uuid := range strings.Split(match[1], "|") {
+			for uuid := range strings.SplitSeq(match[1], "|") {
 				// Ignore empty strings
 				if strings.TrimSpace(uuid) != "" && !slices.Contains(p.uuids, uuid) {
 					p.uuids = append(p.uuids, uuid)
@@ -155,7 +155,7 @@ func parseReqParams(p *ReqParams, req string) {
 	idMatches := regexID.FindAllStringSubmatch(req, -1)
 	for _, match := range idMatches {
 		if len(match) > 1 {
-			for _, idMatch := range strings.Split(match[1], "|") {
+			for idMatch := range strings.SplitSeq(match[1], "|") {
 				// Ignore empty strings
 				if strings.TrimSpace(idMatch) != "" {
 					p.clusterID = strings.TrimSpace(idMatch)

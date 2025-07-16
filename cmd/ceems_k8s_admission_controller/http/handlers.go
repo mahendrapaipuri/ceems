@@ -85,7 +85,7 @@ func (h *admissionHandler) Serve(hook base.Hook) http.HandlerFunc {
 
 		var result *base.Result
 
-		var operation interface{}
+		var operation any
 
 		var version string
 

@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ceems-dev/perf-utils"
 	"github.com/mahendrapaipuri/ceems/internal/security"
-	"github.com/mahendrapaipuri/perf-utils"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/procfs"
 )
@@ -1080,7 +1080,7 @@ func (c *perfCollector) closeProfilers(activePIDs []int) error {
 
 // openProfilers is a convenience function for newProfilers receiver. This function
 // will be executed within a security context with necessary capabilities.
-func openProfilers(data interface{}) error {
+func openProfilers(data any) error {
 	// Assert data type
 	var d *perfProfilerSecurityCtxData
 
@@ -1196,7 +1196,7 @@ func newCacheProfiler(pid int, profilerTypes perf.CacheProfilerType) (*perf.Cach
 
 // closeProfilers is a convenience function for closeProfilers receiver. This function
 // will be executed within a security context with necessary capabilities.
-func closeProfilers(data interface{}) error {
+func closeProfilers(data any) error {
 	// Assert data is of perfSecurityCtxData
 	var d *perfProfilerSecurityCtxData
 
@@ -1288,7 +1288,7 @@ func closeCacheProfiler(profiler *perf.CacheProfiler) error {
 
 // filterPerfProcs filters the processes of each cgroup inside data pointer based on
 // presence of target env vars.
-func filterPerfProcs(data interface{}) error {
+func filterPerfProcs(data any) error {
 	// Assert data is of perfSecurityCtxData
 	var d *perfProcFilterSecurityCtxData
 

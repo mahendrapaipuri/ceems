@@ -20,6 +20,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"sync"
 
 	"github.com/mahendrapaipuri/ceems/pkg/api/models"
@@ -171,9 +172,7 @@ func addMetricMap(existing, current string) string {
 
 	// Make a deep copy of existingMetricMap into updatedMetricMap
 	updatedMetricMap := make(models.MetricMap)
-	for metricName, metricValue := range existingMetricMap {
-		updatedMetricMap[metricName] = metricValue
-	}
+	maps.Copy(updatedMetricMap, existingMetricMap)
 
 	// Walk through new map and update existing with new.
 	for metricName, newMetricValue := range currentMetricMap {

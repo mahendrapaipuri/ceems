@@ -7,6 +7,7 @@ toolchain go1.24.2
 require (
 	connectrpc.com/connect v1.18.1
 	github.com/alecthomas/kingpin/v2 v2.4.0
+	github.com/ceems-dev/perf-utils v0.0.0-20250716113832-99ba71e88ef4
 	github.com/cilium/ebpf v0.19.0
 	github.com/containerd/cgroups/v3 v3.0.5
 	github.com/go-chi/httprate v0.15.0
@@ -18,7 +19,6 @@ require (
 	github.com/grafana/pyroscope/ebpf v0.4.11
 	github.com/jedib0t/go-pretty/v6 v6.6.7
 	github.com/jellydator/ttlcache/v3 v3.4.0
-	github.com/mahendrapaipuri/perf-utils v0.0.0-20241102115757-6c72709e1c07
 	github.com/mattn/go-sqlite3 v1.14.28
 	github.com/prometheus/client_golang v1.22.0
 	github.com/prometheus/common v0.65.0
@@ -32,7 +32,7 @@ require (
 	github.com/wneessen/go-fileperm v0.2.1
 	github.com/zeebo/xxh3 v1.0.2
 	golang.org/x/crypto v0.39.0
-	golang.org/x/sys v0.33.0
+	golang.org/x/sys v0.34.0
 	google.golang.org/grpc v1.73.0
 	google.golang.org/protobuf v1.36.6
 	gopkg.in/yaml.v3 v3.0.1

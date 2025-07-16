@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 	"slices"
 	"strings"
 	"sync"
@@ -223,9 +224,7 @@ func NewEbpfCollector(logger *slog.Logger, cgManager *cgroupManager) (*ebpfColle
 			return nil, err
 		}
 
-		for name, prog := range netColl.Programs {
-			bpfProgs[name] = prog
-		}
+		maps.Copy(bpfProgs, netColl.Programs)
 
 		// Set configMap
 		configMap = netColl.Maps["conf_map"]
@@ -242,9 +241,7 @@ func NewEbpfCollector(logger *slog.Logger, cgManager *cgroupManager) (*ebpfColle
 			return nil, err
 		}
 
-		for name, prog := range vfsColl.Programs {
-			bpfProgs[name] = prog
-		}
+		maps.Copy(bpfProgs, vfsColl.Programs)
 
 		// Set configMap if not already done
 		if configMap == nil {
@@ -905,7 +902,7 @@ func (c *ebpfCollector) discoverCgroups(cgroups []cgroup) {
 // aggStats returns aggregate VFS and network metrics by reading
 // BPF maps. This function gets executes in a security context
 // with relevant privileges.
-func aggStats(data interface{}) error {
+func aggStats(data any) error {
 	// Assert data type
 	var d *ebpfReadMapsCtxData
 

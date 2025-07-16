@@ -230,7 +230,7 @@ func (d *targetDiscoverer) discover() ([]Target, error) {
 }
 
 // filterTargets filters the targets based on target env vars and return filtered targets.
-func filterTargets(data interface{}) error {
+func filterTargets(data any) error {
 	// Assert data is of targetDiscovererSecurityCtxData
 	var d *targetDiscovererSecurityCtxData
 

@@ -71,7 +71,7 @@ func dummyTSDBServer(clusterID string) *httptest.Server {
 
 	expectedFlags := tsdb.Response[any]{
 		Status: "success",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"query.lookback-delta": "5m",
 			"query.max-samples":    "50000000",
 			"query.timeout":        "2m",

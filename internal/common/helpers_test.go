@@ -273,9 +273,9 @@ func TestGetUuid(t *testing.T) {
 
 func TestConvertMapI2MapS(t *testing.T) {
 	cases := []struct {
-		title string      // Title of the test case
-		v     interface{} // Input dynamic object
-		exp   interface{} // Expected result
+		title string // Title of the test case
+		v     any    // Input dynamic object
+		exp   any    // Expected result
 	}{
 		{
 			title: "nil value",
@@ -289,44 +289,44 @@ func TestConvertMapI2MapS(t *testing.T) {
 		},
 		{
 			title: "map[interfac{}]interface{} value",
-			v: map[interface{}]interface{}{
+			v: map[any]any{
 				"s": "s",
 				1:   1,
 			},
-			exp: map[string]interface{}{
+			exp: map[string]any{
 				"s": "s",
 				"1": 1,
 			},
 		},
 		{
 			title: "nested maps and slices",
-			v: map[interface{}]interface{}{
+			v: map[any]any{
 				"s": "s",
 				1:   1,
-				float64(0): []interface{}{
+				float64(0): []any{
 					1,
 					"x",
-					map[interface{}]interface{}{
+					map[any]any{
 						"s": "s",
 						2.0: 2,
 					},
-					map[string]interface{}{
+					map[string]any{
 						"s": "s",
 						"1": 1,
 					},
 				},
 			},
-			exp: map[string]interface{}{
+			exp: map[string]any{
 				"s": "s",
 				"1": 1,
-				"0": []interface{}{
+				"0": []any{
 					1,
 					"x",
-					map[string]interface{}{
+					map[string]any{
 						"s": "s",
 						"2": 2,
 					},
-					map[string]interface{}{
+					map[string]any{
 						"s": "s",
 						"1": 1,
 					},

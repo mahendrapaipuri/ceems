@@ -23,22 +23,22 @@ func mockTSDBServer() *httptest.Server {
 	// Start test server
 	expected := tsdb.Response[any]{
 		Status: "success",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"resultType": "vector",
-			"result": []interface{}{
-				map[string]interface{}{
+			"result": []any{
+				map[string]any{
 					"metric": map[string]string{
 						"uuid": "1",
 					},
-					"value": []interface{}{
+					"value": []any{
 						12345, "1.1",
 					},
 				},
-				map[string]interface{}{
+				map[string]any{
 					"metric": map[string]string{
 						"uuid": "2",
 					},
-					"value": []interface{}{
+					"value": []any{
 						12345, "2.2",
 					},
 				},

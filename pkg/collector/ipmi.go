@@ -486,7 +486,7 @@ func (c *impiCollector) getPowerReadings() (map[string]float64, error) {
 // Parse current, min and max power readings for capmc output.
 func (c *impiCollector) parseCapmcOutput(stdOut []byte) (map[string]float64, error) {
 	// Unmarshal JSON output
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(stdOut, &data); err != nil {
 		return nil, fmt.Errorf("%s Power readings command failed", crayPowerCap)
 	}
@@ -613,7 +613,7 @@ func (c *impiCollector) doRequestInSecurityContext() (map[string]float64, error)
 	return dataPtr.powerReadings, nil
 }
 
-func dcmiPowerReading(data interface{}) error {
+func dcmiPowerReading(data any) error {
 	// Assert data
 	var d *ipmiClientSecurityCtxData
 
@@ -658,7 +658,7 @@ func findIPMICmd() ([]string, error) {
 
 // Get value based on regex from IPMI output.
 func getValue(ipmiOutput []byte, regex *regexp.Regexp) (string, error) {
-	for _, line := range strings.Split(string(ipmiOutput), "\n") {
+	for line := range strings.SplitSeq(string(ipmiOutput), "\n") {
 		match := regex.FindStringSubmatch(line)
 		if match == nil {
 			continue

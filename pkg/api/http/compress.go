@@ -162,7 +162,7 @@ func (c *Compressor) SetEncoder(encoding string, fn EncoderFunc) {
 	encoder := fn(io.Discard, c.level)
 	if _, ok := encoder.(ioResetterWriter); ok {
 		pool := &sync.Pool{
-			New: func() interface{} {
+			New: func() any {
 				return fn(io.Discard, c.level)
 			},
 		}

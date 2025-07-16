@@ -59,12 +59,12 @@ type openstackConfig struct {
 		Compute  string `yaml:"compute"`
 		Identity string `yaml:"identity"`
 	} `yaml:"api_service_endpoints"`
-	AuthConfig interface{} `yaml:"auth"`
+	AuthConfig any `yaml:"auth"`
 }
 
 // addAuthKey embeds AuthConfig as value under `auth` key.
 func (c *openstackConfig) addAuthKey() {
-	obj := map[string]interface{}{}
+	obj := map[string]any{}
 	obj["auth"] = c.AuthConfig
 	c.AuthConfig = obj
 }

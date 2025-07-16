@@ -142,7 +142,7 @@ func (o *openstackManager) usersProjectsAssoc(ctx context.Context, current time.
 	// Chunk by userIDs in chunks of of a given size so that we make
 	// concurrent corresponding to chunkSize each time to get projects
 	// of each user
-	userIDChunks := helper.ChunkBy[string](userIDs, chunkSize)
+	userIDChunks := helper.ChunkBy(userIDs, chunkSize)
 
 	// Get user projects
 	userProjects := make(map[string][]Project, len(userIDs))

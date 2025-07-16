@@ -30,7 +30,7 @@ var (
 // Any number will be converted into int64.
 // Ref: https://go.dev/play/p/89ra6QgcZba, https://husobee.github.io/golang/database/2015/06/12/scanner-valuer.html,
 // https://gist.github.com/jmoiron/6979540
-type Generic map[string]interface{}
+type Generic map[string]any
 
 // Value implements Valuer interface.
 func (g Generic) Value() (driver.Value, error) {
@@ -45,7 +45,7 @@ func (g Generic) Value() (driver.Value, error) {
 }
 
 // Scan implements Scanner interface.
-func (g *Generic) Scan(v interface{}) error {
+func (g *Generic) Scan(v any) error {
 	if v == nil {
 		return nil
 	}
@@ -64,7 +64,7 @@ func (g *Generic) Scan(v interface{}) error {
 
 	// Ref: Improvable, see https://groups.google.com/g/golang-nuts/c/TDuGDJAIuVM?pli=1
 	// Decode into a tmp var
-	var tmp map[string]interface{}
+	var tmp map[string]any
 
 	d.UseNumber()
 
@@ -135,14 +135,14 @@ func (m MetricMap) Keys() []string {
 }
 
 // Values returns a slice of string representation of map values.
-func (m MetricMap) Values(format string) []interface{} {
+func (m MetricMap) Values(format string) []any {
 	// Return empty string when map is nil
 	// Useful in table generation for cacct app
 	if len(m) == 0 {
-		return []interface{}{""}
+		return []any{""}
 	}
 
-	s := make([]interface{}, len(m))
+	s := make([]any, len(m))
 
 	// Iterate over sorted keys to get predictable order
 	for ik, k := range m.Keys() {
@@ -165,7 +165,7 @@ func (m MetricMap) Value() (driver.Value, error) {
 }
 
 // Scan implements Scanner interface.
-func (m *MetricMap) Scan(v interface{}) error {
+func (m *MetricMap) Scan(v any) error {
 	if v == nil {
 		return nil
 	}
@@ -210,7 +210,7 @@ func (j JSONFloat) Value() (driver.Value, error) {
 }
 
 // Scan implements Scanner interface.
-func (j *JSONFloat) Scan(v interface{}) error {
+func (j *JSONFloat) Scan(v any) error {
 	if v == nil {
 		return nil
 	}
@@ -266,7 +266,7 @@ func (j JSONFloat) MarshalJSON() ([]byte, error) {
 		return json.Marshal(v)
 	} else {
 		// Convert to bytes by truncating to 8 decimals
-		return []byte(fmt.Sprintf("%.8f", v)), nil
+		return fmt.Appendf(nil, "%.8f", v), nil
 	}
 }
 
@@ -290,7 +290,7 @@ func (j *JSONFloat) UnmarshalJSON(v []byte) error {
 
 // List is a generic type to store slices. Only string and int slices are supported.
 // Any number will be converted into int64.
-type List []interface{}
+type List []any
 
 // Value implements Valuer interface.
 func (l List) Value() (driver.Value, error) {
@@ -305,7 +305,7 @@ func (l List) Value() (driver.Value, error) {
 }
 
 // Scan implements Scanner interface.
-func (l *List) Scan(v interface{}) error {
+func (l *List) Scan(v any) error {
 	if v == nil {
 		return nil
 	}
@@ -324,7 +324,7 @@ func (l *List) Scan(v interface{}) error {
 
 	// Ref: Improvable, see https://groups.google.com/g/golang-nuts/c/TDuGDJAIuVM?pli=1
 	// Decode into a tmp var
-	var tmp []interface{}
+	var tmp []any
 
 	d.UseNumber()
 
@@ -359,7 +359,7 @@ func (c *WebConfig) SetDirectory(dir string) {
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
-func (c *WebConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *WebConfig) UnmarshalYAML(unmarshal func(any) error) error {
 	type plain WebConfig
 
 	*c = WebConfig{
