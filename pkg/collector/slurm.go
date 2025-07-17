@@ -649,10 +649,22 @@ func (c *slurmCollector) jobCgroups() ([]cgroup, error) {
 	// terminated job
 	var activeCgroups []cgroup
 
+	var staleCgroupIDs []string
+
 	for _, cgroup := range cgroups {
 		if len(cgroup.procs) > 0 {
 			activeCgroups = append(activeCgroups, cgroup)
+		} else {
+			staleCgroupIDs = append(staleCgroupIDs, cgroup.uuid)
 		}
+	}
+
+	// If stale cgroups found, emit a warning log
+	if len(staleCgroupIDs) > 0 {
+		c.logger.Warn(
+			"Stale cgroups without any processes found", "ids", strings.Join(staleCgroupIDs, ","),
+			"num_cgroups", len(staleCgroupIDs),
+		)
 	}
 
 	// Update devices
