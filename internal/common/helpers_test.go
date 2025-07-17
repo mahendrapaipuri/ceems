@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mahendrapaipuri/ceems/pkg/grafana"
+	"github.com/ceems-dev/ceems/pkg/grafana"
 	"github.com/prometheus/common/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

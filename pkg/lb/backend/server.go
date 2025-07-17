@@ -4,7 +4,7 @@ import (
 	"errors"
 	"log/slog"
 
-	"github.com/mahendrapaipuri/ceems/pkg/lb/base"
+	"github.com/ceems-dev/ceems/pkg/lb/base"
 )
 
 // New returns a backend server of type `t`.

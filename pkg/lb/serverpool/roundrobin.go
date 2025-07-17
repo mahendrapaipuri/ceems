@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/mahendrapaipuri/ceems/pkg/lb/backend"
+	"github.com/ceems-dev/ceems/pkg/lb/backend"
 )
 
 // roundRobin implements round robin load balancer strategy.

@@ -10,9 +10,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/mahendrapaipuri/ceems/internal/structset"
-	"github.com/mahendrapaipuri/ceems/pkg/api/base"
-	"github.com/mahendrapaipuri/ceems/pkg/api/models"
+	"github.com/ceems-dev/ceems/internal/structset"
+	"github.com/ceems-dev/ceems/pkg/api/base"
+	"github.com/ceems-dev/ceems/pkg/api/models"
 )
 
 var queryRegexp = regexp.MustCompile("SELECT (.*?) FROM (.*)")

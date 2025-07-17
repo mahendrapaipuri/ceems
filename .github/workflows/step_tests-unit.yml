@@ -54,8 +54,8 @@ jobs:
           cd ..
 
           # Create/Update badge
-          gobadge -target README.md -filename coverage.out -link https://github.com/mahendrapaipuri/ceems/actions/workflows/ci.yml?query=branch%3Amain
-          gobadge -target website/docs/00-introduction.md -filename coverage.out -link https://github.com/mahendrapaipuri/ceems/actions/workflows/ci.yml?query=branch%3Amain
+          gobadge -target README.md -filename coverage.out -link https://github.com/ceems-dev/ceems/actions/workflows/ci.yml?query=branch%3Amain
+          gobadge -target website/docs/00-introduction.md -filename coverage.out -link https://github.com/ceems-dev/ceems/actions/workflows/ci.yml?query=branch%3Amain
 
           # Check diff on README
           git diff README.md

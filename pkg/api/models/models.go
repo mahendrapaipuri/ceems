@@ -2,7 +2,7 @@
 package models
 
 import (
-	"github.com/mahendrapaipuri/ceems/internal/structset"
+	"github.com/ceems-dev/ceems/internal/structset"
 )
 
 const (

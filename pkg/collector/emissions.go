@@ -8,7 +8,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/mahendrapaipuri/ceems/pkg/emissions"
+	"github.com/ceems-dev/ceems/pkg/emissions"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

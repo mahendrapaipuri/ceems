@@ -7,7 +7,7 @@ ConditionPathExists=/etc/ceems_exporter
 # Metadata
 Label=app=ceems_exporter
 ContainerName=ceems_exporter
-Image=quay.io/mahendrapaipuri/ceems:latest
+Image=quay.io/ceems-dev/ceems:latest
 
 # Container network
 Network=ceems_exporter.network

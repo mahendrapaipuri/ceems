@@ -9,10 +9,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mahendrapaipuri/ceems/internal/security"
-	"github.com/mahendrapaipuri/ceems/pkg/api/base"
-	"github.com/mahendrapaipuri/ceems/pkg/api/models"
-	"github.com/mahendrapaipuri/ceems/pkg/api/resource"
+	"github.com/ceems-dev/ceems/internal/security"
+	"github.com/ceems-dev/ceems/pkg/api/base"
+	"github.com/ceems-dev/ceems/pkg/api/models"
+	"github.com/ceems-dev/ceems/pkg/api/resource"
 )
 
 // Execution modes.

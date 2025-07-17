@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/ceems-dev/ceems/internal/security"
 	"github.com/grafana/pyroscope/ebpf/sd"
-	"github.com/mahendrapaipuri/ceems/internal/security"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 

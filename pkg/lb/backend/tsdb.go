@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
+	"github.com/ceems-dev/ceems/pkg/tsdb"
 	"github.com/prometheus/common/config"
 )
 

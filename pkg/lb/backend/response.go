@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
+	"github.com/ceems-dev/ceems/pkg/tsdb"
 )
 
 // Regex to extract label name in values end point.

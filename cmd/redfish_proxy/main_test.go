@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mahendrapaipuri/ceems/internal/common"
+	"github.com/ceems-dev/ceems/internal/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mahendrapaipuri/ceems/pkg/api/models"
-	"github.com/mahendrapaipuri/ceems/pkg/api/updater"
-	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
+	"github.com/ceems-dev/ceems/pkg/api/models"
+	"github.com/ceems-dev/ceems/pkg/api/updater"
+	"github.com/ceems-dev/ceems/pkg/tsdb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"

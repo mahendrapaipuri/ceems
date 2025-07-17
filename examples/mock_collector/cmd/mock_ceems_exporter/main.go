@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 
-	_ "github.com/mahendrapaipuri/ceems/examples/mock_collector/pkg/collector"
-	"github.com/mahendrapaipuri/ceems/pkg/collector"
+	_ "github.com/ceems-dev/ceems/examples/mock_collector/pkg/collector"
+	"github.com/ceems-dev/ceems/pkg/collector"
 )
 
 // Main entry point for `ceems_exporter` app.

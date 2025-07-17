@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/mahendrapaipuri/ceems/internal/osexec"
+	"github.com/ceems-dev/ceems/internal/osexec"
 	"kernel.org/pub/linux/libs/security/libcap/cap"
 )
 

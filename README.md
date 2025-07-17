@@ -3,15 +3,15 @@
 
 |         |                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CI/CD   | [![ci](https://github.com/mahendrapaipuri/ceems/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/mahendrapaipuri/ceems/actions/workflows/ci.yml?query=branch%3Amain) [![CircleCI](https://dl.circleci.com/status-badge/img/circleci/8jSYT1wyKY8mKQRTqNLThX/TzM1Mr3AEAqmehnoCde19R/tree/main.svg?style=svg&circle-token=28db7268f3492790127da28e62e76b0991d59c8b)](https://dl.circleci.com/status-badge/redirect/circleci/8jSYT1wyKY8mKQRTqNLThX/TzM1Mr3AEAqmehnoCde19R/tree/main)  [![Coverage](https://img.shields.io/badge/Coverage-77.6%25-brightgreen)](https://github.com/mahendrapaipuri/ceems/actions/workflows/ci.yml?query=branch%3Amain)                                                                                          |
-| Docs    | [![docs](https://img.shields.io/badge/docs-passing-green?style=flat&link=https://mahendrapaipuri.github.io/ceems/docs/)](https://mahendrapaipuri.github.io/ceems/)  [![Go Doc](https://godoc.org/github.com/mahendrapaipuri/ceems?status.svg)](http://godoc.org/github.com/mahendrapaipuri/ceems)                                                                                                                                                                                                                             |
-| Package | [![Release](https://img.shields.io/github/v/release/mahendrapaipuri/ceems.svg?include_prereleases)](https://github.com/mahendrapaipuri/ceems/releases/latest)                                                                                                                                                                     |
-| Meta    | [![GitHub License](https://img.shields.io/github/license/mahendrapaipuri/ceems)](https://github.com/mahendrapaipuri/ceems) [![Go Report Card](https://goreportcard.com/badge/github.com/mahendrapaipuri/ceems)](https://goreportcard.com/report/github.com/mahendrapaipuri/ceems) [![code style](https://img.shields.io/badge/code%20style-gofmt-blue.svg)](https://pkg.go.dev/cmd/gofmt) |
+| CI/CD   | [![ci](https://github.com/ceems-dev/ceems/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ceems-dev/ceems/actions/workflows/ci.yml?query=branch%3Amain) [![CircleCI](https://dl.circleci.com/status-badge/img/circleci/UVxmfk5AT3EHZpsg3FdfaR/PKvLaAH1ahBZf8kBKHhCiA/tree/main.svg?style=svg&circle-token=CCIPRJ_67vq2cGkBpm9syySEp7tTW_7d4d6f3e8d72486acf477768f4f0a1d5235ab2a0)](https://dl.circleci.com/status-badge/redirect/circleci/UVxmfk5AT3EHZpsg3FdfaR/PKvLaAH1ahBZf8kBKHhCiA/tree/main)  [![Coverage](https://img.shields.io/badge/Coverage-77.6%25-brightgreen)](https://github.com/ceems-dev/ceems/actions/workflows/ci.yml?query=branch%3Amain)                                                                                          |
+| Docs    | [![docs](https://img.shields.io/badge/docs-passing-green?style=flat&link=https://ceems-dev.github.io/ceems/docs/)](https://ceems-dev.github.io/ceems/)  [![Go Doc](https://godoc.org/github.com/ceems-dev/ceems?status.svg)](http://godoc.org/github.com/ceems-dev/ceems)                                                                                                                                                                                                                             |
+| Package | [![Release](https://img.shields.io/github/v/release/ceems-dev/ceems.svg?include_prereleases)](https://github.com/ceems-dev/ceems/releases/latest)                                                                                                                                                                     |
+| Meta    | [![GitHub License](https://img.shields.io/github/license/ceems-dev/ceems)](https://github.com/ceems-dev/ceems) [![Go Report Card](https://goreportcard.com/badge/github.com/ceems-dev/ceems)](https://goreportcard.com/report/github.com/ceems-dev/ceems) [![code style](https://img.shields.io/badge/code%20style-gofmt-blue.svg)](https://pkg.go.dev/cmd/gofmt) |
 
 <!-- markdown-link-check-enable -->
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/mahendrapaipuri/ceems/main/website/static/img/logo.png" width="200">
+  <img src="https://raw.githubusercontent.com/ceems-dev/ceems/main/website/static/img/logo.png" width="200">
 </p>
 
 Compute Energy & Emissions Monitoring Stack (CEEMS) (pronounced as *kiːms*) contains
@@ -52,12 +52,12 @@ managers (SLURM, Openstack, k8s)
 pre-release and stable versions.
 
 Installation instructions of CEEMS components can be found in
-[docs](https://mahendrapaipuri.github.io/ceems/docs/category/installation).
+[docs](https://ceems-dev.github.io/ceems/docs/category/installation).
 
 ## 📽️ Demo
 
 <p><a href="https://ceems-demo.myaddr.tools" target="_blank">
-<img src="https://raw.githubusercontent.com/mahendrapaipuri/ceems/main/website/static/img/dashboards/demo_screenshot.png" alt="Access Demo">
+<img src="https://raw.githubusercontent.com/ceems-dev/ceems/main/website/static/img/dashboards/demo_screenshot.png" alt="Access Demo">
 </a></p>
 
 Openstack and SLURM have been deployed on a small cloud instance and monitored using
@@ -83,37 +83,37 @@ screenshots of dashboards.
 ### Time series compute unit CPU metrics
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/mahendrapaipuri/ceems/main/website/static/img/dashboards/cpu_ts_stats.png" width="1200">
+  <img src="https://raw.githubusercontent.com/ceems-dev/ceems/main/website/static/img/dashboards/cpu_ts_stats.png" width="1200">
 </p>
 
 ### Time series compute unit GPU metrics
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/mahendrapaipuri/ceems/main/website/static/img/dashboards/gpu_ts_stats.png" width="1200">
+  <img src="https://raw.githubusercontent.com/ceems-dev/ceems/main/website/static/img/dashboards/gpu_ts_stats.png" width="1200">
 </p>
 
 ### List of compute units of user with aggregate metrics
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/mahendrapaipuri/ceems/main/website/static/img/dashboards/job_list_user.png" width="1200">
+  <img src="https://raw.githubusercontent.com/ceems-dev/ceems/main/website/static/img/dashboards/job_list_user.png" width="1200">
 </p>
 
 ### Aggregate usage metrics of a user
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/mahendrapaipuri/ceems/main/website/static/img/dashboards/agg.png" width="1200">
+  <img src="https://raw.githubusercontent.com/ceems-dev/ceems/main/website/static/img/dashboards/agg.png" width="1200">
 </p>
 
 ### Aggregate usage metrics of a project
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/mahendrapaipuri/ceems/main/website/static/img/dashboards/agg_proj.png" width="1200">
+  <img src="https://raw.githubusercontent.com/ceems-dev/ceems/main/website/static/img/dashboards/agg_proj.png" width="1200">
 </p>
 
 ### Energy usage breakdown between project members
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/mahendrapaipuri/ceems/main/website/static/img/dashboards/breakdown.png" width="1200">
+  <img src="https://raw.githubusercontent.com/ceems-dev/ceems/main/website/static/img/dashboards/breakdown.png" width="1200">
 </p>
 
 ## Usage metrics via CLI tool
@@ -191,5 +191,5 @@ in Montpellier, France.
 
 If you want to say **thank you** or/and support active development of CEEMS:
 
-- Add a [GitHub Star](https://github.com/mahendrapaipuri/ceems) to the project.
+- Add a [GitHub Star](https://github.com/ceems-dev/ceems) to the project.
 - Write articles about project on [Dev.to](https://dev.to/), [Medium](https://medium.com/) or personal blog.

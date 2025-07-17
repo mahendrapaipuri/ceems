@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
-	"github.com/mahendrapaipuri/ceems/cmd/ceems_k8s_admission_controller/base"
-	"github.com/mahendrapaipuri/ceems/cmd/ceems_k8s_admission_controller/http"
-	internal_runtime "github.com/mahendrapaipuri/ceems/internal/runtime"
+	"github.com/ceems-dev/ceems/cmd/ceems_k8s_admission_controller/base"
+	"github.com/ceems-dev/ceems/cmd/ceems_k8s_admission_controller/http"
+	internal_runtime "github.com/ceems-dev/ceems/internal/runtime"
 	"github.com/prometheus/common/promslog"
 	"github.com/prometheus/common/promslog/flag"
 	"github.com/prometheus/common/version"

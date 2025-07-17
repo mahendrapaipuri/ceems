@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
-	"github.com/mahendrapaipuri/ceems/pkg/api/models"
+	"github.com/ceems-dev/ceems/pkg/api/models"
 )
 
 // CEEMSServerAppName is kingpin app name.

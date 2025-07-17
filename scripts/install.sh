@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set repository information
-REPO_OWNER="mahendrapaipuri"
+REPO_OWNER="ceems-dev"
 REPO_NAME="ceems"
 RELEASES_URL="https://github.com/$REPO_OWNER/$REPO_NAME/releases"
 API_URL="https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/releases"

@@ -18,8 +18,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mahendrapaipuri/ceems/internal/osexec"
-	ceems_k8s "github.com/mahendrapaipuri/ceems/pkg/k8s"
+	"github.com/ceems-dev/ceems/internal/osexec"
+	ceems_k8s "github.com/ceems-dev/ceems/pkg/k8s"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 

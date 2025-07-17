@@ -12,10 +12,10 @@ import (
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
+	"github.com/ceems-dev/ceems/internal/common"
+	"github.com/ceems-dev/ceems/pkg/api/models"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
-	"github.com/mahendrapaipuri/ceems/internal/common"
-	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	http_config "github.com/prometheus/common/config"
 	"github.com/prometheus/common/version"
 	"gopkg.in/yaml.v3"

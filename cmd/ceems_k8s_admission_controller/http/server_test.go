@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/mahendrapaipuri/ceems/cmd/ceems_k8s_admission_controller/base"
+	"github.com/ceems-dev/ceems/cmd/ceems_k8s_admission_controller/base"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

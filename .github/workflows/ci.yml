@@ -9,7 +9,7 @@ on:
       docker_hub_organization:
         type: string
         description: DockerHub organization
-        default: mahendrapaipuri
+        default: ceems
       docker_hub_registry_provider:
         type: string
         description: DockerHub registry provider
@@ -21,7 +21,7 @@ on:
       quay_organization:
         type: string
         description: Quay organization
-        default: mahendrapaipuri
+        default: ceems
       quay_registry_provider:
         type: string
         description: Quay registry provider
@@ -77,7 +77,7 @@ jobs:
     # we need to set default values to the context vars here
     with:
       registry: ${{ inputs.docker_hub_registry || 'docker.io' }}
-      organization: ${{ inputs.docker_hub_organization || 'mahendrapaipuri' }}
+      organization: ${{ inputs.docker_hub_organization || 'ceems' }}
       registry_provider: ${{ inputs.docker_hub_registry_provider || 'dockerhub' }}
     secrets:  
       login: ${{ secrets.DOCKER_HUB_LOGIN }}
@@ -92,7 +92,7 @@ jobs:
     # we need to set default values to the context vars here
     with:
       registry: ${{ inputs.docker_hub_registry || 'docker.io' }}
-      organization: ${{ inputs.docker_hub_organization || 'mahendrapaipuri' }}
+      organization: ${{ inputs.docker_hub_organization || 'ceems' }}
       registry_provider: ${{ inputs.docker_hub_registry_provider || 'dockerhub' }}
 
   quay:
@@ -102,7 +102,7 @@ jobs:
     # we need to set default values to the context vars here
     with:
       registry: ${{ inputs.quay_registry || 'quay.io' }}
-      organization: ${{ inputs.quay_organization || 'mahendrapaipuri' }}
+      organization: ${{ inputs.quay_organization || 'ceems' }}
       registry_provider: ${{ inputs.quay_registry_provider || 'quay' }}
     secrets:  
       login: ${{ secrets.QUAY_LOGIN }}
@@ -117,5 +117,5 @@ jobs:
     # we need to set default values to the context vars here
     with:
       registry: ${{ inputs.quay_registry || 'quay.io' }}
-      organization: ${{ inputs.quay_organization || 'mahendrapaipuri' }}
+      organization: ${{ inputs.quay_organization || 'ceems' }}
       registry_provider: ${{ inputs.quay_registry_provider || 'quay' }}

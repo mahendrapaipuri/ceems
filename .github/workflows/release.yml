@@ -10,7 +10,7 @@ on:
       docker_hub_organization:
         type: string
         description: DockerHub organization
-        default: mahendrapaipuri
+        default: ceems
       quay_registry:
         type: string
         description: Quay registry
@@ -18,7 +18,7 @@ on:
       quay_organization:
         type: string
         description: Quay organization
-        default: mahendrapaipuri
+        default: ceems
   push:
     # Run workflow on new tags
     tags:
@@ -54,7 +54,7 @@ jobs:
     # we need to set default values to the context vars here
     with:
       registry: ${{ inputs.quay_registry || 'docker.io' }}
-      organization: ${{ inputs.quay_organization || 'mahendrapaipuri' }}
+      organization: ${{ inputs.quay_organization || 'ceems' }}
     secrets:  
       login: ${{ secrets.DOCKER_HUB_LOGIN }}
       password: ${{ secrets.DOCKER_HUB_PASSWORD }}
@@ -67,7 +67,7 @@ jobs:
     # we need to set default values to the context vars here
     with:
       registry: ${{ inputs.quay_registry || 'quay.io' }}
-      organization: ${{ inputs.quay_organization || 'mahendrapaipuri' }}
+      organization: ${{ inputs.quay_organization || 'ceems' }}
     secrets:  
       login: ${{ secrets.QUAY_LOGIN }}
       password: ${{ secrets.QUAY_PASSWORD }}

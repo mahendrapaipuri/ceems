@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	ceems_k8s "github.com/mahendrapaipuri/ceems/pkg/k8s"
+	ceems_k8s "github.com/ceems-dev/ceems/pkg/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"

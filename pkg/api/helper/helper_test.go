@@ -3,7 +3,7 @@ package helper
 import (
 	"testing"
 
-	"github.com/mahendrapaipuri/ceems/pkg/api/base"
+	"github.com/ceems-dev/ceems/pkg/api/base"
 	"github.com/stretchr/testify/assert"
 )
 

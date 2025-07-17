@@ -14,12 +14,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mahendrapaipuri/ceems/internal/common"
-	internal_osexec "github.com/mahendrapaipuri/ceems/internal/osexec"
-	"github.com/mahendrapaipuri/ceems/internal/security"
-	"github.com/mahendrapaipuri/ceems/pkg/api/base"
-	"github.com/mahendrapaipuri/ceems/pkg/api/helper"
-	"github.com/mahendrapaipuri/ceems/pkg/api/models"
+	"github.com/ceems-dev/ceems/internal/common"
+	internal_osexec "github.com/ceems-dev/ceems/internal/osexec"
+	"github.com/ceems-dev/ceems/internal/security"
+	"github.com/ceems-dev/ceems/pkg/api/base"
+	"github.com/ceems-dev/ceems/pkg/api/helper"
+	"github.com/ceems-dev/ceems/pkg/api/models"
 	"kernel.org/pub/linux/libs/security/libcap/cap"
 )
 

@@ -41,7 +41,7 @@ vendor: GoReleaser
 
 # Package's homepage.
 # This will expand any env var you set in the field, e.g. homepage: ${CI_PROJECT_URL}
-homepage: https://github.com/mahendrapaipuri/ceems
+homepage: https://github.com/ceems-dev/ceems
 
 # License.
 license: GPL-3.0

@@ -15,8 +15,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ceems-dev/ceems/pkg/grafana"
 	"github.com/google/uuid"
-	"github.com/mahendrapaipuri/ceems/pkg/grafana"
 	"github.com/zeebo/xxh3"
 	"gopkg.in/yaml.v3"
 )

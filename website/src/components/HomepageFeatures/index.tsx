@@ -32,12 +32,11 @@ const FeatureList: FeatureItem[] = [
     ),
   },
   {
-    title: "Supports Grafana Alloy/Pyroscope for Continuous Profiling",
+    title: "Supports Continuous Profiling based on Grafana Pyroscope",
     Svg: require("@site/static/img/pyroscope.svg").default,
     description: (
       <>
-        CEEMS is capable of providing targets to Grafana Alloy eBPF
-        component for continuous profiling of compute workloads and apps.
+        CEEMS is capable of eBPF based continuous profiling of compute workloads.
       </>
     ),
   },

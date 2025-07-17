@@ -11,9 +11,9 @@ import (
 
 	// The order of execution of updaters can be controlled in the config file.
 	// Order of registration of updaters do not matter.
-	_ "github.com/mahendrapaipuri/ceems/examples/mock_updater/pkg/updaterone"
-	_ "github.com/mahendrapaipuri/ceems/examples/mock_updater/pkg/updatertwo"
-	"github.com/mahendrapaipuri/ceems/pkg/api/cli"
+	_ "github.com/ceems-dev/ceems/examples/mock_updater/pkg/updaterone"
+	_ "github.com/ceems-dev/ceems/examples/mock_updater/pkg/updatertwo"
+	"github.com/ceems-dev/ceems/pkg/api/cli"
 )
 
 // Main entry point for `usagestats` app.

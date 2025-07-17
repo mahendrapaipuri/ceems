@@ -14,9 +14,9 @@ import (
 	"slices"
 	"time"
 
-	"github.com/mahendrapaipuri/ceems/internal/common"
-	"github.com/mahendrapaipuri/ceems/pkg/api/base"
-	"github.com/mahendrapaipuri/ceems/pkg/api/models"
+	"github.com/ceems-dev/ceems/internal/common"
+	"github.com/ceems-dev/ceems/pkg/api/base"
+	"github.com/ceems-dev/ceems/pkg/api/models"
 	"gopkg.in/yaml.v3"
 )
 

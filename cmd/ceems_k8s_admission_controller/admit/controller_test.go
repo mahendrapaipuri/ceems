@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/mahendrapaipuri/ceems/cmd/ceems_k8s_admission_controller/base"
+	"github.com/ceems-dev/ceems/cmd/ceems_k8s_admission_controller/base"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/admission/v1"

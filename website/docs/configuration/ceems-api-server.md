@@ -79,7 +79,7 @@ by CEEMS.
 
 The CEEMS API server exposes admin endpoints in its API, and the `admin` section can be used to
 configure which users can access those endpoints. More details on admin endpoints can be
-found in the [API Docs](https://mahendrapaipuri.github.io/ceems/docs/category/api).
+found in the [API Docs](https://@ceemsOrg@.github.io/@ceemsRepo@/docs/category/api).
 
 - `admin.users`: A list of statically defined users that will have access to the admin endpoints.
 - `admin.grafana`: In addition to a static list of users, the CEEMS API server can pull users from specified Grafana teams to add them to the list of users that will be granted access to the admin endpoints. This

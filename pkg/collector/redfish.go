@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mahendrapaipuri/ceems/internal/common"
-	"github.com/mahendrapaipuri/ceems/pkg/ipmi"
+	"github.com/ceems-dev/ceems/internal/common"
+	"github.com/ceems-dev/ceems/pkg/ipmi"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/config"
 	"github.com/stmcginnis/gofish"

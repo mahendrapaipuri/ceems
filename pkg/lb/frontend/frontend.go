@@ -14,11 +14,11 @@ import (
 	"strings"
 	"time"
 
-	ceems_api_base "github.com/mahendrapaipuri/ceems/pkg/api/base"
-	ceems_api_cli "github.com/mahendrapaipuri/ceems/pkg/api/cli"
-	"github.com/mahendrapaipuri/ceems/pkg/api/models"
-	"github.com/mahendrapaipuri/ceems/pkg/lb/base"
-	"github.com/mahendrapaipuri/ceems/pkg/lb/serverpool"
+	ceems_api_base "github.com/ceems-dev/ceems/pkg/api/base"
+	ceems_api_cli "github.com/ceems-dev/ceems/pkg/api/cli"
+	"github.com/ceems-dev/ceems/pkg/api/models"
+	"github.com/ceems-dev/ceems/pkg/lb/base"
+	"github.com/ceems-dev/ceems/pkg/lb/serverpool"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/prometheus/exporter-toolkit/web"
 )

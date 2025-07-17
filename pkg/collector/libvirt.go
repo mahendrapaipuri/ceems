@@ -17,8 +17,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mahendrapaipuri/ceems/internal/security"
-	ceems_k8s "github.com/mahendrapaipuri/ceems/pkg/k8s"
+	"github.com/ceems-dev/ceems/internal/security"
+	ceems_k8s "github.com/ceems-dev/ceems/pkg/k8s"
 	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/client-go/rest"
 )

@@ -1,6 +1,6 @@
 # Prometheus config
 
-The [rules](https://github.com/mahendrapaipuri/ceems/tree/main/etc/prometheus/rules)
+The [rules](https://github.com/ceems-dev/ceems/tree/main/etc/prometheus/rules)
 directory contain sample recording rules files that can be used to estimate the
 energy and emissions time series metrics of each compute unit derived from different
 sources.
@@ -11,7 +11,7 @@ There is a utility tool `ceems_tool` that can be used to generate recording rule
 from Prometheus server once the CEEMS exporter targets have been configured and
 being scrapped by Prometheus successfully. We recommend to this tool to generate
 recording rules for your deployment. More details on how to generate rules can be
-found in [docs](https://mahendrapaipuri.github.io/ceems/docs/usage/ceems-tool).
+found in [docs](https://ceems-dev.github.io/ceems/docs/usage/ceems-tool).
 
 ## Rules
 
