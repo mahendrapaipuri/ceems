@@ -91,6 +91,7 @@ jobs:
         # NOTE: We need to remove it once we trim down the README and move content to
         # dedicated docs. DockerHub complains about too many characters in README
         # continue-on-error: true
+        # Test comment just to push again
         env:
           # For dockerhub registry
           DOCKER_USER: ${{ secrets.login }}
