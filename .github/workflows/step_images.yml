@@ -71,14 +71,14 @@ jobs:
           make test-docker DOCKER_IMAGE_TAG=${{ steps.vars.outputs.branch_name }} DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
 
       - name: Publish image for current branch/tag
-        if: github.ref == 'refs/heads/main' || (github.event_name == 'push' && contains(github.ref, 'refs/tags/'))
+        # if: github.ref == 'refs/heads/main' || (github.event_name == 'push' && contains(github.ref, 'refs/tags/'))
         run: |
           echo ${{ secrets.password }} | docker login -u ${{ secrets.login }} --password-stdin ${{ inputs.registry }}
           make docker-publish DOCKER_IMAGE_TAG=${{ steps.vars.outputs.branch_name }} DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
           make docker-manifest DOCKER_IMAGE_TAG=${{ steps.vars.outputs.branch_name }} DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
 
       - name: Publish image with latest tag
-        if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
+        # if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
         run: |
           echo ${{ secrets.password }} | docker login -u ${{ secrets.login }} --password-stdin ${{ inputs.registry }}
           make docker-tag-latest DOCKER_IMAGE_TAG=${{ steps.vars.outputs.branch_name }} DOCKER_REPO=${{ inputs.registry }}/${{ inputs.organization }}
@@ -87,10 +87,10 @@ jobs:
 
       - name: Push README to registry
         uses: christian-korneck/update-container-description-action@d36005551adeaba9698d8d67a296bd16fa91f8e8 # v1
-        if: (github.ref == 'refs/heads/main' || (github.event_name == 'push' && contains(github.ref, 'refs/tags/'))) && github.repository_owner == 'mahendrapaipuri' # Don't run this workflow on forks.
+        # if: (github.ref == 'refs/heads/main' || (github.event_name == 'push' && contains(github.ref, 'refs/tags/'))) && github.repository_owner == 'mahendrapaipuri' # Don't run this workflow on forks.
         # NOTE: We need to remove it once we trim down the README and move content to
         # dedicated docs. DockerHub complains about too many characters in README
-        continue-on-error: true
+        # continue-on-error: true
         env:
           # For dockerhub registry
           DOCKER_USER: ${{ secrets.login }}
