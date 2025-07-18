@@ -171,7 +171,8 @@ platform that has a daily job churn rate of around 25k jobs with a scrape interv
 
 We welcome contributions to this project, we hope to see this project grow and become
 a useful tool for people who are interested in the energy and carbon footprint of their
-workloads.
+workloads. A comprehensive guide can be found in
+[CONTRIBUTING.md](https://github.com/ceems-dev/ceems/blob/main/CONTRIBUTING.md).
 
 Please feel free to open issues and/or discussions for any potential ideas of
 improvement.

@@ -16,8 +16,8 @@
     "clean-all": "docusaurus clean-api-docs all --all-versions",
     "re-gen": "yarn clean-all && yarn gen-all",
     "typecheck": "tsc",
-    "spellcheck": "cspell docs/**/*.md docs/*.md ../README.md",
-    "linkcheck": "markdown-link-check -c md-link-check.json docs/**/*.md docs/*.md ../README.md",
+    "spellcheck": "cspell docs/**/*.md docs/*.md ../etc/**/*.md ../README.md",
+    "linkcheck": "markdown-link-check -c md-link-check.json docs/**/*.md docs/*.md ../etc/**/*.md ../README.md",
     "checks": "yarn spellcheck && yarn linkcheck"
   },
   "dependencies": {

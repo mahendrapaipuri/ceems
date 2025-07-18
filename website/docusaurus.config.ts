@@ -15,6 +15,7 @@ let globalVars = {
   goVersion: "1.24.x", // Everytime Go version is updated, this needs to be updated as well
   ceemsVersion: "",
   ceemsOrg: organizationName,
+  ceemsContOrg: "ceems",
   ceemsRepo: projectName,
 }
 
