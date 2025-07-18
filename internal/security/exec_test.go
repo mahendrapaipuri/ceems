@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/mahendrapaipuri/ceems/internal/osexec"
+	"github.com/ceems-dev/ceems/internal/osexec"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"kernel.org/pub/linux/libs/security/libcap/cap"

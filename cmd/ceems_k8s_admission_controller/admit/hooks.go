@@ -1,7 +1,7 @@
 package admit
 
 import (
-	"github.com/mahendrapaipuri/ceems/cmd/ceems_k8s_admission_controller/base"
+	"github.com/ceems-dev/ceems/cmd/ceems_k8s_admission_controller/base"
 )
 
 // Annotation related constants.

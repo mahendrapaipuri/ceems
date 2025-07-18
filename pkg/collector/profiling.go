@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/ceems-dev/ceems/internal/common"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -23,7 +24,6 @@ import (
 	"github.com/grafana/pyroscope/ebpf/pprof"
 	"github.com/grafana/pyroscope/ebpf/sd"
 	"github.com/grafana/pyroscope/ebpf/symtab"
-	"github.com/mahendrapaipuri/ceems/internal/common"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/config"
 )

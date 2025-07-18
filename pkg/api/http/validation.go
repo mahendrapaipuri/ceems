@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/mahendrapaipuri/ceems/pkg/api/base"
-	"github.com/mahendrapaipuri/ceems/pkg/api/models"
+	"github.com/ceems-dev/ceems/pkg/api/base"
+	"github.com/ceems-dev/ceems/pkg/api/models"
 )
 
 // Null logger for adminUsers function. We dont need to log

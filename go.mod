@@ -1,4 +1,4 @@
-module github.com/mahendrapaipuri/ceems
+module github.com/ceems-dev/ceems
 
 go 1.24.0
 

@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/mahendrapaipuri/ceems/pkg/api/models"
+	"github.com/ceems-dev/ceems/pkg/api/models"
 )
 
 const defaultManager = "default"

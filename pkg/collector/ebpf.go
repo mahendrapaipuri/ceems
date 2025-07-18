@@ -16,11 +16,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ceems-dev/ceems/internal/security"
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/rlimit"
 	"github.com/containerd/cgroups/v3"
-	"github.com/mahendrapaipuri/ceems/internal/security"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sys/unix"
 )

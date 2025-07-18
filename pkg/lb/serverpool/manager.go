@@ -6,8 +6,8 @@ import (
 	"errors"
 	"log/slog"
 
-	"github.com/mahendrapaipuri/ceems/pkg/lb/backend"
-	"github.com/mahendrapaipuri/ceems/pkg/lb/base"
+	"github.com/ceems-dev/ceems/pkg/lb/backend"
+	"github.com/ceems-dev/ceems/pkg/lb/base"
 )
 
 // Custom errors.

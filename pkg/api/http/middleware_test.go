@@ -10,7 +10,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/mahendrapaipuri/ceems/pkg/api/base"
+	"github.com/ceems-dev/ceems/pkg/api/base"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

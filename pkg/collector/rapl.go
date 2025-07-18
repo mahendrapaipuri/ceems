@@ -15,7 +15,7 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/mahendrapaipuri/ceems/internal/security"
+	"github.com/ceems-dev/ceems/internal/security"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/procfs/sysfs"
 )

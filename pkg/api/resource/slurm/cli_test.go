@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/mahendrapaipuri/ceems/internal/security"
-	"github.com/mahendrapaipuri/ceems/pkg/api/base"
+	"github.com/ceems-dev/ceems/internal/security"
+	"github.com/ceems-dev/ceems/pkg/api/base"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/mahendrapaipuri/ceems/pkg/collector"
+	"github.com/ceems-dev/ceems/pkg/collector"
 )
 
 // Main entry point for `ceems_exporter` app.

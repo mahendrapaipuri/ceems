@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	ceems_sqlite3 "github.com/mahendrapaipuri/ceems/pkg/sqlite3"
+	ceems_sqlite3 "github.com/ceems-dev/ceems/pkg/sqlite3"
 )
 
 // Ref: https://stackoverflow.com/questions/1711631/improve-insert-per-second-performance-of-sqlite

@@ -6,7 +6,7 @@ import type * as OpenApiPlugin from "docusaurus-plugin-openapi-docs";
 import { myCustomApiMdGenerator } from "./customMdGenerators";
 
 // Constants
-const organizationName = "mahendrapaipuri";
+const organizationName = "ceems-dev";
 const projectName = "ceems";
 
 // Global variables that will be replaced

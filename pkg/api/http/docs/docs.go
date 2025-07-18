@@ -11,7 +11,7 @@ const docTemplate = `{
         "title": "{{.Title}}",
         "contact": {
             "name": "Mahendra Paipuri",
-            "url": "https://github.com/mahendrapaipuri/ceems/issues",
+            "url": "https://github.com/ceems-dev/ceems/issues",
             "email": "mahendra.paipuri@gmail.com"
         },
         "license": {
@@ -21,7 +21,7 @@ const docTemplate = `{
         "version": "{{.Version}}",
         "x-logo": {
             "altText": "CEEMS logo",
-            "url": "https://raw.githubusercontent.com/mahendrapaipuri/ceems/refs/heads/main/website/static/img/logo.png"
+            "url": "https://raw.githubusercontent.com/ceems-dev/ceems/refs/heads/main/website/static/img/logo.png"
         }
     },
     "host": "{{.Host}}",
@@ -1851,7 +1851,7 @@ const docTemplate = `{
         }
     },
     "externalDocs": {
-        "url": "https://mahendrapaipuri.github.io/ceems/"
+        "url": "https://ceems-dev.github.io/ceems/"
     }
 }`
 

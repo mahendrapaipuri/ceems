@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mahendrapaipuri/ceems/pkg/api/models"
-	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
+	"github.com/ceems-dev/ceems/pkg/api/models"
+	"github.com/ceems-dev/ceems/pkg/tsdb"
 	"github.com/prometheus/common/model"
 )
 

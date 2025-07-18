@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ceems-dev/ceems/pkg/api/models"
 	google_uuid "github.com/google/uuid"
-	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 )
 
 // Number of units and usage stats to generate.

@@ -15,7 +15,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/mahendrapaipuri/ceems/pkg/api/base"
+	"github.com/ceems-dev/ceems/pkg/api/base"
 )
 
 // Define our struct.

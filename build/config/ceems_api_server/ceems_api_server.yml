@@ -276,7 +276,7 @@ clusters: []
   #   # if CLI utilities like `sacct` exist on `PATH` and if found, will use them.
   #   #
   #   # Systemd Unit File:
-  #   # https://github.com/mahendrapaipuri/ceems/blob/main/build/package/ceems_api_server/ceems_api_server.service
+  #   # https://github.com/ceems-dev/ceems/blob/main/build/package/ceems_api_server/ceems_api_server.service
   #   #
   #   cli:
   #     # Path to the binaries of the CLI utilities.

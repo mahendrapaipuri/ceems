@@ -6,9 +6,9 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/mahendrapaipuri/ceems/pkg/api/base"
-	"github.com/mahendrapaipuri/ceems/pkg/api/models"
-	"github.com/mahendrapaipuri/ceems/pkg/api/updater"
+	"github.com/ceems-dev/ceems/pkg/api/base"
+	"github.com/ceems-dev/ceems/pkg/api/models"
+	"github.com/ceems-dev/ceems/pkg/api/updater"
 )
 
 type mockUpdater struct {

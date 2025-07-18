@@ -46,14 +46,14 @@ CEEMS (and DCGM/AMD SMI) exporters.
 
 - `CEEMS API Server's datasource`: Choose the infinity datasource corresponding to CEEMS API server.
 - `CEEMS Cluster ID`: It must the same cluster ID as the one defined in
-[CEEMS API Server's cluster configuration](https://mahendrapaipuri.github.io/ceems/docs/configuration/config-reference/#cluster_config)
+[CEEMS API Server's cluster configuration](https://ceems-dev.github.io/ceems/docs/configuration/config-reference/#cluster_config)
 - `Endpoint`: As briefed in [Dashboards](#dashboards) section, use `/admin` for creating Admin facing
 dashboards to consult usage statistics of _any_ user. For user facing dashboards, use an **empty space**.
 
 ### [SLURM Single Job Metrics](./dashboards/slurm/slurm-single-job-metrics.json)
 
 - `Prometheus datasource`: Choose the datasource corresponding to Prometheus server that is scrapping
-CEEMS (and DCGM/AMD SMI) exporters. If [CEEMS LB](https://mahendrapaipuri.github.io/ceems/docs/components/ceems-lb)
+CEEMS (and DCGM/AMD SMI) exporters. If [CEEMS LB](https://ceems-dev.github.io/ceems/docs/components/ceems-lb)
 has been enabled, choose the datasource corresponding to CEEMS LB as it ensures the access control
 enforcement.
 
@@ -61,13 +61,13 @@ enforcement.
 
 - `CEEMS API Server's datasource`: Choose the infinity datasource corresponding to CEEMS API server.
 - `CEEMS Cluster ID`: It must the same cluster ID as the one defined in
-[CEEMS API Server's cluster configuration](https://mahendrapaipuri.github.io/ceems/docs/configuration/config-reference/#cluster_config)
+[CEEMS API Server's cluster configuration](https://ceems-dev.github.io/ceems/docs/configuration/config-reference/#cluster_config)
 - `Endpoint`: As briefed in [Dashboards](#dashboards) section, use `/admin` for creating Admin facing
 dashboards to consult usage statistics of _any_ user. For user facing dashboards, use an **empty space**.
 
 ### [Openstack Single VM Metrics](./dashboards/openstack/os-single-vm-metrics.json)
 
 - `Prometheus datasource`: Choose the datasource corresponding to Prometheus server that is scrapping
-CEEMS (and DCGM/AMD SMI) exporters. If [CEEMS LB](https://mahendrapaipuri.github.io/ceems/docs/components/ceems-lb)
+CEEMS (and DCGM/AMD SMI) exporters. If [CEEMS LB](https://ceems-dev.github.io/ceems/docs/components/ceems-lb)
 has been enabled, choose the datasource corresponding to CEEMS LB as it ensures the access control
 enforcement.

@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
-	"github.com/mahendrapaipuri/ceems/internal/common"
+	"github.com/ceems-dev/ceems/internal/common"
 	"github.com/stretchr/testify/require"
 )
 

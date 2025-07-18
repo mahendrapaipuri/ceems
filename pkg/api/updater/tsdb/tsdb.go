@@ -13,10 +13,10 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/mahendrapaipuri/ceems/pkg/api/helper"
-	"github.com/mahendrapaipuri/ceems/pkg/api/models"
-	"github.com/mahendrapaipuri/ceems/pkg/api/updater"
-	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
+	"github.com/ceems-dev/ceems/pkg/api/helper"
+	"github.com/ceems-dev/ceems/pkg/api/models"
+	"github.com/ceems-dev/ceems/pkg/api/updater"
+	"github.com/ceems-dev/ceems/pkg/tsdb"
 	"github.com/prometheus/common/model"
 )
 

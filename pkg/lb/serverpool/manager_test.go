@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mahendrapaipuri/ceems/pkg/api/models"
-	"github.com/mahendrapaipuri/ceems/pkg/lb/backend"
-	"github.com/mahendrapaipuri/ceems/pkg/lb/base"
+	"github.com/ceems-dev/ceems/pkg/api/models"
+	"github.com/ceems-dev/ceems/pkg/lb/backend"
+	"github.com/ceems-dev/ceems/pkg/lb/base"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

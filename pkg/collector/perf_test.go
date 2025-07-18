@@ -8,9 +8,9 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/ceems-dev/ceems/internal/security"
 	"github.com/ceems-dev/perf-utils"
 	"github.com/containerd/cgroups/v3"
-	"github.com/mahendrapaipuri/ceems/internal/security"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/procfs"
 	"github.com/stretchr/testify/assert"

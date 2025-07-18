@@ -19,9 +19,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mahendrapaipuri/ceems/internal/osexec"
-	"github.com/mahendrapaipuri/ceems/internal/security"
-	"github.com/mahendrapaipuri/ceems/pkg/ipmi"
+	"github.com/ceems-dev/ceems/internal/osexec"
+	"github.com/ceems-dev/ceems/internal/security"
+	"github.com/ceems-dev/ceems/pkg/ipmi"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

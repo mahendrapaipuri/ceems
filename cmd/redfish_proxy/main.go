@@ -15,8 +15,8 @@ import (
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
-	"github.com/mahendrapaipuri/ceems/internal/common"
-	internal_runtime "github.com/mahendrapaipuri/ceems/internal/runtime"
+	"github.com/ceems-dev/ceems/internal/common"
+	internal_runtime "github.com/ceems-dev/ceems/internal/runtime"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/promslog"
 	"github.com/prometheus/common/promslog/flag"

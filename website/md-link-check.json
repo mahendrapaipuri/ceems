@@ -35,7 +35,7 @@
     },
     {
       "pattern": "@ceemsOrg@",
-      "replacement": "mahendrapaipuri",
+      "replacement": "ceems-dev",
       "global": true
     },
     {

@@ -20,10 +20,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ceems-dev/ceems/pkg/api/base"
+	"github.com/ceems-dev/ceems/pkg/api/db"
+	"github.com/ceems-dev/ceems/pkg/api/models"
 	"github.com/gorilla/mux"
-	"github.com/mahendrapaipuri/ceems/pkg/api/base"
-	"github.com/mahendrapaipuri/ceems/pkg/api/db"
-	"github.com/mahendrapaipuri/ceems/pkg/api/models"
 	"github.com/prometheus/exporter-toolkit/web"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

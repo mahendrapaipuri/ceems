@@ -6,7 +6,7 @@ import (
 	"io"
 	"net/http"
 
-	ceems_api_http "github.com/mahendrapaipuri/ceems/pkg/api/http"
+	ceems_api_http "github.com/ceems-dev/ceems/pkg/api/http"
 )
 
 func ceemsAPIRequest[T any](req *http.Request, client *http.Client) ([]T, error) {

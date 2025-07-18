@@ -16,9 +16,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mahendrapaipuri/ceems/pkg/api/base"
-	http_api "github.com/mahendrapaipuri/ceems/pkg/api/http"
-	"github.com/mahendrapaipuri/ceems/pkg/api/models"
+	"github.com/ceems-dev/ceems/pkg/api/base"
+	http_api "github.com/ceems-dev/ceems/pkg/api/http"
+	"github.com/ceems-dev/ceems/pkg/api/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

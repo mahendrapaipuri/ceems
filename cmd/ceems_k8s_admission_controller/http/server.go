@@ -9,9 +9,9 @@ import (
 	_ "net/http/pprof" // #nosec
 	"time"
 
+	"github.com/ceems-dev/ceems/cmd/ceems_k8s_admission_controller/admit"
+	"github.com/ceems-dev/ceems/cmd/ceems_k8s_admission_controller/base"
 	"github.com/gorilla/mux"
-	"github.com/mahendrapaipuri/ceems/cmd/ceems_k8s_admission_controller/admit"
-	"github.com/mahendrapaipuri/ceems/cmd/ceems_k8s_admission_controller/base"
 	"github.com/prometheus/exporter-toolkit/web"
 )
 

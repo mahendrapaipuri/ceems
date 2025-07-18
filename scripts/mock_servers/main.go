@@ -20,9 +20,9 @@ import (
 	"syscall"
 	"time"
 
+	ceems_k8s "github.com/ceems-dev/ceems/pkg/k8s"
+	"github.com/ceems-dev/ceems/pkg/tsdb"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
-	ceems_k8s "github.com/mahendrapaipuri/ceems/pkg/k8s"
-	"github.com/mahendrapaipuri/ceems/pkg/tsdb"
 	"google.golang.org/protobuf/proto"
 	podresourcesapi "k8s.io/kubelet/pkg/apis/podresources/v1"
 )

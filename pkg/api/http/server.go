@@ -25,15 +25,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ceems-dev/ceems/internal/common"
+	"github.com/ceems-dev/ceems/pkg/api/base"
+	"github.com/ceems-dev/ceems/pkg/api/db"
+	"github.com/ceems-dev/ceems/pkg/api/http/docs"
+	"github.com/ceems-dev/ceems/pkg/api/models"
+	"github.com/ceems-dev/ceems/pkg/sqlite3"
 	"github.com/go-chi/httprate"
 	"github.com/gorilla/mux"
 	"github.com/jellydator/ttlcache/v3"
-	"github.com/mahendrapaipuri/ceems/internal/common"
-	"github.com/mahendrapaipuri/ceems/pkg/api/base"
-	"github.com/mahendrapaipuri/ceems/pkg/api/db"
-	"github.com/mahendrapaipuri/ceems/pkg/api/http/docs"
-	"github.com/mahendrapaipuri/ceems/pkg/api/models"
-	"github.com/mahendrapaipuri/ceems/pkg/sqlite3"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/exporter-toolkit/web"
@@ -360,7 +360,7 @@ func New(c *Config) (*CEEMSServer, error) {
 //	@description				Timestamps must be specified in milliseconds, unless otherwise specified.
 //
 //	@contact.name				Mahendra Paipuri
-//	@contact.url				https://github.com/mahendrapaipuri/ceems/issues
+//	@contact.url				https://github.com/ceems-dev/ceems/issues
 //	@contact.email				mahendra.paipuri@gmail.com
 //
 //	@license.name				GPL-3.0 license
@@ -373,9 +373,9 @@ func New(c *Config) (*CEEMSServer, error) {
 //
 //	@schemes					https
 //
-//	@externalDocs.url			https://mahendrapaipuri.github.io/ceems/
+//	@externalDocs.url			https://ceems-dev.github.io/ceems/
 //
-//	@x-logo						{"url": "https://raw.githubusercontent.com/mahendrapaipuri/ceems/refs/heads/main/website/static/img/logo.png", "altText": "CEEMS logo"}
+//	@x-logo						{"url": "https://raw.githubusercontent.com/ceems-dev/ceems/refs/heads/main/website/static/img/logo.png", "altText": "CEEMS logo"}
 func (s *CEEMSServer) Start(_ context.Context) error {
 	// Set swagger info
 	docs.SwaggerInfo.BasePath = "/api/" + base.APIVersion

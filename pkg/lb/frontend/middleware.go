@@ -19,10 +19,10 @@ import (
 	"strings"
 	"time"
 
-	ceems_api_base "github.com/mahendrapaipuri/ceems/pkg/api/base"
-	ceems_api "github.com/mahendrapaipuri/ceems/pkg/api/http"
-	"github.com/mahendrapaipuri/ceems/pkg/api/models"
-	"github.com/mahendrapaipuri/ceems/pkg/lb/base"
+	ceems_api_base "github.com/ceems-dev/ceems/pkg/api/base"
+	ceems_api "github.com/ceems-dev/ceems/pkg/api/http"
+	"github.com/ceems-dev/ceems/pkg/api/models"
+	"github.com/ceems-dev/ceems/pkg/lb/base"
 	"github.com/prometheus/common/config"
 )
 

@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"math/rand"
 
-	"github.com/mahendrapaipuri/ceems/pkg/collector"
+	"github.com/ceems-dev/ceems/pkg/collector"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

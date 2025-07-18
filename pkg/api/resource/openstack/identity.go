@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mahendrapaipuri/ceems/pkg/api/base"
-	"github.com/mahendrapaipuri/ceems/pkg/api/helper"
-	"github.com/mahendrapaipuri/ceems/pkg/api/models"
+	"github.com/ceems-dev/ceems/pkg/api/base"
+	"github.com/ceems-dev/ceems/pkg/api/helper"
+	"github.com/ceems-dev/ceems/pkg/api/models"
 )
 
 const (

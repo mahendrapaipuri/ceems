@@ -648,13 +648,13 @@ definitions:
         type: string
     type: object
 externalDocs:
-  url: https://mahendrapaipuri.github.io/ceems/
+  url: https://ceems-dev.github.io/ceems/
 host: ceems-demo.myaddr.tools:7443
 info:
   contact:
     email: mahendra.paipuri@gmail.com
     name: Mahendra Paipuri
-    url: https://github.com/mahendrapaipuri/ceems/issues
+    url: https://github.com/ceems-dev/ceems/issues
   description: |-
     OpenAPI specification (OAS) for the CEEMS REST API.
 
@@ -698,7 +698,7 @@ info:
   version: "1.0"
   x-logo:
     altText: CEEMS logo
-    url: https://raw.githubusercontent.com/mahendrapaipuri/ceems/refs/heads/main/website/static/img/logo.png
+    url: https://raw.githubusercontent.com/ceems-dev/ceems/refs/heads/main/website/static/img/logo.png
 paths:
   /clusters/admin:
     get:

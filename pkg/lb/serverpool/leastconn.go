@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"math"
 
-	"github.com/mahendrapaipuri/ceems/pkg/lb/backend"
+	"github.com/ceems-dev/ceems/pkg/lb/backend"
 )
 
 // leastConn implements the least connection load balancer strategy.

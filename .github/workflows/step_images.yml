@@ -46,7 +46,7 @@ jobs:
           if [[ "${REGISTRY_PROVIDER}" == "dockerhub" ]]; then
             echo "repo_name=$(make docker-repo-name)" >> $GITHUB_OUTPUT
           else
-            export DOCKER_REPO="$(echo quay.io/${GITHUB_REPOSITORY_OWNER} | tr -d '-')"
+            export DOCKER_REPO="quay.io/ceems"
             echo "repo_name=$(make docker-repo-name)" >> $GITHUB_OUTPUT
           fi
 
@@ -88,14 +88,13 @@ jobs:
       - name: Push README to registry
         uses: christian-korneck/update-container-description-action@d36005551adeaba9698d8d67a296bd16fa91f8e8 # v1
         if: (github.ref == 'refs/heads/main' || (github.event_name == 'push' && contains(github.ref, 'refs/tags/'))) && github.repository_owner == 'mahendrapaipuri' # Don't run this workflow on forks.
-        # NOTE: We need to remove it once we trim down the README and move content to
-        # dedicated docs. DockerHub complains about too many characters in README
-        continue-on-error: true
         env:
           # For dockerhub registry
           DOCKER_USER: ${{ secrets.login }}
           DOCKER_PASS: ${{ secrets.password }}
           # For quay.io
+          # To generate an access token, we need to create a dummy OAuth application
+          # and create a token with Administer repo, Create repo and Read/Write access to repo permissions
           DOCKER_APIKEY: ${{ secrets.quay_api_token }}
         with:
           destination_container_repo: ${{ steps.vars.outputs.repo_name }}

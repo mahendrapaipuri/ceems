@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/mahendrapaipuri/ceems/pkg/api/models"
+	"github.com/ceems-dev/ceems/pkg/api/models"
 )
 
 // Custom errors.

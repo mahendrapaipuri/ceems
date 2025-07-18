@@ -3,7 +3,7 @@ package backend
 import (
 	"testing"
 
-	"github.com/mahendrapaipuri/ceems/pkg/api/models"
+	"github.com/ceems-dev/ceems/pkg/api/models"
 	"github.com/prometheus/common/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

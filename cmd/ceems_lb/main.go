@@ -7,7 +7,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/mahendrapaipuri/ceems/pkg/lb/cli"
+	"github.com/ceems-dev/ceems/pkg/lb/cli"
 )
 
 // Main entry point for `ceems_lb` app.

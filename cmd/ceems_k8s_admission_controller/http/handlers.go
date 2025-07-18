@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/mahendrapaipuri/ceems/cmd/ceems_k8s_admission_controller/base"
+	"github.com/ceems-dev/ceems/cmd/ceems_k8s_admission_controller/base"
 	admissionv1 "k8s.io/api/admission/v1"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

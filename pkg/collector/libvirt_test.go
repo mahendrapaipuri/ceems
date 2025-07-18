@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ceems-dev/ceems/internal/security"
 	"github.com/containerd/cgroups/v3"
-	"github.com/mahendrapaipuri/ceems/internal/security"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

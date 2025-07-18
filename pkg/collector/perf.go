@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ceems-dev/ceems/internal/security"
 	"github.com/ceems-dev/perf-utils"
-	"github.com/mahendrapaipuri/ceems/internal/security"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/procfs"
 )

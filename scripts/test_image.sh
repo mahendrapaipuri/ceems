@@ -30,7 +30,7 @@ docker_cleanup() {
 }
 
 if [[ "$#" -lt 3 ]] ; then
-    echo "Usage: $0 quay.io/mahendrapaipuri/ceems-exporter:v0.1.0 9010 ceems_exporter <args>" >&2
+    echo "Usage: $0 quay.io/ceems/ceems-exporter:v0.1.0 9010 ceems_exporter <args>" >&2
     exit 1
 fi
 
