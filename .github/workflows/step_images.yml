@@ -46,7 +46,7 @@ jobs:
           if [[ "${REGISTRY_PROVIDER}" == "dockerhub" ]]; then
             echo "repo_name=$(make docker-repo-name)" >> $GITHUB_OUTPUT
           else
-            export DOCKER_REPO="$(echo quay.io/${GITHUB_REPOSITORY_OWNER} | tr -d '-')"
+            export DOCKER_REPO="quay.io/ceems"
             echo "repo_name=$(make docker-repo-name)" >> $GITHUB_OUTPUT
           fi
 
