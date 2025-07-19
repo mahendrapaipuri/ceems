@@ -409,6 +409,14 @@ func lookupCgroupRoots(rootDir string, name string) ([]string, error) {
 		return nil, err
 	}
 
+	// When no cgroup roots are found, return an error. In the case of
+	// SLURM after very first boot if exporter starts before SLURM daemon,
+	// there wont be any cgroup roots found and in this case exporter
+	// should return an error instead of starting and not monitoring cgroups.
+	if len(foundCgroupRoots) == 0 {
+		return nil, fmt.Errorf("no cgroup roots found in %s with name %s", rootDir, name)
+	}
+
 	return foundCgroupRoots, nil
 }
 

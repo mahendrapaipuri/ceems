@@ -221,3 +221,9 @@ func TestInode(t *testing.T) {
 
 	assert.Positive(t, inodeValue)
 }
+
+func TestLookupCgroupsRootError(t *testing.T) {
+	// Look for non existent name
+	_, err := lookupCgroupRoots("testdata/sys/fs/cgroup/system.slice", "doesnotexit.scope")
+	require.Error(t, err)
+}

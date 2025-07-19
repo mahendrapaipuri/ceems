@@ -21,9 +21,6 @@
     },
     {
       "pattern": "https://isdm.umontpellier.fr/mesolr"
-    },
-    {
-      "pattern": "https://github.com/ceems-dev/ceems/blob/main/CONTRIBUTING.md"
     }
   ],
   "replacementPatterns": [
