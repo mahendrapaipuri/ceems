@@ -78,6 +78,7 @@ ceems_profiler:
 	_, err := CEEMSExporterApp.Parse(
 		[]string{
 			"--collector.slurm",
+			"--path.procfs", "testdata/proc",
 			"--path.cgroupfs", "testdata/sys/fs/cgroup",
 		},
 	)
@@ -111,6 +112,7 @@ func TestNewProfiler(t *testing.T) {
 		[]string{
 			"--path.cgroupfs", "testdata/sys/fs/cgroup",
 			"--collector.cgroups.force-version", "v2",
+			"--path.procfs", "testdata/proc",
 			"--collector.slurm",
 		},
 	)

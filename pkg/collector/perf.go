@@ -139,7 +139,6 @@ type perfCollector struct {
 	logger                  *slog.Logger
 	hostname                string
 	cgroupManager           *cgroupManager
-	fs                      procfs.FS
 	opts                    perfOpts
 	securityContexts        map[string]*security.SecurityContext
 	perfHwProfilers         map[int]*perf.HardwareProfiler
@@ -169,42 +168,15 @@ func NewPerfCollector(logger *slog.Logger, cgManager *cgroupManager) (*perfColle
 		targetEnvVars:             *perfProfilersEnvVars,
 	}
 
-	// Instantiate a new Proc FS
-	fs, err := procfs.NewFS(*procfsPath)
-	if err != nil {
-		logger.Error("Unable to open procfs", "path", *procfsPath, "err", err)
+	// Check if perf_event_paranoid allows to read perf events
+	if err := perfEventsAvailable(); err != nil {
+		logger.Error("Perf events are not available", "err", err)
 
 		return nil, err
 	}
 
-	// Check if perf_event_open is supported on current kernel.
-	// Checking for the existence of a /proc/sys/kernel/perf_event_paranoid
-	// file, which is the canonical method for determining if a
-	// kernel supports it or not.
-	//
-	// Moreover, Debian and Ubuntu distributions patched the paranoid
-	// parameter to either 3 or 4 (which does not exist in kernel).
-	// This parameter signifies that unprivileged user CANNOT use
-	// perf_event_open even with CAP_PERFMON capabilities. In this
-	// only root or CAP_SYS_ADMIN can open perf_event_open. So, we need
-	// to ensure that paranoid parameter is not more than 2.
-	//
-	// Even with paranoid set to -1, we still need CAP_PERFMON to be
-	// able to open perf events for ANY process on the host.
-	if paranoid, err := fs.SysctlInts("kernel.perf_event_paranoid"); err == nil {
-		if len(paranoid) == 1 && paranoid[0] > 2 {
-			return nil, fmt.Errorf(
-				"perf_event_open syscall is not possible with perf_event_paranoid=%d. Set it to value 2",
-				paranoid[0],
-			)
-		}
-	} else {
-		return nil, fmt.Errorf("error opening /proc/sys/kernel/perf_event_paranoid file: %w", err)
-	}
-
 	collector := &perfCollector{
 		logger:                  logger,
-		fs:                      fs,
 		hostname:                hostname,
 		cgroupManager:           cgManager,
 		opts:                    opts,

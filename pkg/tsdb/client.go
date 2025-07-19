@@ -1,4 +1,4 @@
-// Package tsdb implements Client client
+// Package tsdb implements TSDB client
 package tsdb
 
 import (

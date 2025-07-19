@@ -47,6 +47,13 @@ func NewProfiler(c *profilerConfig) (Profiler, error) {
 		return &eBPFProfiler{logger: c.logger, enabled: false}, nil
 	}
 
+	// Check if perf_event_paranoid allows to read perf events
+	if err := perfEventsAvailable(); err != nil {
+		c.logger.Error("Perf events are not available", "err", err)
+
+		return nil, err
+	}
+
 	// Make a new instance of discoverer that gathers targets
 	discovererConfig := &discovererConfig{
 		logger:              c.logger,
