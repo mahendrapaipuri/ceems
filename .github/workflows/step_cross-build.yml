@@ -32,7 +32,6 @@ jobs:
             df -h
             sudo rm -rf /usr/share/dotnet
             sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-            sudo rm -rf /opt/hostedtoolcache
             echo "Disk usage after clean up:"
             df -h
 
