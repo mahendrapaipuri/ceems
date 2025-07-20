@@ -33,7 +33,7 @@ jobs:
             echo "Disk usage before clean up:"
             df -h
             du -sch "$AGENT_TOOLSDIRECTORY/*" | sort -rh
-            ls "$AGENT_TOOLSDIRECTORY"/ | grep -v "go" | xargs rm -rf
+            ls "$AGENT_TOOLSDIRECTORY" | grep -v "go" | xargs rm -rf
             sudo rm -rf /usr/share/dotnet
             du -sch "$AGENT_TOOLSDIRECTORY/*" | sort -rh
             echo "Disk usage after clean up:"
