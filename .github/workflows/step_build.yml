@@ -26,14 +26,16 @@ jobs:
       # intermittently during CI -
       # https://github.com/actions/runner-images/issues/2840#issuecomment-1284059930
       # https://github.com/orgs/community/discussions/25678#discussioncomment-5242449
-      # We cannot delete "$AGENT_TOOLSDIRECTORY" as Go is in the cache and we need
-      # working go installation for crossbuild target.
+      # Delete all of "$AGENT_TOOLSDIRECTORY" except go folder as we need Go for
+      # crossbuild target.
       - name: Free up space in /dev/root
         run: |
             echo "Disk usage before clean up:"
             df -h
-            du -sch /opt/hostedtoolcache/* | sort -rh
+            du -sch "$AGENT_TOOLSDIRECTORY/*" | sort -rh
+            ls "$AGENT_TOOLSDIRECTORY"/ | grep -v "go" | xargs rm -rf
             sudo rm -rf /usr/share/dotnet
+            du -sch "$AGENT_TOOLSDIRECTORY/*" | sort -rh
             echo "Disk usage after clean up:"
             df -h
 
