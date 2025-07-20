@@ -238,7 +238,7 @@ endif
 .PHONY: common-crossbuild
 common-crossbuild: promu updatevars
 	@echo ">> building release binaries"
-	$(PROMU) crossbuild -v --parallelism=4
+	$(PROMU) crossbuild -v --parallelism=3
 
 .PHONY: common-crossbuild-test
 common-crossbuild-test: promu updatevars

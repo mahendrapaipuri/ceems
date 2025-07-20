@@ -32,7 +32,7 @@ jobs:
         run: |
             echo "Disk usage before clean up:"
             df -h
-            echo "$AGENT_TOOLSDIRECTORY"
+            du -sch /opt/hostedtoolcache/* | sort -rh
             sudo rm -rf /usr/share/dotnet
             echo "Disk usage after clean up:"
             df -h
