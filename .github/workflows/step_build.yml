@@ -33,8 +33,12 @@ jobs:
             echo "Disk usage before clean up:"
             df -h
             du -sch $AGENT_TOOLSDIRECTORY/* | sort -rh
-            ls $AGENT_TOOLSDIRECTORY/* | grep -v go | xargs echo
-            ls $AGENT_TOOLSDIRECTORY/* | grep -v go | xargs sudo rm -rf
+            sudo rm -rf $AGENT_TOOLSDIRECTORY/CodeQL
+            sudo rm -rf $AGENT_TOOLSDIRECTORY/Java_Temurin-Hotspot_jdk
+            sudo rm -rf $AGENT_TOOLSDIRECTORY/PyPy
+            sudo rm -rf $AGENT_TOOLSDIRECTORY/Python
+            sudo rm -rf $AGENT_TOOLSDIRECTORY/Ruby
+            sudo rm -rf $AGENT_TOOLSDIRECTORY/node
             sudo rm -rf /usr/share/dotnet
             du -sch $AGENT_TOOLSDIRECTORY/* | sort -rh
             echo "Disk usage after clean up:"
