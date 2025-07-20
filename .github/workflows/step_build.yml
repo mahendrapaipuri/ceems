@@ -30,41 +30,27 @@ jobs:
       # crossbuild target.
       - name: Free up space in /dev/root
         run: |
-            echo "Disk usage before clean up:"
-            df -h
-            du -sch $AGENT_TOOLSDIRECTORY/* | sort -rh
-            sudo rm -rf $AGENT_TOOLSDIRECTORY/CodeQL
-            sudo rm -rf $AGENT_TOOLSDIRECTORY/Java_Temurin-Hotspot_jdk
-            sudo rm -rf $AGENT_TOOLSDIRECTORY/PyPy
-            sudo rm -rf $AGENT_TOOLSDIRECTORY/Python
-            sudo rm -rf $AGENT_TOOLSDIRECTORY/Ruby
-            sudo rm -rf $AGENT_TOOLSDIRECTORY/node
-            sudo rm -rf /usr/share/dotnet
-            du -sch $AGENT_TOOLSDIRECTORY/* | sort -rh
-            echo "Disk usage after clean up:"
-            df -h
+          echo "Disk usage before clean up:"
+          df -h
+          du -sch $AGENT_TOOLSDIRECTORY/* | sort -rh
+          sudo rm -rf $AGENT_TOOLSDIRECTORY/CodeQL
+          sudo rm -rf $AGENT_TOOLSDIRECTORY/Java_Temurin-Hotspot_jdk
+          sudo rm -rf $AGENT_TOOLSDIRECTORY/PyPy
+          sudo rm -rf $AGENT_TOOLSDIRECTORY/Python
+          sudo rm -rf $AGENT_TOOLSDIRECTORY/Ruby
+          sudo rm -rf $AGENT_TOOLSDIRECTORY/node
+          sudo rm -rf /usr/share/dotnet
+          du -sch $AGENT_TOOLSDIRECTORY/* | sort -rh
+          echo "Disk usage after clean up:"
+          df -h
 
       # Cross compile for only AMD and ARM archs in CI to reduce CI time and artifacts size
       # We will compile for all supported archs in release workflow
       - name: Cross compile Go packages
-        run: |
-          echo "Disk usage before building:"
-          df -h
-          make crossbuild
-          echo "Disk usage after building:"
-          df -h
-          docker ps -a
-          docker volume ls
-
+        run: make crossbuild-test
+          
       - name: Cross compile CGo packages
-        run: |
-          echo "Disk usage before building:"
-          df -h
-          CGO_APPS=1 make crossbuild
-          echo "Disk usage after building:"
-          df -h
-          docker ps -a
-          docker volume ls
+        run: CGO_APPS=1 make crossbuild-test
 
       - name: Upload go build artifacts
         uses: actions/upload-artifact@v4
