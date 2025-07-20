@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.10.0 / 2025-07-20
+
+- [DOCS] Add CONTRIBUTING.md file [#385](https://github.com/mahendrapaipuri/ceems/pull/385) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEAT] Migrate repo to ceems-dev org [#384](https://github.com/mahendrapaipuri/ceems/pull/384) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEAT] Filter SLURM cgroups to remove stale ones [#382](https://github.com/mahendrapaipuri/ceems/pull/382) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEAT] K8s support for CEEMS API server [#381](https://github.com/mahendrapaipuri/ceems/pull/381) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [FEAT] Add systemd-less mode for Libvirt collector [#377](https://github.com/mahendrapaipuri/ceems/pull/377) ([@wtripp180901](https://github.com/wtripp180901))
+- [MAINT] Bump dependencies [#375](https://github.com/mahendrapaipuri/ceems/pull/375), [#376](https://github.com/mahendrapaipuri/ceems/pull/376), [#378](https://github.com/mahendrapaipuri/ceems/pull/378), [#383](https://github.com/mahendrapaipuri/ceems/pull/383) ([@dependabot](https://github.com/dependabot))
+
 ## 0.9.1 / 2025-07-02
 
 - [FEAT] Support gzip compression [#374](https://github.com/mahendrapaipuri/ceems/pull/374) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
