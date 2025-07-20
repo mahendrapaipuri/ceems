@@ -2,6 +2,7 @@
 
 ## 0.10.0 / 2025-07-20
 
+- [CI] Free up disk space for crossbuild jobs [#386](https://github.com/mahendrapaipuri/ceems/pull/386) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
 - [DOCS] Add CONTRIBUTING.md file [#385](https://github.com/mahendrapaipuri/ceems/pull/385) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
 - [FEAT] Migrate repo to ceems-dev org [#384](https://github.com/mahendrapaipuri/ceems/pull/384) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
 - [FEAT] Filter SLURM cgroups to remove stale ones [#382](https://github.com/mahendrapaipuri/ceems/pull/382) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
