@@ -18,9 +18,9 @@ the container tag. Besides, the `main` branch is also published with the `main` 
 Container images can be pulled from either DockerHub or Quay:
 
 ```bash
-docker pull @ceemsContOrg@/@ceemsRepo@:@ceemsVersion@
+docker pull @ceemsContOrg@/@ceemsRepo@:v@ceemsVersion@
 # or
-docker pull quay.io/@ceemsContOrg@/@ceemsRepo@:@ceemsVersion@
+docker pull quay.io/@ceemsContOrg@/@ceemsRepo@:v@ceemsVersion@
 ```
 
 ## Running Container
@@ -29,7 +29,7 @@ The container can be run by using the appropriate app as the command for the con
 For instance, to run `ceems_exporter` using a container, it is run as follows:
 
 ```bash
-docker run @ceemsContOrg@/@ceemsRepo@:@ceemsVersion@ ceems_exporter <CLI args>
+docker run @ceemsContOrg@/@ceemsRepo@:v@ceemsVersion@ ceems_exporter <CLI args>
 ```
 
 where `<CLI args>` are the command-line arguments for `ceems_exporter`.
