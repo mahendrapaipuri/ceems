@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
 	"testing"
-	"time"
 
 	ceems_k8s "github.com/ceems-dev/ceems/pkg/k8s"
 	"github.com/stretchr/testify/assert"
@@ -274,45 +272,18 @@ func TestNewGPUSMIWithK8s(t *testing.T) {
 }
 
 func TestDiscoverGPUs(t *testing.T) {
-	tempDir := t.TempDir()
-	nvidiaSMIPath := filepath.Join(tempDir, "nvidia-smi")
-	content := `#!/bin/bash
-exit 1`
-	os.WriteFile(nvidiaSMIPath, []byte(content), 0o700) // #nosec
-
 	_, err := CEEMSExporterApp.Parse(
 		[]string{
-			"--collector.gpu.nvidia-smi-path", nvidiaSMIPath,
+			"--collector.gpu.nvidia-smi-path", "testdata/nvidia-smi",
 			"--collector.gpu.type", "nvidia",
 		},
 	)
 	require.NoError(t, err)
 
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-
-	var gpuErr error
-
 	g, err := NewGPUSMI(nil, noOpLogger)
 	require.NoError(t, err)
 
-	// First attempt should be error as there is nvidia-smi command exits with 1
-	go func() {
-		defer wg.Done()
-
-		gpuErr = g.Discover()
-	}()
-
-	time.Sleep(time.Second)
-
-	// Read testdata/nvidia-smi content and write to test nvidia-smi file
-	nvidiaSMIContent, err := os.ReadFile("testdata/nvidia-smi")
-	require.NoError(t, err)
-
-	os.WriteFile(nvidiaSMIPath, nvidiaSMIContent, 0o700) //nolint:gosec
-
-	wg.Wait()
-
+	gpuErr := g.Discover()
 	require.NoError(t, gpuErr)
 	assert.Equal(t, getExpectedNvidiaDevs(), g.Devices)
 }
@@ -479,6 +450,84 @@ echo """%s"""
 			// Check if Index for GPU 1 is empty and GPU 0 is 0
 			assert.Empty(t, gpuDevices[1].Index)
 			assert.Equal(t, "0", gpuDevices[0].Index)
+		}
+	}
+}
+
+func TestNvidiaSMIXMLOutputParsing(t *testing.T) {
+	tests := []struct {
+		name      string
+		xmlOutput string
+		err       bool
+	}{
+		{
+			name: "no count values",
+			xmlOutput: `<?xml version="1.0" ?>
+<!DOCTYPE nvidia_smi_log SYSTEM "nvsmi_device_v12.dtd">
+<nvidia_smi_log>
+	<timestamp>Fri Oct 11 18:24:09 2024</timestamp>
+	<driver_version>535.129.03</driver_version>
+	<cuda_version>12.2</cuda_version>
+	<attached_gpus>2</attached_gpus>
+	<gpu id="00000000:15:00.0">
+		<mig_mode>
+				<current_mig>Enabled</current_mig>
+				<pending_mig>Enabled</pending_mig>
+		</mig_mode>
+		<mig_devices>
+			<mig_device>
+				<index>0</index>
+				<gpu_instance_id>1</gpu_instance_id>
+                <compute_instance_id>0</compute_instance_id>
+				<device_attributes>
+					<shared>
+						<multiprocessor_count>N/A</multiprocessor_count>
+						<copy_engine_count>N/A</copy_engine_count>
+						<encoder_count>N/A</encoder_count>
+						<decoder_count>N/A</decoder_count>
+						<ofa_count>0</ofa_count>
+						<jpg_count>0</jpg_count>
+					</shared>
+				</device_attributes>
+            </mig_device>
+		</mig_devices>
+	</gpu>
+</nvidia_smi_log>`,
+		},
+		{
+			name: "no gpu instance IDs",
+			xmlOutput: `<?xml version="1.0" ?>
+<!DOCTYPE nvidia_smi_log SYSTEM "nvsmi_device_v12.dtd">
+<nvidia_smi_log>
+	<timestamp>Fri Oct 11 18:24:09 2024</timestamp>
+	<driver_version>535.129.03</driver_version>
+	<cuda_version>12.2</cuda_version>
+	<attached_gpus>2</attached_gpus>
+	<gpu id="00000000:15:00.0">
+		<mig_mode>
+			<current_mig>Enabled</current_mig>
+			<pending_mig>Enabled</pending_mig>
+		</mig_mode>
+		<mig_devices>
+			<mig_device>
+				<index>0</index>
+				<gpu_instance_id>1</gpu_instance_id>
+                <compute_instance_id>N/A</compute_instance_id>
+            </mig_device>
+		</mig_devices>
+	</gpu>
+</nvidia_smi_log>`,
+			err: true,
+		},
+	}
+
+	for _, test := range tests {
+		devices, err := parseNvidiaSmiOutput([]byte(test.xmlOutput))
+		if test.err {
+			require.Error(t, err, test.name)
+		} else {
+			require.NoError(t, err, test.name)
+			assert.Equal(t, uint64(1), devices[0].Instances[0].NumSMs, test.name)
 		}
 	}
 }

@@ -59,6 +59,16 @@ sub_--query(){
                         <virtualization_mode>VGPU</virtualization_mode>
                         <host_vgpu_mode>N/A</host_vgpu_mode>
                 </gpu_virtualization_mode>
+                <processes>
+                        <process_info>
+                                <gpu_instance_id>N/A</gpu_instance_id>
+                                <compute_instance_id>N/A</compute_instance_id>
+                                <pid>239709</pid>
+                                <type>C</type>
+                                <process_name>./gpu_burn</process_name>
+                                <used_memory>72776 MiB</used_memory>
+                        </process_info>
+                </processes>
         </gpu>
         <gpu id=\"00000000:15:00.0\">
                 <product_name>NVIDIA A100-PCIE-40GB</product_name>
@@ -213,6 +223,16 @@ sub_--query(){
                         <virtualization_mode>VGPU</virtualization_mode>
                         <host_vgpu_mode>N/A</host_vgpu_mode>
                 </gpu_virtualization_mode>
+                <processes>
+                        <process_info>
+                                <gpu_instance_id>5</gpu_instance_id>
+                                <compute_instance_id>0</compute_instance_id>
+                                <pid>239709</pid>
+                                <type>C</type>
+                                <process_name>./gpu_burn</process_name>
+                                <used_memory>7276 MiB</used_memory>
+                        </process_info>
+                </processes>
         </gpu>
 
         <gpu id=\"00000000:81:00.0\">
