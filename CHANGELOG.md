@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.10.1 / 2025-07-22
+
+- [BUGFIX] Fix parsing nvidia-smi XML output [#388](https://github.com/mahendrapaipuri/ceems/pull/388) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
+- [MAINT] Bump dependencies [#387](https://github.com/mahendrapaipuri/ceems/pull/387) ([@dependabot](https://github.com/dependabot))
+
 ## 0.10.0 / 2025-07-20
 
 - [CI] Free up disk space for crossbuild jobs [#386](https://github.com/mahendrapaipuri/ceems/pull/386) ([@mahendrapaipuri](https://github.com/mahendrapaipuri))
