@@ -92,6 +92,7 @@ type slurmCollector struct {
 	hostname         string
 	gpuSMI           *GPUSMI
 	previousJobIDs   []string
+	jobIDsWithNoGRES []string
 	procFS           procfs.FS
 	shardEnabled     bool
 	mpsEnabled       bool
@@ -189,11 +190,17 @@ func NewSlurmCollector(logger *slog.Logger) (Collector, error) {
 	gpuSMI, err := NewGPUSMI(client, logger)
 	if err != nil {
 		logger.Error("Error creating GPU SMI instance", "err", err)
+
+		return nil, err
 	}
 
 	// Attempt to get GPU devices
 	if err := gpuSMI.Discover(); err != nil {
+		// If we failed to fetch GPUs that are from supported
+		// vendor, return with error
 		logger.Error("Error fetching GPU devices", "err", err)
+
+		return nil, err
 	}
 
 	// Correct GPU ordering based on CLI flag when provided
@@ -582,7 +589,10 @@ func (c *slurmCollector) jobDevices(cgroups []cgroup) {
 	}
 
 	// Check if there are any new/deleted jobs between current and previous
-	if areEqual(currentJobIDs, c.previousJobIDs) {
+	// and there are no jobs without GRES attached to them. This ensures that
+	// if we fail to find job GRES on first job creation we can try in subsequent
+	// scrapes.
+	if areEqual(currentJobIDs, c.previousJobIDs) && len(c.jobIDsWithNoGRES) == 0 {
 		return
 	}
 
@@ -593,12 +603,23 @@ func (c *slurmCollector) jobDevices(cgroups []cgroup) {
 
 	var gresResources []*gres
 
+	var jobIDsWithNoGRES []string
+
 	jobGRESMap := make(map[*gres]string)
 
 	// Iterate over all active cgroups and get job properties
 	for _, cgrp := range cgroups {
 		gres := c.jobGRESResources(cgrp.uuid, cgrp.procs)
 		if gres == nil {
+			jobIDsWithNoGRES = append(jobIDsWithNoGRES, cgrp.uuid)
+
+			continue
+		}
+
+		// If devices is empty
+		if len(gres.deviceIDs) == 0 {
+			jobIDsWithNoGRES = append(jobIDsWithNoGRES, cgrp.uuid)
+
 			continue
 		}
 
@@ -631,6 +652,7 @@ func (c *slurmCollector) jobDevices(cgroups []cgroup) {
 
 	// Update job IDs state variable
 	c.previousJobIDs = currentJobIDs
+	c.jobIDsWithNoGRES = jobIDsWithNoGRES
 }
 
 // jobCgroups returns cgroups of active jobs.

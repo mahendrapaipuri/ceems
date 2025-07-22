@@ -47,19 +47,21 @@ var (
 )
 
 type k8sCollector struct {
-	logger          *slog.Logger
-	cgroupManager   *cgroupManager
-	cgroupCollector *cgroupCollector
-	perfCollector   *perfCollector
-	ebpfCollector   *ebpfCollector
-	rdmaCollector   *rdmaCollector
-	hostname        string
-	gpuSMI          *GPUSMI
-	k8sClient       *ceems_k8s.Client
-	previousPodUIDs []string
-	podGpuFlag      *prometheus.Desc
-	podGpuNumSMs    *prometheus.Desc
-	collectError    *prometheus.Desc
+	logger                   *slog.Logger
+	cgroupManager            *cgroupManager
+	cgroupCollector          *cgroupCollector
+	perfCollector            *perfCollector
+	ebpfCollector            *ebpfCollector
+	rdmaCollector            *rdmaCollector
+	hostname                 string
+	gpuSMI                   *GPUSMI
+	k8sClient                *ceems_k8s.Client
+	previousPodUIDs          []string
+	podDevicesCacheTTL       time.Duration
+	podDevicesLastUpdateTime time.Time
+	podGpuFlag               *prometheus.Desc
+	podGpuNumSMs             *prometheus.Desc
+	collectError             *prometheus.Desc
 }
 
 func init() {
@@ -150,27 +152,35 @@ func NewK8sCollector(logger *slog.Logger) (Collector, error) {
 		return nil, err
 	}
 
-	// Instantiate a new instance of gpuSMI struct
+	// Instantiate a new instance of GPUSMI struct
 	gpuSMI, err := NewGPUSMI(client, logger)
 	if err != nil {
 		logger.Error("Error creating GPU SMI instance", "err", err)
+
+		return nil, err
 	}
 
 	// Attempt to get GPU devices
 	if err := gpuSMI.Discover(); err != nil {
+		// If we failed to fetch GPUs that are from supported
+		// vendor, return with error
 		logger.Error("Error fetching GPU devices", "err", err)
+
+		return nil, err
 	}
 
 	// Instantiate a collector
 	coll := &k8sCollector{
-		cgroupManager:   cgroupManager,
-		cgroupCollector: cgCollector,
-		perfCollector:   perfCollector,
-		ebpfCollector:   ebpfCollector,
-		rdmaCollector:   rdmaCollector,
-		hostname:        hostname,
-		k8sClient:       client,
-		gpuSMI:          gpuSMI,
+		cgroupManager:            cgroupManager,
+		cgroupCollector:          cgCollector,
+		perfCollector:            perfCollector,
+		ebpfCollector:            ebpfCollector,
+		rdmaCollector:            rdmaCollector,
+		hostname:                 hostname,
+		k8sClient:                client,
+		gpuSMI:                   gpuSMI,
+		podDevicesCacheTTL:       15 * time.Minute,
+		podDevicesLastUpdateTime: time.Now(),
 		podGpuFlag: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, genericSubsystem, "unit_gpu_index_flag"),
 			"A value > 0 indicates the pod using current GPU",
@@ -470,7 +480,7 @@ func (c *k8sCollector) podDevices(cgroups []cgroup) {
 	}
 
 	// Check if there are any new/deleted pods between current and previous
-	if areEqual(currentPodUIDs, c.previousPodUIDs) {
+	if areEqual(currentPodUIDs, c.previousPodUIDs) && time.Since(c.podDevicesLastUpdateTime) < c.podDevicesCacheTTL {
 		return
 	}
 

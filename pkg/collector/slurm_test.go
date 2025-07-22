@@ -481,6 +481,22 @@ func TestGRESSharesUpdate(t *testing.T) {
 	}
 }
 
+func writeEnvironFile(procFS string, jobid int, gres gres) error {
+	dir := fmt.Sprintf("%s/%d", procFS, jobid)
+
+	envs := []string{fmt.Sprintf("SLURM_JOB_ID=%d", jobid), "SLURM_JOB_GPUS=" + strings.Join(gres.deviceIDs, ",")}
+
+	if gres.numShares > 0 {
+		envs = append(envs, fmt.Sprintf("SLURM_SHARDS_ON_NODE=%d", gres.numShares))
+	}
+
+	return os.WriteFile(
+		dir+"/environ",
+		[]byte(strings.Join(envs, "\000")+"\000"),
+		0o600,
+	)
+}
+
 func TestJobDevicesCaching(t *testing.T) {
 	path := t.TempDir()
 
@@ -568,21 +584,9 @@ func TestJobDevicesCaching(t *testing.T) {
 		{deviceIDs: []string{"7"}, numShares: 3},
 	}
 
-	// Binds GPUs to first n jobs
-	for ijob, gres := range mockJobs {
-		dir := fmt.Sprintf("%s/%d", procFS, ijob)
-
-		envs := []string{fmt.Sprintf("SLURM_JOB_ID=%d", ijob), "SLURM_JOB_GPUS=" + strings.Join(gres.deviceIDs, ",")}
-
-		if gres.numShares > 0 {
-			envs = append(envs, fmt.Sprintf("SLURM_SHARDS_ON_NODE=%d", gres.numShares))
-		}
-
-		err = os.WriteFile(
-			dir+"/environ",
-			[]byte(strings.Join(envs, "\000")+"\000"),
-			0o600,
-		)
+	// Binds GPUs to first 3 jobs
+	for ijob := range len(mockJobs) - 3 {
+		err = writeEnvironFile(procFS, ijob, mockJobs[ijob])
 		require.NoError(t, err)
 	}
 
@@ -592,6 +596,22 @@ func TestJobDevicesCaching(t *testing.T) {
 
 	// Check if jobPropsCache has 20 jobs and GPU ordinals are correct
 	assert.Len(t, c.previousJobIDs, 20)
+	assert.Len(t, c.jobIDsWithNoGRES, 16)
+
+	// Now binds GPUs to first 7 jobs
+	for ijob := range mockJobs {
+		err = writeEnvironFile(procFS, ijob, mockJobs[ijob])
+		require.NoError(t, err)
+	}
+
+	// Now call get metrics which should populate jobPropsCache
+	_, err = c.jobCgroups()
+	require.NoError(t, err)
+
+	// Eventhough number of jobs has not changed, job devices will
+	// be recomputed as there are jobs without GRES
+	assert.Len(t, c.previousJobIDs, 20)
+	assert.Len(t, c.jobIDsWithNoGRES, 13)
 
 	expected := map[string][]ComputeUnit{
 		"0": {{UUID: "0", NumShares: 2}, {UUID: "4", NumShares: 3}},
@@ -644,20 +664,7 @@ func TestJobDevicesCaching(t *testing.T) {
 	// Binds GPUs to first jobs 19 to 25
 	for ijob, gres := range mockJobs {
 		jobid := ijob + 19
-
-		dir := fmt.Sprintf("%s/%d", procFS, jobid)
-
-		envs := []string{fmt.Sprintf("SLURM_JOB_ID=%d", jobid), "SLURM_JOB_GPUS=" + strings.Join(gres.deviceIDs, ",")}
-
-		if gres.numShares > 0 {
-			envs = append(envs, fmt.Sprintf("SLURM_SHARDS_ON_NODE=%d", gres.numShares))
-		}
-
-		err = os.WriteFile(
-			dir+"/environ",
-			[]byte(strings.Join(envs, "\000")+"\000"),
-			0o600,
-		)
+		err = writeEnvironFile(procFS, jobid, gres)
 		require.NoError(t, err)
 	}
 
@@ -667,6 +674,7 @@ func TestJobDevicesCaching(t *testing.T) {
 
 	// Check if jobPropsCache has only 30 jobs and GPU ordinals are empty
 	assert.Len(t, c.previousJobIDs, 30)
+	assert.Len(t, c.jobIDsWithNoGRES, 23)
 
 	// New expected jobs
 	expected = map[string][]ComputeUnit{

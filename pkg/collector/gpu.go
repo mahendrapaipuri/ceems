@@ -43,11 +43,6 @@ var (
 	).Hidden().Default("").String()
 )
 
-// Custom errors.
-var (
-	errUnsupportedGPUVendor = errors.New("unsupported gpu vendor")
-)
-
 // Regexes.
 var (
 	pciBusIDRegex = regexp.MustCompile(`(?P<domain>[0-9a-fA-F]+):(?P<bus>[0-9a-fA-F]+):(?P<slot>[0-9a-fA-F]+)\.(?P<function>[0-9a-fA-F]+)`)
@@ -191,6 +186,52 @@ type DeviceAttrsShared struct {
 	DecCount uint64   `xml:"decoder_count"`
 }
 
+// UnmarshalXML implements the xml.Unmarshaler interface.
+func (p *DeviceAttrsShared) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	// Unmarshal into temporary struct.
+	// We are just doing this in case of edge cases where
+	// count values are not available. In that case xml.Unmarshal
+	// might return error due to not able to parse. We are trying
+	// to address those cases so that we get some default values
+	// instead of error.
+	var tmp struct {
+		XMLName  xml.Name `xml:"shared"`
+		SMCount  string   `xml:"multiprocessor_count"`
+		CECount  string   `xml:"copy_engine_count"`
+		EncCount string   `xml:"encoder_count"`
+		DecCount string   `xml:"decoder_count"`
+	}
+
+	if err := d.DecodeElement(&tmp, &start); err != nil {
+		return err
+	}
+
+	var err error
+
+	p.XMLName = tmp.XMLName
+
+	// In case of errors set count to 1. This is especially important for
+	// SMCount as we compute SMFrac with it and if we set it zero, fractions
+	// will be NaN.
+	if p.SMCount, err = strconv.ParseUint(tmp.SMCount, 10, 64); err != nil {
+		p.SMCount = 1
+	}
+
+	if p.CECount, err = strconv.ParseUint(tmp.CECount, 10, 64); err != nil {
+		p.CECount = 1
+	}
+
+	if p.EncCount, err = strconv.ParseUint(tmp.EncCount, 10, 64); err != nil {
+		p.EncCount = 1
+	}
+
+	if p.DecCount, err = strconv.ParseUint(tmp.DecCount, 10, 64); err != nil {
+		p.DecCount = 1
+	}
+
+	return nil
+}
+
 type DeviceAttrs struct {
 	XMLName xml.Name          `xml:"device_attributes"`
 	Shared  DeviceAttrsShared `xml:"shared"`
@@ -207,22 +248,107 @@ type MIGDevice struct {
 	UUID          string
 }
 
+// UnmarshalXML implements the xml.Unmarshaler interface.
+func (p *MIGDevice) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	// Unmarshal into temporary struct
+	// We are just doing this in case of edge cases where
+	// count values are not available. In that case xml.Unmarshal
+	// might return error due to not able to parse. We are trying
+	// to address those cases so that we get some default values
+	// instead of error.
+	var tmp struct {
+		XMLName       xml.Name    `xml:"mig_device"`
+		Index         string      `xml:"index"`
+		GPUInstID     string      `xml:"gpu_instance_id"`
+		ComputeInstID string      `xml:"compute_instance_id"`
+		DeviceAttrs   DeviceAttrs `xml:"device_attributes"`
+		FBMemory      Memory      `xml:"fb_memory_usage"`
+		Bar1Memory    Memory      `xml:"bar1_memory_usage"`
+	}
+
+	if err := d.DecodeElement(&tmp, &start); err != nil {
+		return err
+	}
+
+	var err error
+
+	// In case of errors return more intuitive error message.
+	if p.Index, err = strconv.ParseUint(tmp.Index, 10, 64); err != nil {
+		return fmt.Errorf("invalid mig index %s: %w", tmp.Index, err)
+	}
+
+	if p.GPUInstID, err = strconv.ParseUint(tmp.GPUInstID, 10, 64); err != nil {
+		return fmt.Errorf("invalid mig gpu instance id %s: %w", tmp.GPUInstID, err)
+	}
+
+	if p.ComputeInstID, err = strconv.ParseUint(tmp.ComputeInstID, 10, 64); err != nil {
+		return fmt.Errorf("invalid mig compute instance id %s: %w", tmp.ComputeInstID, err)
+	}
+
+	p.DeviceAttrs = tmp.DeviceAttrs
+	p.FBMemory = tmp.FBMemory
+	p.Bar1Memory = tmp.Bar1Memory
+	p.XMLName = tmp.XMLName
+
+	return nil
+}
+
 type MIGDevices struct {
 	XMLName xml.Name    `xml:"mig_devices"`
 	Devices []MIGDevice `xml:"mig_device"`
 }
 
-type ProcessInfo struct {
-	XMLName       xml.Name `xml:"process_info"`
-	GPUInstID     uint64   `xml:"gpu_instance_id"`
-	ComputeInstID uint64   `xml:"compute_instance_id"`
-	PID           uint64   `xml:"pid"`
-}
+// type ProcessInfo struct {
+// 	XMLName       xml.Name `xml:"process_info"`
+// 	GPUInstID     uint64   `xml:"gpu_instance_id"`
+// 	ComputeInstID uint64   `xml:"compute_instance_id"`
+// 	PID           uint64   `xml:"pid"`
+// }
 
-type Processes struct {
-	XMLName      xml.Name      `xml:"processes"`
-	ProcessInfos []ProcessInfo `xml:"process_info"`
-}
+// func (p *ProcessInfo) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+// 	// Check if tag is valid
+// 	if start.Name.Local != "process_info" {
+// 		return fmt.Errorf("invalid start tag %s for process_info", start.Name.Local)
+// 	}
+
+// 	// Unmarshal into temporary struct
+// 	var tmp struct {
+// 		XMLName       xml.Name `xml:"process_info"`
+// 		GPUInstID     string   `xml:"gpu_instance_id"`
+// 		ComputeInstID string   `xml:"compute_instance_id"`
+// 		PID           uint64   `xml:"pid"`
+// 	}
+
+// 	if err := d.DecodeElement(&tmp, &start); err != nil {
+// 		return err
+// 	}
+
+// 	// Now check if GPUInstID and ComputeInstID can be converted
+// 	// to uint64
+// 	var gpuInstID, computeInstID uint64
+
+// 	var err error
+
+// 	if gpuInstID, err = strconv.ParseUint(tmp.GPUInstID, 10, 64); err != nil {
+// 		gpuInstID = 9999
+// 	}
+
+// 	if computeInstID, err = strconv.ParseUint(tmp.ComputeInstID, 10, 64); err != nil {
+// 		computeInstID = 9999
+// 	}
+
+// 	p.XMLName = tmp.XMLName
+// 	p.GPUInstID = gpuInstID
+// 	p.ComputeInstID = computeInstID
+// 	p.PID = tmp.PID
+
+// 	return nil
+// }
+
+// type Processes struct {
+// 	XMLName      xml.Name      `xml:"processes"`
+// 	ProcessInfos []ProcessInfo `xml:"process_info"`
+// }
 
 type VirtMode struct {
 	XMLName  xml.Name `xml:"gpu_virtualization_mode"`
@@ -246,7 +372,7 @@ type NvidiaGPU struct {
 	MIGDevices   MIGDevices `xml:"mig_devices"`
 	UUID         string     `xml:"uuid"`
 	MinorNumber  string     `xml:"minor_number"`
-	Processes    Processes  `xml:"processes"`
+	// Processes    Processes  `xml:"processes"` // Ignore for the moment, we are not using it.
 }
 
 type NVIDIASMILog struct {
@@ -432,7 +558,7 @@ func NewGPUSMI(k8sClient *ceems_k8s.Client, logger *slog.Logger) (*GPUSMI, error
 		// Detect GPU device vendors
 		vendors, err = detectVendors()
 		if err != nil {
-			logger.Warn("Failed to detect GPU devices")
+			logger.Error("Failed to detect GPU devices", "err", err)
 
 			return nil, fmt.Errorf("failed to detect devices: %w", err)
 		}
@@ -440,6 +566,8 @@ func NewGPUSMI(k8sClient *ceems_k8s.Client, logger *slog.Logger) (*GPUSMI, error
 
 	// If no vendors found return early
 	if len(vendors) == 0 {
+		logger.Debug("No GPU devices from supported vendors detected")
+
 		return &GPUSMI{logger: logger}, nil
 	}
 
@@ -478,11 +606,11 @@ func NewGPUSMI(k8sClient *ceems_k8s.Client, logger *slog.Logger) (*GPUSMI, error
 		}
 	}
 
-	// If k8sClient is not nil, figure out which containers are running the drivers
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
 	if k8sClient != nil {
+		// If k8sClient is not nil, figure out which containers are running the drivers
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
 		for iv, v := range vendors {
 			var contName, smiCmd string
 
@@ -536,26 +664,11 @@ func (g *GPUSMI) Discover() error {
 	for _, vendor := range g.vendors {
 		var devs []Device
 
-		// Keep checking for GPU devices with a timeout of 1 minute
-		// When GPU drivers are not loaded yet, this strategy can be
-		// handy to wait for the drivers to load and for SMI commands to
-		// enumurate GPUs.
-		for start := time.Now(); time.Since(start) < time.Minute; {
-			// If errored out, sleep for a while and attempt to get devices again
-			devs, err = g.gpuDevices(vendor)
-			if err != nil && !errors.Is(err, errUnsupportedGPUVendor) {
-				time.Sleep(10 * time.Second)
-			} else {
-				g.Devices = append(g.Devices, devs...)
-
-				break
-			}
-		}
-
-		// If we end up here with non nil error, we could not find GPUs for
-		// this vendor. Add to errs
+		devs, err = g.gpuDevices(vendor)
 		if err != nil {
-			errs = errors.Join(errs, err)
+			errs = errors.Join(errs, fmt.Errorf("failed to fetch GPU devices from vendor %s: %w", vendor.name, err))
+		} else {
+			g.Devices = append(g.Devices, devs...)
 		}
 	}
 
@@ -715,6 +828,12 @@ func (g *GPUSMI) ReindexGPUs(orderMap string) {
 
 // print emits debug logs with GPU details.
 func (g *GPUSMI) print() {
+	// When GPUs are found, emit an info log
+	if len(g.Devices) > 0 {
+		g.logger.Info("GPU Devices found", "num_devices", len(g.Devices))
+	}
+
+	// Emit device details for debug logs
 	for _, gpu := range g.Devices {
 		g.logger.Debug("GPU device", "vendor", gpu.vendorID, "details", gpu)
 
@@ -732,7 +851,7 @@ func (g *GPUSMI) gpuDevices(vendor vendor) ([]Device, error) {
 	case amd:
 		return g.amdGPUDevices(vendor)
 	default:
-		return nil, fmt.Errorf("only NVIDIA and AMD GPU devices are supported: %w", errUnsupportedGPUVendor)
+		return nil, nil
 	}
 }
 
@@ -951,8 +1070,8 @@ func parseNvidiaSmiOutput(cmdOutput []byte) ([]Device, error) {
 
 	// Read XML byte array into gpu
 	var nvidiaSMILog NVIDIASMILog
-	if err := xml.Unmarshal(cmdOutput, &nvidiaSMILog); err != nil { //nolint:musttag
-		return nil, err
+	if err := xml.Unmarshal(cmdOutput, &nvidiaSMILog); err != nil {
+		return nil, fmt.Errorf("failed to parse nvidia-smi xml log %w", err)
 	}
 
 	// NOTE: Ensure that we sort the devices using PCI address

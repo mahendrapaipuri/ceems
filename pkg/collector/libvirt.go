@@ -200,15 +200,21 @@ func NewLibvirtCollector(logger *slog.Logger) (Collector, error) {
 		return nil, err
 	}
 
-	// Instantiate a new instance of gpuSMI struct
+	// Instantiate a new instance of GPUSMI struct
 	gpuSMI, err := NewGPUSMI(client, logger)
 	if err != nil {
 		logger.Error("Error creating GPU SMI instance", "err", err)
+
+		return nil, err
 	}
 
 	// Attempt to get GPU devices
 	if err := gpuSMI.Discover(); err != nil {
+		// If we failed to fetch GPUs that are from supported
+		// vendor, return with error
 		logger.Error("Error fetching GPU devices", "err", err)
+
+		return nil, err
 	}
 
 	// Check if vGPU is activated on atleast one GPU
@@ -254,7 +260,7 @@ func NewLibvirtCollector(logger *slog.Logger) (Collector, error) {
 		hostname:                      hostname,
 		gpuSMI:                        gpuSMI,
 		vGPUActivated:                 vGPUActivated,
-		instanceDevicesCacheTTL:       3 * time.Hour,
+		instanceDevicesCacheTTL:       15 * time.Minute,
 		instanceDeviceslastUpdateTime: time.Now(),
 		securityContexts:              map[string]*security.SecurityContext{libvirtReadXMLCtx: securityCtx},
 		instanceGpuFlag: prometheus.NewDesc(
