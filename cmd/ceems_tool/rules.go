@@ -443,7 +443,7 @@ func scrapeIntervals(ctx context.Context, api v1.API) (map[string]time.Duration,
 // multiple instances, it comes handy.
 func efInstance(ctx context.Context, api v1.API, start time.Time, end time.Time) string {
 	// First fetch all the available series of emissions
-	series, _, err := api.Series(ctx, []string{emissionsMetric}, start, end)
+	series, _, _, err := api.Series(ctx, []string{emissionsMetric}, start, end)
 	if err != nil || len(series) == 0 {
 		return ""
 	}
@@ -470,7 +470,7 @@ func efProviders(ctx context.Context, api v1.API, start time.Time, end time.Time
 	// Run query to get label values.
 	matcher := fmt.Sprintf(`%s{country_code="%s"}`, emissionsMetric, countryCode)
 
-	providers, _, err := api.LabelValues(ctx, "provider", []string{matcher}, start, end) // Ignoring warnings for now.
+	providers, _, _, err := api.LabelValues(ctx, "provider", []string{matcher}, start, end) // Ignoring warnings for now.
 	if err != nil {
 		return nil, err
 	}
@@ -493,7 +493,7 @@ func jobSeriesMetaData(ctx context.Context, api v1.API, start time.Time, end tim
 	}
 
 	// Run query to get matching series.
-	foundSeries, _, err := api.Series(ctx, seriesMatches, start, end) // Ignoring warnings for now.
+	foundSeries, _, _, err := api.Series(ctx, seriesMatches, start, end) // Ignoring warnings for now.
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -620,7 +620,7 @@ func newTemplate(outDir string) (*template.Template, error) {
 func findTargetLabel(ctx context.Context, api v1.API, metricName string, labelName string, job model.LabelValue, stime time.Time, etime time.Time) ([]string, error) {
 	matcher := fmt.Sprintf(`%s{job="%s"}`, metricName, job)
 
-	labels, _, err := api.LabelValues(ctx, labelName, []string{matcher}, stime, etime) // Ignoring warnings for now.
+	labels, _, _, err := api.LabelValues(ctx, labelName, []string{matcher}, stime, etime) // Ignoring warnings for now.
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "job:", job, "error fetching", labelName, "values:", err)
 
@@ -795,7 +795,7 @@ func gpuData(
 	query := fmt.Sprintf(`avg_over_time(%s[%s:])`, hostPowerOnlyQuery, etime.Sub(stime).Truncate(time.Minute).String())
 
 	// Make query against Prometheus
-	result, _, err := api.Query(ctx, query, etime)
+	result, _, _, err := api.Query(ctx, query, etime)
 	if err == nil {
 		// If average value is more than 0, that means Host power includes GPU power
 		if val, ok := result.(model.Vector); ok && len(val) > 0 {

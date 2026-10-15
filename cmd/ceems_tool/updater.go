@@ -134,7 +134,7 @@ func GenerateTSDBUpdaterConfig(ctx context.Context, serverURL *url.URL, start st
 	}
 
 	// Run query to get matching series.
-	labelset, _, err := api.Series(ctx, allSeries, stime, etime) // Ignoring warnings for now.
+	labelset, _, _, err := api.Series(ctx, allSeries, stime, etime) // Ignoring warnings for now.
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "error fetching labelsets:", err)
 
@@ -149,7 +149,7 @@ func GenerateTSDBUpdaterConfig(ctx context.Context, serverURL *url.URL, start st
 	}
 
 	// Get all providers of emission factors
-	providers, _, err := api.LabelValues(ctx, "provider", []string{"uuid:ceems_host_emissions_g_s:pue"}, stime, etime) // Ignoring warnings for now.
+	providers, _, _, err := api.LabelValues(ctx, "provider", []string{"uuid:ceems_host_emissions_g_s:pue"}, stime, etime) // Ignoring warnings for now.
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "error fetching emission factor providers:", err)
 
