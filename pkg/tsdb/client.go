@@ -196,7 +196,7 @@ func (t *Client) Settings(ctx context.Context) *Settings {
 // Series makes a Client query to get series.
 func (t *Client) Series(ctx context.Context, matchers []string, start time.Time, end time.Time) ([]model.LabelSet, error) {
 	// Make API request to get series
-	series, warnings, err := t.API.Series(ctx, matchers, start, end)
+	series, warnings, _, err := t.API.Series(ctx, matchers, start, end)
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +211,7 @@ func (t *Client) Series(ctx context.Context, matchers []string, start time.Time,
 // Labels makes a Client query to get list of labels.
 func (t *Client) Labels(ctx context.Context, matchers []string, start time.Time, end time.Time) (model.LabelNames, error) {
 	// Make API request to get labels
-	labels, warnings, err := t.API.LabelNames(ctx, matchers, start, end)
+	labels, warnings, _, err := t.API.LabelNames(ctx, matchers, start, end)
 	if err != nil {
 		return nil, err
 	}
@@ -240,7 +240,7 @@ func (t *Client) Query(ctx context.Context, query string, queryTime time.Time, t
 	}
 
 	// Make API request to execute query
-	result, warnings, err := t.API.Query(ctx, query, queryTime, v1.WithLookbackDelta(period), v1.WithTimeout(timeout))
+	result, warnings, _, err := t.API.Query(ctx, query, queryTime, v1.WithLookbackDelta(period), v1.WithTimeout(timeout))
 	if err != nil {
 		return nil, err
 	}
@@ -316,7 +316,7 @@ func (t *Client) RangeQuery(
 	}
 
 	// Make API request to execute query
-	result, warnings, err := t.API.QueryRange(ctx, query, queryRange, v1.WithLookbackDelta(period), v1.WithTimeout(timeout))
+	result, warnings, _, err := t.API.QueryRange(ctx, query, queryRange, v1.WithLookbackDelta(period), v1.WithTimeout(timeout))
 	if err != nil {
 		return nil, err
 	}
