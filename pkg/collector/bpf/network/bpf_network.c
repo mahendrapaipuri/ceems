@@ -67,7 +67,7 @@ __u64 BPF_PROG(fexit_udp_sendpage, struct sock *sk, struct page *page, int offse
 
 #endif
 
-#if defined(__KERNEL_PRE_v519)
+#if defined(__KERNEL_PRE_v518)
 
 SEC("fexit/tcp_recvmsg")
 __u64 BPF_PROG(fexit_tcp_recvmsg, struct sock *sk, struct msghdr *msg, size_t size, int noblock, int flags, int *addr_len, int ret)
@@ -87,7 +87,7 @@ __u64 BPF_PROG(fexit_udpv6_recvmsg, struct sock *sk, struct msghdr *msg, size_t 
 	return handle_udp_event(ret, AF_INET6, MODE_INGRESS);
 }
 
-#else
+#elif defined(__KERNEL_POST_v519_PRE_v70)
 
 SEC("fexit/tcp_recvmsg")
 __u64 BPF_PROG(fexit_tcp_recvmsg, struct sock *sk, struct msghdr *msg, size_t size, int flags, int *addr_len, int ret)
@@ -103,6 +103,26 @@ __u64 BPF_PROG(fexit_udp_recvmsg, struct sock *sk, struct msghdr *msg, size_t si
 
 SEC("fexit/udpv6_recvmsg")
 __u64 BPF_PROG(fexit_udpv6_recvmsg, struct sock *sk, struct msghdr *msg, size_t size, int flags, int *addr_len, int ret)
+{
+	return handle_udp_event(ret, AF_INET6, MODE_INGRESS);
+}
+
+#else
+
+SEC("fexit/tcp_recvmsg")
+__u64 BPF_PROG(fexit_tcp_recvmsg, struct sock *sk, struct msghdr *msg, size_t size, int flags, int ret)
+{
+	return handle_tcp_event(sk);
+}
+
+SEC("fexit/udp_recvmsg")
+__u64 BPF_PROG(fexit_udp_recvmsg, struct sock *sk, struct msghdr *msg, size_t size, int flags, int ret)
+{
+	return handle_udp_event(ret, AF_INET, MODE_INGRESS);
+}
+
+SEC("fexit/udpv6_recvmsg")
+__u64 BPF_PROG(fexit_udpv6_recvmsg, struct sock *sk, struct msghdr *msg, size_t size, int flags, int ret)
 {
 	return handle_udp_event(ret, AF_INET6, MODE_INGRESS);
 }
@@ -155,8 +175,6 @@ __u64 kretprobe_udp_sendpage(struct pt_regs *ctx)
 
 #endif
 
-#if defined(__KERNEL_PRE_v519)
-
 SEC("kprobe/tcp_recvmsg")
 __u64 kprobe_tcp_recvmsg(struct pt_regs *ctx)
 {
@@ -180,33 +198,5 @@ __u64 kretprobe_udpv6_recvmsg(struct pt_regs *ctx)
 
 	return handle_udp_event(ret, AF_INET6, MODE_INGRESS);
 }
-
-#else
-
-SEC("kprobe/tcp_recvmsg")
-__u64 kprobe_tcp_recvmsg(struct pt_regs *ctx)
-{
-	struct sock *sk = (struct sock *)PT_REGS_PARM1(ctx);
-
-	return handle_tcp_event(sk);
-}
-
-SEC("kretprobe/udp_recvmsg")
-__u64 kretprobe_udp_recvmsg(struct pt_regs *ctx)
-{
-	int ret = (int)PT_REGS_RC(ctx);
-
-	return handle_udp_event(ret, AF_INET, MODE_INGRESS);
-}
-
-SEC("kretprobe/udpv6_recvmsg")
-__u64 kretprobe_udpv6_recvmsg(struct pt_regs *ctx)
-{
-	int ret = (int)PT_REGS_RC(ctx);
-
-	return handle_udp_event(ret, AF_INET6, MODE_INGRESS);
-}
-
-#endif
 
 #endif
