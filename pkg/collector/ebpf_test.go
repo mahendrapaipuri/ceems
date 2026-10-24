@@ -374,22 +374,46 @@ func TestNetBPFObjects(t *testing.T) {
 		obj     string
 	}{
 		{
-			name:    "kernel >= 6.5",
+			name:    "kernel > 7.0",
 			procfs:  t.TempDir(),
-			version: "Ubuntu 6.9.0-35.35~22.04.1-generic 6.5.13",
+			version: "Ubuntu 7.1.0-35.35~22.04.1-generic 7.1.13",
 			obj:     "bpf_network.o",
 		},
 		{
-			name:    "kernel > 5.19 and kernel < 6.5",
+			name:    "kernel > 6.4 and kernel <= 7.0 boundary",
+			procfs:  t.TempDir(),
+			version: "Ubuntu 7.0.0-35.35~22.04.1-generic 7.0.0",
+			obj:     "bpf_network_v70.o",
+		},
+		{
+			name:    "kernel > 6.4 and kernel <= 7.0",
+			procfs:  t.TempDir(),
+			version: "Ubuntu 6.18.0-35.35~22.04.1-generic 6.18.13",
+			obj:     "bpf_network_v70.o",
+		},
+		{
+			name:    "kernel > 5.18 and kernel <= 6.4 boundary",
+			procfs:  t.TempDir(),
+			version: "Ubuntu 6.4.0-35.35~22.04.1-generic 6.4.0",
+			obj:     "bpf_network_v64.o",
+		},
+		{
+			name:    "kernel > 5.18 and kernel <= 6.4",
 			procfs:  t.TempDir(),
 			version: "Ubuntu 5.27.0-35.35~22.04.1-generic 5.19.13",
 			obj:     "bpf_network_v64.o",
 		},
 		{
-			name:    "kernel < 5.19",
+			name:    "kernel <= 5.18 boundary",
+			procfs:  t.TempDir(),
+			version: "Ubuntu 5.18.0-35.35~22.04.1-generic 5.18.0",
+			obj:     "bpf_network_v518.o",
+		},
+		{
+			name:    "kernel <= 5.18",
 			procfs:  t.TempDir(),
 			version: "Ubuntu 5.6.0-35.35~22.04.1-generic 5.6.13",
-			obj:     "bpf_network_v519.o",
+			obj:     "bpf_network_v518.o",
 		},
 	}
 

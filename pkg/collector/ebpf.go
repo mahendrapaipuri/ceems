@@ -1103,12 +1103,14 @@ func bpfVFSObjs(kernelVersion int64) string {
 // bpfNetObjs returns the network bpf objects based on current kernel version.
 func bpfNetObjs(kernelVersion int64) string {
 	// Return appropriate bpf object file based on kernel version
-	if kernelVersion > KernelStringToNumeric("6.4") {
+	if kernelVersion > KernelStringToNumeric("7.0") {
 		return "bpf_network.o"
-	} else if kernelVersion >= KernelStringToNumeric("5.19") && kernelVersion <= KernelStringToNumeric("6.4") {
+	} else if kernelVersion > KernelStringToNumeric("6.4") && kernelVersion <= KernelStringToNumeric("7.0") {
+		return "bpf_network_v70.o"
+	} else if kernelVersion > KernelStringToNumeric("5.18") && kernelVersion <= KernelStringToNumeric("6.4") {
 		return "bpf_network_v64.o"
 	} else {
-		return "bpf_network_v519.o"
+		return "bpf_network_v518.o"
 	}
 }
 

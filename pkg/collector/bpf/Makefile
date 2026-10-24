@@ -7,7 +7,7 @@ VFSDIR := vfs/
 NETWORKDIR := network/
 BPFTESTDIR := test/
 
-NETWORK = bpf_network.o bpf_network_v519.o bpf_network_v64.o
+NETWORK = bpf_network.o bpf_network_v518.o bpf_network_v64.o bpf_network_v70.o
 VFS = bpf_vfs.o bpf_vfs_v511.o bpf_vfs_v62.o bpf_vfs_v614.o bpf_vfs_v618.o
 
 OBJSDIR       := objs/
@@ -50,8 +50,9 @@ deps/bpf_network_$$(VAR).d: network/bpf_network.c
 endef
 
 # Generic build targets for each sub-dir
-$(eval $(call DEFINE_NET_VARIANT,v519))
+$(eval $(call DEFINE_NET_VARIANT,v518))
 $(eval $(call DEFINE_NET_VARIANT,v64))
+$(eval $(call DEFINE_NET_VARIANT,v70))
 
 # Build only for relevant architectures
 ifeq ($(BPF_TARGET_COMPILE),1)
@@ -91,20 +92,26 @@ $(DEPSDIR)%_v618.d:
 objs/%.ll: $(NETWORKDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
 
-objs/%_v519.ll: $(NETWORKDIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -D__KERNEL_PRE_v519 -D__KERNEL_PRE_v64 -c $< -o $@
+objs/%_v518.ll: $(NETWORKDIR)%.c
+	$(CLANG) $(CLANG_FLAGS) -D__KERNEL_PRE_v518 -D__KERNEL_PRE_v64 -c $< -o $@
 
 objs/%_v64.ll: $(NETWORKDIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -D__KERNEL_PRE_v64 -c $< -o $@
+	$(CLANG) $(CLANG_FLAGS) -D__KERNEL_POST_v519_PRE_v70 -D__KERNEL_PRE_v64 -c $< -o $@
+
+objs/%_v70.ll: $(NETWORKDIR)%.c
+	$(CLANG) $(CLANG_FLAGS) -D__KERNEL_POST_v519_PRE_v70 -c $< -o $@
 
 $(DEPSDIR)%.d: $(NETWORKDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
 
-$(DEPSDIR)%_v519.d: $(NETWORKDIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -D__KERNEL_PRE_v519 -D__KERNEL_PRE_v64 -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
+$(DEPSDIR)%_v518.d: $(NETWORKDIR)%.c
+	$(CLANG) $(CLANG_FLAGS) -D__KERNEL_PRE_v518 -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
 
 $(DEPSDIR)%_v64.d: $(NETWORKDIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -D__KERNEL_PRE_v64 -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
+	$(CLANG) $(CLANG_FLAGS) -D__KERNEL_POST_v519_PRE_v70 -D__KERNEL_PRE_v64 -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
+
+$(DEPSDIR)%_v70.d: $(NETWORKDIR)%.c
+	$(CLANG) $(CLANG_FLAGS) -D__KERNEL_POST_v519_PRE_v70 -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
 
 # BPFTESTDIR
 objs/%.ll: $(BPFTESTDIR)%.c
